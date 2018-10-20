@@ -303,9 +303,10 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     return suffix
   }
 
-  private inline fun integerConstantImpl(s: String,
-                                         prefixLength: Int = 0,
-                                         isValidDigit: (c: Char) -> Boolean): Pair<String, IntegralSuffix> {
+  private inline fun integerConstantImpl(
+      s: String,
+      prefixLength: Int = 0,
+      isValidDigit: (c: Char) -> Boolean): Pair<String, IntegralSuffix> {
     val nrWithSuffix = s.slice(prefixLength until nextWhitespaceOrPunct(s))
     val nrEndIdx = nrWithSuffix.indexOfFirst { !isValidDigit(it) }
     val nrText = nrWithSuffix.slice(0 until if (nrEndIdx == -1) nrWithSuffix.length else nrEndIdx)
