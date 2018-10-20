@@ -9,14 +9,14 @@ class LexerTests {
     val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2")
     val l = Lexer(idents.joinToString(" "), source)
     l.assertNoInspections()
-    assertEquals(idents.size, l.tokens.size)
-    for ((ident, token) in idents.zip(l.tokens)) assertEquals(Identifier(ident), token)
+    val res: List<Token> = idents.map { Identifier(it) }
+    assertEquals(res, l.tokens)
   }
   @Test fun keywords() {
     val l = Lexer(Keywords.values().joinToString(" ") { it.keyword }, source)
     l.assertNoInspections()
-    assertEquals(Keywords.values().size, l.tokens.size)
-    for ((enum, token) in Keywords.values().zip(l.tokens)) assertEquals(Keyword(enum), token)
+    val res: List<Token> = Keywords.values().map { Keyword(it) }
+    assertEquals(res, l.tokens)
   }
   @Test fun punctuators() {
     val l = Lexer(Punctuators.values().joinToString(" ") { it.punct }, source)
@@ -26,27 +26,29 @@ class LexerTests {
   }
   @Test fun integers() {
     val l = Lexer("1234 07 0xF 0", source)
-    val ints = l.tokens
     l.assertNoInspections()
-    assertEquals(4, ints.size)
-    assertEquals(IntegralConstant.Decimal("1234", IntegralSuffix.NONE), ints[0])
-    assertEquals(IntegralConstant.Octal("07", IntegralSuffix.NONE), ints[1])
-    assertEquals(IntegralConstant.Hex("F", IntegralSuffix.NONE), ints[2])
-    assertEquals(IntegralConstant.Octal("0", IntegralSuffix.NONE), ints[3])
+    val res: List<Token> = listOf(
+        IntegralConstant.Decimal("1234", IntegralSuffix.NONE),
+        IntegralConstant.Octal("07", IntegralSuffix.NONE),
+        IntegralConstant.Hex("F", IntegralSuffix.NONE),
+        IntegralConstant.Octal("0", IntegralSuffix.NONE)
+    )
+    assertEquals(res, l.tokens)
   }
   @Test fun integerSuffixes() {
     val l = Lexer("1U 1L 1UL 1LU 1ULL 1LLU 1LL 1lLu", source)
-    val ints = l.tokens
     l.assertNoInspections()
-    assertEquals(8, ints.size)
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED), ints[0])
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.LONG), ints[1])
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG), ints[2])
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG), ints[3])
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG), ints[4])
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG), ints[5])
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.LONG_LONG), ints[6])
-    assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG), ints[7])
+    val res: List<Token> = listOf(
+        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED),
+        IntegralConstant.Decimal("1", IntegralSuffix.LONG),
+        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG),
+        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG),
+        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG),
+        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG),
+        IntegralConstant.Decimal("1", IntegralSuffix.LONG_LONG),
+        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG)
+    )
+    assertEquals(res, l.tokens)
   }
   @Test fun invalidSuffixError() {
     val inspections1 = Lexer("123A", source).inspections
@@ -61,13 +63,10 @@ class LexerTests {
   }
   @Test fun charConstants() {
     val chars = listOf("a", "*", "asdf", "\"")
-    val text = chars.joinToString(" ") { "'$it'" }
-    val l = Lexer(text, source)
+    val l = Lexer(chars.joinToString(" ") { "'$it'" }, source)
     l.assertNoInspections()
-    assertEquals(chars.size, l.tokens.size)
-    for ((char, token) in chars.zip(l.tokens)) {
-      assertEquals(CharConstant(char, CharEncoding.UNSIGNED_CHAR), token)
-    }
+    val res: List<Token> = chars.map { CharConstant(it, CharEncoding.UNSIGNED_CHAR) }
+    assertEquals(res, l.tokens)
   }
   @Test fun charPrefixes() {
     val l = Lexer("L'a' u'a' U'a'", source)
@@ -75,7 +74,8 @@ class LexerTests {
     val res = listOf<Token>(
         CharConstant("a", CharEncoding.WCHAR_T),
         CharConstant("a", CharEncoding.CHAR16_T),
-        CharConstant("a", CharEncoding.CHAR32_T))
+        CharConstant("a", CharEncoding.CHAR32_T)
+    )
     assertEquals(res, l.tokens)
   }
   @Test fun unmatchedQuoteError() {
