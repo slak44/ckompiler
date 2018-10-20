@@ -3,23 +3,31 @@ import kotlin.test.assertEquals
 
 class LexerTests {
   private val source = "<test/${javaClass.simpleName}>"
+  private fun Lexer.assertNoInspections() = assertEquals(0, inspections.size)
+
   @Test fun identifiers() {
     val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2")
     val l = Lexer(idents.joinToString(" "), source)
-    assertEquals(0, l.inspections.size)
+    l.assertNoInspections()
     assertEquals(idents.size, l.tokens.size)
     for ((ident, token) in idents.zip(l.tokens)) assertEquals(Identifier(ident), token)
   }
   @Test fun keywords() {
     val l = Lexer(Keywords.values().joinToString(" ") { it.keyword }, source)
-    assertEquals(0, l.inspections.size)
+    l.assertNoInspections()
     assertEquals(Keywords.values().size, l.tokens.size)
     for ((enum, token) in Keywords.values().zip(l.tokens)) assertEquals(Keyword(enum), token)
+  }
+  @Test fun punctuators() {
+    val l = Lexer(Punctuators.values().joinToString(" ") { it.punct }, source)
+    l.assertNoInspections()
+    val res: List<Token> = Punctuators.values().map { Punctuator(it) }
+    assertEquals(res, l.tokens)
   }
   @Test fun integers() {
     val l = Lexer("1234 07 0xF 0", source)
     val ints = l.tokens
-    assertEquals(0, l.inspections.size)
+    l.assertNoInspections()
     assertEquals(4, ints.size)
     assertEquals(IntegralConstant.Decimal("1234", IntegralSuffix.NONE), ints[0])
     assertEquals(IntegralConstant.Octal("07", IntegralSuffix.NONE), ints[1])
@@ -29,7 +37,7 @@ class LexerTests {
   @Test fun integerSuffixes() {
     val l = Lexer("1U 1L 1UL 1LU 1ULL 1LLU 1LL 1lLu", source)
     val ints = l.tokens
-    assertEquals(0, l.inspections.size)
+    l.assertNoInspections()
     assertEquals(8, ints.size)
     assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED), ints[0])
     assertEquals(IntegralConstant.Decimal("1", IntegralSuffix.LONG), ints[1])
@@ -55,7 +63,7 @@ class LexerTests {
     val chars = listOf("a", "*", "asdf", "\"")
     val text = chars.joinToString(" ") { "'$it'" }
     val l = Lexer(text, source)
-    assertEquals(0, l.inspections.size)
+    l.assertNoInspections()
     assertEquals(chars.size, l.tokens.size)
     for ((char, token) in chars.zip(l.tokens)) {
       assertEquals(CharConstant(char, CharEncoding.UNSIGNED_CHAR), token)
@@ -63,7 +71,7 @@ class LexerTests {
   }
   @Test fun charPrefixes() {
     val l = Lexer("L'a' u'a' U'a'", source)
-    assertEquals(0, l.inspections.size)
+    l.assertNoInspections()
     val res = listOf<Token>(
         CharConstant("a", CharEncoding.WCHAR_T),
         CharConstant("a", CharEncoding.CHAR16_T),

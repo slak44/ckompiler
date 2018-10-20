@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6a4124df-eba1-4f01-ad30-791e672c0b77" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/.gradle/" />
@@ -54,7 +54,7 @@
         <counts>
           <entry key="gitignore" value="22" />
           <entry key="gradle" value="351" />
-          <entry key="kt" value="11146" />
+          <entry key="kt" value="11247" />
           <entry key="properties" value="111" />
         </counts>
       </usages-collector>
@@ -62,7 +62,7 @@
         <counts>
           <entry key="Git file" value="22" />
           <entry key="Groovy" value="351" />
-          <entry key="Kotlin" value="11146" />
+          <entry key="Kotlin" value="11247" />
           <entry key="Properties" value="111" />
         </counts>
       </usages-collector>
@@ -83,8 +83,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="417">
-              <caret line="344" column="42" selection-start-line="344" selection-start-column="42" selection-end-line="344" selection-end-column="42" />
+            <state relative-caret-position="720">
+              <caret line="345" column="37" selection-start-line="345" selection-start-column="37" selection-end-line="345" selection-end-column="37" />
               <folding>
                 <element signature="e#0#62#0" expanded="true" />
               </folding>
@@ -92,23 +92,14 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-332">
-              <caret line="16" column="32" selection-start-line="16" selection-start-column="32" selection-end-line="16" selection-end-column="32" />
+            <state relative-caret-position="391">
+              <caret line="24" column="85" selection-start-line="24" selection-start-column="85" selection-end-line="24" selection-end-column="85" />
               <folding>
                 <element signature="e#0#84#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/.gitignore">
-          <provider selected="true" editor-type-id="text-editor">
-            <state>
-              <caret column="4" lean-forward="true" selection-start-column="4" selection-end-column="4" />
             </state>
           </provider>
         </entry>
@@ -138,12 +129,14 @@
       <find>Optional&lt;(\S+)&gt; = Empty\(\)</find>
       <find>Lexer\(\)\.tokenize\((.+?)\)</find>
       <find>assertEquals(l.inspections.size, 0)</find>
+      <find>assertEquals(0, l.inspections.size)</find>
     </findStrings>
     <replaceStrings>
       <replace>log4j.$1 =</replace>
       <replace>$1? = null</replace>
       <replace>Lexer($1).tokens</replace>
       <replace>assertEquals(0, l.inspections.size)</replace>
+      <replace>l.assertNoInspections()</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -572,9 +565,9 @@
         <option value="$PROJECT_DIR$/src/main/resources/log4j.properties" />
         <option value="$PROJECT_DIR$/build.gradle" />
         <option value="$PROJECT_DIR$/src/main/kotlin/Inspections.kt" />
+        <option value="$PROJECT_DIR$/.gitignore" />
         <option value="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" />
         <option value="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" />
-        <option value="$PROJECT_DIR$/.gitignore" />
       </list>
     </option>
   </component>
@@ -680,7 +673,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="JUnit.LexerTests">
+  <component name="RunManager" selected="JUnit.LexerTests.punctuators">
     <configuration default="true" type="Applet" factoryName="Applet">
       <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
       <method v="2">
@@ -724,11 +717,11 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="LexerTests.integerErrors" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+    <configuration name="LexerTests.punctuators" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
       <module name="ckompiler_test" />
       <option name="PACKAGE_NAME" value="" />
       <option name="MAIN_CLASS_NAME" value="LexerTests" />
-      <option name="METHOD_NAME" value="integerErrors" />
+      <option name="METHOD_NAME" value="punctuators" />
       <option name="TEST_OBJECT" value="method" />
       <option name="WORKING_DIRECTORY" value="$MODULE_DIR$" />
       <method v="2">
@@ -771,18 +764,18 @@
     </configuration>
     <list>
       <item itemvalue="JUnit.LexerTests" />
-      <item itemvalue="JUnit.LexerTests.integerErrors" />
       <item itemvalue="JUnit.LexerTests.identifiers" />
       <item itemvalue="JUnit.LexerTests.charConstants" />
       <item itemvalue="JUnit.LexerTests.unmatchedQuote" />
+      <item itemvalue="JUnit.LexerTests.punctuators" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="JUnit.LexerTests.punctuators" />
         <item itemvalue="JUnit.LexerTests" />
         <item itemvalue="JUnit.LexerTests.unmatchedQuote" />
         <item itemvalue="JUnit.LexerTests.charConstants" />
         <item itemvalue="JUnit.LexerTests.identifiers" />
-        <item itemvalue="JUnit.LexerTests.integerErrors" />
       </list>
     </recent_temporary>
   </component>
@@ -835,7 +828,7 @@
     <frame x="1920" y="0" width="1920" height="1080" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2139808" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2139808" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Designer" order="2" />
       <window_info id="UI Designer" order="3" />
@@ -848,7 +841,7 @@
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Version Control" order="7" show_stripe_button="false" />
-      <window_info anchor="bottom" id="Terminal" order="8" visible="true" weight="0.32972974" />
+      <window_info anchor="bottom" id="Terminal" order="8" weight="0.32972974" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
       <window_info anchor="bottom" id="Build" order="10" weight="0.32901832" />
       <window_info anchor="bottom" id="Messages" order="11" weight="0.32901832" />
@@ -968,13 +961,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/kotlin/Main.kt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
-          <caret line="4" column="1" selection-start-line="4" selection-start-column="1" selection-end-line="4" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/kotlin/Inspections.kt">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="51">
@@ -982,10 +968,24 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="34">
+          <caret line="2" lean-forward="true" selection-start-line="2" selection-end-line="2" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/kotlin/Main.kt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="68">
+          <caret line="4" column="1" selection-start-line="4" selection-start-column="1" selection-end-line="4" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="417">
-          <caret line="344" column="42" selection-start-line="344" selection-start-column="42" selection-end-line="344" selection-end-column="42" />
+        <state relative-caret-position="720">
+          <caret line="345" column="37" selection-start-line="345" selection-start-column="37" selection-end-line="345" selection-end-column="37" />
           <folding>
             <element signature="e#0#62#0" expanded="true" />
           </folding>
@@ -994,18 +994,11 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-332">
-          <caret line="16" column="32" selection-start-line="16" selection-start-column="32" selection-end-line="16" selection-end-column="32" />
+        <state relative-caret-position="391">
+          <caret line="24" column="85" selection-start-line="24" selection-start-column="85" selection-end-line="24" selection-end-column="85" />
           <folding>
             <element signature="e#0#84#0" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/.gitignore">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret column="4" lean-forward="true" selection-start-column="4" selection-end-column="4" />
         </state>
       </provider>
     </entry>

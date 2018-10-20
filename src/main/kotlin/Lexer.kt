@@ -342,7 +342,8 @@ class Lexer(source: String, private val srcFile: SourceFile) {
         integerConstant(src).consumeIfPresent() ||
         characterConstant(src).consumeIfPresent() ||
         stringLiteral(src).consumeIfPresent() ||
-        identifier(src).consumeIfPresent()
+        identifier(src).consumeIfPresent() ||
+        punct(src).consumeIfPresent()
     return tokenizeRec()
   }
 }
