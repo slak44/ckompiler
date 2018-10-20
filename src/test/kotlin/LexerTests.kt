@@ -65,16 +65,16 @@ class LexerTests {
     val chars = listOf("a", "*", "asdf", "\"")
     val l = Lexer(chars.joinToString(" ") { "'$it'" }, source)
     l.assertNoInspections()
-    val res: List<Token> = chars.map { CharConstant(it, CharEncoding.UNSIGNED_CHAR) }
+    val res: List<Token> = chars.map { CharLiteral(it, CharEncoding.UNSIGNED_CHAR) }
     assertEquals(res, l.tokens)
   }
   @Test fun charPrefixes() {
     val l = Lexer("L'a' u'a' U'a'", source)
     l.assertNoInspections()
     val res = listOf<Token>(
-        CharConstant("a", CharEncoding.WCHAR_T),
-        CharConstant("a", CharEncoding.CHAR16_T),
-        CharConstant("a", CharEncoding.CHAR32_T)
+        CharLiteral("a", CharEncoding.WCHAR_T),
+        CharLiteral("a", CharEncoding.CHAR16_T),
+        CharLiteral("a", CharEncoding.CHAR32_T)
     )
     assertEquals(res, l.tokens)
   }
@@ -85,5 +85,36 @@ class LexerTests {
     val inspections2 = Lexer("'123\nasd'", source).inspections
     assert(inspections2.size >= 1)
     assertEquals(InspectionId.MISSING_QUOTE, inspections2[0].id)
+  }
+  @Test fun stringLiterals() {
+    val strings = listOf("a", "*", "asdf", "'")
+    val l = Lexer(strings.joinToString(" ") { "\"$it\"" }, source)
+    l.assertNoInspections()
+    val res: List<Token> = strings.map { StringLiteral(it, StringEncoding.CHAR) }
+    assertEquals(res, l.tokens)
+  }
+  @Test fun stringPrefixes() {
+    val l = Lexer("""
+      u8"string"
+      L"string"
+      u"string"
+      U"string"
+    """.trimIndent(), source)
+    l.assertNoInspections()
+    val res = listOf<Token>(
+        StringLiteral("string", StringEncoding.UTF8),
+        StringLiteral("string", StringEncoding.WCHAR_T),
+        StringLiteral("string", StringEncoding.CHAR16_T),
+        StringLiteral("string", StringEncoding.CHAR32_T)
+    )
+    assertEquals(res, l.tokens)
+  }
+  @Test fun unmatchedDoubleQuoteError() {
+    val inspections1 = Lexer("\"asfadgs", source).inspections
+    assert(inspections1.size >= 1)
+    assertEquals(InspectionId.MISSING_DOUBLE_QUOTE, inspections1[0].id)
+    val inspections2 = Lexer("\"123\nasd\"", source).inspections
+    assert(inspections2.size >= 1)
+    assertEquals(InspectionId.MISSING_DOUBLE_QUOTE, inspections2[0].id)
   }
 }

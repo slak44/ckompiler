@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6a4124df-eba1-4f01-ad30-791e672c0b77" name="Default Changelist" comment="" />
+    <list default="true" id="6a4124df-eba1-4f01-ad30-791e672c0b77" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" afterDir="false" />
+    </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/.gradle/" />
     <ignored path="$PROJECT_DIR$/build/" />
@@ -51,7 +54,7 @@
         <counts>
           <entry key="gitignore" value="22" />
           <entry key="gradle" value="351" />
-          <entry key="kt" value="11533" />
+          <entry key="kt" value="11776" />
           <entry key="properties" value="111" />
         </counts>
       </usages-collector>
@@ -59,7 +62,7 @@
         <counts>
           <entry key="Git file" value="22" />
           <entry key="Groovy" value="351" />
-          <entry key="Kotlin" value="11533" />
+          <entry key="Kotlin" value="11776" />
           <entry key="Properties" value="111" />
         </counts>
       </usages-collector>
@@ -77,11 +80,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="527">
-              <caret line="74" column="26" selection-start-line="74" selection-start-column="26" selection-end-line="74" selection-end-column="26" />
+            <state relative-caret-position="-68">
+              <caret line="187" selection-start-line="183" selection-end-line="187" />
               <folding>
                 <element signature="e#0#62#0" expanded="true" />
               </folding>
@@ -89,11 +92,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1156">
-              <caret line="68" column="30" selection-start-line="68" selection-start-column="30" selection-end-line="68" selection-end-column="30" />
+            <state relative-caret-position="433">
+              <caret line="107" column="46" selection-start-line="107" selection-start-column="46" selection-end-line="107" selection-end-column="46" />
               <folding>
                 <element signature="e#0#84#0" expanded="true" />
               </folding>
@@ -565,8 +568,8 @@
         <option value="$PROJECT_DIR$/build.gradle" />
         <option value="$PROJECT_DIR$/src/main/kotlin/Inspections.kt" />
         <option value="$PROJECT_DIR$/.gitignore" />
-        <option value="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" />
         <option value="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" />
+        <option value="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" />
       </list>
     </option>
   </component>
@@ -705,22 +708,22 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="LexerTests.identifiers" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+    <configuration name="LexerTests.punctuators" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
       <module name="ckompiler_test" />
       <option name="PACKAGE_NAME" value="" />
       <option name="MAIN_CLASS_NAME" value="LexerTests" />
-      <option name="METHOD_NAME" value="identifiers" />
+      <option name="METHOD_NAME" value="punctuators" />
       <option name="TEST_OBJECT" value="method" />
       <option name="WORKING_DIRECTORY" value="$MODULE_DIR$" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="LexerTests.punctuators" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+    <configuration name="LexerTests.stringLiterals" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
       <module name="ckompiler_test" />
       <option name="PACKAGE_NAME" value="" />
       <option name="MAIN_CLASS_NAME" value="LexerTests" />
-      <option name="METHOD_NAME" value="punctuators" />
+      <option name="METHOD_NAME" value="stringLiterals" />
       <option name="TEST_OBJECT" value="method" />
       <option name="WORKING_DIRECTORY" value="$MODULE_DIR$" />
       <method v="2">
@@ -763,18 +766,18 @@
     </configuration>
     <list>
       <item itemvalue="JUnit.LexerTests" />
-      <item itemvalue="JUnit.LexerTests.identifiers" />
       <item itemvalue="JUnit.LexerTests.charConstants" />
       <item itemvalue="JUnit.LexerTests.unmatchedQuote" />
       <item itemvalue="JUnit.LexerTests.punctuators" />
+      <item itemvalue="JUnit.LexerTests.stringLiterals" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="JUnit.LexerTests" />
+        <item itemvalue="JUnit.LexerTests.stringLiterals" />
         <item itemvalue="JUnit.LexerTests.punctuators" />
         <item itemvalue="JUnit.LexerTests.unmatchedQuote" />
         <item itemvalue="JUnit.LexerTests.charConstants" />
-        <item itemvalue="JUnit.LexerTests.identifiers" />
       </list>
     </recent_temporary>
   </component>
@@ -792,18 +795,6 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="LexerTests - 2018.10.20 at 19h 33m 47s.xml">
-      <configuration name="LexerTests" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests_punctuators - 2018.10.20 at 19h 40m 30s.xml">
-      <configuration name="LexerTests.punctuators" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests_punctuators - 2018.10.20 at 19h 41m 34s.xml">
-      <configuration name="LexerTests.punctuators" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests_punctuators - 2018.10.20 at 19h 47m 27s.xml">
-      <configuration name="LexerTests.punctuators" configurationId="JUnit" />
-    </history-entry>
     <history-entry file="LexerTests - 2018.10.20 at 19h 47m 33s.xml">
       <configuration name="LexerTests" configurationId="JUnit" />
     </history-entry>
@@ -822,6 +813,18 @@
     <history-entry file="LexerTests - 2018.10.20 at 19h 52m 15s.xml">
       <configuration name="LexerTests" configurationId="JUnit" />
     </history-entry>
+    <history-entry file="LexerTests_stringLiterals - 2018.10.20 at 22h 36m 44s.xml">
+      <configuration name="LexerTests.stringLiterals" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests_stringLiterals - 2018.10.20 at 22h 37m 14s.xml">
+      <configuration name="LexerTests.stringLiterals" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests_stringLiterals - 2018.10.20 at 22h 44m 05s.xml">
+      <configuration name="LexerTests.stringLiterals" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests_stringLiterals - 2018.10.20 at 22h 44m 09s.xml">
+      <configuration name="LexerTests.stringLiterals" configurationId="JUnit" />
+    </history-entry>
   </component>
   <component name="ToolWindowManager">
     <frame x="1920" y="0" width="1920" height="1080" extended-state="6" />
@@ -834,8 +837,8 @@
       <window_info id="Favorites" order="4" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.32864866" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.399137" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32864866" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.39891893" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -981,22 +984,22 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
+    <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1156">
-          <caret line="68" column="30" selection-start-line="68" selection-start-column="30" selection-end-line="68" selection-end-column="30" />
+        <state relative-caret-position="-68">
+          <caret line="187" selection-start-line="183" selection-end-line="187" />
           <folding>
-            <element signature="e#0#84#0" expanded="true" />
+            <element signature="e#0#62#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
+    <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="527">
-          <caret line="74" column="26" selection-start-line="74" selection-start-column="26" selection-end-line="74" selection-end-column="26" />
+        <state relative-caret-position="433">
+          <caret line="107" column="46" selection-start-line="107" selection-start-column="46" selection-end-line="107" selection-end-column="46" />
           <folding>
-            <element signature="e#0#62#0" expanded="true" />
+            <element signature="e#0#84#0" expanded="true" />
           </folding>
         </state>
       </provider>

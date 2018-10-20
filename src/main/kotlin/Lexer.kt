@@ -198,20 +198,24 @@ fun floatingConstant(s: String): Optional<FloatingConstant> {
   TODO("implement")
 }
 
+sealed class CharSequence(dataLength: Int,
+                          prefixLength: Int) : Constant(prefixLength + dataLength + 2)
+
 enum class StringEncoding(val prefixLength: Int) {
   CHAR(0), UTF8(2), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
 }
 
-data class StringLiteral(val data: String,
-                         val encoding: StringEncoding) : Token(encoding.prefixLength + data.length)
+data class StringLiteral(
+    val data: String,
+    val encoding: StringEncoding) : CharSequence(data.length, encoding.prefixLength)
 
 enum class CharEncoding(val prefixLength: Int) {
   UNSIGNED_CHAR(0), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
 }
 
-data class CharConstant(
+data class CharLiteral(
     val data: String,
-    val encoding: CharEncoding) : Constant(data.length + 2 + encoding.prefixLength)
+    val encoding: CharEncoding) : CharSequence(data.length, encoding.prefixLength)
 
 class Lexer(source: String, private val srcFile: SourceFile) {
   val tokens = mutableListOf<Token>()
@@ -262,7 +266,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   }
 
   /** C standard: A.1.5, 6.4.4.4 */
-  private fun characterConstant(s: String): Optional<CharConstant> {
+  private fun characterConstant(s: String): Optional<CharLiteral> {
     val encoding = when {
       s.startsWith("'") -> CharEncoding.UNSIGNED_CHAR
       s.startsWith("L'") -> CharEncoding.WCHAR_T
@@ -271,7 +275,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       else -> return Empty()
     }
     val data = charSequence(s, '\'', InspectionId.MISSING_QUOTE, encoding.prefixLength)
-    return CharConstant(data, encoding).opt()
+    return CharLiteral(data, encoding).opt()
   }
 
   /**
