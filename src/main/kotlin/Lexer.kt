@@ -63,19 +63,23 @@ fun keyword(s: String) =
 data class Punctuator(val punctuator: Punctuators) : Token(punctuator.punct.length)
 enum class Punctuators(val punct: String) {
   LSQPAREN("["), RSQPAREN("]"), LPAREN("("), RPAREN(")"),
-  LBRACKET("{"), RBRACKET("}"), DOT("."), ARROW("->"),
-  INC("++"), DEC("--"), AMP("&"), STAR("*"), PLUS("+"), MINUS("-"),
-  TILDE("~"), NOT("!"),
-  SLASH("/"), PERCENT("%"), LSH("<<"), RSH(">>"),
-  LT("<"), GT(">"), LEQ("<="), GEQ(">="),
-  EQUALS("=="), NEQUALS("!="), CARET("^"), PIPE("|"), AND("&&"), OR("||"),
-  QMARK("?"), COLON(":"), SEMICOLON(";"), DOTS("..."),
-  ASSIGN("="), MUL_ASSIGN("*="), DIV_ASSIGN("/="), MOD_ASSIGN("%="), PLUS_ASSIGN("+="),
+  LBRACKET("{"), RBRACKET("}"), DOTS("..."), DOT("."), ARROW("->"),
+  MUL_ASSIGN("*="), DIV_ASSIGN("/="), MOD_ASSIGN("%="), PLUS_ASSIGN("+="),
   SUB_ASSIGN("-="), LSH_ASSIGN("<<="), RSH_ASSIGN(">>="),
   AND_ASSIGN("&="), XOR_ASSIGN("^="), OR_ASSIGN("|="),
-  COMMA(","), HASH("#"), DOUBLE_HASH("##"),
-  LESS_COLON("<:"), COLON_MORE(":>"), LESS_PERCENT("<%"), PERCENT_MORE("%>"),
-  PERCENT_COLON("%:"), PERCENT_COLON_PERCENT_COLON("%:%:"),
+  AND("&&"), OR("||"),
+  INC("++"), DEC("--"), AMP("&"), STAR("*"), PLUS("+"), MINUS("-"),
+  TILDE("~"),
+  LESS_COLON("<:"), LESS_PERCENT("<%"),
+  SLASH("/"), LSH("<<"), RSH(">>"),
+  LEQ("<="), GEQ(">="), LT("<"), GT(">"),
+  EQUALS("=="), NEQUALS("!="), CARET("^"), PIPE("|"),
+  QMARK("?"), SEMICOLON(";"),
+  NOT("!"),
+  ASSIGN("="),
+  COMMA(","), DOUBLE_HASH("##"), HASH("#"),
+  COLON_MORE(":>"), COLON(":"), PERCENT_MORE("%>"),
+  PERCENT_COLON_PERCENT_COLON("%:%:"), PERCENT_COLON("%:"), PERCENT("%")
 }
 
 fun punct(s: String) =

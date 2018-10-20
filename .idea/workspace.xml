@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6a4124df-eba1-4f01-ad30-791e672c0b77" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/.gradle/" />
@@ -53,7 +53,7 @@
         <counts>
           <entry key="gitignore" value="22" />
           <entry key="gradle" value="351" />
-          <entry key="kt" value="11502" />
+          <entry key="kt" value="11533" />
           <entry key="properties" value="111" />
         </counts>
       </usages-collector>
@@ -61,7 +61,7 @@
         <counts>
           <entry key="Git file" value="22" />
           <entry key="Groovy" value="351" />
-          <entry key="Kotlin" value="11502" />
+          <entry key="Kotlin" value="11533" />
           <entry key="Properties" value="111" />
         </counts>
       </usages-collector>
@@ -79,11 +79,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="399">
-              <caret line="345" column="37" selection-start-line="345" selection-start-column="37" selection-end-line="345" selection-end-column="37" />
+            <state relative-caret-position="340">
+              <caret line="72" column="39" selection-start-line="72" selection-start-column="39" selection-end-line="72" selection-end-column="39" />
               <folding>
                 <element signature="e#0#62#0" expanded="true" />
               </folding>
@@ -91,10 +91,10 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="136">
+            <state relative-caret-position="1156">
               <caret line="68" column="30" selection-start-line="68" selection-start-column="30" selection-end-line="68" selection-end-column="30" />
               <folding>
                 <element signature="e#0#84#0" expanded="true" />
@@ -567,8 +567,8 @@
         <option value="$PROJECT_DIR$/build.gradle" />
         <option value="$PROJECT_DIR$/src/main/kotlin/Inspections.kt" />
         <option value="$PROJECT_DIR$/.gitignore" />
-        <option value="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" />
         <option value="$PROJECT_DIR$/src/test/kotlin/LexerTests.kt" />
+        <option value="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" />
       </list>
     </option>
   </component>
@@ -794,24 +794,6 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="LexerTests_unmatchedQuote - 2018.10.20 at 19h 09m 45s.xml">
-      <configuration name="LexerTests.unmatchedQuote" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests_unmatchedQuote - 2018.10.20 at 19h 10m 07s.xml">
-      <configuration name="LexerTests.unmatchedQuote" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests_unmatchedQuote - 2018.10.20 at 19h 11m 11s.xml">
-      <configuration name="LexerTests.unmatchedQuote" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests_unmatchedQuote - 2018.10.20 at 19h 12m 04s.xml">
-      <configuration name="LexerTests.unmatchedQuote" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests - 2018.10.20 at 19h 12m 14s.xml">
-      <configuration name="LexerTests" configurationId="JUnit" />
-    </history-entry>
-    <history-entry file="LexerTests - 2018.10.20 at 19h 30m 54s.xml">
-      <configuration name="LexerTests" configurationId="JUnit" />
-    </history-entry>
     <history-entry file="LexerTests - 2018.10.20 at 19h 32m 29s.xml">
       <configuration name="LexerTests" configurationId="JUnit" />
     </history-entry>
@@ -823,6 +805,24 @@
     </history-entry>
     <history-entry file="LexerTests_punctuators - 2018.10.20 at 19h 41m 34s.xml">
       <configuration name="LexerTests.punctuators" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests_punctuators - 2018.10.20 at 19h 47m 27s.xml">
+      <configuration name="LexerTests.punctuators" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests - 2018.10.20 at 19h 47m 33s.xml">
+      <configuration name="LexerTests" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests - 2018.10.20 at 19h 47m 50s.xml">
+      <configuration name="LexerTests" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests - 2018.10.20 at 19h 51m 02s.xml">
+      <configuration name="LexerTests" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests - 2018.10.20 at 19h 51m 44s.xml">
+      <configuration name="LexerTests" configurationId="JUnit" />
+    </history-entry>
+    <history-entry file="LexerTests - 2018.10.20 at 19h 52m 02s.xml">
+      <configuration name="LexerTests" configurationId="JUnit" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
@@ -836,13 +836,13 @@
       <window_info id="Favorites" order="4" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.32864866" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32864866" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.399137" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Version Control" order="7" show_stripe_button="false" />
-      <window_info active="true" anchor="bottom" id="Terminal" order="8" visible="true" weight="0.32972974" />
+      <window_info anchor="bottom" id="Terminal" order="8" weight="0.32972974" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
       <window_info anchor="bottom" id="Build" order="10" weight="0.32901832" />
       <window_info anchor="bottom" id="Messages" order="11" weight="0.32901832" />
@@ -983,22 +983,22 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
+    <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="399">
-          <caret line="345" column="37" selection-start-line="345" selection-start-column="37" selection-end-line="345" selection-end-column="37" />
+        <state relative-caret-position="1156">
+          <caret line="68" column="30" selection-start-line="68" selection-start-column="30" selection-end-line="68" selection-end-column="30" />
           <folding>
-            <element signature="e#0#62#0" expanded="true" />
+            <element signature="e#0#84#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/kotlin/LexerTests.kt">
+    <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="136">
-          <caret line="68" column="30" selection-start-line="68" selection-start-column="30" selection-end-line="68" selection-end-column="30" />
+        <state relative-caret-position="340">
+          <caret line="72" column="39" selection-start-line="72" selection-start-column="39" selection-end-line="72" selection-end-column="39" />
           <folding>
-            <element signature="e#0#84#0" expanded="true" />
+            <element signature="e#0#62#0" expanded="true" />
           </folding>
         </state>
       </provider>
