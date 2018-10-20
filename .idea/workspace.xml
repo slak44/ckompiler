@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6a4124df-eba1-4f01-ad30-791e672c0b77" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" afterDir="false" />
-    </list>
+    <list default="true" id="6a4124df-eba1-4f01-ad30-791e672c0b77" name="Default Changelist" comment="" />
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/.gradle/" />
     <ignored path="$PROJECT_DIR$/build/" />
@@ -82,8 +80,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="340">
-              <caret line="72" column="39" selection-start-line="72" selection-start-column="39" selection-end-line="72" selection-end-column="39" />
+            <state relative-caret-position="527">
+              <caret line="74" column="26" selection-start-line="74" selection-start-column="26" selection-end-line="74" selection-end-column="26" />
               <folding>
                 <element signature="e#0#62#0" expanded="true" />
               </folding>
@@ -794,9 +792,6 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="LexerTests - 2018.10.20 at 19h 32m 29s.xml">
-      <configuration name="LexerTests" configurationId="JUnit" />
-    </history-entry>
     <history-entry file="LexerTests - 2018.10.20 at 19h 33m 47s.xml">
       <configuration name="LexerTests" configurationId="JUnit" />
     </history-entry>
@@ -824,6 +819,9 @@
     <history-entry file="LexerTests - 2018.10.20 at 19h 52m 02s.xml">
       <configuration name="LexerTests" configurationId="JUnit" />
     </history-entry>
+    <history-entry file="LexerTests - 2018.10.20 at 19h 52m 15s.xml">
+      <configuration name="LexerTests" configurationId="JUnit" />
+    </history-entry>
   </component>
   <component name="ToolWindowManager">
     <frame x="1920" y="0" width="1920" height="1080" extended-state="6" />
@@ -836,7 +834,7 @@
       <window_info id="Favorites" order="4" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32864866" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32864866" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.399137" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -995,8 +993,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/kotlin/Lexer.kt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="340">
-          <caret line="72" column="39" selection-start-line="72" selection-start-column="39" selection-end-line="72" selection-end-column="39" />
+        <state relative-caret-position="527">
+          <caret line="74" column="26" selection-start-line="74" selection-start-column="26" selection-end-line="74" selection-end-column="26" />
           <folding>
             <element signature="e#0#62#0" expanded="true" />
           </folding>

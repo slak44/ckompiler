@@ -220,7 +220,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   private var currentOffset: Int = 0
 
   init {
-    tokenizeRec()
+    tokenize()
   }
 
   private fun lexerInspection(build: InspectionBuilder.() -> Unit) {
@@ -338,7 +338,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     return false
   }
 
-  private tailrec fun tokenizeRec() {
+  private tailrec fun tokenize() {
     src = src.trimStart()
     if (src.isEmpty()) return
     // Only consume one of them in each iteration
@@ -348,6 +348,6 @@ class Lexer(source: String, private val srcFile: SourceFile) {
         stringLiteral(src).consumeIfPresent() ||
         identifier(src).consumeIfPresent() ||
         punct(src).consumeIfPresent()
-    return tokenizeRec()
+    return tokenize()
   }
 }
