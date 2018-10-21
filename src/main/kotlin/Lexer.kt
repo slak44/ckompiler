@@ -172,7 +172,7 @@ sealed class IntegralConstant(
   }
 
   override fun toString(): String {
-    return "${javaClass.name}[$string $suffix]"
+    return "${javaClass.simpleName}[$string $suffix]"
   }
 }
 
