@@ -1,16 +1,16 @@
-enum class InspectionId(val kind: InspectionKind, val messageFormat: String) {
-  UNKNOWN(InspectionKind.OTHER, ""),
-  INVALID_SUFFIX(InspectionKind.ERROR, "Invalid suffix '%s' on integer constant"),
-  MISSING_QUOTE(InspectionKind.ERROR, "Missing terminating %c character"),
+enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
+  UNKNOWN(DiagnosticKind.OTHER, ""),
+  INVALID_SUFFIX(DiagnosticKind.ERROR, "Invalid suffix '%s' on integer constant"),
+  MISSING_QUOTE(DiagnosticKind.ERROR, "Missing terminating %c character"),
 }
 
-enum class InspectionKind(val text: String) {
+enum class DiagnosticKind(val text: String) {
   ERROR("error"), WARNING("warning"), OTHER("note")
 }
 
 typealias SourceFile = String
 
-data class Inspection(val id: InspectionId,
+data class Diagnostic(val id: DiagnosticId,
                       val sourceFile: SourceFile,
                       val sourceColumns: List<IntRange>,
                       val origin: String,
@@ -27,8 +27,8 @@ data class Inspection(val id: InspectionId,
   }
 }
 
-class InspectionBuilder {
-  var id: InspectionId = InspectionId.UNKNOWN
+class DiagnosticBuilder {
+  var id: DiagnosticId = DiagnosticId.UNKNOWN
   var sourceFile: SourceFile = "<unknown>"
   var origin: String = "<unknown>"
   var messageFormatArgs: List<Any> = listOf()
@@ -42,11 +42,11 @@ class InspectionBuilder {
     sourceColumns.add(range)
   }
 
-  fun create() = Inspection(id, sourceFile, sourceColumns, origin, messageFormatArgs)
+  fun create() = Diagnostic(id, sourceFile, sourceColumns, origin, messageFormatArgs)
 }
 
-fun newInspection(build: InspectionBuilder.() -> Unit): Inspection {
-  val builder = InspectionBuilder()
+fun newDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
+  val builder = DiagnosticBuilder()
   builder.build()
   return builder.create()
 }

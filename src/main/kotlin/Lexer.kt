@@ -219,7 +219,7 @@ data class CharLiteral(
 
 class Lexer(source: String, private val srcFile: SourceFile) {
   val tokens = mutableListOf<Token>()
-  val inspections = mutableListOf<Inspection>()
+  val inspections = mutableListOf<Diagnostic>()
   private var src: String = source
   private var currentOffset: Int = 0
 
@@ -227,8 +227,8 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     tokenize()
   }
 
-  private fun lexerInspection(build: InspectionBuilder.() -> Unit) {
-    inspections.add(newInspection {
+  private fun lexerDiagnostic(build: DiagnosticBuilder.() -> Unit) {
+    inspections.add(newDiagnostic {
       sourceFile = srcFile
       origin = "Lexer"
       this.build()
@@ -240,8 +240,8 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     val noPrefix = s.drop(1 + prefixLength)
     // FIXME implement escape sequences
     val stopIdx = noPrefix.indexOfFirst { it == '\n' || it == quoteChar }
-    if (stopIdx == -1 || noPrefix[stopIdx] == '\n') lexerInspection {
-      id = InspectionId.MISSING_QUOTE
+    if (stopIdx == -1 || noPrefix[stopIdx] == '\n') lexerDiagnostic {
+      id = DiagnosticId.MISSING_QUOTE
       messageFormatArgs = listOf(quoteChar)
       column(currentOffset)
       if (stopIdx != -1) column(currentOffset + stopIdx - 1)
@@ -292,8 +292,8 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       t.startsWith("U") -> IntegralSuffix.UNSIGNED
       else -> IntegralSuffix.NONE
     }
-    if (s.drop(suffix.suffixLength).isNotEmpty()) lexerInspection {
-      id = InspectionId.INVALID_SUFFIX
+    if (s.drop(suffix.suffixLength).isNotEmpty()) lexerDiagnostic {
+      id = DiagnosticId.INVALID_SUFFIX
       messageFormatArgs = listOf(s)
       // FIXME: missing the char count of the nr itself here on both sides
       columns(currentOffset + suffix.suffixLength until currentOffset + s.length)
