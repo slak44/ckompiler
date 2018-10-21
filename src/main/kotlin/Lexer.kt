@@ -236,15 +236,13 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   }
 
   /** C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5 */
-  private fun charSequence(s: String,
-                           quoteChar: Char,
-                           quoteInspectionId: InspectionId,
-                           prefixLength: Int): String {
+  private fun charSequence(s: String, quoteChar: Char, prefixLength: Int): String {
     val noPrefix = s.drop(1 + prefixLength)
     // FIXME implement escape sequences
     val stopIdx = noPrefix.indexOfFirst { it == '\n' || it == quoteChar }
     if (stopIdx == -1 || noPrefix[stopIdx] == '\n') lexerInspection {
-      id = quoteInspectionId
+      id = InspectionId.MISSING_QUOTE
+      messageFormatArgs = listOf(quoteChar)
       column(currentOffset)
       if (stopIdx != -1) column(currentOffset + stopIdx - 1)
     }
@@ -261,7 +259,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       s.startsWith("U\"") -> StringEncoding.CHAR32_T
       else -> return Empty()
     }
-    val data = charSequence(s, '"', InspectionId.MISSING_DOUBLE_QUOTE, encoding.prefixLength)
+    val data = charSequence(s, '"', encoding.prefixLength)
     return StringLiteral(data, encoding).opt()
   }
 
@@ -274,7 +272,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       s.startsWith("U'") -> CharEncoding.CHAR32_T
       else -> return Empty()
     }
-    val data = charSequence(s, '\'', InspectionId.MISSING_QUOTE, encoding.prefixLength)
+    val data = charSequence(s, '\'', encoding.prefixLength)
     return CharLiteral(data, encoding).opt()
   }
 

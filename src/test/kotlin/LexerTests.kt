@@ -135,9 +135,9 @@ class LexerTests {
   fun unmatchedDoubleQuoteError() {
     val inspections1 = Lexer("\"asfadgs", source).inspections
     assert(inspections1.size >= 1)
-    assertEquals(InspectionId.MISSING_DOUBLE_QUOTE, inspections1[0].id)
+    assertEquals(InspectionId.MISSING_QUOTE, inspections1[0].id)
     val inspections2 = Lexer("\"123\nasd\"", source).inspections
     assert(inspections2.size >= 1)
-    assertEquals(InspectionId.MISSING_DOUBLE_QUOTE, inspections2[0].id)
+    assertEquals(InspectionId.MISSING_QUOTE, inspections2[0].id)
   }
 }

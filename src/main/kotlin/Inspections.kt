@@ -1,8 +1,7 @@
 enum class InspectionId(val kind: InspectionKind, val messageFormat: String) {
   UNKNOWN(InspectionKind.OTHER, ""),
   INVALID_SUFFIX(InspectionKind.ERROR, "Invalid suffix '%s' on integer constant"),
-  MISSING_QUOTE(InspectionKind.ERROR, "Missing terminating ' character"),
-  MISSING_DOUBLE_QUOTE(InspectionKind.ERROR, "Missing terminating \" character")
+  MISSING_QUOTE(InspectionKind.ERROR, "Missing terminating %c character"),
 }
 
 enum class InspectionKind(val text: String) {
