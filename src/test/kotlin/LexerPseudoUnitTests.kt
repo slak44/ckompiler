@@ -1,7 +1,7 @@
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class LexerTests {
+class LexerPseudoUnitTests {
   private val source = "<test/${javaClass.simpleName}>"
   private fun Lexer.assertNoDiagnostics() = assertEquals(0, inspections.size)
 
