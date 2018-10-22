@@ -253,9 +253,9 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     // Float looks like 123. or 123.23
     s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE
     // Float looks like 123.245E-10F
-    s[0].toUpperCase() == 'F' -> FloatingSuffix.FLOAT
+    s[0].toUpperCase() == 'F' && s.length == 1 -> FloatingSuffix.FLOAT
     // Float looks like 123.245E-10L
-    s[0].toUpperCase() == 'L' -> FloatingSuffix.LONG_DOUBLE
+    s[0].toUpperCase() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE
     else -> {
       lexerDiagnostic {
         id = DiagnosticId.INVALID_SUFFIX
@@ -297,7 +297,8 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.suffixLength
       return FloatingConstant.Decimal(s.slice(0 until endOfFloat), suffix).opt()
     }
-    val suffix = floatingSuffix(s.drop(floatLen - 1), floatLen - 1)
+    val idxBeforeSuffix = s.slice(0 until floatLen).indexOfLast { isDigit(it) || it == '.' }
+    val suffix = floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix + 1)
     val float = s.slice(0 until (floatLen - suffix.suffixLength))
     // If the float is just a dot, it's not actually a float
     if (float == ".") return Empty()
