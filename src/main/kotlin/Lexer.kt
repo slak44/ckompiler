@@ -266,26 +266,30 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     }
   }
 
+  // FIXME: missing hex floating constants
   /** C standard: A.1.5 */
   private fun floatingConstant(s: String): Optional<FloatingConstant> {
-    // FIXME: missing hex floating constants
-    val whitespaceOrDot = nextWhitespaceOrPunct(s)
+    // Not a float: must start with either digit or dot
+    if (!isDigit(s[0]) && s[0] != '.') return Empty()
+    val whitespaceOrPunct = nextWhitespaceOrPunct(s)
     // Not a float: reached end of string and no dot fount
-    if (whitespaceOrDot == s.length) return Empty()
+    if (whitespaceOrPunct == s.length) return Empty()
     // Not a float: found something else before finding a dot
-    if (s[whitespaceOrDot] != '.') return Empty()
-    val integerPartEnd = s.slice(0..whitespaceOrDot).indexOfFirst { !isDigit(it) }
-    if (integerPartEnd < whitespaceOrDot) lexerDiagnostic {
+    if (s[whitespaceOrPunct] != '.') return Empty()
+    // Not a float: found non-digit(s) before dot
+    if (s.slice(0 until whitespaceOrPunct).any { !isDigit(it) }) return Empty()
+    val integerPartEnd = s.slice(0..whitespaceOrPunct).indexOfFirst { !isDigit(it) }
+    if (integerPartEnd < whitespaceOrPunct) lexerDiagnostic {
       id = DiagnosticId.INVALID_DIGIT
       messageFormatArgs = listOf(s[integerPartEnd + 1])
       column(currentOffset + integerPartEnd + 1)
-    } else if (integerPartEnd > whitespaceOrDot) {
+    } else if (integerPartEnd > whitespaceOrPunct) {
       logger.throwICE("Integer part of float contains whitespace or dot") {
-        "integerPartEnd: $integerPartEnd, whitespaceOrDot: $whitespaceOrDot, lexer: $this"
+        "integerPartEnd: $integerPartEnd, whitespaceOrDot: $whitespaceOrPunct, lexer: $this"
       }
     }
-    val floatLen = whitespaceOrDot + 1 +
-        nextWhitespaceOrPunct(s.drop(whitespaceOrDot + 1), '+', '-')
+    val floatLen = whitespaceOrPunct + 1 +
+        nextWhitespaceOrPunct(s.drop(whitespaceOrPunct + 1), '+', '-')
     // Float has exponent
     if (s[floatLen - 1] == 'e' || s[floatLen - 1] == 'E') {
       val hasSign = s[floatLen] == '+' || s[floatLen] == '-'
