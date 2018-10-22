@@ -122,6 +122,28 @@ class LexerTests {
   }
 
   @Test
+  fun invalidFloatSuffixError() {
+    val inspections1 = Lexer("123.12A", source).inspections
+    assert(inspections1.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections1[0].id)
+    val inspections2 = Lexer("123.12FA", source).inspections
+    assert(inspections2.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections2[0].id)
+    val inspections3 = Lexer("123.12AF", source).inspections
+    assert(inspections3.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections3[0].id)
+    val inspections4 = Lexer("123.A", source).inspections
+    assert(inspections4.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections4[0].id)
+    val inspections5 = Lexer(".1A", source).inspections
+    assert(inspections5.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections5[0].id)
+    val inspections6 = Lexer("1.1E1A", source).inspections
+    assert(inspections6.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections6[0].id)
+  }
+
+  @Test
   fun charConstants() {
     val chars = listOf("a", "*", "asdf", "\"")
     val l = Lexer(chars.joinToString(" ") { "'$it'" }, source)
