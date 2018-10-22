@@ -10,7 +10,7 @@ class LexerIntegrationTests {
       123.E-12 456
     """.trimIndent(), source)
     l.assertNoDiagnostics()
-    assertEquals(listOf<Token>(
+    assertEquals(listOf(
         FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
         IntegralConstant("456", IntegralSuffix.NONE, Radix.DECIMAL),
         FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
@@ -32,7 +32,7 @@ class LexerIntegrationTests {
       123. other
     """.trimIndent(), source)
     l.assertNoDiagnostics()
-    assertEquals(listOf<Token>(
+    assertEquals(listOf(
         Identifier("ident"),
         Punctuator(Punctuators.DOT),
         Identifier("someOther"),
