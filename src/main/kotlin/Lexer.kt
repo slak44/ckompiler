@@ -109,28 +109,6 @@ fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
   return if (idx == -1) s.length else idx
 }
 
-/**
- * These names look like '\u1234' or '\U12341234', where the numbers are hex digits.
- *
- * C standard: A.1.4
- */
-fun universalCharacterName(s: String): Char {
-  if (s[0] == '\\') {
-    if (s[1] == 'u') {
-      val areDigits = s.slice(2 until 6).all { isHexDigit(it) }
-      if (!areDigits) TODO("show error here")
-      TODO("convert the hex-quad to a char")
-    }
-    if (s[1] == 'U') {
-      val areDigits = s.slice(2 until 10).all { isHexDigit(it) }
-      if (!areDigits) TODO("show error here")
-      TODO("convert the 2 hex-quads to a char")
-    }
-    TODO("show error here, only u or U can come after \\ in an identifier")
-  }
-  TODO("not ucn")
-}
-
 data class Identifier(val name: String) : Token(name.length)
 
 enum class IntegralSuffix(val suffixLength: Int) {
