@@ -138,6 +138,15 @@ class LexerPseudoUnitTests {
     val inspections6 = Lexer("1.1E1A", source).inspections
     assert(inspections6.size >= 1)
     assertEquals(DiagnosticId.INVALID_SUFFIX, inspections6[0].id)
+    val inspections7 = Lexer("1.1EA", source).inspections
+    assert(inspections7.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections7[0].id)
+    val inspections8 = Lexer("1.EA", source).inspections
+    assert(inspections8.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections8[0].id)
+    val inspections9 = Lexer("1.FE", source).inspections
+    assert(inspections9.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections9[0].id)
   }
 
   @Test
