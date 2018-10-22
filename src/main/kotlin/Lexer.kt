@@ -8,7 +8,13 @@ sealed class Token(val consumedChars: Int) {
       logger.throwICE("Zero-length token created") { "token: $this" }
     }
   }
+  companion object {
+    @JvmStatic
+    protected val errText = "<ERROR>"
+  }
 }
+
+interface ErrorToken
 
 data class Keyword(val value: Keywords) : Token(value.keyword.length)
 enum class Keywords(val keyword: String) {
@@ -149,6 +155,7 @@ sealed class FloatingConstant(
     val suffix: FloatingSuffix) : Constant(string.length + suffix.suffixLength) {
   class Decimal(s: String, suffix: FloatingSuffix) : FloatingConstant(s, suffix)
   class Hex(s: String, suffix: FloatingSuffix) : FloatingConstant(s, suffix)
+  object Error : FloatingConstant(errText, FloatingSuffix.NONE), ErrorToken
 
   override fun hashCode() = 31 * string.hashCode() + suffix.hashCode()
 
@@ -292,6 +299,16 @@ class Lexer(source: String, private val srcFile: SourceFile) {
         nextWhitespaceOrPunct(s.drop(whitespaceOrPunct + 1), '+', '-')
     // Float has exponent
     if (s[floatLen - 1] == 'e' || s[floatLen - 1] == 'E') {
+      val fracPart = s.slice(whitespaceOrPunct + 1 until floatLen - 1)
+      val firstNonDigit = fracPart.indexOfFirst { !isDigit(it) }
+      if (firstNonDigit != -1) {
+        lexerDiagnostic {
+          id = DiagnosticId.INVALID_DIGIT
+          formatArgs(fracPart)
+          column(currentOffset + whitespaceOrPunct + 1 + firstNonDigit)
+        }
+        return FloatingConstant.Error.opt()
+      }
       val hasSign = s[floatLen] == '+' || s[floatLen] == '-'
       val expEndStartIdx = floatLen + if (hasSign) 1 else 0
       val expEnd = s.drop(expEndStartIdx).indexOfFirst { !isDigit(it) }
