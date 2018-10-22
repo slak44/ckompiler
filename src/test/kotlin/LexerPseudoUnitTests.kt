@@ -2,9 +2,6 @@ import org.junit.Test
 import kotlin.test.assertEquals
 
 class LexerPseudoUnitTests {
-  private val source = "<test/${javaClass.simpleName}>"
-  private fun Lexer.assertNoDiagnostics() = assertEquals(0, inspections.size)
-
   @Test
   fun identifiers() {
     val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2")
