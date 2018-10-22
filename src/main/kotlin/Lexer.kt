@@ -1,11 +1,12 @@
 import mu.KotlinLogging
-import java.lang.IllegalStateException
 
 private val logger = KotlinLogging.logger("Lexer")
 
 sealed class Token(val consumedChars: Int) {
   init {
-    if (consumedChars == 0) throw IllegalStateException("Lexer bug, zero-length token created")
+    if (consumedChars == 0) {
+      logger.throwICE("Zero-length token created") { "token: $this" }
+    }
   }
 }
 
@@ -101,9 +102,9 @@ fun isOctalDigit(c: Char) = c in '0'..'7'
  * @returns the index of the first whitespace or [Punctuators] in the string, or the string length
  * if there isn't any.
  */
-fun nextWhitespaceOrPunct(s: String): Int {
+fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
   val idx = s.withIndex().indexOfFirst {
-    it.value.isWhitespace() || (punct(s.drop(it.index)) !is Empty)
+    it.value !in excludeChars && (it.value.isWhitespace() || (punct(s.drop(it.index)) !is Empty))
   }
   return if (idx == -1) s.length else idx
 }
@@ -171,9 +172,7 @@ sealed class IntegralConstant(
     return true
   }
 
-  override fun toString(): String {
-    return "${javaClass.simpleName}[$string $suffix]"
-  }
+  override fun toString(): String = "${javaClass.simpleName}[$string $suffix]"
 }
 
 enum class FloatingSuffix(val suffixLength: Int) {
@@ -185,17 +184,19 @@ sealed class FloatingConstant(
     val suffix: FloatingSuffix) : Constant(string.length + suffix.suffixLength) {
   class Decimal(s: String, suffix: FloatingSuffix) : FloatingConstant(s, suffix)
   class Hex(s: String, suffix: FloatingSuffix) : FloatingConstant(s, suffix)
-}
 
-/**
- * C standard: A.1.5
- */
-fun floatingConstant(s: String): Optional<FloatingConstant> {
-  val dotIdx = s.indexOfFirst { it == '.' }
-  if (!s.slice(0 until dotIdx).all { isDigit(it) }) {
-    TODO("error: non digits in floating number")
+  override fun hashCode() = 31 * string.hashCode() + suffix.hashCode()
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+    other as FloatingConstant
+    if (string != other.string || suffix != other.suffix) return false
+    return true
   }
-  TODO("implement")
+
+  override fun toString(): String = "${javaClass.simpleName}[$string $suffix]"
+
 }
 
 sealed class CharSequence(dataLength: Int,
@@ -263,7 +264,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     return StringLiteral(data, encoding).opt()
   }
 
-  /** C standard: A.1.5, 6.4.4.4 */
+  /** C standard: A.1.5 */
   private fun characterConstant(s: String): Optional<CharLiteral> {
     val encoding = when {
       s.startsWith("'") -> CharEncoding.UNSIGNED_CHAR
@@ -277,11 +278,74 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   }
 
   /**
-   * C standard: A.1.5
+   * C standard: A.1.5, 6.4.4.4
+   * @param s a possible float suffix string
+   * @param nrLength the length of the float constant before the suffix
+   * @see FloatingSuffix
+   */
+  private fun floatingSuffix(s: String, nrLength: Int): FloatingSuffix = when {
+    s.isEmpty() -> FloatingSuffix.NONE
+    // Float looks like 123. or 123.23
+    s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE
+    // Float looks like 123.245E-10F
+    s[0].toUpperCase() == 'F' -> FloatingSuffix.FLOAT
+    // Float looks like 123.245E-10L
+    s[0].toUpperCase() == 'L' -> FloatingSuffix.LONG_DOUBLE
+    else -> {
+      lexerDiagnostic {
+        id = DiagnosticId.INVALID_SUFFIX
+        formatArgs(s[0], "floating")
+        columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
+      }
+      FloatingSuffix.NONE
+    }
+  }
+
+  /** C standard: A.1.5 */
+  private fun floatingConstant(s: String): Optional<FloatingConstant> {
+    // FIXME: missing hex floating constants
+    val whitespaceOrDot = nextWhitespaceOrPunct(s)
+    // Not a float: reached end of string and no dot fount
+    if (whitespaceOrDot == s.length) return Empty()
+    // Not a float: found something else before finding a dot
+    if (s[whitespaceOrDot] != '.') return Empty()
+    val integerPartEnd = s.slice(0..whitespaceOrDot).indexOfFirst { !isDigit(it) }
+    if (integerPartEnd < whitespaceOrDot) lexerDiagnostic {
+      id = DiagnosticId.INVALID_DIGIT
+      messageFormatArgs = listOf(s[integerPartEnd + 1])
+      column(currentOffset + integerPartEnd + 1)
+    } else if (integerPartEnd > whitespaceOrDot) {
+      logger.throwICE("Integer part of float contains whitespace or dot") {
+        "integerPartEnd: $integerPartEnd, whitespaceOrDot: $whitespaceOrDot, lexer: $this"
+      }
+    }
+    val floatLen = whitespaceOrDot + 1 +
+        nextWhitespaceOrPunct(s.drop(whitespaceOrDot + 1), '+', '-')
+    // Float has exponent
+    if (s[floatLen - 1] == 'e' || s[floatLen - 1] == 'E') {
+      val hasSign = s[floatLen] == '+' || s[floatLen] == '-'
+      val expEndStartIdx = floatLen + if (hasSign) 1 else 0
+      val expEnd = s.drop(expEndStartIdx).indexOfFirst { !isDigit(it) }
+      val expEndIdx = expEndStartIdx + expEnd
+      val suffix =
+          if (expEnd == -1) FloatingSuffix.NONE else floatingSuffix(s.drop(expEndIdx), expEndIdx)
+      val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.suffixLength
+      return FloatingConstant.Decimal(s.slice(0 until endOfFloat), suffix).opt()
+    }
+    val suffix = floatingSuffix(s.drop(floatLen - 1), floatLen - 1)
+    val float = s.slice(0 until (floatLen - suffix.suffixLength))
+    // If the float is just a dot, it's not actually a float
+    if (float == ".") return Empty()
+    return FloatingConstant.Decimal(float, suffix).opt()
+  }
+
+  /**
+   * C standard: A.1.5, 6.4.4.1
    * @param s a possible integer suffix string
+   * @param nrLength the length of the int constant before the suffix
    * @see IntegralSuffix
    */
-  private fun integerSuffix(s: String): IntegralSuffix {
+  private fun integerSuffix(s: String, nrLength: Int): IntegralSuffix {
     if (s.isEmpty()) return IntegralSuffix.NONE
     val t = s.toUpperCase()
     val suffix = when {
@@ -294,38 +358,37 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     }
     if (s.drop(suffix.suffixLength).isNotEmpty()) lexerDiagnostic {
       id = DiagnosticId.INVALID_SUFFIX
-      messageFormatArgs = listOf(s)
-      // FIXME: missing the char count of the nr itself here on both sides
-      columns(currentOffset + suffix.suffixLength until currentOffset + s.length)
+      formatArgs(s, "integer")
+      columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
     }
     return suffix
   }
 
-  private inline fun integerConstantImpl(
+  private inline fun digitSequence(
       s: String,
       prefixLength: Int = 0,
       isValidDigit: (c: Char) -> Boolean): Pair<String, IntegralSuffix> {
     val nrWithSuffix = s.slice(prefixLength until nextWhitespaceOrPunct(s))
     val nrEndIdx = nrWithSuffix.indexOfFirst { !isValidDigit(it) }
     val nrText = nrWithSuffix.slice(0 until if (nrEndIdx == -1) nrWithSuffix.length else nrEndIdx)
-    return Pair(nrText, integerSuffix(nrWithSuffix.drop(nrText.length)))
+    return Pair(nrText, integerSuffix(nrWithSuffix.drop(nrText.length), nrText.length))
   }
 
   /** C standard: A.1.5 */
   private fun integerConstant(s: String): Optional<IntegralConstant> {
     // Decimal numbers
     if (isDigit(s[0]) && s[0] != '0') {
-      val c = integerConstantImpl(s) { isDigit(it) }
+      val c = digitSequence(s) { isDigit(it) }
       return IntegralConstant.Decimal(c.first, c.second).opt()
     }
     // Hex numbers
     if ((s.startsWith("0x") || s.startsWith("0X") && isHexDigit(s[2]))) {
-      val c = integerConstantImpl(s, 2) { isHexDigit(it) }
+      val c = digitSequence(s, 2) { isHexDigit(it) }
       return IntegralConstant.Hex(c.first, c.second).opt()
     }
     // Octal numbers
     if (s[0] == '0') {
-      val c = integerConstantImpl(s) { isOctalDigit(it) }
+      val c = digitSequence(s) { isOctalDigit(it) }
       return IntegralConstant.Octal(c.first, c.second).opt()
     }
     return Empty()
@@ -344,8 +407,9 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   private tailrec fun tokenize() {
     src = src.trimStart()
     if (src.isEmpty()) return
-    // Only consume one of them in each iteration
+    // Only consume one of them in each iteration (order of calls matters!)
     keyword(src).consumeIfPresent() ||
+        floatingConstant(src).consumeIfPresent() ||
         integerConstant(src).consumeIfPresent() ||
         characterConstant(src).consumeIfPresent() ||
         stringLiteral(src).consumeIfPresent() ||
