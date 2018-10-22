@@ -407,7 +407,14 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   private tailrec fun tokenize() {
     src = src.trimStart()
     if (src.isEmpty()) return
-    // Only consume one of them in each iteration (order of calls matters!)
+    // Ordering:
+    // keyword before identifier
+    // floatingConstant before integerConstant
+    // characterConstant before identifier
+    // stringLiteral before identifier
+    // floatingConstant before punct
+
+    // Only consume one in each iteration (short-circuits with || if consumed)
     keyword(src).consumeIfPresent() ||
         floatingConstant(src).consumeIfPresent() ||
         integerConstant(src).consumeIfPresent() ||
