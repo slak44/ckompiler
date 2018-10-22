@@ -8,13 +8,9 @@ sealed class Token(val consumedChars: Int) {
       logger.throwICE("Zero-length token created") { "token: $this" }
     }
   }
-  companion object {
-    @JvmStatic
-    protected val errText = "<ERROR>"
-  }
 }
 
-interface ErrorToken
+class ErrorToken(consumedChars: Int) : Token(consumedChars)
 
 data class Keyword(val value: Keywords) : Token(value.keyword.length)
 enum class Keywords(val keyword: String) {
@@ -117,62 +113,36 @@ fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
 
 data class Identifier(val name: String) : Token(name.length)
 
-enum class IntegralSuffix(val suffixLength: Int) {
+enum class IntegralSuffix(val length: Int) {
   UNSIGNED(1), LONG(1), LONG_LONG(2),
   UNSIGNED_LONG(2), UNSIGNED_LONG_LONG(3),
   NONE(0)
 }
 
-sealed class Constant(consumedChars: Int) : Token(consumedChars)
-
-sealed class IntegralConstant(
-    val string: String,
-    val suffix: IntegralSuffix,
-    prefixLength: Int = 0) : Constant(prefixLength + string.length + suffix.suffixLength) {
-  class Decimal(s: String, suffix: IntegralSuffix) : IntegralConstant(s, suffix)
-  class Hex(s: String, suffix: IntegralSuffix) : IntegralConstant(s, suffix, 2)
-  class Octal(s: String, suffix: IntegralSuffix) : IntegralConstant(s, suffix)
-
-  override fun hashCode() = 31 * string.hashCode() + suffix.hashCode()
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-    other as IntegralConstant
-    if (string != other.string || suffix != other.suffix) return false
-    return true
-  }
-
-  override fun toString(): String = "${javaClass.simpleName}[$string $suffix]"
+enum class Radix(val prefixLength: Int) {
+  DECIMAL(0), OCTAL(0), HEXADECIMAL(2)
 }
 
-enum class FloatingSuffix(val suffixLength: Int) {
+data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix: Radix) :
+    Token(radix.prefixLength + n.length + suffix.length) {
+  override fun toString(): String = "${javaClass.simpleName}[$radix $n $suffix]"
+}
+
+enum class FloatingSuffix(val length: Int) {
   FLOAT(1), LONG_DOUBLE(1), NONE(0)
 }
 
-sealed class FloatingConstant(
-    val string: String,
-    val suffix: FloatingSuffix) : Constant(string.length + suffix.suffixLength) {
-  class Decimal(s: String, suffix: FloatingSuffix) : FloatingConstant(s, suffix)
-  class Hex(s: String, suffix: FloatingSuffix) : FloatingConstant(s, suffix)
-  object Error : FloatingConstant(errText, FloatingSuffix.NONE), ErrorToken
-
-  override fun hashCode() = 31 * string.hashCode() + suffix.hashCode()
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-    other as FloatingConstant
-    if (string != other.string || suffix != other.suffix) return false
-    return true
+data class FloatingConstant(val f: String, val suffix: FloatingSuffix, val radix: Radix) :
+    Token(radix.prefixLength + f.length + suffix.length) {
+  init {
+    if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported") {}
   }
 
-  override fun toString(): String = "${javaClass.simpleName}[$string $suffix]"
-
+  override fun toString(): String = "${javaClass.simpleName}[$radix $f $suffix]"
 }
 
 sealed class CharSequence(dataLength: Int,
-                          prefixLength: Int) : Constant(prefixLength + dataLength + 2)
+                          prefixLength: Int) : Token(prefixLength + dataLength + 2)
 
 enum class StringEncoding(val prefixLength: Int) {
   CHAR(0), UTF8(2), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
@@ -275,7 +245,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
 
   // FIXME: missing hex floating constants
   /** C standard: A.1.5 */
-  private fun floatingConstant(s: String): Optional<FloatingConstant> {
+  private fun floatingConstant(s: String): Optional<Token> {
     // Not a float: must start with either digit or dot
     if (!isDigit(s[0]) && s[0] != '.') return Empty()
     val whitespaceOrPunct = nextWhitespaceOrPunct(s)
@@ -307,7 +277,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
           formatArgs(fracPart)
           column(currentOffset + whitespaceOrPunct + 1 + firstNonDigit)
         }
-        return FloatingConstant.Error.opt()
+        return ErrorToken(floatLen).opt()
       }
       val hasSign = s[floatLen] == '+' || s[floatLen] == '-'
       val expEndStartIdx = floatLen + if (hasSign) 1 else 0
@@ -315,15 +285,15 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       val expEndIdx = expEndStartIdx + expEnd
       val suffix =
           if (expEnd == -1) FloatingSuffix.NONE else floatingSuffix(s.drop(expEndIdx), expEndIdx)
-      val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.suffixLength
-      return FloatingConstant.Decimal(s.slice(0 until endOfFloat), suffix).opt()
+      val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.length
+      return FloatingConstant(s.slice(0 until endOfFloat), suffix, Radix.DECIMAL).opt()
     }
     val idxBeforeSuffix = s.slice(0 until floatLen).indexOfLast { isDigit(it) || it == '.' }
     val suffix = floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix + 1)
-    val float = s.slice(0 until (floatLen - suffix.suffixLength))
+    val float = s.slice(0 until (floatLen - suffix.length))
     // If the float is just a dot, it's not actually a float
     if (float == ".") return Empty()
-    return FloatingConstant.Decimal(float, suffix).opt()
+    return FloatingConstant(float, suffix, Radix.DECIMAL).opt()
   }
 
   /**
@@ -343,7 +313,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       t.startsWith("U") -> IntegralSuffix.UNSIGNED
       else -> IntegralSuffix.NONE
     }
-    if (s.drop(suffix.suffixLength).isNotEmpty()) lexerDiagnostic {
+    if (s.drop(suffix.length).isNotEmpty()) lexerDiagnostic {
       id = DiagnosticId.INVALID_SUFFIX
       formatArgs(s, "integer")
       columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
@@ -366,17 +336,17 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     // Decimal numbers
     if (isDigit(s[0]) && s[0] != '0') {
       val c = digitSequence(s) { isDigit(it) }
-      return IntegralConstant.Decimal(c.first, c.second).opt()
+      return IntegralConstant(c.first, c.second, Radix.DECIMAL).opt()
     }
     // Hex numbers
     if ((s.startsWith("0x") || s.startsWith("0X") && isHexDigit(s[2]))) {
       val c = digitSequence(s, 2) { isHexDigit(it) }
-      return IntegralConstant.Hex(c.first, c.second).opt()
+      return IntegralConstant(c.first, c.second, Radix.HEXADECIMAL).opt()
     }
     // Octal numbers
     if (s[0] == '0') {
       val c = digitSequence(s) { isOctalDigit(it) }
-      return IntegralConstant.Octal(c.first, c.second).opt()
+      return IntegralConstant(c.first, c.second, Radix.OCTAL).opt()
     }
     return Empty()
   }

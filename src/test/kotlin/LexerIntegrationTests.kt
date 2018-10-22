@@ -11,16 +11,16 @@ class LexerIntegrationTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     assertEquals(listOf<Token>(
-        FloatingConstant.Decimal("123.", FloatingSuffix.NONE),
-        IntegralConstant.Decimal("456", IntegralSuffix.NONE),
-        FloatingConstant.Decimal(".123", FloatingSuffix.NONE),
+        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
+        IntegralConstant("456", IntegralSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant.Decimal("123.", FloatingSuffix.FLOAT),
-        IntegralConstant.Decimal("456", IntegralSuffix.UNSIGNED_LONG_LONG),
-        FloatingConstant.Decimal(".123", FloatingSuffix.NONE),
+        FloatingConstant("123.", FloatingSuffix.FLOAT, Radix.DECIMAL),
+        IntegralConstant("456", IntegralSuffix.UNSIGNED_LONG_LONG, Radix.DECIMAL),
+        FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant.Decimal("123.E-12", FloatingSuffix.NONE),
-        IntegralConstant.Decimal("456", IntegralSuffix.NONE)
+        FloatingConstant("123.E-12", FloatingSuffix.NONE, Radix.DECIMAL),
+        IntegralConstant("456", IntegralSuffix.NONE, Radix.DECIMAL)
     ), l.tokens)
   }
 
@@ -41,7 +41,7 @@ class LexerIntegrationTests {
         Punctuator(Punctuators.DOT),
         Identifier("someOther"),
 
-        FloatingConstant.Decimal("123.", FloatingSuffix.NONE),
+        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
         Identifier("other")
     ), l.tokens)
   }

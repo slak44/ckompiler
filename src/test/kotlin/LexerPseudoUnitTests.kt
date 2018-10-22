@@ -32,10 +32,10 @@ class LexerPseudoUnitTests {
     val l = Lexer("1234 07 0xF 0", source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
-        IntegralConstant.Decimal("1234", IntegralSuffix.NONE),
-        IntegralConstant.Octal("07", IntegralSuffix.NONE),
-        IntegralConstant.Hex("F", IntegralSuffix.NONE),
-        IntegralConstant.Octal("0", IntegralSuffix.NONE)
+        IntegralConstant("1234", IntegralSuffix.NONE, Radix.DECIMAL),
+        IntegralConstant("07", IntegralSuffix.NONE, Radix.OCTAL),
+        IntegralConstant("F", IntegralSuffix.NONE, Radix.HEXADECIMAL),
+        IntegralConstant("0", IntegralSuffix.NONE, Radix.OCTAL)
     )
     assertEquals(res, l.tokens)
   }
@@ -45,14 +45,14 @@ class LexerPseudoUnitTests {
     val l = Lexer("1U 1L 1UL 1LU 1ULL 1LLU 1LL 1lLu", source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
-        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED),
-        IntegralConstant.Decimal("1", IntegralSuffix.LONG),
-        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG),
-        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG),
-        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG),
-        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG),
-        IntegralConstant.Decimal("1", IntegralSuffix.LONG_LONG),
-        IntegralConstant.Decimal("1", IntegralSuffix.UNSIGNED_LONG_LONG)
+        IntegralConstant("1", IntegralSuffix.UNSIGNED, Radix.DECIMAL),
+        IntegralConstant("1", IntegralSuffix.LONG, Radix.DECIMAL),
+        IntegralConstant("1", IntegralSuffix.UNSIGNED_LONG, Radix.DECIMAL),
+        IntegralConstant("1", IntegralSuffix.UNSIGNED_LONG, Radix.DECIMAL),
+        IntegralConstant("1", IntegralSuffix.UNSIGNED_LONG_LONG, Radix.DECIMAL),
+        IntegralConstant("1", IntegralSuffix.UNSIGNED_LONG_LONG, Radix.DECIMAL),
+        IntegralConstant("1", IntegralSuffix.LONG_LONG, Radix.DECIMAL),
+        IntegralConstant("1", IntegralSuffix.UNSIGNED_LONG_LONG, Radix.DECIMAL)
     )
     assertEquals(res, l.tokens)
   }
@@ -80,21 +80,21 @@ class LexerPseudoUnitTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
-        FloatingConstant.Decimal("123.123", FloatingSuffix.NONE),
-        FloatingConstant.Decimal("123.", FloatingSuffix.NONE),
-        FloatingConstant.Decimal(".123", FloatingSuffix.NONE),
+        FloatingConstant("123.123", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant.Decimal("1.1E2", FloatingSuffix.NONE),
-        FloatingConstant.Decimal("1.E2", FloatingSuffix.NONE),
-        FloatingConstant.Decimal(".1E2", FloatingSuffix.NONE),
+        FloatingConstant("1.1E2", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant("1.E2", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant(".1E2", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant.Decimal("1.1e2", FloatingSuffix.NONE),
-        FloatingConstant.Decimal("1.e2", FloatingSuffix.NONE),
-        FloatingConstant.Decimal(".1e2", FloatingSuffix.NONE),
+        FloatingConstant("1.1e2", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant("1.e2", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant(".1e2", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant.Decimal("12.1E-10", FloatingSuffix.NONE),
-        FloatingConstant.Decimal("12.E-2", FloatingSuffix.NONE),
-        FloatingConstant.Decimal(".12E-2", FloatingSuffix.NONE)
+        FloatingConstant("12.1E-10", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant("12.E-2", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant(".12E-2", FloatingSuffix.NONE, Radix.DECIMAL)
     )
     assertEquals(res, l.tokens)
   }
@@ -107,13 +107,13 @@ class LexerPseudoUnitTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
-        FloatingConstant.Decimal("12.1", FloatingSuffix.LONG_DOUBLE),
-        FloatingConstant.Decimal("12.", FloatingSuffix.LONG_DOUBLE),
-        FloatingConstant.Decimal(".12", FloatingSuffix.LONG_DOUBLE),
+        FloatingConstant("12.1", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
+        FloatingConstant("12.", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
+        FloatingConstant(".12", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
 
-        FloatingConstant.Decimal("12.1E+10", FloatingSuffix.FLOAT),
-        FloatingConstant.Decimal("12.E+10", FloatingSuffix.FLOAT),
-        FloatingConstant.Decimal(".12E+10", FloatingSuffix.FLOAT)
+        FloatingConstant("12.1E+10", FloatingSuffix.FLOAT, Radix.DECIMAL),
+        FloatingConstant("12.E+10", FloatingSuffix.FLOAT, Radix.DECIMAL),
+        FloatingConstant(".12E+10", FloatingSuffix.FLOAT, Radix.DECIMAL)
     )
     assertEquals(res, l.tokens)
   }
