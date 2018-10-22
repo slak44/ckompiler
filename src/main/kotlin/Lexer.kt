@@ -248,6 +248,12 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   private fun floatingConstant(s: String): Optional<Token> {
     // Not a float: must start with either digit or dot
     if (!isDigit(s[0]) && s[0] != '.') return Empty()
+    // Not a float: just a dot
+    if (s[0] == '.' && s.length == 1) return Empty()
+    // Not a float: character after dot must be either suffix or exponent
+    if (s[0] == '.' && !isDigit(s[1]) && s[1].toUpperCase() !in listOf('E', 'F', 'L')) {
+      return Empty()
+    }
     val whitespaceOrPunct = nextWhitespaceOrPunct(s)
     // Not a float: reached end of string and no dot fount
     if (whitespaceOrPunct == s.length) return Empty()
