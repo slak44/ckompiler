@@ -29,7 +29,11 @@ class LexerIntegrationTests {
     val l = Lexer("""
       ident.someOther
       ident. someOther
+      ident .someOther
+      ident . someOther
       123. other
+      123 . other
+      123.E1F.other
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
@@ -41,7 +45,23 @@ class LexerIntegrationTests {
         Punctuator(Punctuators.DOT),
         Identifier("someOther"),
 
+        Identifier("ident"),
+        Punctuator(Punctuators.DOT),
+        Identifier("someOther"),
+
+        Identifier("ident"),
+        Punctuator(Punctuators.DOT),
+        Identifier("someOther"),
+
         FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
+        Identifier("other"),
+
+        IntegralConstant("123", IntegralSuffix.NONE, Radix.DECIMAL),
+        Punctuator(Punctuators.DOT),
+        Identifier("other"),
+
+        FloatingConstant("123.E1", FloatingSuffix.FLOAT, Radix.DECIMAL),
+        Punctuator(Punctuators.DOT),
         Identifier("other")
     ), l.tokens)
   }
