@@ -133,19 +133,6 @@ fun universalCharacterName(s: String): Char {
 
 data class Identifier(val name: String) : Token(name.length)
 
-/**
- * C standard: A.1.3, A.1.4
- * @return an empty optional if the string is not an identifier, or the identifier otherwise
- */
-fun identifier(s: String): Optional<Identifier> {
-  // An identifier must start with a non-digit if it isn't a universal character name
-  if (!isNonDigit(s[0])) return Empty()
-  // FIXME check for universal character names
-  val idx = s.indexOfFirst { !isDigit(it) && !isNonDigit(it) }
-  val ident = s.slice(0 until (if (idx == -1) s.length else idx))
-  return Identifier(ident).opt()
-}
-
 enum class IntegralSuffix(val suffixLength: Int) {
   UNSIGNED(1), LONG(1), LONG_LONG(2),
   UNSIGNED_LONG(2), UNSIGNED_LONG_LONG(3),
@@ -402,6 +389,19 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       return true
     }
     return false
+  }
+
+  /**
+   * C standard: A.1.3, A.1.4
+   * @return an empty optional if the string is not an identifier, or the identifier otherwise
+   */
+  private fun identifier(s: String): Optional<Identifier> {
+    // An identifier must start with a non-digit if it isn't a universal character name
+    if (!isNonDigit(s[0])) return Empty()
+    // FIXME check for universal character names
+    val idx = s.indexOfFirst { !isDigit(it) && !isNonDigit(it) }
+    val ident = s.slice(0 until (if (idx == -1) s.length else idx))
+    return Identifier(ident).opt()
   }
 
   private tailrec fun tokenize() {
