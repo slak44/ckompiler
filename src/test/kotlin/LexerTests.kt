@@ -77,21 +77,15 @@ class LexerTests {
   fun floats() {
     val l = Lexer("""
       123.123 123. .123
-      12.1L 12.L .12L
       1.1E2 1.E2 .1E2
       1.1e2 1.e2 .1e2
       12.1E-10 12.E-2 .12E-2
-      12.1E+10F 12.E+10F .12E+10F
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
         FloatingConstant.Decimal("123.123", FloatingSuffix.NONE),
         FloatingConstant.Decimal("123.", FloatingSuffix.NONE),
         FloatingConstant.Decimal(".123", FloatingSuffix.NONE),
-
-        FloatingConstant.Decimal("12.1", FloatingSuffix.LONG_DOUBLE),
-        FloatingConstant.Decimal("12.", FloatingSuffix.LONG_DOUBLE),
-        FloatingConstant.Decimal(".12", FloatingSuffix.LONG_DOUBLE),
 
         FloatingConstant.Decimal("1.1E2", FloatingSuffix.NONE),
         FloatingConstant.Decimal("1.E2", FloatingSuffix.NONE),
@@ -103,7 +97,22 @@ class LexerTests {
 
         FloatingConstant.Decimal("12.1E-10", FloatingSuffix.NONE),
         FloatingConstant.Decimal("12.E-2", FloatingSuffix.NONE),
-        FloatingConstant.Decimal(".12E-2", FloatingSuffix.NONE),
+        FloatingConstant.Decimal(".12E-2", FloatingSuffix.NONE)
+    )
+    assertEquals(res, l.tokens)
+  }
+
+  @Test
+  fun floatSuffixes() {
+    val l = Lexer("""
+      12.1L 12.L .12L
+      12.1E+10F 12.E+10F .12E+10F
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+    val res: List<Token> = listOf(
+        FloatingConstant.Decimal("12.1", FloatingSuffix.LONG_DOUBLE),
+        FloatingConstant.Decimal("12.", FloatingSuffix.LONG_DOUBLE),
+        FloatingConstant.Decimal(".12", FloatingSuffix.LONG_DOUBLE),
 
         FloatingConstant.Decimal("12.1E+10", FloatingSuffix.FLOAT),
         FloatingConstant.Decimal("12.E+10", FloatingSuffix.FLOAT),
