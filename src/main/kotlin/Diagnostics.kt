@@ -19,16 +19,20 @@ data class Diagnostic(val id: DiagnosticId,
                       val sourceColumns: List<IntRange>,
                       val origin: String,
                       val messageFormatArgs: List<Any>) {
+  private val printed: String
   init {
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     // FIXME get data via separate function that takes the actual source text and the sourceColumns
     // FIXME calculate real line and col
-    println("$sourceFile:FIXME:FIXME: ${id.kind.text}: $msg [${id.name}]")
+    printed = "$sourceFile:FIXME:FIXME: ${id.kind.text}: $msg [${id.name}]"
+    println(printed)
     // FIXME obtain the line with the error and print it
     // FIXME print a nice caret thing that shows the column within the line
 
     // FIXME if debugging, print the origin of the inspection as well
   }
+
+  override fun toString(): String = "${javaClass.simpleName}[$printed]"
 }
 
 class DiagnosticBuilder {
