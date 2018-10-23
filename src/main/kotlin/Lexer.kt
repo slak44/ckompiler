@@ -225,21 +225,21 @@ class Lexer(source: String, private val srcFile: SourceFile) {
    * @param nrLength the length of the float constant before the suffix
    * @see FloatingSuffix
    */
-  private fun floatingSuffix(s: String, nrLength: Int): FloatingSuffix = when {
-    s.isEmpty() -> FloatingSuffix.NONE
+  private fun floatingSuffix(s: String, nrLength: Int): Optional<FloatingSuffix> = when {
+    s.isEmpty() -> FloatingSuffix.NONE.opt()
     // Float looks like 123. or 123.23
-    s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE
+    s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE.opt()
     // Float looks like 123.245E-10F
-    s[0].toUpperCase() == 'F' && s.length == 1 -> FloatingSuffix.FLOAT
+    s[0].toUpperCase() == 'F' && s.length == 1 -> FloatingSuffix.FLOAT.opt()
     // Float looks like 123.245E-10L
-    s[0].toUpperCase() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE
+    s[0].toUpperCase() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE.opt()
     else -> {
       lexerDiagnostic {
         id = DiagnosticId.INVALID_SUFFIX
         formatArgs(s[0], "floating")
         columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
       }
-      FloatingSuffix.NONE
+      Empty()
     }
   }
 
@@ -290,12 +290,18 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       val expEnd = s.drop(expEndStartIdx).indexOfFirst { !isDigit(it) }
       val expEndIdx = expEndStartIdx + expEnd
       val suffix =
-          if (expEnd == -1) FloatingSuffix.NONE else floatingSuffix(s.drop(expEndIdx), expEndIdx)
+          if (expEnd == -1) FloatingSuffix.NONE
+          else floatingSuffix(s.drop(expEndIdx), expEndIdx).orElse {
+            return ErrorToken(floatLen).opt()
+          }
       val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.length
       return FloatingConstant(s.slice(0 until endOfFloat), suffix, Radix.DECIMAL).opt()
     }
     val idxBeforeSuffix = s.slice(0 until floatLen).indexOfLast { isDigit(it) || it == '.' }
-    val suffix = floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix + 1)
+    val suffix =
+        floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix + 1).orElse {
+          return ErrorToken(floatLen).opt()
+        }
     val float = s.slice(0 until (floatLen - suffix.length))
     // If the float is just a dot, it's not actually a float
     if (float == ".") return Empty()
