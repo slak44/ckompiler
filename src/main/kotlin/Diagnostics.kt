@@ -3,9 +3,13 @@ import java.lang.RuntimeException
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(DiagnosticKind.OTHER, ""),
+  // Lexer
   INVALID_SUFFIX(DiagnosticKind.ERROR, "Invalid suffix '%s' on %s constant"),
   MISSING_QUOTE(DiagnosticKind.ERROR, "Missing terminating %c character"),
-  INVALID_DIGIT(DiagnosticKind.ERROR, "Invalid digit '%s' in constant")
+  INVALID_DIGIT(DiagnosticKind.ERROR, "Invalid digit '%s' in constant"),
+  // Parser
+  EMPTY_CHAR_CONSTANT(DiagnosticKind.WARNING, "Empty character constant"),
+  EXPECTED_EXPR(DiagnosticKind.ERROR, "Expected expression")
 }
 
 enum class DiagnosticKind(val text: String) {

@@ -120,7 +120,13 @@ enum class IntegralSuffix(val length: Int) {
 }
 
 enum class Radix(val prefixLength: Int) {
-  DECIMAL(0), OCTAL(0), HEXADECIMAL(2)
+  DECIMAL(0), OCTAL(0), HEXADECIMAL(2);
+
+  fun toInt(): Int = when (this) {
+    DECIMAL -> 10
+    OCTAL -> 8
+    HEXADECIMAL -> 16
+  }
 }
 
 data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix: Radix) :
