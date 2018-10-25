@@ -9,7 +9,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   INVALID_DIGIT(DiagnosticKind.ERROR, "Invalid digit '%s' in constant"),
   // Parser
   EMPTY_CHAR_CONSTANT(DiagnosticKind.WARNING, "Empty character constant"),
-  EXPECTED_EXPR(DiagnosticKind.ERROR, "Expected expression")
+  EXPECTED_EXPR(DiagnosticKind.ERROR, "Expected expression"),
+  EXPECTED_PRIMARY(DiagnosticKind.ERROR, "Expected primary expression")
 }
 
 enum class DiagnosticKind(val text: String) {

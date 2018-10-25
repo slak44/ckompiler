@@ -1,21 +1,12 @@
-interface ASTNode {
-  val children: List<ASTNode>
-  val childrenLimit: Int
-}
+interface ASTNode
 
-/** C standard: A.2.1, 6.5.1 */
-interface Terminal : ASTNode {
-  override val children: List<ASTNode> get() = emptyList()
-  override val childrenLimit: Int get() = 0
-}
+class ErrorNode : ASTNode
 
-class ErrorNode : Terminal
+data class IdentifierNode(val name: String) : ASTNode
 
-data class IdentifierNode(val name: String) : Terminal
+data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : ASTNode
 
-data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : Terminal
-
-data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) : Terminal
+data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) : ASTNode
 
 /**
  * According to the C standard, the value of multi-byte character constants is
@@ -25,14 +16,21 @@ data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
  *
  * C standard: 6.4.4.4 paragraph 10
  */
-data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : Terminal
+data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : ASTNode
 
-data class StringLiteralNode(val string: String, val encoding: StringEncoding) : Terminal
+data class StringLiteralNode(val string: String, val encoding: StringEncoding) : ASTNode
+
+data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : ASTNode
 
 class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
   private var consumed: Int = 0
   private val tokens = tokens.toMutableList()
   val inspections = mutableListOf<Diagnostic>()
+
+  private fun eat() {
+    consumed++
+    tokens.removeAt(0)
+  }
 
   // FIXME track col/line data via tokens
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
@@ -43,11 +41,54 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
     })
   }
 
-  private fun parseExpr(): ASTNode = TODO("implement this")
+  private fun tokenToOperator(token: Token): Optional<Operators> {
+    return if (token !is Punctuator) Empty()
+    // FIXME maybe make toBinaryOperator() ?
+    else token.punctuator.toOperator()
+  }
+
+  private fun parseExprImpl(lhsInit: ASTNode, minPrecedence: Int): ASTNode {
+    var lhs = lhsInit
+    while (true) {
+      val op = tokenToOperator(tokens[0]).orNull() ?: break
+      if (op.arity != Arity.BINARY || op.precedence <= minPrecedence) break
+      eat()
+      var rhs = parsePrimaryExpr().orElse {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_PRIMARY
+        }
+        return ErrorNode()
+      }
+      eat()
+      while (true) {
+        val innerOp = tokenToOperator(tokens[0]).orNull() ?: break
+        if (innerOp.arity != Arity.BINARY) break
+        if (innerOp.precedence <= op.precedence &&
+            !(innerOp.assoc == Associativity.RIGHT_TO_LEFT && innerOp.precedence == op.precedence)) {
+          break
+        }
+        rhs = parseExprImpl(rhs, innerOp.precedence)
+        eat()
+      }
+      lhs = BinaryNode(op, lhs, rhs)
+    }
+    return lhs
+  }
+
+  private fun parseExpr(): ASTNode {
+    val primary = parsePrimaryExpr().orElse {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_PRIMARY
+      }
+      return ErrorNode()
+    }
+    return parseExprImpl(primary, 0)
+  }
 
   /**
    * C standard: A.2.1, 6.5.1, 6.4.4.4
    * @see CharacterConstantNode
+   * @returns the primary [ASTNode], or [Empty] if no primary expr was found
    */
   private fun parsePrimaryExpr(): Optional<ASTNode> {
     val tok = tokens[0]

@@ -6,6 +6,8 @@ sealed class Token(val consumedChars: Int) {
   init {
     if (consumedChars == 0) {
       logger.throwICE("Zero-length token created") { "token: $this" }
+    } else if (consumedChars < 0) {
+      logger.throwICE("Negative-length token created") { "token: $this" }
     }
   }
 }
@@ -13,129 +15,14 @@ sealed class Token(val consumedChars: Int) {
 class ErrorToken(consumedChars: Int) : Token(consumedChars)
 
 data class Keyword(val value: Keywords) : Token(value.keyword.length)
-enum class Keywords(val keyword: String) {
-  AUTO("auto"),
-  BREAK("break"),
-  CASE("case"),
-  CHAR("char"),
-  CONST("const"),
-  CONTINUE("continue"),
-  DEFAULT("default"),
-  DOUBLE("double"),
-  DO("do"),
-  ELSE("else"),
-  ENUM("enum"),
-  EXTERN("extern"),
-  FLOAT("float"),
-  FOR("for"),
-  GOTO("goto"),
-  IF("if"),
-  INLINE("inline"),
-  INT("int"),
-  LONG("long"),
-  REGISTER("register"),
-  RESTRICT("restrict"),
-  RETURN("return"),
-  SHORT("short"),
-  SIGNED("signed"),
-  SIZEOF("sizeof"),
-  STATIC("static"),
-  STRUCT("struct"),
-  SWITCH("switch"),
-  TYPEDEF("typedef"),
-  UNION("union"),
-  UNSIGNED("unsigned"),
-  VOID("void"),
-  VOLATILE("volatile"),
-  WHILE("while"),
-  ALIGNAS("_Alignas"),
-  ALIGNOF("_Alignof"),
-  ATOMIC("_Atomic"),
-  BOOL("_Bool"),
-  COMPLEX("_Complex"),
-  GENERIC("_Generic"),
-  IMAGINARY("_Imaginary"),
-  NORETURN("_Noreturn"),
-  STATIC_ASSERT("_Static_assert"),
-  THREAD_LOCAL("_Thread_local")
-}
-
-fun keyword(s: String) =
-    Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }.opt()
 
 data class Punctuator(val punctuator: Punctuators) : Token(punctuator.punct.length)
-enum class Punctuators(val punct: String) {
-  LSQPAREN("["), RSQPAREN("]"), LPAREN("("), RPAREN(")"),
-  LBRACKET("{"), RBRACKET("}"), DOTS("..."), DOT("."), ARROW("->"),
-  MUL_ASSIGN("*="), DIV_ASSIGN("/="), MOD_ASSIGN("%="), PLUS_ASSIGN("+="),
-  SUB_ASSIGN("-="), LSH_ASSIGN("<<="), RSH_ASSIGN(">>="),
-  AND_ASSIGN("&="), XOR_ASSIGN("^="), OR_ASSIGN("|="),
-  AND("&&"), OR("||"),
-  INC("++"), DEC("--"), AMP("&"), STAR("*"), PLUS("+"), MINUS("-"),
-  TILDE("~"),
-  LESS_COLON("<:"), LESS_PERCENT("<%"),
-  SLASH("/"), LSH("<<"), RSH(">>"),
-  LEQ("<="), GEQ(">="), LT("<"), GT(">"),
-  EQUALS("=="), NEQUALS("!="), CARET("^"), PIPE("|"),
-  QMARK("?"), SEMICOLON(";"),
-  NOT("!"),
-  ASSIGN("="),
-  COMMA(","), DOUBLE_HASH("##"), HASH("#"),
-  COLON_MORE(":>"), COLON(":"), PERCENT_MORE("%>"),
-  PERCENT_COLON_PERCENT_COLON("%:%:"), PERCENT_COLON("%:"), PERCENT("%")
-}
-
-fun punct(s: String) =
-    Punctuators.values().find { s.startsWith(it.punct) }?.let { Punctuator(it) }.opt()
-
-/** C standard: A.1.3 */
-fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
-
-/** C standard: A.1.3 */
-fun isDigit(c: Char) = c in '0'..'9'
-
-/** C standard: A.1.5 */
-fun isHexDigit(c: Char) = isDigit(c) || c in 'A'..'F' || c in 'a'..'f'
-
-/** C standard: A.1.5 */
-fun isOctalDigit(c: Char) = c in '0'..'7'
-
-/**
- * @returns the index of the first whitespace or [Punctuators] in the string, or the string length
- * if there isn't any.
- */
-fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
-  val idx = s.withIndex().indexOfFirst {
-    it.value !in excludeChars && (it.value.isWhitespace() || (punct(s.drop(it.index)) !is Empty))
-  }
-  return if (idx == -1) s.length else idx
-}
 
 data class Identifier(val name: String) : Token(name.length)
-
-enum class IntegralSuffix(val length: Int) {
-  UNSIGNED(1), LONG(1), LONG_LONG(2),
-  UNSIGNED_LONG(2), UNSIGNED_LONG_LONG(3),
-  NONE(0)
-}
-
-enum class Radix(val prefixLength: Int) {
-  DECIMAL(0), OCTAL(0), HEXADECIMAL(2);
-
-  fun toInt(): Int = when (this) {
-    DECIMAL -> 10
-    OCTAL -> 8
-    HEXADECIMAL -> 16
-  }
-}
 
 data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix: Radix) :
     Token(radix.prefixLength + n.length + suffix.length) {
   override fun toString(): String = "${javaClass.simpleName}[$radix $n $suffix]"
-}
-
-enum class FloatingSuffix(val length: Int) {
-  FLOAT(1), LONG_DOUBLE(1), NONE(0)
 }
 
 data class FloatingConstant(val f: String, val suffix: FloatingSuffix, val radix: Radix) :
@@ -150,17 +37,9 @@ data class FloatingConstant(val f: String, val suffix: FloatingSuffix, val radix
 sealed class CharSequence(dataLength: Int,
                           prefixLength: Int) : Token(prefixLength + dataLength + 2)
 
-enum class StringEncoding(val prefixLength: Int) {
-  CHAR(0), UTF8(2), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
-}
-
 data class StringLiteral(
     val data: String,
     val encoding: StringEncoding) : CharSequence(data.length, encoding.prefixLength)
-
-enum class CharEncoding(val prefixLength: Int) {
-  UNSIGNED_CHAR(0), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
-}
 
 data class CharLiteral(
     val data: String,
@@ -182,6 +61,35 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       origin = "Lexer"
       this.build()
     })
+  }
+
+  private fun keyword(s: String) =
+      Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }.opt()
+
+  private fun punct(s: String) =
+      Punctuators.values().find { s.startsWith(it.punct) }?.let { Punctuator(it) }.opt()
+
+  /** C standard: A.1.3 */
+  private fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
+
+  /** C standard: A.1.3 */
+  private fun isDigit(c: Char) = c in '0'..'9'
+
+  /** C standard: A.1.5 */
+  private fun isHexDigit(c: Char) = isDigit(c) || c in 'A'..'F' || c in 'a'..'f'
+
+  /** C standard: A.1.5 */
+  private fun isOctalDigit(c: Char) = c in '0'..'7'
+
+  /**
+   * @returns the index of the first whitespace or [Punctuators] in the string, or the string length
+   * if there isn't any.
+   */
+  private fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
+    val idx = s.withIndex().indexOfFirst {
+      it.value !in excludeChars && (it.value.isWhitespace() || (punct(s.drop(it.index)) !is Empty))
+    }
+    return if (idx == -1) s.length else idx
   }
 
   /** C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5 */
