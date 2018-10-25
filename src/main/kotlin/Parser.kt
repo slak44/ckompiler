@@ -47,6 +47,16 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
     else token.punctuator.toOperator()
   }
 
+  private fun parseExpr(): ASTNode {
+    val primary = parsePrimaryExpr().orElse {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_PRIMARY
+      }
+      return ErrorNode()
+    }
+    return parseExprImpl(primary, 0)
+  }
+
   private fun parseExprImpl(lhsInit: ASTNode, minPrecedence: Int): ASTNode {
     var lhs = lhsInit
     while (true) {
@@ -75,22 +85,15 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
     return lhs
   }
 
-  private fun parseExpr(): ASTNode {
-    val primary = parsePrimaryExpr().orElse {
-      parserDiagnostic {
-        id = DiagnosticId.EXPECTED_PRIMARY
-      }
-      return ErrorNode()
-    }
-    return parseExprImpl(primary, 0)
-  }
+  // FIXME: actually implement this
+  private fun parsePrimaryExpr(): Optional<ASTNode> = parseTerminal()
 
   /**
    * C standard: A.2.1, 6.5.1, 6.4.4.4
    * @see CharacterConstantNode
-   * @returns the primary [ASTNode], or [Empty] if no primary expr was found
+   * @returns the [ASTNode] of the terminal, or [Empty] if no primary expr was found
    */
-  private fun parsePrimaryExpr(): Optional<ASTNode> {
+  private fun parseTerminal(): Optional<ASTNode> {
     val tok = tokens[0]
     when {
       tok is Identifier -> return IdentifierNode(tok.name).opt()
