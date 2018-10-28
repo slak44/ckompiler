@@ -220,7 +220,11 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     val float = s.slice(0 until (floatLen - suffix.length))
     // If the float is just a dot, it's not actually a float
     if (float == ".") return Empty()
-    return FloatingConstant(float, suffix, Radix.DECIMAL).opt()
+    val token = FloatingConstant(float, suffix, Radix.DECIMAL)
+    if (float.contains('e', true)) {
+      logger.throwICE("Exponent part of float not handled correctly") { "token: $token" }
+    }
+    return token.opt()
   }
 
   /**
