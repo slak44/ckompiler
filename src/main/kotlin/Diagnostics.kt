@@ -23,10 +23,10 @@ enum class DiagnosticKind(val text: String) {
 typealias SourceFile = String
 
 data class Diagnostic(val id: DiagnosticId,
+                      val messageFormatArgs: List<Any>,
                       val sourceFile: SourceFile,
                       val sourceColumns: List<IntRange>,
-                      val origin: String,
-                      val messageFormatArgs: List<Any>) {
+                      val origin: String) {
   private val printed: String
 
   init {
@@ -63,7 +63,7 @@ class DiagnosticBuilder {
     messageFormatArgs = args.toList()
   }
 
-  fun create() = Diagnostic(id, sourceFile, sourceColumns, origin, messageFormatArgs)
+  fun create() = Diagnostic(id, messageFormatArgs, sourceFile, sourceColumns, origin)
 }
 
 fun newDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
