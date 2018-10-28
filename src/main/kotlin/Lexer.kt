@@ -211,7 +211,8 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.length
       return FloatingConstant(s.slice(0 until endOfFloat), suffix, Radix.DECIMAL).opt()
     }
-    val idxBeforeSuffix = s.slice(0 until floatLen).indexOfFirst { !isDigit(it) && it != '.' } - 1
+    // FIXME breaks test
+    val idxBeforeSuffix = s.slice(0 until floatLen).indexOfLast { isDigit(it) || it == '.' }
     val suffix =
         floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix).orElse {
           return ErrorToken(floatLen).opt()
