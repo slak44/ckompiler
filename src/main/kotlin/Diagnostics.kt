@@ -20,33 +20,46 @@ enum class DiagnosticKind(val text: String) {
   ERROR("error"), WARNING("warning"), OTHER("note")
 }
 
-typealias SourceFile = String
+typealias SourceFileName = String
 
 data class Diagnostic(val id: DiagnosticId,
                       val messageFormatArgs: List<Any>,
-                      val sourceFile: SourceFile,
+                      val sourceFileName: SourceFileName,
+                      val sourceText: String,
                       val sourceColumns: List<IntRange>,
                       val origin: String) {
-  private val printed: String
-
-  init {
+  private val printable: String by lazy {
+    val (line, col) = if (sourceText.isNotEmpty() && sourceColumns.isNotEmpty()) {
+      var currLine = 1
+      var currLineStart = 0
+      for ((idx, it) in sourceText.withIndex()) {
+        if (it == '\n') {
+          currLine++
+          currLineStart = idx + 1
+        }
+        if (sourceColumns[0].start > idx) {
+          break
+        }
+      }
+      Pair(currLine.toString(), (sourceColumns[0].start - currLineStart).toString())
+    } else {
+      Pair("?", "?")
+    }
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
-    // FIXME get data via separate function that takes the actual source text and the sourceColumns
-    // FIXME calculate real line and col
-    printed = "$sourceFile:FIXME:FIXME: ${id.kind.text}: $msg [${id.name}]"
-    println(printed)
-    // FIXME obtain the line with the error and print it
-    // FIXME print a nice caret thing that shows the column within the line
-
-    // FIXME if debugging, print the origin of the inspection as well
+    return@lazy "$sourceFileName:$line:$col: ${id.kind.text}: $msg [$origin|${id.name}]"
+    // FIXME add a nice caret thing that shows the column within the line
+    // FIXME add tildes for the other sourceColumns
   }
 
-  override fun toString(): String = "${javaClass.simpleName}[$printed]"
+  fun print() = println(printable)
+
+  override fun toString(): String = "${javaClass.simpleName}[$printable]"
 }
 
 class DiagnosticBuilder {
   var id: DiagnosticId = DiagnosticId.UNKNOWN
-  var sourceFile: SourceFile = "<unknown>"
+  var sourceFileName: SourceFileName = "<unknown>"
+  var sourceText: String = ""
   var origin: String = "<unknown>"
   var messageFormatArgs: List<Any> = listOf()
   private var sourceColumns = mutableListOf<IntRange>()
@@ -63,10 +76,11 @@ class DiagnosticBuilder {
     messageFormatArgs = args.toList()
   }
 
-  fun create() = Diagnostic(id, messageFormatArgs, sourceFile, sourceColumns, origin)
+  fun create() =
+      Diagnostic(id, messageFormatArgs, sourceFileName, sourceText, sourceColumns, origin)
 }
 
-fun newDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
+fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
   val builder = DiagnosticBuilder()
   builder.build()
   return builder.create()

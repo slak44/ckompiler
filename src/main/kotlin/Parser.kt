@@ -36,16 +36,16 @@ data class Declaration(val name: String) : ExternalDeclaration()
  *
  * C standard: A.2.4, 6.9
  */
-class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
-
-  init {
-    parseTranslationUnit()
-  }
-
+class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   // FIXME try to remove mutability if possible
   private var consumed: Int = 0
   private val tokens = tokens.toMutableList()
   val inspections = mutableListOf<Diagnostic>()
+
+  init {
+    parseTranslationUnit()
+    inspections.forEach { it.print() }
+  }
 
   private val root = object : ASTNode {
     val decls = mutableListOf<ExternalDeclaration>()
@@ -58,8 +58,8 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
 
   // FIXME track col/line data via tokens
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
-    inspections.add(newDiagnostic {
-      sourceFile = srcFile
+    inspections.add(createDiagnostic {
+      sourceFileName = srcFileName
       origin = "Parser"
       this.build()
     })

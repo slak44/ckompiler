@@ -62,19 +62,21 @@ data class CharLiteral(
     val data: String,
     val encoding: CharEncoding) : CharSequence(data.length, encoding.prefixLength)
 
-class Lexer(source: String, private val srcFile: SourceFile) {
+class Lexer(private val textSource: String, private val srcFileName: SourceFileName) {
   val tokens = mutableListOf<Token>()
   val inspections = mutableListOf<Diagnostic>()
-  private var src: String = source
+  private var src: String = textSource
   private var currentOffset: Int = 0
 
   init {
     tokenize()
+    inspections.forEach { it.print() }
   }
 
   private fun lexerDiagnostic(build: DiagnosticBuilder.() -> Unit) {
-    inspections.add(newDiagnostic {
-      sourceFile = srcFile
+    inspections.add(createDiagnostic {
+      sourceFileName = srcFileName
+      sourceText = textSource
       origin = "Lexer"
       this.build()
     })
