@@ -57,17 +57,17 @@ class LexerPseudoUnitTests {
     assertEquals(res, l.tokens)
   }
 
+  private fun assertIsInvalidSuffix(s: String) {
+    val inspections = Lexer(s, source).inspections
+    assert(inspections.size >= 1)
+    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections[0].id)
+  }
+
   @Test
   fun invalidIntSuffixError() {
-    val inspections1 = Lexer("123A", source).inspections
-    assert(inspections1.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections1[0].id)
-    val inspections2 = Lexer("123UA", source).inspections
-    assert(inspections2.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections2[0].id)
-    val inspections3 = Lexer("123U2", source).inspections
-    assert(inspections3.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections3[0].id)
+    assertIsInvalidSuffix("123A")
+    assertIsInvalidSuffix("123UA")
+    assertIsInvalidSuffix("123U2")
   }
 
   @Test
@@ -120,39 +120,20 @@ class LexerPseudoUnitTests {
 
   @Test
   fun invalidFloatSuffixError() {
-    val inspections1 = Lexer("123.12A", source).inspections
-    assert(inspections1.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections1[0].id)
-    val inspections2 = Lexer("123.12FA", source).inspections
-    assert(inspections2.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections2[0].id)
-    val inspections3 = Lexer("123.12AF", source).inspections
-    assert(inspections3.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections3[0].id)
-    val inspections4 = Lexer("123.A", source).inspections
-    assert(inspections4.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections4[0].id)
-    val inspections5 = Lexer(".1A", source).inspections
-    assert(inspections5.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections5[0].id)
-    val inspections6 = Lexer("1.1E1A", source).inspections
-    assert(inspections6.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections6[0].id)
-    val inspections7 = Lexer("1.1EA", source).inspections
-    assert(inspections7.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections7[0].id)
-    val inspections8 = Lexer("1.EA", source).inspections
-    assert(inspections8.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections8[0].id)
-    val inspections9 = Lexer("1.FE", source).inspections
-    assert(inspections9.size >= 1)
-    assertEquals(DiagnosticId.INVALID_DIGIT, inspections9[0].id)
-    val inspections10 = Lexer("1.EF", source).inspections
-    assert(inspections10.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections10[0].id)
-    val inspections11 = Lexer("1.E+F", source).inspections
-    assert(inspections11.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections11[0].id)
+    assertIsInvalidSuffix("123.12A")
+    assertIsInvalidSuffix("123.12FA")
+    assertIsInvalidSuffix("123.12AF")
+    assertIsInvalidSuffix("123.A")
+    assertIsInvalidSuffix(".1A")
+    assertIsInvalidSuffix("1.1E1A")
+    assertIsInvalidSuffix("1.1EA")
+    assertIsInvalidSuffix("1.EA")
+    assertIsInvalidSuffix("1.EF")
+    assertIsInvalidSuffix("1.E+F")
+    // Technically invalid suffix
+    val inspections = Lexer("1.FE", source).inspections
+    assert(inspections.size >= 1)
+    assertEquals(DiagnosticId.INVALID_DIGIT, inspections[0].id)
   }
 
   @Test
