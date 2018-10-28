@@ -96,7 +96,7 @@ class LexerPseudoUnitTests {
         FloatingConstant("12.E-2", FloatingSuffix.NONE, Radix.DECIMAL),
         FloatingConstant(".12E-2", FloatingSuffix.NONE, Radix.DECIMAL)
     )
-    assertEquals(res, l.tokens)
+    assertEquals(res, l.tokens.filterNewlines())
   }
 
   @Test
@@ -115,7 +115,7 @@ class LexerPseudoUnitTests {
         FloatingConstant("12.E+10", FloatingSuffix.FLOAT, Radix.DECIMAL),
         FloatingConstant(".12E+10", FloatingSuffix.FLOAT, Radix.DECIMAL)
     )
-    assertEquals(res, l.tokens)
+    assertEquals(res, l.tokens.filterNewlines())
   }
 
   @Test
@@ -176,9 +176,6 @@ class LexerPseudoUnitTests {
     val res: List<Token> = strings.map { StringLiteral(it, StringEncoding.CHAR) }
     assertEquals(res, l.tokens)
   }
-
-  private fun List<Token>.filterNewlines() =
-      filter { (it as? Punctuator)?.punctuator != Punctuators.NEWLINE }
 
   @Test
   fun stringPrefixes() {
