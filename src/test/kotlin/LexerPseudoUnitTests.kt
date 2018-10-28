@@ -177,6 +177,9 @@ class LexerPseudoUnitTests {
     assertEquals(res, l.tokens)
   }
 
+  private fun List<Token>.filterNewlines() =
+      filter { (it as? Punctuator)?.punctuator != Punctuators.NEWLINE }
+
   @Test
   fun stringPrefixes() {
     val l = Lexer("""
@@ -192,7 +195,7 @@ class LexerPseudoUnitTests {
         StringLiteral("string", StringEncoding.CHAR16_T),
         StringLiteral("string", StringEncoding.CHAR32_T)
     )
-    assertEquals(res, l.tokens)
+    assertEquals(res, l.tokens.filterNewlines())
   }
 
   @Test
