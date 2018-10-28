@@ -84,17 +84,20 @@ class LexerPseudoUnitTests {
         FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
         FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant("1.1E2", FloatingSuffix.NONE, Radix.DECIMAL),
-        FloatingConstant("1.E2", FloatingSuffix.NONE, Radix.DECIMAL),
-        FloatingConstant(".1E2", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant("1.1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
+        FloatingConstant("1.", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
+        FloatingConstant(".1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
 
-        FloatingConstant("1.1e2", FloatingSuffix.NONE, Radix.DECIMAL),
-        FloatingConstant("1.e2", FloatingSuffix.NONE, Radix.DECIMAL),
-        FloatingConstant(".1e2", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant("1.1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
+        FloatingConstant("1.", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
+        FloatingConstant(".1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
 
-        FloatingConstant("12.1E-10", FloatingSuffix.NONE, Radix.DECIMAL),
-        FloatingConstant("12.E-2", FloatingSuffix.NONE, Radix.DECIMAL),
-        FloatingConstant(".12E-2", FloatingSuffix.NONE, Radix.DECIMAL)
+        FloatingConstant("12.1", FloatingSuffix.NONE, Radix.DECIMAL,
+            exponent = "10", exponentSign = '-'.opt()),
+        FloatingConstant("12.", FloatingSuffix.NONE, Radix.DECIMAL,
+            exponent = "2", exponentSign = '-'.opt()),
+        FloatingConstant(".12", FloatingSuffix.NONE, Radix.DECIMAL,
+            exponent = "2", exponentSign = '-'.opt())
     )
     assertEquals(res, l.tokens.filterNewlines())
   }
@@ -111,9 +114,12 @@ class LexerPseudoUnitTests {
         FloatingConstant("12.", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
         FloatingConstant(".12", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
 
-        FloatingConstant("12.1E+10", FloatingSuffix.FLOAT, Radix.DECIMAL),
-        FloatingConstant("12.E+10", FloatingSuffix.FLOAT, Radix.DECIMAL),
-        FloatingConstant(".12E+10", FloatingSuffix.FLOAT, Radix.DECIMAL)
+        FloatingConstant("12.1", FloatingSuffix.FLOAT, Radix.DECIMAL,
+            exponentSign = '+'.opt(), exponent = "10"),
+        FloatingConstant("12.", FloatingSuffix.FLOAT, Radix.DECIMAL,
+            exponentSign = '+'.opt(), exponent = "10"),
+        FloatingConstant(".12", FloatingSuffix.FLOAT, Radix.DECIMAL,
+            exponentSign = '+'.opt(), exponent = "10")
     )
     assertEquals(res, l.tokens.filterNewlines())
   }
@@ -127,14 +133,21 @@ class LexerPseudoUnitTests {
     assertIsInvalidSuffix("123.12A1")
     assertIsInvalidSuffix(".1A")
     assertIsInvalidSuffix("1.1E1A")
-    assertIsInvalidSuffix("1.1EA")
-    assertIsInvalidSuffix("1.EA")
-    assertIsInvalidSuffix("1.EF")
-    assertIsInvalidSuffix("1.E+F")
-    // Technically invalid suffix
-    val inspections = Lexer("1.FE", source).inspections
+    assertIsInvalidSuffix("1.FE")
+  }
+
+  private fun assertIsNoExpDigits(s: String) {
+    val inspections = Lexer(s, source).inspections
     assert(inspections.size >= 1)
-    assertEquals(DiagnosticId.INVALID_DIGIT, inspections[0].id)
+    assertEquals(DiagnosticId.NO_EXP_DIGITS, inspections[0].id)
+  }
+
+  @Test
+  fun noExpDigitsError() {
+    assertIsNoExpDigits("1.1EA")
+    assertIsNoExpDigits("1.EA")
+    assertIsNoExpDigits("1.EF")
+    assertIsNoExpDigits("1.E+F")
   }
 
   @Test

@@ -19,7 +19,7 @@ class LexerIntegrationTests {
         IntegralConstant("456", IntegralSuffix.UNSIGNED_LONG_LONG, Radix.DECIMAL),
         FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant("123.E-12", FloatingSuffix.NONE, Radix.DECIMAL),
+        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL, '-'.opt(), "12"),
         IntegralConstant("456", IntegralSuffix.NONE, Radix.DECIMAL)
     ), l.tokens.filterNewlines())
   }
@@ -60,7 +60,7 @@ class LexerIntegrationTests {
         Punctuator(Punctuators.DOT),
         Identifier("other"),
 
-        FloatingConstant("123.E1", FloatingSuffix.FLOAT, Radix.DECIMAL),
+        FloatingConstant("123.", FloatingSuffix.FLOAT, Radix.DECIMAL, exponent = "1"),
         Punctuator(Punctuators.DOT),
         Identifier("other")
     ), l.tokens.filterNewlines())

@@ -1,12 +1,22 @@
 import org.junit.Test
 import kotlin.test.assertEquals
 
+/**
+ * Tests for correct error reporting. Components should be able to report multiple errors correctly,
+ * even with other errors around, without being influenced by whitespace or semi-ambiguous
+ * constructs.
+ */
 class ResilienceTests {
   @Test
-  fun lexerKeepsGoingAfterBadFloat() {
-    val l = Lexer("""
-      123.23A ident
-    """.trimIndent(), source)
+  fun lexerKeepsGoingAfterBadSuffix() {
+    val l = Lexer("123.23A ident", source)
+    assert(l.tokens[0] is ErrorToken)
+    assertEquals(Identifier("ident"), l.tokens[1])
+  }
+
+  @Test
+  fun lexerKeepsGoingAfterBadExponent() {
+    val l = Lexer("1.EF ident", source)
     assert(l.tokens[0] is ErrorToken)
     assertEquals(Identifier("ident"), l.tokens[1])
   }

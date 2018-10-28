@@ -25,13 +25,30 @@ data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix
   override fun toString(): String = "${javaClass.simpleName}[$radix $n $suffix]"
 }
 
-data class FloatingConstant(val f: String, val suffix: FloatingSuffix, val radix: Radix) :
-    Token(radix.prefixLength + f.length + suffix.length) {
+data class FloatingConstant(val f: String,
+                            val suffix: FloatingSuffix,
+                            val radix: Radix,
+                            val exponentSign: Optional<Char> = Empty(),
+                            val exponent: String = "") : Token(
+    radix.prefixLength +
+        f.length +
+        (if (exponentSign is Empty) 0 else 1) +
+        1 +
+        exponent.length +
+        suffix.length) {
   init {
     if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported") {}
+    if (!f.any { Lexer.isDigit(it) || it == '.' }) {
+      logger.throwICE("Float is not just digits") { "token: $this" }
+    }
+    if (exponent.any { !Lexer.isDigit(it) }) {
+      logger.throwICE("Exp is not just digits") { "token: $this" }
+    }
   }
 
-  override fun toString(): String = "${javaClass.simpleName}[$radix $f $suffix]"
+  override fun toString(): String =
+      "${javaClass.simpleName}[$radix $f ${exponentSign.orNull() ?: "_"}" +
+          "${if (exponent.isEmpty()) "_" else exponent} $suffix]"
 }
 
 sealed class CharSequence(dataLength: Int,
@@ -63,33 +80,35 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     })
   }
 
-  private fun keyword(s: String) =
-      Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }.opt()
+  companion object {
+    private fun keyword(s: String) =
+        Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }.opt()
 
-  private fun punct(s: String) =
-      Punctuators.values().find { s.startsWith(it.punct) }?.let { Punctuator(it) }.opt()
+    private fun punct(s: String) =
+        Punctuators.values().find { s.startsWith(it.punct) }?.let { Punctuator(it) }.opt()
 
-  /** C standard: A.1.3 */
-  private fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
+    /** C standard: A.1.3 */
+    private fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
 
-  /** C standard: A.1.3 */
-  private fun isDigit(c: Char) = c in '0'..'9'
+    /** C standard: A.1.3 */
+    fun isDigit(c: Char) = c in '0'..'9'
 
-  /** C standard: A.1.5 */
-  private fun isHexDigit(c: Char) = isDigit(c) || c in 'A'..'F' || c in 'a'..'f'
+    /** C standard: A.1.5 */
+    private fun isHexDigit(c: Char) = isDigit(c) || c in 'A'..'F' || c in 'a'..'f'
 
-  /** C standard: A.1.5 */
-  private fun isOctalDigit(c: Char) = c in '0'..'7'
+    /** C standard: A.1.5 */
+    private fun isOctalDigit(c: Char) = c in '0'..'7'
 
-  /**
-   * @returns the index of the first whitespace or [Punctuators] in the string, or the string length
-   * if there isn't any.
-   */
-  private fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
-    val idx = s.withIndex().indexOfFirst {
-      it.value !in excludeChars && (it.value.isWhitespace() || (punct(s.drop(it.index)) !is Empty))
+    /**
+     * @returns the index of the first whitespace or [Punctuators] in the string, or the string
+     * length if there isn't any.
+     */
+    private fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
+      val idx = s.withIndex().indexOfFirst {
+        it.value !in excludeChars && (it.value.isWhitespace() || (punct(s.drop(it.index)) !is Empty))
+      }
+      return if (idx == -1) s.length else idx
     }
-    return if (idx == -1) s.length else idx
   }
 
   /** C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5 */
@@ -150,8 +169,9 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     else -> {
       lexerDiagnostic {
         id = DiagnosticId.INVALID_SUFFIX
-        formatArgs(s[0], "floating")
-        columns(currentOffset + nrLength - 1 until currentOffset + nextWhitespaceOrPunct(s))
+        formatArgs(s, "floating")
+        // FIXME this -2 is a bit magical
+        columns(currentOffset + nrLength - 2 until currentOffset + nextWhitespaceOrPunct(s))
       }
       Empty()
     }
@@ -168,63 +188,69 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     if (s[0] == '.' && !isDigit(s[1]) && s[1].toUpperCase() !in listOf('E', 'F', 'L')) {
       return Empty()
     }
-    val whitespaceOrPunct = nextWhitespaceOrPunct(s)
+    val dotIdx = nextWhitespaceOrPunct(s)
     // Not a float: reached end of string and no dot fount
-    if (whitespaceOrPunct == s.length) return Empty()
+    if (dotIdx == s.length) return Empty()
     // Not a float: found something else before finding a dot
-    if (s[whitespaceOrPunct] != '.') return Empty()
+    if (s[dotIdx] != '.') return Empty()
     // Not a float: found non-digit(s) before dot
-    if (s.slice(0 until whitespaceOrPunct).any { !isDigit(it) }) return Empty()
-    val integerPartEnd = s.slice(0..whitespaceOrPunct).indexOfFirst { !isDigit(it) }
-    if (integerPartEnd < whitespaceOrPunct) lexerDiagnostic {
+    if (s.slice(0 until dotIdx).any { !isDigit(it) }) return Empty()
+    val integerPartEnd = s.slice(0..dotIdx).indexOfFirst { !isDigit(it) }
+    if (integerPartEnd < dotIdx) lexerDiagnostic {
       id = DiagnosticId.INVALID_DIGIT
       messageFormatArgs = listOf(s[integerPartEnd + 1])
       column(currentOffset + integerPartEnd + 1)
-    } else if (integerPartEnd > whitespaceOrPunct) {
+    } else if (integerPartEnd > dotIdx) {
       logger.throwICE("Integer part of float contains whitespace or dot") {
-        "integerPartEnd: $integerPartEnd, whitespaceOrDot: $whitespaceOrPunct, lexer: $this"
+        "integerPartEnd: $integerPartEnd, whitespaceOrDot: $dotIdx, lexer: $this"
       }
     }
-    val floatLen = whitespaceOrPunct + 1 +
-        nextWhitespaceOrPunct(s.drop(whitespaceOrPunct + 1), '+', '-')
-    // Float has exponent
-    if (s[floatLen - 1] == 'e' || s[floatLen - 1] == 'E') {
-      val fracPart = s.slice(whitespaceOrPunct + 1 until floatLen - 1)
-      val firstNonDigit = fracPart.indexOfFirst { !isDigit(it) }
-      if (firstNonDigit != -1) {
-        lexerDiagnostic {
-          id = DiagnosticId.INVALID_DIGIT
-          formatArgs(fracPart)
-          column(currentOffset + whitespaceOrPunct + 1 + firstNonDigit)
-        }
-        return ErrorToken(floatLen).opt()
-      }
-      val hasSign = s[floatLen] == '+' || s[floatLen] == '-'
-      val expEndStartIdx = floatLen + if (hasSign) 1 else 0
-      val expEnd = s.drop(expEndStartIdx).indexOfFirst { !isDigit(it) }
-      val expEndIdx = expEndStartIdx + expEnd
-      val suffix =
-          if (expEnd == -1) FloatingSuffix.NONE
-          else floatingSuffix(s.drop(expEndIdx), expEndIdx - 1).orElse {
-            return ErrorToken(floatLen).opt()
-          }
-      val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.length
-      return FloatingConstant(s.slice(0 until endOfFloat), suffix, Radix.DECIMAL).opt()
+    val fractionalPartEnd = s.drop(dotIdx + 1).indexOfFirst { !isDigit(it) }
+    // The rest of the string is the float
+    if (fractionalPartEnd == -1 || dotIdx + 1 + fractionalPartEnd == s.length) {
+      return FloatingConstant(s, FloatingSuffix.NONE, Radix.DECIMAL).opt()
     }
-    // FIXME breaks test
-    val idxBeforeSuffix = s.slice(0 until floatLen).indexOfLast { isDigit(it) || it == '.' }
-    val suffix =
-        floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix).orElse {
-          return ErrorToken(floatLen).opt()
-        }
-    val float = s.slice(0 until (floatLen - suffix.length))
+    val bonusIdx = dotIdx + 1 + fractionalPartEnd
+    val float = s.slice(0 until bonusIdx)
     // If the float is just a dot, it's not actually a float
     if (float == ".") return Empty()
-    val token = FloatingConstant(float, suffix, Radix.DECIMAL)
-    if (float.contains('e', true)) {
-      logger.throwICE("Exponent part of float not handled correctly") { "token: $token" }
+    // Has exponent part
+    if (s[bonusIdx].toUpperCase() == 'E') {
+      val sign = when (s[bonusIdx + 1]) {
+        '+' -> '+'.opt()
+        '-' -> '-'.opt()
+        else -> Empty()
+      }
+      val signLen = if (sign is Empty) 0 else 1
+      val exponentStartIdx = bonusIdx + 1 + signLen
+      val exponentEndIdx = s.drop(exponentStartIdx).indexOfFirst { !isDigit(it) }
+      // The rest of the string is the exponent
+      if (exponentEndIdx == -1 || exponentStartIdx + exponentEndIdx == s.length) {
+        return FloatingConstant(float, FloatingSuffix.NONE, Radix.DECIMAL,
+            exponentSign = sign, exponent = s.substring(exponentStartIdx)).opt()
+      }
+      val exponent = s.slice(exponentStartIdx until exponentStartIdx + exponentEndIdx)
+      val totalLengthWithoutSuffix = float.length + 1 + signLen + exponent.length
+      val tokenEnd = exponentStartIdx + exponentEndIdx +
+          nextWhitespaceOrPunct(s.drop(exponentStartIdx + exponentEndIdx))
+      if (exponent.isEmpty()) {
+        lexerDiagnostic {
+          id = DiagnosticId.NO_EXP_DIGITS
+          column(currentOffset + exponentStartIdx)
+        }
+        return ErrorToken(tokenEnd).opt()
+      }
+      val suffixStr = s.slice(exponentStartIdx + exponentEndIdx until tokenEnd)
+      val suffix = floatingSuffix(suffixStr, totalLengthWithoutSuffix).orElse {
+        return ErrorToken(tokenEnd).opt()
+      }
+      return FloatingConstant(float, suffix, Radix.DECIMAL, sign, exponent).opt()
     }
-    return token.opt()
+    val tokenEnd = bonusIdx + nextWhitespaceOrPunct(s.drop(bonusIdx))
+    val suffix = floatingSuffix(s.slice(bonusIdx until tokenEnd), float.length).orElse {
+      return ErrorToken(tokenEnd).opt()
+    }
+    return FloatingConstant(float, suffix, Radix.DECIMAL).opt()
   }
 
   /**
