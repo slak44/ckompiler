@@ -35,6 +35,14 @@ sealed class Optional<E> {
   fun orElseThrow(th: Throwable): E = if (this is Empty) throw th else get()
 
   override fun toString(): String = if (this is Empty) super.toString() else "Optional<${get()}>"
+
+  override fun equals(other: Any?): Boolean {
+    return if (this is Empty && other is Empty<*>) true
+    else if ((this is Empty) xor (other is Empty<*>)) false
+    else return this.get() == (other as Value<*>).value
+  }
+
+  override fun hashCode(): Int = javaClass.hashCode()
 }
 
 /** @see Optional */
