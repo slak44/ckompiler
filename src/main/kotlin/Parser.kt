@@ -22,10 +22,34 @@ data class StringLiteralNode(val string: String, val encoding: StringEncoding) :
 
 data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : ASTNode
 
+/** C standard: A.2.4 */
+sealed class ExternalDeclaration : ASTNode
+
+// FIXME this is a lot more complex than this
+data class FunctionDefinition(val name: String) : ExternalDeclaration()
+
+// FIXME this is a lot more complex than this
+data class Declaration(val name: String) : ExternalDeclaration()
+
+/**
+ * Parses a translation unit.
+ *
+ * C standard: A.2.4, 6.9
+ */
 class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
+
+  init {
+    parseTranslationUnit()
+  }
+
+  // FIXME try to remove mutability if possible
   private var consumed: Int = 0
   private val tokens = tokens.toMutableList()
   val inspections = mutableListOf<Diagnostic>()
+
+  private val root = object : ASTNode {
+    val decls = mutableListOf<ExternalDeclaration>()
+  }
 
   private fun eat() {
     consumed++
@@ -42,9 +66,7 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
   }
 
   private fun tokenToOperator(token: Token): Optional<Operators> {
-    return if (token !is Punctuator) Empty()
-    // FIXME maybe make toBinaryOperator() ?
-    else token.punctuator.toOperator()
+    return (token as? Punctuator)?.punctuator?.toOperator() ?: Empty()
   }
 
   private fun parseExpr(): ASTNode {
@@ -61,7 +83,7 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
     var lhs = lhsInit
     while (true) {
       val op = tokenToOperator(tokens[0]).orNull() ?: break
-      if (op.arity != Arity.BINARY || op.precedence <= minPrecedence) break
+      if (op !in Operators.binaryExprOps || op.precedence <= minPrecedence) break
       eat()
       var rhs = parsePrimaryExpr().orElse {
         parserDiagnostic {
@@ -72,7 +94,7 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
       eat()
       while (true) {
         val innerOp = tokenToOperator(tokens[0]).orNull() ?: break
-        if (innerOp.arity != Arity.BINARY) break
+        if (op !in Operators.binaryExprOps) break
         if (innerOp.precedence <= op.precedence &&
             !(innerOp.assoc == Associativity.RIGHT_TO_LEFT && innerOp.precedence == op.precedence)) {
           break
@@ -129,5 +151,37 @@ class Parser(tokens: List<Token>, private val srcFile: SourceFile) {
       // FIXME implement generic-selection A.2.1/6.5.1.1
       else -> return Empty()
     }
+  }
+
+  /** C standard: A.2.4 */
+  private fun parseFunctionDefinition(): Optional<ASTNode> {
+    TODO()
+  }
+
+  private fun parseDeclaration(): Optional<ASTNode> = TODO("implement")
+
+  /** C standard: A.2.4, 6.9 */
+  private tailrec fun parseTranslationUnit() {
+    if (tokens.isEmpty()) return
+    parseFunctionDefinition().ifPresent {
+      root.decls.add(it as ExternalDeclaration)
+      return parseTranslationUnit()
+    }
+    parseDeclaration().ifPresent {
+      root.decls.add(it as ExternalDeclaration)
+      return parseTranslationUnit()
+    }
+    if (tokens[0] !is ErrorToken) {
+      // If we got here it means this isn't actually a translation unit
+      // So spit out an error and eat tokens until the next semicolon/line
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_EXTERNAL_DECL
+      }
+      while ((tokens[0] as? Punctuator)?.punctuator != Punctuators.SEMICOLON &&
+          (tokens[0] as? Punctuator)?.punctuator != Punctuators.NEWLINE) eat()
+      // Also eat the final token
+      eat()
+    }
+    parseTranslationUnit()
   }
 }

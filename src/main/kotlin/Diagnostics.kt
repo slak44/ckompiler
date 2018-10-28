@@ -1,16 +1,18 @@
 import mu.KLogger
 import java.lang.RuntimeException
+import DiagnosticKind.*
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
-  UNKNOWN(DiagnosticKind.OTHER, ""),
+  UNKNOWN(OTHER, ""),
   // Lexer
-  INVALID_SUFFIX(DiagnosticKind.ERROR, "Invalid suffix '%s' on %s constant"),
-  MISSING_QUOTE(DiagnosticKind.ERROR, "Missing terminating %c character"),
-  INVALID_DIGIT(DiagnosticKind.ERROR, "Invalid digit '%s' in constant"),
+  INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
+  MISSING_QUOTE(ERROR, "Missing terminating %c character"),
+  INVALID_DIGIT(ERROR, "Invalid digit '%s' in constant"),
   // Parser
-  EMPTY_CHAR_CONSTANT(DiagnosticKind.WARNING, "Empty character constant"),
-  EXPECTED_EXPR(DiagnosticKind.ERROR, "Expected expression"),
-  EXPECTED_PRIMARY(DiagnosticKind.ERROR, "Expected primary expression")
+  EMPTY_CHAR_CONSTANT(WARNING, "Empty character constant"),
+  EXPECTED_EXPR(ERROR, "Expected expression"),
+  EXPECTED_PRIMARY(ERROR, "Expected primary expression"),
+  EXPECTED_EXTERNAL_DECL(ERROR, "Expected a declaration or function definition")
 }
 
 enum class DiagnosticKind(val text: String) {
@@ -25,6 +27,7 @@ data class Diagnostic(val id: DiagnosticId,
                       val origin: String,
                       val messageFormatArgs: List<Any>) {
   private val printed: String
+
   init {
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     // FIXME get data via separate function that takes the actual source text and the sourceColumns

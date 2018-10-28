@@ -46,6 +46,7 @@ enum class Keywords(val keyword: String) {
 }
 
 enum class Punctuators(val punct: String) {
+  NEWLINE("\n"),
   LSQPAREN("["), RSQPAREN("]"), LPAREN("("), RPAREN(")"),
   LBRACKET("{"), RBRACKET("}"), DOTS("..."), DOT("."), ARROW("->"),
   MUL_ASSIGN("*="), DIV_ASSIGN("/="), MOD_ASSIGN("%="), PLUS_ASSIGN("+="),
@@ -78,8 +79,9 @@ enum class Operators(val op: Punctuators,
                      val assoc: Associativity) {
   // Postfix
   // FIXME [], func calls
-  ACCESS(Punctuators.DOT, 124, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  PTR_ACCESS(Punctuators.ARROW, 123, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  // FIXME postfix exprs
+//  ACCESS(Punctuators.DOT, 124, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+//  PTR_ACCESS(Punctuators.ARROW, 123, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
   // FIXME punctuator conflict
 //  POSTFIX_INC(Punctuators.INC, 122, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
 //  POSTFIX_DEC(Punctuators.DEC, 121, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
@@ -136,7 +138,13 @@ enum class Operators(val op: Punctuators,
   XOR_ASSIGN(Punctuators.XOR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   // Comma
-  COMMA(Punctuators.COMMA, 10, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  COMMA(Punctuators.COMMA, 10, Arity.BINARY, Associativity.LEFT_TO_RIGHT);
+
+  companion object {
+    val binaryExprOps = listOf(MUL, DIV, MOD, ADD, SUB, LSH, RSH, LT, GT, LEQ, GEQ, EQ, NEQ,
+        BIT_AND, BIT_XOR, BIT_OR, AND, OR, ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, PLUS_ASSIGN,
+        SUB_ASSIGN, LSH_ASSIGN, RSH_ASSIGN, AND_ASSIGN, XOR_ASSIGN, OR_ASSIGN)
+  }
 }
 
 enum class IntegralSuffix(val length: Int) {
