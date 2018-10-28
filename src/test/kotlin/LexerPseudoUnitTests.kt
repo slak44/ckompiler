@@ -124,6 +124,7 @@ class LexerPseudoUnitTests {
     assertIsInvalidSuffix("123.12FA")
     assertIsInvalidSuffix("123.12AF")
     assertIsInvalidSuffix("123.A")
+    assertIsInvalidSuffix("123.12A1")
     assertIsInvalidSuffix(".1A")
     assertIsInvalidSuffix("1.1E1A")
     assertIsInvalidSuffix("1.1EA")
