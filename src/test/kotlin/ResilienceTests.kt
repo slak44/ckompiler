@@ -3,7 +3,7 @@ import kotlin.test.assertEquals
 
 class ResilienceTests {
   @Test
-  fun badFloats() {
+  fun lexerKeepsGoingAfterBadFloat() {
     val l = Lexer("""
       123.23A ident
     """.trimIndent(), source)
@@ -13,7 +13,7 @@ class ResilienceTests {
 
   // FIXME more tests like this
   @Test
-  fun lexerDiagnosticColumn() {
+  fun lexerCorrectDiagnosticColumn() {
     val text = "ident     123.23A"
     val l = Lexer(text, source)
     assert(l.tokens[1] is ErrorToken)
