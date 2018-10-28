@@ -151,7 +151,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       lexerDiagnostic {
         id = DiagnosticId.INVALID_SUFFIX
         formatArgs(s[0], "floating")
-        columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
+        columns(currentOffset + nrLength - 1 until currentOffset + nextWhitespaceOrPunct(s))
       }
       Empty()
     }
@@ -205,7 +205,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
       val expEndIdx = expEndStartIdx + expEnd
       val suffix =
           if (expEnd == -1) FloatingSuffix.NONE
-          else floatingSuffix(s.drop(expEndIdx), expEndIdx).orElse {
+          else floatingSuffix(s.drop(expEndIdx), expEndIdx - 1).orElse {
             return ErrorToken(floatLen).opt()
           }
       val endOfFloat = (if (expEnd == -1) s.length else expEnd) - suffix.length
@@ -213,7 +213,7 @@ class Lexer(source: String, private val srcFile: SourceFile) {
     }
     val idxBeforeSuffix = s.slice(0 until floatLen).indexOfLast { isDigit(it) || it == '.' }
     val suffix =
-        floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix + 1).orElse {
+        floatingSuffix(s.slice(idxBeforeSuffix + 1 until floatLen), idxBeforeSuffix).orElse {
           return ErrorToken(floatLen).opt()
         }
     val float = s.slice(0 until (floatLen - suffix.length))
@@ -301,7 +301,11 @@ class Lexer(source: String, private val srcFile: SourceFile) {
   }
 
   private tailrec fun tokenize() {
-    src = src.trimStart()
+    src = src.trimStart {
+      currentOffset++
+      if (it == '\n') tokens.add(Punctuator(Punctuators.NEWLINE))
+      return@trimStart it.isWhitespace()
+    }
     if (src.isEmpty()) return
     // Ordering:
     // keyword before identifier
