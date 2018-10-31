@@ -214,16 +214,46 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     return keywords
   }
 
-  private fun parseDirectDeclarator(): Optional<ASTNode> {
+  /** C standard: A.2.2, 6.7 */
+  private fun parseDirectDeclarator(tokens: List<Token>): Optional<ASTNode> {
     val tok = tokens[0]
+    if (tok is Punctuator && tok.punctuator == Punctuators.LPAREN) {
+      var stack = 1
+      val end = tokens.indexOfFirst {
+        when ((it as Punctuator).punctuator) {
+          Punctuators.LPAREN -> {
+            stack++
+            return@indexOfFirst false
+          }
+          Punctuators.RPAREN -> {
+            stack--
+            return@indexOfFirst stack == 0
+          }
+          Punctuators.SEMICOLON -> return@indexOfFirst true
+          else -> return@indexOfFirst false
+        }
+      }
+      if ((tokens[end] as Punctuator).punctuator != Punctuators.RPAREN || end == -1) {
+        parserDiagnostic {
+          id = DiagnosticId.UNMATCHED_PAREN
+        }
+        parserDiagnostic {
+          id = DiagnosticId.MATCH_PAREN_TARGET
+        }
+        return Empty()
+      }
+      return parseDeclarator(tokens.slice(1 until end))
+    }
+    val next = tokens[1]
+    if (next is Punctuator && (next.punctuator == Punctuators.LPAREN || next.punctuator == Punctuators.LSQPAREN)) {
+
+    }
     if (tok is Identifier) {
       val node = IdentifierNode(tok.name)
       eat()
       return node.opt()
-    } else if (tok is Punctuator && tok.punctuator == Punctuators.LPAREN) {
-      // FIXME match paren?
-      return parseDeclarator()
     }
+    return Empty()
   }
 
 //  private fun parsePointer(): List<Token> {
@@ -232,8 +262,9 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 //
 //  }
 
-  private fun parseDeclarator(): Optional<ASTNode> {
-    TODO()
+  private fun parseDeclarator(tokens: List<Token>): Optional<ASTNode> {
+    // FIXME missing pointer parsing
+    return parseDirectDeclarator(tokens)
   }
 
   /** C standard: A.2.4, A.2.2, 6.9.1 */
@@ -244,7 +275,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     // Function definitions can only have extern or static as storage class specifiers
     val storageClass = declSpecs.asSequence().filter { it.value in storageClassSpecifier }
     if (storageClass.any { it.value != Keywords.EXTERN && it.value != Keywords.STATIC }) {
-      parserDiagnostic {  }
+      parserDiagnostic { }
     }
 
     TODO()
