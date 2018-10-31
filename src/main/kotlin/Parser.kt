@@ -31,6 +31,46 @@ data class FunctionDefinition(val name: String) : ExternalDeclaration()
 // FIXME this is a lot more complex than this
 data class Declaration(val name: String) : ExternalDeclaration()
 
+enum class StorageClassSpecifier {
+  TYPEDEF, EXTERN, STATIC, THREAD_LOCAL, AUTO, REGISTER;
+
+  companion object {
+    fun fromKeywords(k: Keywords): StorageClassSpecifier? = when (k) {
+      Keywords.TYPEDEF -> TYPEDEF
+      Keywords.EXTERN -> EXTERN
+      Keywords.STATIC -> STATIC
+      Keywords.THREAD_LOCAL -> THREAD_LOCAL
+      Keywords.AUTO -> AUTO
+      Keywords.REGISTER -> REGISTER
+      else -> null
+    }
+  }
+}
+
+enum class TypeSpecifier {
+  VOID, CHAR, SHORT, INT, LONG, FLOAT, DOUBLE, SIGNED, UNSIGNED, BOOL, COMPLEX
+}
+
+enum class TypeQualifier {
+  CONST, RESTRICT, VOLATILE, ATOMIC
+}
+
+enum class FunctionSpecifier {
+  INLINE, NORETURN
+}
+
+private val storageClassSpecifier = listOf(Keywords.TYPEDEF, Keywords.EXTERN, Keywords.STATIC,
+    Keywords.THREAD_LOCAL, Keywords.AUTO, Keywords.REGISTER)
+// FIXME missing type specifiers
+private val typeSpecifier = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
+    Keywords.LONG, Keywords.FLOAT, Keywords.DOUBLE, Keywords.SIGNED, Keywords.UNSIGNED,
+    Keywords.BOOL, Keywords.COMPLEX)
+private val typeQualifier = listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE,
+    Keywords.ATOMIC)
+private val functionSpecifier = listOf(Keywords.INLINE, Keywords.NORETURN)
+// FIXME alignment specifier
+
+
 /**
  * Parses a translation unit.
  *
@@ -54,6 +94,11 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   private fun eat() {
     consumed++
     tokens.removeAt(0)
+  }
+
+  private fun eatList(length: Int) {
+    consumed += length
+    for (i in 0..length) tokens.removeAt(0)
   }
 
   // FIXME track col/line data via tokens
@@ -153,20 +198,69 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     }
   }
 
-  /** C standard: A.2.4 */
-  private fun parseFunctionDefinition(): Optional<ASTNode> {
+  /** C standard: A.2.2, 6.7 */
+  private fun parseDeclSpecifiers(): List<Keyword> {
+    if (tokens[0] !is Keyword) return emptyList()
+    val endIdx = tokens.indexOfFirst {
+      if (it !is Keyword) return@indexOfFirst true
+      if (it.value !in storageClassSpecifier &&
+          it.value !in typeSpecifier &&
+          it.value !in typeQualifier &&
+          it.value !in functionSpecifier) return@indexOfFirst true
+      return@indexOfFirst false
+    }
+    val keywords = tokens.slice(0 until endIdx).map { it as Keyword }
+    eatList(endIdx)
+    return keywords
+  }
+
+  private fun parseDirectDeclarator(): Optional<ASTNode> {
+    val tok = tokens[0]
+    if (tok is Identifier) {
+      val node = IdentifierNode(tok.name)
+      eat()
+      return node.opt()
+    } else if (tok is Punctuator && tok.punctuator == Punctuators.LPAREN) {
+      // FIXME match paren?
+      return parseDeclarator()
+    }
+  }
+
+//  private fun parsePointer(): List<Token> {
+//    if ((tokens[0] as? Punctuator)?.punctuator != Punctuators.STAR) return emptyList()
+//    val endIdx = tokens.indexOfFirst { it !is Keyword || it.value !in typeQualifier }
+//
+//  }
+
+  private fun parseDeclarator(): Optional<ASTNode> {
     TODO()
   }
 
-  private fun parseDeclaration(): Optional<ASTNode> = TODO("implement")
+  /** C standard: A.2.4, A.2.2, 6.9.1 */
+  private fun parseFunctionDefinition(): Optional<ASTNode> {
+    val declSpecs = parseDeclSpecifiers()
+    // It must have at least one to be valid grammar
+    if (declSpecs.isEmpty()) return Empty()
+    // Function definitions can only have extern or static as storage class specifiers
+    val storageClass = declSpecs.asSequence().filter { it.value in storageClassSpecifier }
+    if (storageClass.any { it.value != Keywords.EXTERN && it.value != Keywords.STATIC }) {
+      parserDiagnostic {  }
+    }
+
+    TODO()
+  }
+
+  private fun parseDeclaration(): Optional<ASTNode> {
+    val declSpecs = parseDeclSpecifiers()
+  }
 
   /** C standard: A.2.4, 6.9 */
   private tailrec fun parseTranslationUnit() {
     if (tokens.isEmpty()) return
-    parseFunctionDefinition().ifPresent {
-      root.decls.add(it as ExternalDeclaration)
-      return parseTranslationUnit()
-    }
+//    parseFunctionDefinition().ifPresent {
+//      root.decls.add(it as ExternalDeclaration)
+//      return parseTranslationUnit()
+//    }
     parseDeclaration().ifPresent {
       root.decls.add(it as ExternalDeclaration)
       return parseTranslationUnit()
