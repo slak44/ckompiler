@@ -21,7 +21,7 @@ class LexerPseudoUnitTests {
 
   @Test
   fun punctuators() {
-    val l = Lexer(Punctuators.values().joinToString(" ") { it.punct }, source)
+    val l = Lexer(Punctuators.values().joinToString(" ") { it.s }, source)
     l.assertNoDiagnostics()
     val res: List<Token> = Punctuators.values().map { Punctuator(it) }
     assertEquals(res, l.tokens)

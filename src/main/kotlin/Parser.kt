@@ -111,7 +111,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   private fun tokenToOperator(token: Token): Optional<Operators> {
-    return (token as? Punctuator)?.punctuator?.toOperator() ?: Empty()
+    return (token as? Punctuator)?.pct?.toOperator() ?: Empty()
   }
 
   private fun parseExpr(): ASTNode {
@@ -183,9 +183,9 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         return CharacterConstantNode(char, tok.encoding).opt()
       }
       tok is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding).opt()
-      tok is Punctuator && tok.punctuator == Punctuators.LPAREN -> {
+      tok is Punctuator && tok.pct == Punctuators.LPAREN -> {
         val next = tokens[1]
-        if (next is Punctuator && next.punctuator == Punctuators.RPAREN) {
+        if (next is Punctuator && next.pct == Punctuators.RPAREN) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_EXPR
           }
@@ -217,10 +217,10 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   /** C standard: A.2.2, 6.7 */
   private fun parseDirectDeclarator(tokens: List<Token>): Optional<ASTNode> {
     val tok = tokens[0]
-    if (tok is Punctuator && tok.punctuator == Punctuators.LPAREN) {
+    if (tok is Punctuator && tok.pct == Punctuators.LPAREN) {
       var stack = 1
       val end = tokens.indexOfFirst {
-        when ((it as Punctuator).punctuator) {
+        when ((it as Punctuator).pct) {
           Punctuators.LPAREN -> {
             stack++
             return@indexOfFirst false
@@ -233,7 +233,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
           else -> return@indexOfFirst false
         }
       }
-      if ((tokens[end] as Punctuator).punctuator != Punctuators.RPAREN || end == -1) {
+      if ((tokens[end] as Punctuator).pct != Punctuators.RPAREN || end == -1) {
         parserDiagnostic {
           id = DiagnosticId.UNMATCHED_PAREN
         }
@@ -245,7 +245,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       return parseDeclarator(tokens.slice(1 until end))
     }
     val next = tokens[1]
-    if (next is Punctuator && (next.punctuator == Punctuators.LPAREN || next.punctuator == Punctuators.LSQPAREN)) {
+    if (next is Punctuator && (next.pct == Punctuators.LPAREN || next.pct == Punctuators.LSQPAREN)) {
 
     }
     if (tok is Identifier) {
@@ -257,7 +257,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
 //  private fun parsePointer(): List<Token> {
-//    if ((tokens[0] as? Punctuator)?.punctuator != Punctuators.STAR) return emptyList()
+//    if ((tokens[0] as? Punctuator)?.pct != Punctuators.STAR) return emptyList()
 //    val endIdx = tokens.indexOfFirst { it !is Keyword || it.value !in typeQualifier }
 //
 //  }
@@ -302,8 +302,8 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
       }
-      while ((tokens[0] as? Punctuator)?.punctuator != Punctuators.SEMICOLON &&
-          (tokens[0] as? Punctuator)?.punctuator != Punctuators.NEWLINE) eat()
+      while ((tokens[0] as? Punctuator)?.pct != Punctuators.SEMICOLON &&
+          (tokens[0] as? Punctuator)?.pct != Punctuators.NEWLINE) eat()
       // Also eat the final token
       eat()
     }

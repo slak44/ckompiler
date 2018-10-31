@@ -16,7 +16,7 @@ class ErrorToken(consumedChars: Int) : Token(consumedChars)
 
 data class Keyword(val value: Keywords) : Token(value.keyword.length)
 
-data class Punctuator(val punctuator: Punctuators) : Token(punctuator.punct.length)
+data class Punctuator(val pct: Punctuators) : Token(pct.s.length)
 
 data class Identifier(val name: String) : Token(name.length)
 
@@ -87,7 +87,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
         Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }.opt()
 
     private fun punct(s: String) =
-        Punctuators.values().find { s.startsWith(it.punct) }?.let { Punctuator(it) }.opt()
+        Punctuators.values().find { s.startsWith(it.s) }?.let { Punctuator(it) }.opt()
 
     /** C standard: A.1.3 */
     private fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
@@ -345,7 +345,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     // floatingConstant before integerConstant
     // characterConstant before identifier
     // stringLiteral before identifier
-    // floatingConstant before punct
+    // floatingConstant before s
 
     // Only consume one in each iteration (short-circuits with || if consumed)
     keyword(src).consumeIfPresent() ||

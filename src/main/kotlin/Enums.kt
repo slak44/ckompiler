@@ -45,7 +45,7 @@ enum class Keywords(val keyword: String) {
   THREAD_LOCAL("_Thread_local")
 }
 
-enum class Punctuators(val punct: String) {
+enum class Punctuators(val s: String) {
   NEWLINE("\n"),
   LSQPAREN("["), RSQPAREN("]"), LPAREN("("), RPAREN(")"),
   LBRACKET("{"), RBRACKET("}"), DOTS("..."), DOT("."), ARROW("->"),
@@ -82,17 +82,17 @@ enum class Operators(val op: Punctuators,
   // FIXME postfix exprs
 //  ACCESS(Punctuators.DOT, 124, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
 //  PTR_ACCESS(Punctuators.ARROW, 123, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  // FIXME punctuator conflict
+  // FIXME pct conflict
 //  POSTFIX_INC(Punctuators.INC, 122, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
 //  POSTFIX_DEC(Punctuators.DEC, 121, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   // FIXME initializer list stuff
   // Prefix
-  // FIXME punctuator conflict
+  // FIXME pct conflict
 //  PREFIX_INC(Punctuators.INC, 115, Arity.UNARY, Associativity.RIGHT_TO_LEFT),
 //  PREFIX_DEC(Punctuators.DEC, 110, Arity.UNARY, Associativity.RIGHT_TO_LEFT),
   // Unary
   REF(Punctuators.AMP, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  // FIXME punctuator conflict
+  // FIXME pct conflict
 //  DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
 //  PLUS(Punctuators.PLUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
 //  MINUS(Punctuators.MINUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
