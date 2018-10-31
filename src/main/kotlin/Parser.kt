@@ -1,3 +1,7 @@
+import mu.KotlinLogging
+
+private val logger = KotlinLogging.logger("Parser")
+
 interface ASTNode
 
 class ErrorNode : ASTNode
@@ -214,46 +218,80 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     return keywords
   }
 
+  /**
+   * Find matching parenthesis in token list. Handles nested parens. Prints errors about unmatched
+   * parens.
+   * @returns -1 if a [Punctuators.SEMICOLON] was found before parens were balanced, or the idx of
+   * the rightmost paren otherwise
+   */
+  private fun findParenMatch(tokens: List<Token>, lparen: Punctuators, rparen: Punctuators): Int {
+    var stack = 0
+    val end = tokens.indexOfFirst {
+      if (it !is Punctuator) return@indexOfFirst false
+      when (it.pct) {
+        lparen -> {
+          stack++
+          return@indexOfFirst false
+        }
+        rparen -> {
+          stack--
+          return@indexOfFirst stack == 0
+        }
+        Punctuators.SEMICOLON -> return@indexOfFirst true
+        else -> return@indexOfFirst false
+      }
+    }
+    if (end == -1 || (tokens[end] as Punctuator).pct != rparen) {
+      parserDiagnostic {
+        id = DiagnosticId.UNMATCHED_PAREN
+        formatArgs(rparen.s)
+      }
+      parserDiagnostic {
+        id = DiagnosticId.MATCH_PAREN_TARGET
+        formatArgs(lparen.s)
+      }
+      return -1
+    }
+    return end
+  }
+
   /** C standard: A.2.2, 6.7 */
   private fun parseDirectDeclarator(tokens: List<Token>): Optional<ASTNode> {
     val tok = tokens[0]
-    if (tok is Punctuator && tok.pct == Punctuators.LPAREN) {
-      var stack = 1
-      val end = tokens.indexOfFirst {
-        when ((it as Punctuator).pct) {
-          Punctuators.LPAREN -> {
-            stack++
-            return@indexOfFirst false
-          }
-          Punctuators.RPAREN -> {
-            stack--
-            return@indexOfFirst stack == 0
-          }
-          Punctuators.SEMICOLON -> return@indexOfFirst true
-          else -> return@indexOfFirst false
-        }
-      }
-      if ((tokens[end] as Punctuator).pct != Punctuators.RPAREN || end == -1) {
-        parserDiagnostic {
-          id = DiagnosticId.UNMATCHED_PAREN
-        }
-        parserDiagnostic {
-          id = DiagnosticId.MATCH_PAREN_TARGET
-        }
-        return Empty()
-      }
-      return parseDeclarator(tokens.slice(1 until end))
-    }
     val next = tokens[1]
-    if (next is Punctuator && (next.pct == Punctuators.LPAREN || next.pct == Punctuators.LSQPAREN)) {
-
+    when {
+      tok is Punctuator && tok.pct == Punctuators.LPAREN -> {
+        val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
+        if (end == -1) return ErrorNode().opt()
+        // If the declarator slice will be empty, error out
+        if (1 == end - 1) {
+          parserDiagnostic {
+            id = DiagnosticId.EXPECTED_DECL
+          }
+          return ErrorNode().opt()
+        }
+        // FIXME handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
+        return parseDeclarator(tokens.slice(1 until end))
+      }
+      next is Punctuator && next.pct == Punctuators.LPAREN -> {
+        val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
+        if (end == -1) return ErrorNode().opt()
+        // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
+        logger.throwICE("Unimplemented grammar") { tokens }
+      }
+      next is Punctuator && next.pct == Punctuators.LSQPAREN -> {
+        val end = findParenMatch(tokens, Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+        if (end == -1) return ErrorNode().opt()
+        // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
+        logger.throwICE("Unimplemented grammar") { tokens }
+      }
+      tok is Identifier -> {
+        val node = IdentifierNode(tok.name)
+        eat()
+        return node.opt()
+      }
+      else -> return Empty()
     }
-    if (tok is Identifier) {
-      val node = IdentifierNode(tok.name)
-      eat()
-      return node.opt()
-    }
-    return Empty()
   }
 
 //  private fun parsePointer(): List<Token> {
@@ -283,6 +321,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   private fun parseDeclaration(): Optional<ASTNode> {
     val declSpecs = parseDeclSpecifiers()
+    TODO()
   }
 
   /** C standard: A.2.4, 6.9 */

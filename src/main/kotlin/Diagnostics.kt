@@ -14,8 +14,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_EXPR(ERROR, "Expected expression"),
   EXPECTED_PRIMARY(ERROR, "Expected primary expression"),
   EXPECTED_EXTERNAL_DECL(ERROR, "Expected a declaration or function definition"),
-  UNMATCHED_PAREN(ERROR, "Expected ')'"),
-  MATCH_PAREN_TARGET(OTHER, "To match this '(")
+  UNMATCHED_PAREN(ERROR, "Expected '%s'"),
+  MATCH_PAREN_TARGET(OTHER, "To match this '%s"),
+  EXPECTED_DECL(ERROR, "Expected declarator"),
 }
 
 enum class DiagnosticKind(val text: String) {
@@ -97,16 +98,17 @@ class InternalCompilerError : RuntimeException {
   constructor(message: String) : super(message)
 }
 
-inline fun KLogger.throwICE(ice: InternalCompilerError, crossinline msg: () -> Any?) {
+inline fun KLogger.throwICE(ice: InternalCompilerError, crossinline msg: () -> Any?): Nothing {
   error(ice) { msg() }
   throw ice
 }
 
-inline fun KLogger.throwICE(iceMessage: String, cause: Throwable, crossinline msg: () -> Any?) {
+inline fun KLogger.throwICE(iceMessage: String,
+                            cause: Throwable, crossinline msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage, cause), msg)
 }
 
-inline fun KLogger.throwICE(iceMessage: String, crossinline msg: () -> Any?) {
+inline fun KLogger.throwICE(iceMessage: String, crossinline msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage), msg)
 }
 
