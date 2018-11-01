@@ -117,7 +117,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   private fun eatList(length: Int) {
     consumed += length
-    for (i in 0..length) tokens.removeAt(0)
+    for (i in 0 until length) tokens.removeAt(0)
   }
 
   // FIXME track col/line data via tokens
@@ -229,7 +229,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       return@indexOfFirst false
     }
     val keywords = tokens.slice(0 until endIdx).map { (it as Keyword).value }
-    eatList(endIdx)
+    eatList(keywords.size)
     return keywords
   }
 
@@ -271,7 +271,8 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(tokens: List<Token>): Optional<ASTNode> {
+  private fun parseDirectDeclarator(endIdx: Int): Optional<ASTNode> {
+    val tokens = tokens.slice(0 until endIdx)
     // FIXME check this condition for correctness
     if (tokens.isEmpty()) return Empty()
     val tok = tokens[0]
@@ -288,7 +289,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
           return ErrorNode().opt()
         }
         // FIXME handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
-        return parseDeclarator(tokens.slice(1 until end))
+        return parseDeclarator(end)
       }
       next is Punctuator && next.pct == Punctuators.LPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
@@ -317,9 +318,51 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 //
 //  }
 
-  private fun parseDeclarator(tokens: List<Token>): Optional<ASTNode> {
+  private fun parseDeclarator(endIdx: Int): Optional<ASTNode> {
     // FIXME missing pointer parsing
-    return parseDirectDeclarator(tokens)
+    return parseDirectDeclarator(endIdx)
+  }
+
+  private fun parseDeclaration(): Optional<ASTNode> {
+    val declSpecs = parseDeclSpecifiers()
+    // FIXME validate declSpecs according to standard 6.7.{1-6}
+    val declaratorList = mutableListOf<InitDeclarator>()
+    while (true) {
+      val initDeclarator = parseDeclarator(tokens.size).orElse {
+        // Simply not a declaration, move on
+        if (declSpecs.isEmpty()) return Empty()
+        // This means that there were decl specs, but no declarator, which is a problem
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_DECL
+        }
+        return ErrorNode().opt()
+      }
+      // Get rid of newlines
+      while ((tokens[0] as? Punctuator)?.pct == Punctuators.NEWLINE) eat()
+      val tok = tokens[0]
+      if (tok is Punctuator && tok.pct == Punctuators.ASSIGN) {
+        // FIXME parse initializer
+        TODO()
+      }
+      declaratorList.add(InitDeclarator(initDeclarator, Empty()))
+      if (tok is Punctuator && tok.pct == Punctuators.SEMICOLON) {
+        eat()
+        break
+      }
+      if (tok is Punctuator && tok.pct == Punctuators.COMMA) {
+        // Expected case; there are chained init-declarators
+        eat()
+        continue
+      } else {
+        // Missing semicolon
+        eat()
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
+        }
+        break
+      }
+    }
+    return Declaration(declSpecs, declaratorList).opt()
   }
 
   /** C standard: A.2.4, A.2.2, 6.9.1 */
@@ -336,64 +379,23 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     TODO()
   }
 
-  private fun parseDeclaration(): Optional<ASTNode> {
-    val declSpecs = parseDeclSpecifiers()
-    // FIXME validate declSpecs according to standard 6.7.{1-6}
-    val declaratorList = mutableListOf<InitDeclarator>()
-    while (true) {
-      val initDeclarator = parseDeclarator(tokens).orElse {
-        // Simply not a declaration, move on
-        if (declSpecs.isEmpty()) return Empty()
-        // This means that there were decl specs, but no declarator, which is a problem
-        parserDiagnostic {
-          id = DiagnosticId.EXPECTED_DECL
-        }
-        return ErrorNode().opt()
-      }
-      // Get rid of newlines
-      while ((tokens[0] as? Punctuator)?.pct == Punctuators.NEWLINE) eat()
-      val tok = tokens[0]
-      if (tok is Punctuator && tok.pct == Punctuators.ASSIGN) {
-        // FIXME parse initializer
-      }
-      declaratorList.add(InitDeclarator(initDeclarator, Empty()))
-      if (tok is Punctuator && tok.pct == Punctuators.SEMICOLON) break
-      if (tok is Punctuator && tok.pct == Punctuators.COMMA) {
-        // Expected case; there are chained init-declarators
-        continue
-      } else {
-        // Missing semicolon
-        parserDiagnostic {
-          id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
-        }
-        break
-      }
-    }
-    return Declaration(declSpecs, declaratorList).opt()
-  }
-
   /** C standard: A.2.4, 6.9 */
   private tailrec fun parseTranslationUnit() {
-    if (tokens.isEmpty()) return
-//    parseFunctionDefinition().ifPresent {
-//      root.decls.add(it as ExternalDeclaration)
-//      return parseTranslationUnit()
-//    }
-    parseDeclaration().ifPresent {
-      root.addExternalDeclaration(it)
-      return parseTranslationUnit()
-    }
     if (tokens[0] !is ErrorToken) {
       // If we got here it means this isn't actually a translation unit
       // So spit out an error and eat tokens until the next semicolon/line
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
       }
-      while ((tokens[0] as? Punctuator)?.pct != Punctuators.SEMICOLON &&
+      while (tokens.isNotEmpty() && (tokens[0] as? Punctuator)?.pct != Punctuators.SEMICOLON &&
           (tokens[0] as? Punctuator)?.pct != Punctuators.NEWLINE) eat()
-      // Also eat the final token
-      eat()
+      // Also eat the final token if there is one
+      if (tokens.isNotEmpty()) eat()
     }
-    parseTranslationUnit()
+    parseDeclaration().ifPresent {
+      root.addExternalDeclaration(it)
+    }
+    if (tokens.isEmpty()) return
+    else parseTranslationUnit()
   }
 }
