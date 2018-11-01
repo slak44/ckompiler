@@ -381,7 +381,8 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   /** C standard: A.2.4, 6.9 */
   private tailrec fun parseTranslationUnit() {
-    if (tokens[0] !is ErrorToken) {
+    if (tokens.isEmpty()) return
+    if (tokens[0] is ErrorToken) {
       // If we got here it means this isn't actually a translation unit
       // So spit out an error and eat tokens until the next semicolon/line
       parserDiagnostic {
