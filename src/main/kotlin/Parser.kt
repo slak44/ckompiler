@@ -316,12 +316,6 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     }
   }
 
-//  private fun parsePointer(): List<Token> {
-//    if ((tokens[0] as? Punctuator)?.pct != Punctuators.STAR) return emptyList()
-//    val endIdx = tokens.indexOfFirst { it !is Keyword || it.value !in typeQualifier }
-//
-//  }
-
   private fun parseDeclarator(endIdx: Int): Optional<ASTNode> {
     // FIXME missing pointer parsing
     return parseDirectDeclarator(endIdx)
