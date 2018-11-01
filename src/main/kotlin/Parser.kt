@@ -32,8 +32,10 @@ sealed class ExternalDeclaration : ASTNode
 // FIXME this is a lot more complex than this
 data class FunctionDefinition(val name: String) : ExternalDeclaration()
 
-// FIXME this is a lot more complex than this
-data class Declaration(val name: String) : ExternalDeclaration()
+data class InitDeclarator(val declarator: ASTNode, val initializer: Optional<ASTNode>)
+
+data class Declaration(val declSpecs: List<Keywords>,
+                       val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
 
 enum class StorageClassSpecifier {
   TYPEDEF, EXTERN, STATIC, THREAD_LOCAL, AUTO, REGISTER;
@@ -203,7 +205,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDeclSpecifiers(): List<Keyword> {
+  private fun parseDeclSpecifiers(): List<Keywords> {
     if (tokens[0] !is Keyword) return emptyList()
     val endIdx = tokens.indexOfFirst {
       if (it !is Keyword) return@indexOfFirst true
@@ -213,7 +215,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
           it.value !in functionSpecifier) return@indexOfFirst true
       return@indexOfFirst false
     }
-    val keywords = tokens.slice(0 until endIdx).map { it as Keyword }
+    val keywords = tokens.slice(0 until endIdx).map { (it as Keyword).value }
     eatList(endIdx)
     return keywords
   }
@@ -311,8 +313,8 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     // It must have at least one to be valid grammar
     if (declSpecs.isEmpty()) return Empty()
     // Function definitions can only have extern or static as storage class specifiers
-    val storageClass = declSpecs.asSequence().filter { it.value in storageClassSpecifier }
-    if (storageClass.any { it.value != Keywords.EXTERN && it.value != Keywords.STATIC }) {
+    val storageClass = declSpecs.asSequence().filter { it in storageClassSpecifier }
+    if (storageClass.any { it != Keywords.EXTERN && it != Keywords.STATIC }) {
       parserDiagnostic { }
     }
 
@@ -321,7 +323,38 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   private fun parseDeclaration(): Optional<ASTNode> {
     val declSpecs = parseDeclSpecifiers()
-    TODO()
+    // FIXME validate declSpecs according to standard 6.7.{1-6}
+    val declaratorList = mutableListOf<InitDeclarator>()
+    while (true) {
+      val initDeclarator = parseDeclarator(tokens).orElse {
+        // Simply not a declaration, move on
+        if (declSpecs.isEmpty()) return Empty()
+        // This means that there were decl specs, but no declarator, which is a problem
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_DECL
+        }
+        return ErrorNode().opt()
+      }
+      // Get rid of newlines
+      while ((tokens[0] as? Punctuator)?.pct == Punctuators.NEWLINE) eat()
+      val tok = tokens[0]
+      if (tok is Punctuator && tok.pct == Punctuators.ASSIGN) {
+        // FIXME parse initializer
+      }
+      declaratorList.add(InitDeclarator(initDeclarator, Empty()))
+      if (tok is Punctuator && tok.pct == Punctuators.SEMICOLON) break
+      if (tok is Punctuator && tok.pct == Punctuators.COMMA) {
+        // Expected case; there are chained init-declarators
+        continue
+      } else {
+        // Missing semicolon
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
+        }
+        break
+      }
+    }
+    return Declaration(declSpecs, declaratorList).opt()
   }
 
   /** C standard: A.2.4, 6.9 */

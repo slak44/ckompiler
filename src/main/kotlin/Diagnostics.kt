@@ -17,6 +17,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNMATCHED_PAREN(ERROR, "Expected '%s'"),
   MATCH_PAREN_TARGET(OTHER, "To match this '%s"),
   EXPECTED_DECL(ERROR, "Expected declarator"),
+  EXPECTED_SEMI_AFTER_DECL(ERROR, "Expected ';' after declarator"),
 }
 
 enum class DiagnosticKind(val text: String) {
