@@ -1,6 +1,11 @@
 import org.junit.Test
 import kotlin.test.assertEquals
 
+/**
+ * These are called "pseudo" unit tests, because while each of them technically tests a single code
+ * path within the lexer, an entire [Lexer] class is instantiated for each test; from that point of
+ * view, they more closely resemble integration tests.
+ */
 class LexerPseudoUnitTests {
   @Test
   fun identifiers() {
