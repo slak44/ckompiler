@@ -4,6 +4,25 @@ private val logger = KotlinLogging.logger("Parser")
 
 interface ASTNode
 
+class RootNode : ASTNode {
+  private val decls = mutableListOf<ASTNode>()
+
+  fun getDeclarations(): List<ASTNode> = decls
+
+  /**
+   * @param n either [ExternalDeclaration] or [ErrorNode]
+   * @throws InternalCompilerError if the parameter is of the wrong type
+   */
+  fun addExternalDeclaration(n: ASTNode) {
+    if (n !is ExternalDeclaration && n !is ErrorNode) {
+      logger.throwICE("parseDeclaration() didn't return an ExternalDeclaration") {
+        "token: $n"
+      }
+    }
+    decls.add(n)
+  }
+}
+
 class ErrorNode : ASTNode
 
 data class IdentifierNode(val name: String) : ASTNode
@@ -88,22 +107,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   private val tokens = tokens.toMutableList()
   val inspections = mutableListOf<Diagnostic>()
 
-  private val root = object : ASTNode {
-    private val decls = mutableListOf<ASTNode>()
-
-    /**
-     * @param n either [ExternalDeclaration] or [ErrorNode]
-     * @throws InternalCompilerError if the parameter is of the wrong type
-     */
-    fun addExternalDeclaration(n: ASTNode) {
-      if (n !is ExternalDeclaration && n !is ErrorNode) {
-        logger.throwICE("parseDeclaration() didn't return an ExternalDeclaration") {
-          "token: $n"
-        }
-      }
-      decls.add(n)
-    }
-  }
+  val root = RootNode()
 
   init {
     parseTranslationUnit()
