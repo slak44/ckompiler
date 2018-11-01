@@ -88,13 +88,26 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   private val tokens = tokens.toMutableList()
   val inspections = mutableListOf<Diagnostic>()
 
+  private val root = object : ASTNode {
+    private val decls = mutableListOf<ASTNode>()
+
+    /**
+     * @param n either [ExternalDeclaration] or [ErrorNode]
+     * @throws InternalCompilerError if the parameter is of the wrong type
+     */
+    fun addExternalDeclaration(n: ASTNode) {
+      if (n !is ExternalDeclaration && n !is ErrorNode) {
+        logger.throwICE("parseDeclaration() didn't return an ExternalDeclaration") {
+          "token: $n"
+        }
+      }
+      decls.add(n)
+    }
+  }
+
   init {
     parseTranslationUnit()
     inspections.forEach { it.print() }
-  }
-
-  private val root = object : ASTNode {
-    val decls = mutableListOf<ExternalDeclaration>()
   }
 
   private fun eat() {
@@ -259,8 +272,10 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   /** C standard: A.2.2, 6.7 */
   private fun parseDirectDeclarator(tokens: List<Token>): Optional<ASTNode> {
+    // FIXME check this condition for correctness
+    if (tokens.isEmpty()) return Empty()
     val tok = tokens[0]
-    val next = tokens[1]
+    val next = tokens.getOrNull(1)
     when {
       tok is Punctuator && tok.pct == Punctuators.LPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
@@ -365,7 +380,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 //      return parseTranslationUnit()
 //    }
     parseDeclaration().ifPresent {
-      root.decls.add(it as ExternalDeclaration)
+      root.addExternalDeclaration(it)
       return parseTranslationUnit()
     }
     if (tokens[0] !is ErrorToken) {
