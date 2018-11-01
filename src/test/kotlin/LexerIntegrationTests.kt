@@ -65,4 +65,15 @@ class LexerIntegrationTests {
         Identifier("other")
     ), l.tokens.filterNewlines())
   }
+
+  @Test
+  fun declaration() {
+    val l = Lexer("int a = 1;\n", source)
+    l.assertNoDiagnostics()
+    assertEquals(listOf(
+        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL),
+        Punctuator(Punctuators.SEMICOLON), Punctuator(Punctuators.NEWLINE)
+    ), l.tokens)
+  }
 }
