@@ -29,4 +29,13 @@ class ParserPseudoUnitTests {
         listOf(InitDeclarator(IdentifierNode("a"), Empty())))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
+
+  @Test
+  fun declarationMultipleDecls() {
+    val p = prepareCode("int a, b, c;")
+    p.assertNoDiagnostics()
+    val expected = Declaration(listOf(Keywords.INT),
+        listOf("a", "b", "c").map { InitDeclarator(IdentifierNode(it), Empty()) })
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
 }
