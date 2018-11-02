@@ -1,4 +1,5 @@
 import mu.KotlinLogging
+import java.util.*
 
 private val logger = KotlinLogging.logger("Parser")
 
@@ -95,42 +96,77 @@ private val typeQualifier = listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.V
 private val functionSpecifier = listOf(Keywords.INLINE, Keywords.NORETURN)
 // FIXME alignment specifier
 
-
 /**
  * Parses a translation unit.
  *
  * C standard: A.2.4, 6.9
  */
 class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
-  // FIXME try to remove mutability if possible
-  private var consumed: Int = 0
-  private val tokens = tokens.toMutableList()
-  val inspections = mutableListOf<Diagnostic>()
-
+  private val tokStack = Stack<List<Token>>()
+  private val idxStack = Stack<Int>()
+  val diags = mutableListOf<Diagnostic>()
   val root = RootNode()
 
   init {
-    parseTranslationUnit()
-    inspections.forEach { it.print() }
+    tokStack.push(tokens)
+    idxStack.push(0)
+    translationUnit()
+    diags.forEach { it.print() }
   }
 
-  private fun eat() {
-    consumed++
-    tokens.removeAt(0)
+  private fun <T> tokenContext(tokens: List<Token>, block: (List<Token>) -> T): T {
+    tokStack.push(tokens)
+    idxStack.push(0)
+    val result = block(tokens)
+    tokStack.pop()
+    val eatenInContext = idxStack.pop()
+    eatList(eatenInContext)
+    return result
   }
+
+  /** @returns the first (real) index matching the condition, or -1 if there is none */
+  private fun indexOfFirst(block: (Token) -> Boolean): Int {
+    val idx = tokStack.peek().drop(idxStack.peek()).indexOfFirst(block)
+    return if (idx == -1) -1 else idx + idxStack.peek()
+  }
+
+  /**
+   * Get the tokens until the given index.
+   * Eats the tokens.
+   * @param endIdx the (real) idx of the sublist end (exclusive)
+   */
+  private fun takeUntil(endIdx: Int): List<Token> {
+    val c = idxStack.peek()
+    val list = tokStack.peek().subList(c, endIdx)
+    eatList(endIdx)
+    return list
+  }
+
+  private fun isEaten(): Boolean = idxStack.peek() == tokStack.peek().size - 1
+
+  private fun current(): Token = tokStack.peek()[idxStack.peek()]
+
+  private fun lookahead(): Token = tokStack.peek()[idxStack.peek() + 1]
+
+  private fun eat() = eatList(1)
 
   private fun eatList(length: Int) {
-    consumed += length
-    for (i in 0 until length) tokens.removeAt(0)
+    val old = idxStack.pop()
+    if (old + length >= tokStack.peek().size) {
+      // Don't go over the end
+      idxStack.push(old)
+      return
+    }
+    idxStack.push(old + length)
   }
 
   private fun eatNewlines() {
-    while (tokens[0].asPunct() == Punctuators.NEWLINE) eat()
+    eatList(indexOfFirst { it.asPunct() != Punctuators.NEWLINE } - idxStack.peek())
   }
 
   // FIXME track col/line data via tokens
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
-    inspections.add(createDiagnostic {
+    diags.add(createDiagnostic {
       sourceFileName = srcFileName
       origin = "Parser"
       this.build()
@@ -152,7 +188,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     var lhs = lhsInit
     while (true) {
       eatNewlines()
-      val op = tokens[0].asOperator() ?: break
+      val op = current().asOperator() ?: break
       if (op !in Operators.binaryExprOps || op.precedence <= minPrecedence) break
       eat()
       var rhs = parsePrimaryExpr().ifNull {
@@ -164,7 +200,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       eat()
       while (true) {
         eatNewlines()
-        val innerOp = tokens[0].asOperator() ?: break
+        val innerOp = current().asOperator() ?: break
         if (op !in Operators.binaryExprOps) break
         if (innerOp.precedence <= op.precedence &&
             !(innerOp.assoc == Associativity.RIGHT_TO_LEFT && innerOp.precedence == op.precedence)) {
@@ -187,7 +223,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
    * @returns the [ASTNode] of the terminal, or [Empty] if no primary expr was found
    */
   private fun parseTerminal(): ASTNode? {
-    val tok = tokens[0]
+    val tok = current()
     when {
       tok is Identifier -> return IdentifierNode(tok.name)
       tok is IntegralConstant -> {
@@ -211,8 +247,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       }
       tok is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding)
       tok.asPunct() == Punctuators.LPAREN -> {
-        val next = tokens[1]
-        if (next.asPunct() == Punctuators.RPAREN) {
+        if (lookahead().asPunct() == Punctuators.RPAREN) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_EXPR
           }
@@ -227,8 +262,8 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   /** C standard: A.2.2, 6.7 */
   private fun parseDeclSpecifiers(): List<Keywords> {
-    if (tokens[0] !is Keyword) return emptyList()
-    val endIdx = tokens.indexOfFirst {
+    if (current() !is Keyword) return emptyList()
+    val endIdx = indexOfFirst {
       if (it !is Keyword) return@indexOfFirst true
       if (it.value !in storageClassSpecifier &&
           it.value !in typeSpecifier &&
@@ -236,20 +271,18 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
           it.value !in functionSpecifier) return@indexOfFirst true
       return@indexOfFirst false
     }
-    val keywords = tokens.slice(0 until endIdx).map { it.asKeyword()!! }
-    eatList(keywords.size)
-    return keywords
+    return takeUntil(endIdx).map { it.asKeyword()!! }
   }
 
   /**
    * Find matching parenthesis in token list. Handles nested parens. Prints errors about unmatched
    * parens.
-   * @returns -1 if a [Punctuators.SEMICOLON] was found before parens were balanced, or the idx of
-   * the rightmost paren otherwise
+   * @returns -1 if a [Punctuators.SEMICOLON] was found before parens were balanced, or the (real)
+   * idx of the rightmost paren otherwise
    */
-  private fun findParenMatch(tokens: List<Token>, lparen: Punctuators, rparen: Punctuators): Int {
+  private fun findParenMatch(lparen: Punctuators, rparen: Punctuators): Int {
     var stack = 0
-    val end = tokens.indexOfFirst {
+    val end = indexOfFirst {
       if (it !is Punctuator) return@indexOfFirst false
       when (it.pct) {
         lparen -> {
@@ -264,7 +297,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         else -> return@indexOfFirst false
       }
     }
-    if (end == -1 || (tokens[end] as Punctuator).pct != rparen) {
+    if (end == -1 || tokStack.peek()[end].asPunct() != rparen) {
       parserDiagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
         formatArgs(rparen.s)
@@ -279,44 +312,40 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(endIdx: Int): ASTNode? {
-    val tokens = tokens.slice(0 until endIdx)
-    // FIXME check this condition for correctness
-    if (tokens.isEmpty()) return null
-    val tok = tokens[0]
-    val next = tokens.getOrNull(1)
+  private fun parseDirectDeclarator(endIdx: Int): ASTNode? = tokenContext(takeUntil(endIdx)) {
+    if (it.isEmpty()) return@tokenContext null
     when {
-      tok.asPunct() == Punctuators.LPAREN -> {
-        val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
-        if (end == -1) return ErrorNode()
+      current().asPunct() == Punctuators.LPAREN -> {
+        val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+        if (end == -1) return@tokenContext ErrorNode()
         // If the declarator slice will be empty, error out
         if (1 == end - 1) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_DECL
           }
-          return ErrorNode()
+          return@tokenContext ErrorNode()
         }
         // FIXME handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
-        return parseDeclarator(end)
+        return@tokenContext parseDeclarator(end)
       }
-      next?.asPunct() == Punctuators.LPAREN -> {
-        val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
-        if (end == -1) return ErrorNode()
+      it.size > 1 && lookahead().asPunct() == Punctuators.LPAREN -> {
+        val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+        if (end == -1) return@tokenContext ErrorNode()
         // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
-        logger.throwICE("Unimplemented grammar") { tokens }
+        logger.throwICE("Unimplemented grammar") { tokStack.peek() }
       }
-      next?.asPunct() == Punctuators.LSQPAREN -> {
-        val end = findParenMatch(tokens, Punctuators.LSQPAREN, Punctuators.RSQPAREN)
-        if (end == -1) return ErrorNode()
+      it.size > 1 && lookahead().asPunct() == Punctuators.LSQPAREN -> {
+        val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+        if (end == -1) return@tokenContext ErrorNode()
         // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
-        logger.throwICE("Unimplemented grammar") { tokens }
+        logger.throwICE("Unimplemented grammar") { tokStack.peek() }
       }
-      tok is Identifier -> {
-        val node = IdentifierNode(tok.name)
+      current() is Identifier -> {
+        val node = IdentifierNode((current() as Identifier).name)
         eat()
-        return node
+        return@tokenContext node
       }
-      else -> return null
+      else -> return@tokenContext null
     }
   }
 
@@ -328,14 +357,14 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   private fun parseInitializer(): ASTNode? {
     eat() // Get rid of "="
     // Error case, no initializer here
-    if (tokens[0].asPunct() == Punctuators.COMMA || tokens[0].asPunct() == Punctuators.SEMICOLON) {
+    if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
       }
       return ErrorNode()
     }
     // Parse initializer-list
-    if (tokens[0].asPunct() == Punctuators.LBRACKET) {
+    if (current().asPunct() == Punctuators.LBRACKET) {
       TODO("parse initializer-list (A.2.2/6.7.9)")
     }
     // Simple expression
@@ -347,7 +376,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     // FIXME validate declSpecs according to standard 6.7.{1-6}
     val declaratorList = mutableListOf<InitDeclarator>()
     while (true) {
-      val initDeclarator = parseDeclarator(tokens.size).ifNull {
+      val initDeclarator = parseDeclarator(tokStack.peek().size).ifNull {
         // Simply not a declaration, move on
         if (declSpecs.isEmpty()) return@parseDeclaration null
         // This means that there were decl specs, but no declarator, which is a problem
@@ -358,13 +387,13 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       }
       eatNewlines()
       val initializer =
-          if (tokens[0].asPunct() == Punctuators.ASSIGN) parseInitializer() else null
+          if (current().asPunct() == Punctuators.ASSIGN) parseInitializer() else null
       declaratorList.add(InitDeclarator(initDeclarator, initializer))
-      if (tokens[0].asPunct() == Punctuators.SEMICOLON) {
+      if (current().asPunct() == Punctuators.SEMICOLON) {
         eat()
         break
       }
-      if (tokens[0].asPunct() == Punctuators.COMMA) {
+      if (current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained init-declarators
         eat()
         continue
@@ -380,39 +409,39 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     return Declaration(declSpecs, declaratorList)
   }
 
-  /** C standard: A.2.4, A.2.2, 6.9.1 */
-  private fun parseFunctionDefinition(): ASTNode? {
-    val declSpecs = parseDeclSpecifiers()
-    // It must have at least one to be valid grammar
-    if (declSpecs.isEmpty()) return null
-    // Function definitions can only have extern or static as storage class specifiers
-    val storageClass = declSpecs.asSequence().filter { it in storageClassSpecifier }
-    if (storageClass.any { it != Keywords.EXTERN && it != Keywords.STATIC }) {
-      parserDiagnostic { }
-    }
-
-    TODO()
-  }
+//  /** C standard: A.2.4, A.2.2, 6.9.1 */
+//  private fun parseFunctionDefinition(): ASTNode? {
+//    val declSpecs = parseDeclSpecifiers()
+//    // It must have at least one to be valid grammar
+//    if (declSpecs.isEmpty()) return null
+//    // Function definitions can only have extern or static as storage class specifiers
+//    val storageClass = declSpecs.asSequence().filter { it in storageClassSpecifier }
+//    if (storageClass.any { it != Keywords.EXTERN && it != Keywords.STATIC }) {
+//      parserDiagnostic { }
+//    }
+//
+//    TODO()
+//  }
 
   /** C standard: A.2.4, 6.9 */
-  private tailrec fun parseTranslationUnit() {
-    if (tokens.isEmpty()) return
-    if (tokens[0] is ErrorToken) {
+  private tailrec fun translationUnit() {
+    if (isEaten()) return
+    if (current() is ErrorToken) {
       // If we got here it means this isn't actually a translation unit
       // FIXME does this code path make any sense?
       // So spit out an error and eat tokens until the next semicolon/line
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
       }
-      while (tokens.isNotEmpty() && tokens[0].asPunct() != Punctuators.SEMICOLON &&
-          tokens[0].asPunct() != Punctuators.NEWLINE) eat()
+      while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON &&
+          current().asPunct() != Punctuators.NEWLINE) eat()
       // Also eat the final token if there is one
-      if (tokens.isNotEmpty()) eat()
+      if (tokStack.firstElement().isNotEmpty()) eat()
     }
     parseDeclaration()?.let {
       root.addExternalDeclaration(it)
     }
-    if (tokens.isEmpty()) return
-    else parseTranslationUnit()
+    if (isEaten()) return
+    else translationUnit()
   }
 }
