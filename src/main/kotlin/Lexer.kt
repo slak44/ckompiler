@@ -342,10 +342,10 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     if (src.isEmpty()) return
     // Ordering:
     // keyword before identifier
-    // floatingConstant before integerConstant
     // characterConstant before identifier
     // stringLiteral before identifier
-    // floatingConstant before s
+    // floatingConstant before integerConstant
+    // floatingConstant before punct
 
     // Only consume one in each iteration (short-circuits with || if consumed)
     keyword(src).consumeIfPresent() ||
