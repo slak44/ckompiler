@@ -73,6 +73,16 @@ class ParserPseudoUnitTests {
   }
 
   @Test
+  fun declarationMultipleDeclarations() {
+    val p = prepareCode("int a; int b; int c;")
+    p.assertNoDiagnostics()
+    val expected = listOf("a", "b", "c").map {
+      Declaration(listOf(Keywords.INT), listOf(InitDeclarator(IdentifierNode(it))))
+    }
+    assertEquals(expected, p.root.getDeclarations())
+  }
+
+  @Test
   fun declarationWithSimpleInitializer() {
     val p = prepareCode("int a = 1;")
     p.assertNoDiagnostics()
