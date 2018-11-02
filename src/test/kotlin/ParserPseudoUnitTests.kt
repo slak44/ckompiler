@@ -10,7 +10,7 @@ class ParserPseudoUnitTests {
   private fun prepareCode(s: String): Parser {
     val lexer = Lexer(s, source)
     lexer.assertNoDiagnostics()
-    return Parser(lexer.tokens, source)
+    return Parser(lexer.tokens, source, s, lexer.tokStartIdxes)
   }
 
   private fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)

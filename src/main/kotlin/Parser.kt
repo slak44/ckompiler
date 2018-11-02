@@ -82,8 +82,15 @@ private val functionSpecifier = listOf(Keywords.INLINE, Keywords.NORETURN)
  * Parses a translation unit.
  *
  * C standard: A.2.4, 6.9
+ *
+ * @param tokens list of tokens to parse
+ * @param srcFileName the name of the file in which the tokens were extracted from
+ * @param tokStartIdxes a list of indices in the original source string, for the start of each token
  */
-class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
+class Parser(tokens: List<Token>,
+             private val srcFileName: SourceFileName,
+             private val srcText: String,
+             private val tokStartIdxes: List<Int>) {
   private val tokStack = Stack<List<Token>>()
   private val idxStack = Stack<Int>()
   val diags = mutableListOf<Diagnostic>()
@@ -94,6 +101,18 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     idxStack.push(0)
     translationUnit()
     diags.forEach { it.print() }
+  }
+
+  /**
+   * Get the [IntRange] spanned by the [Token] in the original code string.
+   * FIXME write tests for the ranges, and make sure the offsets in the diags are correct
+   * @param offset the offset in the topmost token list, eg -1 to take the token before the one
+   * given by [current], or 1 for the one in [lookahead].
+   */
+  private fun range(offset: Int): IntRange {
+    // FIXME this sum thing is absolutely broken
+    val startIdx = tokStartIdxes[idxStack.sum()]
+    return startIdx until startIdx + tokStack.peek()[idxStack.peek() + offset].consumedChars
   }
 
   private fun <T> tokenContext(tokens: List<Token>, block: (List<Token>) -> T): T {
@@ -136,10 +155,10 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     if (idx == -1) return else eatList(idx - idxStack.peek())
   }
 
-  // FIXME track col/line data via tokens
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
     diags.add(createDiagnostic {
       sourceFileName = srcFileName
+      sourceText = srcText
       origin = "Parser"
       this.build()
     })
@@ -149,6 +168,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     val primary: ASTNode = parsePrimaryExpr().ifNull {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
+        columns(range(1))
       }
       return@tokenContext ErrorNode()
     }
@@ -167,6 +187,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       var rhs = parsePrimaryExpr().ifNull {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_PRIMARY
+          columns(range(0))
         }
         return ErrorNode()
       }
@@ -195,6 +216,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       if (lookahead().asPunct() == Punctuators.RPAREN) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_EXPR
+          columns(range(1))
         }
         ErrorNode()
       }
@@ -238,6 +260,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         } else {
           parserDiagnostic {
             id = DiagnosticId.EMPTY_CHAR_CONSTANT
+            columns(range(0))
           }
           0
         }
@@ -291,10 +314,12 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       parserDiagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
         formatArgs(rparen.s)
+        columns(range(end - idxStack.peek()))
       }
       parserDiagnostic {
         id = DiagnosticId.MATCH_PAREN_TARGET
         formatArgs(lparen.s)
+        columns(range(0))
       }
       return -1
     }
@@ -312,6 +337,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         if (1 == end - 1) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_DECL
+            columns(range(1))
           }
           return@tokenContext ErrorNode()
         }
@@ -350,6 +376,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
+        columns(range(0))
       }
       return ErrorNode()
     }
@@ -372,6 +399,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         // This means that there were decl specs, but no declarator, which is a problem
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_DECL
+          columns(range(0))
         }
         return@parseDeclaration ErrorNode()
       }
@@ -379,6 +407,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       if (isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
+          // FIXME add missing columns call, it crashes (?)
         }
         declaratorList.add(InitDeclarator(initDeclarator, null))
         break
@@ -398,6 +427,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         eat()
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
+          columns(range(0))
         }
         break
       }
@@ -428,6 +458,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       // So spit out an error and eat tokens until the next semicolon/line
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
+        columns(range(0))
       }
       while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON &&
           current().asPunct() != Punctuators.NEWLINE) eat()

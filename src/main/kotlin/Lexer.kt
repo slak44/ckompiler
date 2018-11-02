@@ -67,6 +67,7 @@ data class CharLiteral(
     val encoding: CharEncoding) : CharSequence(data.length, encoding.prefixLength)
 
 class Lexer(private val textSource: String, private val srcFileName: SourceFileName) {
+  val tokStartIdxes = mutableListOf<Int>()
   val tokens = mutableListOf<Token>()
   val inspections = mutableListOf<Diagnostic>()
   private var src: String = textSource
@@ -317,6 +318,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
   private fun <T : Token> Optional<T>.consumeIfPresent(): Boolean {
     ifPresent {
       tokens.add(it)
+      tokStartIdxes.add(currentOffset)
       currentOffset += it.consumedChars
       src = src.drop(it.consumedChars)
       return true
@@ -339,8 +341,11 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
 
   private tailrec fun tokenize() {
     src = src.trimStart {
+      if (it == '\n') {
+        tokStartIdxes.add(currentOffset)
+        tokens.add(Punctuator(Punctuators.NEWLINE))
+      }
       currentOffset++
-      if (it == '\n') tokens.add(Punctuator(Punctuators.NEWLINE))
       return@trimStart it.isWhitespace()
     }
     if (src.isEmpty()) return
