@@ -3,3 +3,4 @@ out/
 .idea/workspace.xml
 .idea/codeStyles/Project.xml
 .idea/uiDesigner.xml
+.idea/kotlinc.xml

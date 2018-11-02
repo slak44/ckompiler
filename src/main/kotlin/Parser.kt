@@ -28,7 +28,9 @@ class ErrorNode : ASTNode
 
 data class IdentifierNode(val name: String) : ASTNode
 
-data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : ASTNode
+data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : ASTNode {
+  override fun toString() = "int $value ${suffix.name.toLowerCase()}"
+}
 
 data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) : ASTNode
 
@@ -44,7 +46,9 @@ data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : AS
 
 data class StringLiteralNode(val string: String, val encoding: StringEncoding) : ASTNode
 
-data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : ASTNode
+data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : ASTNode {
+  override fun toString() = "($lhs $op $rhs)"
+}
 
 /** C standard: A.2.4 */
 sealed class ExternalDeclaration : ASTNode
@@ -132,17 +136,12 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   /**
    * Get the tokens until the given index.
-   * Eats the tokens.
+   * Eats nothing.
    * @param endIdx the (real) idx of the sublist end (exclusive)
    */
-  private fun takeUntil(endIdx: Int): List<Token> {
-    val c = idxStack.peek()
-    val list = tokStack.peek().subList(c, endIdx)
-    eatList(endIdx)
-    return list
-  }
+  private fun takeUntil(endIdx: Int): List<Token> = tokStack.peek().subList(idxStack.peek(), endIdx)
 
-  private fun isEaten(): Boolean = idxStack.peek() == tokStack.peek().size - 1
+  private fun isEaten(): Boolean = idxStack.peek() >= tokStack.peek().size
 
   private fun current(): Token = tokStack.peek()[idxStack.peek()]
 
@@ -152,16 +151,17 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
 
   private fun eatList(length: Int) {
     val old = idxStack.pop()
-    if (old + length >= tokStack.peek().size) {
-      // Don't go over the end
-      idxStack.push(old)
-      return
-    }
+//    if (old + length >= tokStack.peek().size) {
+//      // Don't go over the end
+//      idxStack.push(old)
+//      return
+//    }
     idxStack.push(old + length)
   }
 
   private fun eatNewlines() {
-    eatList(indexOfFirst { it.asPunct() != Punctuators.NEWLINE } - idxStack.peek())
+    val idx = indexOfFirst { it.asPunct() != Punctuators.NEWLINE }
+    if (idx == -1) return else eatList(idx - idxStack.peek())
   }
 
   // FIXME track col/line data via tokens
@@ -173,23 +173,24 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     })
   }
 
-  private fun parseExpr(): ASTNode {
+  private fun parseExpr(endIdx: Int): ASTNode = tokenContext(takeUntil(endIdx)) {
     val primary: ASTNode = parsePrimaryExpr().ifNull {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
       }
-      return@parseExpr ErrorNode()
+      return@tokenContext ErrorNode()
     }
-    eat()
-    return parseExprImpl(primary, 0)
+    return@tokenContext parseExprImpl(primary, 0)
   }
 
   private fun parseExprImpl(lhsInit: ASTNode, minPrecedence: Int): ASTNode {
     var lhs = lhsInit
     while (true) {
       eatNewlines()
+      if (isEaten()) break
       val op = current().asOperator() ?: break
-      if (op !in Operators.binaryExprOps || op.precedence <= minPrecedence) break
+      if (op !in Operators.binaryExprOps) break
+      if (op.precedence < minPrecedence) break
       eat()
       var rhs = parsePrimaryExpr().ifNull {
         parserDiagnostic {
@@ -197,44 +198,69 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         }
         return ErrorNode()
       }
-      eat()
       while (true) {
         eatNewlines()
+        if (isEaten()) break
         val innerOp = current().asOperator() ?: break
-        if (op !in Operators.binaryExprOps) break
+        if (innerOp !in Operators.binaryExprOps) break
         if (innerOp.precedence <= op.precedence &&
             !(innerOp.assoc == Associativity.RIGHT_TO_LEFT && innerOp.precedence == op.precedence)) {
           break
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
-        eat()
       }
       lhs = BinaryNode(op, lhs, rhs)
     }
     return lhs
   }
 
-  // FIXME: actually implement this
-  private fun parsePrimaryExpr(): ASTNode? = parseTerminal()
+  /**
+   * C standard: A.2.1, 6.4.4
+   * @see parseTerminal
+   */
+  private fun parsePrimaryExpr(): ASTNode? = when {
+    current().asPunct() == Punctuators.LPAREN -> {
+      if (lookahead().asPunct() == Punctuators.RPAREN) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_EXPR
+        }
+        ErrorNode()
+      }
+      val endParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+      eat() // Get rid of the LPAREN
+      val expr = parseExpr(endParenIdx)
+      eat() // Get rid of the RPAREN
+      expr
+    }
+    // FIXME implement generic-selection A.2.1/6.5.1.1
+    else -> {
+      parseTerminal()?.let {
+        eat()
+        it
+      }
+    }
+  }
 
   /**
+   * All terminals are one token long. Does not eat anything.
    * C standard: A.2.1, 6.5.1, 6.4.4.4
    * @see CharacterConstantNode
-   * @returns the [ASTNode] of the terminal, or [Empty] if no primary expr was found
+   * @returns the [ASTNode] of the terminal, or null if no terminal was found
    */
   private fun parseTerminal(): ASTNode? {
     val tok = current()
-    when {
-      tok is Identifier -> return IdentifierNode(tok.name)
-      tok is IntegralConstant -> {
+    when (tok) {
+      is Identifier -> return IdentifierNode(tok.name)
+      is IntegralConstant -> {
         // FIXME conversions might fail here?
         return IntegerConstantNode(tok.n.toLong(tok.radix.toInt()), tok.suffix)
       }
-      tok is FloatingConstant -> {
+      is FloatingConstant -> {
         // FIXME conversions might fail here?
         return FloatingConstantNode(tok.f.toDouble(), tok.suffix)
       }
-      tok is CharLiteral -> {
+      // FIXME handle enum constants
+      is CharLiteral -> {
         val char = if (tok.data.isNotEmpty()) {
           tok.data[0].toInt()
         } else {
@@ -245,17 +271,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         }
         return CharacterConstantNode(char, tok.encoding)
       }
-      tok is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding)
-      tok.asPunct() == Punctuators.LPAREN -> {
-        if (lookahead().asPunct() == Punctuators.RPAREN) {
-          parserDiagnostic {
-            id = DiagnosticId.EXPECTED_EXPR
-          }
-          return ErrorNode()
-        }
-        return parseExpr()
-      }
-      // FIXME implement generic-selection A.2.1/6.5.1.1
+      is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding)
       else -> return null
     }
   }
@@ -271,7 +287,9 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
           it.value !in functionSpecifier) return@indexOfFirst true
       return@indexOfFirst false
     }
-    return takeUntil(endIdx).map { it.asKeyword()!! }
+    val k = takeUntil(endIdx).map { it.asKeyword()!! }
+    eatList(k.size)
+    return k
   }
 
   /**
@@ -368,7 +386,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       TODO("parse initializer-list (A.2.2/6.7.9)")
     }
     // Simple expression
-    return parseExpr()
+    return parseExpr(tokStack.peek().size)
   }
 
   private fun parseDeclaration(): ASTNode? {
