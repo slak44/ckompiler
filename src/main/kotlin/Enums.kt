@@ -66,7 +66,7 @@ enum class Punctuators(val s: String) {
   COLON_MORE(":>"), COLON(":"), PERCENT_MORE("%>"),
   PERCENT_COLON_PERCENT_COLON("%:%:"), PERCENT_COLON("%:"), PERCENT("%");
 
-  fun toOperator(): Optional<Operators> = Operators.values().find { it.op == this }.opt()
+  fun asOperator(): Operators? = Operators.values().find { it.op == this }
 }
 
 enum class Associativity { LEFT_TO_RIGHT, RIGHT_TO_LEFT }
@@ -80,11 +80,11 @@ enum class Operators(val op: Punctuators,
   // Postfix
   // FIXME [], func calls
   // FIXME postfix exprs
-//  ACCESS(Punctuators.DOT, 124, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-//  PTR_ACCESS(Punctuators.ARROW, 123, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+//  ACCESS(Punctuators.DOT, 124, Arity.NONE, Associativity.LEFT_TO_RIGHT),
+//  PTR_ACCESS(Punctuators.ARROW, 123, Arity.NONE, Associativity.LEFT_TO_RIGHT),
   // FIXME pct conflict
-//  POSTFIX_INC(Punctuators.INC, 122, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-//  POSTFIX_DEC(Punctuators.DEC, 121, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
+//  POSTFIX_INC(Punctuators.INC, 122, Arity.NONE, Associativity.LEFT_TO_RIGHT),
+//  POSTFIX_DEC(Punctuators.DEC, 121, Arity.NONE, Associativity.LEFT_TO_RIGHT),
   // FIXME initializer list stuff
   // Prefix
   // FIXME pct conflict
@@ -136,16 +136,17 @@ enum class Operators(val op: Punctuators,
   RSH_ASSIGN(Punctuators.RSH_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   AND_ASSIGN(Punctuators.AND_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   XOR_ASSIGN(Punctuators.XOR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
+  OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT);
   // Comma
-  COMMA(Punctuators.COMMA, 10, Arity.BINARY, Associativity.LEFT_TO_RIGHT);
+  // FIXME does it have to be an operator?
+//  COMMA(Punctuators.COMMA, 10, Arity.NONE, Associativity.LEFT_TO_RIGHT);
 
   companion object {
-    val binaryExprOps = listOf(MUL, DIV, MOD, ADD, SUB, LSH, RSH, LT, GT, LEQ, GEQ, EQ, NEQ,
-        BIT_AND, BIT_XOR, BIT_OR, AND, OR, ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, PLUS_ASSIGN,
-        SUB_ASSIGN, LSH_ASSIGN, RSH_ASSIGN, AND_ASSIGN, XOR_ASSIGN, OR_ASSIGN)
+    val binaryExprOps = Operators.values().filter { it.arity == Arity.BINARY }
   }
 }
+
+fun Token.asOperator(): Operators? = asPunct()?.asOperator()
 
 enum class IntegralSuffix(val length: Int) {
   UNSIGNED(1), LONG(1), LONG_LONG(2),

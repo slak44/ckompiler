@@ -137,10 +137,6 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     })
   }
 
-  private fun tokenToOperator(token: Token): Optional<Operators> {
-    return token.asPunct()?.toOperator() ?: Empty()
-  }
-
   private fun parseExpr(): ASTNode {
     val primary: ASTNode = parsePrimaryExpr().ifNull {
       parserDiagnostic {
@@ -156,7 +152,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     var lhs = lhsInit
     while (true) {
       eatNewlines()
-      val op = tokenToOperator(tokens[0]).orNull() ?: break
+      val op = tokens[0].asOperator() ?: break
       if (op !in Operators.binaryExprOps || op.precedence <= minPrecedence) break
       eat()
       var rhs = parsePrimaryExpr().ifNull {
@@ -168,7 +164,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       eat()
       while (true) {
         eatNewlines()
-        val innerOp = tokenToOperator(tokens[0]).orNull() ?: break
+        val innerOp = tokens[0].asOperator() ?: break
         if (op !in Operators.binaryExprOps) break
         if (innerOp.precedence <= op.precedence &&
             !(innerOp.assoc == Associativity.RIGHT_TO_LEFT && innerOp.precedence == op.precedence)) {
