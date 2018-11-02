@@ -16,7 +16,11 @@ class ErrorToken(consumedChars: Int) : Token(consumedChars)
 
 data class Keyword(val value: Keywords) : Token(value.keyword.length)
 
+fun Token.asKeyword(): Keywords? = (this as? Keyword)?.value
+
 data class Punctuator(val pct: Punctuators) : Token(pct.s.length)
+
+fun Token.asPunct(): Punctuators? = (this as? Punctuator)?.pct
 
 data class Identifier(val name: String) : Token(name.length)
 

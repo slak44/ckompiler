@@ -134,7 +134,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   private fun tokenToOperator(token: Token): Optional<Operators> {
-    return (token as? Punctuator)?.pct?.toOperator() ?: Empty()
+    return token.asPunct()?.toOperator() ?: Empty()
   }
 
   private fun parseExpr(): ASTNode {
@@ -206,9 +206,9 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         return CharacterConstantNode(char, tok.encoding).opt()
       }
       tok is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding).opt()
-      tok is Punctuator && tok.pct == Punctuators.LPAREN -> {
+      tok.asPunct() == Punctuators.LPAREN -> {
         val next = tokens[1]
-        if (next is Punctuator && next.pct == Punctuators.RPAREN) {
+        if (next.asPunct() == Punctuators.RPAREN) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_EXPR
           }
@@ -232,7 +232,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
           it.value !in functionSpecifier) return@indexOfFirst true
       return@indexOfFirst false
     }
-    val keywords = tokens.slice(0 until endIdx).map { (it as Keyword).value }
+    val keywords = tokens.slice(0 until endIdx).map { it.asKeyword()!! }
     eatList(keywords.size)
     return keywords
   }
@@ -282,7 +282,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     val tok = tokens[0]
     val next = tokens.getOrNull(1)
     when {
-      tok is Punctuator && tok.pct == Punctuators.LPAREN -> {
+      tok.asPunct() == Punctuators.LPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
         if (end == -1) return ErrorNode().opt()
         // If the declarator slice will be empty, error out
@@ -295,13 +295,13 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         // FIXME handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
         return parseDeclarator(end)
       }
-      next is Punctuator && next.pct == Punctuators.LPAREN -> {
+      next?.asPunct() == Punctuators.LPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
         if (end == -1) return ErrorNode().opt()
         // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
         logger.throwICE("Unimplemented grammar") { tokens }
       }
-      next is Punctuator && next.pct == Punctuators.LSQPAREN -> {
+      next?.asPunct() == Punctuators.LSQPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LSQPAREN, Punctuators.RSQPAREN)
         if (end == -1) return ErrorNode().opt()
         // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
@@ -336,18 +336,17 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         return ErrorNode().opt()
       }
       // Get rid of newlines
-      while ((tokens[0] as? Punctuator)?.pct == Punctuators.NEWLINE) eat()
-      val tok = tokens[0]
-      if (tok is Punctuator && tok.pct == Punctuators.ASSIGN) {
+      while (tokens[0].asPunct() == Punctuators.NEWLINE) eat()
+      if (tokens[0].asPunct() == Punctuators.ASSIGN) {
         // FIXME parse initializer
         TODO()
       }
       declaratorList.add(InitDeclarator(initDeclarator, Empty()))
-      if (tok is Punctuator && tok.pct == Punctuators.SEMICOLON) {
+      if (tokens[0].asPunct() == Punctuators.SEMICOLON) {
         eat()
         break
       }
-      if (tok is Punctuator && tok.pct == Punctuators.COMMA) {
+      if (tokens[0].asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained init-declarators
         eat()
         continue
@@ -386,8 +385,8 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
       }
-      while (tokens.isNotEmpty() && (tokens[0] as? Punctuator)?.pct != Punctuators.SEMICOLON &&
-          (tokens[0] as? Punctuator)?.pct != Punctuators.NEWLINE) eat()
+      while (tokens.isNotEmpty() && tokens[0].asPunct() != Punctuators.SEMICOLON &&
+          tokens[0].asPunct() != Punctuators.NEWLINE) eat()
       // Also eat the final token if there is one
       if (tokens.isNotEmpty()) eat()
     }
