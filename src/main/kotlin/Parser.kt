@@ -124,6 +124,10 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     for (i in 0 until length) tokens.removeAt(0)
   }
 
+  private fun eatNewlines() {
+    while (tokens[0].asPunct() == Punctuators.NEWLINE) eat()
+  }
+
   // FIXME track col/line data via tokens
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
     inspections.add(createDiagnostic {
@@ -150,6 +154,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   private fun parseExprImpl(lhsInit: ASTNode, minPrecedence: Int): ASTNode {
     var lhs = lhsInit
     while (true) {
+      eatNewlines()
       val op = tokenToOperator(tokens[0]).orNull() ?: break
       if (op !in Operators.binaryExprOps || op.precedence <= minPrecedence) break
       eat()
@@ -161,6 +166,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       }
       eat()
       while (true) {
+        eatNewlines()
         val innerOp = tokenToOperator(tokens[0]).orNull() ?: break
         if (op !in Operators.binaryExprOps) break
         if (innerOp.precedence <= op.precedence &&
@@ -321,6 +327,23 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     return parseDirectDeclarator(endIdx)
   }
 
+  private fun parseInitializer(): Optional<ASTNode> {
+    eat() // Get rid of "="
+    // Error case, no initializer here
+    if (tokens[0].asPunct() == Punctuators.COMMA || tokens[0].asPunct() == Punctuators.SEMICOLON) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_EXPR
+      }
+      return ErrorNode().opt()
+    }
+    // Parse initializer-list
+    if (tokens[0].asPunct() == Punctuators.LBRACKET) {
+      TODO("parse initializer-list (A.2.2/6.7.9)")
+    }
+    // Simple expression
+    return parseExpr().opt()
+  }
+
   private fun parseDeclaration(): Optional<ASTNode> {
     val declSpecs = parseDeclSpecifiers()
     // FIXME validate declSpecs according to standard 6.7.{1-6}
@@ -335,13 +358,10 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         }
         return ErrorNode().opt()
       }
-      // Get rid of newlines
-      while (tokens[0].asPunct() == Punctuators.NEWLINE) eat()
-      if (tokens[0].asPunct() == Punctuators.ASSIGN) {
-        // FIXME parse initializer
-        TODO()
-      }
-      declaratorList.add(InitDeclarator(initDeclarator, Empty()))
+      eatNewlines()
+      val initializer =
+          if (tokens[0].asPunct() == Punctuators.ASSIGN) parseInitializer() else Empty()
+      declaratorList.add(InitDeclarator(initDeclarator, initializer))
       if (tokens[0].asPunct() == Punctuators.SEMICOLON) {
         eat()
         break
@@ -381,6 +401,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     if (tokens.isEmpty()) return
     if (tokens[0] is ErrorToken) {
       // If we got here it means this isn't actually a translation unit
+      // FIXME does this code path make any sense?
       // So spit out an error and eat tokens until the next semicolon/line
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
