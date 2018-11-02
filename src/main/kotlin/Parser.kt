@@ -376,8 +376,14 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         return@parseDeclaration ErrorNode()
       }
       eatNewlines()
-      val initializer =
-          if (current().asPunct() == Punctuators.ASSIGN) parseInitializer() else null
+      if (isEaten()) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
+        }
+        declaratorList.add(InitDeclarator(initDeclarator, null))
+        break
+      }
+      val initializer = if (current().asPunct() == Punctuators.ASSIGN) parseInitializer() else null
       declaratorList.add(InitDeclarator(initDeclarator, initializer))
       if (current().asPunct() == Punctuators.SEMICOLON) {
         eat()

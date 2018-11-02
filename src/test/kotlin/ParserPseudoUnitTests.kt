@@ -155,4 +155,12 @@ class ParserPseudoUnitTests {
         listOf(InitDeclarator(IdentifierNode("a"), ErrorNode())))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
+
+  @Test
+  fun declarationMissingSemicolon() {
+    val p = prepareCode("int a")
+    assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER_DECL, p.diags[0].id)
+    val expected = Declaration(listOf(Keywords.INT), listOf(InitDeclarator(IdentifierNode("a"))))
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
 }
