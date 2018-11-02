@@ -92,6 +92,15 @@ class ParserPseudoUnitTests {
   }
 
   @Test
+  fun declarationWithIdentifierInitializer() {
+    val p = prepareCode("int a = someVariable;")
+    p.assertNoDiagnostics()
+    val expected = Declaration(listOf(Keywords.INT),
+        listOf(InitDeclarator(IdentifierNode("a"), IdentifierNode("someVariable"))))
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
+
+  @Test
   fun declarationWithArithmeticInitializer() {
     val p = prepareCode("int a = 1 + 2 * 3 - 4 / 5;")
     p.assertNoDiagnostics()
