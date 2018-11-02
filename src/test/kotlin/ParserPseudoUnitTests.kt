@@ -108,6 +108,28 @@ class ParserPseudoUnitTests {
   }
 
   @Test
+  fun declarationWithComplexArithmeticInitializer() {
+    val p = prepareCode("int a = 1 + 2 * 2 * (3 - 4) / 5 / 6;")
+    p.assertNoDiagnostics()
+    val expr = Operators.ADD.with {
+      lhs = int(1)
+      rhs = Operators.DIV.with {
+        lhs = Operators.DIV.with {
+          lhs = Operators.MUL.with {
+            lhs = 2 to 2 with Operators.MUL
+            rhs = 3 to 4 with Operators.SUB
+          }
+          rhs = int(5)
+        }
+        rhs = int(6)
+      }
+    }
+    val expected =
+        Declaration(listOf(Keywords.INT), listOf(InitDeclarator(IdentifierNode("a"), expr)))
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
+
+  @Test
   fun declarationWithParenInitializer() {
     val p = prepareCode("int a = (1);")
     p.assertNoDiagnostics()
