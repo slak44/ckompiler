@@ -24,7 +24,13 @@ class RootNode : ASTNode {
   }
 }
 
-class ErrorNode : ASTNode
+class ErrorNode : ASTNode {
+  override fun equals(other: Any?) = other is ErrorNode
+
+  override fun hashCode() = javaClass.hashCode()
+
+  override fun toString() = "<ERROR>"
+}
 
 data class IdentifierNode(val name: String) : ASTNode
 

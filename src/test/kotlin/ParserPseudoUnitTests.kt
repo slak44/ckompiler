@@ -146,4 +146,13 @@ class ParserPseudoUnitTests {
         listOf(InitDeclarator(IdentifierNode("a"), int(1))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
+
+  @Test
+  fun declarationWithBadInitializer() {
+    val p = prepareCode("int a = 1 + ;")
+    assertEquals(DiagnosticId.EXPECTED_PRIMARY, p.diags[0].id)
+    val expected = Declaration(listOf(Keywords.INT),
+        listOf(InitDeclarator(IdentifierNode("a"), ErrorNode())))
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
 }
