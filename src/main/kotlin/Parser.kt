@@ -51,7 +51,7 @@ sealed class ExternalDeclaration : ASTNode
 // FIXME this is a lot more complex than this
 data class FunctionDefinition(val name: String) : ExternalDeclaration()
 
-data class InitDeclarator(val declarator: ASTNode, val initializer: Optional<ASTNode>)
+data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode?)
 
 data class Declaration(val declSpecs: List<Keywords>,
                        val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
@@ -142,11 +142,11 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   private fun parseExpr(): ASTNode {
-    val primary = parsePrimaryExpr().orElse {
+    val primary: ASTNode = parsePrimaryExpr().ifNull {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
       }
-      return ErrorNode()
+      return@parseExpr ErrorNode()
     }
     return parseExprImpl(primary, 0)
   }
@@ -158,7 +158,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       val op = tokenToOperator(tokens[0]).orNull() ?: break
       if (op !in Operators.binaryExprOps || op.precedence <= minPrecedence) break
       eat()
-      var rhs = parsePrimaryExpr().orElse {
+      var rhs = parsePrimaryExpr().ifNull {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_PRIMARY
         }
@@ -182,23 +182,23 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   // FIXME: actually implement this
-  private fun parsePrimaryExpr(): Optional<ASTNode> = parseTerminal()
+  private fun parsePrimaryExpr(): ASTNode? = parseTerminal()
 
   /**
    * C standard: A.2.1, 6.5.1, 6.4.4.4
    * @see CharacterConstantNode
    * @returns the [ASTNode] of the terminal, or [Empty] if no primary expr was found
    */
-  private fun parseTerminal(): Optional<ASTNode> {
+  private fun parseTerminal(): ASTNode? {
     val tok = tokens[0]
     when {
-      tok is Identifier -> return IdentifierNode(tok.name).opt()
+      tok is Identifier -> return IdentifierNode(tok.name)
       tok is IntegralConstant -> {
-        return IntegerConstantNode(tok.n.toLong(tok.radix.toInt()), tok.suffix).opt()
+        return IntegerConstantNode(tok.n.toLong(tok.radix.toInt()), tok.suffix)
       }
       tok is FloatingConstant -> {
         // FIXME conversions might fail here?
-        return FloatingConstantNode(tok.f.toDouble(), tok.suffix).opt()
+        return FloatingConstantNode(tok.f.toDouble(), tok.suffix)
       }
       tok is CharLiteral -> {
         val char = if (tok.data.isNotEmpty()) {
@@ -209,21 +209,21 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
           }
           0
         }
-        return CharacterConstantNode(char, tok.encoding).opt()
+        return CharacterConstantNode(char, tok.encoding)
       }
-      tok is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding).opt()
+      tok is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding)
       tok.asPunct() == Punctuators.LPAREN -> {
         val next = tokens[1]
         if (next.asPunct() == Punctuators.RPAREN) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_EXPR
           }
-          return ErrorNode().opt()
+          return ErrorNode()
         }
-        return parseExpr().opt()
+        return parseExpr()
       }
       // FIXME implement generic-selection A.2.1/6.5.1.1
-      else -> return Empty()
+      else -> return null
     }
   }
 
@@ -281,86 +281,86 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(endIdx: Int): Optional<ASTNode> {
+  private fun parseDirectDeclarator(endIdx: Int): ASTNode? {
     val tokens = tokens.slice(0 until endIdx)
     // FIXME check this condition for correctness
-    if (tokens.isEmpty()) return Empty()
+    if (tokens.isEmpty()) return null
     val tok = tokens[0]
     val next = tokens.getOrNull(1)
     when {
       tok.asPunct() == Punctuators.LPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
-        if (end == -1) return ErrorNode().opt()
+        if (end == -1) return ErrorNode()
         // If the declarator slice will be empty, error out
         if (1 == end - 1) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_DECL
           }
-          return ErrorNode().opt()
+          return ErrorNode()
         }
         // FIXME handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
         return parseDeclarator(end)
       }
       next?.asPunct() == Punctuators.LPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LPAREN, Punctuators.RPAREN)
-        if (end == -1) return ErrorNode().opt()
+        if (end == -1) return ErrorNode()
         // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
         logger.throwICE("Unimplemented grammar") { tokens }
       }
       next?.asPunct() == Punctuators.LSQPAREN -> {
         val end = findParenMatch(tokens, Punctuators.LSQPAREN, Punctuators.RSQPAREN)
-        if (end == -1) return ErrorNode().opt()
+        if (end == -1) return ErrorNode()
         // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
         logger.throwICE("Unimplemented grammar") { tokens }
       }
       tok is Identifier -> {
         val node = IdentifierNode(tok.name)
         eat()
-        return node.opt()
+        return node
       }
-      else -> return Empty()
+      else -> return null
     }
   }
 
-  private fun parseDeclarator(endIdx: Int): Optional<ASTNode> {
+  private fun parseDeclarator(endIdx: Int): ASTNode? {
     // FIXME missing pointer parsing
     return parseDirectDeclarator(endIdx)
   }
 
-  private fun parseInitializer(): Optional<ASTNode> {
+  private fun parseInitializer(): ASTNode? {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (tokens[0].asPunct() == Punctuators.COMMA || tokens[0].asPunct() == Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
       }
-      return ErrorNode().opt()
+      return ErrorNode()
     }
     // Parse initializer-list
     if (tokens[0].asPunct() == Punctuators.LBRACKET) {
       TODO("parse initializer-list (A.2.2/6.7.9)")
     }
     // Simple expression
-    return parseExpr().opt()
+    return parseExpr()
   }
 
-  private fun parseDeclaration(): Optional<ASTNode> {
+  private fun parseDeclaration(): ASTNode? {
     val declSpecs = parseDeclSpecifiers()
     // FIXME validate declSpecs according to standard 6.7.{1-6}
     val declaratorList = mutableListOf<InitDeclarator>()
     while (true) {
-      val initDeclarator = parseDeclarator(tokens.size).orElse {
+      val initDeclarator = parseDeclarator(tokens.size).ifNull {
         // Simply not a declaration, move on
-        if (declSpecs.isEmpty()) return Empty()
+        if (declSpecs.isEmpty()) return@parseDeclaration null
         // This means that there were decl specs, but no declarator, which is a problem
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_DECL
         }
-        return ErrorNode().opt()
+        return@parseDeclaration ErrorNode()
       }
       eatNewlines()
       val initializer =
-          if (tokens[0].asPunct() == Punctuators.ASSIGN) parseInitializer() else Empty()
+          if (tokens[0].asPunct() == Punctuators.ASSIGN) parseInitializer() else null
       declaratorList.add(InitDeclarator(initDeclarator, initializer))
       if (tokens[0].asPunct() == Punctuators.SEMICOLON) {
         eat()
@@ -379,14 +379,14 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
         break
       }
     }
-    return Declaration(declSpecs, declaratorList).opt()
+    return Declaration(declSpecs, declaratorList)
   }
 
   /** C standard: A.2.4, A.2.2, 6.9.1 */
-  private fun parseFunctionDefinition(): Optional<ASTNode> {
+  private fun parseFunctionDefinition(): ASTNode? {
     val declSpecs = parseDeclSpecifiers()
     // It must have at least one to be valid grammar
-    if (declSpecs.isEmpty()) return Empty()
+    if (declSpecs.isEmpty()) return null
     // Function definitions can only have extern or static as storage class specifiers
     val storageClass = declSpecs.asSequence().filter { it in storageClassSpecifier }
     if (storageClass.any { it != Keywords.EXTERN && it != Keywords.STATIC }) {
@@ -411,7 +411,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       // Also eat the final token if there is one
       if (tokens.isNotEmpty()) eat()
     }
-    parseDeclaration().ifPresent {
+    parseDeclaration()?.let {
       root.addExternalDeclaration(it)
     }
     if (tokens.isEmpty()) return

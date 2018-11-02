@@ -52,3 +52,6 @@ class Value<T>(val value: T) : Optional<T>()
 
 /** Convenience extension fun for creating optional objects. */
 fun <T> T?.opt(): Optional<T> = if (this == null) Empty() else Value(this)
+
+/** Basically the ?: operator for non-expressions. */
+inline fun <T> T?.ifNull(block: () -> T): T = this ?: block()
