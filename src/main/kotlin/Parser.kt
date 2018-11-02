@@ -61,34 +61,6 @@ data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = n
 data class Declaration(val declSpecs: List<Keywords>,
                        val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
 
-enum class StorageClassSpecifier {
-  TYPEDEF, EXTERN, STATIC, THREAD_LOCAL, AUTO, REGISTER;
-
-  companion object {
-    fun fromKeywords(k: Keywords): StorageClassSpecifier? = when (k) {
-      Keywords.TYPEDEF -> TYPEDEF
-      Keywords.EXTERN -> EXTERN
-      Keywords.STATIC -> STATIC
-      Keywords.THREAD_LOCAL -> THREAD_LOCAL
-      Keywords.AUTO -> AUTO
-      Keywords.REGISTER -> REGISTER
-      else -> null
-    }
-  }
-}
-
-enum class TypeSpecifier {
-  VOID, CHAR, SHORT, INT, LONG, FLOAT, DOUBLE, SIGNED, UNSIGNED, BOOL, COMPLEX
-}
-
-enum class TypeQualifier {
-  CONST, RESTRICT, VOLATILE, ATOMIC
-}
-
-enum class FunctionSpecifier {
-  INLINE, NORETURN
-}
-
 private val storageClassSpecifier = listOf(Keywords.TYPEDEF, Keywords.EXTERN, Keywords.STATIC,
     Keywords.THREAD_LOCAL, Keywords.AUTO, Keywords.REGISTER)
 // FIXME missing type specifiers
@@ -150,13 +122,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
   private fun eat() = eatList(1)
 
   private fun eatList(length: Int) {
-    val old = idxStack.pop()
-//    if (old + length >= tokStack.peek().size) {
-//      // Don't go over the end
-//      idxStack.push(old)
-//      return
-//    }
-    idxStack.push(old + length)
+    idxStack.push(idxStack.pop() + length)
   }
 
   private fun eatNewlines() {
