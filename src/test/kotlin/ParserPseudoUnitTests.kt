@@ -15,7 +15,7 @@ class ParserPseudoUnitTests {
 
   private fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 
-  private class Builder {
+  private class BinaryBuilder {
     var lhs: ASTNode? = null
     var rhs: ASTNode? = null
     fun build(op: Operators): BinaryNode {
@@ -23,8 +23,8 @@ class ParserPseudoUnitTests {
     }
   }
 
-  private fun Operators.with(block: Builder.() -> Unit): BinaryNode {
-    val b = Builder()
+  private fun Operators.with(block: BinaryBuilder.() -> Unit): BinaryNode {
+    val b = BinaryBuilder()
     b.block()
     return b.build(this)
   }
