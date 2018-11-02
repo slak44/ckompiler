@@ -51,7 +51,7 @@ sealed class ExternalDeclaration : ASTNode
 // FIXME this is a lot more complex than this
 data class FunctionDefinition(val name: String) : ExternalDeclaration()
 
-data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode?)
+data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null)
 
 data class Declaration(val declSpecs: List<Keywords>,
                        val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
@@ -148,6 +148,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
       }
       return@parseExpr ErrorNode()
     }
+    eat()
     return parseExprImpl(primary, 0)
   }
 
@@ -194,6 +195,7 @@ class Parser(tokens: List<Token>, private val srcFileName: SourceFileName) {
     when {
       tok is Identifier -> return IdentifierNode(tok.name)
       tok is IntegralConstant -> {
+        // FIXME conversions might fail here?
         return IntegerConstantNode(tok.n.toLong(tok.radix.toInt()), tok.suffix)
       }
       tok is FloatingConstant -> {
