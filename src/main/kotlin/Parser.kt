@@ -69,14 +69,20 @@ data class Declaration(val declSpecs: List<Keywords>,
 
 private val storageClassSpecifier = listOf(Keywords.TYPEDEF, Keywords.EXTERN, Keywords.STATIC,
     Keywords.THREAD_LOCAL, Keywords.AUTO, Keywords.REGISTER)
-// FIXME missing type specifiers
+/*
+  FIXME missing type specifiers (A.2.2/6.7.2):
+  1. atomic-type-specifier (6.7.2.4)
+  2. struct-or-union-specifier (6.7.2.1)
+  3. enum-specifier (6.7.2.2)
+  4. typedef-name (6.7.8)
+*/
 private val typeSpecifier = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
     Keywords.LONG, Keywords.FLOAT, Keywords.DOUBLE, Keywords.SIGNED, Keywords.UNSIGNED,
     Keywords.BOOL, Keywords.COMPLEX)
 private val typeQualifier = listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE,
     Keywords.ATOMIC)
 private val functionSpecifier = listOf(Keywords.INLINE, Keywords.NORETURN)
-// FIXME alignment specifier
+// FIXME alignment specifier (A.2.2/6.7.5)
 
 /**
  * Parses a translation unit.
