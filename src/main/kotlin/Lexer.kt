@@ -341,10 +341,6 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
 
   private tailrec fun tokenize() {
     src = src.trimStart {
-      if (it == '\n') {
-        tokStartIdxes.add(currentOffset)
-        tokens.add(Punctuator(Punctuators.NEWLINE))
-      }
       currentOffset++
       return@trimStart it.isWhitespace()
     }

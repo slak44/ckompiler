@@ -104,7 +104,7 @@ class LexerPseudoUnitTests {
         FloatingConstant(".12", FloatingSuffix.NONE, Radix.DECIMAL,
             exponent = "2", exponentSign = '-'.opt())
     )
-    assertEquals(res, l.tokens.filterNewlines())
+    assertEquals(res, l.tokens)
   }
 
   @Test
@@ -126,7 +126,7 @@ class LexerPseudoUnitTests {
         FloatingConstant(".12", FloatingSuffix.FLOAT, Radix.DECIMAL,
             exponentSign = '+'.opt(), exponent = "10")
     )
-    assertEquals(res, l.tokens.filterNewlines())
+    assertEquals(res, l.tokens)
   }
 
   @Test
@@ -210,7 +210,7 @@ class LexerPseudoUnitTests {
         StringLiteral("string", StringEncoding.CHAR16_T),
         StringLiteral("string", StringEncoding.CHAR32_T)
     )
-    assertEquals(res, l.tokens.filterNewlines())
+    assertEquals(res, l.tokens)
   }
 
   @Test

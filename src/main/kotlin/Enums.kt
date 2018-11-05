@@ -46,7 +46,6 @@ enum class Keywords(val keyword: String) {
 }
 
 enum class Punctuators(val s: String) {
-  NEWLINE("\n"),
   LSQPAREN("["), RSQPAREN("]"), LPAREN("("), RPAREN(")"),
   LBRACKET("{"), RBRACKET("}"), DOTS("..."), DOT("."), ARROW("->"),
   MUL_ASSIGN("*="), DIV_ASSIGN("/="), MOD_ASSIGN("%="), PLUS_ASSIGN("+="),

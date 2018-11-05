@@ -21,7 +21,7 @@ class LexerIntegrationTests {
 
         FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL, '-'.opt(), "12"),
         IntegralConstant("456", IntegralSuffix.NONE, Radix.DECIMAL)
-    ), l.tokens.filterNewlines())
+    ), l.tokens)
   }
 
   @Test
@@ -63,7 +63,7 @@ class LexerIntegrationTests {
         FloatingConstant("123.", FloatingSuffix.FLOAT, Radix.DECIMAL, exponent = "1"),
         Punctuator(Punctuators.DOT),
         Identifier("other")
-    ), l.tokens.filterNewlines())
+    ), l.tokens)
   }
 
   @Test
@@ -73,7 +73,7 @@ class LexerIntegrationTests {
     assertEquals(listOf(
         Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
         IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL),
-        Punctuator(Punctuators.SEMICOLON), Punctuator(Punctuators.NEWLINE)
+        Punctuator(Punctuators.SEMICOLON)
     ), l.tokens)
   }
 }

@@ -142,6 +142,11 @@ class Parser(tokens: List<Token>,
     return startIdx until startIdx + tokStack.peek()[idxStack.peek() + offset].consumedChars
   }
 
+  /**
+   * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
+   * the sub context will be eaten in the parent context too. Useful for parsing parenthesis and the
+   * like.
+   */
   private fun <T> tokenContext(tokens: List<Token>, block: (List<Token>) -> T): T {
     tokStack.push(tokens)
     idxStack.push(0)
@@ -177,11 +182,6 @@ class Parser(tokens: List<Token>,
     idxStack.push(idxStack.pop() + length)
   }
 
-  private fun eatNewlines() {
-    val idx = indexOfFirst { it.asPunct() != Punctuators.NEWLINE }
-    if (idx == -1) return else eatList(idx - idxStack.peek())
-  }
-
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
     diags.add(createDiagnostic {
       sourceFileName = srcFileName
@@ -205,7 +205,6 @@ class Parser(tokens: List<Token>,
   private fun parseExprImpl(lhsInit: ASTNode, minPrecedence: Int): ASTNode {
     var lhs = lhsInit
     while (true) {
-      eatNewlines()
       if (isEaten()) break
       val op = current().asOperator() ?: break
       if (op !in Operators.binaryExprOps) break
@@ -219,7 +218,6 @@ class Parser(tokens: List<Token>,
         return ErrorNode()
       }
       while (true) {
-        eatNewlines()
         if (isEaten()) break
         val innerOp = current().asOperator() ?: break
         if (innerOp !in Operators.binaryExprOps) break
@@ -569,7 +567,6 @@ class Parser(tokens: List<Token>,
         }
         return@parseDeclaration ErrorNode()
       }
-      eatNewlines()
       if (isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
@@ -626,8 +623,7 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
         columns(range(0))
       }
-      while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON &&
-          current().asPunct() != Punctuators.NEWLINE) eat()
+      while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
       // Also eat the final token if there is one
       if (tokStack.firstElement().isNotEmpty()) eat()
     }
