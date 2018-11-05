@@ -38,4 +38,3 @@ internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryNode {
 }
 
 internal val intDecl = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)
-
