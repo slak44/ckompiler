@@ -131,4 +131,45 @@ class ParserPseudoUnitTests {
     val expected = Declaration(intDecl, listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
+
+  @Test
+  fun declSpecsThreadLocalAlone() {
+    val p = prepareCode("_Thread_local int a;")
+    p.assertNoDiagnostics()
+    val expected = Declaration(DeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
+        hasThreadLocal = true),
+        listOf(InitDeclarator(IdentifierNode("a"))))
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
+
+  @Test
+  fun declSpecsThreadLocalCorrectStorage() {
+    val p = prepareCode("_Thread_local static int a;")
+    p.assertNoDiagnostics()
+    val expected = Declaration(DeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
+        hasThreadLocal = true, storageSpecifier = Keywords.STATIC),
+        listOf(InitDeclarator(IdentifierNode("a"))))
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
+
+  @Test
+  fun declSpecsThreadLocalIncorrectStorage() {
+    val p = prepareCode("_Thread_local register int a;")
+    assert(p.diags.size >= 1)
+    assertEquals(DiagnosticId.INCOMPATIBLE_DECL_SPEC, p.diags[0].id)
+  }
+
+  @Test
+  fun declSpecsMultipleStorage() {
+    val p = prepareCode("static register int a;")
+    assert(p.diags.size >= 1)
+    assertEquals(DiagnosticId.INCOMPATIBLE_DECL_SPEC, p.diags[0].id)
+  }
+
+  @Test
+  fun declSpecsDuplicates() {
+    val p = prepareCode("static static int a;")
+    assert(p.diags.size >= 1)
+    assertEquals(DiagnosticId.DUPLICATE_DECL_SPEC, p.diags[0].id)
+  }
 }
