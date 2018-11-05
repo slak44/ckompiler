@@ -38,5 +38,5 @@ internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryNode {
   throw IllegalArgumentException("Bad types")
 }
 
-internal val intDecl = DeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)
+internal val intDecl = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)
 

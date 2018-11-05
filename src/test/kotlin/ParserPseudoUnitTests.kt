@@ -25,7 +25,7 @@ class ParserPseudoUnitTests {
   fun declarationWithMultipleDeclSpecs() {
     val p = prepareCode("const static int a;")
     p.assertNoDiagnostics()
-    val expected = Declaration(DeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
+    val expected = Declaration(RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasConst = true, storageSpecifier = Keywords.STATIC),
         listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
@@ -145,7 +145,7 @@ class ParserPseudoUnitTests {
   fun declSpecsThreadLocalAlone() {
     val p = prepareCode("_Thread_local int a;")
     p.assertNoDiagnostics()
-    val expected = Declaration(DeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
+    val expected = Declaration(RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasThreadLocal = true),
         listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
@@ -155,7 +155,7 @@ class ParserPseudoUnitTests {
   fun declSpecsThreadLocalCorrectStorage() {
     val p = prepareCode("_Thread_local static int a;")
     p.assertNoDiagnostics()
-    val expected = Declaration(DeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
+    val expected = Declaration(RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasThreadLocal = true, storageSpecifier = Keywords.STATIC),
         listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
@@ -180,5 +180,12 @@ class ParserPseudoUnitTests {
     val p = prepareCode("static static int a;")
     assert(p.diags.size >= 1)
     assertEquals(DiagnosticId.DUPLICATE_DECL_SPEC, p.diags[0].id)
+  }
+
+  @Test
+  fun declSpecsUnsupportedComplex() {
+    val p = prepareCode("float _Complex a;")
+    assert(p.diags.size >= 1)
+    assertEquals(DiagnosticId.UNSUPPORTED_COMPLEX, p.diags[0].id)
   }
 }

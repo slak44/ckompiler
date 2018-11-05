@@ -86,16 +86,20 @@ enum class TypeSpecifier {
   STRUCT_OR_UNION_SPEC, ENUM_SPEC, TYPEDEF_NAME
 }
 
+sealed class DeclarationSpecifier
+object MissingDeclarationSpecifier : DeclarationSpecifier()
+object ErrorDeclarationSpecifier : DeclarationSpecifier()
+
 // FIXME alignment specifier (A.2.2/6.7.5)
-data class DeclarationSpecifier(val storageSpecifier: Keywords? = null,
-                                val typeSpecifier: TypeSpecifier,
-                                val hasThreadLocal: Boolean = false,
-                                val hasConst: Boolean = false,
-                                val hasRestrict: Boolean = false,
-                                val hasVolatile: Boolean = false,
-                                val hasAtomic: Boolean = false,
-                                val hasInline: Boolean = false,
-                                val hasNoReturn: Boolean = false)
+data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
+                                    val typeSpecifier: TypeSpecifier,
+                                    val hasThreadLocal: Boolean = false,
+                                    val hasConst: Boolean = false,
+                                    val hasRestrict: Boolean = false,
+                                    val hasVolatile: Boolean = false,
+                                    val hasAtomic: Boolean = false,
+                                    val hasInline: Boolean = false,
+                                    val hasNoReturn: Boolean = false) : DeclarationSpecifier()
 
 data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null)
 
@@ -365,7 +369,7 @@ class Parser(tokens: List<Token>,
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDeclSpecifiers(): DeclarationSpecifier? {
+  private fun parseDeclSpecifiers(): DeclarationSpecifier {
     val typeSpec = mutableListOf<Keywords>()
     var storageSpecifier: Keywords? = null
     var hasThreadLocal = false
@@ -375,6 +379,9 @@ class Parser(tokens: List<Token>,
     var hasAtomic = false
     var hasInline = false
     var hasNoReturn = false
+
+    var hitError = false
+    var declSpecTokenCount = 0
     while (current() is Keyword) {
       val k = (current() as Keyword).value
       when (k) {
@@ -383,7 +390,7 @@ class Parser(tokens: List<Token>,
             id = DiagnosticId.UNSUPPORTED_COMPLEX
             columns(range(0))
           }
-          return null
+          hitError = true
         }
         in typeSpecifier -> typeSpec.add(k)
         Keywords.THREAD_LOCAL -> {
@@ -391,7 +398,7 @@ class Parser(tokens: List<Token>,
           else if (storageSpecifier != null && storageSpecifier != Keywords.EXTERN &&
               storageSpecifier != Keywords.STATIC) {
             diagIncompat(storageSpecifier)
-            return null
+            hitError = true
           }
           hasThreadLocal = true
         }
@@ -399,11 +406,11 @@ class Parser(tokens: List<Token>,
           if (k == storageSpecifier) diagDuplicate(k)
           else if (storageSpecifier != null) {
             diagIncompat(storageSpecifier)
-            return null
+            hitError = true
           } else if (hasThreadLocal &&
               (k != Keywords.EXTERN && k != Keywords.STATIC)) {
             diagIncompat(Keywords.THREAD_LOCAL)
-            return null
+            hitError = true
           }
           storageSpecifier = k
         }
@@ -435,11 +442,15 @@ class Parser(tokens: List<Token>,
         else -> null
       } ?: break
       eat()
+      declSpecTokenCount++
     }
 
-    val ts = parseTypeSpecifier(typeSpec) ?: return null
+    if (declSpecTokenCount == 0) return MissingDeclarationSpecifier
+    if (hitError) return ErrorDeclarationSpecifier
 
-    return DeclarationSpecifier(storageSpecifier, ts, hasThreadLocal,
+    val ts = parseTypeSpecifier(typeSpec) ?: return ErrorDeclarationSpecifier
+
+    return RealDeclarationSpecifier(storageSpecifier, ts, hasThreadLocal,
         hasConst, hasRestrict, hasVolatile, hasAtomic, hasInline, hasNoReturn)
   }
 
@@ -546,7 +557,8 @@ class Parser(tokens: List<Token>,
 
   private fun parseDeclaration(): ASTNode? {
     // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
-    val declSpecs = parseDeclSpecifiers() ?: return null
+    val declSpec = parseDeclSpecifiers()
+    if (declSpec is MissingDeclarationSpecifier) return null
     // FIXME validate declSpecs according to standard 6.7.{1-6}
     val declaratorList = mutableListOf<InitDeclarator>()
     while (true) {
@@ -587,7 +599,7 @@ class Parser(tokens: List<Token>,
         break
       }
     }
-    return Declaration(declSpecs, declaratorList)
+    return Declaration(declSpec, declaratorList)
   }
 
 //  /** C standard: A.2.4, A.2.2, 6.9.1 */
