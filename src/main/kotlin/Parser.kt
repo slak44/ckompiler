@@ -138,8 +138,7 @@ class Parser(tokens: List<Token>,
    * given by [current], or 1 for the one in [lookahead].
    */
   private fun range(offset: Int): IntRange {
-    // FIXME this sum thing is absolutely broken
-    val startIdx = tokStartIdxes[idxStack.sum()]
+    val startIdx = tokStartIdxes[idxStack.peek() + offset]
     return startIdx until startIdx + tokStack.peek()[idxStack.peek() + offset].consumedChars
   }
 
