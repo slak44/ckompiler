@@ -107,11 +107,20 @@ class ParserPseudoUnitTests {
   }
 
   @Test
-  fun declarationWithParenInitializer() {
+  fun declarationWithSimpleParenInitializer() {
     val p = prepareCode("int a = (1);")
     p.assertNoDiagnostics()
     val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), int(1))))
+    assertEquals(listOf(expected), p.root.getDeclarations())
+  }
+
+  @Test
+  fun declarationWithExprParenInitializer() {
+    val p = prepareCode("int a = (1 + 1);")
+    p.assertNoDiagnostics()
+    val expected = Declaration(intDecl,
+        listOf(InitDeclarator(IdentifierNode("a"), 1 to 1 with Operators.ADD)))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
 
