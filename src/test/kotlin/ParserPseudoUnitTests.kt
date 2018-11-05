@@ -16,7 +16,7 @@ class ParserPseudoUnitTests {
   fun declarationBasic() {
     val p = prepareCode("int a;")
     p.assertNoDiagnostics()
-    val expected = Declaration(listOf(Keywords.INT),
+    val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
@@ -25,7 +25,8 @@ class ParserPseudoUnitTests {
   fun declarationWithMultipleDeclSpecs() {
     val p = prepareCode("const static int a;")
     p.assertNoDiagnostics()
-    val expected = Declaration(listOf(Keywords.CONST, Keywords.STATIC, Keywords.INT),
+    val expected = Declaration(DeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
+        hasConst = true, storageSpecifier = Keywords.STATIC),
         listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
@@ -34,7 +35,7 @@ class ParserPseudoUnitTests {
   fun declarationMultipleDeclarators() {
     val p = prepareCode("int a, b, c;")
     p.assertNoDiagnostics()
-    val expected = Declaration(listOf(Keywords.INT),
+    val expected = Declaration(intDecl,
         listOf("a", "b", "c").map { InitDeclarator(IdentifierNode(it)) })
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
@@ -44,7 +45,7 @@ class ParserPseudoUnitTests {
     val p = prepareCode("int a; int b; int c;")
     p.assertNoDiagnostics()
     val expected = listOf("a", "b", "c").map {
-      Declaration(listOf(Keywords.INT), listOf(InitDeclarator(IdentifierNode(it))))
+      Declaration(intDecl, listOf(InitDeclarator(IdentifierNode(it))))
     }
     assertEquals(expected, p.root.getDeclarations())
   }
@@ -53,7 +54,7 @@ class ParserPseudoUnitTests {
   fun declarationWithSimpleInitializer() {
     val p = prepareCode("int a = 1;")
     p.assertNoDiagnostics()
-    val expected = Declaration(listOf(Keywords.INT),
+    val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), int(1))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
@@ -62,7 +63,7 @@ class ParserPseudoUnitTests {
   fun declarationWithIdentifierInitializer() {
     val p = prepareCode("int a = someVariable;")
     p.assertNoDiagnostics()
-    val expected = Declaration(listOf(Keywords.INT),
+    val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), IdentifierNode("someVariable"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
@@ -79,7 +80,7 @@ class ParserPseudoUnitTests {
       rhs = 4 to 5 with Operators.DIV
     }
     val expected =
-        Declaration(listOf(Keywords.INT), listOf(InitDeclarator(IdentifierNode("a"), expr)))
+        Declaration(intDecl, listOf(InitDeclarator(IdentifierNode("a"), expr)))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
 
@@ -101,7 +102,7 @@ class ParserPseudoUnitTests {
       }
     }
     val expected =
-        Declaration(listOf(Keywords.INT), listOf(InitDeclarator(IdentifierNode("a"), expr)))
+        Declaration(intDecl, listOf(InitDeclarator(IdentifierNode("a"), expr)))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
 
@@ -109,7 +110,7 @@ class ParserPseudoUnitTests {
   fun declarationWithParenInitializer() {
     val p = prepareCode("int a = (1);")
     p.assertNoDiagnostics()
-    val expected = Declaration(listOf(Keywords.INT),
+    val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), int(1))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
@@ -118,7 +119,7 @@ class ParserPseudoUnitTests {
   fun declarationWithBadInitializer() {
     val p = prepareCode("int a = 1 + ;")
     assertEquals(DiagnosticId.EXPECTED_PRIMARY, p.diags[0].id)
-    val expected = Declaration(listOf(Keywords.INT),
+    val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), ErrorNode())))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
@@ -127,7 +128,7 @@ class ParserPseudoUnitTests {
   fun declarationMissingSemicolon() {
     val p = prepareCode("int a")
     assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER_DECL, p.diags[0].id)
-    val expected = Declaration(listOf(Keywords.INT), listOf(InitDeclarator(IdentifierNode("a"))))
+    val expected = Declaration(intDecl, listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
 }

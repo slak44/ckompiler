@@ -62,27 +62,45 @@ sealed class ExternalDeclaration : ASTNode
 // FIXME this is a lot more complex than this
 data class FunctionDefinition(val name: String) : ExternalDeclaration()
 
-data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null)
-
-data class Declaration(val declSpecs: List<Keywords>,
-                       val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
-
-private val storageClassSpecifier = listOf(Keywords.TYPEDEF, Keywords.EXTERN, Keywords.STATIC,
-    Keywords.THREAD_LOCAL, Keywords.AUTO, Keywords.REGISTER)
-/*
-  FIXME missing type specifiers (A.2.2/6.7.2):
-  1. atomic-type-specifier (6.7.2.4)
-  2. struct-or-union-specifier (6.7.2.1)
-  3. enum-specifier (6.7.2.2)
-  4. typedef-name (6.7.8)
-*/
+private val storageClassSpecifier =
+    listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
 private val typeSpecifier = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
     Keywords.LONG, Keywords.FLOAT, Keywords.DOUBLE, Keywords.SIGNED, Keywords.UNSIGNED,
     Keywords.BOOL, Keywords.COMPLEX)
-private val typeQualifier = listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE,
-    Keywords.ATOMIC)
-private val functionSpecifier = listOf(Keywords.INLINE, Keywords.NORETURN)
+
+enum class TypeSpecifier {
+  VOID, BOOL,
+  // "char", "signed char" and "unsigned char" are distinct in the standard (6.7.2 paragraph 2)
+  // In here "char" == "signed char"
+  // Same for short, int, etc.
+  SIGNED_CHAR,
+  UNSIGNED_CHAR,
+  SIGNED_SHORT, UNSIGNED_SHORT,
+  SIGNED_INT, UNSIGNED_INT,
+  SIGNED_LONG, UNSIGNED_LONG,
+  SIGNED_LONG_LONG, UNSIGNED_LONG_LONG,
+  FLOAT, DOUBLE, LONG_DOUBLE,
+  // We do not currently support complex types, and they produce errors in the parser
+//    COMPLEX_FLOAT, COMPLEX_DOUBLE, COMPLEX_LONG_DOUBLE,
+  ATOMIC_TYPE_SPEC,
+  STRUCT_OR_UNION_SPEC, ENUM_SPEC, TYPEDEF_NAME
+}
+
 // FIXME alignment specifier (A.2.2/6.7.5)
+data class DeclarationSpecifier(val storageSpecifier: Keywords? = null,
+                                val typeSpecifier: TypeSpecifier,
+                                val hasThreadLocal: Boolean = false,
+                                val hasConst: Boolean = false,
+                                val hasRestrict: Boolean = false,
+                                val hasVolatile: Boolean = false,
+                                val hasAtomic: Boolean = false,
+                                val hasInline: Boolean = false,
+                                val hasNoReturn: Boolean = false)
+
+data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null)
+
+data class Declaration(val declSpecs: DeclarationSpecifier,
+                       val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
 
 /**
  * Parses a translation unit.
@@ -277,20 +295,152 @@ class Parser(tokens: List<Token>,
     }
   }
 
-  /** C standard: A.2.2, 6.7 */
-  private fun parseDeclSpecifiers(): List<Keywords> {
-    if (current() !is Keyword) return emptyList()
-    val endIdx = indexOfFirst {
-      if (it !is Keyword) return@indexOfFirst true
-      if (it.value !in storageClassSpecifier &&
-          it.value !in typeSpecifier &&
-          it.value !in typeQualifier &&
-          it.value !in functionSpecifier) return@indexOfFirst true
-      return@indexOfFirst false
+  private fun diagDuplicate(k: Keywords) = parserDiagnostic {
+    id = DiagnosticId.DUPLICATE_DECL_SPEC
+    formatArgs(k.keyword)
+    columns(range(0))
+  }
+
+  private fun diagIncompat(k: Keywords) = parserDiagnostic {
+    id = DiagnosticId.INCOMPATIBLE_DECL_SPEC
+    formatArgs(k.keyword)
+    columns(range(0))
+  }
+
+  private fun diagNotSigned(k: Keywords) = parserDiagnostic {
+    id = DiagnosticId.TYPE_NOT_SIGNED
+    formatArgs(k)
+    columns(range(0))
+  }
+
+  /**
+   * FIXME missing type specifiers (A.2.2/6.7.2):
+   * 1. atomic-type-specifier (6.7.2.4)
+   * 2. struct-or-union-specifier (6.7.2.1)
+   * 3. enum-specifier (6.7.2.2)
+   * 4. typedef-name (6.7.8)
+   */
+  private fun parseTypeSpecifier(typeSpec: List<Keywords>): TypeSpecifier? {
+    if (typeSpec.isEmpty()) {
+      parserDiagnostic {
+        id = DiagnosticId.MISSING_TYPE_SPEC
+        columns(range(0))
+      }
+      return null
     }
-    val k = takeUntil(endIdx).map { it.asKeyword()!! }
-    eatList(k.size)
-    return k
+
+    // FIXME we are now going to pretend this implementation is finished, correct, complete,
+    // standards-compliant, and reports sensible errors (lmao)
+
+    val isSigned = typeSpec.contains(Keywords.SIGNED)
+    val isUnsigned = typeSpec.contains(Keywords.UNSIGNED)
+    if (isSigned && isUnsigned) {
+      diagIncompat(Keywords.SIGNED)
+      return null
+    }
+    if (typeSpec.contains(Keywords.VOID)) return TypeSpecifier.VOID
+    if (typeSpec.contains(Keywords.FLOAT)) return TypeSpecifier.FLOAT
+    if (typeSpec.contains(Keywords.LONG) && typeSpec.contains(Keywords.DOUBLE))
+      return TypeSpecifier.LONG_DOUBLE
+    if (typeSpec.contains(Keywords.DOUBLE)) return TypeSpecifier.DOUBLE
+
+    if (typeSpec.contains(Keywords.CHAR)) {
+      return if (isUnsigned) TypeSpecifier.UNSIGNED_CHAR
+      else TypeSpecifier.SIGNED_CHAR
+    }
+    if (typeSpec.contains(Keywords.SHORT)) {
+      return if (isUnsigned) TypeSpecifier.UNSIGNED_SHORT
+      else TypeSpecifier.SIGNED_SHORT
+    }
+    // RIP long long
+    if (typeSpec.contains(Keywords.LONG)) {
+      return if (isUnsigned) TypeSpecifier.UNSIGNED_LONG
+      else TypeSpecifier.SIGNED_LONG
+    }
+    if (typeSpec.contains(Keywords.INT)) {
+      return if (isUnsigned) TypeSpecifier.UNSIGNED_INT
+      else TypeSpecifier.SIGNED_INT
+    }
+    return null // Sure why not
+  }
+
+  /** C standard: A.2.2, 6.7 */
+  private fun parseDeclSpecifiers(): DeclarationSpecifier? {
+    val typeSpec = mutableListOf<Keywords>()
+    var storageSpecifier: Keywords? = null
+    var hasThreadLocal = false
+    var hasConst = false
+    var hasRestrict = false
+    var hasVolatile = false
+    var hasAtomic = false
+    var hasInline = false
+    var hasNoReturn = false
+    while (current() is Keyword) {
+      val k = (current() as Keyword).value
+      when (k) {
+        Keywords.COMPLEX -> {
+          parserDiagnostic {
+            id = DiagnosticId.UNSUPPORTED_COMPLEX
+            columns(range(0))
+          }
+          return null
+        }
+        in typeSpecifier -> typeSpec.add(k)
+        Keywords.THREAD_LOCAL -> {
+          if (hasThreadLocal) diagDuplicate(k)
+          else if (storageSpecifier != null && storageSpecifier != Keywords.EXTERN &&
+              storageSpecifier != Keywords.STATIC) {
+            diagIncompat(storageSpecifier)
+            return null
+          }
+          hasThreadLocal = true
+        }
+        in storageClassSpecifier -> {
+          if (k == storageSpecifier) diagDuplicate(k)
+          else if (storageSpecifier != null) {
+            diagIncompat(storageSpecifier)
+            return null
+          } else if (hasThreadLocal &&
+              (k != Keywords.EXTERN && k != Keywords.STATIC)) {
+            diagIncompat(Keywords.THREAD_LOCAL)
+            return null
+          }
+          storageSpecifier = k
+        }
+        Keywords.CONST -> {
+          if (hasConst) diagDuplicate(k)
+          hasConst = true
+        }
+        Keywords.RESTRICT -> {
+          if (hasRestrict) diagDuplicate(k)
+          hasRestrict = true
+        }
+        Keywords.VOLATILE -> {
+          if (hasVolatile) diagDuplicate(k)
+          hasVolatile = true
+        }
+        Keywords.ATOMIC -> {
+          if (hasAtomic) diagDuplicate(k)
+          hasAtomic = true
+        }
+        Keywords.INLINE -> {
+          if (hasInline) diagDuplicate(k)
+          hasInline = true
+        }
+        Keywords.NORETURN -> {
+          if (hasNoReturn) diagDuplicate(k)
+          hasNoReturn = true
+        }
+        Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
+        else -> null
+      } ?: break
+      eat()
+    }
+
+    val ts = parseTypeSpecifier(typeSpec) ?: return null
+
+    return DeclarationSpecifier(storageSpecifier, ts, hasThreadLocal,
+        hasConst, hasRestrict, hasVolatile, hasAtomic, hasInline, hasNoReturn)
   }
 
   /**
@@ -395,13 +545,12 @@ class Parser(tokens: List<Token>,
   }
 
   private fun parseDeclaration(): ASTNode? {
-    val declSpecs = parseDeclSpecifiers()
+    // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
+    val declSpecs = parseDeclSpecifiers() ?: return null
     // FIXME validate declSpecs according to standard 6.7.{1-6}
     val declaratorList = mutableListOf<InitDeclarator>()
     while (true) {
       val initDeclarator = parseDeclarator(tokStack.peek().size).ifNull {
-        // Simply not a declaration, move on
-        if (declSpecs.isEmpty()) return@parseDeclaration null
         // This means that there were decl specs, but no declarator, which is a problem
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_DECL

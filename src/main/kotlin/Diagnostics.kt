@@ -18,6 +18,13 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   MATCH_PAREN_TARGET(OTHER, "To match this '%s"),
   EXPECTED_DECL(ERROR, "Expected declarator"),
   EXPECTED_SEMI_AFTER_DECL(ERROR, "Expected ';' after declarator"),
+  DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
+  INCOMPATIBLE_DECL_SPEC(ERROR, "Cannot combine with previous '%s' declaration specifier"),
+  // clang puts up a warning; the standard says we error
+  MISSING_TYPE_SPEC(ERROR, "Type specifier missing"),
+  // Implementations are allowed to not support complex numbers
+  UNSUPPORTED_COMPLEX(ERROR, "_Complex is not supported by this implementation"),
+  TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
 }
 
 enum class DiagnosticKind(val text: String) {
