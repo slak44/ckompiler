@@ -161,18 +161,21 @@ class ParserPseudoUnitTests {
     assertEquals(listOf(expected), p.root.getDeclarations())
   }
 
+  private fun testDeclSpecErrors(s: String, id: DiagnosticId) {
+    val p = prepareCode(s)
+    assert(p.diags.size >= 1)
+    assertEquals(id, p.diags[0].id)
+    assert((p.root.getDeclarations()[0] as Declaration).declSpecs is ErrorDeclarationSpecifier)
+  }
+
   @Test
   fun declSpecsThreadLocalIncorrectStorage() {
-    val p = prepareCode("_Thread_local register int a;")
-    assert(p.diags.size >= 1)
-    assertEquals(DiagnosticId.INCOMPATIBLE_DECL_SPEC, p.diags[0].id)
+    testDeclSpecErrors("_Thread_local register int a;", DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
 
   @Test
   fun declSpecsMultipleStorage() {
-    val p = prepareCode("static register int a;")
-    assert(p.diags.size >= 1)
-    assertEquals(DiagnosticId.INCOMPATIBLE_DECL_SPEC, p.diags[0].id)
+    testDeclSpecErrors("static register int a;", DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
 
   @Test
@@ -184,8 +187,6 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declSpecsUnsupportedComplex() {
-    val p = prepareCode("float _Complex a;")
-    assert(p.diags.size >= 1)
-    assertEquals(DiagnosticId.UNSUPPORTED_COMPLEX, p.diags[0].id)
+    testDeclSpecErrors("float _Complex a;", DiagnosticId.UNSUPPORTED_COMPLEX)
   }
 }
