@@ -27,6 +27,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // Implementations are allowed to not support complex numbers
   UNSUPPORTED_COMPLEX(ERROR, "_Complex is not supported by this implementation"),
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
+  ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
 }
 
 enum class DiagnosticKind(val text: String) {

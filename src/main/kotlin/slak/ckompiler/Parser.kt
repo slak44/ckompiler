@@ -58,12 +58,6 @@ data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : A
   override fun toString() = "($lhs $op $rhs)"
 }
 
-/** C standard: A.2.4 */
-sealed class ExternalDeclaration : ASTNode
-
-// FIXME this is a lot more complex than this
-data class FunctionDefinition(val name: String) : ExternalDeclaration()
-
 private val storageClassSpecifier =
     listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
 private val typeSpecifier = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
@@ -92,6 +86,7 @@ sealed class DeclarationSpecifier
 object MissingDeclarationSpecifier : DeclarationSpecifier()
 object ErrorDeclarationSpecifier : DeclarationSpecifier()
 
+// FIXME carry debug data in this for each thing
 // FIXME alignment specifier (A.2.2/6.7.5)
 data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
                                     val typeSpecifier: TypeSpecifier,
@@ -105,8 +100,17 @@ data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
 
 data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null)
 
+/** C standard: A.2.4 */
+sealed class ExternalDeclaration : ASTNode
+
+// FIXME differentiate function prototypes here
 data class Declaration(val declSpecs: DeclarationSpecifier,
                        val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
+
+/** C standard: A.2.4 */
+data class FunctionDefinition(val declSpec: DeclarationSpecifier,
+                              val declarator: ASTNode,
+                              val block: ASTNode) : ExternalDeclaration()
 
 /**
  * Parses a translation unit.
@@ -603,7 +607,22 @@ class Parser(tokens: List<Token>,
   /** C standard: A.2.4, A.2.2, 6.9.1 */
   private fun parseFunctionDefinition(): ASTNode? {
     val declSpec = parseDeclSpecifiers()
-
+    if (declSpec is MissingDeclarationSpecifier) return null
+    if (declSpec is ErrorDeclarationSpecifier) return ErrorNode()
+    declSpec as RealDeclarationSpecifier
+    // FIXME finish validation of declSpec
+    if (declSpec.storageSpecifier != Keywords.STATIC &&
+        declSpec.storageSpecifier != Keywords.EXTERN) {
+      parserDiagnostic {
+        id = DiagnosticId.ILLEGAL_STORAGE_CLASS_FUNC
+        // FIXME debug data in declSpec
+      }
+    }
+    val firstBracket = indexOfFirst { it.asPunct() == Punctuators.LBRACKET }
+    // If no bracket is found, it must be an error,
+    // because function prototypes (no compound-statement) are caught by parseDeclaration
+    if (firstBracket == -1) return ErrorNode()
+    val declarator = parseDeclarator(firstBracket)
     TODO()
   }
 
