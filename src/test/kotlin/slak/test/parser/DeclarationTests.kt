@@ -6,11 +6,8 @@ import slak.ckompiler.*
 import slak.test.*
 import kotlin.test.assertEquals
 
-/**
- * Similarly to [LexerPseudoUnitTests], these are not strictly unit tests.
- * @see LexerPseudoUnitTests
- */
-class DeclarationPseudoUnitTests {
+/** Similarly to [LexerPseudoUnitTests], these are not strictly unit tests. */
+class DeclarationTests {
   @Test
   fun declarationBasic() {
     val p = prepareCode("int a;", source)
