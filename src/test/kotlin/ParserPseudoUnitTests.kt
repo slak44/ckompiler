@@ -1,3 +1,4 @@
+import org.junit.Ignore
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -188,5 +189,11 @@ class ParserPseudoUnitTests {
   @Test
   fun declSpecsUnsupportedComplex() {
     testDeclSpecErrors("float _Complex a;", DiagnosticId.UNSUPPORTED_COMPLEX)
+  }
+
+  @Test
+  @Ignore("unimplemented")
+  fun declSpecsNoVoidOnVariables() {
+    val p = prepareCode("void a;")
   }
 }
