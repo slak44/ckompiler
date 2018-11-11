@@ -7,4 +7,4 @@ Code generation will (eventually) target x86_64 assembly and maybe LLVM IR.
 
 Tests are in `src/test/kotlin`.
 
-[C standard draft](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf)
+[C11 draft standard](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf)
