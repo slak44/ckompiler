@@ -10,16 +10,10 @@ import kotlin.test.assertEquals
  * Similarly to [LexerPseudoUnitTests], these are not strictly unit tests.
  * @see LexerPseudoUnitTests
  */
-class ParserPseudoUnitTests {
-  private fun prepareCode(s: String): Parser {
-    val lexer = Lexer(s, source)
-    lexer.assertNoDiagnostics()
-    return Parser(lexer.tokens, source, s, lexer.tokStartIdxes)
-  }
-
+class DeclarationPseudoUnitTests {
   @Test
   fun declarationBasic() {
-    val p = prepareCode("int a;")
+    val p = prepareCode("int a;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"))))
@@ -28,7 +22,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithMultipleDeclSpecs() {
-    val p = prepareCode("const static int a;")
+    val p = prepareCode("const static int a;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasConst = true, storageSpecifier = Keywords.STATIC),
@@ -38,7 +32,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationMultipleDeclarators() {
-    val p = prepareCode("int a, b, c;")
+    val p = prepareCode("int a, b, c;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(intDecl,
         listOf("a", "b", "c").map { InitDeclarator(IdentifierNode(it)) })
@@ -47,7 +41,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationMultipleDeclarations() {
-    val p = prepareCode("int a; int b; int c;")
+    val p = prepareCode("int a; int b; int c;", source)
     p.assertNoDiagnostics()
     val expected = listOf("a", "b", "c").map {
       Declaration(intDecl, listOf(InitDeclarator(IdentifierNode(it))))
@@ -57,7 +51,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithSimpleInitializer() {
-    val p = prepareCode("int a = 1;")
+    val p = prepareCode("int a = 1;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), int(1))))
@@ -66,7 +60,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithIdentifierInitializer() {
-    val p = prepareCode("int a = someVariable;")
+    val p = prepareCode("int a = someVariable;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), IdentifierNode("someVariable"))))
@@ -75,7 +69,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithArithmeticInitializer() {
-    val p = prepareCode("int a = 1 + 2 * 3 - 4 / 5;")
+    val p = prepareCode("int a = 1 + 2 * 3 - 4 / 5;", source)
     p.assertNoDiagnostics()
     val expr = Operators.SUB.with {
       lhs = Operators.ADD.with {
@@ -91,7 +85,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithComplexArithmeticInitializer() {
-    val p = prepareCode("int a = 1 + 2 * 2 * (3 - 4) / 5 / 6;")
+    val p = prepareCode("int a = 1 + 2 * 2 * (3 - 4) / 5 / 6;", source)
     p.assertNoDiagnostics()
     val expr = Operators.ADD.with {
       lhs = int(1)
@@ -113,7 +107,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithSimpleParenInitializer() {
-    val p = prepareCode("int a = (1);")
+    val p = prepareCode("int a = (1);", source)
     p.assertNoDiagnostics()
     val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), int(1))))
@@ -122,7 +116,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithExprParenInitializer() {
-    val p = prepareCode("int a = (1 + 1);")
+    val p = prepareCode("int a = (1 + 1);", source)
     p.assertNoDiagnostics()
     val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), 1 to 1 with Operators.ADD)))
@@ -131,7 +125,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationWithBadInitializer() {
-    val p = prepareCode("int a = 1 + ;")
+    val p = prepareCode("int a = 1 + ;", source)
     assertEquals(DiagnosticId.EXPECTED_PRIMARY, p.diags[0].id)
     val expected = Declaration(intDecl,
         listOf(InitDeclarator(IdentifierNode("a"), ErrorNode())))
@@ -140,7 +134,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declarationMissingSemicolon() {
-    val p = prepareCode("int a")
+    val p = prepareCode("int a", source)
     assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER_DECL, p.diags[0].id)
     val expected = Declaration(intDecl, listOf(InitDeclarator(IdentifierNode("a"))))
     assertEquals(listOf(expected), p.root.getDeclarations())
@@ -148,7 +142,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declSpecsThreadLocalAlone() {
-    val p = prepareCode("_Thread_local int a;")
+    val p = prepareCode("_Thread_local int a;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasThreadLocal = true),
@@ -158,7 +152,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declSpecsThreadLocalCorrectStorage() {
-    val p = prepareCode("_Thread_local static int a;")
+    val p = prepareCode("_Thread_local static int a;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasThreadLocal = true, storageSpecifier = Keywords.STATIC),
@@ -167,7 +161,7 @@ class ParserPseudoUnitTests {
   }
 
   private fun testDeclSpecErrors(s: String, id: DiagnosticId) {
-    val p = prepareCode(s)
+    val p = prepareCode(s, source)
     assert(p.diags.size >= 1)
     assertEquals(id, p.diags[0].id)
     assert((p.root.getDeclarations()[0] as Declaration).declSpecs is ErrorDeclarationSpecifier)
@@ -185,7 +179,7 @@ class ParserPseudoUnitTests {
 
   @Test
   fun declSpecsDuplicates() {
-    val p = prepareCode("static static int a;")
+    val p = prepareCode("static static int a;", source)
     assert(p.diags.size >= 1)
     assertEquals(DiagnosticId.DUPLICATE_DECL_SPEC, p.diags[0].id)
   }
@@ -198,6 +192,6 @@ class ParserPseudoUnitTests {
   @Test
   @Ignore("unimplemented")
   fun declSpecsNoVoidOnVariables() {
-    val p = prepareCode("void a;")
+    val p = prepareCode("void a;", source)
   }
 }
