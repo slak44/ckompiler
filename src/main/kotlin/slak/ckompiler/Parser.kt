@@ -1,3 +1,5 @@
+package slak.ckompiler
+
 import mu.KotlinLogging
 import java.util.*
 
@@ -16,7 +18,7 @@ class RootNode : ASTNode {
    */
   fun addExternalDeclaration(n: ASTNode) {
     if (n !is ExternalDeclaration && n !is ErrorNode) {
-      logger.throwICE("parseDeclaration() didn't return an ExternalDeclaration") {
+      logger.throwICE("parseDeclaration() didn't return an slak.ckompiler.ExternalDeclaration") {
         "token: $n"
       }
     }

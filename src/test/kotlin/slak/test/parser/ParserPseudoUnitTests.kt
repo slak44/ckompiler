@@ -1,24 +1,9 @@
-package parser
+package slak.test.parser
 
-import Declaration
-import DiagnosticId
-import ErrorDeclarationSpecifier
-import ErrorNode
-import IdentifierNode
-import InitDeclarator
-import Keywords
-import Lexer
-import Operators
-import Parser
-import RealDeclarationSpecifier
-import TypeSpecifier
-import assertNoDiagnostics
-import int
-import intDecl
 import org.junit.Ignore
 import org.junit.Test
-import source
-import with
+import slak.ckompiler.*
+import slak.test.*
 import kotlin.test.assertEquals
 
 /**

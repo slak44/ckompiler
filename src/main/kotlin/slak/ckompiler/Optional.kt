@@ -1,4 +1,6 @@
-/** Replacement for java.util.Optional using a sealed class. */
+package slak.ckompiler
+
+/** Replacement for java.util.slak.ckompiler.Optional using a sealed class. */
 sealed class Optional<E> {
   /**
    * Gets the stored value.
@@ -34,7 +36,7 @@ sealed class Optional<E> {
    */
   fun orElseThrow(th: Throwable): E = if (this is Empty) throw th else get()
 
-  override fun toString(): String = if (this is Empty) super.toString() else "Optional<${get()}>"
+  override fun toString(): String = if (this is Empty) super.toString() else "slak.ckompiler.Optional<${get()}>"
 
   override fun equals(other: Any?): Boolean {
     return if (this is Empty && other is Empty<*>) true

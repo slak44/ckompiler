@@ -1,3 +1,6 @@
+package slak.test
+
+import slak.ckompiler.*
 import java.lang.IllegalArgumentException
 import kotlin.test.assertEquals
 

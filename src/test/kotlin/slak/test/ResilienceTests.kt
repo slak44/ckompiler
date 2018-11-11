@@ -1,4 +1,9 @@
+package slak.test
+
 import org.junit.Test
+import slak.ckompiler.ErrorToken
+import slak.ckompiler.Identifier
+import slak.ckompiler.Lexer
 import kotlin.test.assertEquals
 
 /**

@@ -1,4 +1,7 @@
+package slak.test
+
 import org.junit.Test
+import slak.ckompiler.*
 import kotlin.test.assertEquals
 
 /**
