@@ -598,19 +598,12 @@ class Parser(tokens: List<Token>,
     return Declaration(declSpec, declaratorList)
   }
 
-//  /** C standard: A.2.4, A.2.2, 6.9.1 */
-//  private fun parseFunctionDefinition(): ASTNode? {
-//    val declSpecs = parseDeclSpecifiers()
-//    // It must have at least one to be valid grammar
-//    if (declSpecs.isEmpty()) return null
-//    // Function definitions can only have extern or static as storage class specifiers
-//    val storageClass = declSpecs.asSequence().filter { it in storageClassSpecifier }
-//    if (storageClass.any { it != Keywords.EXTERN && it != Keywords.STATIC }) {
-//      parserDiagnostic { }
-//    }
-//
-//    TODO()
-//  }
+  /** C standard: A.2.4, A.2.2, 6.9.1 */
+  private fun parseFunctionDefinition(): ASTNode? {
+    val declSpec = parseDeclSpecifiers()
+
+    TODO()
+  }
 
   /** C standard: A.2.4, 6.9 */
   private tailrec fun translationUnit() {
@@ -628,6 +621,8 @@ class Parser(tokens: List<Token>,
       if (tokStack.firstElement().isNotEmpty()) eat()
     }
     parseDeclaration()?.let {
+      root.addExternalDeclaration(it)
+    } ?: parseFunctionDefinition()?.let {
       root.addExternalDeclaration(it)
     }
     if (isEaten()) return

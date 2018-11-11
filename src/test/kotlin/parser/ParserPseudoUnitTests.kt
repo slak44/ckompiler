@@ -1,5 +1,24 @@
+package parser
+
+import Declaration
+import DiagnosticId
+import ErrorDeclarationSpecifier
+import ErrorNode
+import IdentifierNode
+import InitDeclarator
+import Keywords
+import Lexer
+import Operators
+import Parser
+import RealDeclarationSpecifier
+import TypeSpecifier
+import assertNoDiagnostics
+import int
+import intDecl
 import org.junit.Ignore
 import org.junit.Test
+import source
+import with
 import kotlin.test.assertEquals
 
 /**
