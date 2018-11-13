@@ -12,7 +12,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   NO_EXP_DIGITS(ERROR, "Exponent has no digits"),
   INVALID_DIGIT(ERROR, "Invalid digit '%s' in constant"),
   // Parser
-  EMPTY_CHAR_CONSTANT(WARNING, "Empty character constant"),
+  // FIXME: this should be a warning printed by the preprocessor
+  EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),
   EXPECTED_EXPR(ERROR, "Expected expression"),
   EXPECTED_PRIMARY(ERROR, "Expected primary expression"),
   EXPECTED_EXTERNAL_DECL(ERROR, "Expected a declaration or function definition"),
