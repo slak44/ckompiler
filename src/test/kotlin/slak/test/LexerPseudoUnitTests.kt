@@ -65,17 +65,17 @@ class LexerPseudoUnitTests {
     assertEquals(res, l.tokens)
   }
 
-  private fun assertIsInvalidSuffix(s: String) {
+  private fun assertDiagnostic(s: String, id: DiagnosticId) {
     val inspections = Lexer(s, source).inspections
     assert(inspections.size >= 1)
-    assertEquals(DiagnosticId.INVALID_SUFFIX, inspections[0].id)
+    assertEquals(id, inspections[0].id)
   }
 
   @Test
   fun invalidIntSuffixError() {
-    assertIsInvalidSuffix("123A")
-    assertIsInvalidSuffix("123UA")
-    assertIsInvalidSuffix("123U2")
+    assertDiagnostic("123A", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("123UA", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("123U2", DiagnosticId.INVALID_SUFFIX)
   }
 
   @Test
@@ -134,28 +134,22 @@ class LexerPseudoUnitTests {
 
   @Test
   fun invalidFloatSuffixError() {
-    assertIsInvalidSuffix("123.12A")
-    assertIsInvalidSuffix("123.12FA")
-    assertIsInvalidSuffix("123.12AF")
-    assertIsInvalidSuffix("123.A")
-    assertIsInvalidSuffix("123.12A1")
-    assertIsInvalidSuffix(".1A")
-    assertIsInvalidSuffix("1.1E1A")
-    assertIsInvalidSuffix("1.FE")
-  }
-
-  private fun assertIsNoExpDigits(s: String) {
-    val inspections = Lexer(s, source).inspections
-    assert(inspections.size >= 1)
-    assertEquals(DiagnosticId.NO_EXP_DIGITS, inspections[0].id)
+    assertDiagnostic("123.12A", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("123.12FA", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("123.12AF", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("123.A", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("123.12A1", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic(".1A", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("1.1E1A", DiagnosticId.INVALID_SUFFIX)
+    assertDiagnostic("1.FE", DiagnosticId.INVALID_SUFFIX)
   }
 
   @Test
   fun noExpDigitsError() {
-    assertIsNoExpDigits("1.1EA")
-    assertIsNoExpDigits("1.EA")
-    assertIsNoExpDigits("1.EF")
-    assertIsNoExpDigits("1.E+F")
+    assertDiagnostic("1.1EA", DiagnosticId.NO_EXP_DIGITS)
+    assertDiagnostic("1.EA", DiagnosticId.NO_EXP_DIGITS)
+    assertDiagnostic("1.EF", DiagnosticId.NO_EXP_DIGITS)
+    assertDiagnostic("1.E+F", DiagnosticId.NO_EXP_DIGITS)
   }
 
   @Test
