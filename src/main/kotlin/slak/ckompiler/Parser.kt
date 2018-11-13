@@ -528,6 +528,10 @@ class Parser(tokens: List<Token>,
       // This is the case where there aren't any lparens until the end
       return tokStack.peek().size
     }
+    if (!hasParens) {
+      // This is the case where there aren't any lparens until a semicolon
+      return end
+    }
     if (end == -1 || tokStack.peek()[end].asPunct() != rparen) {
       parserDiagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
@@ -683,7 +687,14 @@ class Parser(tokens: List<Token>,
         return@parseDeclaration ErrorNode()
       }
       if (initDeclarator is ErrorNode) {
-        eatToSemi()
+        val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+        if (parenEndIdx == -1) {
+          TODO("handle error case where there is an unmatched paren in the initializer")
+        }
+        val stopIdx = indexOfFirst {
+          it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
+        }
+        eatList(takeUntil(stopIdx).size)
       }
       if (isEaten()) {
         parserDiagnostic {

@@ -43,10 +43,10 @@ class ResilienceTests {
 
   @Test
   fun parserKeepsGoingInDeclarationAfterBadDeclarator() {
-    val p = prepareCode("int default, x;", source)
+    val p = prepareCode("int default, x = 1;", source)
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
-    val decl = int declare listOf(InitDeclarator(ErrorNode()), InitDeclarator(name("x")))
+    val decl = int declare listOf(InitDeclarator(ErrorNode()), "x" assign int(1))
     assertEquals(decl, p.root.getDeclarations()[0])
   }
 
