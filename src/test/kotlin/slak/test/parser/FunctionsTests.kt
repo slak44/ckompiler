@@ -2,20 +2,15 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.FunctionDeclarator
-import slak.ckompiler.InitDeclarator
 import slak.test.*
 import kotlin.test.assertEquals
-import kotlin.test.expect
 
 class FunctionsTests {
   @Test
   fun functionDeclaration() {
     val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()
-    expect(int declare InitDeclarator(FunctionDeclarator(name("f"), emptyList()))) {
-      p.root.getDeclarations()[0]
-    }
+    assertEquals(int func ("f" withParams emptyList()), p.root.getDeclarations()[0])
   }
 
   @Test

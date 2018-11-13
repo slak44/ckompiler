@@ -18,8 +18,13 @@ internal fun name(s: String): IdentifierNode = IdentifierNode(s)
 internal infix fun String.assign(value: ASTNode) = InitDeclarator(name(this), value)
 
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) = Declaration(this, listOf(decl))
+internal infix fun DeclarationSpecifier.func(decl: Declarator) = Declaration(this, listOf(decl))
 internal infix fun DeclarationSpecifier.declare(s: String): Declaration {
   return Declaration(this, listOf(InitDeclarator(name(s))))
+}
+
+internal infix fun String.withParams(params: List<ParameterDeclaration>): InitDeclarator {
+  return InitDeclarator(FunctionDeclarator(name(this), params))
 }
 
 internal class BinaryBuilder {
