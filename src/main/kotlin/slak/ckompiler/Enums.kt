@@ -81,22 +81,22 @@ enum class Operators(val op: Punctuators,
   // Postfix
   // FIXME [], func calls
   // FIXME postfix exprs
-//  ACCESS(slak.ckompiler.Punctuators.DOT, 124, slak.ckompiler.Arity.NONE, slak.ckompiler.Associativity.LEFT_TO_RIGHT),
-//  PTR_ACCESS(slak.ckompiler.Punctuators.ARROW, 123, slak.ckompiler.Arity.NONE, slak.ckompiler.Associativity.LEFT_TO_RIGHT),
+//  ACCESS(Punctuators.DOT, 124, Arity.NONE, Associativity.LEFT_TO_RIGHT),
+//  PTR_ACCESS(Punctuators.ARROW, 123, Arity.NONE, Associativity.LEFT_TO_RIGHT),
   // FIXME pct conflict
-//  POSTFIX_INC(slak.ckompiler.Punctuators.INC, 122, slak.ckompiler.Arity.NONE, slak.ckompiler.Associativity.LEFT_TO_RIGHT),
-//  POSTFIX_DEC(slak.ckompiler.Punctuators.DEC, 121, slak.ckompiler.Arity.NONE, slak.ckompiler.Associativity.LEFT_TO_RIGHT),
+//  POSTFIX_INC(Punctuators.INC, 122, Arity.NONE, Associativity.LEFT_TO_RIGHT),
+//  POSTFIX_DEC(Punctuators.DEC, 121, Arity.NONE, Associativity.LEFT_TO_RIGHT),
   // FIXME initializer list stuff
   // Prefix
   // FIXME pct conflict
-//  PREFIX_INC(slak.ckompiler.Punctuators.INC, 115, slak.ckompiler.Arity.UNARY, slak.ckompiler.Associativity.RIGHT_TO_LEFT),
-//  PREFIX_DEC(slak.ckompiler.Punctuators.DEC, 110, slak.ckompiler.Arity.UNARY, slak.ckompiler.Associativity.RIGHT_TO_LEFT),
+//  PREFIX_INC(Punctuators.INC, 115, Arity.UNARY, Associativity.RIGHT_TO_LEFT),
+//  PREFIX_DEC(Punctuators.DEC, 110, Arity.UNARY, Associativity.RIGHT_TO_LEFT),
   // Unary
   REF(Punctuators.AMP, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   // FIXME pct conflict
-//  DEREF(slak.ckompiler.Punctuators.STAR, 100, slak.ckompiler.Arity.UNARY, slak.ckompiler.Associativity.LEFT_TO_RIGHT),
-//  PLUS(slak.ckompiler.Punctuators.PLUS, 100, slak.ckompiler.Arity.UNARY, slak.ckompiler.Associativity.LEFT_TO_RIGHT),
-//  MINUS(slak.ckompiler.Punctuators.MINUS, 100, slak.ckompiler.Arity.UNARY, slak.ckompiler.Associativity.LEFT_TO_RIGHT),
+//  DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
+//  PLUS(Punctuators.PLUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
+//  MINUS(Punctuators.MINUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   BIT_NOT(Punctuators.TILDE, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   NOT(Punctuators.NOT, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   // FIXME here should be casts, alignof and sizeof
@@ -140,7 +140,7 @@ enum class Operators(val op: Punctuators,
   OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT);
   // Comma
   // FIXME does it have to be an operator?
-//  COMMA(slak.ckompiler.Punctuators.COMMA, 10, slak.ckompiler.Arity.NONE, slak.ckompiler.Associativity.LEFT_TO_RIGHT);
+//  COMMA(Punctuators.COMMA, 10, Arity.NONE, Associativity.LEFT_TO_RIGHT);
 
   companion object {
     val binaryExprOps = Operators.values().filter { it.arity == Arity.BINARY }
