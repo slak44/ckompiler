@@ -1,5 +1,6 @@
 package slak.test.parser
 
+import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.test.assertNoDiagnostics
@@ -7,6 +8,7 @@ import slak.test.source
 import kotlin.test.assertEquals
 
 class FunctionsTests {
+  @Ignore("unimplemented grammar")
   @Test
   fun functionMain() {
     val p = prepareCode("int main() {}", source)
