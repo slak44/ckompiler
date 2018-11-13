@@ -8,7 +8,19 @@ internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(),
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 
+internal val int = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
+internal val double = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.DOUBLE)
+internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
+
+internal fun name(s: String): IdentifierNode = IdentifierNode(s)
+
+internal infix fun String.assign(value: ASTNode) = InitDeclarator(name(this), value)
+
+internal infix fun DeclarationSpecifier.declare(decl: Declarator) = Declaration(this, listOf(decl))
+internal infix fun DeclarationSpecifier.declare(s: String): Declaration {
+  return Declaration(this, listOf(InitDeclarator(name(s))))
+}
 
 internal class BinaryBuilder {
   var lhs: ASTNode? = null
@@ -39,5 +51,3 @@ internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryNode {
   }
   throw IllegalArgumentException("Bad types")
 }
-
-internal val intDecl = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)

@@ -98,18 +98,25 @@ data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
                                     val hasInline: Boolean = false,
                                     val hasNoReturn: Boolean = false) : DeclarationSpecifier()
 
-data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null)
+/** C standard: 6.7.6 */
+sealed class Declarator : ASTNode
+
+data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null) : Declarator()
+
+// FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
+data class FunctionDeclarator(val declarator: ASTNode,
+                              val params: List<Declaration>,
+                              val isVararg: Boolean = false) : Declarator()
 
 /** C standard: A.2.4 */
 sealed class ExternalDeclaration : ASTNode
 
-// FIXME differentiate function prototypes here
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<InitDeclarator>) : ExternalDeclaration()
+                       val declaratorList: List<Declarator>) : ExternalDeclaration()
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
-                              val declarator: ASTNode,
+                              val declarator: FunctionDeclarator,
                               val block: ASTNode) : ExternalDeclaration()
 
 /**
@@ -511,6 +518,16 @@ class Parser(tokens: List<Token>,
     return end
   }
 
+  /**
+   * Parses the params in a function declaration.
+   * Example of what it parses:
+   * void f(int a, int x)
+   *        ^^^^^^^^^^^^
+   */
+  private fun parseParameterList(endIdx: Int): List<Declaration> = tokenContext(takeUntil(endIdx)) {
+    TODO()
+  }
+
   /** C standard: A.2.2, 6.7 */
   private fun parseDirectDeclarator(endIdx: Int): ASTNode? = tokenContext(takeUntil(endIdx)) {
     if (it.isEmpty()) return@tokenContext null
@@ -529,7 +546,7 @@ class Parser(tokens: List<Token>,
         }
         val declarator = parseDeclarator(end)
         if (declarator is ErrorNode) eatToSemi()
-        // FIXME handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
+        // FIXME: handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
         return@tokenContext declarator
       }
       current() !is Identifier -> {
@@ -539,23 +556,30 @@ class Parser(tokens: List<Token>,
         }
         return@tokenContext ErrorNode()
       }
-      it.size > 1 && lookahead().asPunct() == Punctuators.LPAREN -> {
-        val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-        if (end == -1) return@tokenContext ErrorNode()
-        // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
-        logger.throwICE("Unimplemented grammar") { tokStack.peek() }
-      }
-      it.size > 1 && lookahead().asPunct() == Punctuators.LSQPAREN -> {
-        val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
-        if (end == -1) return@tokenContext ErrorNode()
-        // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
-        logger.throwICE("Unimplemented grammar") { tokStack.peek() }
-      }
       current() is Identifier -> {
-        val node = IdentifierNode((current() as Identifier).name)
+        val name = IdentifierNode((current() as Identifier).name)
         eat()
-        return@tokenContext node
+        when {
+          current() == Punctuators.LPAREN -> {
+            val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+            eat() // Get rid of "("
+            // FIXME: we can return something better than an ErrorNode (have the ident)
+            if (end == -1) return@tokenContext ErrorNode()
+            val declarator = FunctionDeclarator(name, parseParameterList(end))
+            eat() // Get rid of ")"
+            return@tokenContext declarator
+          }
+          current() == Punctuators.LSQPAREN -> {
+            val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+            if (end == -1) return@tokenContext ErrorNode()
+            // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
+            logger.throwICE("Unimplemented grammar") { tokStack.peek() }
+
+          }
+          else -> return@tokenContext name
+        }
       }
+      // FIXME: Can't happen? current() either is or isn't an identifier
       else -> return@tokenContext null
     }
   }

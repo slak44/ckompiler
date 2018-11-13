@@ -1,9 +1,8 @@
 package slak.test
 
 import org.junit.Test
-import slak.ckompiler.ErrorToken
-import slak.ckompiler.Identifier
-import slak.ckompiler.Lexer
+import slak.ckompiler.*
+import slak.test.parser.prepareCode
 import kotlin.test.assertEquals
 
 /**
@@ -24,6 +23,14 @@ class ResilienceTests {
     val l = Lexer("1.EF ident", source)
     assert(l.tokens[0] is ErrorToken)
     assertEquals(Identifier("ident"), l.tokens[1])
+  }
+
+  @Test
+  fun parserKeepsGoingAfterBadDeclarator() {
+    val p = prepareCode("int default(); double dbl = 1.1;", source)
+    assert(p.diags.size > 0)
+    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
+    assertEquals(double declare ("dbl" assign double(1.1)), p.root.getDeclarations()[1])
   }
 
   // FIXME more tests like this
