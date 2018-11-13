@@ -188,6 +188,21 @@ class Parser(tokens: List<Token>,
     idxStack.push(idxStack.pop() + length)
   }
 
+  /**
+   * Eats tokens unconditionally until a semicolon or the end of the token list.
+   * @returns true if we ate a semicolon, false if we hit the end
+   */
+  private fun eatToSemi(): Boolean {
+    while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
+    // Also eat the final token if there is one
+    return if (!isEaten()) {
+      eat()
+      true
+    } else {
+      false
+    }
+  }
+
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
     diags.add(createDiagnostic {
       sourceFileName = srcFileName
@@ -504,15 +519,25 @@ class Parser(tokens: List<Token>,
         val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
         if (end == -1) return@tokenContext ErrorNode()
         // If the declarator slice will be empty, error out
-        if (1 == end - 1) {
+        if (end - 1 == 0) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_DECL
             columns(range(1))
           }
+          eatToSemi()
           return@tokenContext ErrorNode()
         }
+        val declarator = parseDeclarator(end)
+        if (declarator is ErrorNode) eatToSemi()
         // FIXME handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
-        return@tokenContext parseDeclarator(end)
+        return@tokenContext declarator
+      }
+      current() !is Identifier -> {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
+          columns(range(0))
+        }
+        return@tokenContext ErrorNode()
       }
       it.size > 1 && lookahead().asPunct() == Punctuators.LPAREN -> {
         val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
@@ -572,6 +597,10 @@ class Parser(tokens: List<Token>,
           columns(range(0))
         }
         return@parseDeclaration ErrorNode()
+      }
+      if (initDeclarator is ErrorNode) {
+        eatToSemi()
+        break
       }
       if (isEaten()) {
         parserDiagnostic {
@@ -637,9 +666,7 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
         columns(range(0))
       }
-      while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
-      // Also eat the final token if there is one
-      if (tokStack.firstElement().isNotEmpty()) eat()
+      eatToSemi()
     }
     parseDeclaration()?.let {
       root.addExternalDeclaration(it)

@@ -28,6 +28,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNSUPPORTED_COMPLEX(ERROR, "_Complex is not supported by this implementation"),
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
   ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
+  EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
 }
 
 enum class DiagnosticKind(val text: String) {
