@@ -560,6 +560,7 @@ class Parser(tokens: List<Token>,
         val name = IdentifierNode((current() as Identifier).name)
         eat()
         when {
+          isEaten() -> return@tokenContext name
           current() == Punctuators.LPAREN -> {
             val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
             eat() // Get rid of "("
