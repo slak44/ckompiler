@@ -2,7 +2,7 @@ package slak.ckompiler
 
 import mu.KotlinLogging
 
-private val logger = KotlinLogging.logger("slak.ckompiler.Lexer")
+private val logger = KotlinLogging.logger("Lexer")
 
 sealed class Token(val consumedChars: Int) {
   init {
@@ -84,7 +84,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     inspections.add(createDiagnostic {
       sourceFileName = srcFileName
       sourceText = textSource
-      origin = "slak.ckompiler.Lexer"
+      origin = "Lexer"
       this.build()
     })
   }
