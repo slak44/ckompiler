@@ -114,6 +114,12 @@ class DeclarationTests {
   }
 
   @Test
+  fun declarationWithBadName() {
+    val p = prepareCode("int default = 1;", source)
+    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
+  }
+
+  @Test
   fun declarationMissingSemicolon() {
     val p = prepareCode("int a", source)
     assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER_DECL, p.diags[0].id)

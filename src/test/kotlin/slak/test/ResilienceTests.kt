@@ -26,11 +26,28 @@ class ResilienceTests {
   }
 
   @Test
-  fun parserKeepsGoingAfterBadDeclarator() {
+  fun parserKeepsGoingAfterBadFunctionDeclarator() {
     val p = prepareCode("int default(); double dbl = 1.1;", source)
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
     assertEquals(double declare ("dbl" assign double(1.1)), p.root.getDeclarations()[1])
+  }
+
+  @Test
+  fun parserKeepsGoingAfterBadDeclaration() {
+    val p = prepareCode("int default; double dbl = 1.1;", source)
+    assert(p.diags.size > 0)
+    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
+    assertEquals(double declare ("dbl" assign double(1.1)), p.root.getDeclarations()[1])
+  }
+
+  @Test
+  fun parserKeepsGoingInDeclarationAfterBadDeclarator() {
+    val p = prepareCode("int default, x;", source)
+    assert(p.diags.size > 0)
+    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
+    val decl = int declare listOf(InitDeclarator(ErrorNode()), InitDeclarator(name("x")))
+    assertEquals(decl, p.root.getDeclarations()[0])
   }
 
   // FIXME more tests like this
