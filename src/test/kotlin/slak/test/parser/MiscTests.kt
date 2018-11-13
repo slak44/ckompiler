@@ -11,4 +11,10 @@ class MiscTests {
     val p = prepareCode("char a = '';", source)
     assertEquals(DiagnosticId.EMPTY_CHAR_CONSTANT, p.diags[0].id)
   }
+
+  @Test
+  fun notATranslationUnit() {
+    val p = prepareCode("1 + 2;", source)
+    assertEquals(DiagnosticId.EXPECTED_EXTERNAL_DECL, p.diags[0].id)
+  }
 }

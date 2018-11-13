@@ -751,21 +751,20 @@ class Parser(tokens: List<Token>,
   /** C standard: A.2.4, 6.9 */
   private tailrec fun translationUnit() {
     if (isEaten()) return
-    if (current() is ErrorToken) {
-      // If we got here it means this isn't actually a translation unit
-      // FIXME does this code path make any sense?
-      // So spit out an error and eat tokens until the next semicolon/line
+    val res = parseDeclaration()?.let {
+      root.addExternalDeclaration(it)
+    } ?: parseFunctionDefinition()?.let {
+      root.addExternalDeclaration(it)
+    }
+    if (res == null) {
+      // If we got here it means the current thing isn't a translation unit
+      // So spit out an error and eat tokens
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
         columns(range(0))
       }
       eatToSemi()
       if (!isEaten()) eat()
-    }
-    parseDeclaration()?.let {
-      root.addExternalDeclaration(it)
-    } ?: parseFunctionDefinition()?.let {
-      root.addExternalDeclaration(it)
     }
     if (isEaten()) return
     else translationUnit()
