@@ -23,6 +23,8 @@ internal infix fun DeclarationSpecifier.declare(s: String): Declaration {
   return Declaration(this, listOf(InitDeclarator(name(s))))
 }
 
+internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, name(s))
+
 internal infix fun String.withParams(params: List<ParameterDeclaration>): InitDeclarator {
   return InitDeclarator(FunctionDeclarator(name(this), params))
 }

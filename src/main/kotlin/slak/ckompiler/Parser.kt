@@ -501,15 +501,18 @@ class Parser(tokens: List<Token>,
   /**
    * Find matching parenthesis in token list. Handles nested parens. Prints errors about unmatched
    * parens.
-   * @returns -1 if a [Punctuators.SEMICOLON] was found before parens were balanced, or the (real)
-   * idx of the rightmost paren otherwise
+   * @returns -1 if the parens are unbalanced or a [Punctuators.SEMICOLON] was found before they can
+   * get balanced, the size of the token stack if there were no parens, or the (real) idx of the
+   * rightmost paren otherwise
    */
   private fun findParenMatch(lparen: Punctuators, rparen: Punctuators): Int {
+    var hasParens = false
     var stack = 0
     val end = indexOfFirst {
       if (it !is Punctuator) return@indexOfFirst false
       when (it.pct) {
         lparen -> {
+          hasParens = true
           stack++
           return@indexOfFirst false
         }
@@ -521,11 +524,19 @@ class Parser(tokens: List<Token>,
         else -> return@indexOfFirst false
       }
     }
+    if (end == -1 && !hasParens) {
+      // This is the case where there aren't any lparens until the end
+      return tokStack.peek().size
+    }
     if (end == -1 || tokStack.peek()[end].asPunct() != rparen) {
       parserDiagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
         formatArgs(rparen.s)
-        columns(range(end - idxStack.peek()))
+        if (end == -1) {
+          column(colPastTheEnd())
+        } else {
+          columns(range(end - idxStack.peek()))
+        }
       }
       parserDiagnostic {
         id = DiagnosticId.MATCH_PAREN_TARGET
@@ -565,9 +576,14 @@ class Parser(tokens: List<Token>,
       if (parenEndIdx == -1) {
         TODO("handle error case where there is an unmatched paren in the parameter list")
       }
-      val declarator = parseDeclarator(indexOfFirst { c -> c == Punctuators.COMMA })
+      val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
+      val declarator = parseDeclarator(if (commaIdx == -1) it.size else commaIdx)
           ?: TODO("handle error case with a null (error'd) declarator")
       params.add(ParameterDeclaration(specs, declarator))
+      if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
+        // Expected case; found comma that separates params
+        eat()
+      }
     }
     return@tokenContext params
   }
