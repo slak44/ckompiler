@@ -96,16 +96,35 @@ data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
                                     val hasVolatile: Boolean = false,
                                     val hasAtomic: Boolean = false,
                                     val hasInline: Boolean = false,
-                                    val hasNoReturn: Boolean = false) : DeclarationSpecifier()
+                                    val hasNoReturn: Boolean = false) : DeclarationSpecifier() {
+  override fun toString(): String {
+    val list = listOf(
+        if (hasInline) "inline" else "",
+        if (hasNoReturn) "_Noreturn" else "",
+        if (hasVolatile) "volatile" else "",
+        if (hasAtomic) "_Atomic" else "",
+        if (hasRestrict) "restrict" else "",
+        if (hasThreadLocal) "_Thread_local" else "",
+        if (hasConst) "const" else "",
+        storageSpecifier?.keyword ?: "",
+        typeSpecifier.toString()
+    )
+    return "(${list.filter { it.isNotEmpty() }.joinToString(" ")})"
+  }
+}
 
+// FIXME: many classes store declarators as ASTNodes, which is a bad thing
 /** C standard: 6.7.6 */
 sealed class Declarator : ASTNode
 
 data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null) : Declarator()
 
+data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
+                                val declarator: ASTNode) : ASTNode
+
 // FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
 data class FunctionDeclarator(val declarator: ASTNode,
-                              val params: List<Declaration>,
+                              val params: List<ParameterDeclaration>,
                               val isVararg: Boolean = false) : Declarator()
 
 /** C standard: A.2.4 */
@@ -156,6 +175,13 @@ class Parser(tokens: List<Token>,
   }
 
   /**
+   * When all the tokens have been eaten, get the column in the original code string, plus one.
+   */
+  private fun colPastTheEnd(): Int {
+    return tokStartIdxes[idxStack.peek() - 1] + 1
+  }
+
+  /**
    * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
    * the sub context will be eaten in the parent context too. Useful for parsing parenthesis and the
    * like.
@@ -197,17 +223,10 @@ class Parser(tokens: List<Token>,
 
   /**
    * Eats tokens unconditionally until a semicolon or the end of the token list.
-   * @returns true if we ate a semicolon, false if we hit the end
+   * Does not eat the semicolon.
    */
-  private fun eatToSemi(): Boolean {
+  private fun eatToSemi() {
     while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
-    // Also eat the final token if there is one
-    return if (!isEaten()) {
-      eat()
-      true
-    } else {
-      false
-    }
   }
 
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
@@ -520,12 +539,37 @@ class Parser(tokens: List<Token>,
 
   /**
    * Parses the params in a function declaration.
-   * Example of what it parses:
-   * void f(int a, int x)
+   * Examples of what it parses:
+   * void f(int a, int x);
    *        ^^^^^^^^^^^^
+   * void g();
+   *        (here this function gets nothing to parse, and returns an empty list)
    */
-  private fun parseParameterList(endIdx: Int): List<Declaration> = tokenContext(takeUntil(endIdx)) {
-    TODO()
+  private fun parseParameterList(
+      endIdx: Int): List<ParameterDeclaration> = tokenContext(takeUntil(endIdx)) {
+    // No parameters; this is not an error case
+    if (isEaten()) return@tokenContext emptyList()
+    val params = mutableListOf<ParameterDeclaration>()
+    while (!isEaten()) {
+      // We don't precisely care if we have an error in the DeclarationSpecifier
+      val specs = parseDeclSpecifiers()
+      if (specs is MissingDeclarationSpecifier) {
+        TODO("possible unimplemented grammar (old-style K&R functions)")
+      }
+      // The parameter can have parens with commas in them
+      // We're interested in the comma that comes after the parameter
+      // So balance the parens, and look for the first comma after them
+      // Also, we do not eat what we find; we're only searching for the end of the current param
+      // Once found, parseDeclarator handles parsing the param and eating it
+      val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+      if (parenEndIdx == -1) {
+        TODO("handle error case where there is an unmatched paren in the parameter list")
+      }
+      val declarator = parseDeclarator(indexOfFirst { c -> c == Punctuators.COMMA })
+          ?: TODO("handle error case with a null (error'd) declarator")
+      params.add(ParameterDeclaration(specs, declarator))
+    }
+    return@tokenContext params
   }
 
   /** C standard: A.2.2, 6.7 */
@@ -561,21 +605,20 @@ class Parser(tokens: List<Token>,
         eat()
         when {
           isEaten() -> return@tokenContext name
-          current() == Punctuators.LPAREN -> {
-            val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+          current().asPunct() == Punctuators.LPAREN -> {
+            val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
             eat() // Get rid of "("
             // FIXME: we can return something better than an ErrorNode (have the ident)
-            if (end == -1) return@tokenContext ErrorNode()
-            val declarator = FunctionDeclarator(name, parseParameterList(end))
+            if (rparenIdx == -1) return@tokenContext ErrorNode()
+            val paramList = parseParameterList(rparenIdx)
             eat() // Get rid of ")"
-            return@tokenContext declarator
+            return@tokenContext FunctionDeclarator(name, paramList)
           }
-          current() == Punctuators.LSQPAREN -> {
+          current().asPunct() == Punctuators.LSQPAREN -> {
             val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
             if (end == -1) return@tokenContext ErrorNode()
             // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
             logger.throwICE("Unimplemented grammar") { tokStack.peek() }
-
           }
           else -> return@tokenContext name
         }
@@ -625,32 +668,30 @@ class Parser(tokens: List<Token>,
       }
       if (initDeclarator is ErrorNode) {
         eatToSemi()
-        break
       }
       if (isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
-          // FIXME add missing columns call, it crashes (?)
+          column(colPastTheEnd())
         }
         declaratorList.add(InitDeclarator(initDeclarator, null))
         break
       }
       val initializer = if (current().asPunct() == Punctuators.ASSIGN) parseInitializer() else null
       declaratorList.add(InitDeclarator(initDeclarator, initializer))
-      if (current().asPunct() == Punctuators.SEMICOLON) {
-        eat()
-        break
-      }
-      if (current().asPunct() == Punctuators.COMMA) {
+      if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained init-declarators
         eat()
         continue
+      } else if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+        // Expected case; semi at the end of declaration
+        eat()
+        break
       } else {
         // Missing semicolon
-        eat()
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
-          columns(range(0))
+          column(colPastTheEnd())
         }
         break
       }
@@ -692,6 +733,7 @@ class Parser(tokens: List<Token>,
         columns(range(0))
       }
       eatToSemi()
+      if (!isEaten()) eat()
     }
     parseDeclaration()?.let {
       root.addExternalDeclaration(it)

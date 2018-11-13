@@ -1,18 +1,21 @@
 package slak.test.parser
 
-import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.test.assertNoDiagnostics
-import slak.test.source
+import slak.ckompiler.FunctionDeclarator
+import slak.ckompiler.InitDeclarator
+import slak.test.*
 import kotlin.test.assertEquals
+import kotlin.test.expect
 
 class FunctionsTests {
-  @Ignore("unimplemented grammar")
   @Test
-  fun functionMain() {
-    val p = prepareCode("int main() {}", source)
+  fun functionDeclaration() {
+    val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()
+    expect(int declare InitDeclarator(FunctionDeclarator(name("f"), emptyList()))) {
+      p.root.getDeclarations()[0]
+    }
   }
 
   @Test
