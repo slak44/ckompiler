@@ -6,13 +6,13 @@ import slak.ckompiler.DiagnosticKind.*
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
-  // slak.ckompiler.Lexer
+  // Lexer
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
   MISSING_QUOTE(ERROR, "Missing terminating %c character"),
   NO_EXP_DIGITS(ERROR, "Exponent has no digits"),
   INVALID_DIGIT(ERROR, "Invalid digit '%s' in constant"),
   // Parser
-  EMPTY_CHAR_CONSTANT(WARNING, "slak.ckompiler.Empty character constant"),
+  EMPTY_CHAR_CONSTANT(WARNING, "Empty character constant"),
   EXPECTED_EXPR(ERROR, "Expected expression"),
   EXPECTED_PRIMARY(ERROR, "Expected primary expression"),
   EXPECTED_EXTERNAL_DECL(ERROR, "Expected a declaration or function definition"),
