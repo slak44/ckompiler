@@ -250,8 +250,12 @@ class Parser(tokens: List<Token>,
    * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
    * the sub context will be eaten in the parent context too. Useful for parsing parenthesis and the
    * like.
+   *
+   * The list of tokens starts at the current index (inclusive), and ends at the
+   * given [endIdx] (exclusive).
    */
-  private fun <T> tokenContext(tokens: List<Token>, block: (List<Token>) -> T): T {
+  private fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T {
+    val tokens = takeUntil(endIdx)
     tokStack.push(tokens)
     idxStack.push(0)
     val result = block(tokens)
@@ -303,7 +307,7 @@ class Parser(tokens: List<Token>,
     })
   }
 
-  private fun parseExpr(endIdx: Int): ASTNode = tokenContext(takeUntil(endIdx)) {
+  private fun parseExpr(endIdx: Int): ASTNode = tokenContext(endIdx) {
     val primary: ASTNode = parsePrimaryExpr().ifNull {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
@@ -627,8 +631,7 @@ class Parser(tokens: List<Token>,
    * void g();
    *        (here this function gets nothing to parse, and returns an empty list)
    */
-  private fun parseParameterList(
-      endIdx: Int): List<ParameterDeclaration> = tokenContext(takeUntil(endIdx)) {
+  private fun parseParameterList(endIdx: Int): List<ParameterDeclaration> = tokenContext(endIdx) {
     // No parameters; this is not an error case
     if (isEaten()) return@tokenContext emptyList()
     val params = mutableListOf<ParameterDeclaration>()
@@ -660,8 +663,7 @@ class Parser(tokens: List<Token>,
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(
-      endIdx: Int): EitherNode<Declarator>? = tokenContext(takeUntil(endIdx)) {
+  private fun parseDirectDeclarator(endIdx: Int): EitherNode<Declarator>? = tokenContext(endIdx) {
     if (it.isEmpty()) return@tokenContext null
     when {
       current().asPunct() == Punctuators.LPAREN -> {
@@ -826,8 +828,7 @@ class Parser(tokens: List<Token>,
   }
 
   /** C standard: A.2.3 */
-  private fun parseCompoundStatement(
-      endIdx: Int): CompoundStatement = tokenContext(takeUntil(endIdx)) {
+  private fun parseCompoundStatement(endIdx: Int): CompoundStatement = tokenContext(endIdx) {
     val items = mutableListOf<EitherNode<BlockItem>>()
     while (!isEaten()) {
       val declaration = parseDeclaration()
