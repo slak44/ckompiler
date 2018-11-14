@@ -30,6 +30,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
   ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
+  EXPECTED_STATEMENT(ERROR, "Expected statement"),
 }
 
 enum class DiagnosticKind(val text: String) {

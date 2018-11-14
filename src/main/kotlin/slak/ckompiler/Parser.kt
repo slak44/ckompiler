@@ -788,10 +788,50 @@ class Parser(tokens: List<Token>,
     return Declaration(declSpec, declaratorList)
   }
 
-  /** C standard: A.2.3 */
-  private fun parseCompoundStatement(endIdx: Int): ASTNode? = tokenContext(takeUntil(endIdx)) {
+  /**
+   * C standard: A.2.3
+   * @returns the statement if it is there, or null if there is no such statement
+   */
+  private fun parseLabeledStatement(): LabeledStatement? {
+    if (current() !is Identifier || lookahead().asPunct() != Punctuators.COLON) return null
+    val label = IdentifierNode((current() as Identifier).name)
+    eatList(2) // Get rid of ident and COLON
+    val labeled = parseStatement()
+    if (labeled == null) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_STATEMENT
+        columns(range(-1))
+      }
+      // FIXME
+      TODO()
+//      return ErrorNode()
+    }
+    return LabeledStatement(label, labeled)
+  }
 
+  /** C standard: A.2.3 */
+  private fun parseStatement(): Statement? {
     TODO()
+  }
+
+  /** C standard: A.2.3 */
+  private fun parseCompoundStatement(
+      endIdx: Int): CompoundStatement = tokenContext(takeUntil(endIdx)) {
+    val items = mutableListOf<BlockItem>()
+    while (!isEaten()) {
+      val declaration = parseDeclaration()
+      if (declaration != null) {
+        // FIXME
+//        items.add(declaration)
+        continue
+      }
+      val statement = parseStatement()
+      if (statement != null) {
+        items.add(statement)
+        continue
+      }
+    }
+    return@tokenContext CompoundStatement(items)
   }
 
   /** C standard: A.2.4, A.2.2, 6.9.1 */
@@ -825,11 +865,7 @@ class Parser(tokens: List<Token>,
       }
       return FunctionDefinition(declSpec, declarator, ErrorNode())
     }
-    val compoundStatement = parseCompoundStatement(rbracket)
-    if (compoundStatement == null) {
-      TODO("handle error condition")
-    }
-    return FunctionDefinition(declSpec, declarator, compoundStatement)
+    return FunctionDefinition(declSpec, declarator, parseCompoundStatement(rbracket))
   }
 
   /** C standard: A.2.4, 6.9 */
