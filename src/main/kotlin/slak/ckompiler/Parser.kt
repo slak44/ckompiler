@@ -18,7 +18,7 @@ class RootNode : ASTNode {
    */
   fun addExternalDeclaration(n: ASTNode) {
     if (n !is ExternalDeclaration && n !is ErrorNode) {
-      logger.throwICE("parseDeclaration() didn't return an slak.ckompiler.ExternalDeclaration") {
+      logger.throwICE("parseDeclaration() didn't return an ExternalDeclaration") {
         "token: $n"
       }
     }
@@ -34,13 +34,19 @@ class ErrorNode : ASTNode {
   override fun toString() = "<ERROR>"
 }
 
-data class IdentifierNode(val name: String) : ASTNode
+/** C standard: A.2.3, 6.8 */
+interface Statement : BlockItem
 
-data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : ASTNode {
+/** C standard: A.2.1 */
+sealed class PrimaryExpression : ASTNode
+
+data class IdentifierNode(val name: String) : PrimaryExpression()
+
+data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : PrimaryExpression() {
   override fun toString() = "int $value ${suffix.name.toLowerCase()}"
 }
 
-data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) : ASTNode
+data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) : PrimaryExpression()
 
 /**
  * According to the C standard, the value of multi-byte character constants is
@@ -50,12 +56,29 @@ data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
  *
  * C standard: 6.4.4.4 paragraph 10
  */
-data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : ASTNode
+data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : PrimaryExpression()
 
-data class StringLiteralNode(val string: String, val encoding: StringEncoding) : ASTNode
+data class StringLiteralNode(val string: String, val encoding: StringEncoding) : PrimaryExpression()
 
 data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : ASTNode {
   override fun toString() = "($lhs $op $rhs)"
+}
+
+/**
+ * Represents an expression. Allowed types:
+ * 1. [BinaryNode]
+ * 2. [PrimaryExpression]
+ * 3. [ErrorNode]
+ * 4. null (represents a no-op, ie an expression that's just made up of a semicolon)
+ *
+ * C standard: A.2.3, 6.8.3
+ */
+data class Expression(val root: ASTNode?) : Statement {
+  init {
+    if (root != null && (root !is BinaryNode || root !is PrimaryExpression || root !is ErrorNode)) {
+      logger.throwICE("Trying to build expression with something that isn't part of one") { root }
+    }
+  }
 }
 
 private val storageClassSpecifier =
@@ -127,16 +150,55 @@ data class FunctionDeclarator(val declarator: ASTNode,
                               val params: List<ParameterDeclaration>,
                               val isVararg: Boolean = false) : Declarator()
 
+/** C standard: A.2.3, 6.8.2 */
+interface BlockItem : ASTNode
+
 /** C standard: A.2.4 */
 sealed class ExternalDeclaration : ASTNode
 
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<Declarator>) : ExternalDeclaration()
+                       val declaratorList: List<Declarator>) : ExternalDeclaration(), BlockItem
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
                               val declarator: FunctionDeclarator,
                               val block: ASTNode) : ExternalDeclaration()
+
+/** C standard: A.2.3, 6.8.2 */
+data class CompoundStatement(val items: List<BlockItem>) : Statement
+
+/** C standard: 6.8.1 */
+data class LabeledStatement(val label: IdentifierNode, val statement: Statement) : Statement
+
+/** C standard: 6.8.4 */
+interface SelectionStatement : Statement
+
+/** C standard: 6.8.4.1 */
+data class IfStatement(val cond: Expression,
+                       val success: Statement,
+                       val failure: Statement?) : SelectionStatement
+
+/** C standard: 6.8.4.2 */
+data class SwitchStatement(val switch: Expression, val body: Statement) : SelectionStatement
+
+enum class IterationKind {
+  WHILE, DO_WHILE, FOR_DECLARE, FOR_CLASSIC
+}
+
+/** C standard: 6.8.5 */
+data class IterationStatement(val kind: IterationKind,
+                              val cond: Expression,
+                              val loopable: Statement,
+                              val loopEnd: Expression?,
+                              val init: Expression?,
+                              val initDecl: Declaration?) : Statement
+
+/** C standard: 6.8.6 */
+sealed class JumpStatement : Statement
+object ContinueStatement : JumpStatement()
+object BreakStatement : JumpStatement()
+data class GotoStatement(val identifier: IdentifierNode) : JumpStatement()
+data class ReturnStatement(val expr: Expression) : JumpStatement()
 
 /**
  * Parses a translation unit.
