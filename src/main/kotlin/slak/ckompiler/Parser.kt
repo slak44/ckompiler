@@ -9,6 +9,7 @@ private val logger = KotlinLogging.logger("Parser")
 interface ASTNode
 
 /** Can either be [ErrorNode] or an [ASTNode]. */
+@Suppress("unused")
 sealed class EitherNode<out N : ASTNode> {
   data class Value<out N : ASTNode>(val value: N) : EitherNode<N>()
 }
