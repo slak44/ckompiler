@@ -569,7 +569,7 @@ class Parser(tokens: List<Token>,
       // We don't precisely care if we have an error in the DeclarationSpecifier
       val specs = parseDeclSpecifiers()
       if (specs is MissingDeclarationSpecifier) {
-        TODO("possible unimplemented grammar (old-style K&R functions)")
+        TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
       // The parameter can have parens with commas in them
       // We're interested in the comma that comes after the parameter
@@ -726,26 +726,48 @@ class Parser(tokens: List<Token>,
     return Declaration(declSpec, declaratorList)
   }
 
+  /** C standard: A.2.3 */
+  private fun parseCompoundStatement(endIdx: Int): ASTNode? = tokenContext(takeUntil(endIdx)) {
+
+    TODO()
+  }
+
   /** C standard: A.2.4, A.2.2, 6.9.1 */
   private fun parseFunctionDefinition(): ASTNode? {
+    val firstBracket = indexOfFirst { it.asPunct() == Punctuators.LBRACKET }
+    // If no bracket is found, it isn't a function, it might be a declaration
+    if (firstBracket == -1) return null
     val declSpec = parseDeclSpecifiers()
     if (declSpec is MissingDeclarationSpecifier) return null
-    if (declSpec is ErrorDeclarationSpecifier) return ErrorNode()
-    declSpec as RealDeclarationSpecifier
     // FIXME finish validation of declSpec
-    if (declSpec.storageSpecifier != Keywords.STATIC &&
+    if (declSpec is RealDeclarationSpecifier &&
+        declSpec.storageSpecifier != Keywords.STATIC &&
         declSpec.storageSpecifier != Keywords.EXTERN) {
       parserDiagnostic {
         id = DiagnosticId.ILLEGAL_STORAGE_CLASS_FUNC
         // FIXME debug data in declSpec
       }
     }
-    val firstBracket = indexOfFirst { it.asPunct() == Punctuators.LBRACKET }
-    // If no bracket is found, it must be an error,
-    // because function prototypes (no compound-statement) are caught by parseDeclaration
-    if (firstBracket == -1) return ErrorNode()
-    val declarator = parseDeclarator(firstBracket)
-    TODO()
+    // FIXME: we can return something better than an ErrorNode (have the declSpec)
+    val declarator = parseDeclarator(firstBracket) as? FunctionDeclarator
+        ?: return ErrorNode()
+    if (current().asPunct() != Punctuators.LBRACKET) {
+      TODO("possible unimplemented grammar (old-style K&R functions?)")
+    }
+    val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET)
+    if (rbracket == -1) {
+      parserDiagnostic {
+        id = DiagnosticId.UNMATCHED_PAREN
+        formatArgs(Punctuators.RBRACKET.s)
+        column(colPastTheEnd())
+      }
+      return FunctionDefinition(declSpec, declarator, ErrorNode())
+    }
+    val compoundStatement = parseCompoundStatement(rbracket)
+    if (compoundStatement == null) {
+      TODO("handle error condition")
+    }
+    return FunctionDefinition(declSpec, declarator, compoundStatement)
   }
 
   /** C standard: A.2.4, 6.9 */
