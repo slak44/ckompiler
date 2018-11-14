@@ -30,7 +30,7 @@ class ResilienceTests {
     val p = prepareCode("int default(); double dbl = 1.1;", source)
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
-    assertEquals(double declare ("dbl" assign double(1.1)), p.root.getDeclarations()[1])
+    double declare ("dbl" assign double(1.1)) assertEquals p.root.getDeclarations()[1]
   }
 
   @Test
@@ -38,7 +38,7 @@ class ResilienceTests {
     val p = prepareCode("int default; double dbl = 1.1;", source)
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
-    assertEquals(double declare ("dbl" assign double(1.1)), p.root.getDeclarations()[1])
+    double declare ("dbl" assign double(1.1)) assertEquals p.root.getDeclarations()[1]
   }
 
   @Test
@@ -47,7 +47,7 @@ class ResilienceTests {
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
     val decl = int declare listOf(InitDeclarator(ErrorNode()), "x" assign int(1))
-    assertEquals(decl, p.root.getDeclarations()[0])
+    decl assertEquals p.root.getDeclarations()[0]
   }
 
   // FIXME more tests like this

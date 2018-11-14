@@ -13,21 +13,31 @@ internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, Integral
 internal val double = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.DOUBLE)
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
-internal fun name(s: String): IdentifierNode = IdentifierNode(s)
+internal infix fun <LHS, RHS> LHS.assertEquals(rhs: RHS) {
+  if (this is ASTNode && rhs is ASTNode) return assertEquals(this, rhs as ASTNode)
+  if (this is ASTNode && rhs is EitherNode<*>) return assertEquals(this.asEither(), rhs)
+  if (this is EitherNode<*> && rhs is ASTNode) return assertEquals(this, rhs.asEither())
+  if (this is EitherNode<*> && rhs is EitherNode<*>) return assertEquals(this, rhs as EitherNode<*>)
+  throw IllegalArgumentException("Bad types")
+}
+
+internal fun name(s: String): EitherNode<IdentifierNode> = IdentifierNode(s).asEither()
 
 internal infix fun String.assign(value: ASTNode) = InitDeclarator(name(this), value)
 
-internal infix fun DeclarationSpecifier.declare(decl: Declarator) = Declaration(this, listOf(decl))
-internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) = Declaration(this, list)
-internal infix fun DeclarationSpecifier.func(decl: Declarator) = Declaration(this, listOf(decl))
-internal infix fun DeclarationSpecifier.declare(s: String): Declaration {
-  return Declaration(this, listOf(InitDeclarator(name(s))))
+internal infix fun DeclarationSpecifier.declare(decl: InitDeclarator) =
+    Declaration(this, listOf(decl)).asEither()
+internal infix fun DeclarationSpecifier.declare(list: List<InitDeclarator>) =
+    Declaration(this, list).asEither()
+internal infix fun DeclarationSpecifier.func(decl: InitDeclarator) = Declaration(this, listOf(decl))
+internal infix fun DeclarationSpecifier.declare(s: String): EitherNode<Declaration> {
+  return Declaration(this, listOf(InitDeclarator(name(s)))).asEither()
 }
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, name(s))
 
 internal infix fun String.withParams(params: List<ParameterDeclaration>): InitDeclarator {
-  return InitDeclarator(FunctionDeclarator(name(this), params))
+  return InitDeclarator(FunctionDeclarator(name(this), params).asEither())
 }
 
 internal class BinaryBuilder {

@@ -5,50 +5,62 @@ import java.util.*
 
 private val logger = KotlinLogging.logger("Parser")
 
+/** Base interface of all nodes from an Abstract Syntax Tree. */
 interface ASTNode
 
+/** Can either be [ErrorNode] or an [ASTNode]. */
+sealed class EitherNode<out N : ASTNode> {
+  data class Value<out N : ASTNode>(val value: N) : EitherNode<N>()
+}
+
+/**
+ * Signals an error condition in the parser. If some part of the grammar cannot be parsed, this is
+ * returned.
+ *
+ * All instances of [ErrorNode] are equal.
+ */
+class ErrorNode : ASTNode, EitherNode<Nothing>() {
+  override fun equals(other: Any?) = other is ErrorNode
+  override fun hashCode() = javaClass.hashCode()
+  override fun toString() = "<ERROR>"
+}
+
+/** Transform a concrete [ASTNode] instance into an [EitherNode.Value] instance. */
+fun <T : ASTNode> T.asEither(): EitherNode<T> = EitherNode.Value(this)
+
+/** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
 class RootNode : ASTNode {
-  private val decls = mutableListOf<ASTNode>()
+  private val decls = mutableListOf<EitherNode<ExternalDeclaration>>()
 
-  fun getDeclarations(): List<ASTNode> = decls
+  fun getDeclarations(): List<EitherNode<ExternalDeclaration>> = decls
 
-  /**
-   * @param n either [ExternalDeclaration] or [ErrorNode]
-   * @throws InternalCompilerError if the parameter is of the wrong type
-   */
-  fun addExternalDeclaration(n: ASTNode) {
-    if (n !is ExternalDeclaration && n !is ErrorNode) {
-      logger.throwICE("parseDeclaration() didn't return an ExternalDeclaration") {
-        "token: $n"
-      }
-    }
+  fun addExternalDeclaration(n: EitherNode<ExternalDeclaration>) {
     decls.add(n)
   }
 }
 
-class ErrorNode : ASTNode {
-  override fun equals(other: Any?) = other is ErrorNode
-
-  override fun hashCode() = javaClass.hashCode()
-
-  override fun toString() = "<ERROR>"
-}
+/** C standard: 6.7.6 */
+interface Declarator : ASTNode
 
 /** C standard: A.2.3, 6.8 */
 interface Statement : BlockItem
 
 /** C standard: A.2.1 */
-sealed class PrimaryExpression : ASTNode
+interface PrimaryExpression : ASTNode
 
-data class IdentifierNode(val name: String) : PrimaryExpression()
+interface Terminal : PrimaryExpression
 
-data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : PrimaryExpression() {
+data class IdentifierNode(val name: String) : Terminal, Declarator
+
+data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : Terminal {
   override fun toString() = "int $value ${suffix.name.toLowerCase()}"
 }
 
-data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) : PrimaryExpression()
+data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) : Terminal
 
 /**
+ * Stores a character constant.
+ *
  * According to the C standard, the value of multi-byte character constants is
  * implementation-defined. This implementation truncates the constants to the first byte.
  *
@@ -56,30 +68,20 @@ data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
  *
  * C standard: 6.4.4.4 paragraph 10
  */
-data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : PrimaryExpression()
+data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : Terminal
 
-data class StringLiteralNode(val string: String, val encoding: StringEncoding) : PrimaryExpression()
+data class StringLiteralNode(val string: String, val encoding: StringEncoding) : Terminal
 
-data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : ASTNode {
+data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : PrimaryExpression {
   override fun toString() = "($lhs $op $rhs)"
 }
 
 /**
- * Represents an expression. Allowed types:
- * 1. [BinaryNode]
- * 2. [PrimaryExpression]
- * 3. [ErrorNode]
- * 4. null (represents a no-op, ie an expression that's just made up of a semicolon)
- *
+ * Represents an expression. A null expression represents a no-op, ie an expression that's just made
+ * up of a semicolon
  * C standard: A.2.3, 6.8.3
  */
-data class Expression(val root: ASTNode?) : Statement {
-  init {
-    if (root != null && (root !is BinaryNode || root !is PrimaryExpression || root !is ErrorNode)) {
-      logger.throwICE("Trying to build expression with something that isn't part of one") { root }
-    }
-  }
-}
+data class Expression(val root: EitherNode<PrimaryExpression>?) : Statement
 
 private val storageClassSpecifier =
     listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
@@ -136,19 +138,17 @@ data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
   }
 }
 
-// FIXME: many classes store declarators as ASTNodes, which is a bad thing
-/** C standard: 6.7.6 */
-sealed class Declarator : ASTNode
-
-data class InitDeclarator(val declarator: ASTNode, val initializer: ASTNode? = null) : Declarator()
+// FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
+data class InitDeclarator(val declarator: EitherNode<Declarator>,
+                          val initializer: ASTNode? = null) : Declarator
 
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
-                                val declarator: ASTNode) : ASTNode
+                                val declarator: EitherNode<Declarator>) : ASTNode
 
 // FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
-data class FunctionDeclarator(val declarator: ASTNode,
+data class FunctionDeclarator(val declarator: EitherNode<Declarator>,
                               val params: List<ParameterDeclaration>,
-                              val isVararg: Boolean = false) : Declarator()
+                              val isVararg: Boolean = false) : Declarator
 
 /** C standard: A.2.3, 6.8.2 */
 interface BlockItem : ASTNode
@@ -156,19 +156,21 @@ interface BlockItem : ASTNode
 /** C standard: A.2.4 */
 sealed class ExternalDeclaration : ASTNode
 
+/** C standard: A.2.2 */
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<Declarator>) : ExternalDeclaration(), BlockItem
+                       val declaratorList: List<InitDeclarator>) : ExternalDeclaration(), BlockItem
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
-                              val declarator: FunctionDeclarator,
+                              val declarator: EitherNode<FunctionDeclarator>,
                               val block: ASTNode) : ExternalDeclaration()
 
 /** C standard: A.2.3, 6.8.2 */
-data class CompoundStatement(val items: List<BlockItem>) : Statement
+data class CompoundStatement(val items: List<EitherNode<BlockItem>>) : Statement
 
 /** C standard: 6.8.1 */
-data class LabeledStatement(val label: IdentifierNode, val statement: Statement) : Statement
+data class LabeledStatement(val label: IdentifierNode,
+                            val statement: EitherNode<Statement>) : Statement
 
 /** C standard: 6.8.4 */
 interface SelectionStatement : Statement
@@ -195,6 +197,7 @@ data class IterationStatement(val kind: IterationKind,
 
 /** C standard: 6.8.6 */
 sealed class JumpStatement : Statement
+
 object ContinueStatement : JumpStatement()
 object BreakStatement : JumpStatement()
 data class GotoStatement(val identifier: IdentifierNode) : JumpStatement()
@@ -344,6 +347,8 @@ class Parser(tokens: List<Token>,
   /**
    * C standard: A.2.1, 6.4.4
    * @see parseTerminal
+   * @return null if no primary was found
+   * FIXME: proper return type for this function
    */
   private fun parsePrimaryExpr(): ASTNode? = when {
     current().asPunct() == Punctuators.LPAREN -> {
@@ -373,9 +378,9 @@ class Parser(tokens: List<Token>,
    * All terminals are one token long. Does not eat anything.
    * C standard: A.2.1, 6.5.1, 6.4.4.4
    * @see CharacterConstantNode
-   * @returns the [ASTNode] of the terminal, or null if no terminal was found
+   * @returns the [Terminal] node, or null if no terminal was found
    */
-  private fun parseTerminal(): ASTNode? {
+  private fun parseTerminal(): Terminal? {
     val tok = current()
     when (tok) {
       is Identifier -> return IdentifierNode(tok.name)
@@ -655,7 +660,8 @@ class Parser(tokens: List<Token>,
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(endIdx: Int): ASTNode? = tokenContext(takeUntil(endIdx)) {
+  private fun parseDirectDeclarator(
+      endIdx: Int): EitherNode<Declarator>? = tokenContext(takeUntil(endIdx)) {
     if (it.isEmpty()) return@tokenContext null
     when {
       current().asPunct() == Punctuators.LPAREN -> {
@@ -686,7 +692,7 @@ class Parser(tokens: List<Token>,
         val name = IdentifierNode((current() as Identifier).name)
         eat()
         when {
-          isEaten() -> return@tokenContext name
+          isEaten() -> return@tokenContext name.asEither()
           current().asPunct() == Punctuators.LPAREN -> {
             val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
             eat() // Get rid of "("
@@ -694,7 +700,7 @@ class Parser(tokens: List<Token>,
             if (rparenIdx == -1) return@tokenContext ErrorNode()
             val paramList = parseParameterList(rparenIdx)
             eat() // Get rid of ")"
-            return@tokenContext FunctionDeclarator(name, paramList)
+            return@tokenContext FunctionDeclarator(name.asEither(), paramList).asEither()
           }
           current().asPunct() == Punctuators.LSQPAREN -> {
             val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
@@ -702,7 +708,7 @@ class Parser(tokens: List<Token>,
             // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
             logger.throwICE("Unimplemented grammar") { tokStack.peek() }
           }
-          else -> return@tokenContext name
+          else -> return@tokenContext name.asEither()
         }
       }
       // FIXME: Can't happen? current() either is or isn't an identifier
@@ -710,7 +716,7 @@ class Parser(tokens: List<Token>,
     }
   }
 
-  private fun parseDeclarator(endIdx: Int): ASTNode? {
+  private fun parseDeclarator(endIdx: Int): EitherNode<Declarator>? {
     // FIXME missing pointer parsing
     return parseDirectDeclarator(endIdx)
   }
@@ -733,7 +739,11 @@ class Parser(tokens: List<Token>,
     return parseExpr(tokStack.peek().size)
   }
 
-  private fun parseDeclaration(): ASTNode? {
+  /**
+   * Parses a declaration, including function declarations.
+   * @returns null if there is no declaration, or a [Declaration] otherwise
+   */
+  private fun parseDeclaration(): EitherNode<Declaration>? {
     // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
     val declSpec = parseDeclSpecifiers()
     if (declSpec is MissingDeclarationSpecifier) return null
@@ -785,14 +795,14 @@ class Parser(tokens: List<Token>,
         break
       }
     }
-    return Declaration(declSpec, declaratorList)
+    return Declaration(declSpec, declaratorList).asEither()
   }
 
   /**
    * C standard: A.2.3
-   * @returns the statement if it is there, or null if there is no such statement
+   * @returns the [LabeledStatement] if it is there, or null if there is no such statement
    */
-  private fun parseLabeledStatement(): LabeledStatement? {
+  private fun parseLabeledStatement(): EitherNode<LabeledStatement>? {
     if (current() !is Identifier || lookahead().asPunct() != Punctuators.COLON) return null
     val label = IdentifierNode((current() as Identifier).name)
     eatList(2) // Get rid of ident and COLON
@@ -802,27 +812,27 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.EXPECTED_STATEMENT
         columns(range(-1))
       }
-      // FIXME
-      TODO()
-//      return ErrorNode()
+      return ErrorNode()
     }
-    return LabeledStatement(label, labeled)
+    return LabeledStatement(label, labeled).asEither()
   }
 
-  /** C standard: A.2.3 */
-  private fun parseStatement(): Statement? {
+  /**
+   * C standard: A.2.3
+   * @returns null if no statement was found, or the [Statement] otherwise
+   */
+  private fun parseStatement(): EitherNode<Statement>? {
     TODO()
   }
 
   /** C standard: A.2.3 */
   private fun parseCompoundStatement(
       endIdx: Int): CompoundStatement = tokenContext(takeUntil(endIdx)) {
-    val items = mutableListOf<BlockItem>()
+    val items = mutableListOf<EitherNode<BlockItem>>()
     while (!isEaten()) {
       val declaration = parseDeclaration()
       if (declaration != null) {
-        // FIXME
-//        items.add(declaration)
+        items.add(declaration)
         continue
       }
       val statement = parseStatement()
@@ -834,8 +844,13 @@ class Parser(tokens: List<Token>,
     return@tokenContext CompoundStatement(items)
   }
 
-  /** C standard: A.2.4, A.2.2, 6.9.1 */
-  private fun parseFunctionDefinition(): ASTNode? {
+  /**
+   * Parses a function _definition_. That includes the compound-statement. Function _declarations_
+   * are not parsed here (see [parseDeclaration]).
+   * C standard: A.2.4, A.2.2, 6.9.1
+   * @returns null if this is not a function definition, or a [FunctionDefinition] otherwise
+   */
+  private fun parseFunctionDefinition(): EitherNode<FunctionDefinition>? {
     val firstBracket = indexOfFirst { it.asPunct() == Punctuators.LBRACKET }
     // If no bracket is found, it isn't a function, it might be a declaration
     if (firstBracket == -1) return null
@@ -850,9 +865,13 @@ class Parser(tokens: List<Token>,
         // FIXME debug data in declSpec
       }
     }
-    // FIXME: we can return something better than an ErrorNode (have the declSpec)
-    val declarator = parseDeclarator(firstBracket) as? FunctionDeclarator
-        ?: return ErrorNode()
+    val declarator = parseDeclarator(firstBracket)?.let {
+      if (it is EitherNode.Value && it.value is FunctionDeclarator) {
+        // FIXME: what diag to print here?
+        return@let it.value.asEither()
+      }
+      return@let ErrorNode()
+    } ?: ErrorNode()
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
@@ -863,9 +882,9 @@ class Parser(tokens: List<Token>,
         formatArgs(Punctuators.RBRACKET.s)
         column(colPastTheEnd())
       }
-      return FunctionDefinition(declSpec, declarator, ErrorNode())
+      return FunctionDefinition(declSpec, declarator, ErrorNode()).asEither()
     }
-    return FunctionDefinition(declSpec, declarator, parseCompoundStatement(rbracket))
+    return FunctionDefinition(declSpec, declarator, parseCompoundStatement(rbracket)).asEither()
   }
 
   /** C standard: A.2.4, 6.9 */

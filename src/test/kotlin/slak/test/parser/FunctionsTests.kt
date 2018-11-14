@@ -10,39 +10,39 @@ class FunctionsTests {
   fun functionDeclarationNoParams() {
     val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()
-    assertEquals(int func ("f" withParams emptyList()), p.root.getDeclarations()[0])
+    int func ("f" withParams emptyList()) assertEquals p.root.getDeclarations()[0]
   }
 
   @Test
   fun functionDeclarationOneParam() {
     val p = prepareCode("int f(double dbl);", source)
     p.assertNoDiagnostics()
-    assertEquals(int func ("f" withParams listOf(double param "dbl")), p.root.getDeclarations()[0])
+    int func ("f" withParams listOf(double param "dbl")) assertEquals p.root.getDeclarations()[0]
   }
 
   @Test
   fun functionDeclarationTwoParams() {
     val p = prepareCode("int f(double dbl, int x);", source)
     p.assertNoDiagnostics()
-    assertEquals(int func ("f" withParams listOf(double param "dbl", int param "x")),
-        p.root.getDeclarations()[0])
+    int func ("f" withParams listOf(double param "dbl", int param "x")) assertEquals
+        p.root.getDeclarations()[0]
   }
 
   @Test
   fun functionDeclarationThreeParams() {
     val p = prepareCode("int f(double dbl, int x, int y);", source)
     p.assertNoDiagnostics()
-    assertEquals(int func ("f" withParams listOf(double param "dbl", int param "x", int param "y")),
-        p.root.getDeclarations()[0])
+    int func ("f" withParams listOf(double param "dbl", int param "x", int param "y")) assertEquals
+        p.root.getDeclarations()[0]
   }
 
   @Test
   fun functionDeclarationFourParams() {
     val p = prepareCode("int f(double dbl, int x, int y, double asd);", source)
     p.assertNoDiagnostics()
-    assertEquals(int func ("f" withParams listOf(
-        double param "dbl", int param "x", int param "y", double param "asd")),
-        p.root.getDeclarations()[0])
+    int func ("f" withParams
+        listOf( double param "dbl", int param "x", int param "y", double param "asd")) assertEquals
+        p.root.getDeclarations()[0]
   }
 
   @Test

@@ -29,8 +29,8 @@ class DeclarationTests {
     val p = prepareCode("int a, b, c;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(int,
-        listOf("a", "b", "c").map { InitDeclarator(IdentifierNode(it)) })
-    assertEquals(listOf(expected), p.root.getDeclarations())
+        listOf("a", "b", "c").map { InitDeclarator(name(it)) })
+    assertEquals(listOf(expected.asEither()), p.root.getDeclarations())
   }
 
   @Test
@@ -38,7 +38,7 @@ class DeclarationTests {
     val p = prepareCode("int a; int b; int c;", source)
     p.assertNoDiagnostics()
     val expected = listOf("a", "b", "c").map {
-      Declaration(int, listOf(InitDeclarator(IdentifierNode(it))))
+      int declare listOf(InitDeclarator(name(it)))
     }
     assertEquals(expected, p.root.getDeclarations())
   }
@@ -54,7 +54,7 @@ class DeclarationTests {
   fun declarationWithIdentifierInitializer() {
     val p = prepareCode("int a = someVariable;", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign name("someVariable"))), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign IdentifierNode("someVariable"))), p.root.getDeclarations())
   }
 
   @Test
@@ -148,7 +148,8 @@ class DeclarationTests {
     val p = prepareCode(s, source)
     assert(p.diags.size >= 1)
     assertEquals(id, p.diags[0].id)
-    assert((p.root.getDeclarations()[0] as Declaration).declSpecs is ErrorDeclarationSpecifier)
+    val d = ((p.root.getDeclarations()[0] as EitherNode.Value<*>).value as Declaration)
+    assert(d.declSpecs is ErrorDeclarationSpecifier)
   }
 
   @Test
