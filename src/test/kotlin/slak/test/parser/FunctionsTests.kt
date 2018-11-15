@@ -59,4 +59,12 @@ class FunctionsTests {
     int func ("main" withParams emptyList()) body emptyList() assertEquals
         p.root.getDeclarations()[0]
   }
+
+  @Test
+  fun functionDefinitionOneArgEmpty() {
+    val p = prepareCode("int main(int argc) {}", source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams listOf(int param "argc")) body emptyList() assertEquals
+        p.root.getDeclarations()[0]
+  }
 }
