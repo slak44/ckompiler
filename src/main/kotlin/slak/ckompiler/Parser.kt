@@ -9,9 +9,13 @@ private val logger = KotlinLogging.logger("Parser")
 interface ASTNode
 
 /** Can either be [ErrorNode] or an [ASTNode]. */
-@Suppress("unused")
 sealed class EitherNode<out N : ASTNode> {
   data class Value<out N : ASTNode>(val value: N) : EitherNode<N>()
+
+  inline fun orElse(block: () -> Unit): N {
+    if (this is ErrorNode) block()
+    return (this as Value).value
+  }
 }
 
 /**
@@ -47,7 +51,7 @@ interface Declarator : ASTNode
 interface Statement : BlockItem
 
 /** C standard: A.2.1 */
-interface PrimaryExpression : ASTNode
+interface PrimaryExpression : ASTNode, Expression
 
 interface Terminal : PrimaryExpression
 
@@ -73,16 +77,20 @@ data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : Te
 
 data class StringLiteralNode(val string: String, val encoding: StringEncoding) : Terminal
 
-data class BinaryNode(val op: Operators, val lhs: ASTNode, val rhs: ASTNode) : PrimaryExpression {
+/** Stores a binary operation from an expression. */
+data class BinaryNode(val op: Operators,
+                      val lhs: EitherNode<Expression>,
+                      val rhs: EitherNode<Expression>) : PrimaryExpression {
   override fun toString() = "($lhs $op $rhs)"
 }
 
 /**
  * Represents an expression. A null expression represents a no-op, ie an expression that's just made
- * up of a semicolon
+ * up of a semicolon.
  * C standard: A.2.3, 6.8.3
  */
-data class Expression(val root: EitherNode<PrimaryExpression>?) : Statement
+interface Expression : Statement
+//data class Expression(val root: EitherNode<PrimaryExpression>?) : Statement
 
 private val storageClassSpecifier =
     listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
@@ -141,7 +149,7 @@ data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
 data class InitDeclarator(val declarator: EitherNode<Declarator>,
-                          val initializer: ASTNode? = null) : Declarator
+                          val initializer: EitherNode<Expression>? = null) : Declarator
 
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
                                 val declarator: EitherNode<Declarator>) : ASTNode
@@ -308,18 +316,24 @@ class Parser(tokens: List<Token>,
     })
   }
 
-  private fun parseExpr(endIdx: Int): ASTNode = tokenContext(endIdx) {
-    val primary: ASTNode = parsePrimaryExpr().ifNull {
+  /**
+   * Parses an expression.
+   * C standard: A.2.1
+   * @returns null if there is no expression, the [Expression] otherwise
+   */
+  private fun parseExpr(endIdx: Int): EitherNode<Expression>? = tokenContext(endIdx) {
+    val primary = parsePrimaryExpr().ifNull {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
         columns(range(1))
       }
-      return@tokenContext ErrorNode()
+      return@tokenContext null
     }
     return@tokenContext parseExprImpl(primary, 0)
   }
 
-  private fun parseExprImpl(lhsInit: ASTNode, minPrecedence: Int): ASTNode {
+  private fun parseExprImpl(lhsInit: EitherNode<Expression>,
+                            minPrecedence: Int): EitherNode<Expression> {
     var lhs = lhsInit
     while (true) {
       if (isEaten()) break
@@ -344,7 +358,7 @@ class Parser(tokens: List<Token>,
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
-      lhs = BinaryNode(op, lhs, rhs)
+      lhs = BinaryNode(op, lhs, rhs).asEither()
     }
     return lhs
   }
@@ -352,10 +366,10 @@ class Parser(tokens: List<Token>,
   /**
    * C standard: A.2.1, 6.4.4
    * @see parseTerminal
-   * @return null if no primary was found
-   * FIXME: proper return type for this function
+   * @return null if no primary was found, or the [Expression] otherwise (this doesn't return a
+   * [PrimaryExpression] because `( expression )` is a primary expression in itself)
    */
-  private fun parsePrimaryExpr(): ASTNode? = when {
+  private fun parsePrimaryExpr(): EitherNode<Expression>? = when {
     current().asPunct() == Punctuators.LPAREN -> {
       if (lookahead().asPunct() == Punctuators.RPAREN) {
         parserDiagnostic {
@@ -375,7 +389,7 @@ class Parser(tokens: List<Token>,
       parseTerminal()?.let {
         eat()
         it
-      }
+      }?.asEither()
     }
   }
 
@@ -724,7 +738,8 @@ class Parser(tokens: List<Token>,
     return parseDirectDeclarator(endIdx)
   }
 
-  private fun parseInitializer(): ASTNode? {
+  // FIXME: return type will change with the initializer list
+  private fun parseInitializer(): EitherNode<Expression>? {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
@@ -825,25 +840,38 @@ class Parser(tokens: List<Token>,
    * @returns null if no statement was found, or the [Statement] otherwise
    */
   private fun parseStatement(): EitherNode<Statement>? {
-    TODO()
+    return parseLabeledStatement() ?: parseCompoundStatement()?.asEither() ?: TODO()
   }
 
-  /** C standard: A.2.3 */
-  private fun parseCompoundStatement(endIdx: Int): CompoundStatement = tokenContext(endIdx) {
-    val items = mutableListOf<EitherNode<BlockItem>>()
-    while (!isEaten()) {
-      val declaration = parseDeclaration()
-      if (declaration != null) {
-        items.add(declaration)
-        continue
+  /**
+   * Parses a compound-statement, including the { } brackets.
+   * C standard: A.2.3
+   * @returns null if there is no compound statement, or the [CompoundStatement] otherwise
+   */
+  private fun parseCompoundStatement(): CompoundStatement? {
+    if (current().asPunct() != Punctuators.LBRACKET) return null
+    val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET)
+    eat() // Get rid of '{'
+    if (rbracket == -1) {
+      parserDiagnostic {
+        id = DiagnosticId.UNMATCHED_PAREN
+        formatArgs(Punctuators.RBRACKET.s)
+        column(colPastTheEnd())
       }
-      val statement = parseStatement()
-      if (statement != null) {
-        items.add(statement)
-        continue
+      parserDiagnostic {
+        id = DiagnosticId.MATCH_PAREN_TARGET
+        formatArgs(Punctuators.LBRACKET.s)
+        columns(range(-1))
       }
+      return null
     }
-    return@tokenContext CompoundStatement(items)
+    val compound = tokenContext(rbracket) {
+      val items = mutableListOf<EitherNode<BlockItem>>()
+      while (!isEaten()) items.add(parseDeclaration() ?: parseStatement() ?: continue)
+      CompoundStatement(items)
+    }
+    eat() // Get rid of '}'
+    return compound
   }
 
   /**
@@ -878,18 +906,8 @@ class Parser(tokens: List<Token>,
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
-    val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET)
-    eat() // Get rid of '{'
-    if (rbracket == -1) {
-      parserDiagnostic {
-        id = DiagnosticId.UNMATCHED_PAREN
-        formatArgs(Punctuators.RBRACKET.s)
-        column(colPastTheEnd())
-      }
-      return FunctionDefinition(declSpec, declarator, ErrorNode()).asEither()
-    }
-    val block = parseCompoundStatement(rbracket).asEither()
-    eat() // Get rid of '}'
+    val block = parseCompoundStatement()?.asEither()
+        ?: return FunctionDefinition(declSpec, declarator, ErrorNode()).asEither()
     return FunctionDefinition(declSpec, declarator, block).asEither()
   }
 

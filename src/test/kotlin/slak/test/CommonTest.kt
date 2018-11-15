@@ -23,7 +23,10 @@ internal infix fun <LHS, RHS> LHS.assertEquals(rhs: RHS) {
 
 internal fun name(s: String): EitherNode<IdentifierNode> = IdentifierNode(s).asEither()
 
-internal infix fun String.assign(value: ASTNode) = InitDeclarator(name(this), value)
+internal infix fun String.assign(value: Expression) =
+    InitDeclarator(name(this), value.asEither())
+
+internal infix fun String.assign(value: ErrorNode) = InitDeclarator(name(this), value)
 
 internal infix fun DeclarationSpecifier.declare(decl: InitDeclarator) =
     Declaration(this, listOf(decl)).asEither()
@@ -56,10 +59,10 @@ internal infix fun Declaration.body(list: List<BlockItem>): FunctionDefinition {
 }
 
 internal class BinaryBuilder {
-  var lhs: ASTNode? = null
-  var rhs: ASTNode? = null
+  var lhs: Expression? = null
+  var rhs: Expression? = null
   fun build(op: Operators): BinaryNode {
-    return BinaryNode(op, lhs!!, rhs!!)
+    return BinaryNode(op, lhs!!.asEither(), rhs!!.asEither())
   }
 }
 
@@ -70,17 +73,20 @@ internal fun Operators.with(block: BinaryBuilder.() -> Unit): BinaryNode {
 }
 
 internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryNode {
-  if (first is ASTNode && second is ASTNode) {
-    return BinaryNode(op, first as ASTNode, second as ASTNode)
+  if (first is Expression && second is Expression) {
+    return BinaryNode(op, (first as Expression).asEither(), (second as Expression).asEither())
   }
   if (first is Int && second is Int) {
-    return BinaryNode(op, int((first as Int).toLong()), int((second as Int).toLong()))
+    return BinaryNode(op, int((first as Int).toLong()).asEither(),
+        int((second as Int).toLong()).asEither())
   }
-  if (first is Int && second is ASTNode) {
-    return BinaryNode(op, int((first as Int).toLong()), second as ASTNode)
+  if (first is Int && second is Expression) {
+    return BinaryNode(op, int((first as Int).toLong()).asEither(),
+        (second as Expression).asEither())
   }
-  if (first is ASTNode && second is Int) {
-    return BinaryNode(op, first as ASTNode, int((second as Int).toLong()))
+  if (first is Expression && second is Int) {
+    return BinaryNode(op, (first as Expression).asEither(),
+        int((second as Int).toLong()).asEither())
   }
   throw IllegalArgumentException("Bad types")
 }
