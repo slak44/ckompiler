@@ -1,6 +1,5 @@
 package slak.test.parser
 
-import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.*
 import slak.test.*
@@ -172,11 +171,5 @@ class DeclarationTests {
   @Test
   fun declSpecsUnsupportedComplex() {
     testDeclSpecErrors("float _Complex a;", DiagnosticId.UNSUPPORTED_COMPLEX)
-  }
-
-  @Test
-  @Ignore("unimplemented")
-  fun declSpecsNoVoidOnVariables() {
-    val p = prepareCode("void a;", source)
   }
 }
