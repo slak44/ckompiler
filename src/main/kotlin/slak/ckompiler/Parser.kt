@@ -2,7 +2,6 @@ package slak.ckompiler
 
 import mu.KotlinLogging
 import java.util.*
-import kotlin.math.exp
 import kotlin.math.min
 
 private val logger = KotlinLogging.logger("Parser")
@@ -33,7 +32,7 @@ class ErrorNode : ASTNode, EitherNode<Nothing>() {
 }
 
 /** Transform a concrete [ASTNode] instance into an [EitherNode.Value] instance. */
-fun <T : ASTNode> T.asEither(): EitherNode<T> = EitherNode.Value(this)
+fun <T : ASTNode> T.wrap(): EitherNode<T> = EitherNode.Value(this)
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
 class RootNode : ASTNode {
@@ -363,7 +362,7 @@ class Parser(tokens: List<Token>,
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
-      lhs = BinaryNode(op, lhs, rhs).asEither()
+      lhs = BinaryNode(op, lhs, rhs).wrap()
     }
     return lhs
   }
@@ -408,7 +407,7 @@ class Parser(tokens: List<Token>,
       parseTerminal()?.let {
         eat()
         it
-      }?.asEither()
+      }?.wrap()
     }
   }
 
@@ -733,7 +732,7 @@ class Parser(tokens: List<Token>,
         val name = IdentifierNode((current() as Identifier).name)
         eat()
         when {
-          isEaten() -> return@tokenContext name.asEither()
+          isEaten() -> return@tokenContext name.wrap()
           current().asPunct() == Punctuators.LPAREN -> {
             val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
             eat() // Get rid of "("
@@ -741,7 +740,7 @@ class Parser(tokens: List<Token>,
             if (rparenIdx == -1) return@tokenContext ErrorNode()
             val paramList = parseParameterList(rparenIdx)
             eat() // Get rid of ")"
-            return@tokenContext FunctionDeclarator(name.asEither(), paramList).asEither()
+            return@tokenContext FunctionDeclarator(name.wrap(), paramList).wrap()
           }
           current().asPunct() == Punctuators.LSQPAREN -> {
             val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
@@ -749,7 +748,7 @@ class Parser(tokens: List<Token>,
             // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
             logger.throwICE("Unimplemented grammar") { tokStack.peek() }
           }
-          else -> return@tokenContext name.asEither()
+          else -> return@tokenContext name.wrap()
         }
       }
       // FIXME: Can't happen? current() either is or isn't an identifier
@@ -839,7 +838,7 @@ class Parser(tokens: List<Token>,
         break
       }
     }
-    return Declaration(declSpec, declaratorList).asEither()
+    return Declaration(declSpec, declaratorList).wrap()
   }
 
   /**
@@ -858,7 +857,7 @@ class Parser(tokens: List<Token>,
       }
       return ErrorNode()
     }
-    return LabeledStatement(label, labeled).asEither()
+    return LabeledStatement(label, labeled).wrap()
   }
 
   /**
@@ -919,9 +918,9 @@ class Parser(tokens: List<Token>,
       } else {
         elseStatement
       }
-      return IfStatement(cond, statementSuccess, statementFailure).asEither()
+      return IfStatement(cond, statementSuccess, statementFailure).wrap()
     } else {
-      return IfStatement(cond, statementSuccess, null).asEither()
+      return IfStatement(cond, statementSuccess, null).wrap()
     }
   }
 
@@ -964,7 +963,7 @@ class Parser(tokens: List<Token>,
         eatToSemi()
         if (!isEaten()) eatToSemi()
       }
-      return GotoStatement(ident).asEither()
+      return GotoStatement(ident).wrap()
     }
   }
 
@@ -1023,16 +1022,16 @@ class Parser(tokens: List<Token>,
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
       eat()
-      return Noop.asEither()
+      return Noop.wrap()
     }
     return parseLabeledStatement()
         ?: parseCompoundStatement()
         ?: parseIfStatement()
         ?: parseGotoStatement()
             // FIXME: loops first
-//        ?: parseContinue()?.asEither()
-//        ?: parseBreak()?.asEither()
-        ?: parseReturn()?.asEither()
+//        ?: parseContinue()?.wrap()
+//        ?: parseBreak()?.wrap()
+        ?: parseReturn()?.wrap()
         ?: parseExpressionStatement()
         ?: TODO("unimplemented grammar")
   }
@@ -1058,7 +1057,7 @@ class Parser(tokens: List<Token>,
       CompoundStatement(items)
     }
     eat() // Get rid of '}'
-    return compound.asEither()
+    return compound.wrap()
   }
 
   /**
@@ -1086,7 +1085,7 @@ class Parser(tokens: List<Token>,
     val declarator = parseDeclarator(firstBracket)?.let {
       if (it is EitherNode.Value && it.value is FunctionDeclarator) {
         // FIXME: what diag to print here?
-        return@let it.value.asEither()
+        return@let it.value.wrap()
       }
       return@let ErrorNode()
     } ?: ErrorNode()
@@ -1094,8 +1093,8 @@ class Parser(tokens: List<Token>,
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
     val block = parseCompoundStatement()
-        ?: return FunctionDefinition(declSpec, declarator, ErrorNode()).asEither()
-    return FunctionDefinition(declSpec, declarator, block).asEither()
+        ?: return FunctionDefinition(declSpec, declarator, ErrorNode()).wrap()
+    return FunctionDefinition(declSpec, declarator, block).wrap()
   }
 
   /** C standard: A.2.4, 6.9 */

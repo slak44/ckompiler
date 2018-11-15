@@ -29,7 +29,7 @@ class DeclarationTests {
     p.assertNoDiagnostics()
     val expected = Declaration(int,
         listOf("a", "b", "c").map { InitDeclarator(name(it)) })
-    assertEquals(listOf(expected.asEither()), p.root.getDeclarations())
+    assertEquals(listOf(expected.wrap()), p.root.getDeclarations())
   }
 
   @Test

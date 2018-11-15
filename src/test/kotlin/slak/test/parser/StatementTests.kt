@@ -115,7 +115,7 @@ class StatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.map { it.id })
     int func ("main" withParams emptyList()) body listOf(
-        IfStatement(int(123).asEither(), ErrorNode(), null)
+        IfStatement(int(123).wrap(), ErrorNode(), null)
     ) assertEquals p.root.getDeclarations()[0]
   }
 
@@ -128,7 +128,7 @@ class StatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.map { it.id })
     int func ("main" withParams emptyList()) body listOf(
-        IfStatement(int(123).asEither(), ErrorNode(), (1 add 1).asEither())
+        IfStatement(int(123).wrap(), ErrorNode(), (1 add 1).wrap())
     ) assertEquals p.root.getDeclarations()[0]
   }
 
