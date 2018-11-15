@@ -3,6 +3,7 @@ package slak.ckompiler
 import mu.KLogger
 import java.lang.RuntimeException
 import slak.ckompiler.DiagnosticKind.*
+import kotlin.math.max
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
@@ -47,7 +48,7 @@ data class Diagnostic(val id: DiagnosticId,
                       val sourceColumns: List<IntRange>,
                       val origin: String) {
   private val printable: String by lazy {
-    val (line, col) = if (sourceText.isNotEmpty() && sourceColumns.isNotEmpty()) {
+    val (line, col, lineText) = if (sourceText.isNotEmpty() && sourceColumns.isNotEmpty()) {
       var currLine = 1
       var currLineStart = 0
       for ((idx, it) in sourceText.withIndex()) {
@@ -55,18 +56,22 @@ data class Diagnostic(val id: DiagnosticId,
           currLine++
           currLineStart = idx + 1
         }
-        if (sourceColumns[0].start > idx) {
+        if (sourceColumns[0].start > currLineStart) {
           break
         }
       }
-      Pair(currLine.toString(), (sourceColumns[0].start - currLineStart).toString())
+      val codeLine = sourceText.drop(currLineStart).takeWhile { it != '\n' }
+      Triple(currLine.toString(), sourceColumns[0].start - currLineStart, codeLine)
     } else {
-      Pair("?", "?")
+      Triple("?", -1, "???")
     }
+    val colStr = if (col == -1) "?" else col.toString()
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
-    return@lazy "$sourceFileName:$line:$col: ${id.kind.text}: $msg [$origin|${id.name}]"
-    // FIXME add a nice caret thing that shows the column within the line
+    val firstLine = "$sourceFileName:$line:$colStr: ${id.kind.text}: $msg [$origin|${id.name}]"
+    // FIXME caret position is practically random
+    val caretLine = " ".repeat(max(col - 2, 0)) + '^'
     // FIXME add tildes for the other sourceColumns
+    return@lazy "$firstLine\n$lineText\n$caretLine"
   }
 
   fun print() = println(printable)
