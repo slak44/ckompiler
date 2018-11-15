@@ -277,7 +277,7 @@ class Parser(tokens: List<Token>,
     return result
   }
 
-  /** @returns the first (real) index matching the condition, or -1 if there is none */
+  /** @return the first (real) index matching the condition, or -1 if there is none */
   private fun indexOfFirst(block: (Token) -> Boolean): Int {
     val idx = tokStack.peek().drop(idxStack.peek()).indexOfFirst(block)
     return if (idx == -1) -1 else idx + idxStack.peek()
@@ -322,7 +322,7 @@ class Parser(tokens: List<Token>,
   /**
    * Parses an expression.
    * C standard: A.2.1
-   * @returns null if there is no expression, the [Expression] otherwise
+   * @return null if there is no expression, the [Expression] otherwise
    */
   private fun parseExpr(endIdx: Int): EitherNode<Expression>? = tokenContext(endIdx) {
     val primary = parsePrimaryExpr().ifNull {
@@ -401,7 +401,7 @@ class Parser(tokens: List<Token>,
    * All terminals are one token long. Does not eat anything.
    * C standard: A.2.1, 6.5.1, 6.4.4.4
    * @see CharacterConstantNode
-   * @returns the [Terminal] node, or null if no terminal was found
+   * @return the [Terminal] node, or null if no terminal was found
    */
   private fun parseTerminal(): Terminal? {
     val tok = current()
@@ -594,7 +594,7 @@ class Parser(tokens: List<Token>,
    * @param lparen the left paren: eg '(' or '[' or '{'
    * @param rparen the right paren: eg ')' or ']' or '}'
    * @param stopAtSemi whether or not to return -1 when hitting a semicolon
-   * @returns -1 if the parens are unbalanced or a [Punctuators.SEMICOLON] was found before they can
+   * @return -1 if the parens are unbalanced or a [Punctuators.SEMICOLON] was found before they can
    * get balanced (and [stopAtSemi] is true), the size of the token stack if there were no parens,
    * or the (real) idx of the rightmost paren otherwise
    */
@@ -768,7 +768,7 @@ class Parser(tokens: List<Token>,
 
   /**
    * Parses a declaration, including function declarations.
-   * @returns null if there is no declaration, or a [Declaration] otherwise
+   * @return null if there is no declaration, or a [Declaration] otherwise
    */
   private fun parseDeclaration(): EitherNode<Declaration>? {
     // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
@@ -829,7 +829,7 @@ class Parser(tokens: List<Token>,
 
   /**
    * C standard: A.2.3
-   * @returns the [LabeledStatement] if it is there, or null if there is no such statement
+   * @return the [LabeledStatement] if it is there, or null if there is no such statement
    */
   private fun parseLabeledStatement(): EitherNode<LabeledStatement>? {
     if (current() !is Identifier || lookahead().asPunct() != Punctuators.COLON) return null
@@ -863,7 +863,7 @@ class Parser(tokens: List<Token>,
 
   /**
    * C standard: A.2.3
-   * @returns null if no statement was found, or the [Statement] otherwise
+   * @return null if no statement was found, or the [Statement] otherwise
    */
   private fun parseStatement(): EitherNode<Statement>? {
     return parseLabeledStatement()
@@ -875,7 +875,7 @@ class Parser(tokens: List<Token>,
   /**
    * Parses a compound-statement, including the { } brackets.
    * C standard: A.2.3
-   * @returns null if there is no compound statement, or the [CompoundStatement] otherwise
+   * @return null if there is no compound statement, or the [CompoundStatement] otherwise
    */
   private fun parseCompoundStatement(): CompoundStatement? {
     if (current().asPunct() != Punctuators.LBRACKET) return null
@@ -907,7 +907,7 @@ class Parser(tokens: List<Token>,
    * Parses a function _definition_. That includes the compound-statement. Function _declarations_
    * are not parsed here (see [parseDeclaration]).
    * C standard: A.2.4, A.2.2, 6.9.1
-   * @returns null if this is not a function definition, or a [FunctionDefinition] otherwise
+   * @return null if this is not a function definition, or a [FunctionDefinition] otherwise
    */
   private fun parseFunctionDefinition(): EitherNode<FunctionDefinition>? {
     val firstBracket = indexOfFirst { it.asPunct() == Punctuators.LBRACKET }

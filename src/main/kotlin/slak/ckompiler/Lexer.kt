@@ -109,7 +109,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     private fun isOctalDigit(c: Char) = c in '0'..'7'
 
     /**
-     * @returns the index of the first whitespace or [Punctuators] in the string, or the string
+     * @return the index of the first whitespace or [Punctuators] in the string, or the string
      * length if there isn't any.
      */
     private fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {

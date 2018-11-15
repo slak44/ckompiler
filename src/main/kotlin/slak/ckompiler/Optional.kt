@@ -5,7 +5,7 @@ sealed class Optional<E> {
   /**
    * Gets the stored value.
    * @throws NoSuchElementException if the optional is empty
-   * @returns the stored value
+   * @return the stored value
    */
   fun get(): E = when (this) {
     is Empty -> throw NoSuchElementException("This optional is empty")
@@ -21,18 +21,18 @@ sealed class Optional<E> {
     else block(get())
   }
 
-  /** @returns the optional value if it exists, null otherwise */
+  /** @return the optional value if it exists, null otherwise */
   fun orNull(): E? = if (this is Empty) null else get()
 
-  /** @returns the optional value if it exists or [other] if it doesn't */
+  /** @return the optional value if it exists or [other] if it doesn't */
   fun orElse(other: E) = if (this is Empty) other else get()
 
-  /** @returns the optional value if it exists or [block]'s application otherwise */
+  /** @return the optional value if it exists or [block]'s application otherwise */
   inline fun orElse(block: () -> E) = if (this is Empty) block() else get()
 
   /**
    * @throws Throwable [th]
-   * @returns the optional's value
+   * @return the optional's value
    */
   fun orElseThrow(th: Throwable): E = if (this is Empty) throw th else get()
 
