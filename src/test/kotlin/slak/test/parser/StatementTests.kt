@@ -16,7 +16,7 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
         ifSt(int(123)) {
-          1 to 1 with Operators.ADD
+          1 add 1
         }
     ) assertEquals p.root.getDeclarations()[0]
   }
@@ -31,9 +31,9 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
         ifSt(int(123)) {
-          1 to 1 with Operators.ADD
+          1 add 1
         } elseSt {
-          2 to 2 with Operators.ADD
+          2 add 2
         }
     ) assertEquals p.root.getDeclarations()[0]
   }
@@ -50,7 +50,7 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
         ifSt(int(123)) {
-          listOf(3 to 3 with Operators.SUB).compound()
+          listOf(3 sub 3).compound()
         }
     ) assertEquals p.root.getDeclarations()[0]
   }
@@ -69,9 +69,9 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
         ifSt(int(123)) {
-          listOf(3 to 3 with Operators.SUB).compound()
+          listOf(3 sub 3).compound()
         } elseSt {
-          listOf(2 to 2 with Operators.SUB).compound()
+          listOf(2 sub 2).compound()
         }
     ) assertEquals p.root.getDeclarations()[0]
   }
@@ -86,7 +86,7 @@ class StatementTests {
     assertEquals(listOf(DiagnosticId.EXPECTED_PRIMARY), p.diags.map { it.id })
     int func ("main" withParams emptyList()) body listOf(
         ifSt(ErrorNode()) {
-          1 to 1 with Operators.ADD
+          1 add 1
         }
     ) assertEquals p.root.getDeclarations()[0]
   }
@@ -101,7 +101,7 @@ class StatementTests {
     assertEquals(listOf(DiagnosticId.EXPECTED_EXPR), p.diags.map { it.id })
     int func ("main" withParams emptyList()) body listOf(
         ifSt(ErrorNode()) {
-          1 to 1 with Operators.ADD
+          1 add 1
         }
     ) assertEquals p.root.getDeclarations()[0]
   }
@@ -128,7 +128,7 @@ class StatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.map { it.id })
     int func ("main" withParams emptyList()) body listOf(
-        IfStatement(int(123).asEither(), ErrorNode(), (1 to 1 with Operators.ADD).asEither())
+        IfStatement(int(123).asEither(), ErrorNode(), (1 add 1).asEither())
     ) assertEquals p.root.getDeclarations()[0]
   }
 
@@ -171,10 +171,7 @@ class StatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
-        returnSt(Operators.DIV.with {
-          lhs = 1 to 1 with Operators.ADD
-          rhs = int(2)
-        })
+        returnSt((1 add 1) div 2)
     ) assertEquals p.root.getDeclarations()[0]
   }
 

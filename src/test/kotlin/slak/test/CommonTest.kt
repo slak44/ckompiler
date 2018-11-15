@@ -8,6 +8,12 @@ internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(),
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 
+internal fun prepareCode(s: String, source: SourceFileName): Parser {
+  val lexer = Lexer(s, source)
+  lexer.assertNoDiagnostics()
+  return Parser(lexer.tokens, source, s, lexer.tokStartIdxes)
+}
+
 internal val int = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 internal val double = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.DOUBLE)
@@ -83,6 +89,11 @@ internal fun Operators.with(block: BinaryBuilder.() -> Unit): BinaryNode {
   b.block()
   return b.build(this)
 }
+
+internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.ADD
+internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB
+internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.MUL
+internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with Operators.DIV
 
 internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryNode {
   if (first is Expression && second is Expression) {

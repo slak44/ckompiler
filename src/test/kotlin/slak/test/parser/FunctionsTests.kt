@@ -83,7 +83,7 @@ class FunctionsTests {
   fun functionDefinitionBasicWithExpression() {
     val p = prepareCode("int main() { 1 + 1; }", source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(1 to 1 with Operators.ADD) assertEquals
+    int func ("main" withParams emptyList()) body listOf(1 add 1) assertEquals
         p.root.getDeclarations()[0]
   }
 }

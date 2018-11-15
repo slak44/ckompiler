@@ -2,7 +2,6 @@ package slak.test
 
 import org.junit.Test
 import slak.ckompiler.*
-import slak.test.parser.prepareCode
 import kotlin.test.assertEquals
 
 /**
@@ -78,7 +77,7 @@ class ResilienceTests {
     """.trimIndent(), source)
     int func ("main" withParams emptyList()) body listOf(
         returnSt(int(0)),
-        1 to 1 with Operators.ADD
+        1 add 1
     ) assertEquals p.root.getDeclarations()[0]
   }
 

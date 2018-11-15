@@ -60,33 +60,15 @@ class DeclarationTests {
   fun declarationWithArithmeticInitializer() {
     val p = prepareCode("int a = 1 + 2 * 3 - 4 / 5;", source)
     p.assertNoDiagnostics()
-    val expr = Operators.SUB.with {
-      lhs = Operators.ADD.with {
-        lhs = int(1)
-        rhs = 2 to 3 with Operators.MUL
-      }
-      rhs = 4 to 5 with Operators.DIV
-    }
-    assertEquals(listOf(int declare ("a" assign expr)), p.root.getDeclarations())
+    int declare ("a" assign (1 add (2 mul 3) sub (4 div 5))) assertEquals
+        p.root.getDeclarations()[0]
   }
 
   @Test
   fun declarationWithComplexArithmeticInitializer() {
     val p = prepareCode("int a = 1 + 2 * 2 * (3 - 4) / 5 / 6;", source)
     p.assertNoDiagnostics()
-    val expr = Operators.ADD.with {
-      lhs = int(1)
-      rhs = Operators.DIV.with {
-        lhs = Operators.DIV.with {
-          lhs = Operators.MUL.with {
-            lhs = 2 to 2 with Operators.MUL
-            rhs = 3 to 4 with Operators.SUB
-          }
-          rhs = int(5)
-        }
-        rhs = int(6)
-      }
-    }
+    val expr = 1 add (2 mul 2 mul (3 sub 4) div 5 div 6)
     assertEquals(listOf(int declare ("a" assign expr)), p.root.getDeclarations())
   }
 
@@ -101,8 +83,7 @@ class DeclarationTests {
   fun declarationWithExprParenInitializer() {
     val p = prepareCode("int a = (1 + 1);", source)
     p.assertNoDiagnostics()
-    val expr = 1 to 1 with Operators.ADD
-    assertEquals(listOf(int declare ("a" assign expr)), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign (1 add 1))), p.root.getDeclarations())
   }
 
   @Test
