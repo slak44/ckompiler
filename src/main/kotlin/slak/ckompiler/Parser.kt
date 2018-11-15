@@ -164,7 +164,7 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
                               val declarator: EitherNode<FunctionDeclarator>,
-                              val block: ASTNode) : ExternalDeclaration()
+                              val block: EitherNode<CompoundStatement>) : ExternalDeclaration()
 
 /** C standard: A.2.3, 6.8.2 */
 data class CompoundStatement(val items: List<EitherNode<BlockItem>>) : Statement
@@ -886,7 +886,8 @@ class Parser(tokens: List<Token>,
       }
       return FunctionDefinition(declSpec, declarator, ErrorNode()).asEither()
     }
-    return FunctionDefinition(declSpec, declarator, parseCompoundStatement(rbracket)).asEither()
+    val block = parseCompoundStatement(rbracket).asEither()
+    return FunctionDefinition(declSpec, declarator, block).asEither()
   }
 
   /** C standard: A.2.4, 6.9 */
