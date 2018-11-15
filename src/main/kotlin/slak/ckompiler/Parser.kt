@@ -51,6 +51,9 @@ interface Declarator : ASTNode
 /** C standard: A.2.3, 6.8 */
 interface Statement : BlockItem
 
+/** The standard says no-ops are expressions, but here it is represented separately */
+object Noop : Statement
+
 /** C standard: A.2.1 */
 interface PrimaryExpression : ASTNode, Expression
 
@@ -86,12 +89,10 @@ data class BinaryNode(val op: Operators,
 }
 
 /**
- * Represents an expression. A null expression represents a no-op, ie an expression that's just made
- * up of a semicolon.
+ * Represents an expression.
  * C standard: A.2.3, 6.8.3
  */
 interface Expression : Statement
-//data class Expression(val root: EitherNode<PrimaryExpression>?) : Statement
 
 private val storageClassSpecifier =
     listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
@@ -186,9 +187,9 @@ data class LabeledStatement(val label: IdentifierNode,
 interface SelectionStatement : Statement
 
 /** C standard: 6.8.4.1 */
-data class IfStatement(val cond: Expression,
-                       val success: Statement,
-                       val failure: Statement?) : SelectionStatement
+data class IfStatement(val cond: EitherNode<Expression>,
+                       val success: EitherNode<Statement>,
+                       val failure: EitherNode<Statement>?) : SelectionStatement
 
 /** C standard: 6.8.4.2 */
 data class SwitchStatement(val switch: Expression, val body: Statement) : SelectionStatement
@@ -374,6 +375,13 @@ class Parser(tokens: List<Token>,
    * [PrimaryExpression] because `( expression )` is a primary expression in itself)
    */
   private fun parsePrimaryExpr(): EitherNode<Expression>? = when {
+    isEaten() -> {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_EXPR
+        // FIXME: find correct column
+      }
+      ErrorNode()
+    }
     current().asPunct() == Punctuators.LPAREN -> {
       if (lookahead().asPunct() == Punctuators.RPAREN) {
         parserDiagnostic {
@@ -381,16 +389,17 @@ class Parser(tokens: List<Token>,
           columns(range(1))
         }
         ErrorNode()
-      }
-      val endParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-      if (endParenIdx == -1) {
-        eatToSemi()
-        ErrorNode()
       } else {
-        eat() // Get rid of the LPAREN
-        val expr = parseExpr(endParenIdx)
-        eat() // Get rid of the RPAREN
-        expr
+        val endParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+        if (endParenIdx == -1) {
+          eatToSemi()
+          ErrorNode()
+        } else {
+          eat() // Get rid of the LPAREN
+          val expr = parseExpr(endParenIdx)
+          eat() // Get rid of the RPAREN
+          expr
+        }
       }
     }
     // FIXME implement generic-selection A.2.1/6.5.1.1
@@ -851,6 +860,70 @@ class Parser(tokens: List<Token>,
     return LabeledStatement(label, labeled).asEither()
   }
 
+  /**
+   * C standard: A.2.3, 6.8.4.1
+   * @return the [IfStatement] if it is there, or null if it isn't
+   */
+  private fun parseIfStatement(): EitherNode<IfStatement>? {
+    if (current().asKeyword() != Keywords.IF) return null
+    eat() // The 'if'
+    val condParenEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+    if (condParenEnd == -1) return ErrorNode()
+    eat() // The '(' from the if
+    val condExpr = parseExpr(condParenEnd)
+    val cond = if (condExpr == null) {
+      // Eat everything between parens
+      tokenContext(condParenEnd) {
+        while (!isEaten()) eat()
+      }
+      ErrorNode()
+    } else {
+      condExpr
+    }
+    eat() // The ')' from the if
+    val statementSuccess = if (!isEaten() && current().asKeyword() == Keywords.ELSE) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_STATEMENT
+        columns(range(0))
+      }
+      ErrorNode()
+    } else {
+      val statement = parseStatement()
+      if (statement == null) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_STATEMENT
+          columns(range(0))
+        }
+        // Attempt to eat the error
+        while (!isEaten() &&
+            current().asPunct() != Punctuators.SEMICOLON &&
+            current().asKeyword() != Keywords.ELSE) eat()
+        ErrorNode()
+      } else {
+        statement
+      }
+    }
+    if (!isEaten() && current().asKeyword() == Keywords.ELSE) {
+      eat() // The 'else'
+      val elseStatement = parseStatement()
+      val statementFailure = if (elseStatement == null) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_STATEMENT
+          columns(range(0))
+        }
+        // Eat until the next thing
+        eatToSemi()
+        if (!isEaten()) eat()
+        ErrorNode()
+      } else {
+        elseStatement
+      }
+      return IfStatement(cond, statementSuccess, statementFailure).asEither()
+    } else {
+      return IfStatement(cond, statementSuccess, null).asEither()
+    }
+  }
+
   /** Wraps [parseExpr] with a check for [Punctuators.SEMICOLON] at the end. */
   private fun parseExpressionStatement(): EitherNode<Expression>? {
     val expr = parseExpr(tokStack.peek().size) ?: return null
@@ -871,8 +944,14 @@ class Parser(tokens: List<Token>,
    * @return null if no statement was found, or the [Statement] otherwise
    */
   private fun parseStatement(): EitherNode<Statement>? {
+    if (isEaten()) return null
+    if (current().asPunct() == Punctuators.SEMICOLON) {
+      eat()
+      return Noop.asEither()
+    }
     return parseLabeledStatement()
         ?: parseCompoundStatement()
+        ?: parseIfStatement()
         ?: parseExpressionStatement()
         ?: TODO("unimplemented grammar")
   }

@@ -55,9 +55,18 @@ internal infix fun Declaration.body(s: EitherNode<CompoundStatement>): FunctionD
 }
 
 internal infix fun Declaration.body(s: CompoundStatement) = this body s.asEither()
+internal infix fun Declaration.body(list: List<BlockItem>) = this body list.compound()
 
-internal infix fun Declaration.body(list: List<BlockItem>) =
-    this body CompoundStatement(list.map { it.asEither() })
+internal fun ifSt(e: Expression, success: () -> Statement) =
+    IfStatement(e.asEither(), success().asEither(), null)
+
+internal fun ifSt(e: ErrorNode, success: () -> Statement) =
+    IfStatement(e, success().asEither(), null)
+
+internal infix fun IfStatement.elseSt(failure: () -> Statement) =
+    IfStatement(this.cond, this.success, failure().asEither())
+
+internal fun List<BlockItem>.compound() = CompoundStatement(this.map { it.asEither() })
 
 internal class BinaryBuilder {
   var lhs: Expression? = null
