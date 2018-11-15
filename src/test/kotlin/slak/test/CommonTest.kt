@@ -66,6 +66,8 @@ internal fun ifSt(e: ErrorNode, success: () -> Statement) =
 internal infix fun IfStatement.elseSt(failure: () -> Statement) =
     IfStatement(this.cond, this.success, failure().asEither())
 
+internal fun returnSt(e: Expression) = ReturnStatement(e.asEither())
+
 internal fun List<BlockItem>.compound() = CompoundStatement(this.map { it.asEither() })
 
 internal class BinaryBuilder {

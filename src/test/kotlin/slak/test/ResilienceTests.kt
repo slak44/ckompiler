@@ -68,6 +68,20 @@ class ResilienceTests {
     decl assertEquals p.root.getDeclarations()[0]
   }
 
+  @Test
+  fun parserStatementAfterMissingSemicolon() {
+    val p = prepareCode("""
+      int main() {
+        return 0
+        1 + 1;
+      }
+    """.trimIndent(), source)
+    int func ("main" withParams emptyList()) body listOf(
+        returnSt(int(0)),
+        1 to 1 with Operators.ADD
+    ) assertEquals p.root.getDeclarations()[0]
+  }
+
   // FIXME more tests like this
   @Test
   fun lexerCorrectDiagnosticColumn() {

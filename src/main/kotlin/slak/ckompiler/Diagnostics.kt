@@ -17,6 +17,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_EXPR(ERROR, "Expected expression"),
   EXPECTED_PRIMARY(ERROR, "Expected primary expression"),
   EXPECTED_EXTERNAL_DECL(ERROR, "Expected a declaration or a function definition"),
+  EXPECTED_IDENT(ERROR, "Expected identifier"),
   UNMATCHED_PAREN(ERROR, "Expected '%s'"),
   MATCH_PAREN_TARGET(OTHER, "To match this '%s'"),
   EXPECTED_DECL(ERROR, "Expected declarator"),

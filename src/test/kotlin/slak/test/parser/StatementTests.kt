@@ -148,4 +148,46 @@ class StatementTests {
         }
     ) assertEquals p.root.getDeclarations()[0]
   }
+
+  @Test
+  fun returnSimple() {
+    val p = prepareCode("""
+      int main() {
+        return 0;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        returnSt(int(0))
+    ) assertEquals p.root.getDeclarations()[0]
+  }
+
+  @Test
+  fun returnExpr() {
+    val p = prepareCode("""
+      int main() {
+        return (1 + 1) / 2;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        returnSt(Operators.DIV.with {
+          lhs = 1 to 1 with Operators.ADD
+          rhs = int(2)
+        })
+    ) assertEquals p.root.getDeclarations()[0]
+  }
+
+  @Test
+  fun returnMissingSemi() {
+    val p = prepareCode("""
+      int main() {
+        return 0
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.map { it.id })
+    int func ("main" withParams emptyList()) body listOf(
+        returnSt(int(0))
+    ) assertEquals p.root.getDeclarations()[0]
+  }
 }

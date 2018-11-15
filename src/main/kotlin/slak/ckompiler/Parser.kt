@@ -2,6 +2,7 @@ package slak.ckompiler
 
 import mu.KotlinLogging
 import java.util.*
+import kotlin.math.exp
 import kotlin.math.min
 
 private val logger = KotlinLogging.logger("Parser")
@@ -212,7 +213,7 @@ sealed class JumpStatement : Statement
 object ContinueStatement : JumpStatement()
 object BreakStatement : JumpStatement()
 data class GotoStatement(val identifier: IdentifierNode) : JumpStatement()
-data class ReturnStatement(val expr: Expression) : JumpStatement()
+data class ReturnStatement(val expr: EitherNode<Expression>?) : JumpStatement()
 
 /**
  * Parses a translation unit.
@@ -939,6 +940,81 @@ class Parser(tokens: List<Token>,
     return expr
   }
 
+  /** C standard: A.2.3, 6.8.6.1 */
+  private fun parseGotoStatement(): EitherNode<GotoStatement>? {
+    if (current().asKeyword() != Keywords.GOTO) return null
+    eat()
+    if (current() !is Identifier) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_IDENT
+        columns(range(0))
+      }
+      eatToSemi()
+      if (!isEaten()) eat()
+      return ErrorNode()
+    } else {
+      val ident = IdentifierNode((current() as Identifier).name)
+      eat() // The ident
+      if (current().asPunct() != Punctuators.SEMICOLON) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_AFTER
+          formatArgs("goto statement")
+          column(colPastTheEnd())
+        }
+        eatToSemi()
+        if (!isEaten()) eatToSemi()
+      }
+      return GotoStatement(ident).asEither()
+    }
+  }
+
+  /** C standard: A.2.3, 6.8.6.2 */
+  private fun parseContinue(): ContinueStatement? {
+    if (current().asKeyword() != Keywords.CONTINUE) return null
+    eat()
+    if (current().asPunct() != Punctuators.SEMICOLON) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_AFTER
+        formatArgs("continue statement")
+        column(colPastTheEnd())
+      }
+    }
+    return ContinueStatement
+  }
+
+  /** C standard: A.2.3, 6.8.6.3 */
+  private fun parseBreak(): BreakStatement? {
+    if (current().asKeyword() != Keywords.BREAK) return null
+    eat()
+    if (current().asPunct() != Punctuators.SEMICOLON) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_AFTER
+        formatArgs("break statement")
+        column(colPastTheEnd())
+      }
+    }
+    return BreakStatement
+  }
+
+  /** C standard: A.2.3, 6.8.6.3 */
+  private fun parseReturn(): ReturnStatement? {
+    if (current().asKeyword() != Keywords.RETURN) return null
+    eat()
+    val semiIdx = indexOfFirst { it.asPunct() == Punctuators.SEMICOLON }
+    val finalIdx = if (semiIdx == -1) tokStack.peek().size else semiIdx
+    val expr = parseExpr(finalIdx)
+    if (semiIdx == -1 || (!isEaten() && current().asPunct() != Punctuators.SEMICOLON)) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_AFTER
+        formatArgs("return statement")
+        column(colPastTheEnd())
+      }
+      return ReturnStatement(expr)
+    }
+    eat() // The ';'
+    return ReturnStatement(expr)
+  }
+
   /**
    * C standard: A.2.3
    * @return null if no statement was found, or the [Statement] otherwise
@@ -952,6 +1028,11 @@ class Parser(tokens: List<Token>,
     return parseLabeledStatement()
         ?: parseCompoundStatement()
         ?: parseIfStatement()
+        ?: parseGotoStatement()
+            // FIXME: loops first
+//        ?: parseContinue()?.asEither()
+//        ?: parseBreak()?.asEither()
+        ?: parseReturn()?.asEither()
         ?: parseExpressionStatement()
         ?: TODO("unimplemented grammar")
   }
