@@ -2,6 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.Operators
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -65,6 +66,14 @@ class FunctionsTests {
     val p = prepareCode("int main(int argc) {}", source)
     p.assertNoDiagnostics()
     int func ("main" withParams listOf(int param "argc")) body emptyList() assertEquals
+        p.root.getDeclarations()[0]
+  }
+
+  @Test
+  fun functionDefinitionBasicWithExpression() {
+    val p = prepareCode("int main() { 1 + 1; }", source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(1 to 1 with Operators.ADD) assertEquals
         p.root.getDeclarations()[0]
   }
 }

@@ -2,6 +2,7 @@ package slak.ckompiler
 
 import mu.KotlinLogging
 import java.util.*
+import kotlin.math.min
 
 private val logger = KotlinLogging.logger("Parser")
 
@@ -239,13 +240,15 @@ class Parser(tokens: List<Token>,
 
   /**
    * Get the [IntRange] spanned by the [Token] in the original code string.
-   * FIXME write tests for the ranges, and make sure the offsets in the diags are correct
+   * FIXME: handle the many issues with offsets
+   * FIXME: write tests for the ranges, and make sure the offsets in the diags are correct
    * @param offset the offset in the topmost token list, eg -1 to take the token before the one
    * given by [current], or 1 for the one in [lookahead].
    */
   private fun range(offset: Int): IntRange {
     val startIdx = tokStartIdxes[idxStack.peek() + offset]
-    return startIdx until startIdx + tokStack.peek()[idxStack.peek() + offset].consumedChars
+    val endTokenIdx = min(idxStack.peek() + offset, tokStack.peek().size - 1)
+    return startIdx until startIdx + tokStack.peek()[endTokenIdx].consumedChars
   }
 
   /**
@@ -364,6 +367,7 @@ class Parser(tokens: List<Token>,
   }
 
   /**
+   * Looks for a primary expression. Eats what it finds.
    * C standard: A.2.1, 6.4.4
    * @see parseTerminal
    * @return null if no primary was found, or the [Expression] otherwise (this doesn't return a
@@ -587,11 +591,16 @@ class Parser(tokens: List<Token>,
   /**
    * Find matching parenthesis in token list. Handles nested parens. Prints errors about unmatched
    * parens.
+   * @param lparen the left paren: eg '(' or '[' or '{'
+   * @param rparen the right paren: eg ')' or ']' or '}'
+   * @param stopAtSemi whether or not to return -1 when hitting a semicolon
    * @returns -1 if the parens are unbalanced or a [Punctuators.SEMICOLON] was found before they can
-   * get balanced, the size of the token stack if there were no parens, or the (real) idx of the
-   * rightmost paren otherwise
+   * get balanced (and [stopAtSemi] is true), the size of the token stack if there were no parens,
+   * or the (real) idx of the rightmost paren otherwise
    */
-  private fun findParenMatch(lparen: Punctuators, rparen: Punctuators): Int {
+  private fun findParenMatch(lparen: Punctuators,
+                             rparen: Punctuators,
+                             stopAtSemi: Boolean = true): Int {
     var hasParens = false
     var stack = 0
     val end = indexOfFirst {
@@ -606,7 +615,7 @@ class Parser(tokens: List<Token>,
           stack--
           return@indexOfFirst stack == 0
         }
-        Punctuators.SEMICOLON -> return@indexOfFirst true
+        Punctuators.SEMICOLON -> return@indexOfFirst stopAtSemi
         else -> return@indexOfFirst false
       }
     }
@@ -788,7 +797,8 @@ class Parser(tokens: List<Token>,
       }
       if (isEaten()) {
         parserDiagnostic {
-          id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
+          id = DiagnosticId.EXPECTED_SEMI_AFTER
+          formatArgs("declarator")
           column(colPastTheEnd())
         }
         declaratorList.add(InitDeclarator(initDeclarator, null))
@@ -807,7 +817,8 @@ class Parser(tokens: List<Token>,
       } else {
         // Missing semicolon
         parserDiagnostic {
-          id = DiagnosticId.EXPECTED_SEMI_AFTER_DECL
+          id = DiagnosticId.EXPECTED_SEMI_AFTER
+          formatArgs("declarator")
           column(colPastTheEnd())
         }
         break
@@ -835,12 +846,30 @@ class Parser(tokens: List<Token>,
     return LabeledStatement(label, labeled).asEither()
   }
 
+  /** Wraps [parseExpr] with a check for [Punctuators.SEMICOLON] at the end. */
+  private fun parseExpressionStatement(): EitherNode<Expression>? {
+    val expr = parseExpr(tokStack.peek().size) ?: return null
+    if (current().asPunct() != Punctuators.SEMICOLON) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_AFTER
+        formatArgs("expression")
+        column(colPastTheEnd())
+      }
+    } else {
+      eat() // The semicolon
+    }
+    return expr
+  }
+
   /**
    * C standard: A.2.3
    * @returns null if no statement was found, or the [Statement] otherwise
    */
   private fun parseStatement(): EitherNode<Statement>? {
-    return parseLabeledStatement() ?: parseCompoundStatement()?.asEither() ?: TODO()
+    return parseLabeledStatement()
+        ?: parseCompoundStatement()?.asEither()
+        ?: parseExpressionStatement()
+        ?: TODO("unimplemented grammar")
   }
 
   /**
@@ -850,7 +879,7 @@ class Parser(tokens: List<Token>,
    */
   private fun parseCompoundStatement(): CompoundStatement? {
     if (current().asPunct() != Punctuators.LBRACKET) return null
-    val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET)
+    val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, false)
     eat() // Get rid of '{'
     if (rbracket == -1) {
       parserDiagnostic {

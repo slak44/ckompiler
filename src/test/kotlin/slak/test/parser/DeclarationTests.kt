@@ -122,7 +122,7 @@ class DeclarationTests {
   @Test
   fun declarationMissingSemicolon() {
     val p = prepareCode("int a", source)
-    assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER_DECL, p.diags[0].id)
+    assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER, p.diags[0].id)
     assertEquals(listOf(int declare "a"), p.root.getDeclarations())
   }
 

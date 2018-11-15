@@ -20,7 +20,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNMATCHED_PAREN(ERROR, "Expected '%s'"),
   MATCH_PAREN_TARGET(OTHER, "To match this '%s'"),
   EXPECTED_DECL(ERROR, "Expected declarator"),
-  EXPECTED_SEMI_AFTER_DECL(ERROR, "Expected ';' after declarator"),
+  EXPECTED_SEMI_AFTER(ERROR, "Expected ';' after %s"),
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
   INCOMPATIBLE_DECL_SPEC(ERROR, "Cannot combine with previous '%s' declaration specifier"),
   // clang puts up a warning; the standard says we error
