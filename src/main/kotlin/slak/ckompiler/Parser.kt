@@ -383,10 +383,15 @@ class Parser(tokens: List<Token>,
         ErrorNode()
       }
       val endParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-      eat() // Get rid of the LPAREN
-      val expr = parseExpr(endParenIdx)
-      eat() // Get rid of the RPAREN
-      expr
+      if (endParenIdx == -1) {
+        eatToSemi()
+        ErrorNode()
+      } else {
+        eat() // Get rid of the LPAREN
+        val expr = parseExpr(endParenIdx)
+        eat() // Get rid of the RPAREN
+        expr
+      }
     }
     // FIXME implement generic-selection A.2.1/6.5.1.1
     else -> {
