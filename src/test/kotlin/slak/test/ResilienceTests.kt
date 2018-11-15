@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 /**
  * Tests for correct error reporting. Components should be able to report multiple errors correctly,
  * even with other errors around, without being influenced by whitespace or semi-ambiguous
- * constructs.
+ * constructs, and then recover from the error and keep working correctly.
  */
 class ResilienceTests {
   @Test
@@ -23,6 +23,24 @@ class ResilienceTests {
     val l = Lexer("1.EF ident", source)
     assert(l.tokens[0] is ErrorToken)
     assertEquals(Identifier("ident"), l.tokens[1])
+  }
+
+  @Test
+  fun parserKeepsGoingAfterUnmatchedParen() {
+    val p = prepareCode("int a = 1 * (2 + 3; int b = 32;", source)
+    assertEquals(
+        listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
+        p.diags.map { it.id })
+    int declare ("b" assign int(32)) assertEquals p.root.getDeclarations()[1]
+  }
+
+  @Test
+  fun parserKeepsGoingAfterUnmatchedBracket() {
+    val p = prepareCode("int main() { 123 + 23; \n int b = 32;", source)
+    assertEquals(
+        listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
+        p.diags.map { it.id })
+    int declare ("b" assign int(32)) assertEquals p.root.getDeclarations()[1]
   }
 
   @Test
