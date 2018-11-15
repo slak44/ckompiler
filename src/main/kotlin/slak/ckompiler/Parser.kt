@@ -867,7 +867,7 @@ class Parser(tokens: List<Token>,
    */
   private fun parseStatement(): EitherNode<Statement>? {
     return parseLabeledStatement()
-        ?: parseCompoundStatement()?.asEither()
+        ?: parseCompoundStatement()
         ?: parseExpressionStatement()
         ?: TODO("unimplemented grammar")
   }
@@ -877,22 +877,15 @@ class Parser(tokens: List<Token>,
    * C standard: A.2.3
    * @return null if there is no compound statement, or the [CompoundStatement] otherwise
    */
-  private fun parseCompoundStatement(): CompoundStatement? {
+  private fun parseCompoundStatement(): EitherNode<CompoundStatement>? {
     if (current().asPunct() != Punctuators.LBRACKET) return null
     val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, false)
     eat() // Get rid of '{'
     if (rbracket == -1) {
-      parserDiagnostic {
-        id = DiagnosticId.UNMATCHED_PAREN
-        formatArgs(Punctuators.RBRACKET.s)
-        column(colPastTheEnd())
-      }
-      parserDiagnostic {
-        id = DiagnosticId.MATCH_PAREN_TARGET
-        formatArgs(Punctuators.LBRACKET.s)
-        columns(range(-1))
-      }
-      return null
+      // Try to recover
+      eatToSemi()
+      if (!isEaten()) eat()
+      return ErrorNode()
     }
     val compound = tokenContext(rbracket) {
       val items = mutableListOf<EitherNode<BlockItem>>()
@@ -900,7 +893,7 @@ class Parser(tokens: List<Token>,
       CompoundStatement(items)
     }
     eat() // Get rid of '}'
-    return compound
+    return compound.asEither()
   }
 
   /**
@@ -935,7 +928,7 @@ class Parser(tokens: List<Token>,
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
-    val block = parseCompoundStatement()?.asEither()
+    val block = parseCompoundStatement()
         ?: return FunctionDefinition(declSpec, declarator, ErrorNode()).asEither()
     return FunctionDefinition(declSpec, declarator, block).asEither()
   }
