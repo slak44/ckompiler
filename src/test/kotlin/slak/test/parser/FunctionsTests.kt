@@ -2,6 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.ErrorNode
 import slak.ckompiler.Operators
 import slak.test.*
 import kotlin.test.assertEquals
@@ -58,6 +59,15 @@ class FunctionsTests {
     val p = prepareCode("int main() {}", source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body emptyList() assertEquals
+        p.root.getDeclarations()[0]
+  }
+
+  @Test
+  fun functionDefinitionUnmatchedBrackets() {
+    val p = prepareCode("int main() {", source)
+    assertEquals(listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
+        p.diags.map { it.id })
+    int func ("main" withParams emptyList()) body ErrorNode() assertEquals
         p.root.getDeclarations()[0]
   }
 
