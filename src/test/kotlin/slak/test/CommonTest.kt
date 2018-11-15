@@ -40,6 +40,21 @@ internal infix fun String.withParams(params: List<ParameterDeclaration>): InitDe
   return InitDeclarator(FunctionDeclarator(name(this), params).asEither())
 }
 
+internal infix fun Declaration.body(s: CompoundStatement): FunctionDefinition {
+  if (this.declaratorList.size != 1) throw IllegalArgumentException("Not function")
+  val d = this.declaratorList[0].declarator
+  if (d is EitherNode.Value) {
+    if (d.value !is FunctionDeclarator) throw IllegalArgumentException("Not function")
+    val fd = d.value as FunctionDeclarator
+    return FunctionDefinition(this.declSpecs, fd.asEither(), s.asEither())
+  }
+  return FunctionDefinition(this.declSpecs, ErrorNode(), s.asEither())
+}
+
+internal infix fun Declaration.body(list: List<BlockItem>): FunctionDefinition {
+  return this body CompoundStatement(list.map { it.asEither() })
+}
+
 internal class BinaryBuilder {
   var lhs: ASTNode? = null
   var rhs: ASTNode? = null

@@ -51,4 +51,12 @@ class FunctionsTests {
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
   }
+
+  @Test
+  fun functionDefinitionBasicEmpty() {
+    val p = prepareCode("int main() {}", source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body emptyList() assertEquals
+        p.root.getDeclarations()[0]
+  }
 }

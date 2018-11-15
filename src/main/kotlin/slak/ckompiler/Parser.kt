@@ -860,6 +860,7 @@ class Parser(tokens: List<Token>,
     if (declSpec is MissingDeclarationSpecifier) return null
     // FIXME finish validation of declSpec
     if (declSpec is RealDeclarationSpecifier &&
+        declSpec.storageSpecifier != null &&
         declSpec.storageSpecifier != Keywords.STATIC &&
         declSpec.storageSpecifier != Keywords.EXTERN) {
       parserDiagnostic {
@@ -878,6 +879,7 @@ class Parser(tokens: List<Token>,
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
     val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET)
+    eat() // Get rid of '{'
     if (rbracket == -1) {
       parserDiagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
@@ -887,15 +889,16 @@ class Parser(tokens: List<Token>,
       return FunctionDefinition(declSpec, declarator, ErrorNode()).asEither()
     }
     val block = parseCompoundStatement(rbracket).asEither()
+    eat() // Get rid of '}'
     return FunctionDefinition(declSpec, declarator, block).asEither()
   }
 
   /** C standard: A.2.4, 6.9 */
   private tailrec fun translationUnit() {
     if (isEaten()) return
-    val res = parseDeclaration()?.let {
+    val res = parseFunctionDefinition()?.let {
       root.addExternalDeclaration(it)
-    } ?: parseFunctionDefinition()?.let {
+    } ?: parseDeclaration()?.let {
       root.addExternalDeclaration(it)
     }
     if (res == null) {
