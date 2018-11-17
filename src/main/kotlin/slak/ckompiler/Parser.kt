@@ -1040,7 +1040,7 @@ class Parser(tokens: List<Token>,
   private fun parseWhile(): EitherNode<WhileStatement>? {
     if (current().asKeyword() != Keywords.WHILE) return null
     eat() // The WHILE
-    if (isEaten() || lookahead().asPunct() != Punctuators.LPAREN) {
+    if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_LPAREN_AFTER
         formatArgs(Keywords.WHILE.keyword)
@@ -1050,11 +1050,35 @@ class Parser(tokens: List<Token>,
         it.asPunct() == Punctuators.LBRACKET || it.asPunct() == Punctuators.SEMICOLON
       }
       eatList(takeUntil(end).size)
+      if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
       return ErrorNode()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
-//    if (rparen == -1)
-    TODO()
+    eat() // The '('
+    if (rparen == -1) return ErrorNode()
+    val cond = parseExpr(rparen)
+    val condition = if (cond == null) {
+      // Eat everything between parens
+      eatList(takeUntil(rparen).size)
+      ErrorNode()
+    } else {
+      cond
+    }
+    eat() // The ')'
+    val statement = parseStatement()
+    val loopable = if (statement == null) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_STATEMENT
+        columns(range(0))
+      }
+      // Attempt to eat the error
+      eatToSemi()
+      if (!isEaten()) eat()
+      ErrorNode()
+    } else {
+      statement
+    }
+    return WhileStatement(condition, loopable).wrap()
   }
 
   /**
