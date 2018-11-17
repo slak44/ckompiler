@@ -225,10 +225,14 @@ data class ForDeclStatement(val init: EitherNode<Declaration>,
 sealed class JumpStatement : Statement
 
 /** C standard: 6.8.6.2 */
-object ContinueStatement : JumpStatement()
+object ContinueStatement : JumpStatement() {
+  override fun toString() = javaClass.simpleName!!
+}
 
 /** C standard: 6.8.6.3 */
-object BreakStatement : JumpStatement()
+object BreakStatement : JumpStatement() {
+  override fun toString() = javaClass.simpleName!!
+}
 
 /** C standard: 6.8.6.1 */
 data class GotoStatement(val identifier: IdentifierNode) : JumpStatement()
@@ -984,6 +988,8 @@ class Parser(tokens: List<Token>,
         }
         eatToSemi()
         if (!isEaten()) eatToSemi()
+      } else {
+        eat() // The ';'
       }
       return GotoStatement(ident).wrap()
     }
@@ -999,6 +1005,8 @@ class Parser(tokens: List<Token>,
         formatArgs("continue statement")
         column(colPastTheEnd())
       }
+    } else {
+      eat() // The ';'
     }
     return ContinueStatement
   }
@@ -1013,6 +1021,8 @@ class Parser(tokens: List<Token>,
         formatArgs("break statement")
         column(colPastTheEnd())
       }
+    } else {
+      eat() // The ';'
     }
     return BreakStatement
   }
@@ -1096,9 +1106,8 @@ class Parser(tokens: List<Token>,
         ?: parseIfStatement()
         ?: parseGotoStatement()
         ?: parseWhile()
-        // FIXME: loops first
-//        ?: parseContinue()?.wrap()
-//        ?: parseBreak()?.wrap()
+        ?: parseContinue()?.wrap()
+        ?: parseBreak()?.wrap()
         ?: parseReturn()?.wrap()
         ?: parseExpressionStatement()
         ?: TODO("unimplemented grammar")

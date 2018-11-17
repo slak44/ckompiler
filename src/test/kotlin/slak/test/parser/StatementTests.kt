@@ -289,4 +289,34 @@ class StatementTests {
         WhileStatement(ErrorNode(), ErrorNode())
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun breakStatement() {
+    val p = prepareCode("""
+      int main() {
+        while (1) break;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        whileSt(int(1)) {
+          BreakStatement
+        }
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun continueStatement() {
+    val p = prepareCode("""
+      int main() {
+        while (1) continue;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        whileSt(int(1)) {
+          ContinueStatement
+        }
+    ) assertEquals p.root.decls[0]
+  }
 }
