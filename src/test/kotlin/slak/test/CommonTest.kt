@@ -76,6 +76,14 @@ internal fun returnSt(e: Expression) = ReturnStatement(e.wrap())
 
 internal fun List<BlockItem>.compound() = CompoundStatement(this.map { it.wrap() })
 
+internal fun whileSt(e: EitherNode<Expression>, loopable: EitherNode<Statement>) =
+    WhileStatement(e, loopable)
+
+internal fun whileSt(e: Expression, loopable: () -> Statement) =
+    whileSt(e.wrap(), loopable().wrap())
+
+internal fun whileSt(e: ErrorNode, loopable: () -> Statement) = whileSt(e, loopable().wrap())
+
 internal class BinaryBuilder {
   var lhs: Expression? = null
   var rhs: Expression? = null
@@ -95,21 +103,17 @@ internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.S
 internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.MUL
 internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with Operators.DIV
 
+private fun <T> parseDSLElement(it: T): EitherNode<Expression> {
+  return when (it) {
+    is ErrorNode -> ErrorNode()
+    is Expression -> it.wrap()
+    is Int -> int(it.toLong()).wrap()
+    else -> throw IllegalArgumentException("Bad types")
+  }
+}
+
 internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryNode {
-  if (first is Expression && second is Expression) {
-    return BinaryNode(op, (first as Expression).wrap(), (second as Expression).wrap())
-  }
-  if (first is Int && second is Int) {
-    return BinaryNode(op, int((first as Int).toLong()).wrap(),
-        int((second as Int).toLong()).wrap())
-  }
-  if (first is Int && second is Expression) {
-    return BinaryNode(op, int((first as Int).toLong()).wrap(),
-        (second as Expression).wrap())
-  }
-  if (first is Expression && second is Int) {
-    return BinaryNode(op, (first as Expression).wrap(),
-        int((second as Int).toLong()).wrap())
-  }
-  throw IllegalArgumentException("Bad types")
+  val lhs = parseDSLElement(first)
+  val rhs = parseDSLElement(second)
+  return BinaryNode(op, lhs, rhs)
 }

@@ -187,4 +187,16 @@ class StatementTests {
         returnSt(int(0))
     ) assertEquals p.root.getDeclarations()[0]
   }
+
+  @Test
+  fun whileMissingParen() {
+    val p = prepareCode("""
+      int main() {
+        while 0) 1 + 1;
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_LPAREN_AFTER), p.diags.map { it.id })
+    int func ("main" withParams emptyList()) body
+        CompoundStatement(listOf(ErrorNode())) assertEquals p.root.getDeclarations()[0]
+  }
 }
