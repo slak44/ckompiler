@@ -18,7 +18,7 @@ class StatementTests {
         ifSt(int(123)) {
           1 add 1
         }
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -35,7 +35,7 @@ class StatementTests {
         } elseSt {
           2 add 2
         }
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -52,7 +52,7 @@ class StatementTests {
         ifSt(int(123)) {
           listOf(3 sub 3).compound()
         }
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -73,7 +73,7 @@ class StatementTests {
         } elseSt {
           listOf(2 sub 2).compound()
         }
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -88,7 +88,7 @@ class StatementTests {
         ifSt(ErrorNode()) {
           1 add 1
         }
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -103,7 +103,7 @@ class StatementTests {
         ifSt(ErrorNode()) {
           1 add 1
         }
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -116,7 +116,7 @@ class StatementTests {
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
     int func ("main" withParams emptyList()) body listOf(
         IfStatement(int(123).wrap(), ErrorNode(), null)
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -129,7 +129,7 @@ class StatementTests {
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
     int func ("main" withParams emptyList()) body listOf(
         IfStatement(int(123).wrap(), ErrorNode(), (1 add 1).wrap())
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -146,7 +146,7 @@ class StatementTests {
         } elseSt {
           Noop
         }
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -159,7 +159,7 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
         returnSt(int(0))
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -172,7 +172,7 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
         returnSt((1 add 1) div 2)
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -185,7 +185,7 @@ class StatementTests {
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
     int func ("main" withParams emptyList()) body listOf(
         returnSt(int(0))
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -197,6 +197,6 @@ class StatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_LPAREN_AFTER), p.diags.ids)
     int func ("main" withParams emptyList()) body
-        CompoundStatement(listOf(ErrorNode())) assertEquals p.root.getDeclarations()[0]
+        CompoundStatement(listOf(ErrorNode())) assertEquals p.root.decls[0]
   }
 }

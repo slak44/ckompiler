@@ -11,7 +11,7 @@ class DeclarationTests {
   fun declarationBasic() {
     val p = prepareCode("int a;", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare "a"), p.root.getDeclarations())
+    assertEquals(listOf(int declare "a"), p.root.decls)
   }
 
   @Test
@@ -20,7 +20,7 @@ class DeclarationTests {
     p.assertNoDiagnostics()
     val spec = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasConst = true, storageSpecifier = Keywords.STATIC)
-    assertEquals(listOf(spec declare "a"), p.root.getDeclarations())
+    assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 
   @Test
@@ -29,7 +29,7 @@ class DeclarationTests {
     p.assertNoDiagnostics()
     val expected = Declaration(int,
         listOf("a", "b", "c").map { InitDeclarator(name(it)) })
-    assertEquals(listOf(expected.wrap()), p.root.getDeclarations())
+    assertEquals(listOf(expected.wrap()), p.root.decls)
   }
 
   @Test
@@ -39,29 +39,28 @@ class DeclarationTests {
     val expected = listOf("a", "b", "c").map {
       int declare listOf(InitDeclarator(name(it)))
     }
-    assertEquals(expected, p.root.getDeclarations())
+    assertEquals(expected, p.root.decls)
   }
 
   @Test
   fun declarationWithSimpleInitializer() {
     val p = prepareCode("int a = 1;", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign int(1))), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign int(1))), p.root.decls)
   }
 
   @Test
   fun declarationWithIdentifierInitializer() {
     val p = prepareCode("int a = someVariable;", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign IdentifierNode("someVariable"))), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign IdentifierNode("someVariable"))), p.root.decls)
   }
 
   @Test
   fun declarationWithArithmeticInitializer() {
     val p = prepareCode("int a = 1 + 2 * 3 - 4 / 5;", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign (1 add (2 mul 3) sub (4 div 5))) assertEquals
-        p.root.getDeclarations()[0]
+    int declare ("a" assign (1 add (2 mul 3) sub (4 div 5))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -69,28 +68,28 @@ class DeclarationTests {
     val p = prepareCode("int a = 1 + 2 * 2 * (3 - 4) / 5 / 6;", source)
     p.assertNoDiagnostics()
     val expr = 1 add (2 mul 2 mul (3 sub 4) div 5 div 6)
-    assertEquals(listOf(int declare ("a" assign expr)), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign expr)), p.root.decls)
   }
 
   @Test
   fun declarationWithSimpleParenInitializer() {
     val p = prepareCode("int a = (1);", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign int(1))), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign int(1))), p.root.decls)
   }
 
   @Test
   fun declarationWithExprParenInitializer() {
     val p = prepareCode("int a = (1 + 1);", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign (1 add 1))), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign (1 add 1))), p.root.decls)
   }
 
   @Test
   fun declarationWithBadInitializer() {
     val p = prepareCode("int a = 1 + ;", source)
     assertEquals(DiagnosticId.EXPECTED_PRIMARY, p.diags[0].id)
-    assertEquals(listOf(int declare ("a" assign ErrorNode())), p.root.getDeclarations())
+    assertEquals(listOf(int declare ("a" assign ErrorNode())), p.root.decls)
   }
 
   @Test
@@ -103,7 +102,7 @@ class DeclarationTests {
   fun declarationMissingSemicolon() {
     val p = prepareCode("int a", source)
     assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER, p.diags[0].id)
-    assertEquals(listOf(int declare "a"), p.root.getDeclarations())
+    assertEquals(listOf(int declare "a"), p.root.decls)
   }
 
   @Test
@@ -112,7 +111,7 @@ class DeclarationTests {
     p.assertNoDiagnostics()
     val spec =
         RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT, hasThreadLocal = true)
-    assertEquals(listOf(spec declare "a"), p.root.getDeclarations())
+    assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 
   @Test
@@ -121,14 +120,14 @@ class DeclarationTests {
     p.assertNoDiagnostics()
     val spec = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
         hasThreadLocal = true, storageSpecifier = Keywords.STATIC)
-    assertEquals(listOf(spec declare "a"), p.root.getDeclarations())
+    assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 
   private fun testDeclSpecErrors(s: String, id: DiagnosticId) {
     val p = prepareCode(s, source)
     assert(p.diags.size >= 1)
     assertEquals(id, p.diags[0].id)
-    val d = ((p.root.getDeclarations()[0] as EitherNode.Value<*>).value as Declaration)
+    val d = ((p.root.decls[0] as EitherNode.Value<*>).value as Declaration)
     assert(d.declSpecs is ErrorDeclarationSpecifier)
   }
 

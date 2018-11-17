@@ -36,12 +36,11 @@ fun <T : ASTNode> T.wrap(): EitherNode<T> = EitherNode.Value(this)
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
 class RootNode : ASTNode {
-  private val decls = mutableListOf<EitherNode<ExternalDeclaration>>()
-
-  fun getDeclarations(): List<EitherNode<ExternalDeclaration>> = decls
+  private val declarations = mutableListOf<EitherNode<ExternalDeclaration>>()
+  val decls: List<EitherNode<ExternalDeclaration>> = declarations
 
   fun addExternalDeclaration(n: EitherNode<ExternalDeclaration>) {
-    decls.add(n)
+    declarations.add(n)
   }
 }
 

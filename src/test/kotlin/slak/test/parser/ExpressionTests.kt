@@ -11,21 +11,21 @@ class ExpressionTests {
   fun exprArithmPrecedence() {
     val p = prepareCode("int a = 1 + 2 * 3;", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign (1 add (2 mul 3))) assertEquals p.root.getDeclarations()[0]
+    int declare ("a" assign (1 add (2 mul 3))) assertEquals p.root.decls[0]
   }
 
   @Test
   fun exprArithmParensLevel1() {
     val p = prepareCode("int a = (1 + 2) * 3;", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign ((1 add 2) mul 3)) assertEquals p.root.getDeclarations()[0]
+    int declare ("a" assign ((1 add 2) mul 3)) assertEquals p.root.decls[0]
   }
 
   @Test
   fun exprArithmParensLevel2() {
     val p = prepareCode("int a = (1 + (2 + 3)) * 3;", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign ((1 add (2 add 3)) mul 3)) assertEquals p.root.getDeclarations()[0]
+    int declare ("a" assign ((1 add (2 add 3)) mul 3)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -33,7 +33,7 @@ class ExpressionTests {
     val p = prepareCode("int a = (1 + (2 + (3 + (4 + (5 + (6)))))) * 3;", source)
     p.assertNoDiagnostics()
     int declare ("a" assign ((1 add (2 add (3 add (4 add (5 add 6))))) mul 3)) assertEquals
-        p.root.getDeclarations()[0]
+        p.root.decls[0]
   }
 
   @Test
@@ -41,7 +41,7 @@ class ExpressionTests {
     val p = prepareCode("int a = (1 * (2 + 3);", source)
     assertEquals(listOf(
         DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET), p.diags.ids)
-    int declare ("a" assign ErrorNode()) assertEquals p.root.getDeclarations()[0]
+    int declare ("a" assign ErrorNode()) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -50,7 +50,7 @@ class ExpressionTests {
     assertEquals(listOf(
         DiagnosticId.EXPECTED_SEMI_AFTER,
         DiagnosticId.EXPECTED_EXTERNAL_DECL), p.diags.ids)
-    int declare ("a" assign (1 add 1)) assertEquals p.root.getDeclarations()[0]
+    int declare ("a" assign (1 add 1)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -63,6 +63,6 @@ class ExpressionTests {
     assert(p.diags.ids.contains(DiagnosticId.EXPECTED_SEMI_AFTER))
     int func ("main" withParams emptyList()) body listOf(
         1 add 1 add ErrorNode()
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 }

@@ -30,7 +30,7 @@ class ResilienceTests {
     assertEquals(
         listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
         p.diags.map { it.id })
-    int declare ("b" assign int(32)) assertEquals p.root.getDeclarations()[1]
+    int declare ("b" assign int(32)) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -39,7 +39,7 @@ class ResilienceTests {
     assertEquals(
         listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
         p.diags.map { it.id })
-    int declare ("b" assign int(32)) assertEquals p.root.getDeclarations()[1]
+    int declare ("b" assign int(32)) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -47,7 +47,7 @@ class ResilienceTests {
     val p = prepareCode("int default(); double dbl = 1.1;", source)
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
-    double declare ("dbl" assign double(1.1)) assertEquals p.root.getDeclarations()[1]
+    double declare ("dbl" assign double(1.1)) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -55,7 +55,7 @@ class ResilienceTests {
     val p = prepareCode("int default; double dbl = 1.1;", source)
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
-    double declare ("dbl" assign double(1.1)) assertEquals p.root.getDeclarations()[1]
+    double declare ("dbl" assign double(1.1)) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -64,7 +64,7 @@ class ResilienceTests {
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
     val decl = int declare listOf(InitDeclarator(ErrorNode()), "x" assign int(1))
-    decl assertEquals p.root.getDeclarations()[0]
+    decl assertEquals p.root.decls[0]
   }
 
   @Test
@@ -78,7 +78,7 @@ class ResilienceTests {
     int func ("main" withParams emptyList()) body listOf(
         returnSt(int(0)),
         1 add 1
-    ) assertEquals p.root.getDeclarations()[0]
+    ) assertEquals p.root.decls[0]
   }
 
   // FIXME more tests like this

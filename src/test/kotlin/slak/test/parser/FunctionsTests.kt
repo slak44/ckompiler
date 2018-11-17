@@ -12,22 +12,21 @@ class FunctionsTests {
   fun functionDeclarationNoParams() {
     val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams emptyList()) assertEquals p.root.getDeclarations()[0]
+    int func ("f" withParams emptyList()) assertEquals p.root.decls[0]
   }
 
   @Test
   fun functionDeclarationOneParam() {
     val p = prepareCode("int f(double dbl);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams listOf(double param "dbl")) assertEquals p.root.getDeclarations()[0]
+    int func ("f" withParams listOf(double param "dbl")) assertEquals p.root.decls[0]
   }
 
   @Test
   fun functionDeclarationTwoParams() {
     val p = prepareCode("int f(double dbl, int x);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams listOf(double param "dbl", int param "x")) assertEquals
-        p.root.getDeclarations()[0]
+    int func ("f" withParams listOf(double param "dbl", int param "x")) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -35,7 +34,7 @@ class FunctionsTests {
     val p = prepareCode("int f(double dbl, int x, int y);", source)
     p.assertNoDiagnostics()
     int func ("f" withParams listOf(double param "dbl", int param "x", int param "y")) assertEquals
-        p.root.getDeclarations()[0]
+        p.root.decls[0]
   }
 
   @Test
@@ -44,7 +43,7 @@ class FunctionsTests {
     p.assertNoDiagnostics()
     int func ("f" withParams
         listOf( double param "dbl", int param "x", int param "y", double param "asd")) assertEquals
-        p.root.getDeclarations()[0]
+        p.root.decls[0]
   }
 
   @Test
@@ -58,16 +57,14 @@ class FunctionsTests {
   fun functionDefinitionBasicEmpty() {
     val p = prepareCode("int main() {}", source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body emptyList() assertEquals
-        p.root.getDeclarations()[0]
+    int func ("main" withParams emptyList()) body emptyList() assertEquals p.root.decls[0]
   }
 
   @Test
   fun functionDefinitionUnmatchedBrackets() {
     val p = prepareCode("int main() {", source)
     assertEquals(listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET), p.diags.ids)
-    int func ("main" withParams emptyList()) body ErrorNode() assertEquals
-        p.root.getDeclarations()[0]
+    int func ("main" withParams emptyList()) body ErrorNode() assertEquals p.root.decls[0]
   }
 
   @Test
@@ -75,14 +72,13 @@ class FunctionsTests {
     val p = prepareCode("int main(int argc) {}", source)
     p.assertNoDiagnostics()
     int func ("main" withParams listOf(int param "argc")) body emptyList() assertEquals
-        p.root.getDeclarations()[0]
+        p.root.decls[0]
   }
 
   @Test
   fun functionDefinitionBasicWithExpression() {
     val p = prepareCode("int main() { 1 + 1; }", source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(1 add 1) assertEquals
-        p.root.getDeclarations()[0]
+    int func ("main" withParams emptyList()) body listOf(1 add 1) assertEquals p.root.decls[0]
   }
 }
