@@ -194,24 +194,42 @@ data class IfStatement(val cond: EitherNode<Expression>,
 /** C standard: 6.8.4.2 */
 data class SwitchStatement(val switch: Expression, val body: Statement) : SelectionStatement
 
-enum class IterationKind {
-  WHILE, DO_WHILE, FOR_DECLARE, FOR_CLASSIC
-}
-
 /** C standard: 6.8.5 */
-data class IterationStatement(val kind: IterationKind,
-                              val cond: Expression,
-                              val loopable: Statement,
-                              val loopEnd: Expression?,
-                              val init: Expression?,
-                              val initDecl: Declaration?) : Statement
+interface IterationStatement : ASTNode
+
+/** C standard: 6.8.5.1 */
+data class WhileStatement(val cond: EitherNode<Expression>,
+                          val loopable: EitherNode<Statement>) : IterationStatement
+
+/** C standard: 6.8.5.2 */
+data class DoWhileStatement(val cond: EitherNode<Expression>,
+                            val loopable: EitherNode<Statement>) : IterationStatement
+
+/** C standard: 6.8.5.3 */
+data class ForExprStatement(val init: EitherNode<Expression>,
+                            val cond: EitherNode<Expression>,
+                            val loopEnd: EitherNode<Expression>,
+                            val loopable: EitherNode<Statement>) : IterationStatement
+
+/** C standard: 6.8.5.3 */
+data class ForDeclStatement(val init: EitherNode<Declaration>,
+                            val cond: EitherNode<Expression>,
+                            val loopEnd: EitherNode<Expression>,
+                            val loopable: EitherNode<Statement>) : IterationStatement
 
 /** C standard: 6.8.6 */
 sealed class JumpStatement : Statement
 
+/** C standard: 6.8.6.2 */
 object ContinueStatement : JumpStatement()
+
+/** C standard: 6.8.6.3 */
 object BreakStatement : JumpStatement()
+
+/** C standard: 6.8.6.1 */
 data class GotoStatement(val identifier: IdentifierNode) : JumpStatement()
+
+/** C standard: 6.8.6.4 */
 data class ReturnStatement(val expr: EitherNode<Expression>?) : JumpStatement()
 
 /**
@@ -1014,6 +1032,10 @@ class Parser(tokens: List<Token>,
     return ReturnStatement(expr)
   }
 
+  private fun parseWhile() {
+
+  }
+
   /**
    * C standard: A.2.3
    * @return null if no statement was found, or the [Statement] otherwise
@@ -1028,7 +1050,7 @@ class Parser(tokens: List<Token>,
         ?: parseCompoundStatement()
         ?: parseIfStatement()
         ?: parseGotoStatement()
-            // FIXME: loops first
+        // FIXME: loops first
 //        ?: parseContinue()?.wrap()
 //        ?: parseBreak()?.wrap()
         ?: parseReturn()?.wrap()
