@@ -1104,6 +1104,66 @@ class Parser(tokens: List<Token>,
     return WhileStatement(condition, loopable).wrap()
   }
 
+  /** C standard: 6.8.5 */
+  private fun parseDoWhile(): EitherNode<DoWhileStatement>? {
+    if (current().asKeyword() != Keywords.DO) return null
+    val theWhile = findMatch(Keyword::class, Keywords.DO, Keywords.WHILE, stopAtSemi = false)
+    eat() // The DO
+    if (theWhile == -1) return ErrorNode()
+    val statement = tokenContext(theWhile) { parseStatement() }
+    val loopable = if (statement == null) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_STATEMENT
+        columns(range(0))
+      }
+      // Attempt to eat the error
+      val end = indexOfFirst {
+        it.asPunct() == Punctuators.SEMICOLON || it.asKeyword() == Keywords.WHILE
+      }
+      if (end == -1) eatToSemi()
+      eatList(takeUntil(end).size)
+      ErrorNode()
+    } else {
+      statement
+    }
+    eat() // The WHILE
+    if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_LPAREN_AFTER
+        formatArgs(Keywords.WHILE.keyword)
+        columns(range(0))
+      }
+      eatToSemi()
+      if (!isEaten()) eat()
+      return DoWhileStatement(ErrorNode(), loopable).wrap()
+    }
+    val condRParen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+    if (condRParen == -1) return DoWhileStatement(ErrorNode(), loopable).wrap()
+    eat() // The '('
+    val cond = parseExpr(condRParen)
+    val condition = if (cond == null) {
+      // Eat everything between parens
+      eatList(takeUntil(condRParen).size)
+      ErrorNode()
+    } else {
+      cond
+    }
+    eat() // The ')'
+    if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_AFTER
+        formatArgs("do/while statement")
+        columns(range(0))
+      }
+      eatToSemi()
+      if (!isEaten()) eat()
+
+    } else {
+      eat() // The ';'
+    }
+    return DoWhileStatement(condition, loopable).wrap()
+  }
+
   /**
    * C standard: A.2.3
    * @return null if no statement was found, or the [Statement] otherwise
@@ -1119,6 +1179,7 @@ class Parser(tokens: List<Token>,
         ?: parseIfStatement()
         ?: parseGotoStatement()
         ?: parseWhile()
+        ?: parseDoWhile()
         ?: parseContinue()?.wrap()
         ?: parseBreak()?.wrap()
         ?: parseReturn()?.wrap()

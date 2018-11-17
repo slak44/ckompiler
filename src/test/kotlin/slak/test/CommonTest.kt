@@ -86,6 +86,12 @@ internal fun whileSt(e: Expression, loopable: () -> Statement) =
 
 internal fun whileSt(e: ErrorNode, loopable: () -> Statement) = whileSt(e, loopable().wrap())
 
+internal infix fun Statement.asDoWhile(cond: EitherNode<Expression>) =
+    DoWhileStatement(cond, this.wrap())
+
+internal infix fun EitherNode<Statement>.asDoWhile(cond: EitherNode<Expression>) =
+    DoWhileStatement(cond, this)
+
 internal infix fun String.labeled(s: Statement): LabeledStatement {
   return LabeledStatement(IdentifierNode(this), s.wrap())
 }
