@@ -11,11 +11,12 @@ interface ASTNode
 
 /** Can either be [ErrorNode] or an [ASTNode]. */
 sealed class EitherNode<out N : ASTNode> {
-  data class Value<out N : ASTNode>(val value: N) : EitherNode<N>()
+  data class Value<out N : ASTNode>(val value: N) : EitherNode<N>() {
+    override fun toString() = value.toString()
+  }
 
-  inline fun orElse(block: () -> Unit): N {
-    if (this is ErrorNode) block()
-    return (this as Value).value
+  override fun toString(): String {
+    return if (this is Value) value.toString() else (this as ErrorNode).toString()
   }
 }
 
@@ -51,7 +52,9 @@ interface Declarator : ASTNode
 interface Statement : BlockItem
 
 /** The standard says no-ops are expressions, but here it is represented separately */
-object Noop : Statement
+object Noop : Statement {
+  override fun toString() = "<no-op>"
+}
 
 /** C standard: A.2.1 */
 interface PrimaryExpression : ASTNode, Expression
