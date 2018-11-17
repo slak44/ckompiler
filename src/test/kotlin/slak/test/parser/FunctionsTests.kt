@@ -65,8 +65,7 @@ class FunctionsTests {
   @Test
   fun functionDefinitionUnmatchedBrackets() {
     val p = prepareCode("int main() {", source)
-    assertEquals(listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
-        p.diags.map { it.id })
+    assertEquals(listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET), p.diags.ids)
     int func ("main" withParams emptyList()) body ErrorNode() assertEquals
         p.root.getDeclarations()[0]
   }

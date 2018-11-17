@@ -40,7 +40,7 @@ class ExpressionTests {
   fun exprArithmUnmatchedParens() {
     val p = prepareCode("int a = (1 * (2 + 3);", source)
     assertEquals(listOf(
-        DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET), p.diags.map { it.id })
+        DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET), p.diags.ids)
     int declare ("a" assign ErrorNode()) assertEquals p.root.getDeclarations()[0]
   }
 
@@ -49,7 +49,7 @@ class ExpressionTests {
     val p = prepareCode("int a = 1 + 1);", source)
     assertEquals(listOf(
         DiagnosticId.EXPECTED_SEMI_AFTER,
-        DiagnosticId.EXPECTED_EXTERNAL_DECL), p.diags.map { it.id })
+        DiagnosticId.EXPECTED_EXTERNAL_DECL), p.diags.ids)
     int declare ("a" assign (1 add 1)) assertEquals p.root.getDeclarations()[0]
   }
 
@@ -60,7 +60,7 @@ class ExpressionTests {
         1 + 1 +
       }
     """.trimIndent(), source)
-    assert(p.diags.map { it.id }.contains(DiagnosticId.EXPECTED_SEMI_AFTER))
+    assert(p.diags.ids.contains(DiagnosticId.EXPECTED_SEMI_AFTER))
     int func ("main" withParams emptyList()) body listOf(
         1 add 1 add ErrorNode()
     ) assertEquals p.root.getDeclarations()[0]

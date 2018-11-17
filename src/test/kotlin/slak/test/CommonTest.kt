@@ -14,6 +14,8 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   return Parser(lexer.tokens, source, s, lexer.tokStartIdxes)
 }
 
+internal val List<Diagnostic>.ids get() = map { it.id }
+
 internal val int = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 internal val double = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.DOUBLE)
