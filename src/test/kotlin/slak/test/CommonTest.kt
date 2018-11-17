@@ -86,6 +86,10 @@ internal fun whileSt(e: Expression, loopable: () -> Statement) =
 
 internal fun whileSt(e: ErrorNode, loopable: () -> Statement) = whileSt(e, loopable().wrap())
 
+internal infix fun String.labeled(s: Statement): LabeledStatement {
+  return LabeledStatement(IdentifierNode(this), s.wrap())
+}
+
 internal class BinaryBuilder {
   var lhs: Expression? = null
   var rhs: Expression? = null

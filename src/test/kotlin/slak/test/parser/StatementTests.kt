@@ -319,4 +319,30 @@ class StatementTests {
         }
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun labelBasic() {
+    val p = prepareCode("""
+      int main() {
+        label: ;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        "label" labeled Noop
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun labeledExpr() {
+    val p = prepareCode("""
+      int main() {
+        label: 1 + 1;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        "label" labeled (1 add 1)
+    ) assertEquals p.root.decls[0]
+  }
 }
