@@ -195,7 +195,7 @@ data class IfStatement(val cond: EitherNode<Expression>,
 data class SwitchStatement(val switch: Expression, val body: Statement) : SelectionStatement
 
 /** C standard: 6.8.5 */
-interface IterationStatement : ASTNode
+interface IterationStatement : Statement
 
 /** C standard: 6.8.5.1 */
 data class WhileStatement(val cond: EitherNode<Expression>,
@@ -205,17 +205,19 @@ data class WhileStatement(val cond: EitherNode<Expression>,
 data class DoWhileStatement(val cond: EitherNode<Expression>,
                             val loopable: EitherNode<Statement>) : IterationStatement
 
+interface ForStatement : IterationStatement
+
 /** C standard: 6.8.5.3 */
 data class ForExprStatement(val init: EitherNode<Expression>,
                             val cond: EitherNode<Expression>,
                             val loopEnd: EitherNode<Expression>,
-                            val loopable: EitherNode<Statement>) : IterationStatement
+                            val loopable: EitherNode<Statement>) : ForStatement
 
 /** C standard: 6.8.5.3 */
 data class ForDeclStatement(val init: EitherNode<Declaration>,
                             val cond: EitherNode<Expression>,
                             val loopEnd: EitherNode<Expression>,
-                            val loopable: EitherNode<Statement>) : IterationStatement
+                            val loopable: EitherNode<Statement>) : ForStatement
 
 /** C standard: 6.8.6 */
 sealed class JumpStatement : Statement
@@ -945,7 +947,7 @@ class Parser(tokens: List<Token>,
   /** Wraps [parseExpr] with a check for [Punctuators.SEMICOLON] at the end. */
   private fun parseExpressionStatement(): EitherNode<Expression>? {
     val expr = parseExpr(tokStack.peek().size) ?: return null
-    if (current().asPunct() != Punctuators.SEMICOLON) {
+    if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("expression")
@@ -1032,8 +1034,25 @@ class Parser(tokens: List<Token>,
     return ReturnStatement(expr)
   }
 
-  private fun parseWhile() {
-
+  /** C standard: 6.8.5 */
+  private fun parseWhile(): EitherNode<WhileStatement>? {
+    if (current().asKeyword() != Keywords.WHILE) return null
+    eat() // The WHILE
+    if (isEaten() || lookahead().asPunct() != Punctuators.LPAREN) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_LPAREN_AFTER
+        formatArgs(Keywords.WHILE.keyword)
+        columns(range(0))
+      }
+      val end = indexOfFirst {
+        it.asPunct() == Punctuators.LBRACKET || it.asPunct() == Punctuators.SEMICOLON
+      }
+      eatList(takeUntil(end).size)
+      return ErrorNode()
+    }
+    val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
+//    if (rparen == -1)
+    TODO()
   }
 
   /**
@@ -1050,6 +1069,7 @@ class Parser(tokens: List<Token>,
         ?: parseCompoundStatement()
         ?: parseIfStatement()
         ?: parseGotoStatement()
+        ?: parseWhile()
         // FIXME: loops first
 //        ?: parseContinue()?.wrap()
 //        ?: parseBreak()?.wrap()
