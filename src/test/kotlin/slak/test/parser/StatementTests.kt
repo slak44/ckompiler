@@ -306,6 +306,19 @@ class StatementTests {
   }
 
   @Test
+  fun breakNoSemi() {
+    val p = prepareCode("""
+      int main() {
+        break
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        BreakStatement
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun continueStatement() {
     val p = prepareCode("""
       int main() {
@@ -321,6 +334,19 @@ class StatementTests {
   }
 
   @Test
+  fun continueNoSemi() {
+    val p = prepareCode("""
+      int main() {
+        continue
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        ContinueStatement
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun labelBasic() {
     val p = prepareCode("""
       int main() {
@@ -331,6 +357,18 @@ class StatementTests {
     int func ("main" withParams emptyList()) body listOf(
         "label" labeled Noop
     ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun labelNoSemi() {
+    val p = prepareCode("""
+      int main() {
+        label:
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    int func ("main" withParams emptyList()) body
+        CompoundStatement(listOf(ErrorNode())) assertEquals p.root.decls[0]
   }
 
   @Test

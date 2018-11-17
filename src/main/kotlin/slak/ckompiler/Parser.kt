@@ -999,7 +999,7 @@ class Parser(tokens: List<Token>,
   private fun parseContinue(): ContinueStatement? {
     if (current().asKeyword() != Keywords.CONTINUE) return null
     eat()
-    if (current().asPunct() != Punctuators.SEMICOLON) {
+    if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("continue statement")
@@ -1015,7 +1015,7 @@ class Parser(tokens: List<Token>,
   private fun parseBreak(): BreakStatement? {
     if (current().asKeyword() != Keywords.BREAK) return null
     eat()
-    if (current().asPunct() != Punctuators.SEMICOLON) {
+    if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("break statement")
