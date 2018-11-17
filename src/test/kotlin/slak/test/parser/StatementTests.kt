@@ -49,9 +49,9 @@ class StatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
-        ifSt(int(123)) {
-          listOf(3 sub 3).compound()
-        }
+        ifSt(int(123), listOf(
+            3 sub 3
+        ))
     ) assertEquals p.root.decls[0]
   }
 
@@ -68,11 +68,11 @@ class StatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
-        ifSt(int(123)) {
-          listOf(3 sub 3).compound()
-        } elseSt {
-          listOf(2 sub 2).compound()
-        }
+        ifSt(int(123), listOf(
+            3 sub 3
+        )) elseSt listOf(
+            2 sub 2
+        )
     ) assertEquals p.root.decls[0]
   }
 

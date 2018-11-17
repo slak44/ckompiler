@@ -68,11 +68,17 @@ internal infix fun Declaration.body(list: List<BlockItem>) = this body list.comp
 internal fun ifSt(e: Expression, success: () -> Statement) =
     IfStatement(e.wrap(), success().wrap(), null)
 
+internal fun ifSt(e: Expression, success: List<BlockItem>) =
+    IfStatement(e.wrap(), success.compound().wrap(), null)
+
 internal fun ifSt(e: ErrorNode, success: () -> Statement) =
     IfStatement(e, success().wrap(), null)
 
 internal infix fun IfStatement.elseSt(failure: () -> Statement) =
     IfStatement(this.cond, this.success, failure().wrap())
+
+internal infix fun IfStatement.elseSt(failure: List<BlockItem>) =
+    IfStatement(this.cond, this.success, failure.compound().wrap())
 
 internal fun returnSt(e: Expression) = ReturnStatement(e.wrap())
 
