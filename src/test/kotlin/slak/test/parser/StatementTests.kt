@@ -345,4 +345,30 @@ class StatementTests {
         "label" labeled (1 add 1)
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun gotoBasic() {
+    val p = prepareCode("""
+      int main() {
+        goto fakeLabel;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        goto("fakeLabel")
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun gotoNoSemi() {
+    val p = prepareCode("""
+      int main() {
+        goto fakeLabel
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        goto("fakeLabel")
+    ) assertEquals p.root.decls[0]
+  }
 }

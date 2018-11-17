@@ -90,6 +90,8 @@ internal infix fun String.labeled(s: Statement): LabeledStatement {
   return LabeledStatement(IdentifierNode(this), s.wrap())
 }
 
+internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
+
 internal class BinaryBuilder {
   var lhs: Expression? = null
   var rhs: Expression? = null

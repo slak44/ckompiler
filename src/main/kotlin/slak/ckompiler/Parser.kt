@@ -980,7 +980,7 @@ class Parser(tokens: List<Token>,
     } else {
       val ident = IdentifierNode((current() as Identifier).name)
       eat() // The ident
-      if (current().asPunct() != Punctuators.SEMICOLON) {
+      if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("goto statement")
