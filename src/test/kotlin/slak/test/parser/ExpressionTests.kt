@@ -52,4 +52,17 @@ class ExpressionTests {
         DiagnosticId.EXPECTED_EXTERNAL_DECL), p.diags.map { it.id })
     int declare ("a" assign (1 add 1)) assertEquals p.root.getDeclarations()[0]
   }
+
+  @Test
+  fun exprUnexpectedBracket() {
+    val p = prepareCode("""
+      int main() {
+        1 + 1 +
+      }
+    """.trimIndent(), source)
+    assert(p.diags.map { it.id }.contains(DiagnosticId.EXPECTED_SEMI_AFTER))
+    int func ("main" withParams emptyList()) body listOf(
+        1 add 1 add ErrorNode()
+    ) assertEquals p.root.getDeclarations()[0]
+  }
 }
