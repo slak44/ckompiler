@@ -3,6 +3,7 @@ package slak.ckompiler
 import mu.KotlinLogging
 import java.util.*
 import kotlin.math.min
+import kotlin.reflect.KClass
 
 private val logger = KotlinLogging.logger("Parser")
 
@@ -629,29 +630,28 @@ class Parser(tokens: List<Token>,
   }
 
   /**
-   * Find matching parenthesis in token list. Handles nested parens. Prints errors about unmatched
-   * parens.
-   * @param lparen the left paren: eg '(' or '[' or '{'
-   * @param rparen the right paren: eg ')' or ']' or '}'
-   * @param stopAtSemi whether or not to return -1 when hitting a semicolon
-   * @return -1 if the parens are unbalanced or a [Punctuators.SEMICOLON] was found before they can
-   * get balanced (and [stopAtSemi] is true), the size of the token stack if there were no parens,
-   * or the (real) idx of the rightmost paren otherwise
+   * An abstract version of [findParenMatch]. Even though that function calls through to this
+   * one, the more general behaviour of this one is just the fact that it can accept both
+   * [Punctuators] and [Keywords]. Otherwise, it works identically to [findParenMatch].
+   * @see findParenMatch
    */
-  private fun findParenMatch(lparen: Punctuators,
-                             rparen: Punctuators,
-                             stopAtSemi: Boolean = true): Int {
+  private fun <T : StaticToken, E : StaticTokenEnum> findMatch(tokenClass: KClass<T>,
+                                                               start: E,
+                                                               final: E,
+                                                               stopAtSemi: Boolean): Int {
     var hasParens = false
     var stack = 0
     val end = indexOfFirst {
-      if (it !is Punctuator) return@indexOfFirst false
-      when (it.pct) {
-        lparen -> {
+      if (it::class != tokenClass) return@indexOfFirst false
+      it as StaticToken
+      when (it.enum) {
+        start -> {
           hasParens = true
           stack++
           return@indexOfFirst false
         }
-        rparen -> {
+        final -> {
+          // FIXME: error here if stack is 0
           stack--
           return@indexOfFirst stack == 0
         }
@@ -667,10 +667,10 @@ class Parser(tokens: List<Token>,
       // This is the case where there aren't any lparens until a semicolon
       return end
     }
-    if (end == -1 || tokStack.peek()[end].asPunct() != rparen) {
+    if (end == -1 || (tokStack.peek()[end] as StaticToken).enum != final) {
       parserDiagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
-        formatArgs(rparen.s)
+        formatArgs(final.realName)
         if (end == -1) {
           column(colPastTheEnd())
         } else {
@@ -679,13 +679,26 @@ class Parser(tokens: List<Token>,
       }
       parserDiagnostic {
         id = DiagnosticId.MATCH_PAREN_TARGET
-        formatArgs(lparen.s)
+        formatArgs(start.realName)
         columns(range(0))
       }
       return -1
     }
     return end
   }
+
+  /**
+   * Find matching parenthesis in token list. Handles nested parens. Prints errors about unmatched
+   * parens.
+   * @param lparen the left paren: eg '(' or '[' or '{'
+   * @param rparen the right paren: eg ')' or ']' or '}'
+   * @param stopAtSemi whether or not to return -1 when hitting a semicolon
+   * @return -1 if the parens are unbalanced or a [Punctuators.SEMICOLON] was found before they can
+   * get balanced (and [stopAtSemi] is true), the size of the token stack if there were no parens,
+   * or the (real) idx of the rightmost paren otherwise
+   */
+  private fun findParenMatch(lparen: Punctuators, rparen: Punctuators, stopAtSemi: Boolean = true) =
+      findMatch(Punctuator::class, lparen, rparen, stopAtSemi)
 
   /**
    * Parses the params in a function declaration.

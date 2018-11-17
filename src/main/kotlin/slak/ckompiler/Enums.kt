@@ -1,6 +1,10 @@
 package slak.ckompiler
 
-enum class Keywords(val keyword: String) {
+interface StaticTokenEnum {
+  val realName: String
+}
+
+enum class Keywords(val keyword: String) : StaticTokenEnum {
   AUTO("auto"),
   BREAK("break"),
   CASE("case"),
@@ -44,10 +48,12 @@ enum class Keywords(val keyword: String) {
   IMAGINARY("_Imaginary"),
   NORETURN("_Noreturn"),
   STATIC_ASSERT("_Static_assert"),
-  THREAD_LOCAL("_Thread_local")
+  THREAD_LOCAL("_Thread_local");
+
+  override val realName get() = keyword
 }
 
-enum class Punctuators(val s: String) {
+enum class Punctuators(val s: String) : StaticTokenEnum {
   LSQPAREN("["), RSQPAREN("]"), LPAREN("("), RPAREN(")"),
   LBRACKET("{"), RBRACKET("}"), DOTS("..."), DOT("."), ARROW("->"),
   MUL_ASSIGN("*="), DIV_ASSIGN("/="), MOD_ASSIGN("%="), PLUS_ASSIGN("+="),
@@ -66,6 +72,8 @@ enum class Punctuators(val s: String) {
   COMMA(","), DOUBLE_HASH("##"), HASH("#"),
   COLON_MORE(":>"), COLON(":"), PERCENT_MORE("%>"),
   PERCENT_COLON_PERCENT_COLON("%:%:"), PERCENT_COLON("%:"), PERCENT("%");
+
+  override val realName get() = s
 
   fun asOperator(): Operators? = Operators.values().find { it.op == this }
 }

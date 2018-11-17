@@ -16,11 +16,19 @@ sealed class Token(val consumedChars: Int) {
 
 class ErrorToken(consumedChars: Int) : Token(consumedChars)
 
-data class Keyword(val value: Keywords) : Token(value.keyword.length)
+sealed class StaticToken(consumedChars: Int) : Token(consumedChars) {
+  abstract val enum: StaticTokenEnum
+}
+
+data class Keyword(val value: Keywords) : StaticToken(value.keyword.length) {
+  override val enum: StaticTokenEnum get() = value
+}
 
 fun Token.asKeyword(): Keywords? = (this as? Keyword)?.value
 
-data class Punctuator(val pct: Punctuators) : Token(pct.s.length)
+data class Punctuator(val pct: Punctuators) : StaticToken(pct.s.length) {
+  override val enum: StaticTokenEnum get() = pct
+}
 
 fun Token.asPunct(): Punctuators? = (this as? Punctuator)?.pct
 
