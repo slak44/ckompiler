@@ -415,9 +415,23 @@ class Parser(tokens: List<Token>,
       }
       ErrorNode()
     }
+    current().asKeyword() == Keywords.ALIGNOF -> {
+      eat() // The ALIGNOF
+      if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
+        TODO("throw some error here; the standard wants parens for this")
+      } else {
+        TODO("implement `_Alignof ( type-name )` expressions")
+      }
+    }
     current().asKeyword() == Keywords.SIZEOF -> {
       eat() // The SIZEOF
-      SizeofExpression(parsePrimaryExpr() ?: ErrorNode()).wrap()
+      when {
+        isEaten() -> ErrorNode()
+        current().asPunct() == Punctuators.LPAREN -> {
+          TODO("implement `sizeof ( type-name )` expressions")
+        }
+        else -> SizeofExpression(parsePrimaryExpr() ?: ErrorNode()).wrap()
+      }
     }
     current().asPunct() == Punctuators.LPAREN -> {
       // FIXME: here we can also have a cast
