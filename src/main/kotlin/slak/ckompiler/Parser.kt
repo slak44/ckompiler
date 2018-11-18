@@ -885,10 +885,11 @@ class Parser(tokens: List<Token>,
   }
 
   /**
-   * C standard: A.2.3
+   * C standard: A.2.3, 6.8.1
    * @return the [LabeledStatement] if it is there, or null if there is no such statement
    */
   private fun parseLabeledStatement(): EitherNode<LabeledStatement>? {
+    // FIXME: this only parser the first kind of labeled statement (6.8.1)
     if (current() !is Identifier || lookahead().asPunct() != Punctuators.COLON) return null
     val label = IdentifierNode((current() as Identifier).name)
     eatList(2) // Get rid of ident and COLON
