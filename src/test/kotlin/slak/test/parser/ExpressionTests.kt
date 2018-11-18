@@ -1,10 +1,7 @@
 package slak.test.parser
 
 import org.junit.Test
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.ErrorNode
-import slak.ckompiler.SizeofExpression
-import slak.ckompiler.wrap
+import slak.ckompiler.*
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -73,5 +70,36 @@ class ExpressionTests {
     val p = prepareCode("int a = sizeof 1;", source)
     p.assertNoDiagnostics()
     int declare ("a" assign SizeofExpression(int(1).wrap())) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun exprPrefixIncSimple() {
+    val p = prepareCode("int a = ++b;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign PrefixIncrement(name("b"))) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun exprPrefixIncParen() {
+    // This is invalid code, but valid grammar
+    val p = prepareCode("int a = ++(1);", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign PrefixIncrement(int(1).wrap())) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun exprUnaryRef() {
+    val p = prepareCode("int a = &b;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign (Operators.REF apply name("b"))) assertEquals p.root.decls[0]
+  }
+  @Test
+  fun exprUnaryLots() {
+    val p = prepareCode("int a = *&+-~!b;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign (
+        Operators.DEREF apply (Operators.REF apply (Operators.PLUS apply
+            (Operators.MINUS apply (Operators.BIT_NOT apply (Operators.NOT apply name("b"))))))
+        )) assertEquals p.root.decls[0]
   }
 }

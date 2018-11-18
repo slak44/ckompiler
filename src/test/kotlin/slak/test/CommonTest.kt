@@ -112,12 +112,12 @@ internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 internal class BinaryBuilder {
   var lhs: Expression? = null
   var rhs: Expression? = null
-  fun build(op: Operators): BinaryNode {
-    return BinaryNode(op, lhs!!.wrap(), rhs!!.wrap())
+  fun build(op: Operators): BinaryExpression {
+    return BinaryExpression(op, lhs!!.wrap(), rhs!!.wrap())
   }
 }
 
-internal fun Operators.with(block: BinaryBuilder.() -> Unit): BinaryNode {
+internal fun Operators.with(block: BinaryBuilder.() -> Unit): BinaryExpression {
   val b = BinaryBuilder()
   b.block()
   return b.build(this)
@@ -129,16 +129,20 @@ internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.M
 internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with Operators.DIV
 
 private fun <T> parseDSLElement(it: T): EitherNode<Expression> {
+  @Suppress("UNCHECKED_CAST")
   return when (it) {
     is ErrorNode -> ErrorNode()
     is Expression -> it.wrap()
+    is EitherNode.Value<*> -> it as EitherNode<Expression>
     is Int -> int(it.toLong()).wrap()
     else -> throw IllegalArgumentException("Bad types")
   }
 }
 
-internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryNode {
+internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryExpression {
   val lhs = parseDSLElement(first)
   val rhs = parseDSLElement(second)
-  return BinaryNode(op, lhs, rhs)
+  return BinaryExpression(op, lhs, rhs)
 }
+
+internal infix fun <T> Operators.apply(it: T) = UnaryExpression(this, parseDSLElement(it))

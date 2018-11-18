@@ -75,13 +75,19 @@ enum class Punctuators(val s: String) : StaticTokenEnum {
 
   override val realName get() = s
 
-  fun asOperator(): Operators? = Operators.values().find { it.op == this }
+  fun asBinaryOperator(): Operators? = Operators.binaryExprOps.find { it.op == this }
+  fun asUnaryOperator(): Operators? = Operators.unaryOperators.find { it.op == this }
 }
 
 enum class Associativity { LEFT_TO_RIGHT, RIGHT_TO_LEFT }
 
 enum class Arity { UNARY, BINARY, TERNARY }
 
+/**
+ * This class is used in the expression parser. The list is not complete, and the standard does not
+ * define these properties; they are derived from the grammar.
+ * C standard: A.2.1
+ */
 enum class Operators(val op: Punctuators,
                      val precedence: Int,
                      val arity: Arity,
@@ -95,19 +101,13 @@ enum class Operators(val op: Punctuators,
 //  POSTFIX_INC(Punctuators.INC, 122, Arity.NONE, Associativity.LEFT_TO_RIGHT),
 //  POSTFIX_DEC(Punctuators.DEC, 121, Arity.NONE, Associativity.LEFT_TO_RIGHT),
   // FIXME initializer list stuff
-  // Prefix
-  // FIXME pct conflict
-//  PREFIX_INC(Punctuators.INC, 115, Arity.UNARY, Associativity.RIGHT_TO_LEFT),
-//  PREFIX_DEC(Punctuators.DEC, 110, Arity.UNARY, Associativity.RIGHT_TO_LEFT),
   // Unary
   REF(Punctuators.AMP, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  // FIXME pct conflict
-//  DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-//  PLUS(Punctuators.PLUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-//  MINUS(Punctuators.MINUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
+  DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
+  PLUS(Punctuators.PLUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
+  MINUS(Punctuators.MINUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   BIT_NOT(Punctuators.TILDE, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   NOT(Punctuators.NOT, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  // FIXME here should be casts, alignof and sizeof
   // Arithmetic
   MUL(Punctuators.STAR, 95, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
   DIV(Punctuators.SLASH, 95, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
@@ -146,16 +146,16 @@ enum class Operators(val op: Punctuators,
   AND_ASSIGN(Punctuators.AND_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   XOR_ASSIGN(Punctuators.XOR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT);
-  // Comma
-  // FIXME does it have to be an operator?
-//  COMMA(Punctuators.COMMA, 10, Arity.NONE, Associativity.LEFT_TO_RIGHT);
 
   companion object {
     val binaryExprOps = Operators.values().filter { it.arity == Arity.BINARY }
+    /** C standard: 6.5.3, A.2.1 */
+    val unaryOperators = Operators.values().filter { it.arity == Arity.UNARY }
   }
 }
 
-fun Token.asOperator(): Operators? = asPunct()?.asOperator()
+fun Token.asBinaryOperator(): Operators? = asPunct()?.asBinaryOperator()
+fun Token.asUnaryOperator(): Operators? = asPunct()?.asUnaryOperator()
 
 enum class IntegralSuffix(val length: Int) {
   UNSIGNED(1), LONG(1), LONG_LONG(2),

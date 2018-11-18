@@ -52,7 +52,7 @@ interface Declarator : ASTNode
 /** C standard: A.2.3, 6.8 */
 interface Statement : BlockItem
 
-/** The standard says no-ops are expressions, but here it is represented separately */
+/** The standard says no-ops are expressions, but here it is represented separately. */
 object Noop : Statement {
   override fun toString() = "<no-op>"
 }
@@ -63,11 +63,32 @@ object Noop : Statement {
  */
 interface Expression : Statement, ForInitializer
 
-/** C standard: A.2.1 */
+/**
+ * This interface does not match with what the standard calls "primary-expression".
+ * C standard: A.2.1
+ */
 interface PrimaryExpression : ASTNode, Expression
 
 /** C standard: A.2.1 */
 data class SizeofExpression(val sizeExpr: EitherNode<Expression>) : PrimaryExpression
+
+data class PrefixIncrement(val expr: EitherNode<Expression>) : PrimaryExpression
+data class PrefixDecrement(val expr: EitherNode<Expression>) : PrimaryExpression
+
+/**
+ * This does not represent the entire "unary-expression" from the standard, just the
+ * "unary-operator cast-expression" part of it.
+ * C standard: A.2.1
+ */
+data class UnaryExpression(val op: Operators,
+                           val operand: EitherNode<Expression>) : PrimaryExpression
+
+/** Stores a binary operation from an expression. */
+data class BinaryExpression(val op: Operators,
+                            val lhs: EitherNode<Expression>,
+                            val rhs: EitherNode<Expression>) : PrimaryExpression {
+  override fun toString() = "($lhs $op $rhs)"
+}
 
 interface Terminal : PrimaryExpression
 
@@ -92,13 +113,6 @@ data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
 data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : Terminal
 
 data class StringLiteralNode(val string: String, val encoding: StringEncoding) : Terminal
-
-/** Stores a binary operation from an expression. */
-data class BinaryNode(val op: Operators,
-                      val lhs: EitherNode<Expression>,
-                      val rhs: EitherNode<Expression>) : PrimaryExpression {
-  override fun toString() = "($lhs $op $rhs)"
-}
 
 private val storageClassSpecifier =
     listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
@@ -366,8 +380,7 @@ class Parser(tokens: List<Token>,
     var lhs = lhsInit
     while (true) {
       if (isEaten()) break
-      val op = current().asOperator() ?: break
-      if (op !in Operators.binaryExprOps) break
+      val op = current().asBinaryOperator() ?: break
       if (op.precedence < minPrecedence) break
       eat()
       var rhs = parsePrimaryExpr().ifNull {
@@ -379,15 +392,14 @@ class Parser(tokens: List<Token>,
       }
       while (true) {
         if (isEaten()) break
-        val innerOp = current().asOperator() ?: break
-        if (innerOp !in Operators.binaryExprOps) break
+        val innerOp = current().asBinaryOperator() ?: break
         if (innerOp.precedence <= op.precedence &&
             !(innerOp.assoc == Associativity.RIGHT_TO_LEFT && innerOp.precedence == op.precedence)) {
           break
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
-      lhs = BinaryNode(op, lhs, rhs).wrap()
+      lhs = BinaryExpression(op, lhs, rhs).wrap()
     }
     return lhs
   }
@@ -434,6 +446,19 @@ class Parser(tokens: List<Token>,
   }
 
   private fun parseUnaryExpression(): EitherNode<Expression>? = when {
+    current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
+      val c = current().asPunct()
+      eat() // The prefix op
+      val expr = parseUnaryExpression() ?: ErrorNode()
+      if (c == Punctuators.INC) PrefixIncrement(expr).wrap()
+      else PrefixDecrement(expr).wrap()
+    }
+    current().asUnaryOperator() != null -> {
+      val c = current().asUnaryOperator()!!
+      eat() // The unary op
+      val expr = parsePrimaryExpr() ?: ErrorNode()
+      UnaryExpression(c, expr).wrap()
+    }
     current().asKeyword() == Keywords.ALIGNOF -> {
       eat() // The ALIGNOF
       if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
