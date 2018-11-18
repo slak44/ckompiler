@@ -66,6 +66,7 @@ interface Expression : Statement, ForInitializer
 /** C standard: A.2.1 */
 interface PrimaryExpression : ASTNode, Expression
 
+/** C standard: A.2.1 */
 data class SizeofExpression(val sizeExpr: EitherNode<Expression>) : PrimaryExpression
 
 interface Terminal : PrimaryExpression
@@ -391,21 +392,8 @@ class Parser(tokens: List<Token>,
     return lhs
   }
 
-  /**
-   * Looks for a primary expression. Eats what it finds.
-   * C standard: A.2.1, 6.4.4
-   * @see parseTerminal
-   * @return null if no primary was found, or the [Expression] otherwise (this doesn't return a
-   * [PrimaryExpression] because `( expression )` is a primary expression in itself)
-   */
-  private fun parsePrimaryExpr(): EitherNode<Expression>? = when {
-    isEaten() -> {
-      parserDiagnostic {
-        id = DiagnosticId.EXPECTED_EXPR
-        // FIXME: find correct column
-      }
-      ErrorNode()
-    }
+  private fun parseBaseExpr(): EitherNode<Expression>? = when {
+    // FIXME: implement generic-selection (A.2.1/6.5.1.1)
     current().asPunct() == Punctuators.RPAREN -> {
       // This usually happens when there are unmatched parens
       eat()
@@ -415,26 +403,7 @@ class Parser(tokens: List<Token>,
       }
       ErrorNode()
     }
-    current().asKeyword() == Keywords.ALIGNOF -> {
-      eat() // The ALIGNOF
-      if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
-        TODO("throw some error here; the standard wants parens for this")
-      } else {
-        TODO("implement `_Alignof ( type-name )` expressions")
-      }
-    }
-    current().asKeyword() == Keywords.SIZEOF -> {
-      eat() // The SIZEOF
-      when {
-        isEaten() -> ErrorNode()
-        current().asPunct() == Punctuators.LPAREN -> {
-          TODO("implement `sizeof ( type-name )` expressions")
-        }
-        else -> SizeofExpression(parsePrimaryExpr() ?: ErrorNode()).wrap()
-      }
-    }
     current().asPunct() == Punctuators.LPAREN -> {
-      // FIXME: here we can also have a cast
       if (lookahead().asPunct() == Punctuators.RPAREN) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_EXPR
@@ -454,13 +423,59 @@ class Parser(tokens: List<Token>,
         }
       }
     }
-    // FIXME implement generic-selection A.2.1/6.5.1.1
-    else -> {
-      parseTerminal()?.let {
-        eat()
-        it
-      }?.wrap()
+    else -> parseTerminal()?.let {
+      eat()
+      it
+    }?.wrap()
+  }
+
+  private fun parsePostfixExpression(): EitherNode<Expression>? = when {
+    else -> parseBaseExpr()
+  }
+
+  private fun parseUnaryExpression(): EitherNode<Expression>? = when {
+    current().asKeyword() == Keywords.ALIGNOF -> {
+      eat() // The ALIGNOF
+      if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
+        TODO("throw some error here; the standard wants parens for this")
+      } else {
+        TODO("implement `_Alignof ( type-name )` expressions")
+      }
     }
+    current().asKeyword() == Keywords.SIZEOF -> {
+      eat() // The SIZEOF
+      when {
+        isEaten() -> ErrorNode()
+        current().asPunct() == Punctuators.LPAREN -> {
+          TODO("implement `sizeof ( type-name )` expressions")
+        }
+        else -> SizeofExpression(parseUnaryExpression() ?: ErrorNode()).wrap()
+      }
+    }
+    else -> parsePostfixExpression()
+  }
+
+  /**
+   * Looks for a primary expression. Eats what it finds.
+   *
+   * As a note, this function does not parse what the standard calls "primary-expression" (that
+   * would be [parseBaseExpr]); it parses "cast-expression".
+   *
+   * C standard: A.2.1, 6.4.4, 6.5.3
+   * @see parseTerminal
+   * @return null if no primary was found, or the [Expression] otherwise (this doesn't return a
+   * [PrimaryExpression] because `( expression )` is a primary expression in itself)
+   */
+  private fun parsePrimaryExpr(): EitherNode<Expression>? {
+    if (isEaten()) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_EXPR
+        // FIXME: find correct column
+      }
+      return ErrorNode()
+    }
+    // FIXME: here we can also have a cast, that needs to be differentiated from `( expression )`
+    return parseUnaryExpression()
   }
 
   /**
