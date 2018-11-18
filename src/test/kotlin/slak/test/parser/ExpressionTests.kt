@@ -3,6 +3,8 @@ package slak.test.parser
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.ErrorNode
+import slak.ckompiler.SizeofExpression
+import slak.ckompiler.wrap
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -64,5 +66,12 @@ class ExpressionTests {
     int func ("main" withParams emptyList()) body listOf(
         1 add 1 add ErrorNode()
     ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun exprSizeOfPrimary() {
+    val p = prepareCode("int a = sizeof 1;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign SizeofExpression(int(1).wrap())) assertEquals p.root.decls[0]
   }
 }

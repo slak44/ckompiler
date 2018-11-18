@@ -57,8 +57,16 @@ object Noop : Statement {
   override fun toString() = "<no-op>"
 }
 
+/**
+ * Represents an expression.
+ * C standard: A.2.3, 6.8.3
+ */
+interface Expression : Statement, ForInitializer
+
 /** C standard: A.2.1 */
 interface PrimaryExpression : ASTNode, Expression
+
+data class SizeofExpression(val sizeExpr: EitherNode<Expression>) : PrimaryExpression
 
 interface Terminal : PrimaryExpression
 
@@ -90,12 +98,6 @@ data class BinaryNode(val op: Operators,
                       val rhs: EitherNode<Expression>) : PrimaryExpression {
   override fun toString() = "($lhs $op $rhs)"
 }
-
-/**
- * Represents an expression.
- * C standard: A.2.3, 6.8.3
- */
-interface Expression : Statement, ForInitializer
 
 private val storageClassSpecifier =
     listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
@@ -413,7 +415,12 @@ class Parser(tokens: List<Token>,
       }
       ErrorNode()
     }
+    current().asKeyword() == Keywords.SIZEOF -> {
+      eat() // The SIZEOF
+      SizeofExpression(parsePrimaryExpr() ?: ErrorNode()).wrap()
+    }
     current().asPunct() == Punctuators.LPAREN -> {
+      // FIXME: here we can also have a cast
       if (lookahead().asPunct() == Punctuators.RPAREN) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_EXPR
