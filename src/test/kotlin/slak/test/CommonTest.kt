@@ -98,6 +98,11 @@ internal infix fun Statement.asDoWhile(cond: EitherNode<Expression>) =
 internal infix fun EitherNode<Statement>.asDoWhile(cond: EitherNode<Expression>) =
     DoWhileStatement(cond, this)
 
+internal fun forSt(t: Triple<ForInitializer?, Expression?, Expression?>,
+                   loopable: EitherNode<Statement>): ForStatement {
+  return ForStatement(t.first?.wrap(), t.second?.wrap(), t.third?.wrap(), loopable)
+}
+
 internal infix fun String.labeled(s: Statement): LabeledStatement {
   return LabeledStatement(IdentifierNode(this), s.wrap())
 }

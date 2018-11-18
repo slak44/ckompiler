@@ -95,7 +95,7 @@ data class BinaryNode(val op: Operators,
  * Represents an expression.
  * C standard: A.2.3, 6.8.3
  */
-interface Expression : Statement
+interface Expression : Statement, ForInitializer
 
 private val storageClassSpecifier =
     listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
@@ -172,7 +172,8 @@ sealed class ExternalDeclaration : ASTNode
 
 /** C standard: A.2.2 */
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<InitDeclarator>) : ExternalDeclaration(), BlockItem
+                       val declaratorList: List<InitDeclarator>
+) : ExternalDeclaration(), BlockItem, ForInitializer
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
@@ -208,19 +209,13 @@ data class WhileStatement(val cond: EitherNode<Expression>,
 data class DoWhileStatement(val cond: EitherNode<Expression>,
                             val loopable: EitherNode<Statement>) : IterationStatement
 
-interface ForStatement : IterationStatement
+interface ForInitializer : ASTNode
 
 /** C standard: 6.8.5.3 */
-data class ForExprStatement(val init: EitherNode<Expression>,
-                            val cond: EitherNode<Expression>,
-                            val loopEnd: EitherNode<Expression>,
-                            val loopable: EitherNode<Statement>) : ForStatement
-
-/** C standard: 6.8.5.3 */
-data class ForDeclStatement(val init: EitherNode<Declaration>,
-                            val cond: EitherNode<Expression>,
-                            val loopEnd: EitherNode<Expression>,
-                            val loopable: EitherNode<Statement>) : ForStatement
+data class ForStatement(val init: EitherNode<ForInitializer>?,
+                        val cond: EitherNode<Expression>?,
+                        val loopEnd: EitherNode<Expression>?,
+                        val loopable: EitherNode<Statement>) : IterationStatement
 
 /** C standard: 6.8.6 */
 sealed class JumpStatement : Statement
@@ -406,6 +401,15 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
         // FIXME: find correct column
+      }
+      ErrorNode()
+    }
+    current().asPunct() == Punctuators.RPAREN -> {
+      // This usually happens when there are unmatched parens
+      eat()
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_EXPR
+        columns(range(0))
       }
       ErrorNode()
     }
@@ -1164,6 +1168,83 @@ class Parser(tokens: List<Token>,
     return DoWhileStatement(condition, loopable).wrap()
   }
 
+  /** C standard: 6.8.5, 6.8.5.3 */
+  private fun parseFor(): EitherNode<ForStatement>? {
+    if (current().asKeyword() != Keywords.FOR) return null
+    eat() // The FOR
+    if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_LPAREN_AFTER
+        formatArgs(Keywords.FOR.keyword)
+        columns(range(0))
+      }
+      eatToSemi()
+      if (!isEaten()) eat()
+      return ErrorNode()
+    }
+    val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
+    eat() // The '('
+    if (rparen == -1) return ErrorNode()
+    val (clause1, expr2, expr3) = tokenContext(rparen) {
+      val firstSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
+      if (firstSemi == -1) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_IN_FOR
+          if (it.isNotEmpty()) columns(range(0))
+        }
+        return@tokenContext Triple(ErrorNode(), ErrorNode(), ErrorNode())
+      }
+      // Handle the case where we have an empty clause1
+      val clause1: EitherNode<ForInitializer>? = if (firstSemi == 0) {
+        null
+      } else {
+        // parseDeclaration wants to see the semicolon as well
+        tokenContext(firstSemi + 1) { parseDeclaration() } ?: parseExpr(firstSemi)
+      }
+      // We only eat the first ';' if parseDeclaration didn't do that
+      if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
+      val secondSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
+      if (secondSemi == -1) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_IN_FOR
+          columns(range(0))
+        }
+        return@tokenContext Triple(clause1, ErrorNode(), ErrorNode())
+      }
+      // Handle the case where we have an empty expr2
+      val expr2 = if (secondSemi == firstSemi + 1) null else parseExpr(secondSemi)
+      eat() // The second ';'
+      // Handle the case where we have an empty expr3
+      val expr3 =
+          if (secondSemi + 1 == tokStack.peek().size) null else parseExpr(tokStack.peek().size)
+      if (!isEaten()) {
+        parserDiagnostic {
+          id = DiagnosticId.UNEXPECTED_IN_FOR
+          columns(range(0))
+        }
+      }
+      return@tokenContext Triple(clause1, expr2, expr3)
+    }
+    val remainders = takeUntil(rparen)
+    if (remainders.isNotEmpty()) {
+      // Eat everything inside the for's parens
+      eatList(remainders.size)
+    }
+    eat() // The ')'
+    val loopable = parseStatement()
+    if (loopable == null) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_STATEMENT
+        columns(range(0))
+      }
+      // Attempt to eat the error
+      eatToSemi()
+      if (!isEaten()) eat()
+      return ForStatement(clause1, expr2, expr3, ErrorNode()).wrap()
+    }
+    return ForStatement(clause1, expr2, expr3, loopable).wrap()
+  }
+
   /**
    * C standard: A.2.3
    * @return null if no statement was found, or the [Statement] otherwise
@@ -1180,6 +1261,7 @@ class Parser(tokens: List<Token>,
         ?: parseGotoStatement()
         ?: parseWhile()
         ?: parseDoWhile()
+        ?: parseFor()
         ?: parseContinue()?.wrap()
         ?: parseBreak()?.wrap()
         ?: parseReturn()?.wrap()

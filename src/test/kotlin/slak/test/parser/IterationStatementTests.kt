@@ -141,4 +141,162 @@ class IterationStatementTests {
         ErrorNode() asDoWhile ErrorNode()
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun forBasicNoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (1 + 1; 1 + 1; 1 + 1);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        forSt(Triple(1 add 1, 1 add 1, 1 add 1), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forDeclNoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (int i = 65; 1 + 1; 1 + 1);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        ForStatement(int declare ("i" assign int(65)), (1 add 1).wrap(), (1 add 1).wrap(),
+            Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forNoParenNoBody() {
+    val p = prepareCode("""
+      int main() {
+        for int i = 65; 1 + 1; 1 + 1);
+      }
+    """.trimIndent(), source)
+    // This kind of syntax error can cause lots of random diagnostics, are random parsing
+    // As long as we report "EXPECTED_LPAREN_AFTER" it's good enough
+    assert(p.diags.size > 0)
+    assert(p.diags.ids.contains(DiagnosticId.EXPECTED_LPAREN_AFTER))
+  }
+
+  @Test
+  fun forNoClause1NoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (; 1 + 1; 1 + 1);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        forSt(Triple(null, 1 add 1, 1 add 1), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forNoExpr2NoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (1 + 1; ; 1 + 1);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        forSt(Triple(1 add 1, null, 1 add 1), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forNoExpr3NoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (1 + 1; 1 + 1;);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        forSt(Triple(1 add 1, 1 add 1, null), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forEmptySpecifiersNoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (;;);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body listOf(
+        forSt(Triple(null, null, null), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forMissingSemi2NoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (1 + 1; 1 + 1);
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        ForStatement((1 add 1).wrap(), ErrorNode(), ErrorNode(), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forMissingSemi1NoBody() {
+    val p = prepareCode("""
+      int main() {
+        for (1 + 1);
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        ForStatement(ErrorNode(), ErrorNode(), ErrorNode(), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forMissingAllSpecsNoBody() {
+    val p = prepareCode("""
+      int main() {
+        for ();
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        ForStatement(ErrorNode(), ErrorNode(), ErrorNode(), Noop.wrap())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forBasicMissingBody() {
+    val p = prepareCode("""
+      int main() {
+        for (1 + 1; 1 + 1; 1 + 1)
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        forSt(Triple(1 add 1, 1 add 1, 1 add 1), ErrorNode())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun forMissingAll() {
+    val p = prepareCode("""
+      int main() {
+        for ()
+      }
+    """.trimIndent(), source)
+    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR,
+        DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    int func ("main" withParams emptyList()) body listOf(
+        ForStatement(ErrorNode(), ErrorNode(), ErrorNode(), ErrorNode())
+    ) assertEquals p.root.decls[0]
+  }
 }

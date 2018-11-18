@@ -24,6 +24,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_DECL(ERROR, "Expected declarator"),
   EXPECTED_SEMI_AFTER(ERROR, "Expected ';' after %s"),
   EXPECTED_LPAREN_AFTER(ERROR, "Expected '(' after %s"),
+  EXPECTED_SEMI_IN_FOR(ERROR, "Expected ';' in 'for' statement specifier"),
+  UNEXPECTED_IN_FOR(ERROR, "Unexpected token in 'for' statement specifier"),
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
   INCOMPATIBLE_DECL_SPEC(ERROR, "Cannot combine with previous '%s' declaration specifier"),
   // clang puts up a warning; the standard says we error
