@@ -88,6 +88,21 @@ class ExpressionTests {
   }
 
   @Test
+  fun exprPostfixIncSimple() {
+    val p = prepareCode("int a = b++;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign PostfixIncrement(name("b"))) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun exprPostfixIncParen() {
+    // This is invalid code, but valid grammar
+    val p = prepareCode("int a = (1)++;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign PostfixIncrement(int(1).wrap())) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun exprUnaryRef() {
     val p = prepareCode("int a = &b;", source)
     p.assertNoDiagnostics()
