@@ -16,6 +16,13 @@ sealed class EitherNode<out N : ASTNode> {
     override fun toString() = value.toString()
   }
 
+  fun asVal(): N {
+    if (this is ErrorNode) {
+      logger.throwICE("An error node was coerced to a real node") { this }
+    }
+    return (this as EitherNode.Value).value
+  }
+
   override fun toString(): String {
     return if (this is Value) value.toString() else (this as ErrorNode).toString()
   }
