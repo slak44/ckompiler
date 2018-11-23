@@ -109,6 +109,10 @@ internal infix fun String.labeled(s: Statement): LabeledStatement {
 
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
+internal infix fun String.call(l: List<Expression>): FunctionCall {
+  return FunctionCall(name(this), l.map { it.wrap() })
+}
+
 internal class BinaryBuilder {
   var lhs: Expression? = null
   var rhs: Expression? = null
@@ -135,6 +139,8 @@ private fun <T> parseDSLElement(it: T): EitherNode<Expression> {
     is Expression -> it.wrap()
     is EitherNode.Value<*> -> it as EitherNode<Expression>
     is Int -> int(it.toLong()).wrap()
+    is Double -> double(it.toDouble()).wrap()
+    is String -> name(it)
     else -> throw IllegalArgumentException("Bad types")
   }
 }

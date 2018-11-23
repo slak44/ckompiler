@@ -77,6 +77,9 @@ data class PrefixDecrement(val expr: EitherNode<Expression>) : PrimaryExpression
 data class PostfixIncrement(val expr: EitherNode<Expression>) : PrimaryExpression
 data class PostfixDecrement(val expr: EitherNode<Expression>) : PrimaryExpression
 
+data class FunctionCall(val calledExpr: EitherNode<Expression>,
+                        val args: List<EitherNode<Expression>>) : PrimaryExpression
+
 /**
  * This does not represent the entire "unary-expression" from the standard, just the
  * "unary-operator cast-expression" part of it.
@@ -443,16 +446,54 @@ class Parser(tokens: List<Token>,
     }?.wrap()
   }
 
+  private fun parseArgumentExprList(): List<EitherNode<Expression>> {
+    val funcArgs = mutableListOf<EitherNode<Expression>>()
+    val callEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+    eat() // The '('
+    if (callEnd == -1) {
+      TODO("error where function call has unmatched paren")
+    }
+    if (current().asPunct() == Punctuators.RPAREN) {
+      eat() // The ')'
+      // No parameters; this is not an error case
+      return emptyList()
+    }
+    tokenContext(callEnd) {
+      while (!isEaten()) {
+        // The arguments can have parens with commas in them
+        // We're interested in the comma that comes after the argument expression
+        // So balance the parens, and look for the first comma after them
+        // Also, we do not eat what we find; we're only searching for the end of the current arg
+        // Once found, parseExpr handles parsing the arg and eating it
+        val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+        if (parenEndIdx == -1) {
+          TODO("handle error case where there is an unmatched" +
+              "paren in the argument-expression-list")
+        }
+        val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
+        val arg = parseExpr(if (commaIdx == -1) it.size else commaIdx)
+            ?: TODO("handle error case with a null (error'd) expr")
+        funcArgs.add(arg)
+        if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
+          // Expected case; found comma that separates args
+          eat()
+        }
+      }
+    }
+    eat() // The ')'
+    return funcArgs
+  }
+
   private fun parsePostfixExpression(): EitherNode<Expression>? {
     // FIXME: implement initializer-lists (6.5.2)
     val expr = parseBaseExpr()
-    val postfixExpr = when {
+    return when {
       isEaten() || expr == null -> return expr
       current().asPunct() == Punctuators.LSQPAREN -> {
         TODO("implement subscript operator")
       }
       current().asPunct() == Punctuators.LPAREN -> {
-        TODO("implement function calls")
+        return FunctionCall(expr, parseArgumentExprList()).wrap()
       }
       current().asPunct() == Punctuators.DOT -> {
         TODO("implement direct struct/union access operator")
@@ -468,7 +509,6 @@ class Parser(tokens: List<Token>,
       }
       else -> return expr
     }
-    return postfixExpr
   }
 
   private fun parseUnaryExpression(): EitherNode<Expression>? = when {
