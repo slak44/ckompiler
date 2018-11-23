@@ -79,4 +79,17 @@ class LexerIntegrationTests {
         Punctuator(Punctuators.SEMICOLON)
     ), l.tokens)
   }
+
+  @Test
+  fun functionCall() {
+    val l = Lexer("int a = f(123, 5.5);", source)
+    l.assertNoDiagnostics()
+    assertEquals(listOf(
+        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        Identifier("f"), Punctuator(Punctuators.LPAREN),
+        IntegralConstant("123", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.COMMA),
+        FloatingConstant("5.5", FloatingSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.RPAREN),
+        Punctuator(Punctuators.SEMICOLON)
+    ), l.tokens)
+  }
 }

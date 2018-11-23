@@ -47,7 +47,7 @@ data class FloatingConstant(val f: String,
     radix.prefixLength +
         f.length +
         (if (exponentSign is Empty) 0 else 1) +
-        1 +
+        (if (exponent.isEmpty()) 0 else 1) +
         exponent.length +
         suffix.length) {
   init {
