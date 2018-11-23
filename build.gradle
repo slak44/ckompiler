@@ -9,10 +9,12 @@ version '1.0-SNAPSHOT'
 
 repositories {
   mavenCentral()
+  maven { url 'https://jitpack.io' }
 }
 
 dependencies {
   compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
+  compile 'com.github.Kotlin:kotlinx.cli:-SNAPSHOT'
   compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.25'
   compile 'io.github.microutils:kotlin-logging:1.6.10'
   testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion"
