@@ -74,6 +74,8 @@ data class SizeofExpression(val sizeExpr: EitherNode<Expression>) : PrimaryExpre
 
 data class PrefixIncrement(val expr: EitherNode<Expression>) : PrimaryExpression
 data class PrefixDecrement(val expr: EitherNode<Expression>) : PrimaryExpression
+data class PostfixIncrement(val expr: EitherNode<Expression>) : PrimaryExpression
+data class PostfixDecrement(val expr: EitherNode<Expression>) : PrimaryExpression
 
 /**
  * This does not represent the entire "unary-expression" from the standard, just the
@@ -441,8 +443,32 @@ class Parser(tokens: List<Token>,
     }?.wrap()
   }
 
-  private fun parsePostfixExpression(): EitherNode<Expression>? = when {
-    else -> parseBaseExpr()
+  private fun parsePostfixExpression(): EitherNode<Expression>? {
+    // FIXME: implement initializer-lists (6.5.2)
+    val expr = parseBaseExpr()
+    val postfixExpr = when {
+      isEaten() || expr == null -> return expr
+      current().asPunct() == Punctuators.LSQPAREN -> {
+        TODO("implement subscript operator")
+      }
+      current().asPunct() == Punctuators.LPAREN -> {
+        TODO("implement function calls")
+      }
+      current().asPunct() == Punctuators.DOT -> {
+        TODO("implement direct struct/union access operator")
+      }
+      current().asPunct() == Punctuators.ARROW -> {
+        TODO("implement indirect struct/union access operator")
+      }
+      current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
+        val c = current().asPunct()
+        eat() // The postfix op
+        if (c == Punctuators.INC) PostfixIncrement(expr).wrap()
+        else PostfixDecrement(expr).wrap()
+      }
+      else -> return expr
+    }
+    return postfixExpr
   }
 
   private fun parseUnaryExpression(): EitherNode<Expression>? = when {
