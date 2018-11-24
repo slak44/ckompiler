@@ -28,7 +28,7 @@ fun main(args: Array<String>) {
     if (l.inspections.isNotEmpty()) {
       return@forEach
     }
-    val p = Parser(l.tokens, it.absolutePath, text, l.tokStartIdxes)
+    val p = Parser(l.tokens, it.absolutePath, text)
     if (p.diags.isNotEmpty()) {
       return@forEach
     }

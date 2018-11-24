@@ -96,15 +96,6 @@ enum class Operators(val op: Punctuators,
                      val precedence: Int,
                      val arity: Arity,
                      val assoc: Associativity) {
-  // Postfix
-  // FIXME [], func calls
-  // FIXME postfix exprs
-//  ACCESS(Punctuators.DOT, 124, Arity.NONE, Associativity.LEFT_TO_RIGHT),
-//  PTR_ACCESS(Punctuators.ARROW, 123, Arity.NONE, Associativity.LEFT_TO_RIGHT),
-  // FIXME pct conflict
-//  POSTFIX_INC(Punctuators.INC, 122, Arity.NONE, Associativity.LEFT_TO_RIGHT),
-//  POSTFIX_DEC(Punctuators.DEC, 121, Arity.NONE, Associativity.LEFT_TO_RIGHT),
-  // FIXME initializer list stuff
   // Unary
   REF(Punctuators.AMP, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
@@ -136,8 +127,6 @@ enum class Operators(val op: Punctuators,
   // Logical
   AND(Punctuators.AND, 45, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
   OR(Punctuators.OR, 40, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  // Ternary
-  COND(Punctuators.QMARK, 30, Arity.TERNARY, Associativity.RIGHT_TO_LEFT),
   // Assignment
   ASSIGN(Punctuators.ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   MUL_ASSIGN(Punctuators.MUL_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
@@ -189,7 +178,18 @@ enum class CharEncoding(val prefixLength: Int) {
   UNSIGNED_CHAR(0), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
 }
 
+/** Represents a token from the lexical grammar. Is the output of the [Lexer]. */
 sealed class Token(val consumedChars: Int) {
+  companion object {
+    const val INVALID_INDEX = -0x35
+  }
+
+  var startIdx: Int = INVALID_INDEX
+    set(value) {
+      if (value < 0) logger.throwICE("Bad starting idx") { "value: $value" }
+      field = value
+    }
+
   init {
     if (consumedChars == 0) {
       logger.throwICE("Zero-length token created") { "token: $this" }
@@ -260,4 +260,3 @@ data class StringLiteral(
 data class CharLiteral(
     val data: String,
     val encoding: CharEncoding) : CharSequence(data.length, encoding.prefixLength)
-

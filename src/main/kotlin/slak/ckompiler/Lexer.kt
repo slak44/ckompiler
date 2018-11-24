@@ -3,7 +3,6 @@ package slak.ckompiler
 import mu.KotlinLogging
 
 class Lexer(private val textSource: String, private val srcFileName: SourceFileName) {
-  val tokStartIdxes = mutableListOf<Int>()
   val tokens = mutableListOf<Token>()
   val inspections = mutableListOf<Diagnostic>()
   private var src: String = textSource
@@ -255,8 +254,8 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
 
   private fun <T : Token> Optional<T>.consumeIfPresent(): Boolean {
     ifPresent {
+      it.startIdx = currentOffset
       tokens.add(it)
-      tokStartIdxes.add(currentOffset)
       currentOffset += it.consumedChars
       src = src.drop(it.consumedChars)
       return true

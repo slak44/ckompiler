@@ -12,7 +12,7 @@ internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
   val lexer = Lexer(s, source)
   lexer.assertNoDiagnostics()
-  return Parser(lexer.tokens, source, s, lexer.tokStartIdxes)
+  return Parser(lexer.tokens, source, s)
 }
 
 internal val List<Diagnostic>.ids get() = map { it.id }

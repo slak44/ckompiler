@@ -13,23 +13,14 @@ import kotlin.reflect.KClass
  *
  * @param tokens list of tokens to parse
  * @param srcFileName the name of the file in which the tokens were extracted from
- * @param tokStartIdxes a list of indices in the original source string, for the start of each token
  */
 class Parser(tokens: List<Token>,
              private val srcFileName: SourceFileName,
-             private val srcText: String,
-             private val tokStartIdxes: List<Int>) {
+             private val srcText: String) {
   private val tokStack = Stack<List<Token>>()
   private val idxStack = Stack<Int>()
   val diags = mutableListOf<Diagnostic>()
   val root = RootNode()
-
-  init {
-    tokStack.push(tokens)
-    idxStack.push(0)
-    translationUnit()
-    diags.forEach { it.print() }
-  }
 
   companion object {
     private val logger = KotlinLogging.logger("Parser")
@@ -40,24 +31,22 @@ class Parser(tokens: List<Token>,
         Keywords.BOOL, Keywords.COMPLEX)
   }
 
-  /**
-   * Get the [IntRange] spanned by the [Token] in the original code string.
-   * FIXME: handle the many issues with offsets
-   * FIXME: write tests for the ranges, and make sure the offsets in the diags are correct
-   * @param offset the offset in the topmost token list, eg -1 to take the token before the one
-   * given by [current], or 1 for the one in [lookahead].
-   */
-  private fun range(offset: Int): IntRange {
-    val startIdx = tokStartIdxes[idxStack.peek() + offset]
-    val endTokenIdx = min(idxStack.peek() + offset, tokStack.peek().size - 1)
-    return startIdx until startIdx + tokStack.peek()[endTokenIdx].consumedChars
+  init {
+    tokStack.push(tokens)
+    idxStack.push(0)
+    translationUnit()
+    diags.forEach { it.print() }
   }
 
-  /**
-   * When all the tokens have been eaten, get the column in the original code string, plus one.
-   */
+  /** Gets a token, or if all were eaten, the last one. Useful for diagnostics. */
+  private fun safeToken(offset: Int) =
+      if (isEaten()) tokStack.peek().last()
+      else tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
+
+  /** When all the tokens have been eaten, get the column in the original code string, plus one. */
   private fun colPastTheEnd(): Int {
-    return tokStartIdxes[idxStack.peek() - 1] + 1
+    val lastTok = tokStack.peek().last()
+    return lastTok.startIdx + lastTok.consumedChars + 1
   }
 
   /**
@@ -130,7 +119,7 @@ class Parser(tokens: List<Token>,
     val primary = parsePrimaryExpr().ifNull {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
-        columns(range(1))
+        errorOn(safeToken(1))
       }
       return@tokenContext null
     }
@@ -148,7 +137,7 @@ class Parser(tokens: List<Token>,
       var rhs = parsePrimaryExpr().ifNull {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_PRIMARY
-          columns(range(0))
+          errorOn(safeToken(0))
         }
         return ErrorNode()
       }
@@ -173,7 +162,7 @@ class Parser(tokens: List<Token>,
       eat()
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       ErrorNode()
     }
@@ -181,7 +170,7 @@ class Parser(tokens: List<Token>,
       if (lookahead().asPunct() == Punctuators.RPAREN) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_EXPR
-          columns(range(1))
+          errorOn(safeToken(1))
         }
         ErrorNode()
       } else {
@@ -352,7 +341,7 @@ class Parser(tokens: List<Token>,
         } else {
           parserDiagnostic {
             id = DiagnosticId.EMPTY_CHAR_CONSTANT
-            columns(range(0))
+            errorOn(safeToken(0))
           }
           0
         }
@@ -366,19 +355,19 @@ class Parser(tokens: List<Token>,
   private fun diagDuplicate(k: Keywords) = parserDiagnostic {
     id = DiagnosticId.DUPLICATE_DECL_SPEC
     formatArgs(k.keyword)
-    columns(range(0))
+    errorOn(safeToken(0))
   }
 
   private fun diagIncompat(k: Keywords) = parserDiagnostic {
     id = DiagnosticId.INCOMPATIBLE_DECL_SPEC
     formatArgs(k.keyword)
-    columns(range(0))
+    errorOn(safeToken(0))
   }
 
   private fun diagNotSigned(k: Keywords) = parserDiagnostic {
     id = DiagnosticId.TYPE_NOT_SIGNED
     formatArgs(k)
-    columns(range(0))
+    errorOn(safeToken(0))
   }
 
   /**
@@ -392,7 +381,7 @@ class Parser(tokens: List<Token>,
     if (typeSpec.isEmpty()) {
       parserDiagnostic {
         id = DiagnosticId.MISSING_TYPE_SPEC
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       return null
     }
@@ -452,7 +441,7 @@ class Parser(tokens: List<Token>,
         Keywords.COMPLEX -> {
           parserDiagnostic {
             id = DiagnosticId.UNSUPPORTED_COMPLEX
-            columns(range(0))
+            errorOn(safeToken(0))
           }
           hitError = true
         }
@@ -525,9 +514,9 @@ class Parser(tokens: List<Token>,
    * @see findParenMatch
    */
   private fun <T : StaticToken, E : StaticTokenEnum> findMatch(tokenClass: KClass<T>,
-                                                                                             start: E,
-                                                                                             final: E,
-                                                                                             stopAtSemi: Boolean): Int {
+                                                               start: E,
+                                                               final: E,
+                                                               stopAtSemi: Boolean): Int {
     var hasParens = false
     var stack = 0
     val end = indexOfFirst {
@@ -563,13 +552,13 @@ class Parser(tokens: List<Token>,
         if (end == -1) {
           column(colPastTheEnd())
         } else {
-          columns(range(end - idxStack.peek()))
+          errorOn(tokStack.peek()[end])
         }
       }
       parserDiagnostic {
         id = DiagnosticId.MATCH_PAREN_TARGET
         formatArgs(start.realName)
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       return -1
     }
@@ -639,7 +628,7 @@ class Parser(tokens: List<Token>,
         if (end - 1 == 0) {
           parserDiagnostic {
             id = DiagnosticId.EXPECTED_DECL
-            columns(range(1))
+            errorOn(safeToken(1))
           }
           eatToSemi()
           return@tokenContext ErrorNode()
@@ -652,7 +641,7 @@ class Parser(tokens: List<Token>,
       current() !is Identifier -> {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
-          columns(range(0))
+          errorOn(safeToken(0))
         }
         return@tokenContext ErrorNode()
       }
@@ -696,7 +685,7 @@ class Parser(tokens: List<Token>,
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       return ErrorNode()
     }
@@ -723,7 +712,7 @@ class Parser(tokens: List<Token>,
         // This means that there were decl specs, but no declarator, which is a problem
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_DECL
-          columns(range(0))
+          errorOn(safeToken(0))
         }
         return@parseDeclaration ErrorNode()
       }
@@ -782,7 +771,7 @@ class Parser(tokens: List<Token>,
     if (labeled == null) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
-        columns(range(-1))
+        errorOn(tokStack.peek()[idxStack.peek() - 1])
       }
       return ErrorNode()
     }
@@ -813,7 +802,7 @@ class Parser(tokens: List<Token>,
     val statementSuccess = if (!isEaten() && current().asKeyword() == Keywords.ELSE) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       ErrorNode()
     } else {
@@ -821,7 +810,7 @@ class Parser(tokens: List<Token>,
       if (statement == null) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_STATEMENT
-          columns(range(0))
+          errorOn(safeToken(0))
         }
         // Attempt to eat the error
         while (!isEaten() &&
@@ -838,7 +827,7 @@ class Parser(tokens: List<Token>,
       val statementFailure = if (elseStatement == null) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_STATEMENT
-          columns(range(0))
+          errorOn(safeToken(0))
         }
         // Eat until the next thing
         eatToSemi()
@@ -875,7 +864,7 @@ class Parser(tokens: List<Token>,
     if (current() !is Identifier) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_IDENT
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       eatToSemi()
       if (!isEaten()) eat()
@@ -957,7 +946,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_LPAREN_AFTER
         formatArgs(Keywords.WHILE.keyword)
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       val end = indexOfFirst {
         it.asPunct() == Punctuators.LBRACKET || it.asPunct() == Punctuators.SEMICOLON
@@ -982,7 +971,7 @@ class Parser(tokens: List<Token>,
     val loopable = if (statement == null) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       // Attempt to eat the error
       eatToSemi()
@@ -1004,7 +993,7 @@ class Parser(tokens: List<Token>,
     val loopable = if (statement == null) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       // Attempt to eat the error
       val end = indexOfFirst {
@@ -1021,7 +1010,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_LPAREN_AFTER
         formatArgs(Keywords.WHILE.keyword)
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       eatToSemi()
       if (!isEaten()) eat()
@@ -1043,7 +1032,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("do/while statement")
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       eatToSemi()
       if (!isEaten()) eat()
@@ -1062,7 +1051,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_LPAREN_AFTER
         formatArgs(Keywords.FOR.keyword)
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       eatToSemi()
       if (!isEaten()) eat()
@@ -1076,7 +1065,7 @@ class Parser(tokens: List<Token>,
       if (firstSemi == -1) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
-          if (it.isNotEmpty()) columns(range(0))
+          if (it.isNotEmpty()) errorOn(safeToken(0))
         }
         return@tokenContext Triple(ErrorNode(), ErrorNode(), ErrorNode())
       }
@@ -1093,7 +1082,7 @@ class Parser(tokens: List<Token>,
       if (secondSemi == -1) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
-          columns(range(0))
+          errorOn(safeToken(0))
         }
         return@tokenContext Triple(clause1, ErrorNode(), ErrorNode())
       }
@@ -1106,7 +1095,7 @@ class Parser(tokens: List<Token>,
       if (!isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.UNEXPECTED_IN_FOR
-          columns(range(0))
+          errorOn(safeToken(0))
         }
       }
       return@tokenContext Triple(clause1, expr2, expr3)
@@ -1121,7 +1110,7 @@ class Parser(tokens: List<Token>,
     if (loopable == null) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       // Attempt to eat the error
       eatToSemi()
@@ -1229,7 +1218,7 @@ class Parser(tokens: List<Token>,
       // So spit out an error and eat tokens
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
-        columns(range(0))
+        errorOn(safeToken(0))
       }
       eatToSemi()
       if (!isEaten()) eat()

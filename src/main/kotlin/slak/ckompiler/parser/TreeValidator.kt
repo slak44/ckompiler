@@ -1,4 +1,5 @@
 package slak.ckompiler.parser
 
-class TreeValidator {
+class TreeValidator(private val ast: RootNode) {
+
 }

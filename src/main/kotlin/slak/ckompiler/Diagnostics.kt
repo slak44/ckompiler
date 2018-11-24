@@ -55,11 +55,11 @@ data class Diagnostic(val id: DiagnosticId,
       var currLine = 1
       var currLineStart = 0
       for ((idx, it) in sourceText.withIndex()) {
-        if (it == '\n') {
+        if (it == '\n' || idx == sourceText.length - 1) {
           currLine++
-          currLineStart = idx + 1
+          currLineStart = idx
         }
-        if (sourceColumns[0].start > currLineStart) {
+        if (sourceColumns[0].endInclusive > currLineStart) {
           break
         }
       }
@@ -71,8 +71,7 @@ data class Diagnostic(val id: DiagnosticId,
     val colStr = if (col == -1) "?" else col.toString()
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     val firstLine = "$sourceFileName:$line:$colStr: ${id.kind.text}: $msg [$origin|${id.name}]"
-    // FIXME caret position is practically random
-    val caretLine = " ".repeat(max(col - 2, 0)) + '^'
+    val caretLine = " ".repeat(max(col, 0)) + '^'
     // FIXME add tildes for the other sourceColumns
     return@lazy "$firstLine\n$lineText\n$caretLine"
   }
@@ -96,6 +95,10 @@ class DiagnosticBuilder {
 
   fun columns(range: IntRange) {
     sourceColumns.add(range)
+  }
+
+  fun errorOn(token: Token) {
+    sourceColumns.add(token.startIdx until token.startIdx + token.consumedChars)
   }
 
   fun formatArgs(vararg args: Any) {
