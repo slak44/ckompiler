@@ -64,7 +64,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
       id = DiagnosticId.MISSING_QUOTE
       messageFormatArgs = listOf(quoteChar)
       column(currentOffset)
-      if (stopIdx != -1) column(currentOffset + stopIdx - 1)
+      if (stopIdx != -1) column(currentOffset - 1 + stopIdx - 1)
     }
     return noPrefix.slice(0 until stopIdx)
   }
@@ -114,8 +114,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
       lexerDiagnostic {
         id = DiagnosticId.INVALID_SUFFIX
         formatArgs(s, "floating")
-        // FIXME this -2 is a bit magical
-        columns(currentOffset + nrLength - 2 until currentOffset + nextWhitespaceOrPunct(s))
+        columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
       }
       Empty()
     }

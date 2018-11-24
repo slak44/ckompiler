@@ -46,7 +46,7 @@ class Parser(tokens: List<Token>,
   /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
   private fun colPastTheEnd(offset: Int): Int {
     val tok = safeToken(offset)
-    return tok.startIdx + tok.consumedChars + 1
+    return tok.startIdx + tok.consumedChars
   }
 
   /**
@@ -308,7 +308,8 @@ class Parser(tokens: List<Token>,
     if (isEaten()) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
-        // FIXME: find correct column
+        if (tokStack.peek().isNotEmpty()) errorOn(safeToken(0))
+        else errorOn(tokStack[tokStack.size - 2][idxStack[idxStack.size - 2]])
       }
       return ErrorNode()
     }
@@ -1065,7 +1066,8 @@ class Parser(tokens: List<Token>,
       if (firstSemi == -1) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
-          if (it.isNotEmpty()) errorOn(safeToken(0))
+          if (it.isNotEmpty()) errorOn(safeToken(it.size))
+          else errorOn(tokStack[tokStack.size - 2][rparen])
         }
         return@tokenContext Triple(ErrorNode(), ErrorNode(), ErrorNode())
       }
@@ -1082,7 +1084,7 @@ class Parser(tokens: List<Token>,
       if (secondSemi == -1) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
-          errorOn(safeToken(0))
+          errorOn(safeToken(it.size))
         }
         return@tokenContext Triple(clause1, ErrorNode(), ErrorNode())
       }
