@@ -1,7 +1,6 @@
 package slak.ckompiler
 
 import mu.KLogger
-import java.lang.RuntimeException
 import slak.ckompiler.DiagnosticKind.*
 import kotlin.math.max
 

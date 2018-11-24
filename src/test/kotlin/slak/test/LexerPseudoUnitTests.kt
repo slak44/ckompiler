@@ -101,11 +101,11 @@ class LexerPseudoUnitTests {
         FloatingConstant(".1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
 
         FloatingConstant("12.1", FloatingSuffix.NONE, Radix.DECIMAL,
-            exponent = "10", exponentSign = '-'.opt()),
+            exponent = "10", exponentSign = '-'),
         FloatingConstant("12.", FloatingSuffix.NONE, Radix.DECIMAL,
-            exponent = "2", exponentSign = '-'.opt()),
+            exponent = "2", exponentSign = '-'),
         FloatingConstant(".12", FloatingSuffix.NONE, Radix.DECIMAL,
-            exponent = "2", exponentSign = '-'.opt())
+            exponent = "2", exponentSign = '-')
     )
     assertEquals(res, l.tokens)
   }
@@ -123,11 +123,11 @@ class LexerPseudoUnitTests {
         FloatingConstant(".12", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
 
         FloatingConstant("12.1", FloatingSuffix.FLOAT, Radix.DECIMAL,
-            exponentSign = '+'.opt(), exponent = "10"),
+            exponentSign = '+', exponent = "10"),
         FloatingConstant("12.", FloatingSuffix.FLOAT, Radix.DECIMAL,
-            exponentSign = '+'.opt(), exponent = "10"),
+            exponentSign = '+', exponent = "10"),
         FloatingConstant(".12", FloatingSuffix.FLOAT, Radix.DECIMAL,
-            exponentSign = '+'.opt(), exponent = "10")
+            exponentSign = '+', exponent = "10")
     )
     assertEquals(res, l.tokens)
   }

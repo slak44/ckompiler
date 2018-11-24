@@ -22,7 +22,7 @@ class LexerIntegrationTests {
         IntegralConstant("456", IntegralSuffix.UNSIGNED_LONG_LONG, Radix.DECIMAL),
         FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL, '-'.opt(), "12"),
+        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL, '-', "12"),
         IntegralConstant("456", IntegralSuffix.NONE, Radix.DECIMAL)
     ), l.tokens)
   }

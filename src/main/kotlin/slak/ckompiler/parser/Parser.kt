@@ -116,7 +116,8 @@ class Parser(tokens: List<Token>,
    * @return null if there is no expression, the [Expression] otherwise
    */
   private fun parseExpr(endIdx: Int): EitherNode<Expression>? = tokenContext(endIdx) {
-    val primary = parsePrimaryExpr().ifNull {
+    val primary: EitherNode<Expression> = parsePrimaryExpr().let { expr ->
+      if (expr != null) return@let expr
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
         errorOn(safeToken(1))
@@ -134,12 +135,13 @@ class Parser(tokens: List<Token>,
       val op = current().asBinaryOperator() ?: break
       if (op.precedence < minPrecedence) break
       eat()
-      var rhs = parsePrimaryExpr().ifNull {
+      var rhs: EitherNode<Expression> = parsePrimaryExpr().let {
+        if (it != null) return@let it
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_PRIMARY
           errorOn(safeToken(0))
         }
-        return ErrorNode()
+        return@parseExprImpl ErrorNode()
       }
       while (true) {
         if (isEaten()) break
@@ -709,7 +711,8 @@ class Parser(tokens: List<Token>,
     // FIXME validate declSpecs according to standard 6.7.{1-6}
     val declaratorList = mutableListOf<InitDeclarator>()
     while (true) {
-      val initDeclarator = parseDeclarator(tokStack.peek().size).ifNull {
+      val initDeclarator: EitherNode<Declarator> = parseDeclarator(tokStack.peek().size).let {
+        if (it != null) return@let it
         // This means that there were decl specs, but no declarator, which is a problem
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_DECL

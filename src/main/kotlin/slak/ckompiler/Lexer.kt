@@ -26,10 +26,10 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     private val logger = KotlinLogging.logger("Lexer")
 
     private fun keyword(s: String) =
-        Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }.opt()
+        Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }
 
     private fun punct(s: String) =
-        Punctuators.values().find { s.startsWith(it.s) }?.let { Punctuator(it) }.opt()
+        Punctuators.values().find { s.startsWith(it.s) }?.let { Punctuator(it) }
 
     /** C standard: A.1.3 */
     private fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
@@ -49,7 +49,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
      */
     private fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
       val idx = s.withIndex().indexOfFirst {
-        it.value !in excludeChars && (it.value.isWhitespace() || (punct(s.drop(it.index)) !is Empty))
+        it.value !in excludeChars && (it.value.isWhitespace() || (punct(s.drop(it.index)) != null))
       }
       return if (idx == -1) s.length else idx
     }
@@ -70,30 +70,30 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
   }
 
   /** C standard: A.1.6, 6.4.5 */
-  private fun stringLiteral(s: String): Optional<StringLiteral> {
+  private fun stringLiteral(s: String): StringLiteral? {
     val encoding = when {
       s.startsWith("\"") -> StringEncoding.CHAR
       s.startsWith("u8\"") -> StringEncoding.UTF8
       s.startsWith("L\"") -> StringEncoding.WCHAR_T
       s.startsWith("u\"") -> StringEncoding.CHAR16_T
       s.startsWith("U\"") -> StringEncoding.CHAR32_T
-      else -> return Empty()
+      else -> return null
     }
     val data = charSequence(s, '"', encoding.prefixLength)
-    return StringLiteral(data, encoding).opt()
+    return StringLiteral(data, encoding)
   }
 
   /** C standard: A.1.5 */
-  private fun characterConstant(s: String): Optional<CharLiteral> {
+  private fun characterConstant(s: String): CharLiteral? {
     val encoding = when {
       s.startsWith("'") -> CharEncoding.UNSIGNED_CHAR
       s.startsWith("L'") -> CharEncoding.WCHAR_T
       s.startsWith("u'") -> CharEncoding.CHAR16_T
       s.startsWith("U'") -> CharEncoding.CHAR32_T
-      else -> return Empty()
+      else -> return null
     }
     val data = charSequence(s, '\'', encoding.prefixLength)
-    return CharLiteral(data, encoding).opt()
+    return CharLiteral(data, encoding)
   }
 
   /**
@@ -102,42 +102,42 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
    * @param nrLength the length of the float constant before the suffix
    * @see FloatingSuffix
    */
-  private fun floatingSuffix(s: String, nrLength: Int): Optional<FloatingSuffix> = when {
-    s.isEmpty() -> FloatingSuffix.NONE.opt()
+  private fun floatingSuffix(s: String, nrLength: Int): FloatingSuffix? = when {
+    s.isEmpty() -> FloatingSuffix.NONE
     // Float looks like 123. or 123.23
-    s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE.opt()
+    s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE
     // Float looks like 123.245E-10F
-    s[0].toUpperCase() == 'F' && s.length == 1 -> FloatingSuffix.FLOAT.opt()
+    s[0].toUpperCase() == 'F' && s.length == 1 -> FloatingSuffix.FLOAT
     // Float looks like 123.245E-10L
-    s[0].toUpperCase() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE.opt()
+    s[0].toUpperCase() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE
     else -> {
       lexerDiagnostic {
         id = DiagnosticId.INVALID_SUFFIX
         formatArgs(s, "floating")
         columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
       }
-      Empty()
+      null
     }
   }
 
   // FIXME: missing hex floating constants
   /** C standard: A.1.5 */
-  private fun floatingConstant(s: String): Optional<Token> {
+  private fun floatingConstant(s: String): Token? {
     // Not a float: must start with either digit or dot
-    if (!isDigit(s[0]) && s[0] != '.') return Empty()
+    if (!isDigit(s[0]) && s[0] != '.') return null
     // Not a float: just a dot
-    if (s[0] == '.' && s.length == 1) return Empty()
+    if (s[0] == '.' && s.length == 1) return null
     // Not a float: character after dot must be either suffix or exponent
     if (s[0] == '.' && !isDigit(s[1]) && s[1].toUpperCase() !in listOf('E', 'F', 'L')) {
-      return Empty()
+      return null
     }
     val dotIdx = nextWhitespaceOrPunct(s)
     // Not a float: reached end of string and no dot fount
-    if (dotIdx == s.length) return Empty()
+    if (dotIdx == s.length) return null
     // Not a float: found something else before finding a dot
-    if (s[dotIdx] != '.') return Empty()
+    if (s[dotIdx] != '.') return null
     // Not a float: found non-digit(s) before dot
-    if (s.slice(0 until dotIdx).any { !isDigit(it) }) return Empty()
+    if (s.slice(0 until dotIdx).any { !isDigit(it) }) return null
     val integerPartEnd = s.slice(0..dotIdx).indexOfFirst { !isDigit(it) }
     if (integerPartEnd < dotIdx) lexerDiagnostic {
       id = DiagnosticId.INVALID_DIGIT
@@ -151,26 +151,26 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     val fractionalPartEnd = s.drop(dotIdx + 1).indexOfFirst { !isDigit(it) }
     // The rest of the string is the float
     if (fractionalPartEnd == -1 || dotIdx + 1 + fractionalPartEnd == s.length) {
-      return FloatingConstant(s, FloatingSuffix.NONE, Radix.DECIMAL).opt()
+      return FloatingConstant(s, FloatingSuffix.NONE, Radix.DECIMAL)
     }
     val bonusIdx = dotIdx + 1 + fractionalPartEnd
     val float = s.slice(0 until bonusIdx)
     // If the float is just a dot, it's not actually a float
-    if (float == ".") return Empty()
+    if (float == ".") return null
     // Has exponent part
     if (s[bonusIdx].toUpperCase() == 'E') {
       val sign = when (s[bonusIdx + 1]) {
-        '+' -> '+'.opt()
-        '-' -> '-'.opt()
-        else -> Empty()
+        '+' -> '+'
+        '-' -> '-'
+        else -> null
       }
-      val signLen = if (sign is Empty) 0 else 1
+      val signLen = if (sign == null) 0 else 1
       val exponentStartIdx = bonusIdx + 1 + signLen
       val exponentEndIdx = s.drop(exponentStartIdx).indexOfFirst { !isDigit(it) }
       // The rest of the string is the exponent
       if (exponentEndIdx == -1 || exponentStartIdx + exponentEndIdx == s.length) {
         return FloatingConstant(float, FloatingSuffix.NONE, Radix.DECIMAL,
-            exponentSign = sign, exponent = s.substring(exponentStartIdx)).opt()
+            exponentSign = sign, exponent = s.substring(exponentStartIdx))
       }
       val exponent = s.slice(exponentStartIdx until exponentStartIdx + exponentEndIdx)
       val totalLengthWithoutSuffix = float.length + 1 + signLen + exponent.length
@@ -181,19 +181,17 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
           id = DiagnosticId.NO_EXP_DIGITS
           column(currentOffset + exponentStartIdx)
         }
-        return ErrorToken(tokenEnd).opt()
+        return ErrorToken(tokenEnd)
       }
       val suffixStr = s.slice(exponentStartIdx + exponentEndIdx until tokenEnd)
-      val suffix = floatingSuffix(suffixStr, totalLengthWithoutSuffix).orElse {
-        return ErrorToken(tokenEnd).opt()
-      }
-      return FloatingConstant(float, suffix, Radix.DECIMAL, sign, exponent).opt()
+      val suffix = floatingSuffix(suffixStr, totalLengthWithoutSuffix)
+          ?: return ErrorToken(tokenEnd)
+      return FloatingConstant(float, suffix, Radix.DECIMAL, sign, exponent)
     }
     val tokenEnd = bonusIdx + nextWhitespaceOrPunct(s.drop(bonusIdx))
-    val suffix = floatingSuffix(s.slice(bonusIdx until tokenEnd), float.length).orElse {
-      return ErrorToken(tokenEnd).opt()
-    }
-    return FloatingConstant(float, suffix, Radix.DECIMAL).opt()
+    val suffix = floatingSuffix(s.slice(bonusIdx until tokenEnd), float.length)
+        ?: return ErrorToken(tokenEnd)
+    return FloatingConstant(float, suffix, Radix.DECIMAL)
   }
 
   /**
@@ -232,47 +230,36 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
   }
 
   /** C standard: A.1.5 */
-  private fun integerConstant(s: String): Optional<IntegralConstant> {
+  private fun integerConstant(s: String): IntegralConstant? {
     // Decimal numbers
     if (isDigit(s[0]) && s[0] != '0') {
       val c = digitSequence(s) { isDigit(it) }
-      return IntegralConstant(c.first, c.second, Radix.DECIMAL).opt()
+      return IntegralConstant(c.first, c.second, Radix.DECIMAL)
     }
     // Hex numbers
     if ((s.startsWith("0x") || s.startsWith("0X") && isHexDigit(s[2]))) {
       val c = digitSequence(s, 2) { isHexDigit(it) }
-      return IntegralConstant(c.first, c.second, Radix.HEXADECIMAL).opt()
+      return IntegralConstant(c.first, c.second, Radix.HEXADECIMAL)
     }
     // Octal numbers
     if (s[0] == '0') {
       val c = digitSequence(s) { isOctalDigit(it) }
-      return IntegralConstant(c.first, c.second, Radix.OCTAL).opt()
+      return IntegralConstant(c.first, c.second, Radix.OCTAL)
     }
-    return Empty()
-  }
-
-  private fun <T : Token> Optional<T>.consumeIfPresent(): Boolean {
-    ifPresent {
-      it.startIdx = currentOffset
-      tokens.add(it)
-      currentOffset += it.consumedChars
-      src = src.drop(it.consumedChars)
-      return true
-    }
-    return false
+    return null
   }
 
   /**
    * C standard: A.1.3, A.1.4
    * @return an empty optional if the string is not an identifier, or the identifier otherwise
    */
-  private fun identifier(s: String): Optional<Identifier> {
+  private fun identifier(s: String): Identifier? {
     // An identifier must start with a non-digit if it isn't a universal character name
-    if (!isNonDigit(s[0])) return Empty()
+    if (!isNonDigit(s[0])) return null
     // FIXME check for universal character names
     val idx = s.indexOfFirst { !isDigit(it) && !isNonDigit(it) }
     val ident = s.slice(0 until (if (idx == -1) s.length else idx))
-    return Identifier(ident).opt()
+    return Identifier(ident)
   }
 
   private tailrec fun tokenize() {
@@ -291,14 +278,20 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     // floatingConstant before integerConstant
     // floatingConstant before punct
 
-    // Only consume one in each iteration (short-circuits with || if consumed)
-    keyword(src).consumeIfPresent() ||
-        floatingConstant(src).consumeIfPresent() ||
-        integerConstant(src).consumeIfPresent() ||
-        characterConstant(src).consumeIfPresent() ||
-        stringLiteral(src).consumeIfPresent() ||
-        identifier(src).consumeIfPresent() ||
-        punct(src).consumeIfPresent()
+    // Only consume one token in each iteration
+    val tok =
+        keyword(src)
+            ?: floatingConstant(src)
+            ?: integerConstant(src)
+            ?: characterConstant(src)
+            ?: stringLiteral(src)
+            ?: identifier(src)
+            ?: punct(src)
+            ?: TODO("extraneous/unhandled thing")
+    tok.startIdx = currentOffset
+    tokens.add(tok)
+    currentOffset += tok.consumedChars
+    src = src.drop(tok.consumedChars)
     return tokenize()
   }
 }

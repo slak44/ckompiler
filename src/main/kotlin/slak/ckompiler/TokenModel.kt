@@ -227,11 +227,11 @@ data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix
 data class FloatingConstant(val f: String,
                             val suffix: FloatingSuffix,
                             val radix: Radix,
-                            val exponentSign: Optional<Char> = Empty(),
+                            val exponentSign: Char? = null,
                             val exponent: String = "") : Token(
     radix.prefixLength +
         f.length +
-        (if (exponentSign is Empty) 0 else 1) +
+        (if (exponentSign == null) 0 else 1) +
         (if (exponent.isEmpty()) 0 else 1) +
         exponent.length +
         suffix.length) {
@@ -246,7 +246,7 @@ data class FloatingConstant(val f: String,
   }
 
   override fun toString(): String =
-      "${javaClass.simpleName}[$radix $f ${exponentSign.orNull() ?: "_"}" +
+      "${javaClass.simpleName}[$radix $f ${exponentSign ?: "_"}" +
           "${if (exponent.isEmpty()) "_" else exponent} $suffix]"
 }
 
