@@ -6,8 +6,6 @@ import java.util.*
 import kotlin.math.min
 import kotlin.reflect.KClass
 
-private val logger = KotlinLogging.logger("Parser")
-
 /**
  * Parses a translation unit.
  *
@@ -34,6 +32,7 @@ class Parser(tokens: List<Token>,
   }
 
   companion object {
+    private val logger = KotlinLogging.logger("Parser")
     private val storageClassSpecifier =
         listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
     private val typeSpecifier = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,

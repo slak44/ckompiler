@@ -2,80 +2,6 @@ package slak.ckompiler
 
 import mu.KotlinLogging
 
-private val logger = KotlinLogging.logger("Lexer")
-
-sealed class Token(val consumedChars: Int) {
-  init {
-    if (consumedChars == 0) {
-      logger.throwICE("Zero-length token created") { "token: $this" }
-    } else if (consumedChars < 0) {
-      logger.throwICE("Negative-length token created") { "token: $this" }
-    }
-  }
-}
-
-class ErrorToken(consumedChars: Int) : Token(consumedChars)
-
-sealed class StaticToken(consumedChars: Int) : Token(consumedChars) {
-  abstract val enum: StaticTokenEnum
-}
-
-data class Keyword(val value: Keywords) : StaticToken(value.keyword.length) {
-  override val enum: StaticTokenEnum get() = value
-}
-
-fun Token.asKeyword(): Keywords? = (this as? Keyword)?.value
-
-data class Punctuator(val pct: Punctuators) : StaticToken(pct.s.length) {
-  override val enum: StaticTokenEnum get() = pct
-}
-
-fun Token.asPunct(): Punctuators? = (this as? Punctuator)?.pct
-
-data class Identifier(val name: String) : Token(name.length)
-
-data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix: Radix) :
-    Token(radix.prefixLength + n.length + suffix.length) {
-  override fun toString(): String = "${javaClass.simpleName}[$radix $n $suffix]"
-}
-
-data class FloatingConstant(val f: String,
-                            val suffix: FloatingSuffix,
-                            val radix: Radix,
-                            val exponentSign: Optional<Char> = Empty(),
-                            val exponent: String = "") : Token(
-    radix.prefixLength +
-        f.length +
-        (if (exponentSign is Empty) 0 else 1) +
-        (if (exponent.isEmpty()) 0 else 1) +
-        exponent.length +
-        suffix.length) {
-  init {
-    if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported") {}
-    if (!f.any { Lexer.isDigit(it) || it == '.' }) {
-      logger.throwICE("Float is not just digits") { "token: $this" }
-    }
-    if (exponent.any { !Lexer.isDigit(it) }) {
-      logger.throwICE("Exp is not just digits") { "token: $this" }
-    }
-  }
-
-  override fun toString(): String =
-      "${javaClass.simpleName}[$radix $f ${exponentSign.orNull() ?: "_"}" +
-          "${if (exponent.isEmpty()) "_" else exponent} $suffix]"
-}
-
-sealed class CharSequence(dataLength: Int,
-                          prefixLength: Int) : Token(prefixLength + dataLength + 2)
-
-data class StringLiteral(
-    val data: String,
-    val encoding: StringEncoding) : CharSequence(data.length, encoding.prefixLength)
-
-data class CharLiteral(
-    val data: String,
-    val encoding: CharEncoding) : CharSequence(data.length, encoding.prefixLength)
-
 class Lexer(private val textSource: String, private val srcFileName: SourceFileName) {
   val tokStartIdxes = mutableListOf<Int>()
   val tokens = mutableListOf<Token>()
@@ -98,6 +24,8 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
   }
 
   companion object {
+    private val logger = KotlinLogging.logger("Lexer")
+
     private fun keyword(s: String) =
         Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }.opt()
 
