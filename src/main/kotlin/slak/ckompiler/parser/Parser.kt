@@ -43,10 +43,10 @@ class Parser(tokens: List<Token>,
       if (isEaten()) tokStack.peek().last()
       else tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
 
-  /** When all the tokens have been eaten, get the column in the original code string, plus one. */
-  private fun colPastTheEnd(): Int {
-    val lastTok = tokStack.peek().last()
-    return lastTok.startIdx + lastTok.consumedChars + 1
+  /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
+  private fun colPastTheEnd(offset: Int): Int {
+    val tok = safeToken(offset)
+    return tok.startIdx + tok.consumedChars + 1
   }
 
   /**
@@ -550,7 +550,7 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.UNMATCHED_PAREN
         formatArgs(final.realName)
         if (end == -1) {
-          column(colPastTheEnd())
+          column(colPastTheEnd(tokStack.peek().size))
         } else {
           errorOn(tokStack.peek()[end])
         }
@@ -730,7 +730,7 @@ class Parser(tokens: List<Token>,
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("declarator")
-          column(colPastTheEnd())
+          column(colPastTheEnd(0))
         }
         declaratorList.add(InitDeclarator(initDeclarator, null))
         break
@@ -750,7 +750,7 @@ class Parser(tokens: List<Token>,
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("declarator")
-          column(colPastTheEnd())
+          column(colPastTheEnd(0))
         }
         break
       }
@@ -849,7 +849,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("expression")
-        column(colPastTheEnd())
+        column(colPastTheEnd(0))
       }
     } else {
       eat() // The semicolon
@@ -876,7 +876,7 @@ class Parser(tokens: List<Token>,
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("goto statement")
-          column(colPastTheEnd())
+          column(colPastTheEnd(0))
         }
         eatToSemi()
         if (!isEaten()) eatToSemi()
@@ -895,7 +895,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("continue statement")
-        column(colPastTheEnd())
+        column(colPastTheEnd(0))
       }
     } else {
       eat() // The ';'
@@ -911,7 +911,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("break statement")
-        column(colPastTheEnd())
+        column(colPastTheEnd(0))
       }
     } else {
       eat() // The ';'
@@ -930,7 +930,7 @@ class Parser(tokens: List<Token>,
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("return statement")
-        column(colPastTheEnd())
+        column(colPastTheEnd(0))
       }
       return ReturnStatement(expr)
     }

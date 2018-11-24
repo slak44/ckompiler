@@ -4,6 +4,7 @@ import mu.KLogger
 import java.lang.RuntimeException
 import slak.ckompiler.DiagnosticKind.*
 import kotlin.math.max
+import kotlin.math.min
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
@@ -54,17 +55,18 @@ data class Diagnostic(val id: DiagnosticId,
     val (line, col, lineText) = if (sourceText.isNotEmpty() && sourceColumns.isNotEmpty()) {
       var currLine = 1
       var currLineStart = 0
+      var currLineText = ""
       for ((idx, it) in sourceText.withIndex()) {
         if (it == '\n' || idx == sourceText.length - 1) {
           currLine++
+          currLineText = sourceText.slice(currLineStart until idx)
           if (sourceColumns[0].start > currLineStart && sourceColumns[0].endInclusive < idx) {
             break
           }
-          currLineStart = idx
+          currLineStart = idx + 1
         }
       }
-      val codeLine = sourceText.drop(currLineStart).takeWhile { it != '\n' }
-      Triple(currLine.toString(), sourceColumns[0].start - currLineStart, codeLine)
+      Triple(currLine.toString(), sourceColumns[0].start - currLineStart, currLineText)
     } else {
       Triple("?", -1, "???")
     }
