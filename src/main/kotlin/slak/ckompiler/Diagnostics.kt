@@ -57,10 +57,10 @@ data class Diagnostic(val id: DiagnosticId,
       for ((idx, it) in sourceText.withIndex()) {
         if (it == '\n' || idx == sourceText.length - 1) {
           currLine++
+          if (sourceColumns[0].start > currLineStart && sourceColumns[0].endInclusive < idx) {
+            break
+          }
           currLineStart = idx
-        }
-        if (sourceColumns[0].endInclusive > currLineStart) {
-          break
         }
       }
       val codeLine = sourceText.drop(currLineStart).takeWhile { it != '\n' }
@@ -90,7 +90,7 @@ class DiagnosticBuilder {
   private var sourceColumns = mutableListOf<IntRange>()
 
   fun column(col: Int) {
-    sourceColumns.add(col until col)
+    sourceColumns.add(col..col)
   }
 
   fun columns(range: IntRange) {

@@ -278,8 +278,11 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
 
   private tailrec fun tokenize() {
     src = src.trimStart {
-      currentOffset++
-      return@trimStart it.isWhitespace()
+      if (it.isWhitespace()) {
+        currentOffset++
+        return@trimStart true
+      }
+      return@trimStart false
     }
     if (src.isEmpty()) return
     // Ordering:
