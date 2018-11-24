@@ -14,6 +14,11 @@ sealed class EitherNode<out N : ASTNode> {
     override fun toString() = value.toString()
   }
 
+  /**
+   * Coerces an [EitherNode] to the concrete value of type [N].
+   * @throws InternalCompilerError if called on an [ErrorNode]
+   * @return [EitherNode.Value.value]
+   */
   fun asVal(): N {
     if (this is ErrorNode) {
       logger.throwICE("An error node was coerced to a real node") { this }
@@ -93,13 +98,14 @@ data class FunctionCall(val calledExpr: EitherNode<Expression>,
 data class UnaryExpression(val op: Operators,
                            val operand: EitherNode<Expression>) : PrimaryExpression
 
-/** Stores a binary operation from an expression. */
+/** Represents a binary operation in an expression. */
 data class BinaryExpression(val op: Operators,
                             val lhs: EitherNode<Expression>,
                             val rhs: EitherNode<Expression>) : PrimaryExpression {
   override fun toString() = "($lhs $op $rhs)"
 }
 
+/** Represents a leaf node in an expression. */
 interface Terminal : PrimaryExpression
 
 data class IdentifierNode(val name: String) : Terminal, Declarator
@@ -124,11 +130,18 @@ data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : Te
 
 data class StringLiteralNode(val string: String, val encoding: StringEncoding) : Terminal
 
+/**
+ * Lists the possible permutations of the type specifiers.
+ *
+ * **NOTES**:
+ * 1. `char`, `signed char` and `unsigned char` are distinct in the standard (6.7.2 paragraph 2).
+ * In here, `char == signed char`.
+ * 2. Same thing applies to `short`, `int`, etc.
+ * 3. We do not currently support complex types, and they produce errors in the parser.
+ * 4. FIXME: certain specifiers are not implemented
+ */
 enum class TypeSpecifier {
   VOID, BOOL,
-  // "char", "signed char" and "unsigned char" are distinct in the standard (6.7.2 paragraph 2)
-  // In here "char" == "signed char"
-  // Same for short, int, etc.
   SIGNED_CHAR,
   UNSIGNED_CHAR,
   SIGNED_SHORT, UNSIGNED_SHORT,
@@ -136,8 +149,7 @@ enum class TypeSpecifier {
   SIGNED_LONG, UNSIGNED_LONG,
   SIGNED_LONG_LONG, UNSIGNED_LONG_LONG,
   FLOAT, DOUBLE, LONG_DOUBLE,
-  // We do not currently support complex types, and they produce errors in the parser
-//    COMPLEX_FLOAT, COMPLEX_DOUBLE, COMPLEX_LONG_DOUBLE,
+  // COMPLEX_FLOAT, COMPLEX_DOUBLE, COMPLEX_LONG_DOUBLE,
   ATOMIC_TYPE_SPEC,
   STRUCT_OR_UNION_SPEC, ENUM_SPEC, TYPEDEF_NAME
 }
@@ -146,8 +158,12 @@ sealed class DeclarationSpecifier
 object MissingDeclarationSpecifier : DeclarationSpecifier()
 object ErrorDeclarationSpecifier : DeclarationSpecifier()
 
-// FIXME carry debug data in this for each thing
-// FIXME alignment specifier (A.2.2/6.7.5)
+/**
+ * Actual instance of [DeclarationSpecifier]. Stores declaration specifiers that come before
+ * declarators.
+ * FIXME: carry debug data in this for each thing
+ * FIXME: alignment specifier (A.2.2/6.7.5)
+ */
 data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
                                     val typeSpecifier: TypeSpecifier,
                                     val hasThreadLocal: Boolean = false,
