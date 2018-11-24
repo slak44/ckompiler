@@ -2,6 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.*
+import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -165,7 +166,7 @@ class IterationStatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body listOf(
         ForStatement(int declare ("i" assign int(65)), (1 add 1).wrap(), (1 add 1).wrap(),
-            Noop.wrap())
+            slak.ckompiler.parser.Noop.wrap())
     ) assertEquals p.root.decls[0]
   }
 
@@ -243,7 +244,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
     int func ("main" withParams emptyList()) body listOf(
-        ForStatement((1 add 1).wrap(), ErrorNode(), ErrorNode(), Noop.wrap())
+        ForStatement((1 add 1).wrap(), ErrorNode(), ErrorNode(), slak.ckompiler.parser.Noop.wrap())
     ) assertEquals p.root.decls[0]
   }
 
@@ -256,7 +257,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
     int func ("main" withParams emptyList()) body listOf(
-        ForStatement(ErrorNode(), ErrorNode(), ErrorNode(), Noop.wrap())
+        ForStatement(ErrorNode(), ErrorNode(), ErrorNode(), slak.ckompiler.parser.Noop.wrap())
     ) assertEquals p.root.decls[0]
   }
 
@@ -269,7 +270,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
     int func ("main" withParams emptyList()) body listOf(
-        ForStatement(ErrorNode(), ErrorNode(), ErrorNode(), Noop.wrap())
+        ForStatement(ErrorNode(), ErrorNode(), ErrorNode(), slak.ckompiler.parser.Noop.wrap())
     ) assertEquals p.root.decls[0]
   }
 

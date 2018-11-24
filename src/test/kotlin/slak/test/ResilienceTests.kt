@@ -2,6 +2,8 @@ package slak.test
 
 import org.junit.Test
 import slak.ckompiler.*
+import slak.ckompiler.parser.ErrorNode
+import slak.ckompiler.parser.InitDeclarator
 import kotlin.test.assertEquals
 
 /**

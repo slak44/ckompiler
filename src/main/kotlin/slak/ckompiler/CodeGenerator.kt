@@ -1,5 +1,7 @@
 package slak.ckompiler
 
+import slak.ckompiler.parser.*
+
 /**
  * Generate [NASM](https://www.nasm.us/) code from a [RootNode].
  *

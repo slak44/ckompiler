@@ -2,8 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.ErrorNode
-import slak.ckompiler.Operators
+import slak.ckompiler.parser.ErrorNode
 import slak.test.*
 import kotlin.test.assertEquals
 

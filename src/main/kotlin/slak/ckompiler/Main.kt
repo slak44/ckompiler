@@ -5,6 +5,7 @@ import kotlinx.cli.HelpPrintedException
 import kotlinx.cli.parse
 import kotlinx.cli.positionalArgumentsList
 import mu.KotlinLogging
+import slak.ckompiler.parser.Parser
 import java.io.File
 import java.lang.Exception
 import kotlin.system.exitProcess

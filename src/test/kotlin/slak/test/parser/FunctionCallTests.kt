@@ -1,8 +1,8 @@
 package slak.test.parser
 
 import org.junit.Test
-import slak.ckompiler.FunctionCall
-import slak.ckompiler.wrap
+import slak.ckompiler.parser.FunctionCall
+import slak.ckompiler.parser.wrap
 import slak.test.*
 
 class FunctionCallTests {
