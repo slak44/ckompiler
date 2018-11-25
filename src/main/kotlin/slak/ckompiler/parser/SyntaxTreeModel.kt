@@ -26,6 +26,8 @@ sealed class EitherNode<out N : ASTNode> {
     return (this as Value).value
   }
 
+  fun orNull(): N? = if (this is ErrorNode) null else (this as Value).value
+
   override fun toString(): String {
     return if (this is Value) value.toString() else (this as ErrorNode).toString()
   }
@@ -57,7 +59,13 @@ class RootNode : ASTNode {
 }
 
 /** C standard: 6.7.6 */
-interface Declarator : ASTNode
+sealed class Declarator : ASTNode {
+  fun name(): IdentifierNode = when (this) {
+    is IdentifierNode -> this
+    is FunctionDeclarator -> declarator.asVal().name()
+    is InitDeclarator -> declarator.asVal().name()
+  }
+}
 
 /** C standard: A.2.3, 6.8 */
 interface Statement : BlockItem
@@ -108,7 +116,7 @@ data class BinaryExpression(val op: Operators,
 /** Represents a leaf node in an expression. */
 interface Terminal : PrimaryExpression
 
-data class IdentifierNode(val name: String) : Terminal, Declarator
+data class IdentifierNode(val name: String) : Terminal, Declarator()
 
 data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) : Terminal {
   override fun toString() = "int $value ${suffix.name.toLowerCase()}"
@@ -191,7 +199,7 @@ data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
 data class InitDeclarator(val declarator: EitherNode<Declarator>,
-                          val initializer: EitherNode<Expression>? = null) : Declarator
+                          val initializer: EitherNode<Expression>? = null) : Declarator()
 
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
                                 val declarator: EitherNode<Declarator>) : ASTNode
@@ -199,7 +207,7 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
 // FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
 data class FunctionDeclarator(val declarator: EitherNode<Declarator>,
                               val params: List<ParameterDeclaration>,
-                              val isVararg: Boolean = false) : Declarator
+                              val isVararg: Boolean = false) : Declarator()
 
 /** C standard: A.2.3, 6.8.2 */
 interface BlockItem : ASTNode
