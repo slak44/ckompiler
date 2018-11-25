@@ -1,9 +1,6 @@
 package slak.ckompiler.parser
 
-import mu.KotlinLogging
 import slak.ckompiler.*
-
-private val logger = KotlinLogging.logger("AST")
 
 /** Base interface of all nodes from an Abstract Syntax Tree. */
 interface ASTNode
@@ -12,18 +9,6 @@ interface ASTNode
 sealed class EitherNode<out N : ASTNode> {
   data class Value<out N : ASTNode>(val value: N) : EitherNode<N>() {
     override fun toString() = value.toString()
-  }
-
-  /**
-   * Coerces an [EitherNode] to the concrete value of type [N].
-   * @throws InternalCompilerError if called on an [ErrorNode]
-   * @return [EitherNode.Value.value]
-   */
-  fun asVal(): N {
-    if (this is ErrorNode) {
-      logger.throwICE("An error node was coerced to a real node") { this }
-    }
-    return (this as Value).value
   }
 
   fun orNull(): N? = if (this is ErrorNode) null else (this as Value).value
@@ -59,13 +44,7 @@ class RootNode : ASTNode {
 }
 
 /** C standard: 6.7.6 */
-sealed class Declarator : ASTNode {
-  fun name(): IdentifierNode = when (this) {
-    is IdentifierNode -> this
-    is FunctionDeclarator -> declarator.asVal().name()
-    is InitDeclarator -> declarator.asVal().name()
-  }
-}
+sealed class Declarator : ASTNode
 
 /** C standard: A.2.3, 6.8 */
 interface Statement : BlockItem

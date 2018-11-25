@@ -1,5 +1,6 @@
 package slak.ckompiler
 
+import mu.KotlinLogging
 import slak.ckompiler.parser.*
 
 /**
@@ -15,11 +16,27 @@ class CodeGenerator(val ast: RootNode) {
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
 
+  companion object {
+    private val logger = KotlinLogging.logger("CodeGenerator")
+  }
+
   init {
     // FIXME: remove filter
     ast.decls.map { it.asVal() }
         .filter { it is FunctionDefinition }
         .forEach { genFunction(it as FunctionDefinition) }
+  }
+
+  /**
+   * Coerces an [EitherNode] to the concrete value of type [N].
+   * @throws InternalCompilerError if called on an [ErrorNode]
+   * @return [EitherNode.Value.value]
+   */
+  private fun <N : ASTNode> EitherNode<N>.asVal(): N {
+    if (this is ErrorNode) {
+      logger.throwICE("An error node was coerced to a real node") { this }
+    }
+    return (this as EitherNode.Value).value
   }
 
   private fun List<String>.joinInstructions(): String {

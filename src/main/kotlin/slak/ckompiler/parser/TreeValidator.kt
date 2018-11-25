@@ -18,14 +18,14 @@ fun validateTranslationUnit(ast: RootNode): Nothing? {
   scope.push(mutableListOf())
   val validDecls: List<ExternalDeclaration>
   try {
-    validDecls = ast.decls.mapNotNull {
-      if (it is ErrorNode) return@mapNotNull null
-      convert(it.asVal()) as ExternalDeclaration
-    }
+//    validDecls = ast.decls.mapNotNull {
+//      if (it is ErrorNode) return@mapNotNull null
+//      convert(it.asVal()) as ExternalDeclaration
+//    }
   } catch (e: InvalidTreeException) {
     return null
   }
-  if (ast.decls.size != validDecls.size) return null
+//  if (ast.decls.size != validDecls.size) return null
   TODO()
 }
 
@@ -37,7 +37,8 @@ private fun <T : ASTNode> convert(it: T): ASTNode = when (it) {
 private fun convertFuncDef(it: FunctionDefinition): FunctionDefinition {
   val ds = it.declSpec as? RealDeclarationSpecifier ?: throw InvalidTreeException()
   // FIXME: validate declspecs according to function rules
-  val functionDeclarator = it.declarator.convert() as? FunctionDeclarator ?: throw InvalidTreeException()
+  val functionDeclarator = it.declarator.convert() as? FunctionDeclarator
+      ?: throw InvalidTreeException()
   val functionBlock = it.block.orNull() ?: throw InvalidTreeException()
   functionDeclarator.params.forEach {
     val paramSpec = it.declSpec as? RealDeclarationSpecifier ?: throw InvalidTreeException()
@@ -53,7 +54,7 @@ private fun EitherNode<Declarator>.convert(): Declarator? {
     is IdentifierNode -> return d
     is FunctionDeclarator -> {
       val innerDecl = d.declarator.convert() ?: return null
-      val params = d.params.map {  }
+      val params = d.params.map { }
     }
     is InitDeclarator -> {
       val innerDecl = d.declarator.convert() ?: return null

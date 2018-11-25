@@ -2,7 +2,6 @@ package slak.test
 
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
-import java.lang.IllegalArgumentException
 import kotlin.test.assertEquals
 
 internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), inspections)
@@ -39,8 +38,10 @@ internal infix fun String.assign(value: ErrorNode) = InitDeclarator(name(this), 
 
 internal infix fun DeclarationSpecifier.declare(decl: InitDeclarator) =
     Declaration(this, listOf(decl)).wrap()
+
 internal infix fun DeclarationSpecifier.declare(list: List<InitDeclarator>) =
     Declaration(this, list).wrap()
+
 internal infix fun DeclarationSpecifier.func(decl: InitDeclarator) = Declaration(this, listOf(decl))
 internal infix fun DeclarationSpecifier.declare(s: String): EitherNode<Declaration> {
   return Declaration(this, listOf(InitDeclarator(name(s)))).wrap()

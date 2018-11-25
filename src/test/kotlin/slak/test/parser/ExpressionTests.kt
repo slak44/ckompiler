@@ -1,7 +1,8 @@
 package slak.test.parser
 
 import org.junit.Test
-import slak.ckompiler.*
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.Operators
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
@@ -109,6 +110,7 @@ class ExpressionTests {
     p.assertNoDiagnostics()
     int declare ("a" assign (Operators.REF apply name("b"))) assertEquals p.root.decls[0]
   }
+
   @Test
   fun exprUnaryLots() {
     val p = prepareCode("int a = *&+-~!b;", source)

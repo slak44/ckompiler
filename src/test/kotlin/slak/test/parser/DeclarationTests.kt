@@ -1,7 +1,8 @@
 package slak.test.parser
 
 import org.junit.Test
-import slak.ckompiler.*
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals

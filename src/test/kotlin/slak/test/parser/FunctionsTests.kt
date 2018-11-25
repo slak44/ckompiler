@@ -41,7 +41,7 @@ class FunctionsTests {
     val p = prepareCode("int f(double dbl, int x, int y, double asd);", source)
     p.assertNoDiagnostics()
     int func ("f" withParams
-        listOf( double param "dbl", int param "x", int param "y", double param "asd")) assertEquals
+        listOf(double param "dbl", int param "x", int param "y", double param "asd")) assertEquals
         p.root.decls[0]
   }
 
