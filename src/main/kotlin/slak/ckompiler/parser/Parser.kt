@@ -29,6 +29,9 @@ class Parser(tokens: List<Token>,
     private val typeSpecifier = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
         Keywords.LONG, Keywords.FLOAT, Keywords.DOUBLE, Keywords.SIGNED, Keywords.UNSIGNED,
         Keywords.BOOL, Keywords.COMPLEX)
+    private val typeQualifier =
+        listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE, Keywords.ATOMIC)
+    private val funSpecifier = listOf(Keywords.NORETURN, Keywords.INLINE)
   }
 
   init {
@@ -355,159 +358,25 @@ class Parser(tokens: List<Token>,
     }
   }
 
-  private fun diagDuplicate(k: Keywords) = parserDiagnostic {
-    id = DiagnosticId.DUPLICATE_DECL_SPEC
-    formatArgs(k.keyword)
-    errorOn(safeToken(0))
-  }
-
-  private fun diagIncompat(k: Keywords) = parserDiagnostic {
-    id = DiagnosticId.INCOMPATIBLE_DECL_SPEC
-    formatArgs(k.keyword)
-    errorOn(safeToken(0))
-  }
-
-  private fun diagNotSigned(k: Keywords) = parserDiagnostic {
-    id = DiagnosticId.TYPE_NOT_SIGNED
-    formatArgs(k)
-    errorOn(safeToken(0))
-  }
-
-  /**
-   * FIXME missing type specifiers (A.2.2/6.7.2):
-   * 1. atomic-type-specifier (6.7.2.4)
-   * 2. struct-or-union-specifier (6.7.2.1)
-   * 3. enum-specifier (6.7.2.2)
-   * 4. typedef-name (6.7.8)
-   */
-  private fun parseTypeSpecifier(typeSpec: List<Keywords>): TypeSpecifier? {
-    if (typeSpec.isEmpty()) {
-      parserDiagnostic {
-        id = DiagnosticId.MISSING_TYPE_SPEC
-        errorOn(safeToken(0))
-      }
-      return null
-    }
-
-    // FIXME we are now going to pretend this implementation is finished, correct, complete,
-    // standards-compliant, and reports sensible errors (lmao)
-
-    val isSigned = typeSpec.contains(Keywords.SIGNED)
-    val isUnsigned = typeSpec.contains(Keywords.UNSIGNED)
-    if (isSigned && isUnsigned) {
-      diagIncompat(Keywords.SIGNED)
-      return null
-    }
-    if (typeSpec.contains(Keywords.VOID)) return TypeSpecifier.VOID
-    if (typeSpec.contains(Keywords.FLOAT)) return TypeSpecifier.FLOAT
-    if (typeSpec.contains(Keywords.LONG) && typeSpec.contains(Keywords.DOUBLE))
-      return TypeSpecifier.LONG_DOUBLE
-    if (typeSpec.contains(Keywords.DOUBLE)) return TypeSpecifier.DOUBLE
-
-    if (typeSpec.contains(Keywords.CHAR)) {
-      return if (isUnsigned) TypeSpecifier.UNSIGNED_CHAR
-      else TypeSpecifier.SIGNED_CHAR
-    }
-    if (typeSpec.contains(Keywords.SHORT)) {
-      return if (isUnsigned) TypeSpecifier.UNSIGNED_SHORT
-      else TypeSpecifier.SIGNED_SHORT
-    }
-    // RIP long long
-    if (typeSpec.contains(Keywords.LONG)) {
-      return if (isUnsigned) TypeSpecifier.UNSIGNED_LONG
-      else TypeSpecifier.SIGNED_LONG
-    }
-    if (typeSpec.contains(Keywords.INT)) {
-      return if (isUnsigned) TypeSpecifier.UNSIGNED_INT
-      else TypeSpecifier.SIGNED_INT
-    }
-    return null // Sure why not
-  }
-
   /** C standard: A.2.2, 6.7 */
   private fun parseDeclSpecifiers(): DeclarationSpecifier {
-    val typeSpec = mutableListOf<Keywords>()
-    var storageSpecifier: Keywords? = null
-    var hasThreadLocal = false
-    var hasConst = false
-    var hasRestrict = false
-    var hasVolatile = false
-    var hasAtomic = false
-    var hasInline = false
-    var hasNoReturn = false
-
-    var hitError = false
-    var declSpecTokenCount = 0
+    val storageSpecs = mutableListOf<Keyword>()
+    val typeSpecs = mutableListOf<Keyword>()
+    val typeQuals = mutableListOf<Keyword>()
+    val funSpecs = mutableListOf<Keyword>()
     while (current() is Keyword) {
-      val k = (current() as Keyword).value
-      when (k) {
-        Keywords.COMPLEX -> {
-          parserDiagnostic {
-            id = DiagnosticId.UNSUPPORTED_COMPLEX
-            errorOn(safeToken(0))
-          }
-          hitError = true
-        }
-        in typeSpecifier -> typeSpec.add(k)
-        Keywords.THREAD_LOCAL -> {
-          if (hasThreadLocal) diagDuplicate(k)
-          else if (storageSpecifier != null && storageSpecifier != Keywords.EXTERN &&
-              storageSpecifier != Keywords.STATIC) {
-            diagIncompat(storageSpecifier)
-            hitError = true
-          }
-          hasThreadLocal = true
-        }
-        in storageClassSpecifier -> {
-          if (k == storageSpecifier) diagDuplicate(k)
-          else if (storageSpecifier != null) {
-            diagIncompat(storageSpecifier)
-            hitError = true
-          } else if (hasThreadLocal &&
-              (k != Keywords.EXTERN && k != Keywords.STATIC)) {
-            diagIncompat(Keywords.THREAD_LOCAL)
-            hitError = true
-          }
-          storageSpecifier = k
-        }
-        Keywords.CONST -> {
-          if (hasConst) diagDuplicate(k)
-          hasConst = true
-        }
-        Keywords.RESTRICT -> {
-          if (hasRestrict) diagDuplicate(k)
-          hasRestrict = true
-        }
-        Keywords.VOLATILE -> {
-          if (hasVolatile) diagDuplicate(k)
-          hasVolatile = true
-        }
-        Keywords.ATOMIC -> {
-          if (hasAtomic) diagDuplicate(k)
-          hasAtomic = true
-        }
-        Keywords.INLINE -> {
-          if (hasInline) diagDuplicate(k)
-          hasInline = true
-        }
-        Keywords.NORETURN -> {
-          if (hasNoReturn) diagDuplicate(k)
-          hasNoReturn = true
-        }
+      val tok = current() as Keyword
+      when (tok.value) {
         Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
+        in storageClassSpecifier -> storageSpecs.add(tok)
+        in typeSpecifier -> typeSpecs.add(tok)
+        in typeQualifier -> typeQuals.add(tok)
+        in funSpecifier -> funSpecs.add(tok)
         else -> null
       } ?: break
       eat()
-      declSpecTokenCount++
     }
-
-    if (declSpecTokenCount == 0) return MissingDeclarationSpecifier
-    if (hitError) return ErrorDeclarationSpecifier
-
-    val ts = parseTypeSpecifier(typeSpec) ?: return ErrorDeclarationSpecifier
-
-    return RealDeclarationSpecifier(storageSpecifier, ts, hasThreadLocal,
-        hasConst, hasRestrict, hasVolatile, hasAtomic, hasInline, hasNoReturn)
+    return DeclarationSpecifier(storageSpecs, typeSpecs, typeQuals, funSpecs)
   }
 
   /**
@@ -594,9 +463,8 @@ class Parser(tokens: List<Token>,
     if (isEaten()) return@tokenContext emptyList()
     val params = mutableListOf<ParameterDeclaration>()
     while (!isEaten()) {
-      // We don't precisely care if we have an error in the DeclarationSpecifier
       val specs = parseDeclSpecifiers()
-      if (specs is MissingDeclarationSpecifier) {
+      if (specs.isEmpty()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
       // The parameter can have parens with commas in them
@@ -707,8 +575,7 @@ class Parser(tokens: List<Token>,
   private fun parseDeclaration(): EitherNode<Declaration>? {
     // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
     val declSpec = parseDeclSpecifiers()
-    if (declSpec is MissingDeclarationSpecifier) return null
-    // FIXME validate declSpecs according to standard 6.7.{1-6}
+    if (declSpec.isEmpty()) return null
     val declaratorList = mutableListOf<InitDeclarator>()
     while (true) {
       val initDeclarator: EitherNode<Declarator> = parseDeclarator(tokStack.peek().size).let {
@@ -1184,17 +1051,7 @@ class Parser(tokens: List<Token>,
     // If no bracket is found, it isn't a function, it might be a declaration
     if (firstBracket == -1) return null
     val declSpec = parseDeclSpecifiers()
-    if (declSpec is MissingDeclarationSpecifier) return null
-    // FIXME finish validation of declSpec
-    if (declSpec is RealDeclarationSpecifier &&
-        declSpec.storageSpecifier != null &&
-        declSpec.storageSpecifier != Keywords.STATIC &&
-        declSpec.storageSpecifier != Keywords.EXTERN) {
-      parserDiagnostic {
-        id = DiagnosticId.ILLEGAL_STORAGE_CLASS_FUNC
-        // FIXME debug data in declSpec
-      }
-    }
+    if (declSpec.isEmpty()) return null
     val declarator = parseDeclarator(firstBracket)?.let {
       if (it is EitherNode.Value && it.value is FunctionDeclarator) {
         // FIXME: what diag to print here?

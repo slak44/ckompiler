@@ -141,38 +141,22 @@ enum class TypeSpecifier {
   STRUCT_OR_UNION_SPEC, ENUM_SPEC, TYPEDEF_NAME
 }
 
-sealed class DeclarationSpecifier
-object MissingDeclarationSpecifier : DeclarationSpecifier()
-object ErrorDeclarationSpecifier : DeclarationSpecifier()
-
 /**
- * Actual instance of [DeclarationSpecifier]. Stores declaration specifiers that come before
- * declarators.
- * FIXME: carry debug data in this for each thing
+ * Stores declaration specifiers that come before declarators.
+ * FIXME: more complex specifiers are missing (6.7.2)
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
-data class RealDeclarationSpecifier(val storageSpecifier: Keywords? = null,
-                                    val typeSpecifier: TypeSpecifier,
-                                    val hasThreadLocal: Boolean = false,
-                                    val hasConst: Boolean = false,
-                                    val hasRestrict: Boolean = false,
-                                    val hasVolatile: Boolean = false,
-                                    val hasAtomic: Boolean = false,
-                                    val hasInline: Boolean = false,
-                                    val hasNoReturn: Boolean = false) : DeclarationSpecifier() {
+data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
+                                val typeSpecifiers: List<Keyword>,
+                                val typeQualifiers: List<Keyword>,
+                                val functionSpecs: List<Keyword>) {
+  fun isEmpty() = storageClassSpecs.isEmpty() && typeSpecifiers.isEmpty() &&
+      typeQualifiers.isEmpty() && functionSpecs.isEmpty()
+
   override fun toString(): String {
-    val list = listOf(
-        if (hasInline) "inline" else "",
-        if (hasNoReturn) "_Noreturn" else "",
-        if (hasVolatile) "volatile" else "",
-        if (hasAtomic) "_Atomic" else "",
-        if (hasRestrict) "restrict" else "",
-        if (hasThreadLocal) "_Thread_local" else "",
-        if (hasConst) "const" else "",
-        storageSpecifier?.keyword ?: "",
-        typeSpecifier.toString()
-    )
-    return "(${list.filter { it.isNotEmpty() }.joinToString(" ")})"
+    val text = listOf(storageClassSpecs, typeSpecifiers,
+        typeQualifiers, functionSpecs).joinToString(" ") { it.joinToString(" ") }
+    return "($text)"
   }
 }
 

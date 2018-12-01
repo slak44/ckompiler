@@ -2,6 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.Keyword
 import slak.ckompiler.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -20,8 +21,11 @@ class DeclarationTests {
   fun declarationWithMultipleDeclSpecs() {
     val p = prepareCode("const static int a;", source)
     p.assertNoDiagnostics()
-    val spec = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
-        hasConst = true, storageSpecifier = Keywords.STATIC)
+    val spec = DeclarationSpecifier(
+        typeQualifiers = listOf(Keyword(Keywords.CONST)),
+        storageClassSpecs = listOf(Keyword(Keywords.STATIC)),
+        typeSpecifiers = listOf(Keyword(Keywords.INT)),
+        functionSpecs = emptyList())
     assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 
@@ -105,53 +109,5 @@ class DeclarationTests {
     val p = prepareCode("int a", source)
     assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER, p.diags[0].id)
     assertEquals(listOf(int declare "a"), p.root.decls)
-  }
-
-  @Test
-  fun declSpecsThreadLocalAlone() {
-    val p = prepareCode("_Thread_local int a;", source)
-    p.assertNoDiagnostics()
-    val spec =
-        RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT, hasThreadLocal = true)
-    assertEquals(listOf(spec declare "a"), p.root.decls)
-  }
-
-  @Test
-  fun declSpecsThreadLocalCorrectStorage() {
-    val p = prepareCode("_Thread_local static int a;", source)
-    p.assertNoDiagnostics()
-    val spec = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT,
-        hasThreadLocal = true, storageSpecifier = Keywords.STATIC)
-    assertEquals(listOf(spec declare "a"), p.root.decls)
-  }
-
-  private fun testDeclSpecErrors(s: String, id: DiagnosticId) {
-    val p = prepareCode(s, source)
-    assert(p.diags.size >= 1)
-    assertEquals(id, p.diags[0].id)
-    val d = ((p.root.decls[0] as EitherNode.Value<*>).value as Declaration)
-    assert(d.declSpecs is ErrorDeclarationSpecifier)
-  }
-
-  @Test
-  fun declSpecsThreadLocalIncorrectStorage() {
-    testDeclSpecErrors("_Thread_local register int a;", DiagnosticId.INCOMPATIBLE_DECL_SPEC)
-  }
-
-  @Test
-  fun declSpecsMultipleStorage() {
-    testDeclSpecErrors("static register int a;", DiagnosticId.INCOMPATIBLE_DECL_SPEC)
-  }
-
-  @Test
-  fun declSpecsDuplicates() {
-    val p = prepareCode("static static int a;", source)
-    assert(p.diags.size >= 1)
-    assertEquals(DiagnosticId.DUPLICATE_DECL_SPEC, p.diags[0].id)
-  }
-
-  @Test
-  fun declSpecsUnsupportedComplex() {
-    testDeclSpecErrors("float _Complex a;", DiagnosticId.UNSUPPORTED_COMPLEX)
   }
 }

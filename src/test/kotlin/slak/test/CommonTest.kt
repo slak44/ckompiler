@@ -16,9 +16,11 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
 
 internal val List<Diagnostic>.ids get() = map { it.id }
 
-internal val int = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.SIGNED_INT)
+internal val int = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.INT)),
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList())
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
-internal val double = RealDeclarationSpecifier(typeSpecifier = TypeSpecifier.DOUBLE)
+internal val double = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.DOUBLE)),
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList())
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
 internal infix fun <LHS, RHS> LHS.assertEquals(rhs: RHS) {
