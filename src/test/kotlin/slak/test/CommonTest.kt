@@ -1,6 +1,7 @@
 package slak.test
 
 import slak.ckompiler.*
+import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import kotlin.test.assertEquals
 

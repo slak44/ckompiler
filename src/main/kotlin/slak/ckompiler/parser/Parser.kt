@@ -2,6 +2,7 @@ package slak.ckompiler.parser
 
 import mu.KotlinLogging
 import slak.ckompiler.*
+import slak.ckompiler.lexer.*
 import java.util.*
 import kotlin.math.min
 import kotlin.reflect.KClass

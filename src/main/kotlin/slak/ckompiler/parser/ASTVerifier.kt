@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.Keywords
+import slak.ckompiler.lexer.Keywords
 import java.util.*
 
 data class TypedExpression(val expr: Expression, val type: TypeSpecifier)

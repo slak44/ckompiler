@@ -2,6 +2,7 @@ package slak.test
 
 import org.junit.Test
 import slak.ckompiler.*
+import slak.ckompiler.lexer.*
 import kotlin.test.assertEquals
 
 /**

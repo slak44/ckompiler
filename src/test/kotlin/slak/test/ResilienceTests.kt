@@ -2,9 +2,9 @@ package slak.test
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.ErrorToken
-import slak.ckompiler.Identifier
-import slak.ckompiler.Lexer
+import slak.ckompiler.lexer.ErrorToken
+import slak.ckompiler.lexer.Identifier
+import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.ErrorNode
 import slak.ckompiler.parser.InitDeclarator
 import kotlin.test.assertEquals

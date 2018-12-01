@@ -1,6 +1,7 @@
-package slak.ckompiler
+package slak.ckompiler.lexer
 
 import mu.KotlinLogging
+import slak.ckompiler.*
 
 class Lexer(private val textSource: String, private val srcFileName: SourceFileName) {
   val tokens = mutableListOf<Token>()

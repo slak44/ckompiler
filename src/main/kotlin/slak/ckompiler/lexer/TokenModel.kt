@@ -1,6 +1,7 @@
-package slak.ckompiler
+package slak.ckompiler.lexer
 
 import mu.KotlinLogging
+import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("Tokens")
 

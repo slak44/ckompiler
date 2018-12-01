@@ -2,6 +2,7 @@ package slak.ckompiler
 
 import mu.KLogger
 import slak.ckompiler.DiagnosticKind.*
+import slak.ckompiler.lexer.Token
 import kotlin.math.max
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {

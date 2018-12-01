@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.*
+import slak.ckompiler.lexer.*
 
 /** Base interface of all nodes from an Abstract Syntax Tree. */
 interface ASTNode
