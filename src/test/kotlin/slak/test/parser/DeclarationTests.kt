@@ -34,7 +34,7 @@ class DeclarationTests {
     val p = prepareCode("int a, b, c;", source)
     p.assertNoDiagnostics()
     val expected = Declaration(int,
-        listOf("a", "b", "c").map { InitDeclarator(name(it)) })
+        listOf("a", "b", "c").map { name(it) })
     assertEquals(listOf(expected.wrap()), p.root.decls)
   }
 
@@ -42,9 +42,7 @@ class DeclarationTests {
   fun declarationMultipleDeclarations() {
     val p = prepareCode("int a; int b; int c;", source)
     p.assertNoDiagnostics()
-    val expected = listOf("a", "b", "c").map {
-      int declare listOf(InitDeclarator(name(it)))
-    }
+    val expected = listOf("a", "b", "c").map { int declare it }
     assertEquals(expected, p.root.decls)
   }
 

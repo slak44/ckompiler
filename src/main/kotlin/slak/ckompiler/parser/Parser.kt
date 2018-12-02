@@ -585,7 +585,7 @@ class Parser(tokens: List<Token>,
     // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
     val declSpec = parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
-    val declaratorList = mutableListOf<InitDeclarator>()
+    val declaratorList = mutableListOf<EitherNode<Declarator>>()
     while (true) {
       val initDeclarator: EitherNode<Declarator> = parseDeclarator(tokStack.peek().size).let {
         if (it != null) return@let it
@@ -612,11 +612,15 @@ class Parser(tokens: List<Token>,
           formatArgs("declarator")
           column(colPastTheEnd(0))
         }
-        declaratorList.add(InitDeclarator(initDeclarator, null))
+        declaratorList.add(initDeclarator)
         break
       }
       val initializer = if (current().asPunct() == Punctuators.ASSIGN) parseInitializer() else null
-      declaratorList.add(InitDeclarator(initDeclarator, initializer))
+      if (initializer == null) {
+        declaratorList.add(initDeclarator)
+      } else {
+        declaratorList.add(InitDeclarator(initDeclarator, initializer).wrap())
+      }
       if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained init-declarators
         eat()

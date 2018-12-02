@@ -34,32 +34,31 @@ internal infix fun <LHS, RHS> LHS.assertEquals(rhs: RHS) {
 
 internal fun name(s: String): EitherNode<IdentifierNode> = IdentifierNode(s).wrap()
 
-internal infix fun String.assign(value: Expression) =
-    InitDeclarator(name(this), value.wrap())
-
+internal infix fun String.assign(value: Expression) = InitDeclarator(name(this), value.wrap())
 internal infix fun String.assign(value: ErrorNode) = InitDeclarator(name(this), value)
 
-internal infix fun DeclarationSpecifier.declare(decl: InitDeclarator) =
-    Declaration(this, listOf(decl)).wrap()
+internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
+    Declaration(this, listOf(decl.wrap())).wrap()
 
-internal infix fun DeclarationSpecifier.declare(list: List<InitDeclarator>) =
-    Declaration(this, list).wrap()
+internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) =
+    Declaration(this, list.map { it.wrap() }).wrap()
 
-internal infix fun DeclarationSpecifier.func(decl: InitDeclarator) = Declaration(this, listOf(decl))
+internal infix fun DeclarationSpecifier.func(decl: Declarator) =
+    Declaration(this, listOf(decl.wrap()))
 internal infix fun DeclarationSpecifier.declare(s: String): EitherNode<Declaration> {
-  return Declaration(this, listOf(InitDeclarator(name(s)))).wrap()
+  return Declaration(this, listOf(name(s))).wrap()
 }
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, name(s))
 
-internal infix fun String.withParams(params: List<ParameterDeclaration>): InitDeclarator {
-  return InitDeclarator(FunctionDeclarator(name(this), params).wrap())
+internal infix fun String.withParams(params: List<ParameterDeclaration>): Declarator {
+  return FunctionDeclarator(name(this), params)
 }
 
 internal infix fun Declaration.body(s: EitherNode<CompoundStatement>): FunctionDefinition {
   if (this.declaratorList.size != 1) throw IllegalArgumentException("Not function")
-  val d = this.declaratorList[0].declarator
-  if (d is EitherNode.Value) {
+  val d = this.declaratorList[0]
+  if (d is EitherNode.Value<*>) {
     if (d.value !is FunctionDeclarator) throw IllegalArgumentException("Not function")
     val fd = d.value as FunctionDeclarator
     return FunctionDefinition(this.declSpecs, fd.wrap(), s)

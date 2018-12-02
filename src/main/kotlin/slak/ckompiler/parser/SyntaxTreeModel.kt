@@ -162,7 +162,7 @@ data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
 data class InitDeclarator(val declarator: EitherNode<Declarator>,
-                          val initializer: EitherNode<Expression>? = null) : Declarator()
+                          val initializer: EitherNode<Expression>) : Declarator()
 
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
                                 val declarator: EitherNode<Declarator>) : ASTNode
@@ -180,7 +180,7 @@ sealed class ExternalDeclaration : ASTNode
 
 /** C standard: A.2.2 */
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<InitDeclarator>
+                       val declaratorList: List<EitherNode<Declarator>>
 ) : ExternalDeclaration(), BlockItem, ForInitializer
 
 /** C standard: A.2.4 */
