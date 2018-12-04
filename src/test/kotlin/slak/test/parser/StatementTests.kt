@@ -15,7 +15,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         ifSt(int(123)) {
           1 add 1
         }
@@ -30,7 +30,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         ifSt(int(123)) {
           1 add 1
         } elseSt {
@@ -49,8 +49,8 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
-        ifSt(int(123), listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
+        ifSt(int(123), compoundOf(
             3 sub 3
         ))
     ) assertEquals p.root.decls[0]
@@ -68,10 +68,10 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
-        ifSt(int(123), listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
+        ifSt(int(123), compoundOf(
             3 sub 3
-        )) elseSt listOf(
+        )) elseSt compoundOf(
             2 sub 2
         )
     ) assertEquals p.root.decls[0]
@@ -85,8 +85,8 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_PRIMARY), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
-        ifSt(ErrorNode()) {
+    int func ("main" withParams emptyList()) body compoundOf(
+        ifSt(ErrorExpression()) {
           1 add 1
         }
     ) assertEquals p.root.decls[0]
@@ -100,8 +100,8 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_EXPR), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
-        ifSt(ErrorNode()) {
+    int func ("main" withParams emptyList()) body compoundOf(
+        ifSt(ErrorExpression()) {
           1 add 1
         }
     ) assertEquals p.root.decls[0]
@@ -115,8 +115,8 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
-        IfStatement(int(123).wrap(), ErrorNode(), null)
+    int func ("main" withParams emptyList()) body compoundOf(
+        IfStatement(int(123), ErrorStatement(), null)
     ) assertEquals p.root.decls[0]
   }
 
@@ -128,8 +128,8 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
-        IfStatement(int(123).wrap(), ErrorNode(), (1 add 1).wrap())
+    int func ("main" withParams emptyList()) body compoundOf(
+        IfStatement(int(123), ErrorStatement(), (1 add 1))
     ) assertEquals p.root.decls[0]
   }
 
@@ -141,7 +141,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         ifSt(int(1)) {
           Noop
         } elseSt {
@@ -158,7 +158,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         returnSt(int(0))
     ) assertEquals p.root.decls[0]
   }
@@ -171,7 +171,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         returnSt((1 add 1) div 2)
     ) assertEquals p.root.decls[0]
   }
@@ -184,54 +184,8 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         returnSt(int(0))
-    ) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun whileMissingParen() {
-    val p = prepareCode("""
-      int main() {
-        while 0) 1 + 1;
-      }
-    """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_LPAREN_AFTER), p.diags.ids)
-    int func ("main" withParams emptyList()) body
-        CompoundStatement(listOf(ErrorNode())) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun whileBasic() {
-    val p = prepareCode("""
-      int main() {
-        while (1 + 1) 1 + 1;
-      }
-    """.trimIndent(), source)
-    p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
-        whileSt(1 add 1) {
-          1 add 1
-        }
-    ) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun whileWithCompound() {
-    val p = prepareCode("""
-      int main() {
-        while (1 + 1) {
-          1 + 1;
-          2 + 2;
-        }
-      }
-    """.trimIndent(), source)
-    p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
-        whileSt(1 add 1) {
-          listOf(1 add 1,
-              2 add 2).compound()
-        }
     ) assertEquals p.root.decls[0]
   }
 
@@ -243,7 +197,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         whileSt(int(1)) {
           BreakStatement
         }
@@ -258,7 +212,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         BreakStatement
     ) assertEquals p.root.decls[0]
   }
@@ -271,7 +225,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         whileSt(int(1)) {
           ContinueStatement
         }
@@ -286,7 +240,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         ContinueStatement
     ) assertEquals p.root.decls[0]
   }
@@ -299,7 +253,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         "label" labeled Noop
     ) assertEquals p.root.decls[0]
   }
@@ -312,8 +266,8 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
-    int func ("main" withParams emptyList()) body
-        CompoundStatement(listOf(ErrorNode())) assertEquals p.root.decls[0]
+    int func ("main" withParams emptyList()) body compoundOf(ErrorStatement()) assertEquals
+        p.root.decls[0]
   }
 
   @Test
@@ -324,7 +278,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         "label" labeled (1 add 1)
     ) assertEquals p.root.decls[0]
   }
@@ -337,7 +291,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         goto("fakeLabel")
     ) assertEquals p.root.decls[0]
   }
@@ -350,7 +304,7 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
-    int func ("main" withParams emptyList()) body listOf(
+    int func ("main" withParams emptyList()) body compoundOf(
         goto("fakeLabel")
     ) assertEquals p.root.decls[0]
   }

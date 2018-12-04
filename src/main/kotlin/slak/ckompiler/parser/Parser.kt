@@ -22,8 +22,6 @@ class Parser(tokens: List<Token>,
   private val idxStack = Stack<Int>()
   val diags = mutableListOf<Diagnostic>()
   val root = RootNode()
-  var hasError = false
-    private set
 
   companion object {
     private val logger = KotlinLogging.logger("Parser")
@@ -42,12 +40,6 @@ class Parser(tokens: List<Token>,
     idxStack.push(0)
     translationUnit()
     diags.forEach { it.print() }
-  }
-
-  /** Return an [ErrorNode] instance and set [hasError]. */
-  private fun err(): ErrorNode {
-    hasError = true
-    return ErrorNode()
   }
 
   /** Gets a token, or if all were eaten, the last one. Useful for diagnostics. */
@@ -127,8 +119,8 @@ class Parser(tokens: List<Token>,
    * C standard: A.2.1
    * @return null if there is no expression, the [Expression] otherwise
    */
-  private fun parseExpr(endIdx: Int): EitherNode<Expression>? = tokenContext(endIdx) {
-    val primary: EitherNode<Expression> = parsePrimaryExpr().let { expr ->
+  private fun parseExpr(endIdx: Int): Expression? = tokenContext(endIdx) {
+    val primary: Expression = parsePrimaryExpr().let { expr ->
       if (expr != null) return@let expr
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_PRIMARY
@@ -139,21 +131,20 @@ class Parser(tokens: List<Token>,
     return@tokenContext parseExprImpl(primary, 0)
   }
 
-  private fun parseExprImpl(lhsInit: EitherNode<Expression>,
-                            minPrecedence: Int): EitherNode<Expression> {
+  private fun parseExprImpl(lhsInit: Expression, minPrecedence: Int): Expression {
     var lhs = lhsInit
     while (true) {
       if (isEaten()) break
       val op = current().asBinaryOperator() ?: break
       if (op.precedence < minPrecedence) break
       eat()
-      var rhs: EitherNode<Expression> = parsePrimaryExpr().let {
+      var rhs: Expression = parsePrimaryExpr().let {
         if (it != null) return@let it
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_PRIMARY
           errorOn(safeToken(0))
         }
-        return@parseExprImpl err()
+        return@parseExprImpl ErrorExpression()
       }
       while (true) {
         if (isEaten()) break
@@ -164,12 +155,12 @@ class Parser(tokens: List<Token>,
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
-      lhs = BinaryExpression(op, lhs, rhs).wrap()
+      lhs = BinaryExpression(op, lhs, rhs)
     }
     return lhs
   }
 
-  private fun parseBaseExpr(): EitherNode<Expression>? = when {
+  private fun parseBaseExpr(): Expression? = when {
     // FIXME: implement generic-selection (A.2.1/6.5.1.1)
     current().asPunct() == Punctuators.RPAREN -> {
       // This usually happens when there are unmatched parens
@@ -178,7 +169,7 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      err()
+      ErrorExpression()
     }
     current().asPunct() == Punctuators.LPAREN -> {
       if (lookahead().asPunct() == Punctuators.RPAREN) {
@@ -186,12 +177,12 @@ class Parser(tokens: List<Token>,
           id = DiagnosticId.EXPECTED_EXPR
           errorOn(safeToken(1))
         }
-        err()
+        ErrorExpression()
       } else {
         val endParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
         if (endParenIdx == -1) {
           eatToSemi()
-          err()
+          ErrorExpression()
         } else {
           eat() // Get rid of the LPAREN
           val expr = parseExpr(endParenIdx)
@@ -203,11 +194,11 @@ class Parser(tokens: List<Token>,
     else -> parseTerminal()?.let {
       eat()
       it
-    }?.wrap()
+    }
   }
 
-  private fun parseArgumentExprList(): List<EitherNode<Expression>> {
-    val funcArgs = mutableListOf<EitherNode<Expression>>()
+  private fun parseArgumentExprList(): List<Expression> {
+    val funcArgs = mutableListOf<Expression>()
     val callEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     eat() // The '('
     if (callEnd == -1) {
@@ -244,7 +235,7 @@ class Parser(tokens: List<Token>,
     return funcArgs
   }
 
-  private fun parsePostfixExpression(): EitherNode<Expression>? {
+  private fun parsePostfixExpression(): Expression? {
     // FIXME: implement initializer-lists (6.5.2)
     val expr = parseBaseExpr()
     return when {
@@ -253,7 +244,7 @@ class Parser(tokens: List<Token>,
         TODO("implement subscript operator")
       }
       current().asPunct() == Punctuators.LPAREN -> {
-        return FunctionCall(expr, parseArgumentExprList()).wrap()
+        return FunctionCall(expr, parseArgumentExprList())
       }
       current().asPunct() == Punctuators.DOT -> {
         TODO("implement direct struct/union access operator")
@@ -264,26 +255,26 @@ class Parser(tokens: List<Token>,
       current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
         val c = current().asPunct()
         eat() // The postfix op
-        if (c == Punctuators.INC) PostfixIncrement(expr).wrap()
-        else PostfixDecrement(expr).wrap()
+        if (c == Punctuators.INC) PostfixIncrement(expr)
+        else PostfixDecrement(expr)
       }
       else -> return expr
     }
   }
 
-  private fun parseUnaryExpression(): EitherNode<Expression>? = when {
+  private fun parseUnaryExpression(): Expression? = when {
     current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
       val c = current().asPunct()
       eat() // The prefix op
-      val expr = parseUnaryExpression() ?: err()
-      if (c == Punctuators.INC) PrefixIncrement(expr).wrap()
-      else PrefixDecrement(expr).wrap()
+      val expr = parseUnaryExpression() ?: ErrorExpression()
+      if (c == Punctuators.INC) PrefixIncrement(expr)
+      else PrefixDecrement(expr)
     }
     current().asUnaryOperator() != null -> {
       val c = current().asUnaryOperator()!!
       eat() // The unary op
-      val expr = parsePrimaryExpr() ?: err()
-      UnaryExpression(c, expr).wrap()
+      val expr = parsePrimaryExpr() ?: ErrorExpression()
+      UnaryExpression(c, expr)
     }
     current().asKeyword() == Keywords.ALIGNOF -> {
       eat() // The ALIGNOF
@@ -296,12 +287,11 @@ class Parser(tokens: List<Token>,
     current().asKeyword() == Keywords.SIZEOF -> {
       eat() // The SIZEOF
       when {
-        isEaten() -> err()
+        isEaten() -> ErrorExpression()
         current().asPunct() == Punctuators.LPAREN -> {
           TODO("implement `sizeof ( type-name )` expressions")
         }
-        else -> SizeofExpression(parseUnaryExpression()
-            ?: err()).wrap()
+        else -> SizeofExpression(parseUnaryExpression() ?: ErrorExpression())
       }
     }
     else -> parsePostfixExpression()
@@ -318,14 +308,14 @@ class Parser(tokens: List<Token>,
    * @return null if no primary was found, or the [Expression] otherwise (this doesn't return a
    * [PrimaryExpression] because `( expression )` is a primary expression in itself)
    */
-  private fun parsePrimaryExpr(): EitherNode<Expression>? {
+  private fun parsePrimaryExpr(): Expression? {
     if (isEaten()) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
         if (tokStack.peek().isNotEmpty()) errorOn(safeToken(0))
         else errorOn(tokStack[tokStack.size - 2][idxStack[idxStack.size - 2]])
       }
-      return err()
+      return ErrorExpression()
     }
     // FIXME: here we can also have a cast, that needs to be differentiated from `( expression )`
     return parseUnaryExpression()
@@ -498,12 +488,12 @@ class Parser(tokens: List<Token>,
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(endIdx: Int): EitherNode<Declarator>? = tokenContext(endIdx) {
+  private fun parseDirectDeclarator(endIdx: Int): Declarator? = tokenContext(endIdx) {
     if (it.isEmpty()) return@tokenContext null
     when {
       current().asPunct() == Punctuators.LPAREN -> {
         val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-        if (end == -1) return@tokenContext err()
+        if (end == -1) return@tokenContext ErrorDeclarator()
         // If the declarator slice will be empty, error out
         if (end - 1 == 0) {
           parserDiagnostic {
@@ -511,7 +501,7 @@ class Parser(tokens: List<Token>,
             errorOn(safeToken(1))
           }
           eatToSemi()
-          return@tokenContext err()
+          return@tokenContext ErrorDeclarator()
         }
         val declarator = parseDeclarator(end)
         if (declarator is ErrorNode) eatToSemi()
@@ -523,29 +513,29 @@ class Parser(tokens: List<Token>,
           id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
           errorOn(safeToken(0))
         }
-        return@tokenContext err()
+        return@tokenContext ErrorDeclarator()
       }
       current() is Identifier -> {
         val name = IdentifierNode((current() as Identifier).name)
         eat()
         when {
-          isEaten() -> return@tokenContext name.wrap()
+          isEaten() -> return@tokenContext name
           current().asPunct() == Punctuators.LPAREN -> {
             val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
             eat() // Get rid of "("
             // FIXME: we can return something better than an ErrorNode (have the ident)
-            if (rparenIdx == -1) return@tokenContext err()
+            if (rparenIdx == -1) return@tokenContext ErrorDeclarator()
             val paramList = parseParameterList(rparenIdx)
             eat() // Get rid of ")"
-            return@tokenContext FunctionDeclarator(name.wrap(), paramList).wrap()
+            return@tokenContext FunctionDeclarator(name, paramList)
           }
           current().asPunct() == Punctuators.LSQPAREN -> {
             val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
-            if (end == -1) return@tokenContext err()
+            if (end == -1) return@tokenContext ErrorDeclarator()
             // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
             logger.throwICE("Unimplemented grammar") { tokStack.peek() }
           }
-          else -> return@tokenContext name.wrap()
+          else -> return@tokenContext name
         }
       }
       // FIXME: Can't happen? current() either is or isn't an identifier
@@ -553,13 +543,13 @@ class Parser(tokens: List<Token>,
     }
   }
 
-  private fun parseDeclarator(endIdx: Int): EitherNode<Declarator>? {
+  private fun parseDeclarator(endIdx: Int): Declarator? {
     // FIXME missing pointer parsing
     return parseDirectDeclarator(endIdx)
   }
 
   // FIXME: return type will change with the initializer list
-  private fun parseInitializer(): EitherNode<Expression>? {
+  private fun parseInitializer(): Expression? {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
@@ -567,7 +557,7 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      return err()
+      return ErrorExpression()
     }
     // Parse initializer-list
     if (current().asPunct() == Punctuators.LBRACKET) {
@@ -581,20 +571,20 @@ class Parser(tokens: List<Token>,
    * Parses a declaration, including function declarations.
    * @return null if there is no declaration, or a [Declaration] otherwise
    */
-  private fun parseDeclaration(): EitherNode<Declaration>? {
+  private fun parseDeclaration(): Declaration? {
     // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
     val declSpec = parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
-    val declaratorList = mutableListOf<EitherNode<Declarator>>()
+    val declaratorList = mutableListOf<Declarator>()
     while (true) {
-      val initDeclarator: EitherNode<Declarator> = parseDeclarator(tokStack.peek().size).let {
+      val initDeclarator: Declarator = parseDeclarator(tokStack.peek().size).let {
         if (it != null) return@let it
         // This means that there were decl specs, but no declarator, which is a problem
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_DECL
           errorOn(safeToken(0))
         }
-        return@parseDeclaration err()
+        return@parseDeclaration ErrorDeclaration()
       }
       if (initDeclarator is ErrorNode) {
         val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
@@ -619,7 +609,7 @@ class Parser(tokens: List<Token>,
       if (initializer == null) {
         declaratorList.add(initDeclarator)
       } else {
-        declaratorList.add(InitDeclarator(initDeclarator, initializer).wrap())
+        declaratorList.add(InitDeclarator(initDeclarator, initializer))
       }
       if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained init-declarators
@@ -639,14 +629,14 @@ class Parser(tokens: List<Token>,
         break
       }
     }
-    return Declaration(declSpec, declaratorList).wrap()
+    return RealDeclaration(declSpec, declaratorList)
   }
 
   /**
    * C standard: A.2.3, 6.8.1
    * @return the [LabeledStatement] if it is there, or null if there is no such statement
    */
-  private fun parseLabeledStatement(): EitherNode<LabeledStatement>? {
+  private fun parseLabeledStatement(): Statement? {
     // FIXME: this only parser the first kind of labeled statement (6.8.1)
     if (current() !is Identifier || lookahead().asPunct() != Punctuators.COLON) return null
     val label = IdentifierNode((current() as Identifier).name)
@@ -657,20 +647,20 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(tokStack.peek()[idxStack.peek() - 1])
       }
-      return err()
+      return ErrorStatement()
     }
-    return LabeledStatement(label, labeled).wrap()
+    return LabeledStatement(label, labeled)
   }
 
   /**
    * C standard: A.2.3, 6.8.4.1
    * @return the [IfStatement] if it is there, or null if it isn't
    */
-  private fun parseIfStatement(): EitherNode<IfStatement>? {
+  private fun parseIfStatement(): Statement? {
     if (current().asKeyword() != Keywords.IF) return null
     eat() // The 'if'
     val condParenEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condParenEnd == -1) return err()
+    if (condParenEnd == -1) return ErrorStatement()
     eat() // The '(' from the if
     val condExpr = parseExpr(condParenEnd)
     val cond = if (condExpr == null) {
@@ -678,7 +668,7 @@ class Parser(tokens: List<Token>,
       tokenContext(condParenEnd) {
         while (!isEaten()) eat()
       }
-      err()
+      ErrorExpression()
     } else {
       condExpr
     }
@@ -688,7 +678,7 @@ class Parser(tokens: List<Token>,
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
       }
-      err()
+      ErrorStatement()
     } else {
       val statement = parseStatement()
       if (statement == null) {
@@ -700,7 +690,7 @@ class Parser(tokens: List<Token>,
         while (!isEaten() &&
             current().asPunct() != Punctuators.SEMICOLON &&
             current().asKeyword() != Keywords.ELSE) eat()
-        err()
+        ErrorStatement()
       } else {
         statement
       }
@@ -716,18 +706,18 @@ class Parser(tokens: List<Token>,
         // Eat until the next thing
         eatToSemi()
         if (!isEaten()) eat()
-        err()
+        ErrorStatement()
       } else {
         elseStatement
       }
-      return IfStatement(cond, statementSuccess, statementFailure).wrap()
+      return IfStatement(cond, statementSuccess, statementFailure)
     } else {
-      return IfStatement(cond, statementSuccess, null).wrap()
+      return IfStatement(cond, statementSuccess, null)
     }
   }
 
   /** Wraps [parseExpr] with a check for [Punctuators.SEMICOLON] at the end. */
-  private fun parseExpressionStatement(): EitherNode<Expression>? {
+  private fun parseExpressionStatement(): Expression? {
     val expr = parseExpr(tokStack.peek().size) ?: return null
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
       parserDiagnostic {
@@ -741,8 +731,12 @@ class Parser(tokens: List<Token>,
     return expr
   }
 
-  /** C standard: A.2.3, 6.8.6.1 */
-  private fun parseGotoStatement(): EitherNode<GotoStatement>? {
+  /**
+   * C standard: A.2.3, 6.8.6.1
+   *
+   * @return null if there is no goto, or the [GotoStatement] otherwise
+   */
+  private fun parseGotoStatement(): Statement? {
     if (current().asKeyword() != Keywords.GOTO) return null
     eat()
     if (current() !is Identifier) {
@@ -752,7 +746,7 @@ class Parser(tokens: List<Token>,
       }
       eatToSemi()
       if (!isEaten()) eat()
-      return err()
+      return ErrorStatement()
     } else {
       val ident = IdentifierNode((current() as Identifier).name)
       eat() // The ident
@@ -767,11 +761,15 @@ class Parser(tokens: List<Token>,
       } else {
         eat() // The ';'
       }
-      return GotoStatement(ident).wrap()
+      return GotoStatement(ident)
     }
   }
 
-  /** C standard: A.2.3, 6.8.6.2 */
+  /**
+   * C standard: A.2.3, 6.8.6.2
+   *
+   * @return null if there is no continue, the [ContinueStatement] otherwise
+   */
   private fun parseContinue(): ContinueStatement? {
     if (current().asKeyword() != Keywords.CONTINUE) return null
     eat()
@@ -822,8 +820,12 @@ class Parser(tokens: List<Token>,
     return ReturnStatement(expr)
   }
 
-  /** C standard: 6.8.5 */
-  private fun parseWhile(): EitherNode<WhileStatement>? {
+  /**
+   * C standard: 6.8.5
+   *
+   * @return null if there is no while, the [WhileStatement] otherwise
+   */
+  private fun parseWhile(): Statement? {
     if (current().asKeyword() != Keywords.WHILE) return null
     eat() // The WHILE
     if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
@@ -837,16 +839,16 @@ class Parser(tokens: List<Token>,
       }
       eatList(takeUntil(end).size)
       if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
-      return err()
+      return ErrorStatement()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
-    if (rparen == -1) return err()
+    if (rparen == -1) return ErrorStatement()
     val cond = parseExpr(rparen)
     val condition = if (cond == null) {
       // Eat everything between parens
       eatList(takeUntil(rparen).size)
-      err()
+      ErrorExpression()
     } else {
       cond
     }
@@ -860,19 +862,23 @@ class Parser(tokens: List<Token>,
       // Attempt to eat the error
       eatToSemi()
       if (!isEaten()) eat()
-      err()
+      ErrorStatement()
     } else {
       statement
     }
-    return WhileStatement(condition, loopable).wrap()
+    return WhileStatement(condition, loopable)
   }
 
-  /** C standard: 6.8.5 */
-  private fun parseDoWhile(): EitherNode<DoWhileStatement>? {
+  /**
+   * C standard: 6.8.5
+   *
+   * @return null if there is no while, the [DoWhileStatement] otherwise
+   */
+  private fun parseDoWhile(): Statement? {
     if (current().asKeyword() != Keywords.DO) return null
     val theWhile = findMatch(Keyword::class, Keywords.DO, Keywords.WHILE, stopAtSemi = false)
     eat() // The DO
-    if (theWhile == -1) return err()
+    if (theWhile == -1) return ErrorStatement()
     val statement = tokenContext(theWhile) { parseStatement() }
     val loopable = if (statement == null) {
       parserDiagnostic {
@@ -885,7 +891,7 @@ class Parser(tokens: List<Token>,
       }
       if (end == -1) eatToSemi()
       eatList(takeUntil(end).size)
-      err()
+      ErrorStatement()
     } else {
       statement
     }
@@ -898,16 +904,16 @@ class Parser(tokens: List<Token>,
       }
       eatToSemi()
       if (!isEaten()) eat()
-      return DoWhileStatement(err(), loopable).wrap()
+      return DoWhileStatement(ErrorExpression(), loopable)
     }
     val condRParen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condRParen == -1) return DoWhileStatement(err(), loopable).wrap()
+    if (condRParen == -1) return DoWhileStatement(ErrorExpression(), loopable)
     eat() // The '('
     val cond = parseExpr(condRParen)
     val condition = if (cond == null) {
       // Eat everything between parens
       eatList(takeUntil(condRParen).size)
-      err()
+      ErrorExpression()
     } else {
       cond
     }
@@ -924,11 +930,15 @@ class Parser(tokens: List<Token>,
     } else {
       eat() // The ';'
     }
-    return DoWhileStatement(condition, loopable).wrap()
+    return DoWhileStatement(condition, loopable)
   }
 
-  /** C standard: 6.8.5, 6.8.5.3 */
-  private fun parseFor(): EitherNode<ForStatement>? {
+  /**
+   * C standard: 6.8.5, 6.8.5.3
+   *
+   * @return null if there is no while, the [ForStatement] otherwise
+   */
+  private fun parseFor(): Statement? {
     if (current().asKeyword() != Keywords.FOR) return null
     eat() // The FOR
     if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
@@ -939,11 +949,11 @@ class Parser(tokens: List<Token>,
       }
       eatToSemi()
       if (!isEaten()) eat()
-      return err()
+      return ErrorStatement()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
-    if (rparen == -1) return err()
+    if (rparen == -1) return ErrorStatement()
     val (clause1, expr2, expr3) = tokenContext(rparen) {
       val firstSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
       if (firstSemi == -1) {
@@ -952,14 +962,16 @@ class Parser(tokens: List<Token>,
           if (it.isNotEmpty()) errorOn(safeToken(it.size))
           else errorOn(tokStack[tokStack.size - 2][rparen])
         }
-        return@tokenContext Triple(err(), err(), err())
+        return@tokenContext Triple(ErrorInitializer(), ErrorExpression(), ErrorExpression())
       }
       // Handle the case where we have an empty clause1
-      val clause1: EitherNode<ForInitializer>? = if (firstSemi == 0) {
-        null
+      val clause1 = if (firstSemi == 0) {
+        EmptyInitializer
       } else {
-        // parseDeclaration wants to see the semicolon as well
-        tokenContext(firstSemi + 1) { parseDeclaration() } ?: parseExpr(firstSemi)
+        // parseDeclaration wants to see the semicolon as well, so +1
+        tokenContext(firstSemi + 1) {
+          parseDeclaration()?.let { d -> DeclarationInitializer(d) }
+        } ?: parseExpr(firstSemi)?.let { e -> ExpressionInitializer(e) } ?: ErrorInitializer()
       }
       // We only eat the first ';' if parseDeclaration didn't do that
       if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
@@ -969,7 +981,7 @@ class Parser(tokens: List<Token>,
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
           errorOn(safeToken(it.size))
         }
-        return@tokenContext Triple(clause1, err(), err())
+        return@tokenContext Triple(clause1, ErrorExpression(), ErrorExpression())
       }
       // Handle the case where we have an empty expr2
       val expr2 = if (secondSemi == firstSemi + 1) null else parseExpr(secondSemi)
@@ -1000,20 +1012,20 @@ class Parser(tokens: List<Token>,
       // Attempt to eat the error
       eatToSemi()
       if (!isEaten()) eat()
-      return ForStatement(clause1, expr2, expr3, err()).wrap()
+      return ForStatement(clause1, expr2, expr3, ErrorExpression())
     }
-    return ForStatement(clause1, expr2, expr3, loopable).wrap()
+    return ForStatement(clause1, expr2, expr3, loopable)
   }
 
   /**
    * C standard: A.2.3
    * @return null if no statement was found, or the [Statement] otherwise
    */
-  private fun parseStatement(): EitherNode<Statement>? {
+  private fun parseStatement(): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
       eat()
-      return Noop.wrap()
+      return Noop
     }
     return parseLabeledStatement()
         ?: parseCompoundStatement()
@@ -1022,9 +1034,9 @@ class Parser(tokens: List<Token>,
         ?: parseWhile()
         ?: parseDoWhile()
         ?: parseFor()
-        ?: parseContinue()?.wrap()
-        ?: parseBreak()?.wrap()
-        ?: parseReturn()?.wrap()
+        ?: parseContinue()
+        ?: parseBreak()
+        ?: parseReturn()
         ?: parseExpressionStatement()
         ?: TODO("unimplemented grammar")
   }
@@ -1034,7 +1046,7 @@ class Parser(tokens: List<Token>,
    * C standard: A.2.3
    * @return null if there is no compound statement, or the [CompoundStatement] otherwise
    */
-  private fun parseCompoundStatement(): EitherNode<CompoundStatement>? {
+  private fun parseCompoundStatement(): Statement? {
     if (current().asPunct() != Punctuators.LBRACKET) return null
     val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, false)
     eat() // Get rid of '{'
@@ -1042,15 +1054,20 @@ class Parser(tokens: List<Token>,
       // Try to recover
       eatToSemi()
       if (!isEaten()) eat()
-      return err()
+      return ErrorStatement()
     }
     val compound = tokenContext(rbracket) {
-      val items = mutableListOf<EitherNode<BlockItem>>()
-      while (!isEaten()) items.add(parseDeclaration() ?: parseStatement() ?: continue)
+      val items = mutableListOf<BlockItem>()
+      while (!isEaten()) {
+        val item = parseDeclaration()?.let { d -> DeclarationItem(d) }
+            ?: parseStatement()?.let { s -> StatementItem(s) }
+            ?: continue
+        items.add(item)
+      }
       CompoundStatement(items)
     }
     eat() // Get rid of '}'
-    return compound.wrap()
+    return compound
   }
 
   /**
@@ -1059,25 +1076,24 @@ class Parser(tokens: List<Token>,
    * C standard: A.2.4, A.2.2, 6.9.1
    * @return null if this is not a function definition, or a [FunctionDefinition] otherwise
    */
-  private fun parseFunctionDefinition(): EitherNode<FunctionDefinition>? {
+  private fun parseFunctionDefinition(): FunctionDefinition? {
     val firstBracket = indexOfFirst { it.asPunct() == Punctuators.LBRACKET }
     // If no bracket is found, it isn't a function, it might be a declaration
     if (firstBracket == -1) return null
     val declSpec = parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
-    val declarator = parseDeclarator(firstBracket)?.let {
-      if (it is EitherNode.Value && it.value is FunctionDeclarator) {
+    val declarator = parseDeclarator(firstBracket).let {
+      if (it == null || it is ErrorDeclarator) {
         // FIXME: what diag to print here?
-        return@let it.value.wrap()
+        return@let ErrorDeclarator()
       }
-      return@let err()
-    } ?: err()
+      return@let it
+    }!!
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
-    val block = parseCompoundStatement()
-        ?: return FunctionDefinition(declSpec, declarator, err()).wrap()
-    return FunctionDefinition(declSpec, declarator, block).wrap()
+    val block = parseCompoundStatement() ?: ErrorStatement()
+    return FunctionDefinition(declSpec, declarator, block)
   }
 
   /** C standard: A.2.4, 6.9 */

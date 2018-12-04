@@ -4,7 +4,9 @@ import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.DeclarationSpecifier
+import slak.ckompiler.parser.ErrorExpression
+import slak.ckompiler.parser.IdentifierNode
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -33,17 +35,14 @@ class DeclarationTests {
   fun declarationMultipleDeclarators() {
     val p = prepareCode("int a, b, c;", source)
     p.assertNoDiagnostics()
-    val expected = Declaration(int,
-        listOf("a", "b", "c").map { name(it) })
-    assertEquals(listOf(expected.wrap()), p.root.decls)
+    assertEquals(int declare listOf("a", "b", "c").map { name(it) }, p.root.decls[0])
   }
 
   @Test
   fun declarationMultipleDeclarations() {
     val p = prepareCode("int a; int b; int c;", source)
     p.assertNoDiagnostics()
-    val expected = listOf("a", "b", "c").map { int declare it }
-    assertEquals(expected, p.root.decls)
+    assertEquals(listOf("a", "b", "c").map { int declare it }, p.root.decls)
   }
 
   @Test
@@ -93,7 +92,7 @@ class DeclarationTests {
   fun declarationWithBadInitializer() {
     val p = prepareCode("int a = 1 + ;", source)
     assertEquals(DiagnosticId.EXPECTED_PRIMARY, p.diags[0].id)
-    assertEquals(listOf(int declare ("a" assign ErrorNode())), p.root.decls)
+    assertEquals(listOf(int declare ("a" assign ErrorExpression())), p.root.decls)
   }
 
   @Test

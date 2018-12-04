@@ -1,6 +1,7 @@
 package slak.test
 
-import slak.ckompiler.*
+import slak.ckompiler.Diagnostic
+import slak.ckompiler.SourceFileName
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import kotlin.test.assertEquals
@@ -24,104 +25,95 @@ internal val double = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywo
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList())
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
-internal infix fun <LHS, RHS> LHS.assertEquals(rhs: RHS) {
-  if (this is ASTNode && rhs is ASTNode) return assertEquals(this, rhs as ASTNode)
-  if (this is ASTNode && rhs is EitherNode<*>) return assertEquals(this.wrap(), rhs)
-  if (this is EitherNode<*> && rhs is ASTNode) return assertEquals(this, rhs.wrap())
-  if (this is EitherNode<*> && rhs is EitherNode<*>) return assertEquals(this, rhs as EitherNode<*>)
-  throw IllegalArgumentException("Bad types")
-}
+internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
-internal fun name(s: String): EitherNode<IdentifierNode> = IdentifierNode(s).wrap()
+internal fun name(s: String): IdentifierNode = IdentifierNode(s)
 
-internal infix fun String.assign(value: Expression) = InitDeclarator(name(this), value.wrap())
-internal infix fun String.assign(value: ErrorNode) = InitDeclarator(name(this), value)
+internal infix fun String.assign(value: Expression) = InitDeclarator(name(this), value)
 
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
-    Declaration(this, listOf(decl.wrap())).wrap()
+    RealDeclaration(this, listOf(decl))
 
 internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) =
-    Declaration(this, list.map { it.wrap() }).wrap()
+    RealDeclaration(this, list.map { it })
 
 internal infix fun DeclarationSpecifier.func(decl: Declarator) =
-    Declaration(this, listOf(decl.wrap()))
-internal infix fun DeclarationSpecifier.declare(s: String): EitherNode<Declaration> {
-  return Declaration(this, listOf(name(s))).wrap()
-}
+    RealDeclaration(this, listOf(decl))
+internal infix fun DeclarationSpecifier.declare(s: String) = RealDeclaration(this, listOf(name(s)))
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, name(s))
 
-internal infix fun String.withParams(params: List<ParameterDeclaration>): Declarator {
-  return FunctionDeclarator(name(this), params)
-}
+internal infix fun String.withParams(params: List<ParameterDeclaration>) =
+    FunctionDeclarator(name(this), params)
 
-internal infix fun Declaration.body(s: EitherNode<CompoundStatement>): FunctionDefinition {
-  if (this.declaratorList.size != 1) throw IllegalArgumentException("Not function")
-  val d = this.declaratorList[0]
-  if (d is EitherNode.Value<*>) {
-    if (d.value !is FunctionDeclarator) throw IllegalArgumentException("Not function")
-    val fd = d.value as FunctionDeclarator
-    return FunctionDefinition(this.declSpecs, fd.wrap(), s)
+internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
+  if (s !is CompoundStatement && s !is ErrorStatement) {
+    throw IllegalArgumentException("Not compound or error")
   }
-  return FunctionDefinition(this.declSpecs, ErrorNode(), s)
+  if (declaratorList.size != 1) throw IllegalArgumentException("Not function")
+  val d = declaratorList[0] as? FunctionDeclarator ?: throw IllegalArgumentException("Not function")
+  return FunctionDefinition(declSpecs, d, s)
 }
 
-internal infix fun Declaration.body(s: CompoundStatement) = this body s.wrap()
-internal infix fun Declaration.body(list: List<BlockItem>) = this body list.compound()
+internal infix fun RealDeclaration.body(list: List<BlockItem>) = this body list.compound()
 
-internal fun ifSt(e: Expression, success: () -> Statement) =
-    IfStatement(e.wrap(), success().wrap(), null)
-
-internal fun ifSt(e: Expression, success: List<BlockItem>) =
-    IfStatement(e.wrap(), success.compound().wrap(), null)
-
-internal fun ifSt(e: ErrorNode, success: () -> Statement) =
-    IfStatement(e, success().wrap(), null)
+internal fun ifSt(e: Expression, success: () -> Statement) = IfStatement(e, success(), null)
+internal fun ifSt(e: Expression, success: CompoundStatement) = IfStatement(e, success, null)
 
 internal infix fun IfStatement.elseSt(failure: () -> Statement) =
-    IfStatement(this.cond, this.success, failure().wrap())
+    IfStatement(this.cond, this.success, failure())
 
-internal infix fun IfStatement.elseSt(failure: List<BlockItem>) =
-    IfStatement(this.cond, this.success, failure.compound().wrap())
+internal infix fun IfStatement.elseSt(failure: CompoundStatement) =
+    IfStatement(this.cond, this.success, failure)
 
-internal fun returnSt(e: Expression) = ReturnStatement(e.wrap())
+internal fun returnSt(e: Expression) = ReturnStatement(e)
 
-internal fun List<BlockItem>.compound() = CompoundStatement(this.map { it.wrap() })
+internal fun <T : ASTNode> compoundOf(vararg elements: T) = listOf(*elements).compound()
 
-internal fun whileSt(e: EitherNode<Expression>, loopable: EitherNode<Statement>) =
-    WhileStatement(e, loopable)
+internal fun emptyCompound() = CompoundStatement(emptyList())
 
-internal fun whileSt(e: Expression, loopable: () -> Statement) =
-    whileSt(e.wrap(), loopable().wrap())
+internal fun List<ASTNode>.compound() = CompoundStatement(map { when (it) {
+  is Statement -> StatementItem(it)
+  is Declaration -> DeclarationItem(it)
+  else -> throw IllegalArgumentException("Bad type")
+} })
 
-internal fun whileSt(e: ErrorNode, loopable: () -> Statement) = whileSt(e, loopable().wrap())
+internal fun whileSt(e: Expression, loopable: Statement) = WhileStatement(e, loopable)
+internal fun whileSt(e: Expression, loopable: () -> Statement) = whileSt(e, loopable())
+internal infix fun Statement.asDoWhile(cond: Expression) = DoWhileStatement(cond, this)
 
-internal infix fun Statement.asDoWhile(cond: EitherNode<Expression>) =
-    DoWhileStatement(cond, this.wrap())
-
-internal infix fun EitherNode<Statement>.asDoWhile(cond: EitherNode<Expression>) =
-    DoWhileStatement(cond, this)
-
-internal fun forSt(t: Triple<ForInitializer?, Expression?, Expression?>,
-                   loopable: EitherNode<Statement>): ForStatement {
-  return ForStatement(t.first?.wrap(), t.second?.wrap(), t.third?.wrap(), loopable)
+internal fun forSt(e: ForInitializer,
+                   cond: Expression?,
+                   cont: Expression?,
+                   loopable: Statement): ForStatement {
+  return ForStatement(e, cond, cont, loopable)
 }
 
-internal infix fun String.labeled(s: Statement): LabeledStatement {
-  return LabeledStatement(IdentifierNode(this), s.wrap())
+internal fun forSt(e: Expression,
+                   cond: Expression?,
+                   cont: Expression?,
+                   loopable: Statement): ForStatement {
+  return ForStatement(ExpressionInitializer(e), cond, cont, loopable)
 }
+
+internal fun forSt(e: Declaration,
+                   cond: Expression?,
+                   cont: Expression?,
+                   loopable: Statement): ForStatement {
+  return ForStatement(DeclarationInitializer(e), cond, cont, loopable)
+}
+
+internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNode(this), s)
 
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
-internal infix fun String.call(l: List<Expression>): FunctionCall {
-  return FunctionCall(name(this), l.map { it.wrap() })
-}
+internal infix fun String.call(l: List<Expression>) = FunctionCall(name(this), l.map { it })
 
 internal class BinaryBuilder {
   var lhs: Expression? = null
   var rhs: Expression? = null
   fun build(op: Operators): BinaryExpression {
-    return BinaryExpression(op, lhs!!.wrap(), rhs!!.wrap())
+    return BinaryExpression(op, lhs!!, rhs!!)
   }
 }
 
@@ -136,14 +128,12 @@ internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.S
 internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.MUL
 internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with Operators.DIV
 
-private fun <T> parseDSLElement(it: T): EitherNode<Expression> {
+private fun <T> parseDSLElement(it: T): Expression {
   @Suppress("UNCHECKED_CAST")
   return when (it) {
-    is ErrorNode -> ErrorNode()
-    is Expression -> it.wrap()
-    is EitherNode.Value<*> -> it as EitherNode<Expression>
-    is Int -> int(it.toLong()).wrap()
-    is Double -> double(it.toDouble()).wrap()
+    is Expression -> it
+    is Int -> int(it.toLong())
+    is Double -> double(it.toDouble())
     is String -> name(it)
     else -> throw IllegalArgumentException("Bad types")
   }

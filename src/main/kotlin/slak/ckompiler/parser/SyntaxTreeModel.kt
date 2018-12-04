@@ -5,49 +5,61 @@ import slak.ckompiler.lexer.*
 /** Base interface of all nodes from an Abstract Syntax Tree. */
 interface ASTNode
 
-/** Can either be [ErrorNode] or an [ASTNode]. */
-sealed class EitherNode<out N : ASTNode> {
-  data class Value<out N : ASTNode>(val value: N) : EitherNode<N>() {
-    override fun toString() = value.toString()
-  }
-
-  fun orNull(): N? = if (this is ErrorNode) null else (this as Value).value
-
-  override fun toString(): String {
-    return if (this is Value) value.toString() else (this as ErrorNode).toString()
-  }
+/**
+ * Signals an error condition in the parser. If some part of the grammar cannot be parsed, an
+ * instance of this interface is returned.
+ *
+ * All instances of [ErrorNode] should be equal.
+ */
+interface ErrorNode : ASTNode {
+  override fun equals(other: Any?): Boolean
+  override fun hashCode(): Int
+  override fun toString(): String
 }
 
 /**
- * Signals an error condition in the parser. If some part of the grammar cannot be parsed, this is
- * returned.
- *
- * All instances of [ErrorNode] are equal.
+ * Generic implementation of [Any.equals], [Any.hashCode] and [Any.toString] for an [ErrorNode]
+ * implementor. Useful for delegation.
+ * @see ErrorNode
  */
-class ErrorNode : ASTNode, EitherNode<Nothing>() {
+private object ErrorNodeImpl : ErrorNode {
   override fun equals(other: Any?) = other is ErrorNode
-  override fun hashCode() = javaClass.hashCode()
+  override fun hashCode() = javaClass.packageName.hashCode()
   override fun toString() = "<ERROR>"
 }
 
-/** Transform a concrete [ASTNode] instance into an [EitherNode.Value] instance. */
-fun <T : ASTNode> T.wrap(): EitherNode<T> = EitherNode.Value(this)
+interface StringClassName {
+  override fun toString(): String
+}
+
+/**
+ * Generic implementation of [Any.toString] that prints the class' simple name.
+ * Useful for delegation.
+ * @see StringClassName
+ */
+private object StringClassNameImpl : StringClassName {
+  override fun toString() = javaClass.simpleName!!
+}
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
 class RootNode : ASTNode {
-  private val declarations = mutableListOf<EitherNode<ExternalDeclaration>>()
-  val decls: List<EitherNode<ExternalDeclaration>> = declarations
+  private val declarations = mutableListOf<ExternalDeclaration>()
+  val decls: List<ExternalDeclaration> = declarations
 
-  fun addExternalDeclaration(n: EitherNode<ExternalDeclaration>) {
+  fun addExternalDeclaration(n: ExternalDeclaration) {
     declarations.add(n)
   }
 }
 
 /** C standard: 6.7.6 */
-sealed class Declarator : ASTNode
+sealed class Declarator
+
+class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl
 
 /** C standard: A.2.3, 6.8 */
-interface Statement : BlockItem
+interface Statement : ASTNode
+
+class ErrorStatement : Statement, ErrorNode by ErrorNodeImpl
 
 /** The standard says no-ops are expressions, but here it is represented separately. */
 object Noop : Statement {
@@ -58,7 +70,9 @@ object Noop : Statement {
  * Represents an expression.
  * C standard: A.2.3, 6.8.3
  */
-interface Expression : Statement, ForInitializer
+interface Expression : Statement
+
+class ErrorExpression : Expression, ErrorNode by ErrorNodeImpl
 
 /**
  * This interface does not match with what the standard calls "primary-expression".
@@ -67,28 +81,26 @@ interface Expression : Statement, ForInitializer
 interface PrimaryExpression : ASTNode, Expression
 
 /** C standard: A.2.1 */
-data class SizeofExpression(val sizeExpr: EitherNode<Expression>) : PrimaryExpression
+data class SizeofExpression(val sizeExpr: Expression) : PrimaryExpression
 
-data class PrefixIncrement(val expr: EitherNode<Expression>) : PrimaryExpression
-data class PrefixDecrement(val expr: EitherNode<Expression>) : PrimaryExpression
-data class PostfixIncrement(val expr: EitherNode<Expression>) : PrimaryExpression
-data class PostfixDecrement(val expr: EitherNode<Expression>) : PrimaryExpression
+data class PrefixIncrement(val expr: Expression) : PrimaryExpression
+data class PrefixDecrement(val expr: Expression) : PrimaryExpression
+data class PostfixIncrement(val expr: Expression) : PrimaryExpression
+data class PostfixDecrement(val expr: Expression) : PrimaryExpression
 
-data class FunctionCall(val calledExpr: EitherNode<Expression>,
-                        val args: List<EitherNode<Expression>>) : PrimaryExpression
+data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : PrimaryExpression
 
 /**
  * This does not represent the entire "unary-expression" from the standard, just the
  * "unary-operator cast-expression" part of it.
  * C standard: A.2.1
  */
-data class UnaryExpression(val op: Operators,
-                           val operand: EitherNode<Expression>) : PrimaryExpression
+data class UnaryExpression(val op: Operators, val operand: Expression) : PrimaryExpression
 
 /** Represents a binary operation in an expression. */
 data class BinaryExpression(val op: Operators,
-                            val lhs: EitherNode<Expression>,
-                            val rhs: EitherNode<Expression>) : PrimaryExpression {
+                            val lhs: Expression,
+                            val rhs: Expression) : PrimaryExpression {
   override fun toString() = "($lhs $op $rhs)"
 }
 
@@ -161,47 +173,51 @@ data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
 }
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
-data class InitDeclarator(val declarator: EitherNode<Declarator>,
-                          val initializer: EitherNode<Expression>) : Declarator()
+data class InitDeclarator(val declarator: Declarator,
+                          val initializer: Expression) : Declarator()
 
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
-                                val declarator: EitherNode<Declarator>) : ASTNode
+                                val declarator: Declarator) : ASTNode
 
 // FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
-data class FunctionDeclarator(val declarator: EitherNode<Declarator>,
+data class FunctionDeclarator(val declarator: Declarator,
                               val params: List<ParameterDeclaration>,
                               val isVararg: Boolean = false) : Declarator()
-
-/** C standard: A.2.3, 6.8.2 */
-interface BlockItem : ASTNode
 
 /** C standard: A.2.4 */
 sealed class ExternalDeclaration : ASTNode
 
 /** C standard: A.2.2 */
-data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<EitherNode<Declarator>>
-) : ExternalDeclaration(), BlockItem, ForInitializer
+sealed class Declaration : ExternalDeclaration()
+
+data class RealDeclaration(val declSpecs: DeclarationSpecifier,
+                           val declaratorList: List<Declarator>) : Declaration()
+
+class ErrorDeclaration : Declaration(), ErrorNode by ErrorNodeImpl
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
-                              val declarator: EitherNode<FunctionDeclarator>,
-                              val block: EitherNode<CompoundStatement>) : ExternalDeclaration()
+                              val functionDeclarator: Declarator,
+                              val compoundStatement: Statement) : ExternalDeclaration()
 
 /** C standard: A.2.3, 6.8.2 */
-data class CompoundStatement(val items: List<EitherNode<BlockItem>>) : Statement
+sealed class BlockItem : ASTNode
+data class DeclarationItem(val declaration: Declaration) : BlockItem()
+data class StatementItem(val statement: Statement) : BlockItem()
+
+/** C standard: A.2.3, 6.8.2 */
+data class CompoundStatement(val items: List<BlockItem>) : Statement
 
 /** C standard: 6.8.1 */
-data class LabeledStatement(val label: IdentifierNode,
-                            val statement: EitherNode<Statement>) : Statement
+data class LabeledStatement(val label: IdentifierNode, val statement: Statement) : Statement
 
 /** C standard: 6.8.4 */
 interface SelectionStatement : Statement
 
 /** C standard: 6.8.4.1 */
-data class IfStatement(val cond: EitherNode<Expression>,
-                       val success: EitherNode<Statement>,
-                       val failure: EitherNode<Statement>?) : SelectionStatement
+data class IfStatement(val cond: Expression,
+                       val success: Statement,
+                       val failure: Statement?) : SelectionStatement
 
 /** C standard: 6.8.4.2 */
 data class SwitchStatement(val switch: Expression, val body: Statement) : SelectionStatement
@@ -210,36 +226,34 @@ data class SwitchStatement(val switch: Expression, val body: Statement) : Select
 interface IterationStatement : Statement
 
 /** C standard: 6.8.5.1 */
-data class WhileStatement(val cond: EitherNode<Expression>,
-                          val loopable: EitherNode<Statement>) : IterationStatement
+data class WhileStatement(val cond: Expression, val loopable: Statement) : IterationStatement
 
 /** C standard: 6.8.5.2 */
-data class DoWhileStatement(val cond: EitherNode<Expression>,
-                            val loopable: EitherNode<Statement>) : IterationStatement
+data class DoWhileStatement(val cond: Expression, val loopable: Statement) : IterationStatement
 
-interface ForInitializer : ASTNode
+sealed class ForInitializer : ASTNode
+object EmptyInitializer : ForInitializer(), StringClassName by StringClassNameImpl
+data class DeclarationInitializer(val value: Declaration) : ForInitializer()
+data class ExpressionInitializer(val value: Expression) : ForInitializer()
+class ErrorInitializer : ForInitializer(), ErrorNode by ErrorNodeImpl
 
 /** C standard: 6.8.5.3 */
-data class ForStatement(val init: EitherNode<ForInitializer>?,
-                        val cond: EitherNode<Expression>?,
-                        val loopEnd: EitherNode<Expression>?,
-                        val loopable: EitherNode<Statement>) : IterationStatement
+data class ForStatement(val init: ForInitializer,
+                        val cond: Expression?,
+                        val loopEnd: Expression?,
+                        val loopable: Statement) : IterationStatement
 
 /** C standard: 6.8.6 */
 sealed class JumpStatement : Statement
 
 /** C standard: 6.8.6.2 */
-object ContinueStatement : JumpStatement() {
-  override fun toString() = javaClass.simpleName!!
-}
+object ContinueStatement : JumpStatement(), StringClassName by StringClassNameImpl
 
 /** C standard: 6.8.6.3 */
-object BreakStatement : JumpStatement() {
-  override fun toString() = javaClass.simpleName!!
-}
+object BreakStatement : JumpStatement(), StringClassName by StringClassNameImpl
 
 /** C standard: 6.8.6.1 */
 data class GotoStatement(val identifier: IdentifierNode) : JumpStatement()
 
 /** C standard: 6.8.6.4 */
-data class ReturnStatement(val expr: EitherNode<Expression>?) : JumpStatement()
+data class ReturnStatement(val expr: Expression?) : JumpStatement()

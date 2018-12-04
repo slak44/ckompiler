@@ -107,40 +107,40 @@ fun validateTranslationUnit(ast: RootNode): Nothing? {
 //  if (ast.decls.size != validDecls.size) return null
   TODO()
 }
-
-private fun <T : ASTNode> convert(it: T): ASTNode = when (it) {
-  is FunctionDefinition -> convertFuncDef(it)
-  else -> TODO()
-}
-
-private fun convertFuncDef(it: FunctionDefinition): FunctionDefinition {
-  val ds = it.declSpec as? DeclarationSpecifier ?: throw InvalidTreeException()
-  // FIXME: validate declspecs according to function rules
-  val functionDeclarator = it.declarator.convert() as? FunctionDeclarator
-      ?: throw InvalidTreeException()
-  val functionBlock = it.block.orNull() ?: throw InvalidTreeException()
-  functionDeclarator.params.forEach {
-    val paramSpec = it.declSpec as? DeclarationSpecifier ?: throw InvalidTreeException()
-    val paramDecl = it.declarator.convert()
-  }
-//  functions.add(Function(ds, functionDeclarator.name(), , functionBlock))
-  TODO()
-}
-
-private fun EitherNode<Declarator>.convert(): Declarator? {
-  val d = this.orNull() ?: return null
-  when (d) {
-    is IdentifierNode -> return d
-    is FunctionDeclarator -> {
-      val innerDecl = d.declarator.convert() ?: return null
-      val params = d.params.map { }
-    }
-    is InitDeclarator -> {
-      val innerDecl = d.declarator.convert() ?: return null
-      val init =
-          if (d.initializer == null) null
-          else (d.initializer.orNull() ?: return null)
-    }
-  }
-  TODO()
-}
+//
+//private fun <T : ASTNode> convert(it: T): ASTNode = when (it) {
+//  is FunctionDefinition -> convertFuncDef(it)
+//  else -> TODO()
+//}
+//
+//private fun convertFuncDef(it: FunctionDefinition): FunctionDefinition {
+//  val ds = it.declSpec as? DeclarationSpecifier ?: throw InvalidTreeException()
+//  // FIXME: validate declspecs according to function rules
+//  val functionDeclarator = it.declarator.convert() as? FunctionDeclarator
+//      ?: throw InvalidTreeException()
+//  val functionBlock = it.block.orNull() ?: throw InvalidTreeException()
+//  functionDeclarator.params.forEach {
+//    val paramSpec = it.declSpec as? DeclarationSpecifier ?: throw InvalidTreeException()
+//    val paramDecl = it.declarator.convert()
+//  }
+////  functions.add(Function(ds, functionDeclarator.name(), , functionBlock))
+//  TODO()
+//}
+//
+//private fun EitherNode<Declarator>.convert(): Declarator? {
+//  val d = this.orNull() ?: return null
+//  when (d) {
+//    is IdentifierNode -> return d
+//    is FunctionDeclarator -> {
+//      val innerDecl = d.declarator.convert() ?: return null
+//      val params = d.params.map { }
+//    }
+//    is InitDeclarator -> {
+//      val innerDecl = d.declarator.convert() ?: return null
+//      val init =
+//          if (d.initializer == null) null
+//          else (d.initializer.orNull() ?: return null)
+//    }
+//  }
+//  TODO()
+//}

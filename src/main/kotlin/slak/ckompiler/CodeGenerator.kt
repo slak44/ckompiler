@@ -21,23 +21,23 @@ class CodeGenerator(val ast: RootNode) {
   }
 
   init {
-    // FIXME: remove filter
-    ast.decls.map { it.asVal() }
-        .filter { it is FunctionDefinition }
-        .forEach { genFunction(it as FunctionDefinition) }
+//    // FIXME: remove filter
+//    ast.decls.map { it.asVal() }
+//        .filter { it is FunctionDefinition }
+//        .forEach { genFunction(it as FunctionDefinition) }
   }
 
-  /**
-   * Coerces an [EitherNode] to the concrete value of type [N].
-   * @throws InternalCompilerError if called on an [ErrorNode]
-   * @return [EitherNode.Value.value]
-   */
-  private fun <N : ASTNode> EitherNode<N>.asVal(): N {
-    if (this is ErrorNode) {
-      logger.throwICE("An error node was coerced to a real node") { this }
-    }
-    return (this as EitherNode.Value).value
-  }
+//  /**
+//   * Coerces an [EitherNode] to the concrete value of type [N].
+//   * @throws InternalCompilerError if called on an [ErrorNode]
+//   * @return [EitherNode.Value.value]
+//   */
+//  private fun <N : ASTNode> EitherNode<N>.asVal(): N {
+//    if (this is ErrorNode) {
+//      logger.throwICE("An error node was coerced to a real node") { this }
+//    }
+//    return (this as EitherNode.Value).value
+//  }
 
   private fun List<String>.joinInstructions(): String {
     return joinToString("\n") { "  $it" }
@@ -63,24 +63,24 @@ class CodeGenerator(val ast: RootNode) {
     else -> TODO()
   }
 
-  private fun genFunction(f: FunctionDefinition) {
-    // FIXME: the declarator can also be a pointer+ident combo
-    val name = (f.declarator.asVal().declarator.asVal() as IdentifierNode).name
-    before.add("global $name")
-    val instr = mutableListOf<String>()
-    instr.add("push rbp")
-    f.block.asVal().items.map { it.asVal() }.forEach {
-      val item = when (it) {
-        is Declaration -> TODO()
-        is Statement -> genStatement(f, it)
-        else -> TODO()
-      }
-      instr.add(item)
-    }
-    instr.add("pop rbp")
-    text.add("$name:")
-    text.add(instr.joinInstructions())
-  }
+//  private fun genFunction(f: FunctionDefinition) {
+//    // FIXME: the declarator can also be a pointer+ident combo
+//    val name = (f.declarator.asVal().declarator.asVal() as IdentifierNode).name
+//    before.add("global $name")
+//    val instr = mutableListOf<String>()
+//    instr.add("push rbp")
+//    f.block.asVal().items.map { it.asVal() }.forEach {
+//      val item = when (it) {
+//        is Declaration -> TODO()
+//        is Statement -> genStatement(f, it)
+//        else -> TODO()
+//      }
+//      instr.add(item)
+//    }
+//    instr.add("pop rbp")
+//    text.add("$name:")
+//    text.add(instr.joinInstructions())
+//  }
 
   fun getNasm(): String {
     return before.joinToString("\n") +

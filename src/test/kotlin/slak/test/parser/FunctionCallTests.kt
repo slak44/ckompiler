@@ -2,7 +2,6 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.parser.FunctionCall
-import slak.ckompiler.parser.wrap
 import slak.test.*
 
 class FunctionCallTests {
@@ -60,6 +59,6 @@ class FunctionCallTests {
   fun callAnExpr() {
     val p = prepareCode("int a = (a + 72)(123);", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign FunctionCall(("a" add 72).wrap(), listOf(int(123).wrap())))
+    int declare ("a" assign FunctionCall("a" add 72, listOf(int(123))))
   }
 }
