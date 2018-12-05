@@ -305,8 +305,7 @@ class Parser(tokens: List<Token>,
    *
    * C standard: A.2.1, 6.4.4, 6.5.3
    * @see parseTerminal
-   * @return null if no primary was found, or the [Expression] otherwise (this doesn't return a
-   * [PrimaryExpression] because `( expression )` is a primary expression in itself)
+   * @return null if no primary was found, or the [Expression] otherwise
    */
   private fun parsePrimaryExpr(): Expression? {
     if (isEaten()) {
@@ -327,7 +326,7 @@ class Parser(tokens: List<Token>,
    * @see CharacterConstantNode
    * @return the [Terminal] node, or null if no terminal was found
    */
-  private fun parseTerminal(): Terminal? {
+  private fun parseTerminal(): Expression? {
     val tok = current()
     when (tok) {
       is Identifier -> return IdentifierNode(tok.name)
@@ -516,7 +515,7 @@ class Parser(tokens: List<Token>,
         return@tokenContext ErrorDeclarator()
       }
       current() is Identifier -> {
-        val name = IdentifierNode((current() as Identifier).name)
+        val name = NameDeclarator(IdentifierNode((current() as Identifier).name))
         eat()
         when {
           isEaten() -> return@tokenContext name
@@ -782,7 +781,7 @@ class Parser(tokens: List<Token>,
     } else {
       eat() // The ';'
     }
-    return ContinueStatement
+    return ContinueStatement()
   }
 
   /** C standard: A.2.3, 6.8.6.3 */
@@ -798,7 +797,7 @@ class Parser(tokens: List<Token>,
     } else {
       eat() // The ';'
     }
-    return BreakStatement
+    return BreakStatement()
   }
 
   /** C standard: A.2.3, 6.8.6.3 */
@@ -966,7 +965,7 @@ class Parser(tokens: List<Token>,
       }
       // Handle the case where we have an empty clause1
       val clause1 = if (firstSemi == 0) {
-        EmptyInitializer
+        EmptyInitializer()
       } else {
         // parseDeclaration wants to see the semicolon as well, so +1
         tokenContext(firstSemi + 1) {
@@ -1025,7 +1024,7 @@ class Parser(tokens: List<Token>,
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
       eat()
-      return Noop
+      return Noop()
     }
     return parseLabeledStatement()
         ?: parseCompoundStatement()

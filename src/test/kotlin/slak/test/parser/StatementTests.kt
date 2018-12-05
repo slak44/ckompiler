@@ -143,9 +143,9 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
         ifSt(int(1)) {
-          Noop
+          Noop()
         } elseSt {
-          Noop
+          Noop()
         }
     ) assertEquals p.root.decls[0]
   }
@@ -199,7 +199,7 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
         whileSt(int(1)) {
-          BreakStatement
+          BreakStatement()
         }
     ) assertEquals p.root.decls[0]
   }
@@ -213,7 +213,7 @@ class StatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
     int func ("main" withParams emptyList()) body compoundOf(
-        BreakStatement
+        BreakStatement()
     ) assertEquals p.root.decls[0]
   }
 
@@ -227,7 +227,7 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
         whileSt(int(1)) {
-          ContinueStatement
+          ContinueStatement()
         }
     ) assertEquals p.root.decls[0]
   }
@@ -241,7 +241,7 @@ class StatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
     int func ("main" withParams emptyList()) body compoundOf(
-        ContinueStatement
+        ContinueStatement()
     ) assertEquals p.root.decls[0]
   }
 
@@ -254,7 +254,7 @@ class StatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        "label" labeled Noop
+        "label" labeled Noop()
     ) assertEquals p.root.decls[0]
   }
 

@@ -28,8 +28,9 @@ internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, F
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s)
+internal fun nameDecl(s: String) = NameDeclarator(name(s))
 
-internal infix fun String.assign(value: Expression) = InitDeclarator(name(this), value)
+internal infix fun String.assign(value: Expression) = InitDeclarator(nameDecl(this), value)
 
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
     RealDeclaration(this, listOf(decl))
@@ -39,12 +40,12 @@ internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) =
 
 internal infix fun DeclarationSpecifier.func(decl: Declarator) =
     RealDeclaration(this, listOf(decl))
-internal infix fun DeclarationSpecifier.declare(s: String) = RealDeclaration(this, listOf(name(s)))
+internal infix fun DeclarationSpecifier.declare(s: String) = RealDeclaration(this, listOf(nameDecl(s)))
 
-internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, name(s))
+internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
 
 internal infix fun String.withParams(params: List<ParameterDeclaration>) =
-    FunctionDeclarator(name(this), params)
+    FunctionDeclarator(nameDecl(this), params)
 
 internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
   if (s !is CompoundStatement && s !is ErrorStatement) {

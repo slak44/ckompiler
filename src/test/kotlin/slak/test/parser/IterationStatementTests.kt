@@ -78,7 +78,7 @@ class IterationStatementTests {
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
         whileSt(int(1)) {
-          Noop
+          Noop()
         }
     ) assertEquals p.root.decls[0]
   }
@@ -198,7 +198,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(1 add 1, 1 add 1, 1 add 1, Noop)
+        forSt(1 add 1, 1 add 1, 1 add 1, Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -211,7 +211,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(int declare ("i" assign int(65)), 1 add 1, 1 add 1, Noop)
+        forSt(int declare ("i" assign int(65)), 1 add 1, 1 add 1, Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -237,7 +237,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(EmptyInitializer, 1 add 1, 1 add 1, Noop)
+        forSt(EmptyInitializer(), 1 add 1, 1 add 1, Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -250,7 +250,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(1 add 1, null, 1 add 1, Noop)
+        forSt(1 add 1, null, 1 add 1, Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -263,7 +263,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(1 add 1, 1 add 1, null, Noop)
+        forSt(1 add 1, 1 add 1, null, Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -276,7 +276,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(EmptyInitializer, null, null, Noop)
+        forSt(EmptyInitializer(), null, null, Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -289,7 +289,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(1 add 1, ErrorExpression(), ErrorExpression(), Noop)
+        forSt(1 add 1, ErrorExpression(), ErrorExpression(), Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -302,7 +302,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(ErrorInitializer(), ErrorExpression(), ErrorExpression(), Noop)
+        forSt(ErrorInitializer(), ErrorExpression(), ErrorExpression(), Noop())
     ) assertEquals p.root.decls[0]
   }
 
@@ -315,7 +315,7 @@ class IterationStatementTests {
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
     int func ("main" withParams emptyList()) body compoundOf(
-        forSt(ErrorInitializer(), ErrorExpression(), ErrorExpression(), Noop)
+        forSt(ErrorInitializer(), ErrorExpression(), ErrorExpression(), Noop())
     ) assertEquals p.root.decls[0]
   }
 

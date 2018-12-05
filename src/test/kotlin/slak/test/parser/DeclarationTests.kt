@@ -35,7 +35,7 @@ class DeclarationTests {
   fun declarationMultipleDeclarators() {
     val p = prepareCode("int a, b, c;", source)
     p.assertNoDiagnostics()
-    assertEquals(int declare listOf("a", "b", "c").map { name(it) }, p.root.decls[0])
+    assertEquals(int declare listOf("a", "b", "c").map { nameDecl(it) }, p.root.decls[0])
   }
 
   @Test
