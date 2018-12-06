@@ -38,7 +38,7 @@ sealed class ASTNode {
     lateParent = parent
   }
 
-  override fun equals(other: Any?) = true
+  override fun equals(other: Any?) = other is ASTNode
   override fun hashCode() = javaClass.hashCode()
 }
 
