@@ -6,13 +6,17 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("AST")
 
-/** Base interface of all nodes from an Abstract Syntax Tree. */
-sealed class ASTNode {
+/**
+ * Base class of all nodes from an Abstract Syntax Tree.
+ * @param isRoot set to true if this [ASTNode] is the root node for the tree
+ */
+sealed class ASTNode(val isRoot: Boolean = false) {
   private var lateParent: ASTNode? = null
 
   /**
    * A reference to this node's parent.
-   * @throws slak.ckompiler.InternalCompilerError if accessed on a tree without a parent set
+   * @throws slak.ckompiler.InternalCompilerError if accessed on a tree without a parent set or on
+   * a node with [isRoot] set
    */
   val parent: ASTNode by lazy {
     if (lateParent == null) {
@@ -27,7 +31,8 @@ sealed class ASTNode {
    * Calls to this function that occur after accessing [ASTNode.parent] are no-ops.
    *
    * @param parent the new parent
-   * @throws slak.ckompiler.InternalCompilerError if the [parent] is an instance of [Terminal]
+   * @throws slak.ckompiler.InternalCompilerError if the [parent] is an instance of [Terminal], or
+   * this node is a root node
    */
   fun setParent(parent: ASTNode) {
     if (parent is Terminal) {
@@ -35,11 +40,46 @@ sealed class ASTNode {
         "parent: $parent, this: $this"
       }
     }
+    if (isRoot) {
+      logger.throwICE("Trying to add a parent to a root node") { "parent: $parent, this: $this" }
+    }
     lateParent = parent
+  }
+
+  /**
+   * Finds the innermost [LexicalScope] of type [T]. Returns null if this node is not part of any
+   * scope of that type.
+   */
+  inline fun <reified T> nearestScope(): T? where T : LexicalScope, T : ASTNode {
+    var node = this
+    while (node !is T) {
+      if (node.isRoot) return null
+      node = node.parent
+    }
+    return node
   }
 
   override fun equals(other: Any?) = other is ASTNode
   override fun hashCode() = javaClass.hashCode()
+}
+
+/**
+ * An [ASTNode] that implements this interface can store lexically-scoped identifiers.
+ *
+ * C standard: 6.2.1
+ */
+interface LexicalScope
+
+/**
+ * C standard: 6.2.1.3
+ */
+class FunctionScope : LexicalScope {
+  private var _labels = mutableListOf<LabeledStatement>()
+  val labels: List<LabeledStatement> = _labels
+
+  fun addLabel(label: LabeledStatement) {
+    _labels.add(label)
+  }
 }
 
 /** Represents a leaf node of an AST (ie an [ASTNode] that is a parent to nobody). */
@@ -82,7 +122,7 @@ private object StringClassNameImpl : StringClassName {
 }
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
-class RootNode : ASTNode() {
+class RootNode : ASTNode(isRoot = true) {
   private val declarations = mutableListOf<ExternalDeclaration>()
   val decls: List<ExternalDeclaration> = declarations
 
@@ -297,7 +337,8 @@ class ErrorDeclaration : Declaration(), ErrorNode by ErrorNodeImpl
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
                               val functionDeclarator: Declarator,
-                              val compoundStatement: Statement) : ExternalDeclaration() {
+                              val compoundStatement: Statement) :
+    ExternalDeclaration(), LexicalScope by FunctionScope() {
   init {
     functionDeclarator.setParent(this)
     compoundStatement.setParent(this)
