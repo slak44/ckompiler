@@ -20,6 +20,7 @@ class Parser(tokens: List<Token>,
              private val srcText: String) {
   private val tokStack = Stack<List<Token>>()
   private val idxStack = Stack<Int>()
+  private val scopeStack = Stack<LexicalScope>()
   val diags = mutableListOf<Diagnostic>()
   val root = RootNode()
 
@@ -38,8 +39,38 @@ class Parser(tokens: List<Token>,
   init {
     tokStack.push(tokens)
     idxStack.push(0)
+    scopeStack.push(LexicalScope())
     translationUnit()
     diags.forEach { it.print() }
+  }
+
+  private fun <R> scoped(block: () -> R): R {
+    scopeStack.push(LexicalScope())
+    val ret = block()
+    scopeStack.pop()
+    return ret
+  }
+
+  private fun addToScope(id: IdentifierNode) {
+    if (scopeStack.peek().idents.any { it.name == id.name }) {
+      parserDiagnostic {
+        // FIXME: print error
+      }
+      return
+    }
+    scopeStack.peek().idents.add(id)
+  }
+
+  /**
+   * Searches all the scopes for a given identifier.
+   * @return null if no such identifier exists, or the previous [IdentifierNode] otherwise
+   */
+  private fun searchInScope(target: IdentifierNode): IdentifierNode? {
+    scopeStack.forEach {
+      val idx = it.idents.indexOfFirst { id -> id.name == target.name }
+      if (idx != -1) return it.idents[idx]
+    }
+    return null
   }
 
   /** Gets a token, or if all were eaten, the last one. Useful for diagnostics. */
@@ -1099,8 +1130,10 @@ class Parser(tokens: List<Token>,
   private tailrec fun translationUnit() {
     if (isEaten()) return
     val res = parseFunctionDefinition()?.let {
+      it.functionDeclarator.name()?.let { name -> addToScope(name) }
       root.addExternalDeclaration(it)
     } ?: parseDeclaration()?.let {
+      it.identifiers().forEach { id -> addToScope(id) }
       root.addExternalDeclaration(it)
     }
     if (res == null) {

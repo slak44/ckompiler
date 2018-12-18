@@ -46,40 +46,17 @@ sealed class ASTNode(val isRoot: Boolean = false) {
     lateParent = parent
   }
 
-  /**
-   * Finds the innermost [LexicalScope] of type [T]. Returns null if this node is not part of any
-   * scope of that type.
-   */
-  inline fun <reified T> nearestScope(): T? where T : LexicalScope, T : ASTNode {
-    var node = this
-    while (node !is T) {
-      if (node.isRoot) return null
-      node = node.parent
-    }
-    return node
-  }
-
   override fun equals(other: Any?) = other is ASTNode
   override fun hashCode() = javaClass.hashCode()
 }
 
 /**
- * An [ASTNode] that implements this interface can store lexically-scoped identifiers.
+ * This class stores lexically-scoped identifiers.
  *
  * C standard: 6.2.1
  */
-interface LexicalScope
-
-/**
- * C standard: 6.2.1.3
- */
-class FunctionScope : LexicalScope {
-  private var _labels = mutableListOf<LabeledStatement>()
-  val labels: List<LabeledStatement> = _labels
-
-  fun addLabel(label: LabeledStatement) {
-    _labels.add(label)
-  }
+class LexicalScope {
+  val idents = mutableListOf<IdentifierNode>()
 }
 
 /** Represents a leaf node of an AST (ie an [ASTNode] that is a parent to nobody). */
@@ -282,7 +259,15 @@ data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
 }
 
 /** C standard: 6.7.6 */
-sealed class Declarator : ASTNode()
+sealed class Declarator : ASTNode() {
+  fun name(): IdentifierNode? = when (this) {
+    is ErrorDeclarator -> null
+    is NameDeclarator -> name
+    is InitDeclarator -> declarator.name()
+    is FunctionDeclarator -> declarator.name()
+    is ParameterDeclaration -> declarator.name()
+  }
+}
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl
@@ -322,7 +307,17 @@ data class FunctionDeclarator(val declarator: Declarator,
 sealed class ExternalDeclaration : ASTNode()
 
 /** C standard: A.2.2 */
-sealed class Declaration : ExternalDeclaration()
+sealed class Declaration : ExternalDeclaration() {
+  /**
+   * @return a list of [IdentifierNode]s of declarators in the declaration. Skips over
+   * [ErrorDeclarator]s, and returns an empty list if this is a [ErrorDeclaration]
+   */
+  fun identifiers(): List<IdentifierNode> {
+    if (this is ErrorDeclaration) return emptyList()
+    this as RealDeclaration
+    return declaratorList.mapNotNull { it.name() }
+  }
+}
 
 data class RealDeclaration(val declSpecs: DeclarationSpecifier,
                            val declaratorList: List<Declarator>) : Declaration() {
@@ -337,8 +332,7 @@ class ErrorDeclaration : Declaration(), ErrorNode by ErrorNodeImpl
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,
                               val functionDeclarator: Declarator,
-                              val compoundStatement: Statement) :
-    ExternalDeclaration(), LexicalScope by FunctionScope() {
+                              val compoundStatement: Statement) : ExternalDeclaration() {
   init {
     functionDeclarator.setParent(this)
     compoundStatement.setParent(this)
