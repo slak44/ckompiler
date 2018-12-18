@@ -5,7 +5,6 @@ import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 import java.util.*
 import kotlin.math.min
-import kotlin.reflect.KClass
 
 /**
  * Parses a translation unit.
@@ -443,14 +442,12 @@ class Parser(tokens: List<Token>,
    * [Punctuators] and [Keywords]. Otherwise, it works identically to [findParenMatch].
    * @see findParenMatch
    */
-  private fun <T : StaticToken, E : StaticTokenEnum> findMatch(tokenClass: KClass<T>,
-                                                               start: E,
-                                                               final: E,
-                                                               stopAtSemi: Boolean): Int {
+  private inline fun <reified T, E> findMatch(start: E, final: E, stopAtSemi: Boolean): Int
+      where T : StaticToken, E : StaticTokenEnum {
     var hasParens = false
     var stack = 0
     val end = indexOfFirst {
-      if (it::class != tokenClass) return@indexOfFirst false
+      if (it::class != T::class) return@indexOfFirst false
       it as StaticToken
       when (it.enum) {
         start -> {
@@ -506,7 +503,7 @@ class Parser(tokens: List<Token>,
    * or the (real) idx of the rightmost paren otherwise
    */
   private fun findParenMatch(lparen: Punctuators, rparen: Punctuators, stopAtSemi: Boolean = true) =
-      findMatch(Punctuator::class, lparen, rparen, stopAtSemi)
+      findMatch<Punctuator, Punctuators>(lparen, rparen, stopAtSemi)
 
   /**
    * Parses the params in a function declaration.
@@ -987,7 +984,7 @@ class Parser(tokens: List<Token>,
    */
   private fun parseDoWhile(): Statement? {
     if (current().asKeyword() != Keywords.DO) return null
-    val theWhile = findMatch(Keyword::class, Keywords.DO, Keywords.WHILE, stopAtSemi = false)
+    val theWhile = findMatch<Keyword, Keywords>(Keywords.DO, Keywords.WHILE, stopAtSemi = false)
     eat() // The DO
     if (theWhile == -1) return ErrorStatement()
     val statement = tokenContext(theWhile) { parseStatement() }
