@@ -75,7 +75,7 @@ class LexicalScope {
   }
 
   override fun toString(): String {
-    return "LexicalScope(idents=[${idents.joinToString(", ") { it.name }}]," +
+    return "LexicalScope(idents=[${idents.joinToString(", ") { it.name }}], " +
         "labels=[${labels.joinToString(", ") { it.name }}])"
   }
 }
@@ -215,11 +215,13 @@ data class IdentifierNode(val name: String) : Expression(), Terminal
 
 data class IntegerConstantNode(val value: Long,
                                val suffix: IntegralSuffix) : Expression(), Terminal {
-  override fun toString() = "int $value ${suffix.name.toLowerCase()}"
+  override fun toString() = "$value$suffix"
 }
 
 data class FloatingConstantNode(val value: Double,
-                                val suffix: FloatingSuffix) : Expression(), Terminal
+                                val suffix: FloatingSuffix) : Expression(), Terminal {
+  override fun toString() = "$value$suffix"
+}
 
 /**
  * Stores a character constant.
@@ -273,8 +275,11 @@ data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
       typeQualifiers.isEmpty() && functionSpecs.isEmpty()
 
   override fun toString(): String {
-    val text = listOf(storageClassSpecs, typeSpecifiers,
-        typeQualifiers, functionSpecs).joinToString(" ") { it.joinToString(" ") }
+    val text = listOf(storageClassSpecs, typeSpecifiers, typeQualifiers, functionSpecs)
+        .filter { it.isNotEmpty() }
+        .joinToString(" ") {
+          it.joinToString(" ") { (value) -> value.keyword }
+        }
     return "($text)"
   }
 }
@@ -297,6 +302,8 @@ data class NameDeclarator(val name: IdentifierNode) : Declarator() {
   init {
     name.setParent(this)
   }
+
+  override fun toString() = "NameDeclarator(${name.name})"
 }
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
@@ -305,6 +312,8 @@ data class InitDeclarator(val declarator: Declarator, val initializer: Expressio
     declarator.setParent(this)
     initializer.setParent(this)
   }
+
+  override fun toString() = "InitDeclarator($declarator = $initializer)"
 }
 
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
@@ -372,18 +381,34 @@ data class DeclarationItem(val declaration: Declaration) : BlockItem() {
   init {
     declaration.setParent(this)
   }
+
+  override fun toString() = declaration.toString()
 }
 
 data class StatementItem(val statement: Statement) : BlockItem() {
   init {
     statement.setParent(this)
   }
+
+  override fun toString() = statement.toString()
 }
 
-/** C standard: A.2.3, 6.8.2 */
+/**
+ * A block of [Statement]s.
+ *
+ * C standard: A.2.3, 6.8.2
+ * @param items the things inside the block
+ * @param scope the [LexicalScope] of this block. If this is the block for a function definition,
+ * this is a reference to the function's scope, that is pre-filled with the function arguments.
+ */
 data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope) : Statement() {
   init {
     items.forEach { it.setParent(this) }
+  }
+
+  override fun toString(): String {
+    val stuff = items.joinToString(",") { "\n\t$it" }
+    return "{$stuff\n}"
   }
 }
 
@@ -441,6 +466,8 @@ data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   init {
     value.setParent(this)
   }
+
+  override fun toString() = value.toString()
 }
 
 data class ExpressionInitializer(val value: Expression) : ForInitializer() {

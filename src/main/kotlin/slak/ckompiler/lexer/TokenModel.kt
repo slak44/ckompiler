@@ -154,11 +154,26 @@ fun Token.asUnaryOperator(): Operators? = asPunct()?.asUnaryOperator()
 enum class IntegralSuffix(val length: Int) {
   UNSIGNED(1), LONG(1), LONG_LONG(2),
   UNSIGNED_LONG(2), UNSIGNED_LONG_LONG(3),
-  NONE(0)
+  NONE(0);
+
+  override fun toString() = when (this) {
+    IntegralSuffix.UNSIGNED -> "u"
+    IntegralSuffix.LONG -> "l"
+    IntegralSuffix.LONG_LONG -> "ll"
+    IntegralSuffix.UNSIGNED_LONG -> "ul"
+    IntegralSuffix.UNSIGNED_LONG_LONG -> "ull"
+    IntegralSuffix.NONE -> "i"
+  }
 }
 
 enum class FloatingSuffix(val length: Int) {
-  FLOAT(1), LONG_DOUBLE(1), NONE(0)
+  FLOAT(1), LONG_DOUBLE(1), NONE(0);
+
+  override fun toString() = when (this) {
+    FLOAT -> "f"
+    LONG_DOUBLE -> "ld"
+    NONE -> "d"
+  }
 }
 
 enum class Radix(val prefixLength: Int) {
