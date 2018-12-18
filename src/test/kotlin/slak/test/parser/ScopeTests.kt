@@ -39,4 +39,23 @@ class ScopeTests {
     val p = prepareCode("int x; int main() { int x; }", source)
     p.assertNoDiagnostics()
   }
+
+  @Test
+  fun shadowingFurther() {
+    val p = prepareCode("int x; int main() { int x; { int x; } }", source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun labelRedefinition() {
+    val p = prepareCode("int main() { label:; label:; }", source)
+    assertEquals(p.diags.ids,
+        listOf(DiagnosticId.REDEFINITION_LABEL, DiagnosticId.REDEFINITION_PREVIOUS))
+  }
+
+  @Test
+  fun labelAndVariableTogether() {
+    val p = prepareCode("int main() { label:; int label; }", source)
+    p.assertNoDiagnostics()
+  }
 }
