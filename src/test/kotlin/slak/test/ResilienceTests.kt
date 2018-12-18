@@ -86,6 +86,20 @@ class ResilienceTests {
     ) assertEquals p.root.decls[0]
   }
 
+  @Test
+  fun parserNoConfusionWithBracketsAndFunctions() {
+    val p = prepareCode("""
+      int f(double x);
+      double g() {
+        return 0.1;
+      }
+    """.trimIndent(), source)
+    int func ("f" withParams listOf(double param "x")) assertEquals p.root.decls[0]
+    double func ("g" withParams emptyList()) body compoundOf(
+        returnSt(double(0.1))
+    ) assertEquals p.root.decls[1]
+  }
+
   // FIXME more tests like this
   @Test
   fun lexerCorrectDiagnosticColumn() {

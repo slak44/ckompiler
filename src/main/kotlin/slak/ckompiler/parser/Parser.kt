@@ -573,9 +573,13 @@ class Parser(tokens: List<Token>,
     }
   }
 
-  private fun parseDeclarator(endIdx: Int): Declarator? {
-    // FIXME missing pointer parsing
-    return parseDirectDeclarator(endIdx)
+  private fun parseDeclarator(endIdx: Int): Declarator? = tokenContext(endIdx) {
+    // FIXME: missing pointer parsing
+    val directDecl = parseDirectDeclarator(it.size)
+    if (!isEaten()) {
+      logger.warn { "parseDirectDeclarator did not eat all of its tokens" }
+    }
+    return@tokenContext directDecl
   }
 
   // FIXME: return type will change with the initializer list
