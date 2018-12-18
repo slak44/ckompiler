@@ -12,7 +12,8 @@ import kotlin.test.assertEquals
 /**
  * Tests for correct error reporting. Components should be able to report multiple errors correctly,
  * even with other errors around, without being influenced by whitespace or semi-ambiguous
- * constructs, and then recover from the error and keep working correctly.
+ * constructs, and then recover from the error and keep working correctly. When that is not
+ * possible, a reasonable attempt should be made to keep going.
  */
 class ResilienceTests {
   @Test

@@ -2,7 +2,10 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.test.*
+import slak.test.assertNoDiagnostics
+import slak.test.ids
+import slak.test.prepareCode
+import slak.test.source
 import kotlin.test.assertEquals
 
 /**

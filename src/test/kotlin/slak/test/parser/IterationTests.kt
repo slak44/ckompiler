@@ -6,7 +6,10 @@ import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
 
-class IterationStatementTests {
+/**
+ * Tests for "while", "for" and "do-while" loops.
+ */
+class IterationTests {
   @Test
   fun whileMissingParen() {
     val p = prepareCode("""

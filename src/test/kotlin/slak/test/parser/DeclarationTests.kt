@@ -10,7 +10,7 @@ import slak.ckompiler.parser.IdentifierNode
 import slak.test.*
 import kotlin.test.assertEquals
 
-/** Similarly to [LexerPseudoUnitTests], these are not strictly unit tests. */
+/** Similarly to [LexerTests], these are not strictly unit tests. */
 class DeclarationTests {
   @Test
   fun declarationBasic() {
