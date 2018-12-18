@@ -517,66 +517,89 @@ class Parser(tokens: List<Token>,
     return@tokenContext params
   }
 
+  /**
+   * This function parses a `declarator` nested in a `direct-declarator`.
+   *
+   * C standard: 6.7.6.1
+   */
+  private fun parseNestedDeclarator(): Declarator? {
+    if (current().asPunct() != Punctuators.LPAREN) return null
+    val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+    if (end == -1) return ErrorDeclarator()
+    // If the declarator slice will be empty, error out
+    if (end - 1 == 0) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_DECL
+        errorOn(safeToken(1))
+      }
+      eatToSemi()
+      return ErrorDeclarator()
+    }
+    val declarator = parseDeclarator(end)
+    if (declarator is ErrorNode) eatToSemi()
+    return declarator
+  }
+
+  /**
+   * This function parses the things that can come after a `direct-declarator`.
+   * FIXME: parse in a loop, to catch things like `int v[12][23];`
+   * C standard: 6.7.6.1
+   */
+  private fun parseDirectDeclaratorSuffixes(primary: Declarator): Declarator = when {
+    isEaten() -> primary
+    current().asPunct() == Punctuators.LPAREN -> {
+      val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+      eat() // Get rid of "("
+      // FIXME: we can return something better than an ErrorNode (have the ident)
+      if (rparenIdx == -1) {
+        // FIXME: maybe we should eat stuff here?
+        ErrorDeclarator()
+      } else {
+        val paramList = parseParameterList(rparenIdx)
+        eat() // Get rid of ")"
+        FunctionDeclarator(primary, paramList)
+      }
+    }
+    current().asPunct() == Punctuators.LSQPAREN -> {
+      val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+      if (end == -1) {
+        ErrorDeclarator()
+      } else {
+        // FIXME: A.2.2/6.7.6 direct-declarator with square brackets
+        logger.throwICE("Unimplemented grammar") { tokStack.peek() }
+      }
+    }
+    else -> primary
+  }
+
+  /** C standard: 6.7.6.1 */
+  private fun parseNameDeclarator(): NameDeclarator? {
+    val id = current() as? Identifier ?: return null
+    val name = NameDeclarator(IdentifierNode(id.name))
+    eat() // The identifier token
+    return name
+  }
+
   /** C standard: A.2.2, 6.7 */
   private fun parseDirectDeclarator(endIdx: Int): Declarator? = tokenContext(endIdx) {
     if (it.isEmpty()) return@tokenContext null
-    when {
-      current().asPunct() == Punctuators.LPAREN -> {
-        val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-        if (end == -1) return@tokenContext ErrorDeclarator()
-        // If the declarator slice will be empty, error out
-        if (end - 1 == 0) {
-          parserDiagnostic {
-            id = DiagnosticId.EXPECTED_DECL
-            errorOn(safeToken(1))
-          }
-          eatToSemi()
-          return@tokenContext ErrorDeclarator()
-        }
-        val declarator = parseDeclarator(end)
-        if (declarator is ErrorNode) eatToSemi()
-        // FIXME: handle case where there is more shit (eg LPAREN/LSQPAREN cases) after end
-        return@tokenContext declarator
+    val primaryDecl = parseNameDeclarator() ?: parseNestedDeclarator()
+    if (primaryDecl == null) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
+        errorOn(safeToken(0))
       }
-      current() !is Identifier -> {
-        parserDiagnostic {
-          id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
-          errorOn(safeToken(0))
-        }
-        return@tokenContext ErrorDeclarator()
-      }
-      current() is Identifier -> {
-        val name = NameDeclarator(IdentifierNode((current() as Identifier).name))
-        eat()
-        when {
-          isEaten() -> return@tokenContext name
-          current().asPunct() == Punctuators.LPAREN -> {
-            val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-            eat() // Get rid of "("
-            // FIXME: we can return something better than an ErrorNode (have the ident)
-            if (rparenIdx == -1) return@tokenContext ErrorDeclarator()
-            val paramList = parseParameterList(rparenIdx)
-            eat() // Get rid of ")"
-            return@tokenContext FunctionDeclarator(name, paramList)
-          }
-          current().asPunct() == Punctuators.LSQPAREN -> {
-            val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
-            if (end == -1) return@tokenContext ErrorDeclarator()
-            // FIXME parse "1 until end" slice (A.2.2/6.7.6 direct-declarator)
-            logger.throwICE("Unimplemented grammar") { tokStack.peek() }
-          }
-          else -> return@tokenContext name
-        }
-      }
-      // FIXME: Can't happen? current() either is or isn't an identifier
-      else -> return@tokenContext null
+      return@tokenContext ErrorDeclarator()
     }
+    return@tokenContext parseDirectDeclaratorSuffixes(primaryDecl)
   }
 
+  /** C standard: 6.7.6.1 */
   private fun parseDeclarator(endIdx: Int): Declarator? = tokenContext(endIdx) {
     // FIXME: missing pointer parsing
     val directDecl = parseDirectDeclarator(it.size)
     if (!isEaten()) {
+      // FIXME: this should likely be an error
       logger.warn { "parseDirectDeclarator did not eat all of its tokens" }
     }
     return@tokenContext directDecl
