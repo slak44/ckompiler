@@ -63,7 +63,9 @@ internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
   }
   if (declaratorList.size != 1) throw IllegalArgumentException("Not function")
   val d = declaratorList[0] as? FunctionDeclarator ?: throw IllegalArgumentException("Not function")
-  return FunctionDefinition(declSpecs, d, s)
+  val fdecl = FunctionDeclarator(
+      d.declarator, d.params, d.isVararg, (s as? CompoundStatement)?.scope ?: d.scope)
+  return FunctionDefinition(declSpecs, fdecl, s)
 }
 
 internal infix fun RealDeclaration.body(list: List<BlockItem>) = this body list.compound()
@@ -93,6 +95,10 @@ internal fun List<ASTNode>.compound() = CompoundStatement(map {
   forEach {
     when (it) {
       is Declaration -> idents.addAll(it.identifiers())
+      is ForStatement -> {
+        val names = (it.init as? DeclarationInitializer)?.value?.identifiers()
+        if (names != null) idents.addAll(names)
+      }
       is LabeledStatement -> labels.add(it.label)
       is Statement -> {} // Nothing
       else -> throw IllegalArgumentException("Bad type")

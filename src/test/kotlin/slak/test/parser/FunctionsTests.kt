@@ -70,7 +70,7 @@ class FunctionsTests {
   fun functionDefinitionOneArgEmpty() {
     val p = prepareCode("int main(int argc) {}", source)
     p.assertNoDiagnostics()
-    int func ("main" withParams listOf(int param "argc")) body emptyList() assertEquals
+    int func ("main" withParams listOf(int param "argc")) body emptyCompound() assertEquals
         p.root.decls[0]
   }
 
