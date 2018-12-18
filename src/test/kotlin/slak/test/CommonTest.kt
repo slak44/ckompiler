@@ -63,9 +63,11 @@ internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
   }
   if (declaratorList.size != 1) throw IllegalArgumentException("Not function")
   val d = declaratorList[0] as? FunctionDeclarator ?: throw IllegalArgumentException("Not function")
-  val fdecl = FunctionDeclarator(
-      d.declarator, d.params, d.isVararg, (s as? CompoundStatement)?.scope ?: d.scope)
-  return FunctionDefinition(declSpecs, fdecl, s)
+  val st = s as? CompoundStatement
+  val scope = if (st == null || st.items.isEmpty()) d.scope else st.scope
+  val fdecl = FunctionDeclarator(d.declarator, d.params, d.isVararg, scope)
+  val newCompound = if (st == null) s else CompoundStatement(st.items, scope)
+  return FunctionDefinition(declSpecs, fdecl, newCompound)
 }
 
 internal infix fun RealDeclaration.body(list: List<BlockItem>) = this body list.compound()
