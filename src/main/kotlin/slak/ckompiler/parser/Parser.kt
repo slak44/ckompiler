@@ -44,21 +44,47 @@ class Parser(tokens: List<Token>,
     diags.forEach { it.print() }
   }
 
-  private fun <R> scoped(block: () -> R): R {
-    scopeStack.push(LexicalScope())
-    val ret = block()
+  /**
+   * Create a [LexicalScope], and run the given [block] within that scope.
+   * @param block called with the receiver parameter as the created scope
+   * @return the value returned by [block]
+   */
+  private fun <R> scoped(block: LexicalScope.() -> R): R = LexicalScope().withScope(block)
+
+  /**
+   * Run the given [block] within the receiver scope.
+   * @param block called with its receiver parameter as the original scope
+   * @return the value returned by [block]
+   */
+  private fun <R> LexicalScope.withScope(block: LexicalScope.() -> R): R {
+    scopeStack.push(this)
+    val ret = this.block()
     scopeStack.pop()
     return ret
   }
 
-  private fun addToScope(id: IdentifierNode) {
-    if (scopeStack.peek().idents.any { it.name == id.name }) {
+  /**
+   * Adds a new identifier to the current scope. If the identifier already was in the current scope,
+   * it is not added again, and diagnostics are printed.
+   */
+  private fun newIdentifier(id: IdentifierNode, isLabel: Boolean = false) {
+    val listRef = if (isLabel) scopeStack.peek().labels else scopeStack.peek().idents
+    val foundId = listRef.firstOrNull { it.name == id.name }
+    // FIXME: this can be used to maybe give a diagnostic about name shadowing
+    // val isShadowed = scopeStack.peek().idents.any { it.name == id.name }
+    if (foundId != null) {
       parserDiagnostic {
-        // FIXME: print error
+        this.id = if (isLabel) DiagnosticId.REDEFINITION_LABEL else DiagnosticId.REDEFINITION
+        formatArgs(id.name)
+        // FIXME: location of id
+      }
+      parserDiagnostic {
+        this.id = DiagnosticId.REDEFINITION_PREVIOUS
+        // FIXME: location of foundId
       }
       return
     }
-    scopeStack.peek().idents.add(id)
+    listRef.add(id)
   }
 
   /**
@@ -67,7 +93,7 @@ class Parser(tokens: List<Token>,
    */
   private fun searchInScope(target: IdentifierNode): IdentifierNode? {
     scopeStack.forEach {
-      val idx = it.idents.indexOfFirst { id -> id.name == target.name }
+      val idx = it.idents.indexOfFirst { (name) -> name == target.name }
       if (idx != -1) return it.idents[idx]
     }
     return null
@@ -181,7 +207,8 @@ class Parser(tokens: List<Token>,
         if (isEaten()) break
         val innerOp = current().asBinaryOperator() ?: break
         if (innerOp.precedence <= op.precedence &&
-            !(innerOp.assoc == Associativity.RIGHT_TO_LEFT && innerOp.precedence == op.precedence)) {
+            !(innerOp.assoc == Associativity.RIGHT_TO_LEFT &&
+                innerOp.precedence == op.precedence)) {
           break
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
@@ -509,6 +536,10 @@ class Parser(tokens: List<Token>,
       val declarator = parseDeclarator(if (commaIdx == -1) it.size else commaIdx)
           ?: TODO("handle error case with a null (error'd) declarator")
       params.add(ParameterDeclaration(specs, declarator))
+      // Add param name to current scope (which can be either block scope or
+      // function prototype scope)
+      val declaratorName = declarator.name()
+      if (declaratorName != null) newIdentifier(declaratorName)
       if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; found comma that separates params
         eat()
@@ -554,10 +585,10 @@ class Parser(tokens: List<Token>,
       if (rparenIdx == -1) {
         // FIXME: maybe we should eat stuff here?
         ErrorDeclarator()
-      } else {
+      } else scoped {
         val paramList = parseParameterList(rparenIdx)
         eat() // Get rid of ")"
-        FunctionDeclarator(primary, paramList)
+        FunctionDeclarator(declarator = primary, params = paramList, scope = this, isVararg = false)
       }
     }
     current().asPunct() == Punctuators.LSQPAREN -> {
@@ -686,6 +717,7 @@ class Parser(tokens: List<Token>,
         break
       }
     }
+    declaratorList.mapNotNull { it.name() }.forEach { newIdentifier(it) }
     return RealDeclaration(declSpec, declaratorList)
   }
 
@@ -697,6 +729,7 @@ class Parser(tokens: List<Token>,
     // FIXME: this only parses the first kind of labeled statement (6.8.1)
     if (current() !is Identifier || lookahead().asPunct() != Punctuators.COLON) return null
     val label = IdentifierNode((current() as Identifier).name)
+    newIdentifier(label, isLabel = true)
     eatList(2) // Get rid of ident and COLON
     val labeled = parseStatement()
     if (labeled == null) {
@@ -1011,6 +1044,7 @@ class Parser(tokens: List<Token>,
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
     if (rparen == -1) return ErrorStatement()
+    // The 3 components of a for loop
     val (clause1, expr2, expr3) = tokenContext(rparen) {
       val firstSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
       if (firstSemi == -1) {
@@ -1100,10 +1134,12 @@ class Parser(tokens: List<Token>,
 
   /**
    * Parses a compound-statement, including the { } brackets.
+   *
    * C standard: A.2.3
+   * @param functionScope the scope of the function for which this is a block, null otherwise
    * @return null if there is no compound statement, or the [CompoundStatement] otherwise
    */
-  private fun parseCompoundStatement(): Statement? {
+  private fun parseCompoundStatement(functionScope: LexicalScope? = null): Statement? {
     if (current().asPunct() != Punctuators.LBRACKET) return null
     val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, false)
     eat() // Get rid of '{'
@@ -1113,7 +1149,7 @@ class Parser(tokens: List<Token>,
       if (!isEaten()) eat()
       return ErrorStatement()
     }
-    val compound = tokenContext(rbracket) {
+    fun parseCompoundItems(scope: LexicalScope): CompoundStatement {
       val items = mutableListOf<BlockItem>()
       while (!isEaten()) {
         val item = parseDeclaration()?.let { d -> DeclarationItem(d) }
@@ -1121,7 +1157,11 @@ class Parser(tokens: List<Token>,
             ?: continue
         items.add(item)
       }
-      CompoundStatement(items)
+      return CompoundStatement(items, scope)
+    }
+    // Parsing the items happens both inside a lexical scope and inside a token context
+    val compound = (functionScope ?: LexicalScope()).withScope {
+      tokenContext(rbracket) { parseCompoundItems(this) }
     }
     eat() // Get rid of '}'
     return compound
@@ -1149,7 +1189,8 @@ class Parser(tokens: List<Token>,
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
-    val block = parseCompoundStatement() ?: ErrorStatement()
+    val scope = (declarator as? FunctionDeclarator)?.scope ?: TODO("complain about bad decl")
+    val block = parseCompoundStatement(scope) ?: ErrorStatement()
     return FunctionDefinition(declSpec, declarator, block)
   }
 
@@ -1157,10 +1198,9 @@ class Parser(tokens: List<Token>,
   private tailrec fun translationUnit() {
     if (isEaten()) return
     val res = parseFunctionDefinition()?.let {
-      it.functionDeclarator.name()?.let { name -> addToScope(name) }
+      it.functionDeclarator.name()?.let { name -> newIdentifier(name) }
       root.addExternalDeclaration(it)
     } ?: parseDeclaration()?.let {
-      it.identifiers().forEach { id -> addToScope(id) }
       root.addExternalDeclaration(it)
     }
     if (res == null) {

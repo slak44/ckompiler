@@ -20,9 +20,11 @@ internal val List<Diagnostic>.ids get() = map { it.id }
 
 internal val int = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.INT)),
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList())
+
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 internal val double = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.DOUBLE)),
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList())
+
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
@@ -40,12 +42,20 @@ internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) =
 
 internal infix fun DeclarationSpecifier.func(decl: Declarator) =
     RealDeclaration(this, listOf(decl))
-internal infix fun DeclarationSpecifier.declare(s: String) = RealDeclaration(this, listOf(nameDecl(s)))
+
+internal infix fun DeclarationSpecifier.declare(s: String) =
+    RealDeclaration(this, listOf(nameDecl(s)))
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
 
-internal infix fun String.withParams(params: List<ParameterDeclaration>) =
-    FunctionDeclarator(nameDecl(this), params)
+internal infix fun String.withParams(params: List<ParameterDeclaration>): FunctionDeclarator {
+  return FunctionDeclarator(nameDecl(this), params,
+      scope = params.mapTo(mutableListOf()) { it.name()!! }.let {
+        val s = LexicalScope()
+        s.idents.addAll(it)
+        s
+      })
+}
 
 internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
   if (s !is CompoundStatement && s !is ErrorStatement) {
@@ -71,13 +81,25 @@ internal fun returnSt(e: Expression) = ReturnStatement(e)
 
 internal fun <T : ASTNode> compoundOf(vararg elements: T) = listOf(*elements).compound()
 
-internal fun emptyCompound() = CompoundStatement(emptyList())
+internal fun emptyCompound() = CompoundStatement(emptyList(), LexicalScope())
 
-internal fun List<ASTNode>.compound() = CompoundStatement(map { when (it) {
-  is Statement -> StatementItem(it)
-  is Declaration -> DeclarationItem(it)
-  else -> throw IllegalArgumentException("Bad type")
-} })
+internal fun List<ASTNode>.compound() = CompoundStatement(map {
+  when (it) {
+    is Statement -> StatementItem(it)
+    is Declaration -> DeclarationItem(it)
+    else -> throw IllegalArgumentException("Bad type")
+  }
+}, with(LexicalScope()) {
+  forEach {
+    when (it) {
+      is Declaration -> idents.addAll(it.identifiers())
+      is LabeledStatement -> labels.add(it.label)
+      is Statement -> {} // Nothing
+      else -> throw IllegalArgumentException("Bad type")
+    }
+  }
+  this
+})
 
 internal fun whileSt(e: Expression, loopable: Statement) = WhileStatement(e, loopable)
 internal fun whileSt(e: Expression, loopable: () -> Statement) = whileSt(e, loopable())

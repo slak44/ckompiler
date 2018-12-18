@@ -36,6 +36,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
+  REDEFINITION(ERROR, "Redefinition of '%s'"),
+  REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
+  REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
 }
 
 enum class DiagnosticKind(val text: String) {

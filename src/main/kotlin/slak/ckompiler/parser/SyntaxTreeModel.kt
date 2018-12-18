@@ -57,6 +57,27 @@ sealed class ASTNode(val isRoot: Boolean = false) {
  */
 class LexicalScope {
   val idents = mutableListOf<IdentifierNode>()
+  val labels = mutableListOf<IdentifierNode>()
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+    other as LexicalScope
+    if (idents != other.idents) return false
+    if (labels != other.labels) return false
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = idents.hashCode()
+    result = 31 * result + labels.hashCode()
+    return result
+  }
+
+  override fun toString(): String {
+    return "LexicalScope(idents=[${idents.joinToString(", ") { it.name }}]," +
+        "labels=[${labels.joinToString(", ") { it.name }}])"
+  }
 }
 
 /** Represents a leaf node of an AST (ie an [ASTNode] that is a parent to nobody). */
@@ -296,7 +317,8 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
 // FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
 data class FunctionDeclarator(val declarator: Declarator,
                               val params: List<ParameterDeclaration>,
-                              val isVararg: Boolean = false) : Declarator() {
+                              val isVararg: Boolean = false,
+                              val scope: LexicalScope) : Declarator() {
   init {
     declarator.setParent(this)
     params.forEach { it.setParent(this) }
@@ -359,7 +381,7 @@ data class StatementItem(val statement: Statement) : BlockItem() {
 }
 
 /** C standard: A.2.3, 6.8.2 */
-data class CompoundStatement(val items: List<BlockItem>) : Statement() {
+data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope) : Statement() {
   init {
     items.forEach { it.setParent(this) }
   }
