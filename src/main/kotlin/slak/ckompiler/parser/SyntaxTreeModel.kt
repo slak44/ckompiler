@@ -408,7 +408,7 @@ data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope
 
   override fun toString(): String {
     val stuff = items.joinToString(",") { "\n\t$it" }
-    return "{$stuff\n}"
+    return "{\n$scope$stuff\n}"
   }
 }
 
