@@ -271,8 +271,12 @@ data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
                                 val typeSpecifiers: List<Keyword>,
                                 val typeQualifiers: List<Keyword>,
                                 val functionSpecs: List<Keyword>) {
+  /** @return true if no specifiers were found */
   fun isEmpty() = storageClassSpecs.isEmpty() && typeSpecifiers.isEmpty() &&
       typeQualifiers.isEmpty() && functionSpecs.isEmpty()
+
+  /** @return how many tokens were passed by while parsing this object */
+  val size = storageClassSpecs.size + typeSpecifiers.size + typeQualifiers.size + functionSpecs.size
 
   override fun toString(): String {
     val text = listOf(storageClassSpecs, typeSpecifiers, typeQualifiers, functionSpecs)

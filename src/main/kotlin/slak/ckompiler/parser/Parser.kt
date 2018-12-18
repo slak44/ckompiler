@@ -69,6 +69,7 @@ class Parser(tokens: List<Token>,
    */
   private fun newIdentifier(id: IdentifierNode, isLabel: Boolean = false) {
     val listRef = if (isLabel) scopeStack.peek().labels else scopeStack.peek().idents
+    // FIXME: we really should know more data about these idents, like symbol type (func/var)
     val foundId = listRef.firstOrNull { it.name == id.name }
     // FIXME: this can be used to maybe give a diagnostic about name shadowing
     // val isShadowed = scopeStack.peek().idents.any { it.name == id.name }
@@ -416,23 +417,24 @@ class Parser(tokens: List<Token>,
 
   /** C standard: A.2.2, 6.7 */
   private fun parseDeclSpecifiers(): DeclarationSpecifier {
-    val storageSpecs = mutableListOf<Keyword>()
-    val typeSpecs = mutableListOf<Keyword>()
-    val typeQuals = mutableListOf<Keyword>()
-    val funSpecs = mutableListOf<Keyword>()
-    while (current() is Keyword) {
-      val tok = current() as Keyword
-      when (tok.value) {
+    val keywordsEnd = indexOfFirst { it !is Keyword }
+    val declSpec = tokenContext(if (keywordsEnd == -1) tokStack.peek().size else keywordsEnd) {
+      val storageSpecs = mutableListOf<Keyword>()
+      val typeSpecs = mutableListOf<Keyword>()
+      val typeQuals = mutableListOf<Keyword>()
+      val funSpecs = mutableListOf<Keyword>()
+      keywordsLoop@ for (tok in it) when ((tok as Keyword).value) {
         Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
         in storageClassSpecifier -> storageSpecs.add(tok)
         in typeSpecifier -> typeSpecs.add(tok)
         in typeQualifier -> typeQuals.add(tok)
         in funSpecifier -> funSpecs.add(tok)
-        else -> null
-      } ?: break
-      eat()
+        else -> break@keywordsLoop
+      }
+      DeclarationSpecifier(storageSpecs, typeSpecs, typeQuals, funSpecs)
     }
-    return DeclarationSpecifier(storageSpecs, typeSpecs, typeQuals, funSpecs)
+    eatList(declSpec.size)
+    return declSpec
   }
 
   /**
@@ -534,7 +536,6 @@ class Parser(tokens: List<Token>,
       }
       val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
       val declarator = parseDeclarator(if (commaIdx == -1) it.size else commaIdx)
-          ?: TODO("handle error case with a null (error'd) declarator")
       params.add(ParameterDeclaration(specs, declarator))
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
@@ -612,8 +613,14 @@ class Parser(tokens: List<Token>,
   }
 
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(endIdx: Int): Declarator? = tokenContext(endIdx) {
-    if (it.isEmpty()) return@tokenContext null
+  private fun parseDirectDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
+    if (it.isEmpty()) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
+        column(colPastTheEnd(0))
+      }
+      return@tokenContext ErrorDeclarator()
+    }
     val primaryDecl = parseNameDeclarator() ?: parseNestedDeclarator()
     if (primaryDecl == null) {
       parserDiagnostic {
@@ -626,7 +633,7 @@ class Parser(tokens: List<Token>,
   }
 
   /** C standard: 6.7.6.1 */
-  private fun parseDeclarator(endIdx: Int): Declarator? = tokenContext(endIdx) {
+  private fun parseDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
     // FIXME: missing pointer parsing
     val directDecl = parseDirectDeclarator(it.size)
     if (!isEaten()) {
@@ -637,7 +644,7 @@ class Parser(tokens: List<Token>,
   }
 
   // FIXME: return type will change with the initializer list
-  private fun parseInitializer(): Expression? {
+  private fun parseInitializer(): Expression {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
@@ -652,7 +659,8 @@ class Parser(tokens: List<Token>,
       TODO("parse initializer-list (A.2.2/6.7.9)")
     }
     // Simple expression
-    return parseExpr(tokStack.peek().size)
+    // parseExpr should print out the diagnostic in case there is no expr here
+    return parseExpr(tokStack.peek().size) ?: ErrorExpression()
   }
 
   /**
@@ -660,21 +668,31 @@ class Parser(tokens: List<Token>,
    * @return null if there is no declaration, or a [Declaration] otherwise
    */
   private fun parseDeclaration(): Declaration? {
-    // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
     val declSpec = parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
+    return RealDeclaration(declSpec, parseInitDeclaratorList())
+  }
+
+  /**
+   * Parse a `init-declarator-list`, a part of a `declaration`.
+   *
+   * C standard: A.2.2
+   * @param firstDecl if not null, this will be treated as the first declarator in the list that was
+   * pre-parsed
+   */
+  private fun parseInitDeclaratorList(firstDecl: Declarator? = null): List<Declarator> {
+    // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
     val declaratorList = mutableListOf<Declarator>()
+    // If firstDecl is null, we act as if it was already processed
+    var firstDeclUsed = firstDecl == null
     while (true) {
-      val initDeclarator: Declarator = parseDeclarator(tokStack.peek().size).let {
-        if (it != null) return@let it
-        // This means that there were decl specs, but no declarator, which is a problem
-        parserDiagnostic {
-          id = DiagnosticId.EXPECTED_DECL
-          errorOn(safeToken(0))
-        }
-        return@parseDeclaration ErrorDeclaration()
+      val declarator = if (firstDeclUsed) {
+        parseDeclarator(tokStack.peek().size)
+      } else {
+        firstDeclUsed = true
+        firstDecl!!
       }
-      if (initDeclarator is ErrorNode) {
+      if (declarator is ErrorDeclarator) {
         val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
         if (parenEndIdx == -1) {
           TODO("handle error case where there is an unmatched paren in the initializer")
@@ -690,21 +708,20 @@ class Parser(tokens: List<Token>,
           formatArgs("declarator")
           column(colPastTheEnd(0))
         }
-        declaratorList.add(initDeclarator)
+        declaratorList.add(declarator)
         break
       }
-      val initializer = if (current().asPunct() == Punctuators.ASSIGN) parseInitializer() else null
-      if (initializer == null) {
-        declaratorList.add(initDeclarator)
+      if (current().asPunct() == Punctuators.ASSIGN) {
+        declaratorList.add(InitDeclarator(declarator, parseInitializer()))
       } else {
-        declaratorList.add(InitDeclarator(initDeclarator, initializer))
+        declaratorList.add(declarator)
       }
       if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
-        // Expected case; there are chained init-declarators
+        // Expected case; there are chained `init-declarator`s
         eat()
         continue
       } else if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
-        // Expected case; semi at the end of declaration
+        // Expected case; semi at the end of `declaration`
         eat()
         break
       } else {
@@ -718,7 +735,11 @@ class Parser(tokens: List<Token>,
       }
     }
     declaratorList.mapNotNull { it.name() }.forEach { newIdentifier(it) }
-    return RealDeclaration(declSpec, declaratorList)
+    if (declaratorList.isEmpty()) parserDiagnostic {
+      id = DiagnosticId.MISSING_DECLARATIONS
+      errorOn(safeToken(0))
+    }
+    return declaratorList
   }
 
   /**
@@ -1168,42 +1189,32 @@ class Parser(tokens: List<Token>,
   }
 
   /**
-   * Parses a function _definition_. That includes the compound-statement. Function _declarations_
-   * are not parsed here (see [parseDeclaration]).
+   * Parses a function _definition_. That means everything after the declarator, so not the
+   * `declaration-specifiers` or the [FunctionDeclarator], but the `compound-statement` and
+   * optionally the `declaration-list` (for old-style functions). Function _declarations_ are
+   * **not** parsed here (see [parseDeclaration]).
+   *
    * C standard: A.2.4, A.2.2, 6.9.1
-   * @return null if this is not a function definition, or a [FunctionDefinition] otherwise
+   * @see parseDeclSpecifiers
+   * @see parseDeclarator
+   * @param declSpec pre-parsed declaration specifier
+   * @param funDecl pre-parsed function declarator
+   * @return the [FunctionDefinition]
    */
-  private fun parseFunctionDefinition(): FunctionDefinition? {
-    val firstBracket = indexOfFirst { it.asPunct() == Punctuators.LBRACKET }
-    // If no bracket is found, it isn't a function, it might be a declaration
-    if (firstBracket == -1) return null
-    val declSpec = parseDeclSpecifiers()
-    if (declSpec.isEmpty()) return null
-    val declarator = parseDeclarator(firstBracket).let {
-      if (it == null || it is ErrorDeclarator) {
-        // FIXME: what diag to print here?
-        return@let ErrorDeclarator()
-      }
-      return@let it
-    }!!
+  private fun parseFunctionDefinition(declSpec: DeclarationSpecifier,
+                                      funDecl: FunctionDeclarator): FunctionDefinition {
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
-    val scope = (declarator as? FunctionDeclarator)?.scope ?: TODO("complain about bad decl")
-    val block = parseCompoundStatement(scope) ?: ErrorStatement()
-    return FunctionDefinition(declSpec, declarator, block)
+    val block = parseCompoundStatement(funDecl.scope) ?: ErrorStatement()
+    return FunctionDefinition(declSpec, funDecl, block)
   }
 
   /** C standard: A.2.4, 6.9 */
   private tailrec fun translationUnit() {
     if (isEaten()) return
-    val res = parseFunctionDefinition()?.let {
-      it.functionDeclarator.name()?.let { name -> newIdentifier(name) }
-      root.addExternalDeclaration(it)
-    } ?: parseDeclaration()?.let {
-      root.addExternalDeclaration(it)
-    }
-    if (res == null) {
+    val declSpec = parseDeclSpecifiers()
+    if (declSpec.isEmpty()) {
       // If we got here it means the current thing isn't a translation unit
       // So spit out an error and eat tokens
       parserDiagnostic {
@@ -1212,6 +1223,15 @@ class Parser(tokens: List<Token>,
       }
       eatToSemi()
       if (!isEaten()) eat()
+      return translationUnit()
+    }
+    val declarator = parseDeclarator(tokStack.peek().size)
+    if (declarator is FunctionDeclarator && current().asPunct() != Punctuators.SEMICOLON) {
+      declarator.name()?.let { name -> newIdentifier(name) }
+      root.addExternalDeclaration(parseFunctionDefinition(declSpec, declarator))
+    } else {
+      val decl = RealDeclaration(declSpec, parseInitDeclaratorList(declarator))
+      root.addExternalDeclaration(decl)
     }
     if (isEaten()) return
     else translationUnit()

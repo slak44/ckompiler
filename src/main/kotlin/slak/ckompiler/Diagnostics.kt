@@ -39,6 +39,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   REDEFINITION(ERROR, "Redefinition of '%s'"),
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
   REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
+  MISSING_DECLARATIONS(WARNING, "Declaration does not declare anything"),
 }
 
 enum class DiagnosticKind(val text: String) {
