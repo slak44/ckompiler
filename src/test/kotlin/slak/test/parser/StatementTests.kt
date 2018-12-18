@@ -266,8 +266,13 @@ class StatementTests {
       }
     """.trimIndent(), source)
     assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
-    int func ("main" withParams emptyList()) body compoundOf(ErrorStatement()) assertEquals
-        p.root.decls[0]
+    // This hacky thing is needed because the parser is smart enough to add the label to the scope
+    // even if the final LabeledStatement is an error, while the test DSL is *not*
+    val scope = LexicalScope()
+    scope.labels.add(name("label"))
+    val block = CompoundStatement(listOf(StatementItem(ErrorStatement())), scope)
+    int func FunctionDeclarator(nameDecl("main"), emptyList(), scope = scope) body
+        block assertEquals p.root.decls[0]
   }
 
   @Test
