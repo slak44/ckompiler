@@ -3,8 +3,113 @@ package slak.ckompiler.parser
 import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
+import java.lang.IllegalArgumentException
 import java.util.*
 import kotlin.math.min
+
+private class TokenHandler(tokens: List<Token>) : ITokenHandler {
+  private val tokStack = Stack<List<Token>>()
+  private val idxStack = Stack<Int>()
+
+  init {
+    tokStack.push(tokens)
+    idxStack.push(0)
+  }
+
+  /** Gets a token, or if all were eaten, the last one. Useful for diagnostics. */
+  override fun safeToken(offset: Int) =
+      if (isEaten()) tokStack.peek().last()
+      else tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
+
+  /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
+  override fun colPastTheEnd(offset: Int): Int {
+    val tok = safeToken(offset)
+    return tok.startIdx + tok.consumedChars
+  }
+
+  /**
+   * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
+   * the sub context will be eaten in the parent context too. Useful for parsing parenthesis and the
+   * like.
+   *
+   * The list of tokens starts at the current index (inclusive), and ends at the
+   * given [endIdx] (exclusive).
+   */
+  override fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T {
+    val tokens = tokStack.peek().subList(idxStack.peek(), endIdx)
+    tokStack.push(tokens)
+    idxStack.push(0)
+    val result = block(tokens)
+    tokStack.pop()
+    val eatenInContext = idxStack.pop()
+    idxStack.push(idxStack.pop() + eatenInContext)
+    return result
+  }
+
+  override fun parentContext(): List<Token> = tokStack[tokStack.size - 2]
+
+  override fun parentIdx(): Int = idxStack[idxStack.size - 2]
+
+
+  /** @return the first (real) index matching the condition, or -1 if there is none */
+  override fun indexOfFirst(block: (Token) -> Boolean): Int {
+    val idx = tokStack.peek().drop(idxStack.peek()).indexOfFirst(block)
+    return if (idx == -1) -1 else idx + idxStack.peek()
+  }
+
+  override fun isEaten(): Boolean = idxStack.peek() >= tokStack.peek().size
+
+  override val tokenCount: Int get() = tokStack.peek().size
+
+  override fun current(): Token = tokStack.peek()[idxStack.peek()]
+
+  override fun relative(offset: Int): Token = tokStack.peek()[idxStack.peek() + offset]
+
+  override fun tokenAt(contextIdx: Int) = tokStack.peek()[contextIdx]
+
+  override fun eat() {
+    idxStack.push(idxStack.pop() + 1)
+  }
+
+  override fun eatUntil(contextIdx: Int) {
+    val old = idxStack.pop()
+    if (contextIdx < old) {
+      // FIXME
+      throw IllegalArgumentException("???")
+    }
+    idxStack.push(contextIdx)
+  }
+
+  /**
+   * Eats tokens unconditionally until a semicolon or the end of the token list.
+   * Does not eat the semicolon.
+   */
+  override fun eatToSemi() {
+    while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
+  }
+}
+
+/** @see TokenHandler */
+interface ITokenHandler {
+  fun safeToken(offset: Int): Token
+  fun colPastTheEnd(offset: Int): Int
+
+  fun parentContext(): List<Token>
+  fun parentIdx(): Int
+
+  fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T
+  fun indexOfFirst(block: (Token) -> Boolean): Int
+
+  val tokenCount: Int
+  fun current(): Token
+  fun relative(offset: Int): Token
+  fun tokenAt(contextIdx: Int): Token
+
+  fun isEaten(): Boolean
+  fun eat()
+  fun eatUntil(contextIdx: Int)
+  fun eatToSemi()
+}
 
 /**
  * Parses a translation unit.
@@ -16,9 +121,8 @@ import kotlin.math.min
  */
 class Parser(tokens: List<Token>,
              private val srcFileName: SourceFileName,
-             private val srcText: String) {
-  private val tokStack = Stack<List<Token>>()
-  private val idxStack = Stack<Int>()
+             private val srcText: String) : ITokenHandler by TokenHandler(tokens) {
+
   private val scopeStack = Stack<LexicalScope>()
   val diags = mutableListOf<Diagnostic>()
   val root = RootNode()
@@ -36,8 +140,6 @@ class Parser(tokens: List<Token>,
   }
 
   init {
-    tokStack.push(tokens)
-    idxStack.push(0)
     scopeStack.push(LexicalScope())
     translationUnit()
     diags.forEach { it.print() }
@@ -97,69 +199,6 @@ class Parser(tokens: List<Token>,
       if (idx != -1) return it.idents[idx]
     }
     return null
-  }
-
-  /** Gets a token, or if all were eaten, the last one. Useful for diagnostics. */
-  private fun safeToken(offset: Int) =
-      if (isEaten()) tokStack.peek().last()
-      else tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
-
-  /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
-  private fun colPastTheEnd(offset: Int): Int {
-    val tok = safeToken(offset)
-    return tok.startIdx + tok.consumedChars
-  }
-
-  /**
-   * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
-   * the sub context will be eaten in the parent context too. Useful for parsing parenthesis and the
-   * like.
-   *
-   * The list of tokens starts at the current index (inclusive), and ends at the
-   * given [endIdx] (exclusive).
-   */
-  private fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T {
-    val tokens = takeUntil(endIdx)
-    tokStack.push(tokens)
-    idxStack.push(0)
-    val result = block(tokens)
-    tokStack.pop()
-    val eatenInContext = idxStack.pop()
-    eatList(eatenInContext)
-    return result
-  }
-
-  /** @return the first (real) index matching the condition, or -1 if there is none */
-  private fun indexOfFirst(block: (Token) -> Boolean): Int {
-    val idx = tokStack.peek().drop(idxStack.peek()).indexOfFirst(block)
-    return if (idx == -1) -1 else idx + idxStack.peek()
-  }
-
-  /**
-   * Get the tokens until the given index.
-   * Eats nothing.
-   * @param endIdx the (real) idx of the sublist end (exclusive)
-   */
-  private fun takeUntil(endIdx: Int): List<Token> = tokStack.peek().subList(idxStack.peek(), endIdx)
-
-  private fun isEaten(): Boolean = idxStack.peek() >= tokStack.peek().size
-
-  private fun current(): Token = tokStack.peek()[idxStack.peek()]
-
-  private fun lookahead(): Token = tokStack.peek()[idxStack.peek() + 1]
-
-  private fun eat() = eatList(1)
-
-  private fun eatList(length: Int) {
-    idxStack.push(idxStack.pop() + length)
-  }
-
-  /**
-   * Eats tokens unconditionally until a semicolon or the end of the token list.
-   * Does not eat the semicolon.
-   */
-  private fun eatToSemi() {
-    while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
   }
 
   private fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
@@ -230,7 +269,7 @@ class Parser(tokens: List<Token>,
       ErrorExpression()
     }
     current().asPunct() == Punctuators.LPAREN -> {
-      if (lookahead().asPunct() == Punctuators.RPAREN) {
+      if (relative(1).asPunct() == Punctuators.RPAREN) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_EXPR
           errorOn(safeToken(1))
@@ -369,8 +408,8 @@ class Parser(tokens: List<Token>,
     if (isEaten()) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_EXPR
-        if (tokStack.peek().isNotEmpty()) errorOn(safeToken(0))
-        else errorOn(tokStack[tokStack.size - 2][idxStack[idxStack.size - 2]])
+        if (tokenCount != 0) errorOn(safeToken(0))
+        else errorOn(parentContext()[parentIdx()])
       }
       return ErrorExpression()
     }
@@ -417,23 +456,25 @@ class Parser(tokens: List<Token>,
   /** C standard: A.2.2, 6.7 */
   private fun parseDeclSpecifiers(): DeclarationSpecifier {
     val keywordsEnd = indexOfFirst { it !is Keyword }
-    val declSpec = tokenContext(if (keywordsEnd == -1) tokStack.peek().size else keywordsEnd) {
+    return tokenContext(if (keywordsEnd == -1) tokenCount else keywordsEnd) {
       val storageSpecs = mutableListOf<Keyword>()
       val typeSpecs = mutableListOf<Keyword>()
       val typeQuals = mutableListOf<Keyword>()
       val funSpecs = mutableListOf<Keyword>()
-      keywordsLoop@ for (tok in it) when ((tok as Keyword).value) {
-        Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
-        in storageClassSpecifier -> storageSpecs.add(tok)
-        in typeSpecifier -> typeSpecs.add(tok)
-        in typeQualifier -> typeQuals.add(tok)
-        in funSpecifier -> funSpecs.add(tok)
-        else -> break@keywordsLoop
+      it.takeWhile { tok ->
+        when ((tok as Keyword).value) {
+          Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
+          in storageClassSpecifier -> storageSpecs.add(tok)
+          in typeSpecifier -> typeSpecs.add(tok)
+          in typeQualifier -> typeQuals.add(tok)
+          in funSpecifier -> funSpecs.add(tok)
+          else -> return@takeWhile false
+        }
+        eat()
+        return@takeWhile true
       }
       DeclarationSpecifier(storageSpecs, typeSpecs, typeQuals, funSpecs)
     }
-    eatList(declSpec.size)
-    return declSpec
   }
 
   /**
@@ -466,20 +507,20 @@ class Parser(tokens: List<Token>,
     }
     if (end == -1 && !hasParens) {
       // This is the case where there aren't any lparens until the end
-      return tokStack.peek().size
+      return tokenCount
     }
     if (!hasParens) {
       // This is the case where there aren't any lparens until a semicolon
       return end
     }
-    if (end == -1 || (tokStack.peek()[end] as StaticToken).enum != final) {
+    if (end == -1 || (tokenAt(end) as StaticToken).enum != final) {
       parserDiagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
         formatArgs(final.realName)
         if (end == -1) {
-          column(colPastTheEnd(tokStack.peek().size))
+          column(colPastTheEnd(tokenCount))
         } else {
-          errorOn(tokStack.peek()[end])
+          errorOn(tokenAt(end))
         }
       }
       parserDiagnostic {
@@ -595,7 +636,7 @@ class Parser(tokens: List<Token>,
         ErrorDeclarator()
       } else {
         // FIXME: A.2.2/6.7.6 direct-declarator with square brackets
-        logger.throwICE("Unimplemented grammar") { tokStack.peek() }
+        logger.throwICE("Unimplemented grammar") { current() }
       }
     }
     else -> primary
@@ -657,7 +698,7 @@ class Parser(tokens: List<Token>,
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
-    return parseExpr(tokStack.peek().size) ?: ErrorExpression()
+    return parseExpr(tokenCount) ?: ErrorExpression()
   }
 
   /**
@@ -684,7 +725,7 @@ class Parser(tokens: List<Token>,
     var firstDeclUsed = firstDecl == null
     while (true) {
       val declarator = if (firstDeclUsed) {
-        parseDeclarator(tokStack.peek().size)
+        parseDeclarator(tokenCount)
       } else {
         firstDeclUsed = true
         firstDecl!!
@@ -697,7 +738,7 @@ class Parser(tokens: List<Token>,
         val stopIdx = indexOfFirst {
           it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
         }
-        eatList(takeUntil(stopIdx).size)
+        eatUntil(stopIdx)
       }
       if (isEaten()) {
         parserDiagnostic {
@@ -745,15 +786,16 @@ class Parser(tokens: List<Token>,
    */
   private fun parseLabeledStatement(): Statement? {
     // FIXME: this only parses the first kind of labeled statement (6.8.1)
-    if (current() !is Identifier || lookahead().asPunct() != Punctuators.COLON) return null
+    if (current() !is Identifier || relative(1).asPunct() != Punctuators.COLON) return null
     val label = IdentifierNode((current() as Identifier).name)
     newIdentifier(label, isLabel = true)
-    eatList(2) // Get rid of ident and COLON
+    eat() // Get rid of ident
+    eat() // Get rid of ':'
     val labeled = parseStatement()
     if (labeled == null) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
-        errorOn(tokStack.peek()[idxStack.peek() - 1])
+        errorOn(relative(-1))
       }
       return ErrorStatement()
     }
@@ -826,7 +868,7 @@ class Parser(tokens: List<Token>,
 
   /** Wraps [parseExpr] with a check for [Punctuators.SEMICOLON] at the end. */
   private fun parseExpressionStatement(): Expression? {
-    val expr = parseExpr(tokStack.peek().size) ?: return null
+    val expr = parseExpr(tokenCount) ?: return null
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
@@ -914,7 +956,7 @@ class Parser(tokens: List<Token>,
     if (current().asKeyword() != Keywords.RETURN) return null
     eat()
     val semiIdx = indexOfFirst { it.asPunct() == Punctuators.SEMICOLON }
-    val finalIdx = if (semiIdx == -1) tokStack.peek().size else semiIdx
+    val finalIdx = if (semiIdx == -1) tokenCount else semiIdx
     val expr = parseExpr(finalIdx)
     if (semiIdx == -1 || (!isEaten() && current().asPunct() != Punctuators.SEMICOLON)) {
       parserDiagnostic {
@@ -945,7 +987,7 @@ class Parser(tokens: List<Token>,
       val end = indexOfFirst {
         it.asPunct() == Punctuators.LBRACKET || it.asPunct() == Punctuators.SEMICOLON
       }
-      eatList(takeUntil(end).size)
+      eatUntil(end)
       if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
       return ErrorStatement()
     }
@@ -955,7 +997,7 @@ class Parser(tokens: List<Token>,
     val cond = parseExpr(rparen)
     val condition = if (cond == null) {
       // Eat everything between parens
-      eatList(takeUntil(rparen).size)
+      eatUntil(rparen)
       ErrorExpression()
     } else {
       cond
@@ -998,7 +1040,7 @@ class Parser(tokens: List<Token>,
         it.asPunct() == Punctuators.SEMICOLON || it.asKeyword() == Keywords.WHILE
       }
       if (end == -1) eatToSemi()
-      eatList(takeUntil(end).size)
+      eatUntil(end)
       ErrorStatement()
     } else {
       statement
@@ -1020,7 +1062,7 @@ class Parser(tokens: List<Token>,
     val cond = parseExpr(condRParen)
     val condition = if (cond == null) {
       // Eat everything between parens
-      eatList(takeUntil(condRParen).size)
+      eatUntil(condRParen)
       ErrorExpression()
     } else {
       cond
@@ -1069,7 +1111,7 @@ class Parser(tokens: List<Token>,
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
           if (it.isNotEmpty()) errorOn(safeToken(it.size))
-          else errorOn(tokStack[tokStack.size - 2][rparen])
+          else errorOn(parentContext()[rparen])
         }
         return@tokenContext Triple(ErrorInitializer(), ErrorExpression(), ErrorExpression())
       }
@@ -1097,7 +1139,7 @@ class Parser(tokens: List<Token>,
       eat() // The second ';'
       // Handle the case where we have an empty expr3
       val expr3 =
-          if (secondSemi + 1 == tokStack.peek().size) null else parseExpr(tokStack.peek().size)
+          if (secondSemi + 1 == tokenCount) null else parseExpr(tokenCount)
       if (!isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.UNEXPECTED_IN_FOR
@@ -1106,11 +1148,7 @@ class Parser(tokens: List<Token>,
       }
       return@tokenContext Triple(clause1, expr2, expr3)
     }
-    val remainders = takeUntil(rparen)
-    if (remainders.isNotEmpty()) {
-      // Eat everything inside the for's parens
-      eatList(remainders.size)
-    }
+    eatUntil(rparen)
     eat() // The ')'
     val loopable = parseStatement()
     if (loopable == null) {
@@ -1222,7 +1260,7 @@ class Parser(tokens: List<Token>,
       if (!isEaten()) eat()
       return translationUnit()
     }
-    val declarator = parseDeclarator(tokStack.peek().size)
+    val declarator = parseDeclarator(tokenCount)
     if (declarator is FunctionDeclarator && current().asPunct() != Punctuators.SEMICOLON) {
       declarator.name()?.let { name -> newIdentifier(name) }
       root.addExternalDeclaration(parseFunctionDefinition(declSpec, declarator))
