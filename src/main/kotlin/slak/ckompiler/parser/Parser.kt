@@ -16,7 +16,7 @@ class Parser(tokens: List<Token>, srcFileName: SourceFileName, srcText: String) 
 
   init {
     val debugHandler = DebugHandler(srcFileName, srcText)
-    val tokenHandler = TokenHandler(tokens)
+    val tokenHandler = TokenHandler(tokens, debugHandler)
     val scopeHandler = ScopeHandler(debugHandler)
     val parenMatcher = ParenMatcher(debugHandler, tokenHandler)
     val expressionParser = ExpressionParser(parenMatcher)

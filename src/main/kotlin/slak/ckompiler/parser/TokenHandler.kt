@@ -3,6 +3,7 @@ package slak.ckompiler.parser
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.Token
 import slak.ckompiler.lexer.asPunct
+import slak.ckompiler.throwICE
 import java.util.*
 import kotlin.math.min
 
@@ -45,7 +46,8 @@ interface ITokenHandler {
   fun eatToSemi()
 }
 
-class TokenHandler(tokens: List<Token>) : ITokenHandler {
+class TokenHandler(tokens: List<Token>,
+                   debugHandler: DebugHandler) : ITokenHandler, IDebugHandler by debugHandler {
   private val tokStack = Stack<List<Token>>()
   private val idxStack = Stack<Int>()
 
@@ -100,8 +102,7 @@ class TokenHandler(tokens: List<Token>) : ITokenHandler {
   override fun eatUntil(contextIdx: Int) {
     val old = idxStack.pop()
     if (contextIdx < old) {
-      // FIXME
-      throw IllegalArgumentException("???")
+      logger.throwICE("Trying to eat tokens backwards") { "old=$old, contextIdx=$contextIdx" }
     }
     idxStack.push(contextIdx)
   }
