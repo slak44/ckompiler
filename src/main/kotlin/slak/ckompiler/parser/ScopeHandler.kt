@@ -24,6 +24,12 @@ interface IScopeHandler {
    * it is not added again, and diagnostics are printed.
    */
   fun newIdentifier(id: IdentifierNode, isLabel: Boolean = false)
+
+  /**
+   * Searches all the scopes for a given identifier.
+   * @return null if no such identifier exists, or the previous [IdentifierNode] otherwise
+   */
+  fun searchInScope(target: IdentifierNode): IdentifierNode?
 }
 
 /** @see IScopeHandler */
@@ -62,11 +68,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     listRef.add(id)
   }
 
-  /**
-   * Searches all the scopes for a given identifier.
-   * @return null if no such identifier exists, or the previous [IdentifierNode] otherwise
-   */
-  private fun searchInScope(target: IdentifierNode): IdentifierNode? {
+  override fun searchInScope(target: IdentifierNode): IdentifierNode? {
     scopeStack.forEach {
       val idx = it.idents.indexOfFirst { (name) -> name == target.name }
       if (idx != -1) return it.idents[idx]

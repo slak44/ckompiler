@@ -12,10 +12,11 @@ interface IExpressionParser {
   fun parseExpr(endIdx: Int): Expression?
 }
 
-class ExpressionParser(parenMatcher: ParenMatcher) :
+class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     IExpressionParser,
     IDebugHandler by parenMatcher,
     ITokenHandler by parenMatcher,
+    IScopeHandler by scopeHandler,
     IParenMatcher by parenMatcher {
 
   /** @see IExpressionParser.parseExpr */
@@ -230,7 +231,18 @@ class ExpressionParser(parenMatcher: ParenMatcher) :
   private fun parseTerminal(): Expression? {
     val tok = current()
     when (tok) {
-      is Identifier -> return IdentifierNode(tok.name)
+      is Identifier -> {
+        val ident = IdentifierNode(tok.name)
+        val existingIdent = searchInScope(ident)
+        if (existingIdent == null) parserDiagnostic {
+          id = DiagnosticId.USE_UNDECLARED
+          formatArgs(tok.name)
+          errorOn(safeToken(0))
+        }
+        // When this ident is being used as undeclared, we can report the error but keep going with
+        // it undeclared
+        return existingIdent ?: ident
+      }
       is IntegralConstant -> {
         // FIXME conversions might fail here?
         return IntegerConstantNode(tok.n.toLong(tok.radix.toInt()), tok.suffix)

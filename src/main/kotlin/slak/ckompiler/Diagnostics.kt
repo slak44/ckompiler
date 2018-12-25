@@ -40,6 +40,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
   REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
   MISSING_DECLARATIONS(WARNING, "Declaration does not declare anything"),
+  USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
 }
 
 enum class DiagnosticKind(val text: String) {

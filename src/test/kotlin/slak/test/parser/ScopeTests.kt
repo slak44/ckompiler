@@ -61,4 +61,10 @@ class ScopeTests {
     val p = prepareCode("int main() { label:; int label; }", source)
     p.assertNoDiagnostics()
   }
+
+  @Test
+  fun undeclaredUsage() {
+    val p = prepareCode("int main() { int x = y; }", source)
+    assertEquals(p.diags.ids, listOf(DiagnosticId.USE_UNDECLARED))
+  }
 }

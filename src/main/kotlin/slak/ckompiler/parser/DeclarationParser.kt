@@ -269,6 +269,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         eatUntil(stopIdx)
       }
+      declarator.name()?.let { newIdentifier(it) }
       if (isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
@@ -301,7 +302,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         break
       }
     }
-    declaratorList.mapNotNull { it.name() }.forEach { newIdentifier(it) }
     if (declaratorList.isEmpty()) parserDiagnostic {
       id = DiagnosticId.MISSING_DECLARATIONS
       errorOn(safeToken(0))
