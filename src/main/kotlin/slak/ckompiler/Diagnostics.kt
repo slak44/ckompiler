@@ -12,6 +12,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   MISSING_QUOTE(ERROR, "Missing terminating %c character"),
   NO_EXP_DIGITS(ERROR, "Exponent has no digits"),
   INVALID_DIGIT(ERROR, "Invalid digit '%s' in constant"),
+  UNFINISHED_COMMENT(ERROR, "Unterminated /* comment"),
   // Parser
   // FIXME: this should be a warning printed by the preprocessor
   EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),

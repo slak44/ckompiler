@@ -272,7 +272,42 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
       return@trimStart false
     }
     if (src.isEmpty()) return
-    // Ordering:
+
+    // Comments
+    if (src.startsWith("//")) {
+      currentOffset += 2
+      if (src.isEmpty()) return
+      src = src.dropWhile {
+        if (it == '\n') return@dropWhile false
+        currentOffset++
+        return@dropWhile true
+      }
+      return tokenize()
+    } else if (src.startsWith("/*")) {
+      currentOffset += 2
+      if (src.isEmpty()) return
+      var dropped = 0
+      src = src.dropWhile {
+        if (it == '*' && src[dropped + 1] == '/') return@dropWhile false
+        dropped++
+        return@dropWhile true
+      }
+      currentOffset += dropped
+      if (src.isEmpty()) {
+        // Unterminated comment
+        lexerDiagnostic {
+          id = DiagnosticId.UNFINISHED_COMMENT
+          column(currentOffset)
+        }
+      } else {
+        // Get rid of the */
+        src = src.drop(2)
+        currentOffset += 2
+      }
+      return tokenize()
+    }
+
+    // Ordering to avoid conflicts (ie avoid taking a keyword as an identifier):
     // keyword before identifier
     // characterConstant before identifier
     // stringLiteral before identifier

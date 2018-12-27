@@ -308,4 +308,52 @@ class LexerTests {
         Punctuator(Punctuators.SEMICOLON)
     ), l.tokens)
   }
+
+  @Test
+  fun comment() {
+    val l = Lexer("""
+      // lalalalla int = dgdgd 1 .34/ // /////
+      int a = 1;
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+    assertEquals(listOf(
+        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.SEMICOLON)
+    ), l.tokens)
+  }
+
+  @Test
+  fun commentMultiline() {
+    val l = Lexer("""
+      /* lalalalla int = dgdgd 1 .34/ // ////* /*
+      asf
+      fg` ȀȁȂȃȄȅȆȇȈȉ ȊȋȌȍȎȏ02 10ȐȑȒȓȔȕȖȗ ȘșȚțȜȝȞ
+      32ng
+      g */
+      int a = 1;
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+    assertEquals(listOf(
+        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.SEMICOLON)
+    ), l.tokens)
+  }
+
+  @Test
+  fun commentMultilineUnfinished() {
+    assertDiagnostic("""
+      /* lalalalla int = dgdgd 1 .34/ // ////* /*
+      asf
+      fg` ȀȁȂȃȄȅȆȇȈȉ ȊȋȌȍȎȏ02 10ȐȑȒȓȔȕȖȗ ȘșȚțȜȝȞ
+      32ng
+      g
+      int a = 1;
+    """.trimIndent(), DiagnosticId.UNFINISHED_COMMENT)
+  }
+
+  @Test
+  fun commentEndOfFile() {
+    val l = Lexer("//", source)
+    l.assertNoDiagnostics()
+  }
 }
