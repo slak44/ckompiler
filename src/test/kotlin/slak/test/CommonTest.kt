@@ -7,7 +7,7 @@ import slak.ckompiler.parser.*
 import kotlin.test.assertEquals
 
 internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), inspections)
-internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
+internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
@@ -157,20 +157,6 @@ internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNod
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
 internal infix fun String.call(l: List<Expression>) = FunctionCall(name(this), l.map { it })
-
-internal class BinaryBuilder {
-  var lhs: Expression? = null
-  var rhs: Expression? = null
-  fun build(op: Operators): BinaryExpression {
-    return BinaryExpression(op, lhs!!, rhs!!)
-  }
-}
-
-internal fun Operators.with(block: BinaryBuilder.() -> Unit): BinaryExpression {
-  val b = BinaryBuilder()
-  b.block()
-  return b.build(this)
-}
 
 internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.ADD
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB
