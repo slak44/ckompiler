@@ -30,6 +30,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
+  PARAM_BEFORE_VARIADIC(ERROR, "ISO C requires a named parameter before '...'"),
 
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
   INCOMPATIBLE_DECL_SPEC(ERROR, "Cannot combine with previous '%s' declaration specifier"),

@@ -69,14 +69,18 @@ internal infix fun DeclarationSpecifier.declare(s: String) =
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
 
-internal infix fun String.withParams(params: List<ParameterDeclaration>): FunctionDeclarator {
-  return FunctionDeclarator(nameDecl(this), params,
-      scope = params.mapTo(mutableListOf()) { it.name()!! }.let {
-        val s = LexicalScope()
-        s.idents.addAll(it)
-        s
-      })
+private fun String.withParams(params: List<ParameterDeclaration>,
+                                    variadic: Boolean): FunctionDeclarator {
+  val scope = params.mapTo(mutableListOf()) { it.name()!! }.let {
+    val s = LexicalScope()
+    s.idents.addAll(it)
+    s
+  }
+  return FunctionDeclarator(nameDecl(this), params, variadic = variadic, scope = scope)
 }
+
+internal infix fun String.withParams(params: List<ParameterDeclaration>) = withParams(params, false)
+internal infix fun String.withParamsV(params: List<ParameterDeclaration>) = withParams(params, true)
 
 internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
   if (s !is CompoundStatement && s !is ErrorStatement) {
@@ -86,7 +90,7 @@ internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
   val d = declaratorList[0] as? FunctionDeclarator ?: throw IllegalArgumentException("Not function")
   val st = s as? CompoundStatement
   val scope = if (st == null || st.items.isEmpty()) d.scope else st.scope
-  val fdecl = FunctionDeclarator(d.declarator, d.params, d.isVararg, scope)
+  val fdecl = FunctionDeclarator(d.declarator, d.params, d.variadic, scope)
   val newCompound = if (st == null) s else CompoundStatement(st.items, scope)
   return FunctionDefinition(declSpecs, fdecl, newCompound)
 }

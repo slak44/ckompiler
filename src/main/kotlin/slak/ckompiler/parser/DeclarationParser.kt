@@ -54,18 +54,36 @@ class DeclarationParser(scopeHandler: ScopeHandler,
   }
 
   /**
-   * Parses the params in a function declaration.
+   * Parses the params in a function declaration (`parameter-type-list`).
    * Examples of what it parses:
+   * ```
    * void f(int a, int x);
    *        ^^^^^^^^^^^^
    * void g();
    *        (here this function gets nothing to parse, and returns an empty list)
+   * ```
+   * C standard: A.2.2
+   * @return the list of [ParameterDeclaration]s, and whether or not the function is variadic
    */
-  private fun parseParameterList(endIdx: Int): List<ParameterDeclaration> = tokenContext(endIdx) {
+  private fun parseParameterList(endIdx: Int):
+      Pair<List<ParameterDeclaration>, Boolean> = tokenContext(endIdx) {
     // No parameters; this is not an error case
-    if (isEaten()) return@tokenContext emptyList()
+    if (isEaten()) return@tokenContext Pair(emptyList(), false)
+    var isVariadic = false
     val params = mutableListOf<ParameterDeclaration>()
     while (!isEaten()) {
+      // Variadic functions
+      if (current().asPunct() == Punctuators.DOTS) {
+        eat()
+        isVariadic = true
+        if (params.isEmpty()) {
+          parserDiagnostic {
+            id = DiagnosticId.PARAM_BEFORE_VARIADIC
+            errorOn(safeToken(0))
+          }
+        }
+        break
+      }
       val specs = parseDeclSpecifiers()
       if (specs.isEmpty()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
@@ -91,7 +109,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         eat()
       }
     }
-    return@tokenContext params
+    return@tokenContext Pair(params, isVariadic)
   }
 
   /**
@@ -125,6 +143,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
   private fun parseDirectDeclaratorSuffixes(primary: Declarator): Declarator = when {
     isEaten() -> primary
     current().asPunct() == Punctuators.LPAREN -> {
+      val lparen = safeToken(0)
       val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
       eat() // Get rid of "("
       // FIXME: we can return something better than an ErrorNode (have the ident)
@@ -132,9 +151,24 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         // FIXME: maybe we should eat stuff here?
         ErrorDeclarator()
       } else scoped {
-        val paramList = parseParameterList(rparenIdx)
+        val (paramList, variadic) = parseParameterList(rparenIdx)
+        // Bad params, usually happens if there are other args after '...'
+        if (current().asPunct() != Punctuators.RPAREN) {
+          parserDiagnostic {
+            id = DiagnosticId.UNMATCHED_PAREN
+            formatArgs(Punctuators.RPAREN.s)
+            errorOn(tokenAt(rparenIdx))
+          }
+          parserDiagnostic {
+            id = DiagnosticId.MATCH_PAREN_TARGET
+            formatArgs(Punctuators.LPAREN.s)
+            errorOn(lparen)
+          }
+          eatUntil(rparenIdx)
+        }
         eat() // Get rid of ")"
-        FunctionDeclarator(declarator = primary, params = paramList, scope = this, isVararg = false)
+        FunctionDeclarator(
+            declarator = primary, params = paramList, scope = this, variadic = variadic)
       }
     }
     current().asPunct() == Punctuators.LSQPAREN -> {

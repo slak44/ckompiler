@@ -370,7 +370,7 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
 // FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
 data class FunctionDeclarator(val declarator: Declarator,
                               val params: List<ParameterDeclaration>,
-                              val isVararg: Boolean = false,
+                              val variadic: Boolean = false,
                               val scope: LexicalScope) : Declarator() {
   init {
     declarator.setParent(this)
