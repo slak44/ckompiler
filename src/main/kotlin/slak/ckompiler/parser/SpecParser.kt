@@ -28,6 +28,12 @@ class SpecParser(tokenHandler: TokenHandler) :
     errorOn(last)
   }
 
+  private fun diagNotSigned(original: TypeSpecifier, signed: Keyword) = parserDiagnostic {
+    id = DiagnosticId.TYPE_NOT_SIGNED
+    formatArgs(original.toString())
+    errorOn(signed)
+  }
+
   /**
    * Used in [combineWith] when the next keyword is either [Keywords.SIGNED] or [Keywords.UNSIGNED].
    * If it encounters an error, the diagnostic is issued and the value of [this] is returned.
@@ -49,11 +55,7 @@ class SpecParser(tokenHandler: TokenHandler) :
       this
     }
     else -> {
-      parserDiagnostic {
-        id = DiagnosticId.TYPE_NOT_SIGNED
-        formatArgs(this.toString())
-        errorOn(debug)
-      }
+      diagNotSigned(this, debug)
       this
     }
   }
@@ -95,14 +97,14 @@ class SpecParser(tokenHandler: TokenHandler) :
         Keywords.SHORT -> return SIGNED_SHORT
         Keywords.INT -> return SIGNED_INT
         Keywords.LONG -> return SIGNED_LONG
-        else -> diagIncompat(this, next)
+        else -> diagNotSigned(this, next)
       }
       UNSIGNED -> when (next.value) {
         Keywords.CHAR -> return UNSIGNED_CHAR
         Keywords.SHORT -> return UNSIGNED_SHORT
         Keywords.INT -> return UNSIGNED_INT
         Keywords.LONG -> return UNSIGNED_LONG
-        else -> diagIncompat(this, next)
+        else -> diagNotSigned(this, next)
       }
       else -> diagIncompat(this, next)
     }

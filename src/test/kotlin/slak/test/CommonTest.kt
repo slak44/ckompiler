@@ -48,6 +48,11 @@ internal val longDouble = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
     typeSpec = TypeSpecifier.LONG_DOUBLE)
 
+internal val signedChar = DeclarationSpecifier(
+    typeSpecifiers = listOf(Keyword(Keywords.SIGNED), Keyword(Keywords.CHAR)),
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
+    typeSpec = TypeSpecifier.SIGNED_CHAR)
+
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s)

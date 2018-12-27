@@ -2,7 +2,10 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.parser.RealDeclaration
+import slak.ckompiler.parser.TypeSpecifier
 import slak.test.*
+import kotlin.test.assertEquals
 
 class SpecTests {
   @Test
@@ -12,12 +15,14 @@ class SpecTests {
       long long b = 2;
       long unsigned long c = 3;
       double long d = 4;
+      char signed e = 5;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int declare ("a" assign int(1)) assertEquals p.root.decls[0]
     longLong declare ("b" assign int(2)) assertEquals p.root.decls[1]
     uLongLong declare ("c" assign int(3)) assertEquals p.root.decls[2]
     longDouble declare ("d" assign int(4)) assertEquals p.root.decls[3]
+    signedChar declare ("e" assign int(5)) assertEquals p.root.decls[4]
   }
 
   @Test
@@ -43,5 +48,30 @@ class SpecTests {
   fun missingTypeSpec() {
     val p = prepareCode("int main() { const a = 1; }", source)
     p.assertDiags(DiagnosticId.MISSING_TYPE_SPEC)
+  }
+
+  @Test
+  fun duplicateSpecs() {
+    val p = prepareCode("int main() { const unsigned unsigned a = 1; }", source)
+    p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
+  }
+
+  @Test
+  fun typeNotSigned() {
+    val p = prepareCode("int main() { signed _Bool a = 1; }", source)
+    p.assertDiags(DiagnosticId.TYPE_NOT_SIGNED)
+  }
+
+  @Test
+  fun typeNotSignedRev() {
+    val p = prepareCode("int main() { _Bool signed a = 1; }", source)
+    p.assertDiags(DiagnosticId.TYPE_NOT_SIGNED)
+  }
+
+  @Test
+  fun voidFunc() {
+    val p = prepareCode("void f();", source)
+    p.assertNoDiagnostics()
+    assertEquals(TypeSpecifier.VOID, (p.root.decls[0] as RealDeclaration).declSpecs.typeSpec)
   }
 }
