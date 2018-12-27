@@ -26,24 +26,16 @@ interface IDeclarationParser {
   fun parseDeclaration(declSpec: DeclarationSpecifier, declarator: Declarator): Declaration
 }
 
-class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: ExpressionParser) :
+class DeclarationParser(scopeHandler: ScopeHandler,
+                        specParser: SpecParser,
+                        expressionParser: ExpressionParser) :
     IDeclarationParser,
     IDebugHandler by scopeHandler,
     ITokenHandler by expressionParser,
     IScopeHandler by scopeHandler,
     IParenMatcher by expressionParser,
+    ISpecParser by specParser,
     IExpressionParser by expressionParser {
-
-  companion object {
-    private val storageClassSpecifier =
-        listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
-    private val typeSpecifier = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
-        Keywords.LONG, Keywords.FLOAT, Keywords.DOUBLE, Keywords.SIGNED, Keywords.UNSIGNED,
-        Keywords.BOOL, Keywords.COMPLEX)
-    private val typeQualifier =
-        listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE, Keywords.ATOMIC)
-    private val funSpecifier = listOf(Keywords.NORETURN, Keywords.INLINE)
-  }
 
   override fun parseDeclaration(): Declaration? {
     val declSpec = parseDeclSpecifiers()
@@ -59,30 +51,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator): Declaration {
     return RealDeclaration(declSpec, parseInitDeclaratorList(declarator))
-  }
-
-  /** C standard: A.2.2, 6.7 */
-  private fun parseDeclSpecifiers(): DeclarationSpecifier {
-    val keywordsEnd = indexOfFirst { it !is Keyword }
-    return tokenContext(if (keywordsEnd == -1) tokenCount else keywordsEnd) {
-      val storageSpecs = mutableListOf<Keyword>()
-      val typeSpecs = mutableListOf<Keyword>()
-      val typeQuals = mutableListOf<Keyword>()
-      val funSpecs = mutableListOf<Keyword>()
-      it.takeWhile { tok ->
-        when ((tok as Keyword).value) {
-          Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
-          in storageClassSpecifier -> storageSpecs.add(tok)
-          in typeSpecifier -> typeSpecs.add(tok)
-          in typeQualifier -> typeQuals.add(tok)
-          in funSpecifier -> funSpecs.add(tok)
-          else -> return@takeWhile false
-        }
-        eat()
-        return@takeWhile true
-      }
-      DeclarationSpecifier(storageSpecs, typeSpecs, typeQuals, funSpecs)
-    }
   }
 
   /**

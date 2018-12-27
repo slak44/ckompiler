@@ -241,25 +241,45 @@ data class StringLiteralNode(val string: String,
 /**
  * Lists the possible permutations of the type specifiers.
  *
- * **NOTES**:
- * 1. `char`, `signed char` and `unsigned char` are distinct in the standard (6.7.2 paragraph 2).
- * In here, `char == signed char`.
- * 2. Same thing applies to `short`, `int`, etc.
- * 3. We do not currently support complex types, and they produce errors in the parser.
- * 4. FIXME: certain specifiers are not implemented
+ * We do not currently support complex types, and they produce errors in the parser.
+ * FIXME: certain other specifiers are not implemented
  */
 enum class TypeSpecifier {
   VOID, BOOL,
-  SIGNED_CHAR,
-  UNSIGNED_CHAR,
-  SIGNED_SHORT, UNSIGNED_SHORT,
-  SIGNED_INT, UNSIGNED_INT,
-  SIGNED_LONG, UNSIGNED_LONG,
-  SIGNED_LONG_LONG, UNSIGNED_LONG_LONG,
+  SIGNED, UNSIGNED,
+  CHAR, SIGNED_CHAR, UNSIGNED_CHAR,
+  SHORT, SIGNED_SHORT, UNSIGNED_SHORT,
+  INT, SIGNED_INT, UNSIGNED_INT,
+  LONG, SIGNED_LONG, UNSIGNED_LONG,
+  LONG_LONG, SIGNED_LONG_LONG, UNSIGNED_LONG_LONG,
   FLOAT, DOUBLE, LONG_DOUBLE,
   // COMPLEX_FLOAT, COMPLEX_DOUBLE, COMPLEX_LONG_DOUBLE,
   ATOMIC_TYPE_SPEC,
-  STRUCT_OR_UNION_SPEC, ENUM_SPEC, TYPEDEF_NAME
+  STRUCT_OR_UNION_SPEC, ENUM_SPEC, TYPEDEF_NAME;
+
+  override fun toString() = when (this) {
+    VOID -> Keywords.VOID.keyword
+    BOOL -> Keywords.BOOL.keyword
+    CHAR -> Keywords.CHAR.keyword
+    SHORT -> Keywords.SHORT.keyword
+    INT -> Keywords.INT.keyword
+    LONG -> Keywords.LONG.keyword
+    FLOAT -> Keywords.FLOAT.keyword
+    DOUBLE -> Keywords.DOUBLE.keyword
+    SIGNED_CHAR -> "${Keywords.SIGNED.keyword} ${Keywords.CHAR.keyword}"
+    UNSIGNED_CHAR -> "${Keywords.UNSIGNED.keyword} ${Keywords.CHAR.keyword}"
+    SIGNED_SHORT -> "${Keywords.SIGNED.keyword} ${Keywords.SHORT.keyword}"
+    UNSIGNED_SHORT -> "${Keywords.UNSIGNED.keyword} ${Keywords.SHORT.keyword}"
+    SIGNED_INT -> "${Keywords.SIGNED.keyword} ${Keywords.INT.keyword}"
+    UNSIGNED_INT -> "${Keywords.UNSIGNED.keyword} ${Keywords.INT.keyword}"
+    SIGNED_LONG -> "${Keywords.SIGNED.keyword} ${Keywords.LONG.keyword}"
+    UNSIGNED_LONG -> "${Keywords.UNSIGNED.keyword} ${Keywords.LONG.keyword}"
+    LONG_LONG -> "$LONG $LONG"
+    SIGNED_LONG_LONG -> "${Keywords.SIGNED.keyword} $LONG_LONG"
+    UNSIGNED_LONG_LONG -> "${Keywords.UNSIGNED.keyword} $LONG_LONG"
+    LONG_DOUBLE -> "$LONG $DOUBLE"
+    else -> "<unimplemented type>"
+  }
 }
 
 /**
@@ -267,16 +287,14 @@ enum class TypeSpecifier {
  * FIXME: more complex specifiers are missing (6.7.2)
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
-data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
-                                val typeSpecifiers: List<Keyword>,
-                                val typeQualifiers: List<Keyword>,
-                                val functionSpecs: List<Keyword>) {
+class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
+                           val typeQualifiers: List<Keyword>,
+                           val functionSpecs: List<Keyword>,
+                           private val typeSpecifiers: List<Keyword>,
+                           val typeSpec: TypeSpecifier?) {
   /** @return true if no specifiers were found */
   fun isEmpty() = storageClassSpecs.isEmpty() && typeSpecifiers.isEmpty() &&
       typeQualifiers.isEmpty() && functionSpecs.isEmpty()
-
-  /** @return how many tokens were passed by while parsing this object */
-  val size = storageClassSpecs.size + typeSpecifiers.size + typeQualifiers.size + functionSpecs.size
 
   override fun toString(): String {
     val text = listOf(storageClassSpecs, typeSpecifiers, typeQualifiers, functionSpecs)
@@ -285,6 +303,28 @@ data class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
           it.joinToString(" ") { (value) -> value.keyword }
         }
     return "($text)"
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as DeclarationSpecifier
+
+    if (typeSpec != other.typeSpec) return false
+    if (storageClassSpecs != other.storageClassSpecs) return false
+    if (typeQualifiers != other.typeQualifiers) return false
+    if (functionSpecs != other.functionSpecs) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = storageClassSpecs.hashCode()
+    result = 31 * result + typeSpec.hashCode()
+    result = 31 * result + typeQualifiers.hashCode()
+    result = 31 * result + functionSpecs.hashCode()
+    return result
   }
 }
 

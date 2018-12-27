@@ -7,6 +7,7 @@ import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.DeclarationSpecifier
 import slak.ckompiler.parser.ErrorExpression
 import slak.ckompiler.parser.IdentifierNode
+import slak.ckompiler.parser.TypeSpecifier
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -27,7 +28,8 @@ class DeclarationTests {
         typeQualifiers = listOf(Keyword(Keywords.CONST)),
         storageClassSpecs = listOf(Keyword(Keywords.STATIC)),
         typeSpecifiers = listOf(Keyword(Keywords.INT)),
-        functionSpecs = emptyList())
+        functionSpecs = emptyList(),
+        typeSpec = TypeSpecifier.INT)
     assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 

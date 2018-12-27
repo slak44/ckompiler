@@ -19,13 +19,31 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
 internal val List<Diagnostic>.ids get() = map { it.id }
 
 internal val int = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.INT)),
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList())
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
+    typeSpec = TypeSpecifier.INT)
 
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
+
 internal val double = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.DOUBLE)),
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList())
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
+    typeSpec = TypeSpecifier.DOUBLE)
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
+
+internal val longLong = DeclarationSpecifier(
+    typeSpecifiers = listOf(Keyword(Keywords.LONG), Keyword(Keywords.LONG)),
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
+    typeSpec = TypeSpecifier.LONG_LONG)
+
+internal val uLongLong = DeclarationSpecifier(typeSpecifiers = listOf(
+    Keyword(Keywords.UNSIGNED), Keyword(Keywords.LONG), Keyword(Keywords.LONG)),
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
+    typeSpec = TypeSpecifier.UNSIGNED_LONG_LONG)
+
+internal val longDouble = DeclarationSpecifier(
+    typeSpecifiers = listOf(Keyword(Keywords.DOUBLE), Keyword(Keywords.LONG)),
+    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
+    typeSpec = TypeSpecifier.LONG_DOUBLE)
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 

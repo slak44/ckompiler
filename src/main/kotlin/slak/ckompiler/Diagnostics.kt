@@ -26,6 +26,10 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_LPAREN_AFTER(ERROR, "Expected '(' after %s"),
   EXPECTED_SEMI_IN_FOR(ERROR, "Expected ';' in 'for' statement specifier"),
   UNEXPECTED_IN_FOR(ERROR, "Unexpected token in 'for' statement specifier"),
+  ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
+  EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
+  EXPECTED_STATEMENT(ERROR, "Expected statement"),
+
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
   INCOMPATIBLE_DECL_SPEC(ERROR, "Cannot combine with previous '%s' declaration specifier"),
   // clang puts up a warning; the standard says we error
@@ -33,9 +37,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // Implementations are allowed to not support complex numbers
   UNSUPPORTED_COMPLEX(ERROR, "_Complex is not supported by this implementation"),
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
-  ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
-  EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
-  EXPECTED_STATEMENT(ERROR, "Expected statement"),
+
   REDEFINITION(ERROR, "Redefinition of '%s'"),
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
   REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
