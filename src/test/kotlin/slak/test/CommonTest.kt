@@ -1,6 +1,7 @@
 package slak.test
 
 import slak.ckompiler.Diagnostic
+import slak.ckompiler.DiagnosticId
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
@@ -17,6 +18,8 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
 }
 
 internal val List<Diagnostic>.ids get() = map { it.id }
+
+internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toList(), diags.ids)
 
 internal val int = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.INT)),
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),

@@ -2,10 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.test.assertNoDiagnostics
-import slak.test.ids
-import slak.test.prepareCode
-import slak.test.source
+import slak.test.*
 import kotlin.test.assertEquals
 
 /**
@@ -16,25 +13,25 @@ class ScopeTests {
   @Test
   fun fileScopeRedefinitionViaDifferentDeclaration() {
     val p = prepareCode("int a; int a;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS))
+    p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 
   @Test
   fun fileScopeRedefinitionViaSameDeclaration() {
     val p = prepareCode("int a, a;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS))
+    p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 
   @Test
   fun fileScopeRedefinitionOf2FunctionDeclarators() {
     val p = prepareCode("int a; int a;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS))
+    p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 
   @Test
   fun blockScopeRedefinition() {
     val p = prepareCode("int main() { int x, x; }", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS))
+    p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 
   @Test
@@ -65,6 +62,6 @@ class ScopeTests {
   @Test
   fun undeclaredUsage() {
     val p = prepareCode("int main() { int x = y; }", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.USE_UNDECLARED))
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
   }
 }

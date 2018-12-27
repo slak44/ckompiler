@@ -17,7 +17,7 @@ class IterationTests {
         while 0) 1 + 1;
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_LPAREN_AFTER), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_LPAREN_AFTER)
     int func ("main" withParams emptyList()) body compoundOf(ErrorStatement()) assertEquals
         p.root.decls[0]
   }
@@ -63,7 +63,7 @@ class IterationTests {
         while () 1 + 1;
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_EXPR), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
     int func ("main" withParams emptyList()) body compoundOf(
         whileSt(ErrorExpression()) {
           1 add 1
@@ -93,7 +93,7 @@ class IterationTests {
         while (1)
       }
     """.trimIndent(), source)
-    kotlin.test.assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_STATEMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         WhileStatement(int(1), ErrorStatement())
     ) assertEquals p.root.decls[0]
@@ -106,7 +106,7 @@ class IterationTests {
         while ()
       }
     """.trimIndent(), source)
-    kotlin.test.assertEquals(listOf(DiagnosticId.EXPECTED_EXPR, DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR, DiagnosticId.EXPECTED_STATEMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         WhileStatement(ErrorExpression(), ErrorStatement())
     ) assertEquals p.root.decls[0]
@@ -119,7 +119,7 @@ class IterationTests {
         do while (1);
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_STATEMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         ErrorStatement() asDoWhile int(1)
     ) assertEquals p.root.decls[0]
@@ -145,7 +145,7 @@ class IterationTests {
         do {} while ();
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_EXPR), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
     int func ("main" withParams emptyList()) body compoundOf(
         emptyCompound() asDoWhile ErrorExpression()
     ) assertEquals p.root.decls[0]
@@ -158,7 +158,7 @@ class IterationTests {
         do {} while ()
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_EXPR, DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR, DiagnosticId.EXPECTED_SEMI_AFTER)
     int func ("main" withParams emptyList()) body compoundOf(
         emptyCompound() asDoWhile ErrorExpression()
     ) assertEquals p.root.decls[0]
@@ -290,7 +290,7 @@ class IterationTests {
         for (1 + 1; 1 + 1);
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_IN_FOR)
     int func ("main" withParams emptyList()) body compoundOf(
         forSt(1 add 1, ErrorExpression(), ErrorExpression(), Noop())
     ) assertEquals p.root.decls[0]
@@ -303,7 +303,7 @@ class IterationTests {
         for (1 + 1);
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_IN_FOR)
     int func ("main" withParams emptyList()) body compoundOf(
         forSt(ErrorInitializer(), ErrorExpression(), ErrorExpression(), Noop())
     ) assertEquals p.root.decls[0]
@@ -316,7 +316,7 @@ class IterationTests {
         for ();
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_IN_FOR), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_IN_FOR)
     int func ("main" withParams emptyList()) body compoundOf(
         forSt(ErrorInitializer(), ErrorExpression(), ErrorExpression(), Noop())
     ) assertEquals p.root.decls[0]
@@ -329,7 +329,7 @@ class IterationTests {
         for (1 + 1; 1 + 1; 1 + 1)
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_STATEMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         forSt(1 add 1, 1 add 1, 1 add 1, ErrorStatement())
     ) assertEquals p.root.decls[0]

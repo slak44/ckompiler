@@ -80,7 +80,7 @@ class ExpressionTests {
   @Test
   fun exprPrefixIncSimple() {
     val p = prepareCode("int a = ++b;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.USE_UNDECLARED))
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign PrefixIncrement(name("b"))) assertEquals p.root.decls[0]
   }
 
@@ -95,7 +95,7 @@ class ExpressionTests {
   @Test
   fun exprPostfixIncSimple() {
     val p = prepareCode("int a = b++;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.USE_UNDECLARED))
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign PostfixIncrement(name("b"))) assertEquals p.root.decls[0]
   }
 
@@ -110,14 +110,14 @@ class ExpressionTests {
   @Test
   fun exprUnaryRef() {
     val p = prepareCode("int a = &b;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.USE_UNDECLARED))
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign (Operators.REF apply name("b"))) assertEquals p.root.decls[0]
   }
 
   @Test
   fun exprUnaryLots() {
     val p = prepareCode("int a = *&+-~!b;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.USE_UNDECLARED))
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign (
         Operators.DEREF apply (Operators.REF apply (Operators.PLUS apply
             (Operators.MINUS apply (Operators.BIT_NOT apply (Operators.NOT apply name("b"))))))

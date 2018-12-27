@@ -4,7 +4,6 @@ import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
-import kotlin.test.assertEquals
 
 class StatementTests {
   @Test
@@ -84,7 +83,7 @@ class StatementTests {
         if (int) 1 + 1;
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_PRIMARY), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
     int func ("main" withParams emptyList()) body compoundOf(
         ifSt(ErrorExpression()) {
           1 add 1
@@ -99,7 +98,7 @@ class StatementTests {
         if () 1 + 1;
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_EXPR), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
     int func ("main" withParams emptyList()) body compoundOf(
         ifSt(ErrorExpression()) {
           1 add 1
@@ -114,7 +113,7 @@ class StatementTests {
         if (123)
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_STATEMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         IfStatement(int(123), ErrorStatement(), null)
     ) assertEquals p.root.decls[0]
@@ -127,7 +126,7 @@ class StatementTests {
         if (123) else 1 + 1;
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_STATEMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         IfStatement(int(123), ErrorStatement(), (1 add 1))
     ) assertEquals p.root.decls[0]
@@ -183,7 +182,7 @@ class StatementTests {
         return 0
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
     int func ("main" withParams emptyList()) body compoundOf(
         returnSt(int(0))
     ) assertEquals p.root.decls[0]
@@ -211,7 +210,7 @@ class StatementTests {
         break
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
     int func ("main" withParams emptyList()) body compoundOf(
         BreakStatement()
     ) assertEquals p.root.decls[0]
@@ -239,7 +238,7 @@ class StatementTests {
         continue
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
     int func ("main" withParams emptyList()) body compoundOf(
         ContinueStatement()
     ) assertEquals p.root.decls[0]
@@ -265,7 +264,7 @@ class StatementTests {
         label:
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_STATEMENT), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_STATEMENT)
     // This hacky thing is needed because the parser is smart enough to add the label to the scope
     // even if the final LabeledStatement is an error, while the test DSL is *not*
     val scope = LexicalScope()
@@ -308,7 +307,7 @@ class StatementTests {
         goto fakeLabel
       }
     """.trimIndent(), source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_SEMI_AFTER), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
     int func ("main" withParams emptyList()) body compoundOf(
         goto("fakeLabel")
     ) assertEquals p.root.decls[0]

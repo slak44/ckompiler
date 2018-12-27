@@ -57,7 +57,7 @@ class DeclarationTests {
   @Test
   fun declarationWithIdentifierInitializer() {
     val p = prepareCode("int a = someVariable;", source)
-    assertEquals(p.diags.ids, listOf(DiagnosticId.USE_UNDECLARED))
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
     assertEquals(listOf(int declare ("a" assign IdentifierNode("someVariable"))), p.root.decls)
   }
 

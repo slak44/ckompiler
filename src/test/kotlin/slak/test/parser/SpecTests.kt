@@ -3,7 +3,6 @@ package slak.test.parser
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.test.*
-import kotlin.test.assertEquals
 
 class SpecTests {
   @Test
@@ -25,24 +24,24 @@ class SpecTests {
   fun incompatibleIntInt() {
     // Clang doesn't warn on this, it errors, so we copy them
     val p = prepareCode("int int a = 1;", source)
-    assertEquals(listOf(DiagnosticId.INCOMPATIBLE_DECL_SPEC), p.diags.ids)
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
 
   @Test
   fun missingTypeSpecExternal() {
     val p = prepareCode("a = 1;", source)
-    assertEquals(listOf(DiagnosticId.EXPECTED_EXTERNAL_DECL), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_EXTERNAL_DECL)
   }
 
   @Test
   fun missingTypeSpecWithConstExternal() {
     val p = prepareCode("const a = 1;", source)
-    assertEquals(listOf(DiagnosticId.MISSING_TYPE_SPEC), p.diags.ids)
+    p.assertDiags(DiagnosticId.MISSING_TYPE_SPEC)
   }
 
   @Test
   fun missingTypeSpec() {
     val p = prepareCode("int main() { const a = 1; }", source)
-    assertEquals(listOf(DiagnosticId.MISSING_TYPE_SPEC), p.diags.ids)
+    p.assertDiags(DiagnosticId.MISSING_TYPE_SPEC)
   }
 }
