@@ -24,9 +24,11 @@ data class Edge(val from: CFGNode, val to: CFGNode)
 
 sealed class CFGTerminator : CFGNode()
 
-data class Jump(val cond: Expression?,
-                val target: BasicBlock,
-                val other: BasicBlock) : CFGTerminator()
+data class CondJump(val cond: Expression?,
+                    val target: BasicBlock,
+                    val other: BasicBlock) : CFGTerminator()
+
+data class UncondJump(val target: BasicBlock) : CFGTerminator()
 
 data class Return(val value: Expression?) : CFGTerminator()
 
@@ -45,9 +47,13 @@ data class BasicBlock(val data: MutableList<ASTNode>,
     nodes.add(this)
     if (term == null) return
     nodes.add(term!!)
-    edges.add(Edge(this, term!!))
-    if (term !is Jump) return
-    val t = term as Jump
+    if (term is UncondJump) {
+      edges.add(Edge(this, (term!! as UncondJump).target))
+    } else {
+      edges.add(Edge(this, term!!))
+    }
+    if (term !is CondJump) return
+    val t = term as CondJump
     edges.add(Edge(t, t.target))
     if (t.target != t.other) {
       edges.add(Edge(t, t.other))
@@ -64,7 +70,8 @@ fun createGraphviz(graphRoot: BasicBlock): String {
   val content = nodes.joinToString("\n") {
     when (it) {
       is BasicBlock -> "${it.id} [shape=box,label=\"${it.data.joinToString("\n")}\"];"
-      is Jump -> "${it.id} [shape=diamond,label=\"${it.cond.toString()}\"];"
+      is UncondJump -> "" // Do nothing deliberately
+      is CondJump -> "${it.id} [shape=diamond,label=\"${it.cond.toString()}\"];"
       is Return -> "${it.id} [shape=ellipse,label=\"${it.value.toString()}\"];"
     }
   } + "\n" + edges.joinToString("\n") { "${it.from.id} -> ${it.to.id};" }
@@ -101,11 +108,11 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     val elseBlock = BasicBlock(mutableListOf(), listOf(current), null)
     val afterIfBlock = BasicBlock(mutableListOf(),
         listOfNotNull(ifBlock, if (s.failure == null) null else elseBlock), null)
-    current.term = Jump(s.cond, ifBlock, elseBlock)
+    current.term = CondJump(s.cond, ifBlock, elseBlock)
     graphStatement(ifBlock, s.success)
     s.failure?.let { graphStatement(elseBlock, it) }
-    if (ifBlock.term == null) ifBlock.term = Jump(null, afterIfBlock, afterIfBlock)
-    if (elseBlock.term == null) elseBlock.term = Jump(null, afterIfBlock, afterIfBlock)
+    if (ifBlock.term == null) ifBlock.term = UncondJump(afterIfBlock)
+    if (elseBlock.term == null) elseBlock.term = UncondJump(afterIfBlock)
     afterIfBlock
   }
   is SwitchStatement -> TODO("implement switches")
