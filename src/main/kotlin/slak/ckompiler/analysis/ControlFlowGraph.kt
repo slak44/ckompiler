@@ -12,19 +12,27 @@ internal val FunctionDefinition.block get() = compoundStatement as CompoundState
 private val logger = KotlinLogging.logger("ControlFlow")
 
 sealed class CFGNode {
-  abstract val id: String
+  val id: String get() = "${javaClass.simpleName}_$objNr"
+  private val objNr = objIndex++
+
+  companion object {
+    private var objIndex = 0
+  }
 }
 
 data class Edge(val from: CFGNode, val to: CFGNode)
 
-data class Jump(val cond: Expression?, val target: BasicBlock, val other: BasicBlock) : CFGNode() {
-  override val id: String get() = "jump_${hashCode()}"
-}
+sealed class CFGTerminator : CFGNode()
+
+data class Jump(val cond: Expression?,
+                val target: BasicBlock,
+                val other: BasicBlock) : CFGTerminator()
+
+data class Return(val value: Expression?) : CFGTerminator()
 
 data class BasicBlock(val data: MutableList<ASTNode>,
                       val preds: List<BasicBlock>,
-                      var jmp: Jump?) : CFGNode() {
-  override val id: String get() = "block_${hashCode()}"
+                      var term: CFGTerminator?) : CFGNode() {
 
   fun graphDataOf(): Pair<List<CFGNode>, List<Edge>> {
     val nodes = mutableListOf<CFGNode>()
@@ -35,16 +43,18 @@ data class BasicBlock(val data: MutableList<ASTNode>,
 
   private fun graphDataImpl(nodes: MutableList<CFGNode>, edges: MutableList<Edge>) {
     nodes.add(this)
-    if (jmp == null) return
-    nodes.add(jmp!!)
-    edges.add(Edge(this, jmp!!))
-    edges.add(Edge(jmp!!, jmp!!.target))
-    if (jmp!!.target != jmp!!.other) {
-      edges.add(Edge(jmp!!, jmp!!.other))
-      jmp!!.target.graphDataImpl(nodes, edges)
-      jmp!!.other.graphDataImpl(nodes, edges)
+    if (term == null) return
+    nodes.add(term!!)
+    edges.add(Edge(this, term!!))
+    if (term !is Jump) return
+    val t = term as Jump
+    edges.add(Edge(t, t.target))
+    if (t.target != t.other) {
+      edges.add(Edge(t, t.other))
+      t.target.graphDataImpl(nodes, edges)
+      t.other.graphDataImpl(nodes, edges)
     } else {
-      jmp!!.target.graphDataImpl(nodes, edges)
+      t.target.graphDataImpl(nodes, edges)
     }
   }
 }
@@ -53,16 +63,18 @@ fun createGraphviz(graphRoot: BasicBlock): String {
   val (nodes, edges) = graphRoot.graphDataOf()
   val content = nodes.joinToString("\n") {
     when (it) {
-      is BasicBlock -> "${it.id} [shape=box,label=${it.data.joinToString()}];"
-      is Jump -> "${it.id} [shape=diamond,label=${it.cond.toString()}];"
+      is BasicBlock -> "${it.id} [shape=box,label=\"${it.data.joinToString("\n")}\"];"
+      is Jump -> "${it.id} [shape=diamond,label=\"${it.cond.toString()}\"];"
+      is Return -> "${it.id} [shape=ellipse,label=\"${it.value.toString()}\"];"
     }
   } + "\n" + edges.joinToString("\n") { "${it.from.id} -> ${it.to.id};" }
   return "digraph CFG {\n$content\n}"
 }
 
-fun createGraphFor(f: FunctionDefinition) {
+fun createGraphFor(f: FunctionDefinition): BasicBlock {
   val init = BasicBlock(mutableListOf(), emptyList(), null)
   graphCompound(init, f.block)
+  return init
 }
 
 fun graphCompound(current: BasicBlock, compoundStatement: CompoundStatement): BasicBlock {
@@ -70,9 +82,7 @@ fun graphCompound(current: BasicBlock, compoundStatement: CompoundStatement): Ba
   for (item in compoundStatement.items) {
     when (item) {
       is StatementItem -> block = graphStatement(block, item.statement)
-      is DeclarationItem -> {
-        TODO("implement")
-      }
+      is DeclarationItem -> block.data.add(item.declaration)
     }
   }
   return block
@@ -91,11 +101,11 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     val elseBlock = BasicBlock(mutableListOf(), listOf(current), null)
     val afterIfBlock = BasicBlock(mutableListOf(),
         listOfNotNull(ifBlock, if (s.failure == null) null else elseBlock), null)
-    current.jmp = Jump(s.cond, ifBlock, elseBlock)
+    current.term = Jump(s.cond, ifBlock, elseBlock)
     graphStatement(ifBlock, s.success)
     s.failure?.let { graphStatement(elseBlock, it) }
-    if (ifBlock.jmp == null) ifBlock.jmp = Jump(null, afterIfBlock, afterIfBlock)
-    if (elseBlock.jmp == null) elseBlock.jmp = Jump(null, afterIfBlock, afterIfBlock)
+    if (ifBlock.term == null) ifBlock.term = Jump(null, afterIfBlock, afterIfBlock)
+    if (elseBlock.term == null) elseBlock.term = Jump(null, afterIfBlock, afterIfBlock)
     afterIfBlock
   }
   is SwitchStatement -> TODO("implement switches")
@@ -105,5 +115,9 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   is ContinueStatement -> TODO()
   is BreakStatement -> TODO()
   is GotoStatement -> TODO()
-  is ReturnStatement -> TODO()
+  is ReturnStatement -> {
+    current.term = Return(s.expr)
+    // FIXME: create a new block to contain all the stuff after the return
+    current
+  }
 }
