@@ -1,7 +1,7 @@
 package slak.test
 
 import org.junit.Test
-import slak.ckompiler.CodeGenerator
+import slak.ckompiler.analysis.CodeGenerator
 
 class CodegenTests {
   @Test

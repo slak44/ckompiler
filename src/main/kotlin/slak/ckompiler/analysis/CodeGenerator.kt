@@ -1,4 +1,4 @@
-package slak.ckompiler
+package slak.ckompiler.analysis
 
 import mu.KotlinLogging
 import slak.ckompiler.parser.*
@@ -33,13 +33,6 @@ class CodeGenerator(val ast: RootNode) {
   private fun Instructions.joinInstructions(): String {
     return joinToString("\n") { "  $it" }
   }
-
-  private val FunctionDefinition.name get() = functionDeclarator.name
-  private val FunctionDefinition.block get() = compoundStatement as CompoundStatement
-
-  private val DeclarationItem.it get() = declaration as RealDeclaration
-
-  private val Declarator.name get() = name()!!.name
 
   private fun genBinExpr(e: BinaryExpression): String {
     val instr = mutableListOf<String>()
