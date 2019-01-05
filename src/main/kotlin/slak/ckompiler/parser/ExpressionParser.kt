@@ -32,6 +32,8 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     return@tokenContext parseExprImpl(primary, 0)
   }
 
+  private fun errorExpr() = ErrorExpression().withRange(rangeOne())
+
   private fun parseExprImpl(lhsInit: Expression, minPrecedence: Int): Expression {
     var lhs = lhsInit
     while (true) {
@@ -45,7 +47,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
           id = DiagnosticId.EXPECTED_PRIMARY
           errorOn(safeToken(0))
         }
-        return@parseExprImpl ErrorExpression()
+        return@parseExprImpl errorExpr()
       }
       while (true) {
         if (isEaten()) break
@@ -58,6 +60,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
       lhs = BinaryExpression(op, lhs, rhs)
+          .withRange(lhs.tokenRange.start..rhs.tokenRange.endInclusive)
     }
     return lhs
   }
@@ -71,7 +74,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      ErrorExpression()
+      errorExpr()
     }
     current().asPunct() == Punctuators.LPAREN -> {
       if (relative(1).asPunct() == Punctuators.RPAREN) {
@@ -79,12 +82,12 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
           id = DiagnosticId.EXPECTED_EXPR
           errorOn(safeToken(1))
         }
-        ErrorExpression()
+        errorExpr()
       } else {
         val endParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
         if (endParenIdx == -1) {
           eatToSemi()
-          ErrorExpression()
+          errorExpr()
         } else {
           eat() // Get rid of the LPAREN
           val expr = parseExpr(endParenIdx)
@@ -94,12 +97,13 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
     }
     else -> parseTerminal()?.let {
+      val term = it.withRange(rangeOne())
       eat()
-      it
+      return@let term
     }
   }
 
-  private fun parseArgumentExprList(): List<Expression> {
+  private fun parseArgumentExprList(): Pair<List<Expression>, Token> {
     val funcArgs = mutableListOf<Expression>()
     val callEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     eat() // The '('
@@ -109,7 +113,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     if (current().asPunct() == Punctuators.RPAREN) {
       eat() // The ')'
       // No parameters; this is not an error case
-      return emptyList()
+      return Pair(emptyList(), current())
     }
     tokenContext(callEnd) {
       while (!isEaten()) {
@@ -134,7 +138,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
     }
     eat() // The ')'
-    return funcArgs
+    return Pair(funcArgs, tokenAt(callEnd))
   }
 
   private fun parsePostfixExpression(): Expression? {
@@ -146,7 +150,8 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         TODO("implement subscript operator")
       }
       current().asPunct() == Punctuators.LPAREN -> {
-        return FunctionCall(expr, parseArgumentExprList())
+        val (args, endParenTok) = parseArgumentExprList()
+        return FunctionCall(expr, args).withRange(expr.tokenRange.start until endParenTok.startIdx)
       }
       current().asPunct() == Punctuators.DOT -> {
         TODO("implement direct struct/union access operator")
@@ -156,9 +161,10 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
       current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
         val c = current().asPunct()
+        val r = rangeOne()
         eat() // The postfix op
-        if (c == Punctuators.INC) PostfixIncrement(expr)
-        else PostfixDecrement(expr)
+        if (c == Punctuators.INC) PostfixIncrement(expr).withRange(r)
+        else PostfixDecrement(expr).withRange(r)
       }
       else -> return expr
     }
@@ -166,17 +172,19 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
 
   private fun parseUnaryExpression(): Expression? = when {
     current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
-      val c = current().asPunct()
+      val c = current()
       eat() // The prefix op
-      val expr = parseUnaryExpression() ?: ErrorExpression()
-      if (c == Punctuators.INC) PrefixIncrement(expr)
-      else PrefixDecrement(expr)
+      val expr = parseUnaryExpression() ?: errorExpr()
+      val range = c.startIdx until expr.tokenRange.endInclusive + 1
+      if (c.asPunct() == Punctuators.INC) PrefixIncrement(expr).withRange(range)
+      else PrefixDecrement(expr).withRange(range)
     }
     current().asUnaryOperator() != null -> {
-      val c = current().asUnaryOperator()!!
+      val c = current()
+      val op = c.asUnaryOperator()!!
       eat() // The unary op
-      val expr = parsePrimaryExpr() ?: ErrorExpression()
-      UnaryExpression(c, expr)
+      val expr = parsePrimaryExpr() ?: errorExpr()
+      UnaryExpression(op, expr).withRange(c.startIdx until expr.tokenRange.endInclusive + 1)
     }
     current().asKeyword() == Keywords.ALIGNOF -> {
       eat() // The ALIGNOF
@@ -189,11 +197,15 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     current().asKeyword() == Keywords.SIZEOF -> {
       eat() // The SIZEOF
       when {
-        isEaten() -> ErrorExpression()
+        isEaten() -> errorExpr()
         current().asPunct() == Punctuators.LPAREN -> {
           TODO("implement `sizeof ( type-name )` expressions")
         }
-        else -> SizeofExpression(parseUnaryExpression() ?: ErrorExpression())
+        else -> {
+          val expr = parseUnaryExpression() ?: errorExpr()
+          SizeofExpression(expr)
+              .withRange(relative(-1).startIdx until expr.tokenRange.endInclusive + 1)
+        }
       }
     }
     else -> parsePostfixExpression()
@@ -216,7 +228,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         if (tokenCount != 0) errorOn(safeToken(0))
         else errorOn(parentContext()[parentIdx()])
       }
-      return ErrorExpression()
+      return errorExpr()
     }
     // FIXME: here we can also have a cast, that needs to be differentiated from `( expression )`
     return parseUnaryExpression()
@@ -241,7 +253,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         }
         // When this ident is being used as undeclared, we can report the error but keep going with
         // it undeclared
-        return existingIdent ?: ident
+        return ident
       }
       is IntegralConstant -> {
         // FIXME conversions might fail here?

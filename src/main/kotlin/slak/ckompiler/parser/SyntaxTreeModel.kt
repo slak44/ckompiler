@@ -6,12 +6,17 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("AST")
 
+// FIXME: these ranges are possibly wrong
+infix fun Token.until(other: Token): IntRange = this.startIdx..other.startIdx
+infix fun IntRange.between(other: IntRange) = this.start until other.endInclusive + 1
+
 /**
  * Base class of all nodes from an Abstract Syntax Tree.
  * @param isRoot set to true if this [ASTNode] is the root node for the tree
  */
 sealed class ASTNode(val isRoot: Boolean = false) {
   private var lateParent: ASTNode? = null
+  private var lateTokenRange: IntRange? = null
 
   /**
    * A reference to this node's parent.
@@ -46,8 +51,33 @@ sealed class ASTNode(val isRoot: Boolean = false) {
     lateParent = parent
   }
 
+  /**
+   * The first and last [Token]s of this node.
+   * @throws slak.ckompiler.InternalCompilerError if accessed on a node without a range set
+   */
+  val tokenRange: IntRange by lazy {
+    if (lateTokenRange == null) {
+      logger.throwICE("Attempt to access missing token range data") { this }
+    }
+    return@lazy lateTokenRange!!
+  }
+
+  /** Sets this node's token range. */
+  fun setRange(range: IntRange) {
+    lateTokenRange = range
+  }
+
+  /** Gets the piece of the source code that this node was created from. */
+  fun originalCode(sourceCode: String) = sourceCode.substring(tokenRange).trim()
+
   override fun equals(other: Any?) = other is ASTNode
   override fun hashCode() = javaClass.hashCode()
+}
+
+/** Sets a node's token range, and returns the node. */
+fun <T : ASTNode> T.withRange(range: IntRange): T {
+  this.setRange(range)
+  return this
 }
 
 /**
@@ -291,7 +321,8 @@ class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
                            val typeQualifiers: List<Keyword>,
                            val functionSpecs: List<Keyword>,
                            private val typeSpecifiers: List<Keyword>,
-                           val typeSpec: TypeSpecifier?) {
+                           val typeSpec: TypeSpecifier?,
+                           val range: IntRange?) {
   /** @return true if no specifiers were found */
   fun isEmpty() = storageClassSpecs.isEmpty() && typeSpecifiers.isEmpty() &&
       typeQualifiers.isEmpty() && functionSpecs.isEmpty()

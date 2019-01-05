@@ -178,12 +178,15 @@ class SpecParser(tokenHandler: TokenHandler) :
       } else {
         ts = parseTypeSpecifier(typeSpecs)
       }
+      val isEmpty = storageSpecs.isEmpty() && funSpecs.isEmpty() &&
+          typeQuals.isEmpty() && typeSpecs.isEmpty()
       DeclarationSpecifier(
           storageClassSpecs = storageSpecs,
           functionSpecs = funSpecs,
           typeSpecifiers = typeSpecs,
           typeQualifiers = typeQuals,
-          typeSpec = ts
+          typeSpec = ts,
+          range = if (isEmpty) null else tokenAt(0) until safeToken(0)
       )
     }
   }

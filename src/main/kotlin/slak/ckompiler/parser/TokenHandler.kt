@@ -14,6 +14,12 @@ interface ITokenHandler {
   /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
   fun colPastTheEnd(offset: Int): Int
 
+  /** Get a range of the current token. Useful for [ErrorNode]s or [Terminal]s. */
+  fun rangeOne(): IntRange {
+    val tok = if (tokenCount == 0) parentContext()[parentIdx()] else safeToken(0)
+    return tok.startIdx until tok.startIdx + tok.consumedChars
+  }
+
   fun parentContext(): List<Token>
   fun parentIdx(): Int
 

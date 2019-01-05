@@ -38,7 +38,7 @@ fun main(args: Array<String>) {
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
       val startBlock = createGraphFor(p.root.decls.mapNotNull { d -> d as? FunctionDefinition }[0])
-      println(createGraphviz(startBlock))
+      println(createGraphviz(startBlock, text))
       return
     }
   }

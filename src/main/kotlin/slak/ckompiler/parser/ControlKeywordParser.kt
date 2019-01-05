@@ -40,9 +40,9 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
       }
       eatToSemi()
       if (!isEaten()) eat()
-      return ErrorStatement()
+      return ErrorStatement().withRange(rangeOne())
     } else {
-      val ident = IdentifierNode((current() as Identifier).name)
+      val ident = IdentifierNode((current() as Identifier).name).withRange(rangeOne())
       eat() // The ident
       if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
         parserDiagnostic {
@@ -55,7 +55,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
       } else {
         eat() // The ';'
       }
-      return GotoStatement(ident)
+      return GotoStatement(ident).withRange(safeToken(-3) until safeToken(0))
     }
   }
 
@@ -71,7 +71,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     } else {
       eat() // The ';'
     }
-    return ContinueStatement()
+    return ContinueStatement().withRange(safeToken(-2) until safeToken(0))
   }
 
   override fun parseBreak(): BreakStatement? {
@@ -86,10 +86,11 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     } else {
       eat() // The ';'
     }
-    return BreakStatement()
+    return BreakStatement().withRange(safeToken(-2) until safeToken(0))
   }
 
   override fun parseReturn(): ReturnStatement? {
+    val retKey = current()
     if (current().asKeyword() != Keywords.RETURN) return null
     eat()
     val semiIdx = indexOfFirst { it.asPunct() == Punctuators.SEMICOLON }
@@ -101,9 +102,9 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
         formatArgs("return statement")
         column(colPastTheEnd(0))
       }
-      return ReturnStatement(expr)
+      return ReturnStatement(expr).withRange(retKey until safeToken(0))
     }
     eat() // The ';'
-    return ReturnStatement(expr)
+    return ReturnStatement(expr).withRange(retKey until safeToken(0))
   }
 }

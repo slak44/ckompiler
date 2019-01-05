@@ -71,6 +71,7 @@ private class TranslationUnitParser(statementParser: StatementParser) :
   val root = RootNode()
 
   init {
+    root.setRange(tokenAt(0) until relative(tokenCount - 1))
     translationUnit()
     diags.forEach { it.print() }
   }
@@ -92,8 +93,9 @@ private class TranslationUnitParser(statementParser: StatementParser) :
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
-    val block = parseCompoundStatement(funDecl.scope) ?: ErrorStatement()
-    return FunctionDefinition(declSpec, funDecl, block)
+    val block = parseCompoundStatement(funDecl.scope) ?: ErrorStatement().withRange(rangeOne())
+    val start = if (declSpec.isEmpty()) block.tokenRange else declSpec.range!!
+    return FunctionDefinition(declSpec, funDecl, block).withRange(start between  block.tokenRange)
   }
 
   /** C standard: A.2.4, 6.9 */

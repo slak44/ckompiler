@@ -4,10 +4,7 @@ import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
-import slak.ckompiler.parser.DeclarationSpecifier
-import slak.ckompiler.parser.ErrorExpression
-import slak.ckompiler.parser.IdentifierNode
-import slak.ckompiler.parser.TypeSpecifier
+import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -29,7 +26,8 @@ class DeclarationTests {
         storageClassSpecs = listOf(Keyword(Keywords.STATIC)),
         typeSpecifiers = listOf(Keyword(Keywords.INT)),
         functionSpecs = emptyList(),
-        typeSpec = TypeSpecifier.INT)
+        typeSpec = TypeSpecifier.INT,
+        range = Keyword(Keywords.CONST) until Keyword(Keywords.INT))
     assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 

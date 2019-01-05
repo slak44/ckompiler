@@ -79,17 +79,17 @@ class BasicBlock(val data: MutableList<ASTNode>,
  * dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
  * ```
  */
-fun createGraphviz(graphRoot: BasicBlock): String {
+fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
   val (nodes, edges) = graphRoot.graphDataOf()
   val content = nodes.joinToString("\n") {
     when (it) {
       is BasicBlock -> {
-        val code = it.data.joinToString("\n")
+        val code = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
         "${it.id} [shape=box,label=\"${if (code.isBlank()) "<EMPTY>" else code}\"];"
       }
       is UncondJump -> "// unconditional jump ${it.id}"
-      is CondJump -> "${it.id} [shape=diamond,label=\"${it.cond.toString()}\"];"
-      is Return -> "${it.id} [shape=ellipse,label=\"${it.value.toString()}\"];"
+      is CondJump -> "${it.id} [shape=diamond,label=\"${it.cond?.originalCode(sourceCode)}\"];"
+      is Return -> "${it.id} [shape=ellipse,label=\"${it.value?.originalCode(sourceCode)}\"];"
     }
   } + "\n" + edges.joinToString("\n") { "${it.from.id} -> ${it.to.id};" }
   return "digraph CFG {\n$content\n}"

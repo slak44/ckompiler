@@ -40,7 +40,8 @@ class DeclarationParser(scopeHandler: ScopeHandler,
   override fun parseDeclaration(): Declaration? {
     val declSpec = parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
-    return RealDeclaration(declSpec, parseInitDeclaratorList())
+    val d = RealDeclaration(declSpec, parseInitDeclaratorList())
+    return d.withRange(declSpec.range!!.start until safeToken(0).startIdx)
   }
 
   override fun preParseDeclarator(): Pair<DeclarationSpecifier, Declarator?> {
@@ -50,8 +51,12 @@ class DeclarationParser(scopeHandler: ScopeHandler,
 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator): Declaration {
-    return RealDeclaration(declSpec, parseInitDeclaratorList(declarator))
+    val d = RealDeclaration(declSpec, parseInitDeclaratorList(declarator))
+    val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.range!!.start
+    return d.withRange(start until safeToken(0).startIdx)
   }
+
+  private fun errorDecl() = ErrorDeclarator().withRange(rangeOne())
 
   /**
    * Parses the params in a function declaration (`parameter-type-list`).
@@ -120,7 +125,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
   private fun parseNestedDeclarator(): Declarator? {
     if (current().asPunct() != Punctuators.LPAREN) return null
     val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (end == -1) return ErrorDeclarator()
+    if (end == -1) return errorDecl()
     // If the declarator slice will be empty, error out
     if (end - 1 == 0) {
       parserDiagnostic {
@@ -128,7 +133,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         errorOn(safeToken(1))
       }
       eatToSemi()
-      return ErrorDeclarator()
+      return errorDecl()
     }
     val declarator = parseDeclarator(end)
     if (declarator is ErrorNode) eatToSemi()
@@ -149,7 +154,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
       // FIXME: we can return something better than an ErrorNode (have the ident)
       if (rparenIdx == -1) {
         // FIXME: maybe we should eat stuff here?
-        ErrorDeclarator()
+        errorDecl()
       } else scoped {
         val (paramList, variadic) = parseParameterList(rparenIdx)
         // Bad params, usually happens if there are other args after '...'
@@ -169,12 +174,13 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         eat() // Get rid of ")"
         FunctionDeclarator(
             declarator = primary, params = paramList, scope = this, variadic = variadic)
+            .withRange(primary.tokenRange.start until tokenAt(rparenIdx).startIdx)
       }
     }
     current().asPunct() == Punctuators.LSQPAREN -> {
       val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
       if (end == -1) {
-        ErrorDeclarator()
+        errorDecl()
       } else {
         // FIXME: A.2.2/6.7.6 direct-declarator with square brackets
         logger.throwICE("Unimplemented grammar") { current() }
@@ -186,7 +192,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
   /** C standard: 6.7.6.1 */
   private fun parseNameDeclarator(): NameDeclarator? {
     val id = current() as? Identifier ?: return null
-    val name = NameDeclarator(IdentifierNode(id.name))
+    val name = NameDeclarator(IdentifierNode(id.name).withRange(rangeOne())).withRange(rangeOne())
     eat() // The identifier token
     return name
   }
@@ -198,7 +204,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
         column(colPastTheEnd(0))
       }
-      return@tokenContext ErrorDeclarator()
+      return@tokenContext errorDecl()
     }
     val primaryDecl = parseNameDeclarator() ?: parseNestedDeclarator()
     if (primaryDecl == null) {
@@ -206,7 +212,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
         errorOn(safeToken(0))
       }
-      return@tokenContext ErrorDeclarator()
+      return@tokenContext errorDecl()
     }
     return@tokenContext parseDirectDeclaratorSuffixes(primaryDecl)
   }
@@ -282,7 +288,9 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         break
       }
       if (current().asPunct() == Punctuators.ASSIGN) {
-        declaratorList.add(InitDeclarator(declarator, parseInitializer()))
+        val d = InitDeclarator(declarator, parseInitializer())
+        d.withRange(declarator.tokenRange between d.initializer.tokenRange)
+        declaratorList.add(d)
       } else {
         declaratorList.add(declarator)
       }

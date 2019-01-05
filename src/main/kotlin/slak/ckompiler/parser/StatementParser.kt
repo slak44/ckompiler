@@ -24,9 +24,12 @@ class StatementParser(declarationParser: DeclarationParser,
     IExpressionParser by declarationParser,
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser {
+  
+  private fun errorSt() = ErrorStatement().withRange(rangeOne())
 
   /** @see [IStatementParser.parseCompoundStatement] */
   override fun parseCompoundStatement(functionScope: LexicalScope?): Statement? {
+    val lbracket = current()
     if (current().asPunct() != Punctuators.LBRACKET) return null
     val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, false)
     eat() // Get rid of '{'
@@ -34,7 +37,7 @@ class StatementParser(declarationParser: DeclarationParser,
       // Try to recover
       eatToSemi()
       if (!isEaten()) eat()
-      return ErrorStatement()
+      return errorSt()
     }
     fun parseCompoundItems(scope: LexicalScope): CompoundStatement {
       val items = mutableListOf<BlockItem>()
@@ -51,18 +54,18 @@ class StatementParser(declarationParser: DeclarationParser,
       tokenContext(rbracket) { parseCompoundItems(this) }
     }
     eat() // Get rid of '}'
-    return compound
+    return compound.withRange(lbracket until tokenAt(rbracket))
   }
-
 
   /**
    * C standard: A.2.3, 6.8.1
    * @return the [LabeledStatement] if it is there, or null if there is no such statement
    */
   private fun parseLabeledStatement(): Statement? {
+    val ident = current()
     // FIXME: this only parses the first kind of labeled statement (6.8.1)
-    if (current() !is Identifier || relative(1).asPunct() != Punctuators.COLON) return null
-    val label = IdentifierNode((current() as Identifier).name)
+    if (ident !is Identifier || relative(1).asPunct() != Punctuators.COLON) return null
+    val label = IdentifierNode(ident.name).withRange(rangeOne())
     newIdentifier(label, isLabel = true)
     eat() // Get rid of ident
     eat() // Get rid of ':'
@@ -72,9 +75,10 @@ class StatementParser(declarationParser: DeclarationParser,
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(relative(-1))
       }
-      return ErrorStatement()
+      return errorSt()
     }
     return LabeledStatement(label, labeled)
+        .withRange(ident.startIdx until labeled.tokenRange.endInclusive + 1)
   }
 
   /**
@@ -83,9 +87,10 @@ class StatementParser(declarationParser: DeclarationParser,
    */
   private fun parseIfStatement(): Statement? {
     if (current().asKeyword() != Keywords.IF) return null
+    val ifTok = current()
     eat() // The 'if'
     val condParenEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condParenEnd == -1) return ErrorStatement()
+    if (condParenEnd == -1) return errorSt()
     eat() // The '(' from the if
     val condExpr = parseExpr(condParenEnd)
     val cond = if (condExpr == null) {
@@ -103,7 +108,7 @@ class StatementParser(declarationParser: DeclarationParser,
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
       }
-      ErrorStatement()
+      errorSt()
     } else {
       val statement = parseStatement()
       if (statement == null) {
@@ -115,7 +120,7 @@ class StatementParser(declarationParser: DeclarationParser,
         while (!isEaten() &&
             current().asPunct() != Punctuators.SEMICOLON &&
             current().asKeyword() != Keywords.ELSE) eat()
-        ErrorStatement()
+        errorSt()
       } else {
         statement
       }
@@ -131,13 +136,15 @@ class StatementParser(declarationParser: DeclarationParser,
         // Eat until the next thing
         eatToSemi()
         if (!isEaten()) eat()
-        ErrorStatement()
+        errorSt()
       } else {
         elseStatement
       }
       return IfStatement(cond, statementSuccess, statementFailure)
+          .withRange(ifTok.startIdx until statementFailure.tokenRange.endInclusive + 1)
     } else {
       return IfStatement(cond, statementSuccess, null)
+          .withRange(ifTok.startIdx until statementSuccess.tokenRange.endInclusive + 1)
     }
   }
 
@@ -163,6 +170,7 @@ class StatementParser(declarationParser: DeclarationParser,
    */
   private fun parseWhile(): Statement? {
     if (current().asKeyword() != Keywords.WHILE) return null
+    val whileTok = current()
     eat() // The WHILE
     if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
       parserDiagnostic {
@@ -175,11 +183,11 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       eatUntil(end)
       if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
-      return ErrorStatement()
+      return errorSt()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
-    if (rparen == -1) return ErrorStatement()
+    if (rparen == -1) return errorSt()
     val cond = parseExpr(rparen)
     val condition = if (cond == null) {
       // Eat everything between parens
@@ -198,11 +206,12 @@ class StatementParser(declarationParser: DeclarationParser,
       // Attempt to eat the error
       eatToSemi()
       if (!isEaten()) eat()
-      ErrorStatement()
+      errorSt()
     } else {
       statement
     }
     return WhileStatement(condition, loopable)
+        .withRange(whileTok.startIdx until loopable.tokenRange.endInclusive + 1)
   }
 
   /**
@@ -212,9 +221,10 @@ class StatementParser(declarationParser: DeclarationParser,
    */
   private fun parseDoWhile(): Statement? {
     if (current().asKeyword() != Keywords.DO) return null
+    val doTok = current()
     val theWhile = findKeywordMatch(Keywords.DO, Keywords.WHILE, stopAtSemi = false)
     eat() // The DO
-    if (theWhile == -1) return ErrorStatement()
+    if (theWhile == -1) return errorSt()
     val statement = tokenContext(theWhile) { parseStatement() }
     val loopable = if (statement == null) {
       parserDiagnostic {
@@ -227,7 +237,7 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       if (end == -1) eatToSemi()
       eatUntil(end)
-      ErrorStatement()
+      errorSt()
     } else {
       statement
     }
@@ -267,6 +277,7 @@ class StatementParser(declarationParser: DeclarationParser,
       eat() // The ';'
     }
     return DoWhileStatement(condition, loopable)
+        .withRange(doTok.startIdx until condition.tokenRange.endInclusive + 1)
   }
 
   /**
@@ -276,6 +287,7 @@ class StatementParser(declarationParser: DeclarationParser,
    */
   private fun parseFor(): Statement? {
     if (current().asKeyword() != Keywords.FOR) return null
+    val forTok = current()
     eat() // The FOR
     if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
       parserDiagnostic {
@@ -285,11 +297,11 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       eatToSemi()
       if (!isEaten()) eat()
-      return ErrorStatement()
+      return errorSt()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
-    if (rparen == -1) return ErrorStatement()
+    if (rparen == -1) return errorSt()
     // The 3 components of a for loop
     val (clause1, expr2, expr3) = tokenContext(rparen) {
       val firstSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
@@ -346,8 +358,10 @@ class StatementParser(declarationParser: DeclarationParser,
       eatToSemi()
       if (!isEaten()) eat()
       return ForStatement(clause1, expr2, expr3, ErrorExpression())
+          .withRange(forTok until safeToken(0))
     }
     return ForStatement(clause1, expr2, expr3, loopable)
+        .withRange(forTok.startIdx until loopable.tokenRange.endInclusive + 1)
   }
 
   /**
@@ -357,8 +371,9 @@ class StatementParser(declarationParser: DeclarationParser,
   private fun parseStatement(): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
+      val n = Noop().withRange(rangeOne())
       eat()
-      return Noop()
+      return n
     }
     return parseLabeledStatement()
         ?: parseCompoundStatement()
