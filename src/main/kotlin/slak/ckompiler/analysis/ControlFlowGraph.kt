@@ -81,7 +81,8 @@ class BasicBlock(val data: MutableList<ASTNode>,
  */
 fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
   val (nodes, edges) = graphRoot.graphDataOf()
-  val content = nodes.joinToString("\n") {
+  val sep = "\n  "
+  val content = nodes.joinToString(sep) {
     when (it) {
       is BasicBlock -> {
         val code = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
@@ -91,8 +92,8 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
       is CondJump -> "${it.id} [shape=diamond,label=\"${it.cond?.originalCode(sourceCode)}\"];"
       is Return -> "${it.id} [shape=ellipse,label=\"${it.value?.originalCode(sourceCode)}\"];"
     }
-  } + "\n" + edges.joinToString("\n") { "${it.from.id} -> ${it.to.id};" }
-  return "digraph CFG {\n$content\n}"
+  } + sep + edges.joinToString(sep) { "${it.from.id} -> ${it.to.id};" }
+  return "digraph CFG {$sep$content\n}"
 }
 
 fun createGraphFor(f: FunctionDefinition): BasicBlock {
