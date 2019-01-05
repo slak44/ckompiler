@@ -15,6 +15,10 @@ sealed class CFGNode {
   val id: String get() = "${javaClass.simpleName}_$objNr"
   private val objNr = objIndex++
 
+  override fun equals(other: Any?) = objNr == (other as? CFGNode)?.objNr
+
+  override fun hashCode() = objNr
+
   companion object {
     private var objIndex = 0
   }
@@ -24,53 +28,66 @@ data class Edge(val from: CFGNode, val to: CFGNode)
 
 sealed class CFGTerminator : CFGNode()
 
-data class CondJump(val cond: Expression?,
-                    val target: BasicBlock,
-                    val other: BasicBlock) : CFGTerminator()
+class CondJump(val cond: Expression?,
+               val target: BasicBlock,
+               val other: BasicBlock) : CFGTerminator()
 
-data class UncondJump(val target: BasicBlock) : CFGTerminator()
+class UncondJump(val target: BasicBlock) : CFGTerminator()
 
-data class Return(val value: Expression?) : CFGTerminator()
+class Return(val value: Expression?) : CFGTerminator()
 
-data class BasicBlock(val data: MutableList<ASTNode>,
-                      val preds: List<BasicBlock>,
-                      var term: CFGTerminator?) : CFGNode() {
-
+class BasicBlock(val data: MutableList<ASTNode>,
+                 val preds: List<BasicBlock>,
+                 var term: CFGTerminator?) : CFGNode() {
   fun graphDataOf(): Pair<List<CFGNode>, List<Edge>> {
     val nodes = mutableListOf<CFGNode>()
     val edges = mutableListOf<Edge>()
     graphDataImpl(nodes, edges)
-    return Pair(nodes, edges)
+    return Pair(nodes.distinct(), edges.distinct())
   }
 
   private fun graphDataImpl(nodes: MutableList<CFGNode>, edges: MutableList<Edge>) {
     nodes.add(this)
     if (term == null) return
     nodes.add(term!!)
-    if (term is UncondJump) {
-      edges.add(Edge(this, (term!! as UncondJump).target))
-    } else {
-      edges.add(Edge(this, term!!))
-    }
-    if (term !is CondJump) return
-    val t = term as CondJump
-    edges.add(Edge(t, t.target))
-    if (t.target != t.other) {
-      edges.add(Edge(t, t.other))
-      t.target.graphDataImpl(nodes, edges)
-      t.other.graphDataImpl(nodes, edges)
-    } else {
-      t.target.graphDataImpl(nodes, edges)
+    when (term) {
+      is UncondJump -> {
+        val target = (term!! as UncondJump).target
+        edges.add(Edge(this, target))
+        target.graphDataImpl(nodes, edges)
+      }
+      is CondJump -> {
+        edges.add(Edge(this, term!!))
+        val t = term as CondJump
+        edges.add(Edge(t, t.target))
+        t.target.graphDataImpl(nodes, edges)
+        edges.add(Edge(t, t.other))
+        t.other.graphDataImpl(nodes, edges)
+      }
+      is Return -> {
+        edges.add(Edge(this, term!!))
+      }
     }
   }
 }
 
+/**
+ * Pretty graph for debugging purposes.
+ * Recommended usage:
+ * ```
+ * ckompiler --print-cfg-graphviz /tmp/file.c 2> /dev/null |
+ * dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
+ * ```
+ */
 fun createGraphviz(graphRoot: BasicBlock): String {
   val (nodes, edges) = graphRoot.graphDataOf()
   val content = nodes.joinToString("\n") {
     when (it) {
-      is BasicBlock -> "${it.id} [shape=box,label=\"${it.data.joinToString("\n")}\"];"
-      is UncondJump -> "" // Do nothing deliberately
+      is BasicBlock -> {
+        val code = it.data.joinToString("\n")
+        "${it.id} [shape=box,label=\"${if (code.isBlank()) "<EMPTY>" else code}\"];"
+      }
+      is UncondJump -> "// unconditional jump ${it.id}"
       is CondJump -> "${it.id} [shape=diamond,label=\"${it.cond.toString()}\"];"
       is Return -> "${it.id} [shape=ellipse,label=\"${it.value.toString()}\"];"
     }
@@ -88,7 +105,9 @@ fun graphCompound(current: BasicBlock, compoundStatement: CompoundStatement): Ba
   var block = current
   for (item in compoundStatement.items) {
     when (item) {
-      is StatementItem -> block = graphStatement(block, item.statement)
+      is StatementItem -> {
+        block = graphStatement(block, item.statement)
+      }
       is DeclarationItem -> block.data.add(item.declaration)
     }
   }
@@ -109,10 +128,12 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     val afterIfBlock = BasicBlock(mutableListOf(),
         listOfNotNull(ifBlock, if (s.failure == null) null else elseBlock), null)
     current.term = CondJump(s.cond, ifBlock, elseBlock)
-    graphStatement(ifBlock, s.success)
-    s.failure?.let { graphStatement(elseBlock, it) }
-    if (ifBlock.term == null) ifBlock.term = UncondJump(afterIfBlock)
-    if (elseBlock.term == null) elseBlock.term = UncondJump(afterIfBlock)
+    val ifNext = graphStatement(ifBlock, s.success)
+    if (ifNext.term == null) ifNext.term = UncondJump(afterIfBlock)
+    s.failure?.let {
+      val elseNext = graphStatement(elseBlock, it)
+      if (elseNext.term == null) elseNext.term = UncondJump(afterIfBlock)
+    }
     afterIfBlock
   }
   is SwitchStatement -> TODO("implement switches")
