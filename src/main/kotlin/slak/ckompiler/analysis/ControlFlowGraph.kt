@@ -180,7 +180,20 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     loopNext.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
     afterLoopBlock
   }
-  is ForStatement -> TODO()
+  is ForStatement -> {
+    when (s.init) {
+      is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
+      is ExpressionInitializer -> current.data.add(s.init.value)
+      is DeclarationInitializer -> current.data.add(s.init.value)
+    }
+    val loopBlock = BasicBlock(current)
+    val loopNext = graphStatement(loopBlock, s.loopable)
+    s.loopEnd?.let { graphStatement(loopNext, it) }
+    val afterLoopBlock = BasicBlock(current, loopNext)
+    current.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
+    loopNext.setTerminator { current.terminator!! }
+    afterLoopBlock
+  }
   is ContinueStatement -> TODO()
   is BreakStatement -> TODO()
   is GotoStatement -> TODO()
