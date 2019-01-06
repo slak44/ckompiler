@@ -139,11 +139,14 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   is CompoundStatement -> graphCompound(current, s)
   is IfStatement -> {
     val ifBlock = BasicBlock(listOf(current))
-    val elseBlock = BasicBlock( listOf(current))
-    current.setTerminator { CondJump(s.cond, ifBlock, elseBlock) }
+    val elseBlock = BasicBlock(listOf(current))
     val ifNext = graphStatement(ifBlock, s.success)
     val elseNext = s.failure?.let { graphStatement(elseBlock, it) }
     val afterIfBlock = BasicBlock(listOfNotNull(ifNext, elseNext))
+    current.setTerminator {
+      val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
+      CondJump(s.cond, ifBlock, falseBlock)
+    }
     ifNext.setTerminator { UncondJump(afterIfBlock) }
     elseNext?.setTerminator { UncondJump(afterIfBlock) }
     afterIfBlock
