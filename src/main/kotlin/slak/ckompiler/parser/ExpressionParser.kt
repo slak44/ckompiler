@@ -161,7 +161,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
       current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
         val c = current().asPunct()
-        val r = rangeOne()
+        val r = expr.tokenRange.start..rangeOne().endInclusive
         eat() // The postfix op
         if (c == Punctuators.INC) PostfixIncrement(expr).withRange(r)
         else PostfixDecrement(expr).withRange(r)
