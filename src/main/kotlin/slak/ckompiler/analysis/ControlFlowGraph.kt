@@ -36,7 +36,7 @@ class UncondJump(val target: BasicBlock) : CFGTerminator()
 
 class Return(val value: Expression?) : CFGTerminator()
 
-class BasicBlock(initPreds: List<BasicBlock>, term: CFGTerminator? = null) : CFGNode() {
+class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CFGNode() {
   val preds: MutableList<BasicBlock> = initPreds.toMutableList()
   val data: MutableList<ASTNode> = mutableListOf()
   var terminator: CFGTerminator? = term
@@ -125,7 +125,7 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
 }
 
 fun createGraphFor(f: FunctionDefinition): BasicBlock {
-  val init = BasicBlock(emptyList())
+  val init = BasicBlock()
   graphCompound(init, f.block)
   return init
 }
@@ -150,11 +150,11 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   }
   is CompoundStatement -> graphCompound(current, s)
   is IfStatement -> {
-    val ifBlock = BasicBlock(listOf(current))
-    val elseBlock = BasicBlock(listOf(current))
+    val ifBlock = BasicBlock(current)
+    val elseBlock = BasicBlock(current)
     val ifNext = graphStatement(ifBlock, s.success)
     val elseNext = s.failure?.let { graphStatement(elseBlock, it) }
-    val afterIfBlock = BasicBlock(listOf(ifNext, elseNext ?: current))
+    val afterIfBlock = BasicBlock(ifNext, elseNext ?: current)
     current.setTerminator {
       val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
       CondJump(s.cond, ifBlock, falseBlock)
@@ -165,14 +165,21 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   }
   is SwitchStatement -> TODO("implement switches")
   is WhileStatement -> {
-    val loopBlock = BasicBlock(listOf(current))
+    val loopBlock = BasicBlock(current)
     val loopNext = graphStatement(loopBlock, s.loopable)
-    val afterLoopBlock = BasicBlock(listOf(current, loopNext))
+    val afterLoopBlock = BasicBlock(current, loopNext)
     current.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
     loopNext.setTerminator { current.terminator!! }
     afterLoopBlock
   }
-  is DoWhileStatement -> TODO()
+  is DoWhileStatement -> {
+    val loopBlock = BasicBlock(current)
+    val loopNext = graphStatement(loopBlock, s.loopable)
+    val afterLoopBlock = BasicBlock(current, loopNext)
+    current.setTerminator { UncondJump(loopBlock) }
+    loopNext.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
+    afterLoopBlock
+  }
   is ForStatement -> TODO()
   is ContinueStatement -> TODO()
   is BreakStatement -> TODO()
