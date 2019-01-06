@@ -43,10 +43,12 @@ class BasicBlock(val data: MutableList<ASTNode>,
     val nodes = mutableListOf<CFGNode>()
     val edges = mutableListOf<Edge>()
     graphDataImpl(nodes, edges)
-    return Pair(nodes.distinct(), edges.distinct())
+    return Pair(nodes, edges.distinct())
   }
 
   private fun graphDataImpl(nodes: MutableList<CFGNode>, edges: MutableList<Edge>) {
+    // The graph can be cyclical, and we don't want to enter an infinite loop
+    if (nodes.contains(this)) return
     nodes.add(this)
     if (term == null) return
     nodes.add(term!!)
