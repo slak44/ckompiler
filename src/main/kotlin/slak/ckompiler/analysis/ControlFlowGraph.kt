@@ -36,9 +36,20 @@ class UncondJump(val target: BasicBlock) : CFGTerminator()
 
 class Return(val value: Expression?) : CFGTerminator()
 
-class BasicBlock(val data: MutableList<ASTNode>,
-                 val preds: List<BasicBlock>,
-                 var term: CFGTerminator?) : CFGNode() {
+class BasicBlock(val preds: List<BasicBlock>, term: CFGTerminator? = null) : CFGNode() {
+  val data: MutableList<ASTNode> = mutableListOf()
+  var terminator: CFGTerminator? = null
+    private set
+
+  init {
+    terminator = term
+  }
+
+  fun setTerminator(lazyTerminator: () -> CFGTerminator) {
+    if (terminator != null) return
+    terminator = lazyTerminator()
+  }
+
   fun graphDataOf(): Pair<List<CFGNode>, List<Edge>> {
     val nodes = mutableListOf<CFGNode>()
     val edges = mutableListOf<Edge>()
@@ -46,28 +57,29 @@ class BasicBlock(val data: MutableList<ASTNode>,
     return Pair(nodes, edges.distinct())
   }
 
+  /** Implementation detail of [graphDataOf]. Recursive case. */
   private fun graphDataImpl(nodes: MutableList<CFGNode>, edges: MutableList<Edge>) {
     // The graph can be cyclical, and we don't want to enter an infinite loop
     if (nodes.contains(this)) return
     nodes.add(this)
-    if (term == null) return
-    nodes.add(term!!)
-    when (term) {
+    if (terminator == null) return
+    nodes.add(terminator!!)
+    when (terminator) {
       is UncondJump -> {
-        val target = (term!! as UncondJump).target
+        val target = (terminator!! as UncondJump).target
         edges.add(Edge(this, target))
         target.graphDataImpl(nodes, edges)
       }
       is CondJump -> {
-        edges.add(Edge(this, term!!))
-        val t = term as CondJump
+        edges.add(Edge(this, terminator!!))
+        val t = terminator as CondJump
         edges.add(Edge(t, t.target))
         t.target.graphDataImpl(nodes, edges)
         edges.add(Edge(t, t.other))
         t.other.graphDataImpl(nodes, edges)
       }
       is Return -> {
-        edges.add(Edge(this, term!!))
+        edges.add(Edge(this, terminator!!))
       }
     }
   }
@@ -99,7 +111,7 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
 }
 
 fun createGraphFor(f: FunctionDefinition): BasicBlock {
-  val init = BasicBlock(mutableListOf(), emptyList(), null)
+  val init = BasicBlock(emptyList())
   graphCompound(init, f.block)
   return init
 }
@@ -126,28 +138,32 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   }
   is CompoundStatement -> graphCompound(current, s)
   is IfStatement -> {
-    val ifBlock = BasicBlock(mutableListOf(), listOf(current), null)
-    val elseBlock = BasicBlock(mutableListOf(), listOf(current), null)
-    val afterIfBlock = BasicBlock(mutableListOf(),
-        listOfNotNull(ifBlock, if (s.failure == null) null else elseBlock), null)
-    current.term = CondJump(s.cond, ifBlock, elseBlock)
+    val ifBlock = BasicBlock(listOf(current))
+    val elseBlock = BasicBlock( listOf(current))
+    current.setTerminator { CondJump(s.cond, ifBlock, elseBlock) }
     val ifNext = graphStatement(ifBlock, s.success)
-    if (ifNext.term == null) ifNext.term = UncondJump(afterIfBlock)
-    s.failure?.let {
-      val elseNext = graphStatement(elseBlock, it)
-      if (elseNext.term == null) elseNext.term = UncondJump(afterIfBlock)
-    }
+    val elseNext = s.failure?.let { graphStatement(elseBlock, it) }
+    val afterIfBlock = BasicBlock(listOfNotNull(ifNext, elseNext))
+    ifNext.setTerminator { UncondJump(afterIfBlock) }
+    elseNext?.setTerminator { UncondJump(afterIfBlock) }
     afterIfBlock
   }
   is SwitchStatement -> TODO("implement switches")
-  is WhileStatement -> TODO()
+  is WhileStatement -> {
+    val loopBlock = BasicBlock(listOf(current))
+    val loopNext = graphStatement(loopBlock, s.loopable)
+    val afterLoopBlock = BasicBlock(listOf(current, loopNext))
+    current.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
+    loopNext.setTerminator { current.terminator!! }
+    afterLoopBlock
+  }
   is DoWhileStatement -> TODO()
   is ForStatement -> TODO()
   is ContinueStatement -> TODO()
   is BreakStatement -> TODO()
   is GotoStatement -> TODO()
   is ReturnStatement -> {
-    current.term = Return(s.expr)
+    current.setTerminator { Return(s.expr) }
     // FIXME: create a new block to contain all the stuff after the return
     current
   }
