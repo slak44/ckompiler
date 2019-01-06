@@ -29,20 +29,34 @@ data class Edge(val from: CFGNode, val to: CFGNode)
 sealed class CFGTerminator : CFGNode()
 
 class CondJump(val cond: Expression?,
-               val target: BasicBlock,
-               val other: BasicBlock) : CFGTerminator()
+               var target: BasicBlock,
+               var other: BasicBlock) : CFGTerminator()
 
 class UncondJump(val target: BasicBlock) : CFGTerminator()
 
 class Return(val value: Expression?) : CFGTerminator()
 
-class BasicBlock(val preds: List<BasicBlock>, term: CFGTerminator? = null) : CFGNode() {
+class BasicBlock(initPreds: List<BasicBlock>, term: CFGTerminator? = null) : CFGNode() {
+  val preds: MutableList<BasicBlock> = initPreds.toMutableList()
   val data: MutableList<ASTNode> = mutableListOf()
-  var terminator: CFGTerminator? = null
+  var terminator: CFGTerminator? = term
     private set
 
   init {
-    terminator = term
+    preds.filter { it.data.isEmpty() }.forEach inner@{ emptyBlock ->
+      emptyBlock.preds.forEach {
+        val oldTerm = it.terminator!!
+        when (oldTerm) {
+          is UncondJump -> it.terminator = UncondJump(this)
+          is CondJump -> {
+            oldTerm.target = if (oldTerm.target == emptyBlock) this else oldTerm.target
+            oldTerm.other = if (oldTerm.other == emptyBlock) this else oldTerm.other
+          }
+          else -> return@inner
+        }
+        this.preds += it
+      }
+    }
   }
 
   fun setTerminator(lazyTerminator: () -> CFGTerminator) {
@@ -120,9 +134,7 @@ fun graphCompound(current: BasicBlock, compoundStatement: CompoundStatement): Ba
   var block = current
   for (item in compoundStatement.items) {
     when (item) {
-      is StatementItem -> {
-        block = graphStatement(block, item.statement)
-      }
+      is StatementItem -> block = graphStatement(block, item.statement)
       is DeclarationItem -> block.data.add(item.declaration)
     }
   }
@@ -142,7 +154,7 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     val elseBlock = BasicBlock(listOf(current))
     val ifNext = graphStatement(ifBlock, s.success)
     val elseNext = s.failure?.let { graphStatement(elseBlock, it) }
-    val afterIfBlock = BasicBlock(listOfNotNull(ifNext, elseNext))
+    val afterIfBlock = BasicBlock(listOf(ifNext, elseNext ?: current))
     current.setTerminator {
       val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
       CondJump(s.cond, ifBlock, falseBlock)
