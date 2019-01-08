@@ -21,35 +21,31 @@ internal val List<Diagnostic>.ids get() = map { it.id }
 
 internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toList(), diags.ids)
 
-internal val int = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.INT)),
+internal val int = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
     typeSpec = IntType, range = Keyword(Keywords.INT) until Keyword(Keywords.INT))
 
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 
-internal val double = DeclarationSpecifier(typeSpecifiers = listOf(Keyword(Keywords.DOUBLE)),
+internal val double = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
     typeSpec = DoubleType, range = Keyword(Keywords.DOUBLE) until Keyword(Keywords.DOUBLE))
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
 internal val longLong = DeclarationSpecifier(
-    typeSpecifiers = listOf(Keyword(Keywords.LONG), Keyword(Keywords.LONG)),
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
     typeSpec = LongLong, range = Keyword(Keywords.LONG) until Keyword(Keywords.LONG))
 
-internal val uLongLong = DeclarationSpecifier(typeSpecifiers = listOf(
-    Keyword(Keywords.UNSIGNED), Keyword(Keywords.LONG), Keyword(Keywords.LONG)),
+internal val uLongLong = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
     typeSpec = UnsignedLongLong, range = Keyword(Keywords.UNSIGNED) until Keyword(Keywords.LONG))
 
 internal val longDouble = DeclarationSpecifier(
-    typeSpecifiers = listOf(Keyword(Keywords.DOUBLE), Keyword(Keywords.LONG)),
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
     typeSpec = LongDouble, range = Keyword(Keywords.LONG) until Keyword(Keywords.DOUBLE))
 
 internal val signedChar = DeclarationSpecifier(
-    typeSpecifiers = listOf(Keyword(Keywords.SIGNED), Keyword(Keywords.CHAR)),
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
     typeSpec = SignedChar, range = Keyword(Keywords.SIGNED) until Keyword(Keywords.CHAR))
 

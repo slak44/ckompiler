@@ -24,7 +24,6 @@ class DeclarationTests {
     val spec = DeclarationSpecifier(
         typeQualifiers = listOf(Keyword(Keywords.CONST)),
         storageClassSpecs = listOf(Keyword(Keywords.STATIC)),
-        typeSpecifiers = listOf(Keyword(Keywords.INT)),
         functionSpecs = emptyList(),
         typeSpec = IntType,
         range = Keyword(Keywords.CONST) until Keyword(Keywords.INT))

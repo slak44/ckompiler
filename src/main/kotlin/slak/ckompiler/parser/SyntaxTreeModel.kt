@@ -280,7 +280,7 @@ data class TypedefNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
 /**
  * FIXME: the declarators can be with bitfields too
  */
-data class StructUnionSpecifier(val name: IdentifierNode,
+data class StructUnionSpecifier(val name: IdentifierNode?,
                                 val structDecls: List<Pair<DeclarationSpecifier, List<Declarator>>>,
                                 val isUnion: Boolean) : TypeSpecifier()
 
@@ -359,20 +359,19 @@ object LongDouble : BasicTypeSpecifier() {
 class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
                            val typeQualifiers: List<Keyword>,
                            val functionSpecs: List<Keyword>,
-                           private val typeSpecifiers: List<Keyword>,
-                           val typeSpec: BasicTypeSpecifier?,
+                           val typeSpec: TypeSpecifier?,
                            val range: IntRange?) {
   /** @return true if no specifiers were found */
-  fun isEmpty() = storageClassSpecs.isEmpty() && typeSpecifiers.isEmpty() &&
-      typeQualifiers.isEmpty() && functionSpecs.isEmpty()
+  fun isEmpty() = storageClassSpecs.isEmpty() && typeQualifiers.isEmpty() &&
+      functionSpecs.isEmpty() && typeSpec == null
 
   override fun toString(): String {
-    val text = listOf(storageClassSpecs, typeSpecifiers, typeQualifiers, functionSpecs)
+    val otherSpecs = listOf(storageClassSpecs, typeQualifiers, functionSpecs)
         .filter { it.isNotEmpty() }
         .joinToString(" ") {
           it.joinToString(" ") { (value) -> value.keyword }
         }
-    return "($text)"
+    return "($otherSpecs $typeSpec)"
   }
 
   override fun equals(other: Any?): Boolean {
