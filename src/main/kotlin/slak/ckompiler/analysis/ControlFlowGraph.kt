@@ -23,7 +23,11 @@ sealed class CFGNode {
   }
 }
 
-data class Edge(val from: CFGNode, val to: CFGNode)
+enum class EdgeType {
+  NORMAL, COND_TRUE, COND_FALSE
+}
+
+data class Edge(val from: CFGNode, val to: CFGNode, val type: EdgeType = EdgeType.NORMAL)
 
 sealed class CFGTerminator : CFGNode()
 
@@ -44,6 +48,8 @@ class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CF
 
   override fun toString() =
       if (isDead) "DEAD@${hashCode()}" else "BasicBlock(${data.joinToString("\n")})"
+
+  fun isStart() = preds.isEmpty()
 
   private fun collapseEmptyBlocks() {
     preds.filter { it.data.isEmpty() }.forEach emptyBlockLoop@{ emptyBlock ->
@@ -94,9 +100,9 @@ class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CF
       is CondJump -> {
         edges.add(Edge(this, terminator!!))
         val t = terminator as CondJump
-        edges.add(Edge(t, t.target))
+        edges.add(Edge(t, t.target, EdgeType.COND_TRUE))
         t.target.graphDataImpl(nodes, edges)
-        edges.add(Edge(t, t.other))
+        edges.add(Edge(t, t.other, EdgeType.COND_FALSE))
         t.other.graphDataImpl(nodes, edges)
       }
       is Return -> {
@@ -120,14 +126,25 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
   val content = nodes.joinToString(sep) {
     when (it) {
       is BasicBlock -> {
+        val style = if (it.isStart()) "style=filled,color=powderblue" else "color=\"\""
         val code = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
-        "${it.id} [shape=box,label=\"${if (code.isBlank()) "<EMPTY>" else code}\"];"
+        "${it.id} [shape=box,$style,label=\"${if (code.isBlank()) "<EMPTY>" else code}\"];"
       }
       is UncondJump -> "// unconditional jump ${it.id}"
       is CondJump -> "${it.id} [shape=diamond,label=\"${it.cond?.originalCode(sourceCode)}\"];"
-      is Return -> "${it.id} [shape=ellipse,label=\"${it.value?.originalCode(sourceCode)}\"];"
+      is Return -> {
+        val style = "shape=ellipse,style=filled,color=mediumpurple2"
+        "${it.id} [$style,label=\"${it.value?.originalCode(sourceCode)}\"];"
+      }
     }
-  } + sep + edges.joinToString(sep) { "${it.from.id} -> ${it.to.id};" }
+  } + sep + edges.joinToString(sep) {
+    val data = when (it.type) {
+      EdgeType.NORMAL -> ""
+      EdgeType.COND_TRUE -> "color=darkolivegreen3"
+      EdgeType.COND_FALSE -> "color=lightcoral"
+    }
+    "${it.from.id} -> ${it.to.id} [$data];"
+  }
   return "digraph CFG {$sep$content\n}"
 }
 
