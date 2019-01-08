@@ -1,0 +1,92 @@
+package slak.ckompiler.analysis
+
+import slak.ckompiler.analysis.GraphvizColors.*
+
+private enum class EdgeType {
+  NORMAL, COND_TRUE, COND_FALSE
+}
+
+private data class Edge(val from: CFGNode, val to: CFGNode, val type: EdgeType = EdgeType.NORMAL)
+
+private fun BasicBlock.graphDataOf(): Pair<List<CFGNode>, List<Edge>> {
+  val nodes = mutableListOf<CFGNode>()
+  val edges = mutableListOf<Edge>()
+  graphDataImpl(nodes, edges)
+  return Pair(nodes, edges.distinct())
+}
+
+/** Implementation detail of [graphDataOf]. Recursive case. */
+private fun BasicBlock.graphDataImpl(nodes: MutableList<CFGNode>, edges: MutableList<Edge>) {
+  // The graph can be cyclical, and we don't want to enter an infinite loop
+  if (nodes.contains(this)) return
+  nodes.add(this)
+  if (terminator == null) return
+  nodes.add(terminator!!)
+  when (terminator) {
+    is UncondJump -> {
+      val target = (terminator!! as UncondJump).target
+      edges.add(Edge(this, target))
+      target.graphDataImpl(nodes, edges)
+    }
+    is CondJump -> {
+      edges.add(Edge(this, terminator!!))
+      val t = terminator as CondJump
+      edges.add(Edge(t, t.target, EdgeType.COND_TRUE))
+      t.target.graphDataImpl(nodes, edges)
+      edges.add(Edge(t, t.other, EdgeType.COND_FALSE))
+      t.other.graphDataImpl(nodes, edges)
+    }
+    is Return -> {
+      edges.add(Edge(this, terminator!!))
+    }
+  }
+}
+
+private enum class GraphvizColors(val color: String) {
+  BG("\"#3C3F41ff\""), BLOCK_DEFAULT("\"#ccccccff\""),
+  BLOCK_START("powderblue"), BLOCK_RETURN("mediumpurple2"),
+  COND_TRUE("darkolivegreen3"), COND_FALSE("lightcoral");
+
+  override fun toString() = color
+}
+
+/**
+ * Pretty graph for debugging purposes.
+ * Recommended usage:
+ * ```
+ * ckompiler --print-cfg-graphviz /tmp/file.c 2> /dev/null |
+ * dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
+ * ```
+ */
+fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
+  val (nodes, edges) = graphRoot.graphDataOf()
+  val sep = "\n  "
+  val content = nodes.joinToString(sep) {
+    when (it) {
+      is BasicBlock -> {
+        val style =
+            if (it.isStart()) "style=filled,color=$BLOCK_START"
+            else "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
+        val code = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
+        "${it.id} [shape=box,$style,label=\"${if (code.isBlank()) "<EMPTY>" else code}\"];"
+      }
+      is UncondJump -> "// unconditional jump ${it.id}"
+      is CondJump -> {
+        val color = "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
+        "${it.id} [shape=diamond,$color,label=\"${it.cond?.originalCode(sourceCode)}\"];"
+      }
+      is Return -> {
+        val style = "shape=ellipse,style=filled,color=$BLOCK_RETURN"
+        "${it.id} [$style,label=\"${it.value?.originalCode(sourceCode)}\"];"
+      }
+    }
+  } + sep + edges.joinToString(sep) {
+    val data = when (it.type) {
+      EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
+      EdgeType.COND_TRUE -> "color=$COND_TRUE"
+      EdgeType.COND_FALSE -> "color=$COND_FALSE"
+    }
+    "${it.from.id} -> ${it.to.id} [$data];"
+  }
+  return "digraph CFG {${sep}bgcolor=$BG$sep$content\n}"
+}
