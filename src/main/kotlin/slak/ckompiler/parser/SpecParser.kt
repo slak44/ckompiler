@@ -141,54 +141,52 @@ class SpecParser(tokenHandler: TokenHandler) :
   }
 
   override fun parseDeclSpecifiers(): DeclarationSpecifier {
-    val contextEnd = indexOfFirst { it !is Keyword }.let { if (it == -1) tokenCount else it }
-    return tokenContext(contextEnd) {
-      val storageSpecs = mutableListOf<Keyword>()
-      val typeSpecs = mutableListOf<Keyword>()
-      val typeQuals = mutableListOf<Keyword>()
-      val funSpecs = mutableListOf<Keyword>()
-      it.takeWhile { tok ->
-        when ((tok as Keyword).value) {
-          Keywords.COMPLEX -> parserDiagnostic {
-            id = DiagnosticId.UNSUPPORTED_COMPLEX
-            errorOn(safeToken(0))
-          }
-          Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
-          in storageClassSpecifier -> storageSpecs.add(tok)
-          in typeSpecifier -> typeSpecs.add(tok)
-          in typeQualifier -> typeQuals.add(tok)
-          in funSpecifier -> funSpecs.add(tok)
-          else -> return@takeWhile false
-        }
-        eat()
-        return@takeWhile true
-      }
-      val ts: TypeSpecifier?
-      if ((storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()) &&
-          typeSpecs.isEmpty()) {
-        // We found declaration specifiers, so this *is* a declarator, but there are no type specs
-        parserDiagnostic {
-          id = DiagnosticId.MISSING_TYPE_SPEC
+    val storageSpecs = mutableListOf<Keyword>()
+    val typeSpecs = mutableListOf<Keyword>()
+    val typeQuals = mutableListOf<Keyword>()
+    val funSpecs = mutableListOf<Keyword>()
+    specLoop@ while (true) {
+      val tok = current() as? Keyword ?: break@specLoop
+      when (tok.value) {
+        Keywords.COMPLEX -> parserDiagnostic {
+          id = DiagnosticId.UNSUPPORTED_COMPLEX
           errorOn(safeToken(0))
         }
-        ts = null
-      } else if (typeSpecs.isEmpty()) {
-        // This is the case where DeclarationSpecifier.isEmpty is true, so no declarator found
-        ts = null
-      } else {
-        ts = parseTypeSpecifier(typeSpecs)
+        Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
+        in storageClassSpecifier -> storageSpecs.add(tok)
+        in typeSpecifier -> typeSpecs.add(tok)
+        in typeQualifier -> typeQuals.add(tok)
+        in funSpecifier -> funSpecs.add(tok)
+        else -> break@specLoop
       }
-      val isEmpty = storageSpecs.isEmpty() && funSpecs.isEmpty() &&
-          typeQuals.isEmpty() && typeSpecs.isEmpty()
-      DeclarationSpecifier(
-          storageClassSpecs = storageSpecs,
-          functionSpecs = funSpecs,
-          typeSpecifiers = typeSpecs,
-          typeQualifiers = typeQuals,
-          typeSpec = ts,
-          range = if (isEmpty) null else tokenAt(0) until safeToken(0)
-      )
+      eat()
     }
+    val ts: TypeSpecifier?
+    if ((storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()) &&
+        typeSpecs.isEmpty()) {
+      // We found declaration specifiers, so this *is* a declarator, but there are no type specs
+      parserDiagnostic {
+        id = DiagnosticId.MISSING_TYPE_SPEC
+        errorOn(safeToken(0))
+      }
+      ts = null
+    } else if (typeSpecs.isEmpty()) {
+      // This is the case where DeclarationSpecifier.isEmpty is true, so no declarator found
+      ts = null
+    } else {
+      ts = parseTypeSpecifier(typeSpecs)
+    }
+    val isEmpty =
+        storageSpecs.isEmpty() && funSpecs.isEmpty() && typeQuals.isEmpty() && typeSpecs.isEmpty()
+
+    return DeclarationSpecifier(
+        storageClassSpecs = storageSpecs,
+        functionSpecs = funSpecs,
+        typeSpecifiers = typeSpecs,
+        typeQualifiers = typeQuals,
+        typeSpec = ts,
+        range = if (isEmpty) null else tokenAt(0) until safeToken(0)
+    )
   }
 
   companion object {
