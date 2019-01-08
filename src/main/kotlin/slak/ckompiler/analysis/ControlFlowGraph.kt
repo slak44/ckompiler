@@ -3,6 +3,7 @@ package slak.ckompiler.analysis
 import mu.KotlinLogging
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
+import slak.ckompiler.analysis.GraphvizColors.*
 
 internal val DeclarationItem.it get() = declaration as RealDeclaration
 internal val Declarator.name get() = name()!!.name
@@ -112,6 +113,14 @@ class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CF
   }
 }
 
+private enum class GraphvizColors(val color: String) {
+  BG("\"#3C3F41ff\""), BLOCK_DEFAULT("\"#ccccccff\""),
+  BLOCK_START("powderblue"), BLOCK_RETURN("mediumpurple2"),
+  COND_TRUE("darkolivegreen3"), COND_FALSE("lightcoral");
+
+  override fun toString() = color
+}
+
 /**
  * Pretty graph for debugging purposes.
  * Recommended usage:
@@ -126,26 +135,31 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
   val content = nodes.joinToString(sep) {
     when (it) {
       is BasicBlock -> {
-        val style = if (it.isStart()) "style=filled,color=powderblue" else "color=\"\""
+        val style =
+            if (it.isStart()) "style=filled,color=$BLOCK_START"
+            else "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
         val code = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
         "${it.id} [shape=box,$style,label=\"${if (code.isBlank()) "<EMPTY>" else code}\"];"
       }
       is UncondJump -> "// unconditional jump ${it.id}"
-      is CondJump -> "${it.id} [shape=diamond,label=\"${it.cond?.originalCode(sourceCode)}\"];"
+      is CondJump -> {
+        val color = "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
+        "${it.id} [shape=diamond,$color,label=\"${it.cond?.originalCode(sourceCode)}\"];"
+      }
       is Return -> {
-        val style = "shape=ellipse,style=filled,color=mediumpurple2"
+        val style = "shape=ellipse,style=filled,color=$BLOCK_RETURN"
         "${it.id} [$style,label=\"${it.value?.originalCode(sourceCode)}\"];"
       }
     }
   } + sep + edges.joinToString(sep) {
     val data = when (it.type) {
-      EdgeType.NORMAL -> ""
-      EdgeType.COND_TRUE -> "color=darkolivegreen3"
-      EdgeType.COND_FALSE -> "color=lightcoral"
+      EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
+      EdgeType.COND_TRUE -> "color=$COND_TRUE"
+      EdgeType.COND_FALSE -> "color=$COND_FALSE"
     }
     "${it.from.id} -> ${it.to.id} [$data];"
   }
-  return "digraph CFG {$sep$content\n}"
+  return "digraph CFG {${sep}bgcolor=$BG$sep$content\n}"
 }
 
 fun createGraphFor(f: FunctionDefinition): BasicBlock {
