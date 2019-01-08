@@ -3,7 +3,7 @@ package slak.test.parser
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.RealDeclaration
-import slak.ckompiler.parser.TypeSpecifier
+import slak.ckompiler.parser.VoidType
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -72,6 +72,6 @@ class SpecTests {
   fun voidFunc() {
     val p = prepareCode("void f();", source)
     p.assertNoDiagnostics()
-    assertEquals(TypeSpecifier.VOID, (p.root.decls[0] as RealDeclaration).declSpecs.typeSpec)
+    assertEquals(VoidType, (p.root.decls[0] as RealDeclaration).declSpecs.typeSpec)
   }
 }

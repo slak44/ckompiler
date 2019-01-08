@@ -269,59 +269,98 @@ data class StringLiteralNode(val string: String,
                              val encoding: StringEncoding) : Expression(), Terminal
 
 /**
- * Lists the possible permutations of the type specifiers.
- *
- * We do not currently support complex types, and they produce errors in the parser.
- * FIXME: certain other specifiers are not implemented
+ * FIXME: add `ComplexFloat` `ComplexDouble` `ComplexLongDouble`
+ * FIXME: add atomic-type-specifier (6.7.2.4)
  */
-enum class TypeSpecifier {
-  VOID, BOOL,
-  SIGNED, UNSIGNED,
-  CHAR, SIGNED_CHAR, UNSIGNED_CHAR,
-  SHORT, SIGNED_SHORT, UNSIGNED_SHORT,
-  INT, SIGNED_INT, UNSIGNED_INT,
-  LONG, SIGNED_LONG, UNSIGNED_LONG,
-  LONG_LONG, SIGNED_LONG_LONG, UNSIGNED_LONG_LONG,
-  FLOAT, DOUBLE, LONG_DOUBLE,
-  // COMPLEX_FLOAT, COMPLEX_DOUBLE, COMPLEX_LONG_DOUBLE,
-  ATOMIC_TYPE_SPEC,
-  STRUCT_OR_UNION_SPEC, ENUM_SPEC, TYPEDEF_NAME;
+sealed class TypeSpecifier
 
-  override fun toString() = when (this) {
-    VOID -> Keywords.VOID.keyword
-    BOOL -> Keywords.BOOL.keyword
-    CHAR -> Keywords.CHAR.keyword
-    SHORT -> Keywords.SHORT.keyword
-    INT -> Keywords.INT.keyword
-    LONG -> Keywords.LONG.keyword
-    FLOAT -> Keywords.FLOAT.keyword
-    DOUBLE -> Keywords.DOUBLE.keyword
-    SIGNED_CHAR -> "${Keywords.SIGNED.keyword} ${Keywords.CHAR.keyword}"
-    UNSIGNED_CHAR -> "${Keywords.UNSIGNED.keyword} ${Keywords.CHAR.keyword}"
-    SIGNED_SHORT -> "${Keywords.SIGNED.keyword} ${Keywords.SHORT.keyword}"
-    UNSIGNED_SHORT -> "${Keywords.UNSIGNED.keyword} ${Keywords.SHORT.keyword}"
-    SIGNED_INT -> "${Keywords.SIGNED.keyword} ${Keywords.INT.keyword}"
-    UNSIGNED_INT -> "${Keywords.UNSIGNED.keyword} ${Keywords.INT.keyword}"
-    SIGNED_LONG -> "${Keywords.SIGNED.keyword} ${Keywords.LONG.keyword}"
-    UNSIGNED_LONG -> "${Keywords.UNSIGNED.keyword} ${Keywords.LONG.keyword}"
-    LONG_LONG -> "$LONG $LONG"
-    SIGNED_LONG_LONG -> "${Keywords.SIGNED.keyword} $LONG_LONG"
-    UNSIGNED_LONG_LONG -> "${Keywords.UNSIGNED.keyword} $LONG_LONG"
-    LONG_DOUBLE -> "$LONG $DOUBLE"
-    else -> "<unimplemented type>"
-  }
+data class EnumSpecifier(val name: IdentifierNode) : TypeSpecifier()
+data class TypedefNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
+
+/**
+ * FIXME: the declarators can be with bitfields too
+ */
+data class StructUnionSpecifier(val name: IdentifierNode,
+                                val structDecls: List<Pair<DeclarationSpecifier, List<Declarator>>>,
+                                val isUnion: Boolean) : TypeSpecifier()
+
+sealed class BasicTypeSpecifier : TypeSpecifier()
+object VoidType : BasicTypeSpecifier() {
+  override fun toString() = Keywords.VOID.keyword
+}
+object Bool : BasicTypeSpecifier() {
+  override fun toString() = Keywords.BOOL.keyword
+}
+object Signed : BasicTypeSpecifier() {
+  override fun toString() = Keywords.SIGNED.keyword
+}
+object Unsigned : BasicTypeSpecifier() {
+  override fun toString() = Keywords.UNSIGNED.keyword
+}
+object Char : BasicTypeSpecifier() {
+  override fun toString() = Keywords.CHAR.keyword
+}
+object SignedChar : BasicTypeSpecifier() {
+  override fun toString() = "$Signed $Char"
+}
+object UnsignedChar : BasicTypeSpecifier() {
+  override fun toString() = "$Unsigned $Char"
+}
+object Short : BasicTypeSpecifier() {
+  override fun toString() = Keywords.SHORT.keyword
+}
+object SignedShort : BasicTypeSpecifier() {
+  override fun toString() = "$Signed $Short"
+}
+object UnsignedShort : BasicTypeSpecifier() {
+  override fun toString() = "$Unsigned $Short"
+}
+object IntType : BasicTypeSpecifier() {
+  override fun toString() = Keywords.INT.keyword
+}
+object SignedInt : BasicTypeSpecifier() {
+  override fun toString() = "$Signed $IntType"
+}
+object UnsignedInt : BasicTypeSpecifier() {
+  override fun toString() = "$Unsigned $IntType"
+}
+object LongType : BasicTypeSpecifier() {
+  override fun toString() = Keywords.LONG.keyword
+}
+object SignedLong : BasicTypeSpecifier() {
+  override fun toString() = "$Signed $Long"
+}
+object UnsignedLong : BasicTypeSpecifier() {
+  override fun toString() = "$Unsigned $Long"
+}
+object LongLong : BasicTypeSpecifier() {
+  override fun toString() = "$Long $Long"
+}
+object SignedLongLong : BasicTypeSpecifier() {
+  override fun toString() = "$Signed $Long $Long"
+}
+object UnsignedLongLong : BasicTypeSpecifier() {
+  override fun toString() = "$Unsigned $Long $Long"
+}
+object FloatType : BasicTypeSpecifier() {
+  override fun toString() = Keywords.FLOAT.keyword
+}
+object DoubleType : BasicTypeSpecifier() {
+  override fun toString() = Keywords.DOUBLE.keyword
+}
+object LongDouble : BasicTypeSpecifier() {
+  override fun toString() = "$Long $Double"
 }
 
 /**
  * Stores declaration specifiers that come before declarators.
- * FIXME: more complex specifiers are missing (6.7.2)
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
 class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
                            val typeQualifiers: List<Keyword>,
                            val functionSpecs: List<Keyword>,
                            private val typeSpecifiers: List<Keyword>,
-                           val typeSpec: TypeSpecifier?,
+                           val typeSpec: BasicTypeSpecifier?,
                            val range: IntRange?) {
   /** @return true if no specifiers were found */
   fun isEmpty() = storageClassSpecs.isEmpty() && typeSpecifiers.isEmpty() &&

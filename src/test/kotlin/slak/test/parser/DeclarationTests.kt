@@ -26,7 +26,7 @@ class DeclarationTests {
         storageClassSpecs = listOf(Keyword(Keywords.STATIC)),
         typeSpecifiers = listOf(Keyword(Keywords.INT)),
         functionSpecs = emptyList(),
-        typeSpec = TypeSpecifier.INT,
+        typeSpec = IntType,
         range = Keyword(Keywords.CONST) until Keyword(Keywords.INT))
     assertEquals(listOf(spec declare "a"), p.root.decls)
   }
