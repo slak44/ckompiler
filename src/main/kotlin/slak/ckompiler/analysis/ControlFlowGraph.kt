@@ -16,7 +16,6 @@ sealed class CFGNode {
   private val objNr = objIndex++
 
   override fun equals(other: Any?) = objNr == (other as? CFGNode)?.objNr
-
   override fun hashCode() = objNr
 
   companion object {
@@ -37,13 +36,18 @@ class UncondJump(val target: BasicBlock) : CFGTerminator()
 class Return(val value: Expression?) : CFGTerminator()
 
 class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CFGNode() {
-  val preds: MutableList<BasicBlock> = initPreds.toMutableList()
+  private val preds: MutableList<BasicBlock> = initPreds.toMutableList()
   val data: MutableList<ASTNode> = mutableListOf()
   var terminator: CFGTerminator? = term
     private set
+  private var isDead = false
 
-  init {
-    preds.filter { it.data.isEmpty() }.forEach inner@{ emptyBlock ->
+  override fun toString() =
+      if (isDead) "DEAD@${hashCode()}" else "BasicBlock(${data.joinToString("\n")})"
+
+  private fun collapseEmptyBlocks() {
+    preds.filter { it.data.isEmpty() }.forEach emptyBlockLoop@{ emptyBlock ->
+      if (emptyBlock.terminator is CondJump) return@emptyBlockLoop
       emptyBlock.preds.forEach {
         val oldTerm = it.terminator!!
         when (oldTerm) {
@@ -52,16 +56,19 @@ class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CF
             oldTerm.target = if (oldTerm.target == emptyBlock) this else oldTerm.target
             oldTerm.other = if (oldTerm.other == emptyBlock) this else oldTerm.other
           }
-          else -> return@inner
+          else -> return@emptyBlockLoop
         }
         this.preds += it
       }
+      this.preds -= emptyBlock
+      emptyBlock.isDead = true
     }
   }
 
   fun setTerminator(lazyTerminator: () -> CFGTerminator) {
     if (terminator != null) return
     terminator = lazyTerminator()
+    collapseEmptyBlocks()
   }
 
   fun graphDataOf(): Pair<List<CFGNode>, List<Edge>> {
@@ -175,7 +182,7 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   is DoWhileStatement -> {
     val loopBlock = BasicBlock(current)
     val loopNext = graphStatement(loopBlock, s.loopable)
-    val afterLoopBlock = BasicBlock(current, loopNext)
+    val afterLoopBlock = BasicBlock(loopNext)
     current.setTerminator { UncondJump(loopBlock) }
     loopNext.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
     afterLoopBlock
