@@ -12,7 +12,10 @@ interface ITokenHandler {
   fun safeToken(offset: Int): Token
 
   /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
-  fun colPastTheEnd(offset: Int): Int
+  fun colPastTheEnd(offset: Int): Int {
+    val tok = safeToken(offset)
+    return tok.startIdx + tok.consumedChars
+  }
 
   /** Get a range of the current token. Useful for [ErrorNode]s or [Terminal]s. */
   fun rangeOne(): IntRange {
@@ -49,7 +52,9 @@ interface ITokenHandler {
    * Eats tokens unconditionally until a semicolon or the end of the token list.
    * Does not eat the semicolon.
    */
-  fun eatToSemi()
+  fun eatToSemi()  {
+    while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
+  }
 }
 
 class TokenHandler(tokens: List<Token>,
@@ -65,11 +70,6 @@ class TokenHandler(tokens: List<Token>,
   override fun safeToken(offset: Int) =
       if (isEaten()) tokStack.peek().last()
       else tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
-
-  override fun colPastTheEnd(offset: Int): Int {
-    val tok = safeToken(offset)
-    return tok.startIdx + tok.consumedChars
-  }
 
   override fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T {
     val tokens = tokStack.peek().subList(idxStack.peek(), endIdx)
@@ -111,9 +111,5 @@ class TokenHandler(tokens: List<Token>,
       logger.throwICE("Trying to eat tokens backwards") { "old=$old, contextIdx=$contextIdx" }
     }
     idxStack.push(contextIdx)
-  }
-
-  override fun eatToSemi() {
-    while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
   }
 }
