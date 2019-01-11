@@ -111,9 +111,10 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       TODO("error where function call has unmatched paren")
     }
     if (current().asPunct() == Punctuators.RPAREN) {
+      val endParenTok = current()
       eat() // The ')'
       // No parameters; this is not an error case
-      return Pair(emptyList(), current())
+      return Pair(emptyList(), endParenTok)
     }
     tokenContext(callEnd) {
       while (!isEaten()) {
