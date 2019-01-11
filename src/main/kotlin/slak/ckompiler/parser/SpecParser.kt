@@ -137,6 +137,33 @@ class SpecParser(tokenHandler: TokenHandler) :
           id = DiagnosticId.UNSUPPORTED_COMPLEX
           errorOn(safeToken(0))
         }
+        Keywords.STRUCT, Keywords.UNION -> {
+          val isUnion = tok.value == Keywords.UNION
+          val name = (current() as? Identifier)?.let {
+            eat()
+            IdentifierNode(it.name)
+          }
+          if (current().asPunct() != Punctuators.LBRACKET) {
+            // This is the case where it's just a type specifier
+            // Like "struct person p;"
+            // This means `name` can't be null, because the declaration of an anonymous struct must
+            // be a definition, and since we have no bracket, it isn't one
+            if (name == null) {
+              parserDiagnostic {
+                id = DiagnosticId.ANON_STRUCT_MUST_DEFINE
+                errorOn(tok)
+              }
+              continue@specLoop
+            }
+            val spec = if (isUnion) UnionNameSpecifier(name) else StructNameSpecifier(name)
+            if (typeSpecifier != null) {
+              TODO("call diagIncompat here")
+            }
+            typeSpecifier = spec
+            continue@specLoop
+          }
+          TODO("anonymous struct definitions")
+        }
         Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
         in typeSpecifiers -> typeSpecifier = typeSpecifier combineWith tok
         in storageClassSpecifiers -> storageSpecs.add(tok)

@@ -73,4 +73,10 @@ class SpecTests {
     p.assertNoDiagnostics()
     assert((p.root.decls[0] as RealDeclaration).declSpecs.typeSpec is VoidType)
   }
+
+  @Test
+  fun structDecl() {
+    val p = prepareCode("struct x a = 1;", source)
+    p.assertNoDiagnostics()
+  }
 }
