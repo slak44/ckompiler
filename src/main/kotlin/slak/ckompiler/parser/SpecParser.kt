@@ -1,8 +1,7 @@
 package slak.ckompiler.parser
 
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Keyword
-import slak.ckompiler.lexer.Keywords
+import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
 
 interface ISpecParser {
@@ -17,7 +16,7 @@ class SpecParser(tokenHandler: TokenHandler) :
 
   private fun diagDuplicate(last: Keyword) = parserDiagnostic {
     id = DiagnosticId.DUPLICATE_DECL_SPEC
-    formatArgs(last.value)
+    formatArgs(last.value.keyword)
     errorOn(last)
   }
 
@@ -27,9 +26,9 @@ class SpecParser(tokenHandler: TokenHandler) :
     errorOn(last)
   }
 
-  private fun diagNotSigned(original: TypeSpecifier, signed: Keyword) = parserDiagnostic {
+  private fun diagNotSigned(original: String, signed: Keyword) = parserDiagnostic {
     id = DiagnosticId.TYPE_NOT_SIGNED
-    formatArgs(original.toString())
+    formatArgs(original)
     errorOn(signed)
   }
 
@@ -38,23 +37,24 @@ class SpecParser(tokenHandler: TokenHandler) :
    * If it encounters an error, the diagnostic is issued and the value of [this] is returned.
    */
   private fun TypeSpecifier.signSpec(isSigned: Boolean, debug: Keyword) = when (this) {
-    Char -> if (isSigned) SignedChar else UnsignedChar
-    Short -> if (isSigned) SignedShort else UnsignedShort
-    IntType -> if (isSigned) SignedInt else UnsignedInt
-    LongType -> if (isSigned) SignedLong else UnsignedLong
-    LongLong -> if (isSigned) SignedLongLong else UnsignedLongLong
-    Signed, SignedChar, SignedShort, SignedInt, SignedLong, SignedLongLong -> {
+    is Char -> if (isSigned) SignedChar(this.first) else UnsignedChar(this.first)
+    is Short -> if (isSigned) SignedShort(this.first) else UnsignedShort(this.first)
+    is IntType -> if (isSigned) SignedInt(this.first) else UnsignedInt(this.first)
+    is LongType -> if (isSigned) SignedLong(this.first) else UnsignedLong(this.first)
+    is LongLong -> if (isSigned) SignedLongLong(this.first) else UnsignedLongLong(this.first)
+    is Signed, is SignedChar, is SignedShort, is SignedInt, is SignedLong, is SignedLongLong -> {
       if (isSigned) diagDuplicate(debug)
       else diagIncompat(this, debug)
       this
     }
-    Unsigned, UnsignedChar, UnsignedShort, UnsignedInt, UnsignedLong, UnsignedLongLong-> {
+    is Unsigned, is UnsignedChar, is UnsignedShort, is UnsignedInt,
+    is UnsignedLong, is UnsignedLongLong -> {
       if (!isSigned) diagDuplicate(debug)
       else diagIncompat(this, debug)
       this
     }
     else -> {
-      diagNotSigned(this, debug)
+      diagNotSigned(this.toString(), debug)
       this
     }
   }
@@ -63,7 +63,7 @@ class SpecParser(tokenHandler: TokenHandler) :
    * This function takes a [TypeSpecifier], and changes it based on the next keyword.
    *
    * Examples:
-   * 1. [Char] + [Unsigned] => [UnsignedChar]
+   * 1. [Char] + [Keywords.UNSIGNED] => [UnsignedChar]
    * 2. [Double] + [Keywords.LONG] => [LongDouble]
    * 3. [SignedLong] + [Keywords.LONG] => [SignedLongLong]
    * 4. null + [Keywords.INT] => [IntType]
@@ -71,52 +71,52 @@ class SpecParser(tokenHandler: TokenHandler) :
    */
   private infix fun TypeSpecifier?.combineWith(next: Keyword): TypeSpecifier {
     if (this == null) return when (next.value) {
-      Keywords.SIGNED -> Signed
-      Keywords.UNSIGNED -> Unsigned
-      Keywords.VOID -> VoidType
-      Keywords.BOOL -> Bool
-      Keywords.CHAR -> Char
-      Keywords.SHORT -> Short
-      Keywords.INT -> IntType
-      Keywords.LONG -> LongType
-      Keywords.FLOAT -> FloatType
-      Keywords.DOUBLE -> DoubleType
+      Keywords.SIGNED -> Signed(next)
+      Keywords.UNSIGNED -> Unsigned(next)
+      Keywords.VOID -> VoidType(next)
+      Keywords.BOOL -> Bool(next)
+      Keywords.CHAR -> Char(next)
+      Keywords.SHORT -> Short(next)
+      Keywords.INT -> IntType(next)
+      Keywords.LONG -> LongType(next)
+      Keywords.FLOAT -> FloatType(next)
+      Keywords.DOUBLE -> DoubleType(next)
       else -> logger.throwICE("Bad keyword interpreted as type specifier") { next }
     }
     if (next.value == Keywords.SIGNED || next.value == Keywords.UNSIGNED) {
       return this.signSpec(next.value == Keywords.SIGNED, next)
     }
     when (this) {
-      LongType -> when (next.value) {
-        Keywords.DOUBLE -> return LongDouble
-        Keywords.LONG -> return LongLong
+      is LongType -> when (next.value) {
+        Keywords.DOUBLE -> return LongDouble(this.first)
+        Keywords.LONG -> return LongLong(this.first)
         else -> diagIncompat(this, next)
       }
-      SignedLong -> when (next.value) {
-        Keywords.LONG -> return SignedLongLong
+      is SignedLong -> when (next.value) {
+        Keywords.LONG -> return SignedLongLong(this.first)
         else -> diagIncompat(this, next)
       }
-      UnsignedLong -> when (next.value) {
-        Keywords.LONG -> return UnsignedLongLong
+      is UnsignedLong -> when (next.value) {
+        Keywords.LONG -> return UnsignedLongLong(this.first)
         else -> diagIncompat(this, next)
       }
-      DoubleType -> when (next.value) {
-        Keywords.LONG -> return LongDouble
+      is DoubleType -> when (next.value) {
+        Keywords.LONG -> return LongDouble(this.first)
         else -> diagIncompat(this, next)
       }
-      Signed -> when (next.value) {
-        Keywords.CHAR -> return SignedChar
-        Keywords.SHORT -> return SignedShort
-        Keywords.INT -> return SignedInt
-        Keywords.LONG -> return SignedLong
-        else -> diagNotSigned(this, next)
+      is Signed -> when (next.value) {
+        Keywords.CHAR -> return SignedChar(this.first)
+        Keywords.SHORT -> return SignedShort(this.first)
+        Keywords.INT -> return SignedInt(this.first)
+        Keywords.LONG -> return SignedLong(this.first)
+        else -> diagNotSigned(next.value.keyword, this.first)
       }
-      Unsigned -> when (next.value) {
-        Keywords.CHAR -> return UnsignedChar
-        Keywords.SHORT -> return UnsignedShort
-        Keywords.INT -> return UnsignedInt
-        Keywords.LONG -> return UnsignedLong
-        else -> diagNotSigned(this, next)
+      is Unsigned -> when (next.value) {
+        Keywords.CHAR -> return UnsignedChar(this.first)
+        Keywords.SHORT -> return UnsignedShort(this.first)
+        Keywords.INT -> return UnsignedInt(this.first)
+        Keywords.LONG -> return UnsignedLong(this.first)
+        else -> diagNotSigned(next.value.keyword, this.first)
       }
       else -> diagIncompat(this, next)
     }
@@ -131,6 +131,7 @@ class SpecParser(tokenHandler: TokenHandler) :
 
     specLoop@ while (true) {
       val tok = current() as? Keyword ?: break@specLoop
+      eat()
       when (tok.value) {
         Keywords.COMPLEX -> parserDiagnostic {
           id = DiagnosticId.UNSUPPORTED_COMPLEX
@@ -143,7 +144,6 @@ class SpecParser(tokenHandler: TokenHandler) :
         in funSpecifiers -> funSpecs.add(tok)
         else -> break@specLoop
       }
-      eat()
     }
     // We found declaration specifiers, so this *is* a declarator, but there are no type specs
     if ((storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()) &&

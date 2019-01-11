@@ -49,7 +49,7 @@ class CodeGenerator(val ast: RootNode) {
 
   private fun declRunInitializers(d: RealDeclaration): Instructions {
     val instr = mutableListOf<String>()
-    if (d.declSpecs.typeSpec != IntType) TODO("only ints are implemented for now")
+    if (d.declSpecs.typeSpec !is IntType) TODO("only ints are implemented for now")
     val inits = d.declaratorList.mapNotNull { it as? InitDeclarator }
     if (inits.size > 6) TODO("all values are in registers, and there are not many of those")
     inits.forEach {

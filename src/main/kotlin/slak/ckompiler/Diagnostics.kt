@@ -39,6 +39,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // Implementations are allowed to not support complex numbers
   UNSUPPORTED_COMPLEX(ERROR, "_Complex is not supported by this implementation"),
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
+  ANON_STRUCT_MUST_DEFINE(ERROR, "Declaration of anonymous struct must be a definition"),
 
   REDEFINITION(ERROR, "Redefinition of '%s'"),
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),

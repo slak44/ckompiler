@@ -23,31 +23,37 @@ internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toL
 
 internal val int = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = IntType, range = Keyword(Keywords.INT) until Keyword(Keywords.INT))
+    typeSpec = IntType(Keyword(Keywords.INT)),
+    range = Keyword(Keywords.INT) until Keyword(Keywords.INT))
 
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 
 internal val double = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = DoubleType, range = Keyword(Keywords.DOUBLE) until Keyword(Keywords.DOUBLE))
+    typeSpec = DoubleType(Keyword(Keywords.DOUBLE)),
+    range = Keyword(Keywords.DOUBLE) until Keyword(Keywords.DOUBLE))
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
 internal val longLong = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = LongLong, range = Keyword(Keywords.LONG) until Keyword(Keywords.LONG))
+    typeSpec = LongLong(Keyword(Keywords.LONG)),
+    range = Keyword(Keywords.LONG) until Keyword(Keywords.LONG))
 
 internal val uLongLong = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = UnsignedLongLong, range = Keyword(Keywords.UNSIGNED) until Keyword(Keywords.LONG))
+    typeSpec = UnsignedLongLong(Keyword(Keywords.UNSIGNED)),
+    range = Keyword(Keywords.UNSIGNED) until Keyword(Keywords.LONG))
 
 internal val longDouble = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = LongDouble, range = Keyword(Keywords.LONG) until Keyword(Keywords.DOUBLE))
+    typeSpec = LongDouble(Keyword(Keywords.LONG)),
+    range = Keyword(Keywords.LONG) until Keyword(Keywords.DOUBLE))
 
 internal val signedChar = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = SignedChar, range = Keyword(Keywords.SIGNED) until Keyword(Keywords.CHAR))
+    typeSpec = SignedChar(Keyword(Keywords.SIGNED)),
+    range = Keyword(Keywords.SIGNED) until Keyword(Keywords.CHAR))
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 

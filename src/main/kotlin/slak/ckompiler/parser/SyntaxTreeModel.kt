@@ -8,6 +8,7 @@ private val logger = KotlinLogging.logger("AST")
 
 // FIXME: these ranges are possibly wrong
 infix fun Token.until(other: Token): IntRange = this.startIdx..other.startIdx
+
 infix fun IntRange.between(other: IntRange) = this.start until other.endInclusive + 1
 
 /**
@@ -277,78 +278,107 @@ sealed class TypeSpecifier
 data class EnumSpecifier(val name: IdentifierNode) : TypeSpecifier()
 data class TypedefNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
 
+data class StructNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
+data class UnionNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
+
 /**
  * FIXME: the declarators can be with bitfields too
+ * FIXME: these declarations must not have initializers
  */
-data class StructUnionSpecifier(val name: IdentifierNode?,
-                                val structDecls: List<Pair<DeclarationSpecifier, List<Declarator>>>,
-                                val isUnion: Boolean) : TypeSpecifier()
+data class StructUnionDefinition(val name: IdentifierNode?,
+                                 val decls: List<Declaration>,
+                                 val isUnion: Boolean) : TypeSpecifier()
 
-sealed class BasicTypeSpecifier : TypeSpecifier()
-object VoidType : BasicTypeSpecifier() {
+sealed class BasicTypeSpecifier(val first: Keyword) : TypeSpecifier() {
+  override fun equals(other: Any?) = this.javaClass == other?.javaClass
+  override fun hashCode() = javaClass.hashCode()
+}
+
+class VoidType(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.VOID.keyword
 }
-object Bool : BasicTypeSpecifier() {
+
+class Bool(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.BOOL.keyword
 }
-object Signed : BasicTypeSpecifier() {
+
+class Signed(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.SIGNED.keyword
 }
-object Unsigned : BasicTypeSpecifier() {
+
+class Unsigned(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.UNSIGNED.keyword
 }
-object Char : BasicTypeSpecifier() {
+
+class Char(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.CHAR.keyword
 }
-object SignedChar : BasicTypeSpecifier() {
-  override fun toString() = "$Signed $Char"
+
+class SignedChar(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.SIGNED.keyword} $Char"
 }
-object UnsignedChar : BasicTypeSpecifier() {
-  override fun toString() = "$Unsigned $Char"
+
+class UnsignedChar(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.UNSIGNED.keyword} $Char"
 }
-object Short : BasicTypeSpecifier() {
+
+class Short(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.SHORT.keyword
 }
-object SignedShort : BasicTypeSpecifier() {
-  override fun toString() = "$Signed $Short"
+
+class SignedShort(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.SIGNED.keyword} $Short"
 }
-object UnsignedShort : BasicTypeSpecifier() {
-  override fun toString() = "$Unsigned $Short"
+
+class UnsignedShort(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.UNSIGNED.keyword} $Short"
 }
-object IntType : BasicTypeSpecifier() {
+
+class IntType(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.INT.keyword
 }
-object SignedInt : BasicTypeSpecifier() {
-  override fun toString() = "$Signed $IntType"
+
+class SignedInt(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.SIGNED.keyword} ${Keywords.INT.keyword}"
 }
-object UnsignedInt : BasicTypeSpecifier() {
-  override fun toString() = "$Unsigned $IntType"
+
+class UnsignedInt(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.UNSIGNED.keyword} ${Keywords.INT.keyword}"
 }
-object LongType : BasicTypeSpecifier() {
+
+class LongType(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.LONG.keyword
 }
-object SignedLong : BasicTypeSpecifier() {
-  override fun toString() = "$Signed $Long"
+
+class SignedLong(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.SIGNED.keyword} $Long"
 }
-object UnsignedLong : BasicTypeSpecifier() {
-  override fun toString() = "$Unsigned $Long"
+
+class UnsignedLong(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.UNSIGNED.keyword} $Long"
 }
-object LongLong : BasicTypeSpecifier() {
+
+class LongLong(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = "$Long $Long"
 }
-object SignedLongLong : BasicTypeSpecifier() {
-  override fun toString() = "$Signed $Long $Long"
+
+class SignedLongLong(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.SIGNED.keyword} $Long $Long"
 }
-object UnsignedLongLong : BasicTypeSpecifier() {
-  override fun toString() = "$Unsigned $Long $Long"
+
+class UnsignedLongLong(first: Keyword) : BasicTypeSpecifier(first) {
+  override fun toString() = "${Keywords.UNSIGNED.keyword} $Long $Long"
 }
-object FloatType : BasicTypeSpecifier() {
+
+class FloatType(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.FLOAT.keyword
 }
-object DoubleType : BasicTypeSpecifier() {
+
+class DoubleType(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.DOUBLE.keyword
 }
-object LongDouble : BasicTypeSpecifier() {
+
+class LongDouble(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = "$Long $Double"
 }
 

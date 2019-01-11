@@ -5,7 +5,6 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.RealDeclaration
 import slak.ckompiler.parser.VoidType
 import slak.test.*
-import kotlin.test.assertEquals
 
 class SpecTests {
   @Test
@@ -72,6 +71,6 @@ class SpecTests {
   fun voidFunc() {
     val p = prepareCode("void f();", source)
     p.assertNoDiagnostics()
-    assertEquals(VoidType, (p.root.decls[0] as RealDeclaration).declSpecs.typeSpec)
+    assert((p.root.decls[0] as RealDeclaration).declSpecs.typeSpec is VoidType)
   }
 }
