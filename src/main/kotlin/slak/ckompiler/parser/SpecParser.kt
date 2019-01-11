@@ -154,6 +154,8 @@ class SpecParser(tokenHandler: TokenHandler) :
   }
 
   override fun parseDeclSpecifiers(): DeclarationSpecifier {
+    val startTok = current()
+
     val storageSpecs = mutableListOf<Keyword>()
     val typeQuals = mutableListOf<Keyword>()
     val funSpecs = mutableListOf<Keyword>()
@@ -199,7 +201,7 @@ class SpecParser(tokenHandler: TokenHandler) :
         functionSpecs = funSpecs,
         typeQualifiers = typeQuals,
         typeSpec = typeSpecifier,
-        range = if (isEmpty) null else tokenAt(0) until safeToken(0)
+        range = if (isEmpty) null else startTok until safeToken(0)
     )
   }
 
