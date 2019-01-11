@@ -222,8 +222,8 @@ class DeclarationParser(scopeHandler: ScopeHandler,
     // FIXME: missing pointer parsing
     val directDecl = parseDirectDeclarator(it.size)
     if (!isEaten()) {
-      // FIXME: this should likely be an error
-      logger.warn { "parseDirectDeclarator did not eat all of its tokens" }
+      // FIXME: this should likely be an error (it is way to noisy)
+//      logger.warn { "parseDirectDeclarator did not eat all of its tokens" }
     }
     return@tokenContext directDecl
   }
