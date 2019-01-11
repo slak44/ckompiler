@@ -123,6 +123,36 @@ class SpecParser(tokenHandler: TokenHandler) :
     return this
   }
 
+  /**
+   * Parses `struct-or-union-specifier`.
+   *
+   * C standard: 6.7.2.1
+   */
+  private fun parseStructUnion(): TypeSpecifier? {
+    val startTok = current()
+    val isUnion = current().asKeyword() == Keywords.UNION
+    eat() // struct or union
+    val name = (current() as? Identifier)?.let {
+      eat()
+      IdentifierNode(it.name)
+    }
+    if (current().asPunct() != Punctuators.LBRACKET) {
+      // This is the case where it's just a type specifier
+      // Like "struct person p;"
+      // This means `name` can't be null, because the declaration of an anonymous struct must
+      // be a definition, and since we have no bracket, it isn't one
+      if (name == null) {
+        parserDiagnostic {
+          id = DiagnosticId.ANON_STRUCT_MUST_DEFINE
+          errorOn(startTok)
+        }
+        return null
+      }
+      return if (isUnion) UnionNameSpecifier(name) else StructNameSpecifier(name)
+    }
+    TODO("anonymous struct definitions")
+  }
+
   override fun parseDeclSpecifiers(): DeclarationSpecifier {
     val storageSpecs = mutableListOf<Keyword>()
     val typeQuals = mutableListOf<Keyword>()
@@ -137,32 +167,12 @@ class SpecParser(tokenHandler: TokenHandler) :
           errorOn(safeToken(0))
         }
         Keywords.STRUCT, Keywords.UNION -> {
-          val isUnion = tok.value == Keywords.UNION
-          eat()
-          val name = (current() as? Identifier)?.let {
-            eat()
-            IdentifierNode(it.name)
+          if (typeSpecifier != null) {
+            TODO("call diagIncompat here")
           }
-          if (current().asPunct() != Punctuators.LBRACKET) {
-            // This is the case where it's just a type specifier
-            // Like "struct person p;"
-            // This means `name` can't be null, because the declaration of an anonymous struct must
-            // be a definition, and since we have no bracket, it isn't one
-            if (name == null) {
-              parserDiagnostic {
-                id = DiagnosticId.ANON_STRUCT_MUST_DEFINE
-                errorOn(tok)
-              }
-              continue@specLoop
-            }
-            val spec = if (isUnion) UnionNameSpecifier(name) else StructNameSpecifier(name)
-            if (typeSpecifier != null) {
-              TODO("call diagIncompat here")
-            }
-            typeSpecifier = spec
-            continue@specLoop
-          }
-          TODO("anonymous struct definitions")
+          parseStructUnion()?.let { typeSpecifier = it }
+          // The function deals with eating, so the eat() below should be skipped
+          continue@specLoop
         }
         Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
         in typeSpecifiers -> typeSpecifier = typeSpecifier combineWith tok
