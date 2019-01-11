@@ -131,7 +131,6 @@ class SpecParser(tokenHandler: TokenHandler) :
 
     specLoop@ while (true) {
       val tok = current() as? Keyword ?: break@specLoop
-      eat()
       when (tok.value) {
         Keywords.COMPLEX -> parserDiagnostic {
           id = DiagnosticId.UNSUPPORTED_COMPLEX
@@ -139,6 +138,7 @@ class SpecParser(tokenHandler: TokenHandler) :
         }
         Keywords.STRUCT, Keywords.UNION -> {
           val isUnion = tok.value == Keywords.UNION
+          eat()
           val name = (current() as? Identifier)?.let {
             eat()
             IdentifierNode(it.name)
@@ -171,6 +171,7 @@ class SpecParser(tokenHandler: TokenHandler) :
         in funSpecifiers -> funSpecs.add(tok)
         else -> break@specLoop
       }
+      eat()
     }
     // We found declaration specifiers, so this *is* a declarator, but there are no type specs
     if ((storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()) &&
