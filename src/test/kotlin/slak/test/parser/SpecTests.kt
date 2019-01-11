@@ -79,4 +79,10 @@ class SpecTests {
     val p = prepareCode("struct x a = 1;", source)
     p.assertNoDiagnostics()
   }
+
+  @Test
+  fun structMustDefine() {
+    val p = prepareCode("auto struct const;", source)
+    assert(p.diags.ids.contains(DiagnosticId.ANON_STRUCT_MUST_DEFINE))
+  }
 }
