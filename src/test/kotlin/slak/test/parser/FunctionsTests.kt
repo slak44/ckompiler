@@ -4,7 +4,6 @@ import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.ErrorStatement
 import slak.test.*
-import kotlin.test.assertEquals
 
 class FunctionsTests {
   @Test
@@ -48,8 +47,7 @@ class FunctionsTests {
   @Test
   fun functionProtoExpectedIdentOrParen() {
     val p = prepareCode("int default();", source)
-    assert(p.diags.size > 0)
-    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN)
   }
 
   @Test
