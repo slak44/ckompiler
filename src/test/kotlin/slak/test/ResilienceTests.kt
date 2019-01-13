@@ -6,7 +6,7 @@ import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.ErrorDeclarator
-import slak.ckompiler.parser.RealDeclaration
+import slak.ckompiler.parser.Declaration
 import kotlin.test.assertEquals
 
 /**
@@ -69,7 +69,7 @@ class ResilienceTests {
     val p = prepareCode("int default, x = 1;", source)
     assert(p.diags.size > 0)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
-    val decl = RealDeclaration(int, listOf(ErrorDeclarator(), "x" assign int(1)))
+    val decl = Declaration(int, listOf(ErrorDeclarator(), "x" assign int(1)))
     decl assertEquals p.root.decls[0]
   }
 

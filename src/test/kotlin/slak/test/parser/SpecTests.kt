@@ -2,7 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.RealDeclaration
+import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.VoidType
 import slak.test.*
 
@@ -71,7 +71,7 @@ class SpecTests {
   fun voidFunc() {
     val p = prepareCode("void f();", source)
     p.assertNoDiagnostics()
-    assert((p.root.decls[0] as RealDeclaration).declSpecs.typeSpec is VoidType)
+    assert((p.root.decls[0] as Declaration).declSpecs.typeSpec is VoidType)
   }
 
   @Test

@@ -47,7 +47,7 @@ class CodeGenerator(val ast: RootNode) {
     return Register("r8", "temp")
   }
 
-  private fun declRunInitializers(d: RealDeclaration): Instructions {
+  private fun declRunInitializers(d: Declaration): Instructions {
     val instr = mutableListOf<String>()
     if (d.declSpecs.typeSpec !is IntType) TODO("only ints are implemented for now")
     val inits = d.declaratorList.mapNotNull { it as? InitDeclarator }
@@ -64,10 +64,10 @@ class CodeGenerator(val ast: RootNode) {
 
   private fun genBlock(block: CompoundStatement): Instructions {
     val statements = block.items.mapNotNull { (it as? StatementItem)?.statement }
-    val directDecls = block.items.mapNotNull { (it as? DeclarationItem)?.it }
+    val directDecls = block.items.mapNotNull { (it as? DeclarationItem)?.declaration }
     val nestedDecls = statements.mapNotNull {
       when {
-        it is ForStatement && it.init is DeclarationInitializer -> it.init.value as RealDeclaration
+        it is ForStatement && it.init is DeclarationInitializer -> it.init.value
         // FIXME
         else -> null
       }

@@ -175,12 +175,17 @@ class SpecParser(declarationParser: DeclarationParser) :
     }
     val endIdx = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
     eat() // The {
+    val declarations = mutableListOf<Declaration>()
     tokenContext(endIdx) {
       while (true) {
         val spec = parseSpecifierQualifierSpec()
-        TODO()
+        if (spec.isEmpty()) {
+          continue
+        }
+        declarations += Declaration(spec, parseStructDeclaratorList())
       }
     }
+    eat() // The }
     TODO("anonymous struct definitions")
   }
 

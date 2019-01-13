@@ -4,7 +4,6 @@ import mu.KotlinLogging
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-internal val DeclarationItem.it get() = declaration as RealDeclaration
 internal val Declarator.name get() = name()!!.name
 internal val FunctionDefinition.name get() = functionDeclarator.name
 internal val FunctionDefinition.block get() = compoundStatement as CompoundStatement

@@ -63,16 +63,16 @@ internal fun nameDecl(s: String) = NameDeclarator(name(s))
 internal infix fun String.assign(value: Expression) = InitDeclarator(nameDecl(this), value)
 
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
-    RealDeclaration(this, listOf(decl))
+    Declaration(this, listOf(decl))
 
 internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) =
-    RealDeclaration(this, list.map { it })
+    Declaration(this, list.map { it })
 
 internal infix fun DeclarationSpecifier.func(decl: Declarator) =
-    RealDeclaration(this, listOf(decl))
+    Declaration(this, listOf(decl))
 
 internal infix fun DeclarationSpecifier.declare(s: String) =
-    RealDeclaration(this, listOf(nameDecl(s)))
+    Declaration(this, listOf(nameDecl(s)))
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
 
@@ -89,7 +89,7 @@ private fun String.withParams(params: List<ParameterDeclaration>,
 internal infix fun String.withParams(params: List<ParameterDeclaration>) = withParams(params, false)
 internal infix fun String.withParamsV(params: List<ParameterDeclaration>) = withParams(params, true)
 
-internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
+internal infix fun Declaration.body(s: Statement): FunctionDefinition {
   if (s !is CompoundStatement && s !is ErrorStatement) {
     throw IllegalArgumentException("Not compound or error")
   }
@@ -102,7 +102,7 @@ internal infix fun RealDeclaration.body(s: Statement): FunctionDefinition {
   return FunctionDefinition(declSpecs, fdecl, newCompound)
 }
 
-internal infix fun RealDeclaration.body(list: List<BlockItem>) = this body list.compound()
+internal infix fun Declaration.body(list: List<BlockItem>) = this body list.compound()
 
 internal fun ifSt(e: Expression, success: () -> Statement) = IfStatement(e, success(), null)
 internal fun ifSt(e: Expression, success: CompoundStatement) = IfStatement(e, success, null)

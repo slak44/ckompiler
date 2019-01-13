@@ -435,6 +435,7 @@ sealed class Declarator : ASTNode() {
     is InitDeclarator -> declarator.name()
     is FunctionDeclarator -> declarator.name()
     is ParameterDeclaration -> declarator.name()
+    is StructDeclarator -> declarator.name()
   }
 }
 
@@ -477,31 +478,30 @@ data class FunctionDeclarator(val declarator: Declarator,
   }
 }
 
+data class StructDeclarator(val declarator: Declarator, val constExpr: Expression?) : Declarator() {
+  init {
+    declarator.setParent(this)
+    constExpr?.setParent(this)
+  }
+}
+
 /** C standard: A.2.4 */
 sealed class ExternalDeclaration : ASTNode()
 
 /** C standard: A.2.2 */
-sealed class Declaration : ExternalDeclaration() {
-  /**
-   * @return a list of [IdentifierNode]s of declarators in the declaration. Skips over
-   * [ErrorDeclarator]s, and returns an empty list if this is a [ErrorDeclaration]
-   */
-  fun identifiers(): List<IdentifierNode> {
-    if (this is ErrorDeclaration) return emptyList()
-    this as RealDeclaration
-    return declaratorList.mapNotNull { it.name() }
-  }
-}
-
-data class RealDeclaration(val declSpecs: DeclarationSpecifier,
-                           val declaratorList: List<Declarator>) : Declaration() {
+data class Declaration(val declSpecs: DeclarationSpecifier,
+                           val declaratorList: List<Declarator>) : ExternalDeclaration() {
   init {
     declaratorList.forEach { it.setParent(this) }
   }
-}
 
-@Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
-class ErrorDeclaration : Declaration(), ErrorNode by ErrorNodeImpl
+  /**
+   * @return a list of [IdentifierNode]s of declarators in the declaration.
+   */
+  fun identifiers(): List<IdentifierNode> {
+    return declaratorList.mapNotNull { it.name() }
+  }
+}
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val declSpec: DeclarationSpecifier,

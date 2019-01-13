@@ -24,6 +24,14 @@ interface IDeclarationParser {
    * @return the [Declaration]
    */
   fun parseDeclaration(declSpec: DeclarationSpecifier, declarator: Declarator): Declaration
+
+  /**
+   * Parses the declarators in a struct (`struct-declarator-list`).
+   *
+   * C standard: 6.7.2.1
+   * @return the list of [StructDeclarator]s
+   */
+  fun parseStructDeclaratorList(): List<StructDeclarator>
 }
 
 class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: ExpressionParser) :
@@ -43,7 +51,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   override fun parseDeclaration(): Declaration? {
     val declSpec = specParser.parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
-    val d = RealDeclaration(declSpec, parseInitDeclaratorList())
+    val d = Declaration(declSpec, parseInitDeclaratorList())
     return d.withRange(declSpec.range!!.start until safeToken(0).startIdx)
   }
 
@@ -54,7 +62,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator): Declaration {
-    val d = RealDeclaration(declSpec, parseInitDeclaratorList(declarator))
+    val d = Declaration(declSpec, parseInitDeclaratorList(declarator))
     val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.range!!.start
     return d.withRange(start until safeToken(0).startIdx)
   }
@@ -313,6 +321,73 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           column(colPastTheEnd(0))
         }
         break
+      }
+    }
+    if (declaratorList.isEmpty()) parserDiagnostic {
+      id = DiagnosticId.MISSING_DECLARATIONS
+      errorOn(safeToken(0))
+    }
+    return declaratorList
+  }
+
+  override fun parseStructDeclaratorList(): List<StructDeclarator> {
+    val declaratorList = mutableListOf<StructDeclarator>()
+    declLoop@ while (true) {
+      val declarator = parseDeclarator(tokenCount)
+      // FIXME: bitfield width decls without actual declarators are allowed, and should be handled
+      if (declarator is ErrorDeclarator) {
+        val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+        if (parenEndIdx == -1) {
+          TODO("handle error case where there is an unmatched paren in the decl")
+        }
+        val stopIdx = indexOfFirst {
+          it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
+        }
+        eatUntil(stopIdx)
+      }
+      when {
+        isEaten() -> {
+          parserDiagnostic {
+            id = DiagnosticId.EXPECTED_SEMI_AFTER
+            formatArgs("struct declarator list")
+            column(colPastTheEnd(0))
+          }
+          declaratorList.add(StructDeclarator(declarator, null))
+          break@declLoop
+        }
+        current().asPunct() == Punctuators.COMMA -> {
+          // Expected case; there are chained `struct-declarator`s
+          eat()
+          declaratorList.add(StructDeclarator(declarator, null))
+          continue@declLoop
+        }
+        current().asPunct() == Punctuators.COLON -> {
+          // Expected case; this is the optional bitfield width
+          eat()
+          val stopIdx = indexOfFirst {
+            it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
+          }
+          val bitWidthExpr = parseExpr(stopIdx)
+          // FIXME: expr MUST be a constant expression
+          declaratorList.add(StructDeclarator(declarator, bitWidthExpr))
+          continue@declLoop
+        }
+        current().asPunct() == Punctuators.SEMICOLON -> {
+          // Expected case; semi at the end of the `struct-declaration`
+          eat()
+          declaratorList.add(StructDeclarator(declarator, null))
+          break@declLoop
+        }
+        else -> {
+          // Missing semicolon
+          parserDiagnostic {
+            id = DiagnosticId.EXPECTED_SEMI_AFTER
+            formatArgs("struct declarator list")
+            column(colPastTheEnd(0))
+          }
+          declaratorList.add(StructDeclarator(declarator, null))
+          break@declLoop
+        }
       }
     }
     if (declaratorList.isEmpty()) parserDiagnostic {
