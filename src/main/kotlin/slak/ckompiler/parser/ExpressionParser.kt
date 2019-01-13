@@ -117,7 +117,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       return Pair(emptyList(), endParenTok)
     }
     tokenContext(callEnd) {
-      while (!isEaten()) {
+      while (isNotEaten()) {
         // The arguments can have parens with commas in them
         // We're interested in the comma that comes after the argument expression
         // So balance the parens, and look for the first comma after them
@@ -132,7 +132,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         val arg = parseExpr(if (commaIdx == -1) it.size else commaIdx)
             ?: TODO("handle error case with a null (error'd) expr")
         funcArgs += arg
-        if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
+        if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
           // Expected case; found comma that separates args
           eat()
         }

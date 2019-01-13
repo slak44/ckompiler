@@ -110,7 +110,7 @@ private class TranslationUnitParser(statementParser: StatementParser) :
         errorOn(safeToken(0))
       }
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
       return translationUnit()
     }
     if (declarator is FunctionDeclarator && current().asPunct() != Punctuators.SEMICOLON) {

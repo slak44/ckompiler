@@ -48,12 +48,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   internal lateinit var specParser: SpecParser
 
-  // FIXME: replace !isEaten with extension function
   override fun parseDeclaration(): Declaration? {
     val declSpec = specParser.parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
     val declRange = declSpec.range!!.start until safeToken(0).startIdx
-    if (declSpec.canBeTag() && !isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+    if (declSpec.canBeTag() && isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat()
       // FIXME: actually do something with the "tag"
@@ -67,7 +66,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
 
   override fun preParseDeclarator(): Pair<DeclarationSpecifier, Declarator?> {
     val declSpec = specParser.parseDeclSpecifiers()
-    if (declSpec.canBeTag() && !isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+    if (declSpec.canBeTag() && isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat()
       // FIXME: actually do something with the "tag"
@@ -106,7 +105,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     if (isEaten()) return@tokenContext Pair(emptyList(), false)
     var isVariadic = false
     val params = mutableListOf<ParameterDeclaration>()
-    while (!isEaten()) {
+    while (isNotEaten()) {
       // Variadic functions
       if (current().asPunct() == Punctuators.DOTS) {
         eat()
@@ -138,7 +137,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
       declarator.name()?.let { name -> newIdentifier(name) }
-      if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
+      if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; found comma that separates params
         eat()
       }
@@ -250,7 +249,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     // FIXME: missing pointer parsing
     val directDecl = parseDirectDeclarator(it.size)
-    if (!isEaten()) {
+    if (isNotEaten()) {
       // FIXME: this should likely be an error (it is way to noisy)
 //      logger.warn { "parseDirectDeclarator did not eat all of its tokens" }
     }
@@ -287,7 +286,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   private fun parseInitDeclaratorList(firstDecl: Declarator? = null): List<Declarator> {
     // This is the case where there are no declarators left for this function
-    if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+    if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       eat()
       firstDecl?.name()?.let { newIdentifier(it) }
       return listOfNotNull(firstDecl)
@@ -330,11 +329,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       } else {
         declarator
       }
-      if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
+      if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
         eat()
         continue
-      } else if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+      } else if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
         // Expected case; semi at the end of `declaration`
         eat()
         break

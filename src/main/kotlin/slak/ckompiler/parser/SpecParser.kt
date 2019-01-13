@@ -177,7 +177,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     eat() // The {
     val declarations = mutableListOf<Declaration>()
     tokenContext(endIdx) {
-      while (!isEaten()) {
+      while (isNotEaten()) {
         val spec = parseSpecifierQualifierSpec()
         if (spec.isEmpty()) {
           continue
@@ -204,7 +204,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     val funSpecs = mutableListOf<Keyword>()
     var typeSpecifier: TypeSpecifier? = null
 
-    specLoop@ while (!isEaten()) {
+    specLoop@ while (isNotEaten()) {
       val tok = current() as? Keyword ?: break@specLoop
       when (tok.value) {
         Keywords.COMPLEX -> parserDiagnostic {

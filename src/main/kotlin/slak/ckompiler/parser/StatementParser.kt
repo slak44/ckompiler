@@ -36,12 +36,12 @@ class StatementParser(declarationParser: DeclarationParser,
     if (rbracket == -1) {
       // Try to recover
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
       return errorSt()
     }
     fun parseCompoundItems(scope: LexicalScope): CompoundStatement {
       val items = mutableListOf<BlockItem>()
-      while (!isEaten()) {
+      while (isNotEaten()) {
         val item = parseDeclaration()?.let { d -> DeclarationItem(d) }
             ?: parseStatement()?.let { s -> StatementItem(s) }
             ?: continue
@@ -96,14 +96,14 @@ class StatementParser(declarationParser: DeclarationParser,
     val cond = if (condExpr == null) {
       // Eat everything between parens
       tokenContext(condParenEnd) {
-        while (!isEaten()) eat()
+        while (isNotEaten()) eat()
       }
       ErrorExpression()
     } else {
       condExpr
     }
     eat() // The ')' from the if
-    val statementSuccess = if (!isEaten() && current().asKeyword() == Keywords.ELSE) {
+    val statementSuccess = if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
@@ -117,7 +117,7 @@ class StatementParser(declarationParser: DeclarationParser,
           errorOn(safeToken(0))
         }
         // Attempt to eat the error
-        while (!isEaten() &&
+        while (isNotEaten() &&
             current().asPunct() != Punctuators.SEMICOLON &&
             current().asKeyword() != Keywords.ELSE) eat()
         errorSt()
@@ -125,7 +125,7 @@ class StatementParser(declarationParser: DeclarationParser,
         statement
       }
     }
-    if (!isEaten() && current().asKeyword() == Keywords.ELSE) {
+    if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
       eat() // The 'else'
       val elseStatement = parseStatement()
       val statementFailure = if (elseStatement == null) {
@@ -135,7 +135,7 @@ class StatementParser(declarationParser: DeclarationParser,
         }
         // Eat until the next thing
         eatToSemi()
-        if (!isEaten()) eat()
+        if (isNotEaten()) eat()
         errorSt()
       } else {
         elseStatement
@@ -182,7 +182,7 @@ class StatementParser(declarationParser: DeclarationParser,
         it.asPunct() == Punctuators.LBRACKET || it.asPunct() == Punctuators.SEMICOLON
       }
       eatUntil(end)
-      if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
+      if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
       return errorSt()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
@@ -205,7 +205,7 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       // Attempt to eat the error
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
       errorSt()
     } else {
       statement
@@ -249,7 +249,7 @@ class StatementParser(declarationParser: DeclarationParser,
         errorOn(safeToken(0))
       }
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
       return DoWhileStatement(ErrorExpression(), loopable)
     }
     val condRParen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
@@ -271,7 +271,7 @@ class StatementParser(declarationParser: DeclarationParser,
         errorOn(safeToken(0))
       }
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
 
     } else {
       eat() // The ';'
@@ -296,7 +296,7 @@ class StatementParser(declarationParser: DeclarationParser,
         errorOn(safeToken(0))
       }
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
       return errorSt()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
@@ -323,7 +323,7 @@ class StatementParser(declarationParser: DeclarationParser,
         } ?: parseExpr(firstSemi)?.let { e -> ExpressionInitializer(e) } ?: ErrorInitializer()
       }
       // We only eat the first ';' if parseDeclaration didn't do that
-      if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
+      if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
       val secondSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
       if (secondSemi == -1) {
         parserDiagnostic {
@@ -338,7 +338,7 @@ class StatementParser(declarationParser: DeclarationParser,
       // Handle the case where we have an empty expr3
       val expr3 =
           if (secondSemi + 1 == tokenCount) null else parseExpr(tokenCount)
-      if (!isEaten()) {
+      if (isNotEaten()) {
         parserDiagnostic {
           id = DiagnosticId.UNEXPECTED_IN_FOR
           errorOn(safeToken(0))
@@ -356,7 +356,7 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       // Attempt to eat the error
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
       return ForStatement(clause1, expr2, expr3, ErrorExpression())
           .withRange(forTok until safeToken(0))
     }

@@ -45,6 +45,7 @@ interface ITokenHandler {
   fun tokenAt(contextIdx: Int): Token
 
   fun isEaten(): Boolean
+  fun isNotEaten() = !isEaten()
   fun eat()
   fun eatUntil(contextIdx: Int)
 
@@ -53,7 +54,7 @@ interface ITokenHandler {
    * Does not eat the semicolon.
    */
   fun eatToSemi()  {
-    while (!isEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
+    while (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
   }
 }
 

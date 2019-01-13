@@ -39,7 +39,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
         errorOn(safeToken(0))
       }
       eatToSemi()
-      if (!isEaten()) eat()
+      if (isNotEaten()) eat()
       return ErrorStatement().withRange(rangeOne())
     } else {
       val ident = IdentifierNode((current() as Identifier).name).withRange(rangeOne())
@@ -51,7 +51,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
           column(colPastTheEnd(0))
         }
         eatToSemi()
-        if (!isEaten()) eatToSemi()
+        if (isNotEaten()) eatToSemi()
       } else {
         eat() // The ';'
       }
@@ -96,7 +96,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     val semiIdx = indexOfFirst { it.asPunct() == Punctuators.SEMICOLON }
     val finalIdx = if (semiIdx == -1) tokenCount else semiIdx
     val expr = parseExpr(finalIdx)
-    if (semiIdx == -1 || (!isEaten() && current().asPunct() != Punctuators.SEMICOLON)) {
+    if (semiIdx == -1 || (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON)) {
       parserDiagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("return statement")
