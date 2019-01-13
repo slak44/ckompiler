@@ -23,37 +23,31 @@ internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toL
 
 internal val int = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = IntType(Keyword(Keywords.INT)),
-    range = Keyword(Keywords.INT) until Keyword(Keywords.INT))
+    typeSpec = IntType(Keyword(Keywords.INT)), range = null)
 
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 
 internal val double = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = DoubleType(Keyword(Keywords.DOUBLE)),
-    range = Keyword(Keywords.DOUBLE) until Keyword(Keywords.DOUBLE))
+    typeSpec = DoubleType(Keyword(Keywords.DOUBLE)), range = null)
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
 internal val longLong = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = LongLong(Keyword(Keywords.LONG)),
-    range = Keyword(Keywords.LONG) until Keyword(Keywords.LONG))
+    typeSpec = LongLong(Keyword(Keywords.LONG)), range = null)
 
 internal val uLongLong = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = UnsignedLongLong(Keyword(Keywords.UNSIGNED)),
-    range = Keyword(Keywords.UNSIGNED) until Keyword(Keywords.LONG))
+    typeSpec = UnsignedLongLong(Keyword(Keywords.UNSIGNED)), range = null)
 
 internal val longDouble = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = LongDouble(Keyword(Keywords.LONG)),
-    range = Keyword(Keywords.LONG) until Keyword(Keywords.DOUBLE))
+    typeSpec = LongDouble(Keyword(Keywords.LONG)), range = null)
 
 internal val signedChar = DeclarationSpecifier(
     functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = SignedChar(Keyword(Keywords.SIGNED)),
-    range = Keyword(Keywords.SIGNED) until Keyword(Keywords.CHAR))
+    typeSpec = SignedChar(Keyword(Keywords.SIGNED)), range = null)
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
@@ -65,8 +59,13 @@ internal infix fun String.assign(value: Expression) = InitDeclarator(nameDecl(th
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
     Declaration(this, listOf(decl))
 
+@JvmName("declareDeclarators")
 internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) =
     Declaration(this, list.map { it })
+
+@JvmName("declareStrings")
+internal infix fun DeclarationSpecifier.declare(list: List<String>) =
+    Declaration(this, list.map { nameDecl(it) })
 
 internal infix fun DeclarationSpecifier.func(decl: Declarator) =
     Declaration(this, listOf(decl))
@@ -171,6 +170,22 @@ internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNod
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
 internal infix fun String.call(l: List<Expression>) = FunctionCall(name(this), l.map { it })
+
+internal fun struct(name: String?, decls: List<Declaration>): StructUnionDefinition {
+  val d = decls.map { (declSpecs, declaratorList) ->
+    Declaration(declSpecs, declaratorList.map {
+      if (it is StructDeclarator) it
+      else StructDeclarator(it, null)
+    })
+  }
+  return StructUnionDefinition(isUnion = false, name = name?.let { name(it) }, decls = d)
+}
+
+internal fun StructUnionDefinition.toSpec() = DeclarationSpecifier(typeSpec = this, range = null,
+    typeQualifiers = emptyList(), functionSpecs = emptyList(), storageClassSpecs = emptyList())
+
+internal infix fun String.bitSize(expr: Expression) = StructDeclarator(nameDecl(this), expr)
+internal infix fun String.bitSize(it: Long) = this bitSize int(it)
 
 internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.ADD
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB

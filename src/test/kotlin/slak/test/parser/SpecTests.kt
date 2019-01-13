@@ -3,8 +3,10 @@ package slak.test.parser
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.Declaration
+import slak.ckompiler.parser.StructNameSpecifier
 import slak.ckompiler.parser.VoidType
 import slak.test.*
+import kotlin.test.assertEquals
 
 class SpecTests {
   @Test
@@ -78,11 +80,83 @@ class SpecTests {
   fun structDecl() {
     val p = prepareCode("struct x a = 1;", source)
     p.assertNoDiagnostics()
+    assertEquals(StructNameSpecifier(name("x")),
+        (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }
 
   @Test
   fun structMustDefine() {
     val p = prepareCode("auto struct const;", source)
     assert(p.diags.ids.contains(DiagnosticId.ANON_STRUCT_MUST_DEFINE))
+  }
+
+  @Test
+  fun structSimple() {
+    val p = prepareCode("struct vec2 {int x, y;};", source)
+    p.assertNoDiagnostics()
+    val structDef = struct("vec2", listOf(
+        int declare listOf("x", "y")
+    ))
+    assertEquals(structDef, (p.root.decls[0] as Declaration).declSpecs.typeSpec)
+  }
+
+  @Test
+  fun structNoSemiAfter() {
+    val p = prepareCode("""
+      struct vec2 {int x, y;}
+      int main() {}
+    """.trimIndent(), source)
+    // It is not easy to determine that it's just a missing semicolon. Interpreting this code as an
+    // incompatible type spec is correct, but produces a worse error message.
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+  }
+
+  @Test
+  fun structNoSemiAfterWhenEndOfFile() {
+    val p = prepareCode("struct vec2 {int x, y;}", source)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+  }
+
+  @Test
+  fun structNoSemiInStructDecl() {
+    val p = prepareCode("struct vec2 {int x, y};", source)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+  }
+
+  @Test
+  fun structDefinitionWithDeclAfter() {
+    val p = prepareCode("struct vec2 {int x, y;} v1, v2, v3;", source)
+    p.assertNoDiagnostics()
+    val vec2 = struct("vec2", listOf(
+        int declare listOf("x", "y")
+    )).toSpec()
+    vec2 declare listOf("v1", "v2", "v3") assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun structInStruct() {
+    val p = prepareCode("""
+      struct outer {
+        struct inner {
+          int x, y;
+        } in1, in2;
+      } out;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    struct("outer", listOf(
+        struct("inner", listOf(
+            int declare listOf("x", "y")
+        )).toSpec() declare listOf("in1", "in2")
+    )).toSpec() declare "out" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun structBits() {
+    val p = prepareCode("struct vec2 {int x : 16, y : 20;};", source)
+    p.assertNoDiagnostics()
+    val structDef = struct("vec2", listOf(
+        int declare listOf("x" bitSize 16, "y" bitSize 20)
+    ))
+    assertEquals(structDef, (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }
 }

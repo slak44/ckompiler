@@ -19,7 +19,7 @@ interface ITokenHandler {
 
   /** Get a range of the current token. Useful for [ErrorNode]s or [Terminal]s. */
   fun rangeOne(): IntRange {
-    val tok = if (tokenCount == 0) parentContext()[parentIdx()] else safeToken(0)
+    val tok = safeToken(0)
     return tok.startIdx until tok.startIdx + tok.consumedChars
   }
 
@@ -67,9 +67,11 @@ class TokenHandler(tokens: List<Token>,
     idxStack.push(0)
   }
 
-  override fun safeToken(offset: Int) =
-      if (isEaten()) tokStack.peek().last()
-      else tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
+  override fun safeToken(offset: Int) = when {
+    isEaten() && tokStack.peek().isEmpty() -> parentContext().last()
+    isEaten() -> tokStack.peek().last()
+    else -> tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
+  }
 
   override fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T {
     val tokens = tokStack.peek().subList(idxStack.peek(), endIdx)

@@ -281,10 +281,6 @@ data class TypedefNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
 data class StructNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
 data class UnionNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
 
-/**
- * FIXME: the declarators can be with bitfields too
- * FIXME: these declarations must not have initializers
- */
 data class StructUnionDefinition(val name: IdentifierNode?,
                                  val decls: List<Declaration>,
                                  val isUnion: Boolean) : TypeSpecifier()
@@ -395,6 +391,14 @@ class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
   fun isEmpty() = storageClassSpecs.isEmpty() && typeQualifiers.isEmpty() &&
       functionSpecs.isEmpty() && typeSpec == null
 
+  /**
+   * C standard: 6.7.2.1, 6.7.2.3
+   * @return true if this [DeclarationSpecifier] is sufficient by itself, and does not necessarily
+   * need declarators after it
+   */
+  fun canBeTag() = typeSpec is StructUnionDefinition || typeSpec is StructNameSpecifier ||
+      typeSpec is UnionNameSpecifier || typeSpec is EnumSpecifier
+
   override fun toString(): String {
     val otherSpecs = listOf(storageClassSpecs, typeQualifiers, functionSpecs)
         .filter { it.isNotEmpty() }
@@ -488,9 +492,15 @@ data class StructDeclarator(val declarator: Declarator, val constExpr: Expressio
 /** C standard: A.2.4 */
 sealed class ExternalDeclaration : ASTNode()
 
-/** C standard: A.2.2 */
+/**
+ * Represents a declaration.
+ *
+ * If the [declaratorList] is empty, the [declSpecs] define a struct/union.
+ *
+ * C standard: A.2.2
+ */
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                           val declaratorList: List<Declarator>) : ExternalDeclaration() {
+                       val declaratorList: List<Declarator>) : ExternalDeclaration() {
   init {
     declaratorList.forEach { it.setParent(this) }
   }

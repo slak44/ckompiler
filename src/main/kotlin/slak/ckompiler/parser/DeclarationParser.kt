@@ -48,15 +48,34 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   internal lateinit var specParser: SpecParser
 
+  // FIXME: replace !isEaten with extension function
   override fun parseDeclaration(): Declaration? {
     val declSpec = specParser.parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
-    val d = Declaration(declSpec, parseInitDeclaratorList())
-    return d.withRange(declSpec.range!!.start until safeToken(0).startIdx)
+    val declRange = declSpec.range!!.start until safeToken(0).startIdx
+    if (declSpec.canBeTag() && !isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+      // This is the case where there is a semicolon after the DeclarationSpecifiers
+      eat()
+      // FIXME: actually do something with the "tag"
+      return Declaration(declSpec, emptyList()).withRange(declRange)
+    }
+    if (declSpec.canBeTag() && isEaten()) {
+      return Declaration(declSpec, emptyList()).withRange(declRange)
+    }
+    return Declaration(declSpec, parseInitDeclaratorList()).withRange(declRange)
   }
 
   override fun preParseDeclarator(): Pair<DeclarationSpecifier, Declarator?> {
     val declSpec = specParser.parseDeclSpecifiers()
+    if (declSpec.canBeTag() && !isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+      // This is the case where there is a semicolon after the DeclarationSpecifiers
+      eat()
+      // FIXME: actually do something with the "tag"
+      return Pair(declSpec, null)
+    }
+    if (declSpec.canBeTag() && isEaten()) {
+      return Pair(declSpec, null)
+    }
     return Pair(declSpec, if (declSpec.isEmpty()) null else parseDeclarator(tokenCount))
   }
 
@@ -118,8 +137,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
-      val declaratorName = declarator.name()
-      if (declaratorName != null) newIdentifier(declaratorName)
+      declarator.name()?.let { name -> newIdentifier(name) }
       if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; found comma that separates params
         eat()
@@ -210,13 +228,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
 
   /** C standard: A.2.2, 6.7 */
   private fun parseDirectDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
-    if (it.isEmpty()) {
-      parserDiagnostic {
-        id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
-        column(colPastTheEnd(0))
-      }
-      return@tokenContext errorDecl()
-    }
     val primaryDecl = parseNameDeclarator() ?: parseNestedDeclarator()
     if (primaryDecl == null) {
       parserDiagnostic {
@@ -230,6 +241,13 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
 
   /** C standard: 6.7.6.1 */
   private fun parseDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
+    if (it.isEmpty()) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
+        column(colPastTheEnd(0))
+      }
+      return@tokenContext errorDecl()
+    }
     // FIXME: missing pointer parsing
     val directDecl = parseDirectDeclarator(it.size)
     if (!isEaten()) {
@@ -265,19 +283,27 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    * C standard: A.2.2
    * @param firstDecl if not null, this will be treated as the first declarator in the list that was
    * pre-parsed
+   * @return the list of comma-separated declarators
    */
   private fun parseInitDeclaratorList(firstDecl: Declarator? = null): List<Declarator> {
+    // This is the case where there are no declarators left for this function
+    if (!isEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+      eat()
+      firstDecl?.name()?.let { newIdentifier(it) }
+      return listOfNotNull(firstDecl)
+    }
     // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
     val declaratorList = mutableListOf<Declarator>()
     // If firstDecl is null, we act as if it was already processed
     var firstDeclUsed = firstDecl == null
     while (true) {
-      val declarator = if (firstDeclUsed) {
+      val declarator = (if (firstDeclUsed) {
         parseDeclarator(tokenCount)
       } else {
         firstDeclUsed = true
         firstDecl!!
-      }
+      })
+      declarator.name()?.let { newIdentifier(it) }
       if (declarator is ErrorDeclarator) {
         val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
         if (parenEndIdx == -1) {
@@ -286,9 +312,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         val stopIdx = indexOfFirst {
           it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
         }
-        eatUntil(stopIdx)
+        if (stopIdx != -1) eatUntil(stopIdx)
       }
-      declarator.name()?.let { newIdentifier(it) }
       if (isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
@@ -298,12 +323,12 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         declaratorList += declarator
         break
       }
-      if (current().asPunct() == Punctuators.ASSIGN) {
+      declaratorList += if (current().asPunct() == Punctuators.ASSIGN) {
         val d = InitDeclarator(declarator, parseInitializer())
         d.withRange(declarator.tokenRange between d.initializer.tokenRange)
-        declaratorList += d
+        d
       } else {
-        declaratorList += declarator
+        declarator
       }
       if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
@@ -345,37 +370,37 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         eatUntil(stopIdx)
       }
-      when {
-        isEaten() -> {
-          parserDiagnostic {
-            id = DiagnosticId.EXPECTED_SEMI_AFTER
-            formatArgs("struct declarator list")
-            column(colPastTheEnd(0))
-          }
-          declaratorList += StructDeclarator(declarator, null)
-          break@declLoop
+      if (isEaten()) {
+        parserDiagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_AFTER
+          formatArgs("struct declarator list")
+          column(colPastTheEnd(0))
         }
+        declaratorList += StructDeclarator(declarator, null)
+        break@declLoop
+      }
+      declaratorList += if (current().asPunct() == Punctuators.COLON) {
+        // Has bit width
+        eat()
+        val stopIdx = indexOfFirst {
+          it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
+        }
+        val bitWidthExpr = parseExpr(stopIdx)
+        // FIXME: expr MUST be a constant expression
+        StructDeclarator(declarator, bitWidthExpr)
+      } else {
+        // No bit width
+        StructDeclarator(declarator, null)
+      }
+      when {
         current().asPunct() == Punctuators.COMMA -> {
           // Expected case; there are chained `struct-declarator`s
           eat()
-          declaratorList += StructDeclarator(declarator, null)
-          continue@declLoop
-        }
-        current().asPunct() == Punctuators.COLON -> {
-          // Expected case; this is the optional bitfield width
-          eat()
-          val stopIdx = indexOfFirst {
-            it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
-          }
-          val bitWidthExpr = parseExpr(stopIdx)
-          // FIXME: expr MUST be a constant expression
-          declaratorList += StructDeclarator(declarator, bitWidthExpr)
           continue@declLoop
         }
         current().asPunct() == Punctuators.SEMICOLON -> {
           // Expected case; semi at the end of the `struct-declaration`
           eat()
-          declaratorList += StructDeclarator(declarator, null)
           break@declLoop
         }
         else -> {
@@ -385,7 +410,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
             formatArgs("struct declarator list")
             column(colPastTheEnd(0))
           }
-          declaratorList += StructDeclarator(declarator, null)
           break@declLoop
         }
       }

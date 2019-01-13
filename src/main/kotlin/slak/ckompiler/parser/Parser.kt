@@ -115,6 +115,9 @@ private class TranslationUnitParser(statementParser: StatementParser) :
     }
     if (declarator is FunctionDeclarator && current().asPunct() != Punctuators.SEMICOLON) {
       root.addExternalDeclaration(parseFunctionDefinition(declSpec, declarator))
+    } else if (declSpec.canBeTag() && declarator == null) {
+      root.addExternalDeclaration(Declaration(declSpec, emptyList()))
+      // FIXME: struct/union/enum/something declaration or definition, do something with it
     } else {
       root.addExternalDeclaration(parseDeclaration(declSpec, declarator!!))
     }

@@ -177,7 +177,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     eat() // The {
     val declarations = mutableListOf<Declaration>()
     tokenContext(endIdx) {
-      while (true) {
+      while (!isEaten()) {
         val spec = parseSpecifierQualifierSpec()
         if (spec.isEmpty()) {
           continue
@@ -186,7 +186,14 @@ class SpecParser(declarationParser: DeclarationParser) :
       }
     }
     eat() // The }
-    TODO("anonymous struct definitions")
+    if (isEaten()) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_AFTER
+        formatArgs(if (isUnion) "union" else "struct")
+        column(colPastTheEnd(0))
+      }
+    }
+    return StructUnionDefinition(isUnion = isUnion, decls = declarations, name = name)
   }
 
   override fun parseDeclSpecifiers(): DeclarationSpecifier {
@@ -197,7 +204,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     val funSpecs = mutableListOf<Keyword>()
     var typeSpecifier: TypeSpecifier? = null
 
-    specLoop@ while (true) {
+    specLoop@ while (!isEaten()) {
       val tok = current() as? Keyword ?: break@specLoop
       when (tok.value) {
         Keywords.COMPLEX -> parserDiagnostic {
@@ -212,7 +219,7 @@ class SpecParser(declarationParser: DeclarationParser) :
           // The function deals with eating, so the eat() below should be skipped
           continue@specLoop
         }
-        Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
+        Keywords.TYPEDEF -> TODO("implement typedefs")
         in typeSpecifiers -> typeSpecifier = typeSpecifier combineWith tok
         in storageClassSpecifiers -> storageSpecs += tok
         in typeQualifiers -> typeQuals += tok
