@@ -9,10 +9,12 @@ interface ISpecParser {
   fun parseDeclSpecifiers(): DeclarationSpecifier
 }
 
-class SpecParser(tokenHandler: TokenHandler) :
+class SpecParser(declarationParser: DeclarationParser) :
     ISpecParser,
-    IDebugHandler by tokenHandler,
-    ITokenHandler by tokenHandler {
+    IDebugHandler by declarationParser,
+    ITokenHandler by declarationParser,
+    IParenMatcher by declarationParser,
+    IDeclarationParser by declarationParser {
 
   private fun diagDuplicate(last: Keyword) = parserDiagnostic {
     id = DiagnosticId.DUPLICATE_DECL_SPEC
@@ -124,6 +126,27 @@ class SpecParser(tokenHandler: TokenHandler) :
   }
 
   /**
+   * Parses `specifier-qualifer-list` (like [DeclarationSpecifier], but without function specs and
+   * storage specs).
+   *
+   * C standard: 6.7.2.1
+   */
+  private fun parseSpecifierQualifierSpec(): DeclarationSpecifier {
+    val specifierQualifier = parseDeclSpecifiers()
+    if (specifierQualifier.functionSpecs.isNotEmpty()) parserDiagnostic {
+      id = DiagnosticId.SPEC_NOT_ALLOWED
+      formatArgs("function specifier")
+      errorOn(specifierQualifier.functionSpecs.first())
+    }
+    if (specifierQualifier.storageClassSpecs.isNotEmpty()) parserDiagnostic {
+      id = DiagnosticId.SPEC_NOT_ALLOWED
+      formatArgs("storage specifier")
+      errorOn(specifierQualifier.functionSpecs.first())
+    }
+    return specifierQualifier
+  }
+
+  /**
    * Parses `struct-or-union-specifier`.
    *
    * C standard: 6.7.2.1
@@ -149,6 +172,14 @@ class SpecParser(tokenHandler: TokenHandler) :
         return null
       }
       return if (isUnion) UnionNameSpecifier(name) else StructNameSpecifier(name)
+    }
+    val endIdx = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
+    eat() // The {
+    tokenContext(endIdx) {
+      while (true) {
+        val spec = parseSpecifierQualifierSpec()
+        TODO()
+      }
     }
     TODO("anonymous struct definitions")
   }

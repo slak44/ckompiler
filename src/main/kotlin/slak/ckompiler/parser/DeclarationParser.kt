@@ -26,26 +26,29 @@ interface IDeclarationParser {
   fun parseDeclaration(declSpec: DeclarationSpecifier, declarator: Declarator): Declaration
 }
 
-class DeclarationParser(scopeHandler: ScopeHandler,
-                        specParser: SpecParser,
-                        expressionParser: ExpressionParser) :
+class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: ExpressionParser) :
     IDeclarationParser,
     IDebugHandler by scopeHandler,
     ITokenHandler by expressionParser,
     IScopeHandler by scopeHandler,
     IParenMatcher by expressionParser,
-    ISpecParser by specParser,
     IExpressionParser by expressionParser {
 
+  /**
+   * There is a cyclic dependency between [DeclarationParser] and [SpecParser]. We resolve it using
+   * this property ([SpecParser] doesn't maintain its own state).
+   */
+  internal lateinit var specParser: SpecParser
+
   override fun parseDeclaration(): Declaration? {
-    val declSpec = parseDeclSpecifiers()
+    val declSpec = specParser.parseDeclSpecifiers()
     if (declSpec.isEmpty()) return null
     val d = RealDeclaration(declSpec, parseInitDeclaratorList())
     return d.withRange(declSpec.range!!.start until safeToken(0).startIdx)
   }
 
   override fun preParseDeclarator(): Pair<DeclarationSpecifier, Declarator?> {
-    val declSpec = parseDeclSpecifiers()
+    val declSpec = specParser.parseDeclSpecifiers()
     return Pair(declSpec, if (declSpec.isEmpty()) null else parseDeclarator(tokenCount))
   }
 
@@ -89,7 +92,7 @@ class DeclarationParser(scopeHandler: ScopeHandler,
         }
         break
       }
-      val specs = parseDeclSpecifiers()
+      val specs = specParser.parseDeclSpecifiers()
       if (specs.isEmpty()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
