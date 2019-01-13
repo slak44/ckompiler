@@ -82,7 +82,7 @@ fun graphCompound(current: BasicBlock, compoundStatement: CompoundStatement): Ba
   for (item in compoundStatement.items) {
     when (item) {
       is StatementItem -> block = graphStatement(block, item.statement)
-      is DeclarationItem -> block.data.add(item.declaration)
+      is DeclarationItem -> block.data += item.declaration
     }
   }
   return block
@@ -92,7 +92,7 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression, is LabeledStatement, is Noop -> {
-    current.data.add(s)
+    current.data += s
     current
   }
   is CompoundStatement -> graphCompound(current, s)
@@ -130,8 +130,8 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
   is ForStatement -> {
     when (s.init) {
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-      is ExpressionInitializer -> current.data.add(s.init.value)
-      is DeclarationInitializer -> current.data.add(s.init.value)
+      is ExpressionInitializer -> current.data += s.init.value
+      is DeclarationInitializer -> current.data += s.init.value
     }
     val loopBlock = BasicBlock(current)
     val loopNext = graphStatement(loopBlock, s.loopable)

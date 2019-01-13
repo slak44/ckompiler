@@ -36,9 +36,9 @@ class CodeGenerator(val ast: RootNode) {
 
   private fun genBinExpr(e: BinaryExpression): String {
     val instr = mutableListOf<String>()
-    instr.add("push eax")
+    instr += "push eax"
     // FIXME: implement
-    instr.add("pop eax")
+    instr += "pop eax"
     return instr.joinInstructions()
   }
 
@@ -57,7 +57,7 @@ class CodeGenerator(val ast: RootNode) {
       if (regIdx == -1) TODO("out of registers?")
       registers[regIdx].itemName = it.name
       val resRegister = genExpr(it.initializer)
-      instr.add("mov ${registers[regIdx].name}, ${resRegister.name}")
+      instr += "mov ${registers[regIdx].name}, ${resRegister.name}"
     }
     return instr
   }
@@ -79,13 +79,13 @@ class CodeGenerator(val ast: RootNode) {
 
   private fun genFunction(f: FunctionDefinition) {
     // FIXME: the declarator can also be a pointer+ident combo
-    prelude.add("global ${f.name}")
+    prelude += "global ${f.name}"
     val instr = mutableListOf<String>()
-    instr.add("push rbp")
+    instr += "push rbp"
     instr += genBlock(f.block)
-    instr.add("pop rbp")
-    text.add("${f.name}:")
-    text.add(instr.joinInstructions())
+    instr += "pop rbp"
+    text += "${f.name}:"
+    text += instr.joinInstructions()
   }
 
   fun getNasm(): String {

@@ -131,7 +131,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
         val arg = parseExpr(if (commaIdx == -1) it.size else commaIdx)
             ?: TODO("handle error case with a null (error'd) expr")
-        funcArgs.add(arg)
+        funcArgs += arg
         if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
           // Expected case; found comma that separates args
           eat()

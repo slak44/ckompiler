@@ -45,7 +45,7 @@ class StatementParser(declarationParser: DeclarationParser,
         val item = parseDeclaration()?.let { d -> DeclarationItem(d) }
             ?: parseStatement()?.let { s -> StatementItem(s) }
             ?: continue
-        items.add(item)
+        items += item
       }
       return CompoundStatement(items, scope)
     }

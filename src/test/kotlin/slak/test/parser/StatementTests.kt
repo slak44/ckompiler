@@ -268,7 +268,7 @@ class StatementTests {
     // This hacky thing is needed because the parser is smart enough to add the label to the scope
     // even if the final LabeledStatement is an error, while the test DSL is *not*
     val scope = LexicalScope()
-    scope.labels.add(name("label"))
+    scope.labels += name("label")
     val block = CompoundStatement(listOf(StatementItem(ErrorStatement())), scope)
     int func FunctionDeclarator(nameDecl("main"), emptyList(), scope = scope) body
         block assertEquals p.root.decls[0]

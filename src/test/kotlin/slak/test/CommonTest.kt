@@ -80,7 +80,7 @@ private fun String.withParams(params: List<ParameterDeclaration>,
                                     variadic: Boolean): FunctionDeclarator {
   val scope = params.mapTo(mutableListOf()) { it.name()!! }.let {
     val s = LexicalScope()
-    s.idents.addAll(it)
+    s.idents += it
     s
   }
   return FunctionDeclarator(nameDecl(this), params, variadic = variadic, scope = scope)
@@ -128,12 +128,12 @@ internal fun List<ASTNode>.compound() = CompoundStatement(map {
 }, with(LexicalScope()) {
   forEach {
     when (it) {
-      is Declaration -> idents.addAll(it.identifiers())
+      is Declaration -> idents += it.identifiers()
       is ForStatement -> {
         val names = (it.init as? DeclarationInitializer)?.value?.identifiers()
-        if (names != null) idents.addAll(names)
+        if (names != null) idents += names
       }
-      is LabeledStatement -> labels.add(it.label)
+      is LabeledStatement -> labels += it.label
       is Statement -> {} // Nothing
       else -> throw IllegalArgumentException("Bad type")
     }

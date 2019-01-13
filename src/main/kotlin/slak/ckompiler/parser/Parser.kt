@@ -43,12 +43,12 @@ class DebugHandler(private val srcFileName: SourceFileName,
   override val diags = mutableListOf<Diagnostic>()
 
   override fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
-    diags.add(createDiagnostic {
+    diags += createDiagnostic {
       sourceFileName = srcFileName
       sourceText = srcText
       origin = "Parser"
       this.build()
-    })
+    }
   }
 
   companion object {

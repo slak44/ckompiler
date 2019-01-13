@@ -65,7 +65,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       }
       return
     }
-    listRef.add(id)
+    listRef += id
   }
 
   override fun searchInScope(target: IdentifierNode): IdentifierNode? {

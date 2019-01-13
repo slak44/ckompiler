@@ -214,9 +214,9 @@ class SpecParser(declarationParser: DeclarationParser) :
         }
         Keywords.TYPEDEF -> logger.throwICE("Typedef not implemented") { this }
         in typeSpecifiers -> typeSpecifier = typeSpecifier combineWith tok
-        in storageClassSpecifiers -> storageSpecs.add(tok)
-        in typeQualifiers -> typeQuals.add(tok)
-        in funSpecifiers -> funSpecs.add(tok)
+        in storageClassSpecifiers -> storageSpecs += tok
+        in typeQualifiers -> typeQuals += tok
+        in funSpecifiers -> funSpecs += tok
         else -> break@specLoop
       }
       eat()

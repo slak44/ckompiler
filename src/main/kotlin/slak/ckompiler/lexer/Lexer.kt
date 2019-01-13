@@ -15,12 +15,12 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
   }
 
   private fun lexerDiagnostic(build: DiagnosticBuilder.() -> Unit) {
-    inspections.add(createDiagnostic {
+    inspections += createDiagnostic {
       sourceFileName = srcFileName
       sourceText = textSource
       origin = "Lexer"
       this.build()
-    })
+    }
   }
 
   companion object {
@@ -325,7 +325,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
             ?: punct(src)
             ?: TODO("extraneous/unhandled thing")
     tok.startIdx = currentOffset
-    tokens.add(tok)
+    tokens += tok
     currentOffset += tok.consumedChars
     src = src.drop(tok.consumedChars)
     return tokenize()

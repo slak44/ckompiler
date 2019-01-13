@@ -156,7 +156,7 @@ class RootNode : ASTNode(isRoot = true) {
   val decls: List<ExternalDeclaration> = declarations
 
   fun addExternalDeclaration(n: ExternalDeclaration) {
-    declarations.add(n)
+    declarations += n
   }
 }
 

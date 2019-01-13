@@ -19,25 +19,25 @@ private fun BasicBlock.graphDataOf(): Pair<List<CFGNode>, List<Edge>> {
 private fun BasicBlock.graphDataImpl(nodes: MutableList<CFGNode>, edges: MutableList<Edge>) {
   // The graph can be cyclical, and we don't want to enter an infinite loop
   if (nodes.contains(this)) return
-  nodes.add(this)
+  nodes += this
   if (terminator == null) return
-  nodes.add(terminator!!)
+  nodes += terminator!!
   when (terminator) {
     is UncondJump -> {
       val target = (terminator!! as UncondJump).target
-      edges.add(Edge(this, target))
+      edges += Edge(this, target)
       target.graphDataImpl(nodes, edges)
     }
     is CondJump -> {
-      edges.add(Edge(this, terminator!!))
+      edges += Edge(this, terminator!!)
       val t = terminator as CondJump
-      edges.add(Edge(t, t.target, EdgeType.COND_TRUE))
+      edges += Edge(t, t.target, EdgeType.COND_TRUE)
       t.target.graphDataImpl(nodes, edges)
-      edges.add(Edge(t, t.other, EdgeType.COND_FALSE))
+      edges += Edge(t, t.other, EdgeType.COND_FALSE)
       t.other.graphDataImpl(nodes, edges)
     }
     is Return -> {
-      edges.add(Edge(this, terminator!!))
+      edges += Edge(this, terminator!!)
     }
   }
 }

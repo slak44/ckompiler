@@ -115,7 +115,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
       val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
       val declarator = parseDeclarator(if (commaIdx == -1) it.size else commaIdx)
-      params.add(ParameterDeclaration(specs, declarator))
+      params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
       val declaratorName = declarator.name()
@@ -295,15 +295,15 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           formatArgs("declarator")
           column(colPastTheEnd(0))
         }
-        declaratorList.add(declarator)
+        declaratorList += declarator
         break
       }
       if (current().asPunct() == Punctuators.ASSIGN) {
         val d = InitDeclarator(declarator, parseInitializer())
         d.withRange(declarator.tokenRange between d.initializer.tokenRange)
-        declaratorList.add(d)
+        declaratorList += d
       } else {
-        declaratorList.add(declarator)
+        declaratorList += declarator
       }
       if (!isEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
@@ -352,13 +352,13 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
             formatArgs("struct declarator list")
             column(colPastTheEnd(0))
           }
-          declaratorList.add(StructDeclarator(declarator, null))
+          declaratorList += StructDeclarator(declarator, null)
           break@declLoop
         }
         current().asPunct() == Punctuators.COMMA -> {
           // Expected case; there are chained `struct-declarator`s
           eat()
-          declaratorList.add(StructDeclarator(declarator, null))
+          declaratorList += StructDeclarator(declarator, null)
           continue@declLoop
         }
         current().asPunct() == Punctuators.COLON -> {
@@ -369,13 +369,13 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           }
           val bitWidthExpr = parseExpr(stopIdx)
           // FIXME: expr MUST be a constant expression
-          declaratorList.add(StructDeclarator(declarator, bitWidthExpr))
+          declaratorList += StructDeclarator(declarator, bitWidthExpr)
           continue@declLoop
         }
         current().asPunct() == Punctuators.SEMICOLON -> {
           // Expected case; semi at the end of the `struct-declaration`
           eat()
-          declaratorList.add(StructDeclarator(declarator, null))
+          declaratorList += StructDeclarator(declarator, null)
           break@declLoop
         }
         else -> {
@@ -385,7 +385,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
             formatArgs("struct declarator list")
             column(colPastTheEnd(0))
           }
-          declaratorList.add(StructDeclarator(declarator, null))
+          declaratorList += StructDeclarator(declarator, null)
           break@declLoop
         }
       }
