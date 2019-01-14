@@ -212,9 +212,7 @@ class SpecParser(declarationParser: DeclarationParser) :
           errorOn(safeToken(0))
         }
         Keywords.STRUCT, Keywords.UNION -> {
-          if (typeSpecifier != null) {
-            TODO("call diagIncompat here")
-          }
+          if (typeSpecifier != null) diagIncompat(typeSpecifier, tok)
           parseStructUnion()?.let { typeSpecifier = it }
           // The function deals with eating, so the eat() below should be skipped
           continue@specLoop

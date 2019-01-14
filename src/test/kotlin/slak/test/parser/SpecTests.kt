@@ -159,4 +159,22 @@ class SpecTests {
     ))
     assertEquals(structDef, (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }
+
+  @Test
+  fun structIncompatAfter() {
+    val p = prepareCode("int struct vec2 {int x, y;} thing;", source)
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+  }
+
+  @Test
+  fun structIncompatBefore() {
+    val p = prepareCode("struct vec2 {int x, y;} int thing;", source)
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+  }
+
+  @Test
+  fun structJustNameIncompat() {
+    val p = prepareCode("struct vec2 int thing;", source)
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+  }
 }

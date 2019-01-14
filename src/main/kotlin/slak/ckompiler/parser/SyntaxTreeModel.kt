@@ -278,12 +278,18 @@ sealed class TypeSpecifier
 data class EnumSpecifier(val name: IdentifierNode) : TypeSpecifier()
 data class TypedefNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
 
-data class StructNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
-data class UnionNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
+data class StructNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
+  override fun toString() = "struct ${name.name}"
+}
+data class UnionNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
+  override fun toString() = "union ${name.name}"
+}
 
 data class StructUnionDefinition(val name: IdentifierNode?,
                                  val decls: List<Declaration>,
-                                 val isUnion: Boolean) : TypeSpecifier()
+                                 val isUnion: Boolean) : TypeSpecifier() {
+  override fun toString(): String = "${if (isUnion) "union" else "struct"} {...}"
+}
 
 sealed class BasicTypeSpecifier(val first: Keyword) : TypeSpecifier() {
   override fun equals(other: Any?) = this.javaClass == other?.javaClass
