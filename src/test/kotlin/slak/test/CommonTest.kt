@@ -171,17 +171,17 @@ internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
 internal infix fun String.call(l: List<Expression>) = FunctionCall(name(this), l.map { it })
 
-internal fun struct(name: String?, decls: List<Declaration>): StructUnionDefinition {
+internal fun struct(name: String?, decls: List<Declaration>): StructDefinition {
   val d = decls.map { (declSpecs, declaratorList) ->
     Declaration(declSpecs, declaratorList.map {
       if (it is StructDeclarator) it
       else StructDeclarator(it, null)
     })
   }
-  return StructUnionDefinition(isUnion = false, name = name?.let { name(it) }, decls = d)
+  return StructDefinition(name = name?.let { name(it) }, decls = d)
 }
 
-internal fun StructUnionDefinition.toSpec() = DeclarationSpecifier(typeSpec = this, range = null,
+internal fun StructDefinition.toSpec() = DeclarationSpecifier(typeSpec = this, range = null,
     typeQualifiers = emptyList(), functionSpecs = emptyList(), storageClassSpecs = emptyList())
 
 internal infix fun String.bitSize(expr: Expression) = StructDeclarator(nameDecl(this), expr)
@@ -193,7 +193,6 @@ internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.M
 internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with Operators.DIV
 
 private fun <T> parseDSLElement(it: T): Expression {
-  @Suppress("UNCHECKED_CAST")
   return when (it) {
     is Expression -> it
     is Int -> int(it.toLong())

@@ -193,7 +193,8 @@ class SpecParser(declarationParser: DeclarationParser) :
         column(colPastTheEnd(0))
       }
     }
-    return StructUnionDefinition(isUnion = isUnion, decls = declarations, name = name)
+    return if (isUnion) UnionDefinition(name, declarations)
+    else StructDefinition(name, declarations)
   }
 
   override fun parseDeclSpecifiers(): DeclarationSpecifier {

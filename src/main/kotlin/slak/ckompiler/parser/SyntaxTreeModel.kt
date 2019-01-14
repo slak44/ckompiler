@@ -285,10 +285,14 @@ data class UnionNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
   override fun toString() = "union ${name.name}"
 }
 
-data class StructUnionDefinition(val name: IdentifierNode?,
-                                 val decls: List<Declaration>,
-                                 val isUnion: Boolean) : TypeSpecifier() {
-  override fun toString(): String = "${if (isUnion) "union" else "struct"} {...}"
+data class StructDefinition(val name: IdentifierNode?,
+                            val decls: List<Declaration>) : TypeSpecifier() {
+  override fun toString() = "struct ${if (name != null) "${name.name} " else ""}{...}"
+}
+
+data class UnionDefinition(val name: IdentifierNode?,
+                           val decls: List<Declaration>) : TypeSpecifier() {
+  override fun toString() = "union ${if (name != null) "${name.name} " else ""}{...}"
 }
 
 sealed class BasicTypeSpecifier(val first: Keyword) : TypeSpecifier() {
@@ -402,8 +406,8 @@ class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
    * @return true if this [DeclarationSpecifier] is sufficient by itself, and does not necessarily
    * need declarators after it
    */
-  fun canBeTag() = typeSpec is StructUnionDefinition || typeSpec is StructNameSpecifier ||
-      typeSpec is UnionNameSpecifier || typeSpec is EnumSpecifier
+  fun canBeTag() = typeSpec is StructDefinition || typeSpec is UnionDefinition ||
+      typeSpec is StructNameSpecifier || typeSpec is UnionNameSpecifier || typeSpec is EnumSpecifier
 
   override fun toString(): String {
     val otherSpecs = listOf(storageClassSpecs, typeQualifiers, functionSpecs)

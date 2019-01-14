@@ -177,4 +177,10 @@ class SpecTests {
     val p = prepareCode("struct vec2 int thing;", source)
     p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
+
+  @Test
+  fun structAnon() {
+    val p = prepareCode("struct {int x, y;} pos;", source)
+    p.assertNoDiagnostics()
+  }
 }
