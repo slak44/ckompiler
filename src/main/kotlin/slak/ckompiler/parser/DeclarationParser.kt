@@ -9,7 +9,11 @@ interface IDeclarationParser {
    * Parses a declaration, including function declarations (prototypes).
    * @return null if there is no declaration, or a [Declaration] otherwise
    */
-  fun parseDeclaration(): Declaration?
+  fun parseDeclaration(): Declaration? {
+    val (declSpec, firstDecl) = preParseDeclarator()
+    if (declSpec.isEmpty()) return null
+    return parseDeclaration(declSpec, firstDecl)
+  }
 
   /**
    * Parse a [DeclarationSpecifier] and the first [Declarator] that follows.
@@ -23,7 +27,7 @@ interface IDeclarationParser {
    * @see preParseDeclarator
    * @return the [Declaration]
    */
-  fun parseDeclaration(declSpec: DeclarationSpecifier, declarator: Declarator): Declaration
+  fun parseDeclaration(declSpec: DeclarationSpecifier, declarator: Declarator?): Declaration
 
   /**
    * Parses the declarators in a struct (`struct-declarator-list`).
@@ -48,22 +52,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   internal lateinit var specParser: SpecParser
 
-  override fun parseDeclaration(): Declaration? {
-    val declSpec = specParser.parseDeclSpecifiers()
-    if (declSpec.isEmpty()) return null
-    val declRange = declSpec.range!!.start until safeToken(0).startIdx
-    if (declSpec.canBeTag() && isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
-      // This is the case where there is a semicolon after the DeclarationSpecifiers
-      eat()
-      // FIXME: actually do something with the "tag"
-      return Declaration(declSpec, emptyList()).withRange(declRange)
-    }
-    if (declSpec.canBeTag() && isEaten()) {
-      return Declaration(declSpec, emptyList()).withRange(declRange)
-    }
-    return Declaration(declSpec, parseInitDeclaratorList()).withRange(declRange)
-  }
-
   override fun preParseDeclarator(): Pair<DeclarationSpecifier, Declarator?> {
     val declSpec = specParser.parseDeclSpecifiers()
     if (declSpec.canBeTag() && isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
@@ -79,7 +67,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   }
 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
-                                declarator: Declarator): Declaration {
+                                declarator: Declarator?): Declaration {
     val d = Declaration(declSpec, parseInitDeclaratorList(declarator))
     val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.range!!.start
     return d.withRange(start until safeToken(0).startIdx)
