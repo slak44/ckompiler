@@ -120,6 +120,14 @@ class SpecTests {
   }
 
   @Test
+  fun inlineNoreturnAllowed() {
+    val p = prepareCode("""
+      inline _Noreturn void f() {}
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
   fun structDecl() {
     val p = prepareCode("struct x a = 1;", source)
     p.assertNoDiagnostics()
