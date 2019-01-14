@@ -22,9 +22,9 @@ class SpecParser(declarationParser: DeclarationParser) :
     errorOn(last)
   }
 
-  private fun diagIncompat(original: TypeSpecifier, last: Keyword) = parserDiagnostic {
+  private fun diagIncompat(original: String, last: Keyword) = parserDiagnostic {
     id = DiagnosticId.INCOMPATIBLE_DECL_SPEC
-    formatArgs(original.toString())
+    formatArgs(original)
     errorOn(last)
   }
 
@@ -46,13 +46,13 @@ class SpecParser(declarationParser: DeclarationParser) :
     is LongLong -> if (isSigned) SignedLongLong(this.first) else UnsignedLongLong(this.first)
     is Signed, is SignedChar, is SignedShort, is SignedInt, is SignedLong, is SignedLongLong -> {
       if (isSigned) diagDuplicate(debug)
-      else diagIncompat(this, debug)
+      else diagIncompat(this.toString(), debug)
       this
     }
     is Unsigned, is UnsignedChar, is UnsignedShort, is UnsignedInt,
     is UnsignedLong, is UnsignedLongLong -> {
       if (!isSigned) diagDuplicate(debug)
-      else diagIncompat(this, debug)
+      else diagIncompat(this.toString(), debug)
       this
     }
     else -> {
@@ -92,19 +92,19 @@ class SpecParser(declarationParser: DeclarationParser) :
       is LongType -> when (next.value) {
         Keywords.DOUBLE -> return LongDouble(this.first)
         Keywords.LONG -> return LongLong(this.first)
-        else -> diagIncompat(this, next)
+        else -> diagIncompat(this.toString(), next)
       }
       is SignedLong -> when (next.value) {
         Keywords.LONG -> return SignedLongLong(this.first)
-        else -> diagIncompat(this, next)
+        else -> diagIncompat(this.toString(), next)
       }
       is UnsignedLong -> when (next.value) {
         Keywords.LONG -> return UnsignedLongLong(this.first)
-        else -> diagIncompat(this, next)
+        else -> diagIncompat(this.toString(), next)
       }
       is DoubleType -> when (next.value) {
         Keywords.LONG -> return LongDouble(this.first)
-        else -> diagIncompat(this, next)
+        else -> diagIncompat(this.toString(), next)
       }
       is Signed -> when (next.value) {
         Keywords.CHAR -> return SignedChar(this.first)
@@ -120,7 +120,7 @@ class SpecParser(declarationParser: DeclarationParser) :
         Keywords.LONG -> return UnsignedLong(this.first)
         else -> diagNotSigned(next.value.keyword, this.first)
       }
-      else -> diagIncompat(this, next)
+      else -> diagIncompat(this.toString(), next)
     }
     return this
   }
@@ -212,6 +212,36 @@ class SpecParser(declarationParser: DeclarationParser) :
     }
   }
 
+  /**
+   * C standard: 6.7.1.2
+   * @return if the list contained [Keywords.THREAD_LOCAL] and the storage class that was found
+   */
+  private fun validateStorageClass(storageSpecs: List<Keyword>): Pair<Boolean, Keyword?> {
+    var isThreadLocal = false
+    var storageClass: Keyword? = null
+    for (spec in storageSpecs) {
+      if (spec.value == Keywords.THREAD_LOCAL) {
+        if (storageClass == null ||
+            storageClass.value == Keywords.STATIC || storageClass.value == Keywords.EXTERN) {
+          isThreadLocal = true
+        } else {
+          diagIncompat(storageClass.value.keyword, spec)
+        }
+        continue
+      }
+      if (storageClass != null) {
+        diagIncompat(storageClass.value.keyword, spec)
+        continue
+      }
+      if (isThreadLocal && spec.value != Keywords.STATIC && spec.value != Keywords.EXTERN) {
+        diagIncompat(Keywords.THREAD_LOCAL.keyword, spec)
+        continue
+      }
+      storageClass = spec
+    }
+    return isThreadLocal to storageClass
+  }
+
   override fun parseDeclSpecifiers(): DeclarationSpecifier {
     val startTok = current()
 
@@ -228,12 +258,11 @@ class SpecParser(declarationParser: DeclarationParser) :
           errorOn(safeToken(0))
         }
         Keywords.STRUCT, Keywords.UNION -> {
-          if (typeSpecifier != null) diagIncompat(typeSpecifier, tok)
+          if (typeSpecifier != null) diagIncompat(typeSpecifier.toString(), tok)
           parseStructUnion()?.let { typeSpecifier = it }
           // The function deals with eating, so the eat() below should be skipped
           continue@specLoop
         }
-        Keywords.TYPEDEF -> TODO("implement typedefs")
         in typeSpecifiers -> typeSpecifier = typeSpecifier combineWith tok
         in storageClassSpecifiers -> storageSpecs += tok
         in typeQualifiers -> typeQuals += tok
@@ -255,6 +284,8 @@ class SpecParser(declarationParser: DeclarationParser) :
     removeDuplicates(typeQuals)
     removeDuplicates(funSpecs)
 
+    val (isThreadLocal, storageClass) = validateStorageClass(storageSpecs)
+
     val isEmpty =
         storageSpecs.isEmpty() && funSpecs.isEmpty() && typeQuals.isEmpty() && typeSpecifier == null
 
@@ -268,8 +299,8 @@ class SpecParser(declarationParser: DeclarationParser) :
   }
 
   companion object {
-    private val storageClassSpecifiers =
-        listOf(Keywords.EXTERN, Keywords.STATIC, Keywords.AUTO, Keywords.REGISTER)
+    private val storageClassSpecifiers = listOf(Keywords.TYPEDEF, Keywords.EXTERN, Keywords.STATIC,
+        Keywords.AUTO, Keywords.REGISTER, Keywords.THREAD_LOCAL)
     private val typeSpecifiers = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
         Keywords.LONG, Keywords.FLOAT, Keywords.DOUBLE, Keywords.SIGNED, Keywords.UNSIGNED,
         Keywords.BOOL, Keywords.COMPLEX)

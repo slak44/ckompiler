@@ -34,6 +34,31 @@ class SpecTests {
   }
 
   @Test
+  fun incompatibleMultipleStorageClass() {
+    val p = prepareCode("static extern auto int a = 1;", source)
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC, DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+  }
+
+  @Test
+  fun threadLocalCompat() {
+    val p = prepareCode("""
+      static _Thread_local int a = 1;
+      extern _Thread_local int b = 1;
+      _Thread_local static int c = 1;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun threadLocalIncompat() {
+    val p = prepareCode("""
+      _Thread_local auto int a = 1;
+      register _Thread_local int b = 1;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC, DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+  }
+
+  @Test
   fun missingTypeSpecExternal() {
     val p = prepareCode("a = 1;", source)
     p.assertDiags(DiagnosticId.EXPECTED_EXTERNAL_DECL)
