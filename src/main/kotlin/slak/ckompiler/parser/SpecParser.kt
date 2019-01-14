@@ -197,6 +197,21 @@ class SpecParser(declarationParser: DeclarationParser) :
     else StructDefinition(name, declarations)
   }
 
+  /**
+   * Creates diagnostics for duplicates, and removes the duplicates from the list.
+   */
+  private fun removeDuplicates(specList: MutableList<Keyword>) {
+    for (spec in specList) {
+      val iter = specList.iterator()
+      for (otherSpec in iter) {
+        if (spec !== otherSpec && spec.value == otherSpec.value) {
+          diagDuplicate(otherSpec)
+          iter.remove()
+        }
+      }
+    }
+  }
+
   override fun parseDeclSpecifiers(): DeclarationSpecifier {
     val startTok = current()
 
@@ -235,6 +250,11 @@ class SpecParser(declarationParser: DeclarationParser) :
         errorOn(safeToken(0))
       }
     }
+
+    removeDuplicates(storageSpecs)
+    removeDuplicates(typeQuals)
+    removeDuplicates(funSpecs)
+
     val isEmpty =
         storageSpecs.isEmpty() && funSpecs.isEmpty() && typeQuals.isEmpty() && typeSpecifier == null
 

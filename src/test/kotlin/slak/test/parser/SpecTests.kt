@@ -52,8 +52,26 @@ class SpecTests {
   }
 
   @Test
-  fun duplicateSpecs() {
+  fun duplicateUnsigned() {
     val p = prepareCode("int main() { const unsigned unsigned a = 1; }", source)
+    p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
+  }
+
+  @Test
+  fun duplicateStorageClassSpecs() {
+    val p = prepareCode("int main() { register register int a = 1; }", source)
+    p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
+  }
+
+  @Test
+  fun duplicateTypeQualifiers() {
+    val p = prepareCode("int main() { const const int a = 1; }", source)
+    p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
+  }
+
+  @Test
+  fun duplicateFunSpecs() {
+    val p = prepareCode("inline inline int main() {}", source)
     p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
   }
 
