@@ -23,7 +23,8 @@ class DeclarationTests {
     p.assertNoDiagnostics()
     val spec = DeclarationSpecifier(
         typeQualifiers = listOf(Keyword(Keywords.CONST)),
-        storageClassSpecs = listOf(Keyword(Keywords.STATIC)),
+        storageClass = Keyword(Keywords.STATIC),
+        isThreadLocal = false,
         functionSpecs = emptyList(),
         typeSpec = IntType(Keyword(Keywords.INT)),
         range = Keyword(Keywords.CONST) until Keyword(Keywords.INT))

@@ -138,7 +138,8 @@ class SpecParser(declarationParser: DeclarationParser) :
       formatArgs("function specifier")
       errorOn(specifierQualifier.functionSpecs.first())
     }
-    if (specifierQualifier.storageClassSpecs.isNotEmpty()) parserDiagnostic {
+    if (specifierQualifier.storageClass != null ||
+        specifierQualifier.isThreadLocal) parserDiagnostic {
       id = DiagnosticId.SPEC_NOT_ALLOWED
       formatArgs("storage specifier")
       errorOn(specifierQualifier.functionSpecs.first())
@@ -290,7 +291,8 @@ class SpecParser(declarationParser: DeclarationParser) :
         storageSpecs.isEmpty() && funSpecs.isEmpty() && typeQuals.isEmpty() && typeSpecifier == null
 
     return DeclarationSpecifier(
-        storageClassSpecs = storageSpecs,
+        storageClass = storageClass,
+        isThreadLocal = isThreadLocal,
         functionSpecs = funSpecs,
         typeQualifiers = typeQuals,
         typeSpec = typeSpecifier,

@@ -392,13 +392,14 @@ class LongDouble(first: Keyword) : BasicTypeSpecifier(first) {
  * Stores declaration specifiers that come before declarators.
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
-class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
+class DeclarationSpecifier(val storageClass: Keyword?,
+                           val isThreadLocal: Boolean,
                            val typeQualifiers: List<Keyword>,
                            val functionSpecs: List<Keyword>,
                            val typeSpec: TypeSpecifier?,
                            val range: IntRange?) {
   /** @return true if no specifiers were found */
-  fun isEmpty() = storageClassSpecs.isEmpty() && typeQualifiers.isEmpty() &&
+  fun isEmpty() = storageClass == null && !isThreadLocal && typeQualifiers.isEmpty() &&
       functionSpecs.isEmpty() && typeSpec == null
 
   /**
@@ -410,12 +411,14 @@ class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
       typeSpec is StructNameSpecifier || typeSpec is UnionNameSpecifier || typeSpec is EnumSpecifier
 
   override fun toString(): String {
-    val otherSpecs = listOf(storageClassSpecs, typeQualifiers, functionSpecs)
+    val otherSpecs = listOf(typeQualifiers, functionSpecs)
         .filter { it.isNotEmpty() }
         .joinToString(" ") {
           it.joinToString(" ") { (value) -> value.keyword }
         }
-    return "($otherSpecs $typeSpec)"
+    val storageClassStr = if (storageClass == null) "" else "${storageClass.value.keyword} "
+    val threadLocalStr = if (isThreadLocal) "${Keywords.THREAD_LOCAL.keyword} " else ""
+    return "($threadLocalStr$storageClassStr$otherSpecs $typeSpec)"
   }
 
   override fun equals(other: Any?): Boolean {
@@ -425,7 +428,8 @@ class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
     other as DeclarationSpecifier
 
     if (typeSpec != other.typeSpec) return false
-    if (storageClassSpecs != other.storageClassSpecs) return false
+    if (storageClass != other.storageClass) return false
+    if (isThreadLocal != other.isThreadLocal) return false
     if (typeQualifiers != other.typeQualifiers) return false
     if (functionSpecs != other.functionSpecs) return false
 
@@ -433,7 +437,8 @@ class DeclarationSpecifier(val storageClassSpecs: List<Keyword>,
   }
 
   override fun hashCode(): Int {
-    var result = storageClassSpecs.hashCode()
+    var result = storageClass.hashCode()
+    result = 31 * result + isThreadLocal.hashCode()
     result = 31 * result + typeSpec.hashCode()
     result = 31 * result + typeQualifiers.hashCode()
     result = 31 * result + functionSpecs.hashCode()

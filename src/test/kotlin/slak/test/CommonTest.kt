@@ -22,32 +22,32 @@ internal val List<Diagnostic>.ids get() = map { it.id }
 internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toList(), diags.ids)
 
 internal val int = DeclarationSpecifier(
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = IntType(Keyword(Keywords.INT)), range = null)
+    functionSpecs = emptyList(), storageClass = null, typeQualifiers = emptyList(),
+    typeSpec = IntType(Keyword(Keywords.INT)), range = null, isThreadLocal = false)
 
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 
 internal val double = DeclarationSpecifier(
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = DoubleType(Keyword(Keywords.DOUBLE)), range = null)
+    functionSpecs = emptyList(), storageClass = null, typeQualifiers = emptyList(),
+    typeSpec = DoubleType(Keyword(Keywords.DOUBLE)), range = null, isThreadLocal = false)
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
 internal val longLong = DeclarationSpecifier(
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = LongLong(Keyword(Keywords.LONG)), range = null)
+    functionSpecs = emptyList(), storageClass = null, typeQualifiers = emptyList(),
+    typeSpec = LongLong(Keyword(Keywords.LONG)), range = null, isThreadLocal = false)
 
 internal val uLongLong = DeclarationSpecifier(
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = UnsignedLongLong(Keyword(Keywords.UNSIGNED)), range = null)
+    functionSpecs = emptyList(), storageClass = null, typeQualifiers = emptyList(),
+    typeSpec = UnsignedLongLong(Keyword(Keywords.UNSIGNED)), range = null, isThreadLocal = false)
 
 internal val longDouble = DeclarationSpecifier(
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = LongDouble(Keyword(Keywords.LONG)), range = null)
+    functionSpecs = emptyList(), storageClass = null, typeQualifiers = emptyList(),
+    typeSpec = LongDouble(Keyword(Keywords.LONG)), range = null, isThreadLocal = false)
 
 internal val signedChar = DeclarationSpecifier(
-    functionSpecs = emptyList(), storageClassSpecs = emptyList(), typeQualifiers = emptyList(),
-    typeSpec = SignedChar(Keyword(Keywords.SIGNED)), range = null)
+    functionSpecs = emptyList(), storageClass = null, typeQualifiers = emptyList(),
+    typeSpec = SignedChar(Keyword(Keywords.SIGNED)), range = null, isThreadLocal = false)
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
@@ -181,8 +181,9 @@ internal fun struct(name: String?, decls: List<Declaration>): StructDefinition {
   return StructDefinition(name = name?.let { name(it) }, decls = d)
 }
 
-internal fun StructDefinition.toSpec() = DeclarationSpecifier(typeSpec = this, range = null,
-    typeQualifiers = emptyList(), functionSpecs = emptyList(), storageClassSpecs = emptyList())
+internal fun StructDefinition.toSpec() =
+    DeclarationSpecifier(storageClass = null, isThreadLocal = false,
+    typeSpec = this, range = null, typeQualifiers = emptyList(), functionSpecs = emptyList())
 
 internal infix fun String.bitSize(expr: Expression) = StructDeclarator(nameDecl(this), expr)
 internal infix fun String.bitSize(it: Long) = this bitSize int(it)
