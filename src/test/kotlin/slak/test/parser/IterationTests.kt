@@ -227,7 +227,7 @@ class IterationTests {
     """.trimIndent(), source)
     // This kind of syntax error can cause lots of random diagnostics
     // As long as we report "EXPECTED_LPAREN_AFTER" it's good enough
-    assert(p.diags.size > 0)
+    assert(p.diags.isNotEmpty())
     assert(p.diags.ids.contains(DiagnosticId.EXPECTED_LPAREN_AFTER))
   }
 
