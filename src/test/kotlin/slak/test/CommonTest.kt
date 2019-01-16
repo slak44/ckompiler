@@ -7,7 +7,7 @@ import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import kotlin.test.assertEquals
 
-internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), inspections)
+internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 

@@ -104,6 +104,6 @@ class ResilienceTests {
     val l = Lexer(text, source)
     assert(l.tokens[1] is ErrorToken)
     // Test if error is on the last column
-    assertEquals(text.length - 1, l.inspections[0].sourceColumns[0].start)
+    assertEquals(text.length - 1, l.diags[0].sourceColumns[0].start)
   }
 }

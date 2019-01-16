@@ -28,7 +28,7 @@ fun main(args: Array<String>) {
   files.map { File(it) }.forEach {
     val text = it.readText()
     val l = Lexer(text, it.absolutePath)
-    if (l.inspections.isNotEmpty()) {
+    if (l.diags.isNotEmpty()) {
       return@forEach
     }
     val p = Parser(l.tokens, it.absolutePath, text)

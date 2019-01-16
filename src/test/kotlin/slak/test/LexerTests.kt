@@ -67,7 +67,7 @@ class LexerTests {
   }
 
   private fun assertDiagnostic(s: String, id: DiagnosticId) {
-    val inspections = Lexer(s, source).inspections
+    val inspections = Lexer(s, source).diags
     assert(inspections.size >= 1)
     assertEquals(id, inspections[0].id)
   }
@@ -176,10 +176,10 @@ class LexerTests {
 
   @Test
   fun unmatchedQuoteError() {
-    val inspections1 = Lexer("'asfadgs", source).inspections
+    val inspections1 = Lexer("'asfadgs", source).diags
     assert(inspections1.size >= 1)
     assertEquals(DiagnosticId.MISSING_QUOTE, inspections1[0].id)
-    val inspections2 = Lexer("'123\nasd'", source).inspections
+    val inspections2 = Lexer("'123\nasd'", source).diags
     assert(inspections2.size >= 1)
     assertEquals(DiagnosticId.MISSING_QUOTE, inspections2[0].id)
   }
@@ -213,10 +213,10 @@ class LexerTests {
 
   @Test
   fun unmatchedDoubleQuoteError() {
-    val inspections1 = Lexer("\"asfadgs", source).inspections
+    val inspections1 = Lexer("\"asfadgs", source).diags
     assert(inspections1.size >= 1)
     assertEquals(DiagnosticId.MISSING_QUOTE, inspections1[0].id)
-    val inspections2 = Lexer("\"123\nasd\"", source).inspections
+    val inspections2 = Lexer("\"123\nasd\"", source).diags
     assert(inspections2.size >= 1)
     assertEquals(DiagnosticId.MISSING_QUOTE, inspections2[0].id)
   }

@@ -5,17 +5,17 @@ import slak.ckompiler.*
 
 class Lexer(private val textSource: String, private val srcFileName: SourceFileName) {
   val tokens = mutableListOf<Token>()
-  val inspections = mutableListOf<Diagnostic>()
+  val diags = mutableListOf<Diagnostic>()
   private var src: String = textSource
   private var currentOffset: Int = 0
 
   init {
     tokenize()
-    inspections.forEach { it.print() }
+    diags.forEach { it.print() }
   }
 
   private fun lexerDiagnostic(build: DiagnosticBuilder.() -> Unit) {
-    inspections += createDiagnostic {
+    diags += createDiagnostic {
       sourceFileName = srcFileName
       sourceText = textSource
       origin = "Lexer"
