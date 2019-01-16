@@ -57,11 +57,11 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       parserDiagnostic {
         this.id = if (isLabel) DiagnosticId.REDEFINITION_LABEL else DiagnosticId.REDEFINITION
         formatArgs(id.name)
-        // FIXME: location of id
+        columns(id.tokenRange)
       }
       parserDiagnostic {
         this.id = DiagnosticId.REDEFINITION_PREVIOUS
-        // FIXME: location of foundId
+        columns(foundId.tokenRange)
       }
       return
     }
