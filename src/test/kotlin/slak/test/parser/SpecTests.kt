@@ -243,4 +243,12 @@ class SpecTests {
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.SPEC_NOT_ALLOWED, DiagnosticId.SPEC_NOT_ALLOWED)
   }
+
+  @Test
+  fun structDoesntDeclareAnything() {
+    val p = prepareCode("""
+      struct {double a, b; int;} struct1;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.MISSING_DECLARATIONS)
+  }
 }

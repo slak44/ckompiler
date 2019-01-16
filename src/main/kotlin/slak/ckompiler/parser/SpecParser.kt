@@ -184,7 +184,19 @@ class SpecParser(declarationParser: DeclarationParser) :
         if (spec.isEmpty()) {
           continue
         }
-        declarations += Declaration(spec, parseStructDeclaratorList())
+        if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+          eat() // The ';'
+          if (spec.canBeTag()) {
+            declarations += Declaration(spec, emptyList())
+          } else {
+            parserDiagnostic {
+              id = DiagnosticId.MISSING_DECLARATIONS
+              errorOn(safeToken(0))
+            }
+          }
+        } else {
+          declarations += Declaration(spec, parseStructDeclaratorList())
+        }
       }
     }
     eat() // The }

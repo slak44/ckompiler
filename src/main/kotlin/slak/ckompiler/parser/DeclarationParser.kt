@@ -3,6 +3,7 @@ package slak.ckompiler.parser
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
+import java.util.*
 
 interface IDeclarationParser {
   /**
@@ -12,14 +13,16 @@ interface IDeclarationParser {
   fun parseDeclaration(): Declaration? {
     val (declSpec, firstDecl) = preParseDeclarator()
     if (declSpec.isEmpty()) return null
-    return parseDeclaration(declSpec, firstDecl)
+    if (!firstDecl!!.isPresent) return null
+    return parseDeclaration(declSpec, firstDecl.get())
   }
 
   /**
    * Parse a [DeclarationSpecifier] and the first [Declarator] that follows.
-   * @return if [DeclarationSpecifier.isEmpty] is true, the [Declarator] will be null
+   * @return if [DeclarationSpecifier.isEmpty] is true, the [Declarator] will be null, and if there
+   * is no declarator, it will be [Optional.empty]
    */
-  fun preParseDeclarator(): Pair<DeclarationSpecifier, Declarator?>
+  fun preParseDeclarator(): Pair<DeclarationSpecifier, Optional<Declarator>?>
 
   /**
    * Parses a declaration where the [DeclarationSpecifier] and the first [Declarator] are already
@@ -52,18 +55,26 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   internal lateinit var specParser: SpecParser
 
-  override fun preParseDeclarator(): Pair<DeclarationSpecifier, Declarator?> {
+  override fun preParseDeclarator(): Pair<DeclarationSpecifier, Optional<Declarator>?> {
     val declSpec = specParser.parseDeclSpecifiers()
-    if (declSpec.canBeTag() && isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+    if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
-      eat()
-      // FIXME: actually do something with the "tag"
-      return Pair(declSpec, null)
+      eat() // The ';'
+      if (declSpec.canBeTag()) {
+        // FIXME: actually do something with the "tag"
+      } else {
+        parserDiagnostic {
+          id = DiagnosticId.MISSING_DECLARATIONS
+          errorOn(safeToken(0))
+        }
+      }
+      return Pair(declSpec, Optional.empty())
     }
     if (declSpec.canBeTag() && isEaten()) {
-      return Pair(declSpec, null)
+      return Pair(declSpec, Optional.empty())
     }
-    return Pair(declSpec, if (declSpec.isEmpty()) null else parseDeclarator(tokenCount))
+    val declarator = if (declSpec.isEmpty()) null else Optional.of(parseDeclarator(tokenCount))
+    return Pair(declSpec, declarator)
   }
 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
@@ -335,10 +346,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         break
       }
     }
-    if (declaratorList.isEmpty()) parserDiagnostic {
-      id = DiagnosticId.MISSING_DECLARATIONS
-      errorOn(safeToken(0))
-    }
     return declaratorList
   }
 
@@ -400,10 +407,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           break@declLoop
         }
       }
-    }
-    if (declaratorList.isEmpty()) parserDiagnostic {
-      id = DiagnosticId.MISSING_DECLARATIONS
-      errorOn(safeToken(0))
     }
     return declaratorList
   }

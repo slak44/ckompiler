@@ -104,4 +104,10 @@ class DeclarationTests {
     assertEquals(DiagnosticId.EXPECTED_SEMI_AFTER, p.diags[0].id)
     assertEquals(listOf(int declare "a"), p.root.decls)
   }
+
+  @Test
+  fun declarationDoesntDeclareAnything() {
+    val p = prepareCode("int;", source)
+    p.assertDiags(DiagnosticId.MISSING_DECLARATIONS)
+  }
 }

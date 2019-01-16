@@ -101,7 +101,7 @@ private class TranslationUnitParser(statementParser: StatementParser) :
   /** C standard: A.2.4, 6.9 */
   private tailrec fun translationUnit() {
     if (isEaten()) return
-    val (declSpec, declarator) = preParseDeclarator()
+    val (declSpec, declaratorOpt) = preParseDeclarator()
     if (declSpec.isEmpty()) {
       // If we got here it means the current thing isn't a translation unit
       // So spit out an error and eat tokens
@@ -113,13 +113,18 @@ private class TranslationUnitParser(statementParser: StatementParser) :
       if (isNotEaten()) eat()
       return translationUnit()
     }
+    if (!declaratorOpt!!.isPresent) {
+      if (declSpec.canBeTag()) {
+        root.addExternalDeclaration(Declaration(declSpec, emptyList()))
+        // FIXME: struct/union/enum/something declaration or definition, do something with it
+      }
+      return translationUnit()
+    }
+    val declarator = declaratorOpt.get()
     if (declarator is FunctionDeclarator && current().asPunct() != Punctuators.SEMICOLON) {
       root.addExternalDeclaration(parseFunctionDefinition(declSpec, declarator))
-    } else if (declSpec.canBeTag() && declarator == null) {
-      root.addExternalDeclaration(Declaration(declSpec, emptyList()))
-      // FIXME: struct/union/enum/something declaration or definition, do something with it
     } else {
-      root.addExternalDeclaration(parseDeclaration(declSpec, declarator!!))
+      root.addExternalDeclaration(parseDeclaration(declSpec, declarator))
     }
     if (isEaten()) return
     else translationUnit()
