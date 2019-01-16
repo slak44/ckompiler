@@ -24,10 +24,7 @@ class DeclarationTests {
     val spec = DeclarationSpecifier(
         typeQualifiers = listOf(Keyword(Keywords.CONST)),
         storageClass = Keyword(Keywords.STATIC),
-        isThreadLocal = false,
-        functionSpecs = emptyList(),
-        typeSpec = IntType(Keyword(Keywords.INT)),
-        range = Keyword(Keywords.CONST) until Keyword(Keywords.INT))
+        typeSpec = IntType(Keyword(Keywords.INT)))
     assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 

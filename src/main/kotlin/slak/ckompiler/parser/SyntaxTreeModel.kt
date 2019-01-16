@@ -392,14 +392,14 @@ class LongDouble(first: Keyword) : BasicTypeSpecifier(first) {
  * Stores declaration specifiers that come before declarators.
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
-class DeclarationSpecifier(val storageClass: Keyword?,
-                           val isThreadLocal: Boolean,
-                           val typeQualifiers: List<Keyword>,
-                           val functionSpecs: List<Keyword>,
-                           val typeSpec: TypeSpecifier?,
-                           val range: IntRange?) {
+class DeclarationSpecifier(val storageClass: Keyword? = null,
+                           val threadLocal: Keyword? = null,
+                           val typeQualifiers: List<Keyword> = emptyList(),
+                           val functionSpecs: List<Keyword> = emptyList(),
+                           val typeSpec: TypeSpecifier? = null,
+                           val range: IntRange? = null) {
   /** @return true if no specifiers were found */
-  fun isEmpty() = storageClass == null && !isThreadLocal && typeQualifiers.isEmpty() &&
+  fun isEmpty() = storageClass == null && threadLocal == null && typeQualifiers.isEmpty() &&
       functionSpecs.isEmpty() && typeSpec == null
 
   /**
@@ -417,7 +417,7 @@ class DeclarationSpecifier(val storageClass: Keyword?,
           it.joinToString(" ") { (value) -> value.keyword }
         }
     val storageClassStr = if (storageClass == null) "" else "${storageClass.value.keyword} "
-    val threadLocalStr = if (isThreadLocal) "${Keywords.THREAD_LOCAL.keyword} " else ""
+    val threadLocalStr = if (threadLocal == null) "" else "${Keywords.THREAD_LOCAL.keyword} "
     return "($threadLocalStr$storageClassStr$otherSpecs $typeSpec)"
   }
 
@@ -429,7 +429,7 @@ class DeclarationSpecifier(val storageClass: Keyword?,
 
     if (typeSpec != other.typeSpec) return false
     if (storageClass != other.storageClass) return false
-    if (isThreadLocal != other.isThreadLocal) return false
+    if (threadLocal != other.threadLocal) return false
     if (typeQualifiers != other.typeQualifiers) return false
     if (functionSpecs != other.functionSpecs) return false
 
@@ -438,7 +438,7 @@ class DeclarationSpecifier(val storageClass: Keyword?,
 
   override fun hashCode(): Int {
     var result = storageClass.hashCode()
-    result = 31 * result + isThreadLocal.hashCode()
+    result = 31 * result + threadLocal.hashCode()
     result = 31 * result + typeSpec.hashCode()
     result = 31 * result + typeQualifiers.hashCode()
     result = 31 * result + functionSpecs.hashCode()

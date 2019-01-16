@@ -139,10 +139,11 @@ class SpecParser(declarationParser: DeclarationParser) :
       errorOn(specifierQualifier.functionSpecs.first())
     }
     if (specifierQualifier.storageClass != null ||
-        specifierQualifier.isThreadLocal) parserDiagnostic {
+        specifierQualifier.threadLocal != null) parserDiagnostic {
       id = DiagnosticId.SPEC_NOT_ALLOWED
       formatArgs("storage specifier")
-      errorOn(specifierQualifier.functionSpecs.first())
+      val errTok = specifierQualifier.threadLocal ?: specifierQualifier.storageClass
+      errorOn(errTok!!)
     }
     return specifierQualifier
   }
@@ -215,16 +216,16 @@ class SpecParser(declarationParser: DeclarationParser) :
 
   /**
    * C standard: 6.7.1.2
-   * @return if the list contained [Keywords.THREAD_LOCAL] and the storage class that was found
+   * @return the [Keywords.THREAD_LOCAL] keyword and the storage class that was found (if any)
    */
-  private fun validateStorageClass(storageSpecs: List<Keyword>): Pair<Boolean, Keyword?> {
-    var isThreadLocal = false
+  private fun validateStorageClass(storageSpecs: List<Keyword>): Pair<Keyword?, Keyword?> {
+    var threadLocal: Keyword? = null
     var storageClass: Keyword? = null
     for (spec in storageSpecs) {
       if (spec.value == Keywords.THREAD_LOCAL) {
         if (storageClass == null ||
             storageClass.value == Keywords.STATIC || storageClass.value == Keywords.EXTERN) {
-          isThreadLocal = true
+          threadLocal = spec
         } else {
           diagIncompat(storageClass.value.keyword, spec)
         }
@@ -234,13 +235,13 @@ class SpecParser(declarationParser: DeclarationParser) :
         diagIncompat(storageClass.value.keyword, spec)
         continue
       }
-      if (isThreadLocal && spec.value != Keywords.STATIC && spec.value != Keywords.EXTERN) {
+      if (threadLocal != null && spec.value != Keywords.STATIC && spec.value != Keywords.EXTERN) {
         diagIncompat(Keywords.THREAD_LOCAL.keyword, spec)
         continue
       }
       storageClass = spec
     }
-    return isThreadLocal to storageClass
+    return threadLocal to storageClass
   }
 
   override fun parseDeclSpecifiers(): DeclarationSpecifier {
@@ -285,14 +286,14 @@ class SpecParser(declarationParser: DeclarationParser) :
     removeDuplicates(typeQuals)
     removeDuplicates(funSpecs)
 
-    val (isThreadLocal, storageClass) = validateStorageClass(storageSpecs)
+    val (threadLocal, storageClass) = validateStorageClass(storageSpecs)
 
     val isEmpty =
         storageSpecs.isEmpty() && funSpecs.isEmpty() && typeQuals.isEmpty() && typeSpecifier == null
 
     return DeclarationSpecifier(
         storageClass = storageClass,
-        isThreadLocal = isThreadLocal,
+        threadLocal = threadLocal,
         functionSpecs = funSpecs,
         typeQualifiers = typeQuals,
         typeSpec = typeSpecifier,
