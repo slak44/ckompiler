@@ -26,8 +26,9 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
   companion object {
     private val logger = KotlinLogging.logger("Lexer")
 
-    private fun keyword(s: String) =
-        Keywords.values().find { s.startsWith(it.keyword) }?.let { Keyword(it) }
+    private fun keyword(s: String) = Keywords.values()
+        .find { s.slice(0 until nextWhitespaceOrPunct(s)) == it.keyword }
+        ?.let { Keyword(it) }
 
     private fun punct(s: String) =
         Punctuators.values().find { s.startsWith(it.s) }?.let { Punctuator(it) }

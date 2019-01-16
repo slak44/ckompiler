@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 class LexerTests {
   @Test
   fun identifiers() {
-    val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2")
+    val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2", "struct1")
     val l = Lexer(idents.joinToString(" "), source)
     l.assertNoDiagnostics()
     val res: List<Token> = idents.map { Identifier(it) }
