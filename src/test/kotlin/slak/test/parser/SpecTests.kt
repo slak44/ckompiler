@@ -234,4 +234,13 @@ class SpecTests {
     val p = prepareCode("struct {int x, y;} pos;", source)
     p.assertNoDiagnostics()
   }
+
+  @Test
+  fun structNoStorageQual() {
+    val p = prepareCode("""
+      struct {register int a;} struct1;
+      struct {_Thread_local int a;} struct2;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.SPEC_NOT_ALLOWED, DiagnosticId.SPEC_NOT_ALLOWED)
+  }
 }
