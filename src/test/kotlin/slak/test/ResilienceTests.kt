@@ -33,25 +33,21 @@ class ResilienceTests {
   @Test
   fun parserKeepsGoingAfterUnmatchedParen() {
     val p = prepareCode("int a = 1 * (2 + 3; int b = 32;", source)
-    assertEquals(
-        listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
-        p.diags.map { it.id })
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
     int declare ("b" assign int(32)) assertEquals p.root.decls[1]
   }
 
   @Test
   fun parserKeepsGoingAfterUnmatchedBracket() {
     val p = prepareCode("int main() { 123 + 23; \n int b = 32;", source)
-    assertEquals(
-        listOf(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET),
-        p.diags.map { it.id })
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
     int declare ("b" assign int(32)) assertEquals p.root.decls[1]
   }
 
   @Test
   fun parserKeepsGoingAfterBadFunctionDeclarator() {
     val p = prepareCode("int default(); double dbl = 1.1;", source)
-    assert(p.diags.size > 0)
+    assert(p.diags.isNotEmpty())
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
     double declare ("dbl" assign double(1.1)) assertEquals p.root.decls[1]
   }
@@ -59,7 +55,7 @@ class ResilienceTests {
   @Test
   fun parserKeepsGoingAfterBadDeclaration() {
     val p = prepareCode("int default; double dbl = 1.1;", source)
-    assert(p.diags.size > 0)
+    assert(p.diags.isNotEmpty())
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
     double declare ("dbl" assign double(1.1)) assertEquals p.root.decls[1]
   }
@@ -67,7 +63,7 @@ class ResilienceTests {
   @Test
   fun parserKeepsGoingInDeclarationAfterBadDeclarator() {
     val p = prepareCode("int default, x = 1;", source)
-    assert(p.diags.size > 0)
+    assert(p.diags.isNotEmpty())
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
     val decl = Declaration(int, listOf(ErrorDeclarator(), "x" assign int(1)))
     decl assertEquals p.root.decls[0]
