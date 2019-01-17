@@ -237,6 +237,31 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     return@tokenContext parseDirectDeclaratorSuffixes(primaryDecl)
   }
 
+  /**
+   * Parses pointers and their `type-qualifier`s.
+   *
+   * C standard: 6.7.6.1
+   * @return a list, whose length is equal to the level of indirection in the declarator, and where
+   * every element is the `type-qualifier-list` associated to that specific level of indirection
+   */
+  private fun parsePointer(endIdx: Int): List<TypeQualifierList> = tokenContext(endIdx) {
+    if (isEaten() || current().asPunct() != Punctuators.STAR) return@tokenContext emptyList()
+    val indirectionList = mutableListOf<List<Keyword>>()
+    var currentIdx = 0
+    while (isNotEaten() && current().asPunct() == Punctuators.STAR) {
+      eat() // The '*'
+      val qualsEnd = indexOfFirst { k -> k.asKeyword() !in SpecParser.typeQualifiers }
+      // No type qualifiers
+      if (qualsEnd == -1) continue
+      // Get the quals as a list and add them to the big list
+      // The first thing is the *, so drop that
+      indirectionList += it.slice(currentIdx until qualsEnd).drop(1).map { k -> k as Keyword }
+      eatUntil(qualsEnd)
+      currentIdx = qualsEnd
+    }
+    return@tokenContext indirectionList
+  }
+
   /** C standard: 6.7.6.1 */
   private fun parseDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
     if (it.isEmpty()) {
@@ -246,12 +271,16 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
       return@tokenContext errorDecl()
     }
-    // FIXME: missing pointer parsing
-    val directDecl = parseDirectDeclarator(it.size)
-    if (isNotEaten()) {
-      // FIXME: this should likely be an error (it is way to noisy)
-//      logger.warn { "parseDirectDeclarator did not eat all of its tokens" }
+    val pointers = parsePointer(it.size)
+    if (isEaten()) {
+      parserDiagnostic {
+        id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
+        column(colPastTheEnd(0))
+      }
+      return@tokenContext errorDecl()
     }
+    val directDecl = parseDirectDeclarator(it.size)
+    directDecl.setIndirection(pointers)
     return@tokenContext directDecl
   }
 

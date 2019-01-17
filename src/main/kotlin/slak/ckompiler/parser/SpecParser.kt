@@ -319,7 +319,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     private val typeSpecifiers = listOf(Keywords.VOID, Keywords.CHAR, Keywords.SHORT, Keywords.INT,
         Keywords.LONG, Keywords.FLOAT, Keywords.DOUBLE, Keywords.SIGNED, Keywords.UNSIGNED,
         Keywords.BOOL, Keywords.COMPLEX)
-    private val typeQualifiers =
+    val typeQualifiers =
         listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE, Keywords.ATOMIC)
     private val funSpecifiers = listOf(Keywords.NORETURN, Keywords.INLINE)
   }

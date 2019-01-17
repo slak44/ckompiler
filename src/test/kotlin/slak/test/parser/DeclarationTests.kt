@@ -110,4 +110,50 @@ class DeclarationTests {
     val p = prepareCode("int;", source)
     p.assertDiags(DiagnosticId.MISSING_DECLARATIONS)
   }
+
+  @Test
+  fun declaratorWithPointer() {
+    val p = prepareCode("int* a;", source)
+    p.assertNoDiagnostics()
+    assertEquals(listOf(int declare ptr("a")), p.root.decls)
+  }
+
+  @Test
+  fun declaratorWithPointers() {
+    val p = prepareCode("int**** a;", source)
+    p.assertNoDiagnostics()
+    val d = int declare "a".withPtrs(listOf(), listOf(), listOf(), listOf())
+    assertEquals(listOf(d), p.root.decls)
+  }
+
+  @Test
+  fun declaratorWithTypeQualsOnPointers() {
+    val p = prepareCode("int * const volatile _Atomic* volatile* _Atomic* a;", source)
+    p.assertNoDiagnostics()
+    val d = int declare "a".withPtrs(
+        listOf(),
+        listOf(Keyword(Keywords.CONST), Keyword(Keywords.VOLATILE), Keyword(Keywords.ATOMIC)),
+        listOf(Keyword(Keywords.VOLATILE)),
+        listOf(Keyword(Keywords.ATOMIC))
+    )
+    assertEquals(listOf(d), p.root.decls)
+  }
+
+  @Test
+  fun declaratorWithIdentInPointer() {
+    val p = prepareCode("int * lalala * a;", source)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER, DiagnosticId.EXPECTED_EXTERNAL_DECL)
+  }
+
+  @Test
+  fun declaratorWithKeywordInPointer() {
+    val p = prepareCode("int * int * a;", source)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN)
+  }
+
+  @Test
+  fun declaratorWithPointerButEndsTooEarly() {
+    val p = prepareCode("int *", source)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN, DiagnosticId.EXPECTED_SEMI_AFTER)
+  }
 }

@@ -446,8 +446,21 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
   }
 }
 
+typealias TypeQualifierList = List<Keyword>
+
 /** C standard: 6.7.6 */
 sealed class Declarator : ASTNode() {
+  private var indirectionImpl: List<TypeQualifierList>? = null
+
+  val indirection: List<TypeQualifierList> by lazy {
+    indirectionImpl
+        ?: logger.throwICE("Accessing lazily initialized property before it was set") { this }
+  }
+
+  fun setIndirection(list: List<TypeQualifierList>) {
+    indirectionImpl = list
+  }
+
   fun name(): IdentifierNode? = when (this) {
     is ErrorDeclarator -> null
     is NameDeclarator -> name

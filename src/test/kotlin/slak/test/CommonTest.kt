@@ -38,6 +38,21 @@ internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 internal fun name(s: String): IdentifierNode = IdentifierNode(s)
 internal fun nameDecl(s: String) = NameDeclarator(name(s))
 
+internal fun ptr(d: Declarator): Declarator {
+  // Yes, the nested empty lists are correct
+  d.setIndirection(listOf(listOf()))
+  return d
+}
+
+internal fun ptr(s: String) = ptr(nameDecl(s))
+
+internal fun Declarator.withPtrs(vararg q: TypeQualifierList): Declarator {
+  setIndirection(q.asList())
+  return this
+}
+
+internal fun String.withPtrs(vararg q: TypeQualifierList) = nameDecl(this).withPtrs(*q)
+
 internal infix fun String.assign(value: Expression) = InitDeclarator(nameDecl(this), value)
 
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
