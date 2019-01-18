@@ -11,13 +11,13 @@ import kotlin.test.assertEquals
  */
 class ScopeTests {
   @Test
-  fun fileScopeRedefinitionViaDifferentDeclaration() {
+  fun `File Scope Redefinition Via Different Declaration`() {
     val p = prepareCode("int a; int a;", source)
     p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 
   @Test
-  fun fileScopeRedefinitionViaSameDeclaration() {
+  fun `File Scope Redefinition Via Same Declaration`() {
     val p = prepareCode("int a, a;", source)
     p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
@@ -29,38 +29,38 @@ class ScopeTests {
   }
 
   @Test
-  fun blockScopeRedefinition() {
+  fun `Block Scope Redefinition`() {
     val p = prepareCode("int main() { int x, x; }", source)
     p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 
   @Test
-  fun shadowing() {
+  fun `Shadowing`() {
     val p = prepareCode("int x; int main() { int x; }", source)
     p.assertNoDiagnostics()
   }
 
   @Test
-  fun shadowingFurther() {
+  fun `Shadowing Further`() {
     val p = prepareCode("int x; int main() { int x; { int x; } }", source)
     p.assertNoDiagnostics()
   }
 
   @Test
-  fun labelRedefinition() {
+  fun `Label Redefinition`() {
     val p = prepareCode("int main() { label:; label:; }", source)
     assertEquals(p.diags.ids,
         listOf(DiagnosticId.REDEFINITION_LABEL, DiagnosticId.REDEFINITION_PREVIOUS))
   }
 
   @Test
-  fun labelAndVariableTogether() {
+  fun `Label And Variable Together`() {
     val p = prepareCode("int main() { label:; int label; }", source)
     p.assertNoDiagnostics()
   }
 
   @Test
-  fun undeclaredUsage() {
+  fun `Undeclared Usage`() {
     val p = prepareCode("int main() { int x = y; }", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
   }

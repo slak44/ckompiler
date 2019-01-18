@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
  */
 class LexerTests {
   @Test
-  fun identifiers() {
+  fun `Identifiers`() {
     val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2", "struct1")
     val l = Lexer(idents.joinToString(" "), source)
     l.assertNoDiagnostics()
@@ -21,7 +21,7 @@ class LexerTests {
   }
 
   @Test
-  fun keywords() {
+  fun `Keywords`() {
     val l = Lexer(Keywords.values().joinToString(" ") { it.keyword }, source)
     l.assertNoDiagnostics()
     val res: List<Token> = Keywords.values().map { Keyword(it) }
@@ -29,7 +29,7 @@ class LexerTests {
   }
 
   @Test
-  fun punctuators() {
+  fun `Punctuators`() {
     val l = Lexer(Punctuators.values().joinToString(" ") { it.s }, source)
     l.assertNoDiagnostics()
     val res: List<Token> = Punctuators.values().map { Punctuator(it) }
@@ -37,7 +37,7 @@ class LexerTests {
   }
 
   @Test
-  fun integers() {
+  fun `Integers`() {
     val l = Lexer("1234 07 0xF 0", source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
@@ -50,7 +50,7 @@ class LexerTests {
   }
 
   @Test
-  fun integerSuffixes() {
+  fun `Integer Suffixes`() {
     val l = Lexer("1U 1L 1UL 1LU 1ULL 1LLU 1LL 1lLu", source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
@@ -73,14 +73,14 @@ class LexerTests {
   }
 
   @Test
-  fun invalidIntSuffixError() {
+  fun `Invalid Int Suffix Error`() {
     assertDiagnostic("123A", DiagnosticId.INVALID_SUFFIX)
     assertDiagnostic("123UA", DiagnosticId.INVALID_SUFFIX)
     assertDiagnostic("123U2", DiagnosticId.INVALID_SUFFIX)
   }
 
   @Test
-  fun floats() {
+  fun `Floats`() {
     val l = Lexer("""
       123.123 123. .123
       1.1E2 1.E2 .1E2
@@ -112,7 +112,7 @@ class LexerTests {
   }
 
   @Test
-  fun floatSuffixes() {
+  fun `Float Suffixes`() {
     val l = Lexer("""
       12.1L 12.L .12L
       12.1E+10F 12.E+10F .12E+10F
@@ -134,7 +134,7 @@ class LexerTests {
   }
 
   @Test
-  fun invalidFloatSuffixError() {
+  fun `Invalid Float Suffix Error`() {
     assertDiagnostic("123.12A", DiagnosticId.INVALID_SUFFIX)
     assertDiagnostic("123.12FA", DiagnosticId.INVALID_SUFFIX)
     assertDiagnostic("123.12AF", DiagnosticId.INVALID_SUFFIX)
@@ -146,7 +146,7 @@ class LexerTests {
   }
 
   @Test
-  fun noExpDigitsError() {
+  fun `No Exp Digits Error`() {
     assertDiagnostic("1.1EA", DiagnosticId.NO_EXP_DIGITS)
     assertDiagnostic("1.EA", DiagnosticId.NO_EXP_DIGITS)
     assertDiagnostic("1.EF", DiagnosticId.NO_EXP_DIGITS)
@@ -154,7 +154,7 @@ class LexerTests {
   }
 
   @Test
-  fun charConstants() {
+  fun `Char Constants`() {
     val chars = listOf("a", "*", "asdf", "\"")
     val l = Lexer(chars.joinToString(" ") { "'$it'" }, source)
     l.assertNoDiagnostics()
@@ -163,7 +163,7 @@ class LexerTests {
   }
 
   @Test
-  fun charPrefixes() {
+  fun `Char Prefixes`() {
     val l = Lexer("L'a' u'a' U'a'", source)
     l.assertNoDiagnostics()
     val res = listOf<Token>(
@@ -175,7 +175,7 @@ class LexerTests {
   }
 
   @Test
-  fun unmatchedQuoteError() {
+  fun `Unmatched Quote Error`() {
     val inspections1 = Lexer("'asfadgs", source).diags
     assert(inspections1.size >= 1)
     assertEquals(DiagnosticId.MISSING_QUOTE, inspections1[0].id)
@@ -185,7 +185,7 @@ class LexerTests {
   }
 
   @Test
-  fun stringLiterals() {
+  fun `String Literals`() {
     val strings = listOf("a", "*", "asdf", "'")
     val l = Lexer(strings.joinToString(" ") { "\"$it\"" }, source)
     l.assertNoDiagnostics()
@@ -194,7 +194,7 @@ class LexerTests {
   }
 
   @Test
-  fun stringPrefixes() {
+  fun `String Prefixes`() {
     val l = Lexer("""
       u8"string"
       L"string"
@@ -212,7 +212,7 @@ class LexerTests {
   }
 
   @Test
-  fun unmatchedDoubleQuoteError() {
+  fun `Unmatched Double Quote Error`() {
     val inspections1 = Lexer("\"asfadgs", source).diags
     assert(inspections1.size >= 1)
     assertEquals(DiagnosticId.MISSING_QUOTE, inspections1[0].id)
@@ -222,7 +222,7 @@ class LexerTests {
   }
 
   @Test
-  fun numbersOneAfterAnother() {
+  fun `Numbers One After Another`() {
     val l = Lexer("""
       123. 456 .123
       123.f 456ULL .123
@@ -244,7 +244,7 @@ class LexerTests {
   }
 
   @Test
-  fun dotPunctuatorVsDotInFloat() {
+  fun `Dot Punctuator Vs Dot In Float`() {
     val l = Lexer("""
       ident.someOther
       ident. someOther
@@ -286,7 +286,7 @@ class LexerTests {
   }
 
   @Test
-  fun declaration() {
+  fun `Declaration`() {
     val l = Lexer("int a = 1;\n", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
@@ -297,7 +297,7 @@ class LexerTests {
   }
 
   @Test
-  fun functionCall() {
+  fun `Function Call`() {
     val l = Lexer("int a = f(123, 5.5);", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
@@ -310,7 +310,7 @@ class LexerTests {
   }
 
   @Test
-  fun comment() {
+  fun `Comment`() {
     val l = Lexer("""
       // lalalalla int = dgdgd 1 .34/ // /////
       int a = 1;
@@ -323,7 +323,7 @@ class LexerTests {
   }
 
   @Test
-  fun commentMultiline() {
+  fun `Comment Multiline`() {
     val l = Lexer("""
       /* lalalalla int = dgdgd 1 .34/ // ////* /*
       asf
@@ -340,7 +340,7 @@ class LexerTests {
   }
 
   @Test
-  fun commentMultilineUnfinished() {
+  fun `Comment Multiline Unfinished`() {
     assertDiagnostic("""
       /* lalalalla int = dgdgd 1 .34/ // ////* /*
       asf
@@ -352,7 +352,7 @@ class LexerTests {
   }
 
   @Test
-  fun commentEndOfFile() {
+  fun `Comment End Of File`() {
     val l = Lexer("//", source)
     l.assertNoDiagnostics()
   }

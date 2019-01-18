@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 
 class ExpressionTests {
   @Test
-  fun exprArithmPrecedence() {
+  fun `Expr Arithm Precedence`() {
     val p = prepareCode("int a = 1 + 2 * 3;", source)
     p.assertNoDiagnostics()
     int declare ("a" assign (1 add (2 mul 3))) assertEquals p.root.decls[0]
@@ -33,7 +33,7 @@ class ExpressionTests {
   }
 
   @Test
-  fun exprArithmParensLevelLots() {
+  fun `Expr Arithm Parens Level Lots`() {
     val p = prepareCode("int a = (1 + (2 + (3 + (4 + (5 + (6)))))) * 3;", source)
     p.assertNoDiagnostics()
     int declare ("a" assign ((1 add (2 add (3 add (4 add (5 add 6))))) mul 3)) assertEquals
@@ -41,7 +41,7 @@ class ExpressionTests {
   }
 
   @Test
-  fun exprArithmUnmatchedParens() {
+  fun `Expr Arithm Unmatched Parens`() {
     val p = prepareCode("int a = (1 * (2 + 3);", source)
     assertEquals(listOf(
         DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET), p.diags.ids)
@@ -49,7 +49,7 @@ class ExpressionTests {
   }
 
   @Test
-  fun exprArithmUnmatchedRightParenAtEndOfExpr() {
+  fun `Expr Arithm Unmatched Right Paren At End Of Expr`() {
     val p = prepareCode("int a = 1 + 1);", source)
     assertEquals(listOf(
         DiagnosticId.EXPECTED_SEMI_AFTER,
@@ -58,7 +58,7 @@ class ExpressionTests {
   }
 
   @Test
-  fun exprUnexpectedBracket() {
+  fun `Expr Unexpected Bracket`() {
     val p = prepareCode("""
       int main() {
         1 + 1 +
@@ -71,21 +71,21 @@ class ExpressionTests {
   }
 
   @Test
-  fun exprSizeOfPrimary() {
+  fun `Expr Size Of Primary`() {
     val p = prepareCode("int a = sizeof 1;", source)
     p.assertNoDiagnostics()
     int declare ("a" assign SizeofExpression(int(1))) assertEquals p.root.decls[0]
   }
 
   @Test
-  fun exprPrefixIncSimple() {
+  fun `Expr Prefix Inc Simple`() {
     val p = prepareCode("int a = ++b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign PrefixIncrement(name("b"))) assertEquals p.root.decls[0]
   }
 
   @Test
-  fun exprPrefixIncParen() {
+  fun `Expr Prefix Inc Paren`() {
     // This is invalid code, but valid grammar
     val p = prepareCode("int a = ++(1);", source)
     p.assertNoDiagnostics()
@@ -93,14 +93,14 @@ class ExpressionTests {
   }
 
   @Test
-  fun exprPostfixIncSimple() {
+  fun `Expr Postfix Inc Simple`() {
     val p = prepareCode("int a = b++;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign PostfixIncrement(name("b"))) assertEquals p.root.decls[0]
   }
 
   @Test
-  fun exprPostfixIncParen() {
+  fun `Expr Postfix Inc Paren`() {
     // This is invalid code, but valid grammar
     val p = prepareCode("int a = (1)++;", source)
     p.assertNoDiagnostics()
@@ -108,14 +108,14 @@ class ExpressionTests {
   }
 
   @Test
-  fun exprUnaryRef() {
+  fun `Expr Unary Ref`() {
     val p = prepareCode("int a = &b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign (Operators.REF apply name("b"))) assertEquals p.root.decls[0]
   }
 
   @Test
-  fun exprUnaryLots() {
+  fun `Expr Unary Lots`() {
     val p = prepareCode("int a = *&+-~!b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign (

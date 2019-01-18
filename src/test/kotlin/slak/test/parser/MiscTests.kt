@@ -8,13 +8,13 @@ import kotlin.test.assertEquals
 
 class MiscTests {
   @Test
-  fun emptyCharLiteral() {
+  fun `Empty Char Literal`() {
     val p = prepareCode("char a = '';", source)
     assertEquals(DiagnosticId.EMPTY_CHAR_CONSTANT, p.diags[0].id)
   }
 
   @Test
-  fun notATranslationUnit() {
+  fun `Not A Translation Unit`() {
     val p = prepareCode("1 + 2;", source)
     assertEquals(DiagnosticId.EXPECTED_EXTERNAL_DECL, p.diags[0].id)
   }

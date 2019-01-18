@@ -7,7 +7,7 @@ import slak.test.*
 
 class StatementTests {
   @Test
-  fun statementIfSimple() {
+  fun `Statement If Simple`() {
     val p = prepareCode("""
       int main() {
         if (123) 1 + 1;
@@ -22,7 +22,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfWithElse() {
+  fun `Statement If With Else`() {
     val p = prepareCode("""
       int main() {
         if (123) 1 + 1; else 2 + 2;
@@ -39,7 +39,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfWithBlock() {
+  fun `Statement If With Block`() {
     val p = prepareCode("""
       int main() {
         if (123) {
@@ -56,7 +56,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfWithBlocksAndElse() {
+  fun `Statement If With Blocks And Else`() {
     val p = prepareCode("""
       int main() {
         if (123) {
@@ -77,7 +77,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfErroredCondition() {
+  fun `Statement If Errored Condition`() {
     val p = prepareCode("""
       int main() {
         if (int) 1 + 1;
@@ -92,7 +92,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfMissingCondition() {
+  fun `Statement If Missing Condition`() {
     val p = prepareCode("""
       int main() {
         if () 1 + 1;
@@ -107,7 +107,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfBadBlock() {
+  fun `Statement If Bad Block`() {
     val p = prepareCode("""
       int main() {
         if (123)
@@ -120,7 +120,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfBadBlockWithElseAfter() {
+  fun `Statement If Bad Block With Else After`() {
     val p = prepareCode("""
       int main() {
         if (123) else 1 + 1;
@@ -133,7 +133,7 @@ class StatementTests {
   }
 
   @Test
-  fun statementIfNoOp() {
+  fun `Statement If No Op`() {
     val p = prepareCode("""
       int main() {
         if (1); else;
@@ -150,7 +150,7 @@ class StatementTests {
   }
 
   @Test
-  fun returnSimple() {
+  fun `Return Simple`() {
     val p = prepareCode("""
       int main() {
         return 0;
@@ -163,7 +163,7 @@ class StatementTests {
   }
 
   @Test
-  fun returnExpr() {
+  fun `Return Expr`() {
     val p = prepareCode("""
       int main() {
         return (1 + 1) / 2;
@@ -176,7 +176,7 @@ class StatementTests {
   }
 
   @Test
-  fun returnMissingSemi() {
+  fun `Return Missing Semi`() {
     val p = prepareCode("""
       int main() {
         return 0
@@ -189,7 +189,7 @@ class StatementTests {
   }
 
   @Test
-  fun breakStatement() {
+  fun `Break Statement`() {
     val p = prepareCode("""
       int main() {
         while (1) break;
@@ -204,7 +204,7 @@ class StatementTests {
   }
 
   @Test
-  fun breakNoSemi() {
+  fun `Break No Semi`() {
     val p = prepareCode("""
       int main() {
         break
@@ -217,7 +217,7 @@ class StatementTests {
   }
 
   @Test
-  fun continueStatement() {
+  fun `Continue Statement`() {
     val p = prepareCode("""
       int main() {
         while (1) continue;
@@ -232,7 +232,7 @@ class StatementTests {
   }
 
   @Test
-  fun continueNoSemi() {
+  fun `Continue No Semi`() {
     val p = prepareCode("""
       int main() {
         continue
@@ -245,7 +245,7 @@ class StatementTests {
   }
 
   @Test
-  fun labelBasic() {
+  fun `Label Basic`() {
     val p = prepareCode("""
       int main() {
         label: ;
@@ -258,7 +258,7 @@ class StatementTests {
   }
 
   @Test
-  fun labelNoSemi() {
+  fun `Label No Semi`() {
     val p = prepareCode("""
       int main() {
         label:
@@ -275,7 +275,7 @@ class StatementTests {
   }
 
   @Test
-  fun labeledExpr() {
+  fun `Labeled Expr`() {
     val p = prepareCode("""
       int main() {
         label: 1 + 1;
@@ -288,7 +288,7 @@ class StatementTests {
   }
 
   @Test
-  fun gotoBasic() {
+  fun `Goto Basic`() {
     val p = prepareCode("""
       int main() {
         goto fakeLabel;
@@ -301,7 +301,7 @@ class StatementTests {
   }
 
   @Test
-  fun gotoNoSemi() {
+  fun `Goto No Semi`() {
     val p = prepareCode("""
       int main() {
         goto fakeLabel

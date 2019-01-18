@@ -6,7 +6,7 @@ import slak.test.*
 
 class FunctionCallTests {
   @Test
-  fun noArgCall() {
+  fun `No Arg Call`() {
     val p = prepareCode("""
       int f();
       int a = f();
@@ -16,7 +16,7 @@ class FunctionCallTests {
   }
 
   @Test
-  fun oneArgCall() {
+  fun `One Arg Call`() {
     val p = prepareCode("""
       int f(int x);
       int a = f(123);
@@ -26,7 +26,7 @@ class FunctionCallTests {
   }
 
   @Test
-  fun oneExprArgCall() {
+  fun `One Expr Arg Call`() {
     val p = prepareCode("""
       int f(int x);
       int a = f(123 - 123);
@@ -36,7 +36,7 @@ class FunctionCallTests {
   }
 
   @Test
-  fun twoArgCall() {
+  fun `Two Arg Call`() {
     val p = prepareCode("""
       int f(int x, double y);
       int a = f(123, 5.5);
@@ -46,7 +46,7 @@ class FunctionCallTests {
   }
 
   @Test
-  fun twoExprArgCall() {
+  fun `Two Expr Arg Call`() {
     val p = prepareCode("""
       int f(int x, double y);
       int a = f(123 - 123, 5.1*2.3);
@@ -56,7 +56,7 @@ class FunctionCallTests {
   }
 
   @Test
-  fun threeArgCall() {
+  fun `Three Arg Call`() {
     val p = prepareCode("""
       int f(int a, int b, int c);
       int a = f(1,2,3);
@@ -66,7 +66,7 @@ class FunctionCallTests {
   }
 
   @Test
-  fun parenExprArgCall() {
+  fun `Paren Expr Arg Call`() {
     val p = prepareCode("""
       int f(int a, int b, int c);
       int a = f(1,(2+2)*4,3);
@@ -76,7 +76,7 @@ class FunctionCallTests {
   }
 
   @Test
-  fun callAnExpr() {
+  fun `Call An Expr`() {
     val p = prepareCode("int a = (a + 72)(123);", source)
     p.assertNoDiagnostics()
     int declare ("a" assign FunctionCall("a" add 72, listOf(int(123))))

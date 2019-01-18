@@ -17,35 +17,35 @@ import kotlin.test.assertEquals
  */
 class ResilienceTests {
   @Test
-  fun lexerKeepsGoingAfterBadSuffix() {
+  fun `Lexer Keeps Going After Bad Suffix`() {
     val l = Lexer("123.23A ident", source)
     assert(l.tokens[0] is ErrorToken)
     assertEquals(Identifier("ident"), l.tokens[1])
   }
 
   @Test
-  fun lexerKeepsGoingAfterBadExponent() {
+  fun `Lexer Keeps Going After Bad Exponent`() {
     val l = Lexer("1.EF ident", source)
     assert(l.tokens[0] is ErrorToken)
     assertEquals(Identifier("ident"), l.tokens[1])
   }
 
   @Test
-  fun parserKeepsGoingAfterUnmatchedParen() {
+  fun `Parser Keeps Going After Unmatched Paren`() {
     val p = prepareCode("int a = 1 * (2 + 3; int b = 32;", source)
     p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
     int declare ("b" assign int(32)) assertEquals p.root.decls[1]
   }
 
   @Test
-  fun parserKeepsGoingAfterUnmatchedBracket() {
+  fun `Parser Keeps Going After Unmatched Bracket`() {
     val p = prepareCode("int main() { 123 + 23; \n int b = 32;", source)
     p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
     int declare ("b" assign int(32)) assertEquals p.root.decls[1]
   }
 
   @Test
-  fun parserKeepsGoingAfterBadFunctionDeclarator() {
+  fun `Parser Keeps Going After Bad Function Declarator`() {
     val p = prepareCode("int default(); double dbl = 1.1;", source)
     assert(p.diags.isNotEmpty())
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
@@ -53,7 +53,7 @@ class ResilienceTests {
   }
 
   @Test
-  fun parserKeepsGoingAfterBadDeclaration() {
+  fun `Parser Keeps Going After Bad Declaration`() {
     val p = prepareCode("int default; double dbl = 1.1;", source)
     assert(p.diags.isNotEmpty())
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
@@ -61,7 +61,7 @@ class ResilienceTests {
   }
 
   @Test
-  fun parserKeepsGoingInDeclarationAfterBadDeclarator() {
+  fun `Parser Keeps Going In Declaration After Bad Declarator `() {
     val p = prepareCode("int default, x = 1;", source)
     assert(p.diags.isNotEmpty())
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
@@ -70,7 +70,7 @@ class ResilienceTests {
   }
 
   @Test
-  fun parserStatementAfterMissingSemicolon() {
+  fun `Parser Statement After Missing Semicolon`() {
     val p = prepareCode("""
       int main() {
         return 0
@@ -84,7 +84,7 @@ class ResilienceTests {
   }
 
   @Test
-  fun parserNoConfusionWithBracketsAndFunctions() {
+  fun `Parser No Confusion With Brackets And Functions`() {
     val p = prepareCode("""
       int f(double x);
       double g() {
@@ -99,7 +99,7 @@ class ResilienceTests {
 
   // FIXME more tests like this
   @Test
-  fun lexerCorrectDiagnosticColumn() {
+  fun `Lexer Correct Diagnostic Column`() {
     val text = "ident     123.23A"
     val l = Lexer(text, source)
     assert(l.tokens[1] is ErrorToken)

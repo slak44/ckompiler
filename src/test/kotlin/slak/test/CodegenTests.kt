@@ -5,7 +5,7 @@ import slak.ckompiler.analysis.CodeGenerator
 
 class CodegenTests {
   @Test
-  fun basic() {
+  fun `Basic`() {
     val p = prepareCode("""
       int main() {
         int a = 1;

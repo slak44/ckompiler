@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
  */
 class IterationTests {
   @Test
-  fun whileMissingParen() {
+  fun `While Missing Paren`() {
     val p = prepareCode("""
       int main() {
         while 0) 1 + 1;
@@ -23,7 +23,7 @@ class IterationTests {
   }
 
   @Test
-  fun whileBasic() {
+  fun `While Basic`() {
     val p = prepareCode("""
       int main() {
         while (1 + 1) 1 + 1;
@@ -38,7 +38,7 @@ class IterationTests {
   }
 
   @Test
-  fun whileWithCompound() {
+  fun `While With Compound`() {
     val p = prepareCode("""
       int main() {
         while (1 + 1) {
@@ -57,7 +57,7 @@ class IterationTests {
   }
 
   @Test
-  fun whileMissingCond() {
+  fun `While Missing Cond`() {
     val p = prepareCode("""
       int main() {
         while () 1 + 1;
@@ -72,7 +72,7 @@ class IterationTests {
   }
 
   @Test
-  fun whileEmptyBody() {
+  fun `While Empty Body`() {
     val p = prepareCode("""
       int main() {
         while (1);
@@ -87,7 +87,7 @@ class IterationTests {
   }
 
   @Test
-  fun whileMissingBody() {
+  fun `While Missing Body`() {
     val p = prepareCode("""
       int main() {
         while (1)
@@ -100,7 +100,7 @@ class IterationTests {
   }
 
   @Test
-  fun whileMissingAll() {
+  fun `While Missing All`() {
     val p = prepareCode("""
       int main() {
         while ()
@@ -113,7 +113,7 @@ class IterationTests {
   }
 
   @Test
-  fun doWhileEmptyBody() {
+  fun `Do While Empty Body`() {
     val p = prepareCode("""
       int main() {
         do while (1);
@@ -126,7 +126,7 @@ class IterationTests {
   }
 
   @Test
-  fun doWhileBasic() {
+  fun `Do While Basic`() {
     val p = prepareCode("""
       int main() {
         do {} while (1);
@@ -139,7 +139,7 @@ class IterationTests {
   }
 
   @Test
-  fun doWhileMissingCond() {
+  fun `Do While Missing Cond`() {
     val p = prepareCode("""
       int main() {
         do {} while ();
@@ -152,7 +152,7 @@ class IterationTests {
   }
 
   @Test
-  fun doWhileMissingCondAndSemi() {
+  fun `Do While Missing Cond And Semi`() {
     val p = prepareCode("""
       int main() {
         do {} while ()
@@ -165,7 +165,7 @@ class IterationTests {
   }
 
   @Test
-  fun doWhileEmptyBodyAndNoSemi() {
+  fun `Do While Empty Body And No Semi`() {
     val p = prepareCode("""
       int main() {
         do while (1)
@@ -179,7 +179,7 @@ class IterationTests {
   }
 
   @Test
-  fun doWhileMissingAll() {
+  fun `Do While Missing All`() {
     val p = prepareCode("""
       int main() {
         do while ()
@@ -193,7 +193,7 @@ class IterationTests {
   }
 
   @Test
-  fun forBasicNoBody() {
+  fun `For Basic No Body`() {
     val p = prepareCode("""
       int main() {
         for (1 + 1; 1 + 1; 1 + 1);
@@ -206,7 +206,7 @@ class IterationTests {
   }
 
   @Test
-  fun forDeclNoBody() {
+  fun `For Decl No Body`() {
     val p = prepareCode("""
       int main() {
         for (int i = 65; 1 + 1; 1 + 1);
@@ -219,7 +219,7 @@ class IterationTests {
   }
 
   @Test
-  fun forNoParenNoBody() {
+  fun `For No Paren No Body`() {
     val p = prepareCode("""
       int main() {
         for int i = 65; 1 + 1; 1 + 1);
@@ -271,7 +271,7 @@ class IterationTests {
   }
 
   @Test
-  fun forEmptySpecifiersNoBody() {
+  fun `For Empty Specifiers No Body`() {
     val p = prepareCode("""
       int main() {
         for (;;);
@@ -310,7 +310,7 @@ class IterationTests {
   }
 
   @Test
-  fun forMissingAllSpecsNoBody() {
+  fun `For Missing All Specs No Body`() {
     val p = prepareCode("""
       int main() {
         for ();
@@ -323,7 +323,7 @@ class IterationTests {
   }
 
   @Test
-  fun forBasicMissingBody() {
+  fun `For Basic Missing Body`() {
     val p = prepareCode("""
       int main() {
         for (1 + 1; 1 + 1; 1 + 1)
@@ -336,7 +336,7 @@ class IterationTests {
   }
 
   @Test
-  fun forMissingAll() {
+  fun `For Missing All`() {
     val p = prepareCode("""
       int main() {
         for ()
