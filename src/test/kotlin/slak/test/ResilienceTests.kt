@@ -7,6 +7,7 @@ import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.ErrorDeclarator
 import slak.ckompiler.parser.Declaration
+import slak.ckompiler.parser.Parser
 import kotlin.test.assertEquals
 
 /**
@@ -106,21 +107,34 @@ class ResilienceTests {
     assertEquals(text.length - 1, l.diags[0].sourceColumns[0].start)
   }
 
+  private fun Parser.assertDiagCaret(diagNr: Int, line: Int? = null, col: Int? = null) {
+    val (errLine, errCol, _) = diags[diagNr].errorOf(diags[diagNr].caret)
+    line?.let { assertEquals(line, errLine) }
+    col?.let { assertEquals(col, errCol) }
+  }
+
+  @Test
+  fun `Parser Diagnostic Correct Line`() {
+    val p = prepareCode("""
+      int a = 123;
+      int b = ;
+      int c = 23;
+      int d = 23 + ;
+    """.trimIndent(), source)
+    p.assertDiagCaret(0, 2, 10)
+    p.assertDiagCaret(0, 4, 15)
+  }
+
   @Test
   fun `Parser Diagnostic Correct Column In Line`() {
     val code = "int;"
     val p = prepareCode(code, source)
-    val (line, col, _) = p.diags[0].errorOf(p.diags[0].caret)
-    assertEquals(1, line)
-    assertEquals(code.indexOf(';'), col)
+    p.assertDiagCaret(0, 1, code.indexOf(';'))
   }
 
   @Test
   fun `Parser Diagnostic Correct Column 0 In Line`() {
-    val code = "register int x;"
-    val p = prepareCode(code, source)
-    val (line, col, _) = p.diags[0].errorOf(p.diags[0].caret)
-    assertEquals(1, line)
-    assertEquals(0, col)
+    val p = prepareCode("register int x;", source)
+    p.assertDiagCaret(0, 1, 0)
   }
 }
