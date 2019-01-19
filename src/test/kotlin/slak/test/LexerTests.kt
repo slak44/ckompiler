@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
  */
 class LexerTests {
   @Test
-  fun `Identifiers`() {
+  fun `Identifiers Various`() {
     val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2", "struct1")
     val l = Lexer(idents.joinToString(" "), source)
     l.assertNoDiagnostics()
@@ -21,7 +21,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Keywords`() {
+  fun `Keywords All`() {
     val l = Lexer(Keywords.values().joinToString(" ") { it.keyword }, source)
     l.assertNoDiagnostics()
     val res: List<Token> = Keywords.values().map { Keyword(it) }
@@ -29,7 +29,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Punctuators`() {
+  fun `Punctuators All`() {
     val l = Lexer(Punctuators.values().joinToString(" ") { it.s }, source)
     l.assertNoDiagnostics()
     val res: List<Token> = Punctuators.values().map { Punctuator(it) }
@@ -37,7 +37,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Integers`() {
+  fun `Integers Basic`() {
     val l = Lexer("1234 07 0xF 0", source)
     l.assertNoDiagnostics()
     val res: List<Token> = listOf(
@@ -80,7 +80,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Floats`() {
+  fun `Floats Various`() {
     val l = Lexer("""
       123.123 123. .123
       1.1E2 1.E2 .1E2
@@ -286,7 +286,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Declaration`() {
+  fun `Declaration Basic`() {
     val l = Lexer("int a = 1;\n", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
@@ -310,7 +310,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Comment`() {
+  fun `Comment Single Line`() {
     val l = Lexer("""
       // lalalalla int = dgdgd 1 .34/ // /////
       int a = 1;
@@ -323,7 +323,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Comment Multiline`() {
+  fun `Comment Multi-line`() {
     val l = Lexer("""
       /* lalalalla int = dgdgd 1 .34/ // ////* /*
       asf
@@ -340,7 +340,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Comment Multiline Unfinished`() {
+  fun `Comment Multi-line Unfinished`() {
     assertDiagnostic("""
       /* lalalalla int = dgdgd 1 .34/ // ////* /*
       asf
@@ -352,7 +352,7 @@ class LexerTests {
   }
 
   @Test
-  fun `Comment End Of File`() {
+  fun `Comment At End Of File`() {
     val l = Lexer("//", source)
     l.assertNoDiagnostics()
   }

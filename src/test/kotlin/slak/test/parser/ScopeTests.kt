@@ -23,25 +23,19 @@ class ScopeTests {
   }
 
   @Test
-  fun fileScopeRedefinitionOf2FunctionDeclarators() {
-    val p = prepareCode("int a; int a;", source)
-    p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
-  }
-
-  @Test
   fun `Block Scope Redefinition`() {
     val p = prepareCode("int main() { int x, x; }", source)
     p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 
   @Test
-  fun `Shadowing`() {
+  fun `Shadowing Of File Scope Variable With Block Scope Variable`() {
     val p = prepareCode("int x; int main() { int x; }", source)
     p.assertNoDiagnostics()
   }
 
   @Test
-  fun `Shadowing Further`() {
+  fun `Shadowing Shadowed Name`() {
     val p = prepareCode("int x; int main() { int x; { int x; } }", source)
     p.assertNoDiagnostics()
   }

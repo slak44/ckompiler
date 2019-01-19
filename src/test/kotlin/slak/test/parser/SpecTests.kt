@@ -2,9 +2,9 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.Declaration
-import slak.ckompiler.parser.StructNameSpecifier
-import slak.ckompiler.parser.VoidType
+import slak.ckompiler.lexer.Keyword
+import slak.ckompiler.lexer.Keywords
+import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -24,6 +24,17 @@ class SpecTests {
     uLongLong declare ("c" assign int(3)) assertEquals p.root.decls[2]
     longDouble declare ("d" assign int(4)) assertEquals p.root.decls[3]
     signedChar declare ("e" assign int(5)) assertEquals p.root.decls[4]
+  }
+
+  @Test
+  fun `Multiple Declaration Specifiers`() {
+    val p = prepareCode("const static int a;", source)
+    p.assertNoDiagnostics()
+    val spec = DeclarationSpecifier(
+        typeQualifiers = listOf(Keyword(Keywords.CONST)),
+        storageClass = Keyword(Keywords.STATIC),
+        typeSpec = IntType(Keyword(Keywords.INT)))
+    assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 
   @Test

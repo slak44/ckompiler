@@ -7,28 +7,28 @@ import slak.test.*
 
 class FunctionsTests {
   @Test
-  fun `Function Declaration No Params`() {
+  fun `Function Declaration No Parameters`() {
     val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()
     int func ("f" withParams emptyList()) assertEquals p.root.decls[0]
   }
 
   @Test
-  fun `Function Declaration One Param`() {
+  fun `Function Declaration One Parameter`() {
     val p = prepareCode("int f(double dbl);", source)
     p.assertNoDiagnostics()
     int func ("f" withParams listOf(double param "dbl")) assertEquals p.root.decls[0]
   }
 
   @Test
-  fun `Function Declaration Two Params`() {
+  fun `Function Declaration Two Parameters`() {
     val p = prepareCode("int f(double dbl, int x);", source)
     p.assertNoDiagnostics()
     int func ("f" withParams listOf(double param "dbl", int param "x")) assertEquals p.root.decls[0]
   }
 
   @Test
-  fun `Function Declaration Three Params`() {
+  fun `Function Declaration Three Parameters`() {
     val p = prepareCode("int f(double dbl, int x, int y);", source)
     p.assertNoDiagnostics()
     int func ("f" withParams listOf(double param "dbl", int param "x", int param "y")) assertEquals
@@ -36,7 +36,7 @@ class FunctionsTests {
   }
 
   @Test
-  fun `Function Declaration Four Params`() {
+  fun `Function Declaration Four Parameters`() {
     val p = prepareCode("int f(double dbl, int x, int y, double asd);", source)
     p.assertNoDiagnostics()
     int func ("f" withParams
@@ -45,13 +45,13 @@ class FunctionsTests {
   }
 
   @Test
-  fun `Function Proto Expected Ident Or Paren`() {
+  fun `Function Prototype Expected Identifier Or Paren`() {
     val p = prepareCode("int default();", source)
     p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN)
   }
 
   @Test
-  fun `Function Definition Basic Empty`() {
+  fun `Empty Function Definition`() {
     val p = prepareCode("int main() {}", source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body emptyList() assertEquals p.root.decls[0]
@@ -65,7 +65,7 @@ class FunctionsTests {
   }
 
   @Test
-  fun `Function Definition One Arg Empty`() {
+  fun `One Arg Empty Function Definition`() {
     val p = prepareCode("int main(int argc) {}", source)
     p.assertNoDiagnostics()
     int func ("main" withParams listOf(int param "argc")) body emptyCompound() assertEquals
@@ -73,7 +73,7 @@ class FunctionsTests {
   }
 
   @Test
-  fun `Function Definition Basic With Expression`() {
+  fun `Basic Function Definition With Expression`() {
     val p = prepareCode("int main() { 1 + 1; }", source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(1 add 1) assertEquals
@@ -88,7 +88,7 @@ class FunctionsTests {
   }
 
   @Test
-  fun variadic2Args() {
+  fun `Variadic 2 Args`() {
     val p = prepareCode("int f(int a, double b, ...);", source)
     p.assertNoDiagnostics()
     int func ("f" withParamsV listOf(int param "a", double param "b")) assertEquals p.root.decls[0]

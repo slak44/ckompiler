@@ -232,7 +232,7 @@ class IterationTests {
   }
 
   @Test
-  fun forNoClause1NoBody() {
+  fun `For No Clause1 No Body`() {
     val p = prepareCode("""
       int main() {
         for (; 1 + 1; 1 + 1);
@@ -245,7 +245,7 @@ class IterationTests {
   }
 
   @Test
-  fun forNoExpr2NoBody() {
+  fun `For No Expr2 No Body`() {
     val p = prepareCode("""
       int main() {
         for (1 + 1; ; 1 + 1);
@@ -258,7 +258,7 @@ class IterationTests {
   }
 
   @Test
-  fun forNoExpr3NoBody() {
+  fun `For No Expr3 No Body`() {
     val p = prepareCode("""
       int main() {
         for (1 + 1; 1 + 1;);
@@ -284,7 +284,7 @@ class IterationTests {
   }
 
   @Test
-  fun forMissingSemi2NoBody() {
+  fun `For Missing Semi2 No Body`() {
     val p = prepareCode("""
       int main() {
         for (1 + 1; 1 + 1);
@@ -297,7 +297,7 @@ class IterationTests {
   }
 
   @Test
-  fun forMissingSemi1NoBody() {
+  fun `For Missing Semi1 No Body`() {
     val p = prepareCode("""
       int main() {
         for (1 + 1);
