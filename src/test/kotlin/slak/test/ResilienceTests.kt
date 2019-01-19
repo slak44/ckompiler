@@ -97,7 +97,6 @@ class ResilienceTests {
     ) assertEquals p.root.decls[1]
   }
 
-  // FIXME more tests like this
   @Test
   fun `Lexer Correct Diagnostic Column`() {
     val text = "ident     123.23A"
@@ -105,5 +104,23 @@ class ResilienceTests {
     assert(l.tokens[1] is ErrorToken)
     // Test if error is on the last column
     assertEquals(text.length - 1, l.diags[0].sourceColumns[0].start)
+  }
+
+  @Test
+  fun `Parser Diagnostic Correct Column In Line`() {
+    val code = "int;"
+    val p = prepareCode(code, source)
+    val (line, col, _) = p.diags[0].errorOf(p.diags[0].caret)
+    assertEquals(1, line)
+    assertEquals(code.indexOf(';'), col)
+  }
+
+  @Test
+  fun `Parser Diagnostic Correct Column 0 In Line`() {
+    val code = "register int x;"
+    val p = prepareCode(code, source)
+    val (line, col, _) = p.diags[0].errorOf(p.diags[0].caret)
+    assertEquals(1, line)
+    assertEquals(0, col)
   }
 }
