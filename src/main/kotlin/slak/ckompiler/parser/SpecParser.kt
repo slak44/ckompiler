@@ -41,7 +41,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
       formatArgs("function specifier")
       errorOn(it.functionSpecs.first())
     }
-    if (it.storageClass != null || it.threadLocal != null) parserDiagnostic {
+    if (it.hasStorageClass() || it.isThreadLocal()) parserDiagnostic {
       id = DiagnosticId.SPEC_NOT_ALLOWED
       formatArgs("storage specifier")
       errorOn((it.threadLocal ?: it.storageClass)!!)

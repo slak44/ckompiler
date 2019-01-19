@@ -399,7 +399,7 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
                            val typeSpec: TypeSpecifier? = null,
                            val range: IntRange? = null) {
   /** @return true if no specifiers were found */
-  fun isEmpty() = storageClass == null && threadLocal == null && typeQualifiers.isEmpty() &&
+  fun isEmpty() = !hasStorageClass() && !isThreadLocal() && typeQualifiers.isEmpty() &&
       functionSpecs.isEmpty() && typeSpec == null
 
   /**
@@ -410,14 +410,18 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
   fun canBeTag() = typeSpec is StructDefinition || typeSpec is UnionDefinition ||
       typeSpec is StructNameSpecifier || typeSpec is UnionNameSpecifier || typeSpec is EnumSpecifier
 
+  fun isThreadLocal() = threadLocal != null
+
+  fun hasStorageClass() = storageClass != null
+
   override fun toString(): String {
     val otherSpecs = listOf(typeQualifiers, functionSpecs)
         .filter { it.isNotEmpty() }
         .joinToString(" ") {
           it.joinToString(" ") { (value) -> value.keyword }
         }
-    val storageClassStr = if (storageClass == null) "" else "${storageClass.value.keyword} "
-    val threadLocalStr = if (threadLocal == null) "" else "${Keywords.THREAD_LOCAL.keyword} "
+    val storageClassStr = if (hasStorageClass()) "${storageClass!!.value.keyword} " else ""
+    val threadLocalStr = if (isThreadLocal()) "${Keywords.THREAD_LOCAL.keyword} " else ""
     return "($threadLocalStr$storageClassStr$otherSpecs $typeSpec)"
   }
 
