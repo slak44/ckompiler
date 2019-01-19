@@ -420,9 +420,10 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
         .joinToString(" ") {
           it.joinToString(" ") { (value) -> value.keyword }
         }
+    val otherSpecsStr = if (otherSpecs.isBlank()) "" else "$otherSpecs "
     val storageClassStr = if (hasStorageClass()) "${storageClass!!.value.keyword} " else ""
     val threadLocalStr = if (isThreadLocal()) "${Keywords.THREAD_LOCAL.keyword} " else ""
-    return "($threadLocalStr$storageClassStr$otherSpecs $typeSpec)"
+    return "($threadLocalStr$storageClassStr$otherSpecsStr$typeSpec)"
   }
 
   override fun equals(other: Any?): Boolean {
