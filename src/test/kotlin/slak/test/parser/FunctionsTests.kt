@@ -7,6 +7,13 @@ import slak.test.*
 
 class FunctionsTests {
   @Test
+  fun `Function Declaration Explicitly No Parameters`() {
+    val p = prepareCode("int f(void);", source)
+    p.assertNoDiagnostics()
+    int func ("f" withParams emptyList()) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Function Declaration No Parameters`() {
     val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()

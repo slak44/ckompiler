@@ -101,14 +101,21 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    *        ^^^^^^^^^^^^
    * void g();
    *        (here this function gets nothing to parse, and returns an empty list)
+   * void f(void);
+   *        ^^^^
    * ```
-   * C standard: A.2.2
+   * C standard: A.2.2, 6.9.1.5
    * @return the list of [ParameterDeclaration]s, and whether or not the function is variadic
    */
   private fun parseParameterList(endIdx: Int):
       Pair<List<ParameterDeclaration>, Boolean> = tokenContext(endIdx) {
     // No parameters; this is not an error case
     if (isEaten()) return@tokenContext Pair(emptyList(), false)
+    // The only thing between parens is "void" => no params
+    if (it.size == 1 && it[0].asKeyword() == Keywords.VOID) {
+      eat() // The 'void'
+      return@tokenContext Pair(emptyList(), false)
+    }
     var isVariadic = false
     val params = mutableListOf<ParameterDeclaration>()
     while (isNotEaten()) {
