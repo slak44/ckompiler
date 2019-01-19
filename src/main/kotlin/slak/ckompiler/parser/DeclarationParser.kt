@@ -300,7 +300,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      return ErrorExpression()
+      return ErrorExpression().withRange(rangeOne())
     }
     // Parse initializer-list
     if (current().asPunct() == Punctuators.LBRACKET) {
@@ -308,7 +308,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
-    return parseExpr(tokenCount) ?: ErrorExpression()
+    return parseExpr(tokenCount) ?: ErrorExpression().withRange(rangeOne())
   }
 
   /**
