@@ -14,9 +14,26 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
   FILE_SCOPED_VARIABLE({
     // FIXME: illegal storage classes: auto, register
   }),
+  /**
+   * 6.7.1.4: Can't have _Thread_local on a function
+   * 6.9.1.4: Valid storage classes are extern and static on functions
+   *
+   * C standard: 6.7.1.4, 6.9.1.4
+   */
   FUNCTION_DECLARATION({
-    // FIXME: no thread local (6.7.1.4)
-    // FIXME: valid storage classes: extern, static (6.9.1.4)
+    if (it.isThreadLocal()) parserDiagnostic {
+      id = DiagnosticId.ILLEGAL_STORAGE_CLASS
+      formatArgs(it.threadLocal!!.value.keyword, "function")
+      errorOn(it.threadLocal)
+    }
+    if (it.hasStorageClass() &&
+        (it.storageClass!!.value != Keywords.EXTERN || it.storageClass.value != Keywords.STATIC)) {
+      parserDiagnostic {
+        id = DiagnosticId.ILLEGAL_STORAGE_CLASS
+        formatArgs(it.storageClass.value.keyword, "function")
+        errorOn(it.storageClass)
+      }
+    }
   }),
   FUNCTION_PARAMETER({
     // FIXME: valid storage classes: register (6.9.1.5)

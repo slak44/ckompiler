@@ -253,7 +253,7 @@ class SpecTests {
   }
 
   @Test
-  fun `Function Has Valid Storage Class Specifiers`() {
+  fun `Function Invalid Storage Class Specifiers`() {
     val p = prepareCode("""
       register int f();
       auto int g();
@@ -265,6 +265,6 @@ class SpecTests {
         _Thread_local int f3();
       }
     """.trimIndent(), source)
-    // FIXME: 6 errors
+    p.assertDiags(*Array(6) { DiagnosticId.ILLEGAL_STORAGE_CLASS })
   }
 }
