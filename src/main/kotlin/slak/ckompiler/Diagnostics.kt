@@ -65,34 +65,41 @@ data class Diagnostic(val id: DiagnosticId,
                       val sourceText: String,
                       val sourceColumns: List<IntRange>,
                       val origin: String) {
-  private val caret: IntRange get() = sourceColumns[0]
+  val caret: IntRange get() = sourceColumns[0]
+
+  /**
+   * @returns (line, col, lineText) of the [col] in the [sourceText]
+   */
+  fun errorOf(col: IntRange?): Triple<Int, Int, String> =
+      if (sourceText.isNotEmpty() && col != null) {
+    var currLine = 1
+    var currLineStart = 0
+    var currLineText = ""
+    for ((idx, it) in sourceText.withIndex()) {
+      if (it == '\n') {
+        currLine++
+        currLineText = sourceText.slice(currLineStart until idx)
+        if (col.start >= currLineStart && col.endInclusive <= idx) {
+          break
+        }
+        currLineStart = idx + 1
+      }
+      if (idx == sourceText.length - 1) {
+        currLineText = sourceText.slice(currLineStart until sourceText.length)
+      }
+    }
+    Triple(currLine, col.start - currLineStart, currLineText)
+  } else {
+    Triple(-1, -1, "???")
+  }
 
   private val printable: String by lazy {
-    val (line, col, lineText) = if (sourceText.isNotEmpty() && sourceColumns.isNotEmpty()) {
-      var currLine = 1
-      var currLineStart = 0
-      var currLineText = ""
-      for ((idx, it) in sourceText.withIndex()) {
-        if (it == '\n') {
-          currLine++
-          currLineText = sourceText.slice(currLineStart until idx)
-          if (caret.start > currLineStart && caret.endInclusive <= idx) {
-            break
-          }
-          currLineStart = idx + 1
-        }
-        if (idx == sourceText.length - 1) {
-          currLineText = sourceText.slice(currLineStart until sourceText.length)
-        }
-      }
-      Triple(currLine.toString(), caret.start - currLineStart, currLineText)
-    } else {
-      Triple("?", -1, "???")
-    }
+    val (line, col, lineText) = errorOf(if (sourceColumns.isNotEmpty()) caret else null)
     val caretTargetLength = caret.endInclusive - caret.start
+    val lineStr = if (line == -1) "?" else line.toString()
     val colStr = if (col == -1) "?" else col.toString()
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
-    val firstLine = "$sourceFileName:$line:$colStr: ${id.kind.text}: $msg [$origin|${id.name}]"
+    val firstLine = "$sourceFileName:$lineStr:$colStr: ${id.kind.text}: $msg [$origin|${id.name}]"
     val caretLine = " ".repeat(max(col, 0)) + '^' + "~".repeat(max(caretTargetLength, 0))
     // FIXME add tildes for the other sourceColumns
     return@lazy "$firstLine\n$lineText\n$caretLine"
