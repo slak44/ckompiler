@@ -29,25 +29,27 @@ class DiagnosticTests {
   @Test
   fun `Parser Diagnostic Correct Line`() {
     val p = prepareCode("""
-      int a = 123;
+      int a = ;
       int b = ;
-      int c = 23;
-      int d = 23 + ;
+      int c = ;
+      int d = ;
     """.trimIndent(), source)
-    p.assertDiagCaret(0, 2, 10)
-    p.assertDiagCaret(0, 4, 15)
+    p.assertDiagCaret(diagNr = 0, line = 1, col = 8)
+    p.assertDiagCaret(diagNr = 1, line = 2, col = 8)
+    p.assertDiagCaret(diagNr = 2, line = 3, col = 8)
+    p.assertDiagCaret(diagNr = 3, line = 4, col = 8)
   }
 
   @Test
   fun `Parser Diagnostic Correct Column In Line`() {
     val code = "int;"
     val p = prepareCode(code, source)
-    p.assertDiagCaret(0, 1, code.indexOf(';'))
+    p.assertDiagCaret(diagNr = 0, line = 1, col = code.indexOf(';'))
   }
 
   @Test
   fun `Parser Diagnostic Correct Column 0 In Line`() {
     val p = prepareCode("register int x;", source)
-    p.assertDiagCaret(0, 1, 0)
+    p.assertDiagCaret(diagNr = 0, line = 1, col = 0)
   }
 }

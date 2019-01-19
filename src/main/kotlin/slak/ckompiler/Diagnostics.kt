@@ -77,11 +77,11 @@ data class Diagnostic(val id: DiagnosticId,
     var currLineText = ""
     for ((idx, it) in sourceText.withIndex()) {
       if (it == '\n') {
-        currLine++
         currLineText = sourceText.slice(currLineStart until idx)
         if (col.start >= currLineStart && col.endInclusive <= idx) {
           break
         }
+        currLine++
         currLineStart = idx + 1
       }
       if (idx == sourceText.length - 1) {
