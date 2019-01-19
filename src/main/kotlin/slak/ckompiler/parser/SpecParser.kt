@@ -43,8 +43,24 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
       }
     }
   }),
+  /**
+   * 6.9.1.6: Only valid storage class is register
+   *
+   * C standard: 6.9.1.6
+   */
   FUNCTION_PARAMETER({
-    // FIXME: valid storage classes: register (6.9.1.5)
+    if (it.isThreadLocal()) parserDiagnostic {
+      id = DiagnosticId.ILLEGAL_STORAGE_CLASS
+      formatArgs(it.threadLocal!!.value.keyword, "function declarator")
+      errorOn(it.threadLocal)
+    }
+    if (it.hasStorageClass() && it.storageClass!!.asKeyword() != Keywords.REGISTER) {
+      parserDiagnostic {
+        id = DiagnosticId.ILLEGAL_STORAGE_CLASS
+        formatArgs(it.storageClass.value.keyword, "function declarator")
+        errorOn(it.storageClass)
+      }
+    }
   }),
   MAIN_FUNCTION_DECLARATION({
     // FIXME: Hosted Environment (5.1.2.2)
