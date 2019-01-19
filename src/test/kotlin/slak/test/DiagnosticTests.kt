@@ -20,6 +20,7 @@ class DiagnosticTests {
   }
 
   private fun Parser.assertDiagCaret(diagNr: Int, line: Int? = null, col: Int? = null) {
+    assert(diagNr >= 0 && diagNr < diags.size)
     val (errLine, errCol, _) = diags[diagNr].errorOf(diags[diagNr].caret)
     line?.let { assertEquals(line, errLine) }
     col?.let { assertEquals(col, errCol) }
