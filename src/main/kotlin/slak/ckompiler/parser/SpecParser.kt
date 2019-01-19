@@ -11,8 +11,15 @@ interface ISpecParser {
 
 enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationSpecifier) -> Unit) {
   NONE({}),
-  FILE_SCOPED_VARIABLE({
-    // FIXME: illegal storage classes: auto, register
+  FILE_SCOPED_VARIABLE(lambda@ {
+    if (!it.hasStorageClass()) return@lambda
+    val storage = it.storageClass!!.value
+    if (storage != Keywords.REGISTER && storage != Keywords.AUTO) return@lambda
+    parserDiagnostic {
+      id = DiagnosticId.ILLEGAL_STORAGE_CLASS
+      formatArgs(storage.keyword, "file-scoped variable")
+      errorOn(it.storageClass)
+    }
   }),
   /**
    * 6.7.1.4: Can't have _Thread_local on a function
@@ -20,17 +27,18 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
    *
    * C standard: 6.7.1.4, 6.9.1.4
    */
-  FUNCTION_DECLARATION({
+  FUNCTION_DECLARATION(lambda@ {
     if (it.isThreadLocal()) parserDiagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(it.threadLocal!!.value.keyword, "function")
       errorOn(it.threadLocal)
     }
-    if (it.hasStorageClass() &&
-        (it.storageClass!!.value != Keywords.EXTERN || it.storageClass.value != Keywords.STATIC)) {
+    if (!it.hasStorageClass()) return@lambda
+    val storage = it.storageClass!!.value
+    if (storage != Keywords.EXTERN || storage != Keywords.STATIC) {
       parserDiagnostic {
         id = DiagnosticId.ILLEGAL_STORAGE_CLASS
-        formatArgs(it.storageClass.value.keyword, "function")
+        formatArgs(storage.keyword, "function")
         errorOn(it.storageClass)
       }
     }
