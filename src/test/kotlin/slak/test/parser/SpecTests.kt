@@ -34,13 +34,13 @@ class SpecTests {
   }
 
   @Test
-  fun `Incompatible Multiple Storage Class`() {
+  fun `Incompatible Multiple Storage Classes`() {
     val p = prepareCode("static extern auto int a = 1;", source)
     p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC, DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
 
   @Test
-  fun `Thread Local Compat`() {
+  fun `Thread Local Compatibilities`() {
     val p = prepareCode("""
       static _Thread_local int a = 1;
       extern _Thread_local int b = 1;
@@ -50,7 +50,7 @@ class SpecTests {
   }
 
   @Test
-  fun `Thread Local Incompat`() {
+  fun `Thread Local Incompatibilities`() {
     val p = prepareCode("""
       _Thread_local auto int a = 1;
       register _Thread_local int b = 1;
@@ -59,19 +59,19 @@ class SpecTests {
   }
 
   @Test
-  fun `Missing Type Spec External`() {
+  fun `Missing Type Specifier External`() {
     val p = prepareCode("a = 1;", source)
     p.assertDiags(DiagnosticId.EXPECTED_EXTERNAL_DECL)
   }
 
   @Test
-  fun `Missing Type Spec With Const External`() {
+  fun `Missing Type Specifier With Const External`() {
     val p = prepareCode("const a = 1;", source)
     p.assertDiags(DiagnosticId.MISSING_TYPE_SPEC)
   }
 
   @Test
-  fun `Missing Type Spec`() {
+  fun `Missing Type Specifier`() {
     val p = prepareCode("int main() { const a = 1; }", source)
     p.assertDiags(DiagnosticId.MISSING_TYPE_SPEC)
   }
@@ -83,7 +83,7 @@ class SpecTests {
   }
 
   @Test
-  fun `Duplicate Storage Class Specs`() {
+  fun `Duplicate Storage Class Specifiers`() {
     val p = prepareCode("int main() { register register int a = 1; }", source)
     p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
   }
@@ -95,7 +95,7 @@ class SpecTests {
   }
 
   @Test
-  fun `Duplicate Fun Specs`() {
+  fun `Duplicate Function Specifiers`() {
     val p = prepareCode("inline inline int main() {}", source)
     p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
   }
@@ -107,20 +107,20 @@ class SpecTests {
   }
 
   @Test
-  fun `Type Not Signed Rev`() {
+  fun `Type Not Signed Reverse Order`() {
     val p = prepareCode("int main() { _Bool signed a = 1; }", source)
     p.assertDiags(DiagnosticId.TYPE_NOT_SIGNED)
   }
 
   @Test
-  fun `Void Func`() {
+  fun `Void Function`() {
     val p = prepareCode("void f();", source)
     p.assertNoDiagnostics()
     assert((p.root.decls[0] as Declaration).declSpecs.typeSpec is VoidType)
   }
 
   @Test
-  fun `Inline Noreturn Allowed`() {
+  fun `Inline And Noreturn Allowed`() {
     val p = prepareCode("""
       inline _Noreturn void f() {}
     """.trimIndent(), source)
@@ -128,7 +128,7 @@ class SpecTests {
   }
 
   @Test
-  fun `Struct Decl`() {
+  fun `Struct Declaration`() {
     val p = prepareCode("struct x a = 1;", source)
     p.assertNoDiagnostics()
     assertEquals(StructNameSpecifier(name("x")),
@@ -163,19 +163,19 @@ class SpecTests {
   }
 
   @Test
-  fun `Struct No Semi After When End Of File `() {
+  fun `Struct No Semi After, When End Of File `() {
     val p = prepareCode("struct vec2 {int x, y;}", source)
     p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
   }
 
   @Test
-  fun `Struct No Semi In Struct Decl`() {
+  fun `Struct No Semi In Struct Declaration`() {
     val p = prepareCode("struct vec2 {int x, y};", source)
     p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
   }
 
   @Test
-  fun `Struct Definition With Decl After`() {
+  fun `Struct Definition With Declarators After`() {
     val p = prepareCode("struct vec2 {int x, y;} v1, v2, v3;", source)
     p.assertNoDiagnostics()
     val vec2 = struct("vec2", listOf(
@@ -212,31 +212,31 @@ class SpecTests {
   }
 
   @Test
-  fun `Struct Incompat After`() {
+  fun `Struct Incompatible Specifier After`() {
     val p = prepareCode("int struct vec2 {int x, y;} thing;", source)
     p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
 
   @Test
-  fun `Struct Incompat Before`() {
+  fun `Struct Incompatible Specifier Before`() {
     val p = prepareCode("struct vec2 {int x, y;} int thing;", source)
     p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
 
   @Test
-  fun `Struct Just Name Incompat`() {
+  fun `Struct Name Specifier Is Incompatible`() {
     val p = prepareCode("struct vec2 int thing;", source)
     p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
 
   @Test
-  fun `Struct Anon`() {
+  fun `Struct Anonymous`() {
     val p = prepareCode("struct {int x, y;} pos;", source)
     p.assertNoDiagnostics()
   }
 
   @Test
-  fun `Struct No Storage Qual`() {
+  fun `Struct No Storage Class`() {
     val p = prepareCode("""
       struct {register int a;} struct1;
       struct {_Thread_local int a;} struct2;
