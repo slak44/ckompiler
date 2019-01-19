@@ -138,11 +138,21 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         TODO("handle error case where there is an unmatched paren in the parameter list")
       }
       val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
-      val declarator = parseDeclarator(if (commaIdx == -1) it.size else commaIdx)
+      val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
+      val declarator = parseDeclarator(paramEndIdx)
       params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
       declarator.name()?.let { name -> newIdentifier(name) }
+      // Initializers are not allowed here, so catch them and error
+      if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
+        eat() // The '='
+        val expr = parseExpr(paramEndIdx)
+        parserDiagnostic {
+          id = DiagnosticId.NO_DEFAULT_ARGS
+          columns(expr?.tokenRange ?: rangeOne())
+        }
+      }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; found comma that separates params
         eat()

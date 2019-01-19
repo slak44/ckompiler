@@ -45,6 +45,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   MISSING_DECLARATIONS(WARNING, "Declaration does not declare anything"),
   PARAM_BEFORE_VARIADIC(ERROR, "ISO C requires a named parameter before '...'"),
   ILLEGAL_STORAGE_CLASS(ERROR, "Illegal storage class '%s' on %s"),
+  NO_DEFAULT_ARGS(ERROR, "C does not support default arguments"),
 
   // Scope issues
   REDEFINITION(ERROR, "Redefinition of '%s'"),
