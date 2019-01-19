@@ -205,6 +205,12 @@ sealed class Token(val consumedChars: Int) {
       if (value < 0) logger.throwICE("Bad starting idx") { "value: $value" }
       field = value
     }
+    get() {
+      if (field == INVALID_INDEX) {
+        logger.throwICE("Trying to access invalid start index") { "token: $this" }
+      }
+      return field
+    }
 
   init {
     if (consumedChars == 0) {
