@@ -7,12 +7,14 @@ import kotlin.math.max
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
+
   // Lexer
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
   MISSING_QUOTE(ERROR, "Missing terminating %c character"),
   NO_EXP_DIGITS(ERROR, "Exponent has no digits"),
   INVALID_DIGIT(ERROR, "Invalid digit '%s' in constant"),
   UNFINISHED_COMMENT(ERROR, "Unterminated /* comment"),
+
   // Parser
   // FIXME: this should be a warning printed by the preprocessor
   EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),
@@ -27,11 +29,10 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_LPAREN_AFTER(ERROR, "Expected '(' after %s"),
   EXPECTED_SEMI_IN_FOR(ERROR, "Expected ';' in 'for' statement specifier"),
   UNEXPECTED_IN_FOR(ERROR, "Unexpected token in 'for' statement specifier"),
-  ILLEGAL_STORAGE_CLASS_FUNC(ERROR, "Illegal storage class on function"),
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
-  PARAM_BEFORE_VARIADIC(ERROR, "ISO C requires a named parameter before '...'"),
 
+  // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
   INCOMPATIBLE_DECL_SPEC(ERROR, "Cannot combine with previous '%s' declaration specifier"),
   // clang puts up a warning; the standard says we error
@@ -41,11 +42,14 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
   ANON_STRUCT_MUST_DEFINE(ERROR, "Declaration of anonymous struct must be a definition"),
   SPEC_NOT_ALLOWED(ERROR, "Type name does not allow %s to be specified"),
+  MISSING_DECLARATIONS(WARNING, "Declaration does not declare anything"),
+  PARAM_BEFORE_VARIADIC(ERROR, "ISO C requires a named parameter before '...'"),
+  ILLEGAL_STORAGE_CLASS(ERROR, "Illegal storage class '%s' on %s"),
 
+  // Scope issues
   REDEFINITION(ERROR, "Redefinition of '%s'"),
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
   REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
-  MISSING_DECLARATIONS(WARNING, "Declaration does not declare anything"),
   USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
 }
 
