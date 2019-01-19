@@ -6,7 +6,47 @@ import slak.ckompiler.throwICE
 
 interface ISpecParser {
   /** C standard: A.2.2, 6.7 */
-  fun parseDeclSpecifiers(): DeclarationSpecifier
+  fun parseDeclSpecifiers(validation: SpecValidationRules): DeclarationSpecifier
+}
+
+enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationSpecifier) -> Unit) {
+  NONE({}),
+  FILE_SCOPED_VARIABLE({
+    // FIXME: illegal storage classes: auto, register
+  }),
+  FUNCTION_DECLARATION({
+    // FIXME: no thread local (6.7.1.4)
+    // FIXME: valid storage classes: extern, static (6.9.1.4)
+  }),
+  FUNCTION_PARAMETER({
+    // FIXME: valid storage classes: register (6.9.1.5)
+  }),
+  MAIN_FUNCTION_DECLARATION({
+    // FIXME: Hosted Environment (5.1.2.2)
+    // can't be inline, or noreturn
+    // return type is int
+    // either no params or argc/argv (or equivalents)
+    // argc is non-negative
+    // argv[argc] is a null pointer
+    // (rest of standard section)
+  }),
+  /**
+   * Checks that the [DeclarationSpecifier] is a `specifier-qualifer-list`.
+   *
+   * C standard: 6.7.2.1
+   */
+  SPECIFIER_QUALIFIER({
+    if (it.functionSpecs.isNotEmpty()) parserDiagnostic {
+      id = DiagnosticId.SPEC_NOT_ALLOWED
+      formatArgs("function specifier")
+      errorOn(it.functionSpecs.first())
+    }
+    if (it.storageClass != null || it.threadLocal != null) parserDiagnostic {
+      id = DiagnosticId.SPEC_NOT_ALLOWED
+      formatArgs("storage specifier")
+      errorOn((it.threadLocal ?: it.storageClass)!!)
+    }
+  })
 }
 
 class SpecParser(declarationParser: DeclarationParser) :
@@ -126,29 +166,6 @@ class SpecParser(declarationParser: DeclarationParser) :
   }
 
   /**
-   * Parses `specifier-qualifer-list` (like [DeclarationSpecifier], but without function specs and
-   * storage specs).
-   *
-   * C standard: 6.7.2.1
-   */
-  private fun parseSpecifierQualifierSpec(): DeclarationSpecifier {
-    val specifierQualifier = parseDeclSpecifiers()
-    if (specifierQualifier.functionSpecs.isNotEmpty()) parserDiagnostic {
-      id = DiagnosticId.SPEC_NOT_ALLOWED
-      formatArgs("function specifier")
-      errorOn(specifierQualifier.functionSpecs.first())
-    }
-    if (specifierQualifier.storageClass != null ||
-        specifierQualifier.threadLocal != null) parserDiagnostic {
-      id = DiagnosticId.SPEC_NOT_ALLOWED
-      formatArgs("storage specifier")
-      val errTok = specifierQualifier.threadLocal ?: specifierQualifier.storageClass
-      errorOn(errTok!!)
-    }
-    return specifierQualifier
-  }
-
-  /**
    * Parses `struct-or-union-specifier`.
    *
    * C standard: 6.7.2.1
@@ -180,14 +197,14 @@ class SpecParser(declarationParser: DeclarationParser) :
     val declarations = mutableListOf<Declaration>()
     tokenContext(endIdx) {
       while (isNotEaten()) {
-        val spec = parseSpecifierQualifierSpec()
-        if (spec.isEmpty()) {
+        val specQualList = parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
+        if (specQualList.isEmpty()) {
           continue
         }
         if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
           eat() // The ';'
-          if (spec.canBeTag()) {
-            declarations += Declaration(spec, emptyList())
+          if (specQualList.canBeTag()) {
+            declarations += Declaration(specQualList, emptyList())
           } else {
             parserDiagnostic {
               id = DiagnosticId.MISSING_DECLARATIONS
@@ -195,7 +212,7 @@ class SpecParser(declarationParser: DeclarationParser) :
             }
           }
         } else {
-          declarations += Declaration(spec, parseStructDeclaratorList())
+          declarations += Declaration(specQualList, parseStructDeclaratorList())
         }
       }
     }
@@ -256,7 +273,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     return threadLocal to storageClass
   }
 
-  override fun parseDeclSpecifiers(): DeclarationSpecifier {
+  override fun parseDeclSpecifiers(validation: SpecValidationRules): DeclarationSpecifier {
     val startTok = current()
 
     val storageSpecs = mutableListOf<Keyword>()
@@ -303,14 +320,16 @@ class SpecParser(declarationParser: DeclarationParser) :
     val isEmpty =
         storageSpecs.isEmpty() && funSpecs.isEmpty() && typeQuals.isEmpty() && typeSpecifier == null
 
-    return DeclarationSpecifier(
+    val ds = DeclarationSpecifier(
         storageClass = storageClass,
         threadLocal = threadLocal,
         functionSpecs = funSpecs,
         typeQualifiers = typeQuals,
         typeSpec = typeSpecifier,
-        range = if (isEmpty) null else startTok until safeToken(0)
-    )
+        range = if (isEmpty) null else startTok until safeToken(0))
+
+    validation.validate(this, ds)
+    return ds
   }
 
   companion object {

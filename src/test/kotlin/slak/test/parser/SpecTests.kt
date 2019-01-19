@@ -251,4 +251,20 @@ class SpecTests {
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.MISSING_DECLARATIONS)
   }
+
+  @Test
+  fun `Function Has Valid Storage Class Specifiers`() {
+    val p = prepareCode("""
+      register int f();
+      auto int g();
+      _Thread_local int h();
+
+      int main() {
+        register int f1();
+        auto int f2();
+        _Thread_local int f3();
+      }
+    """.trimIndent(), source)
+    // FIXME: 6 errors
+  }
 }

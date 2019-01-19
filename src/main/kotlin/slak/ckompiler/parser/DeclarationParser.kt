@@ -8,10 +8,11 @@ import java.util.*
 interface IDeclarationParser {
   /**
    * Parses a declaration, including function declarations (prototypes).
+   * @param validationRules extra checks to be performed on the [DeclarationSpecifier]
    * @return null if there is no declaration, or a [Declaration] otherwise
    */
-  fun parseDeclaration(): Declaration? {
-    val (declSpec, firstDecl) = preParseDeclarator()
+  fun parseDeclaration(validationRules: SpecValidationRules): Declaration? {
+    val (declSpec, firstDecl) = preParseDeclarator(validationRules)
     if (declSpec.isEmpty()) return null
     if (!firstDecl!!.isPresent) return null
     return parseDeclaration(declSpec, firstDecl.get())
@@ -19,10 +20,12 @@ interface IDeclarationParser {
 
   /**
    * Parse a [DeclarationSpecifier] and the first [Declarator] that follows.
+   * @param validationRules extra checks to be performed on the [DeclarationSpecifier]
    * @return if [DeclarationSpecifier.isEmpty] is true, the [Declarator] will be null, and if there
    * is no declarator, it will be [Optional.empty]
    */
-  fun preParseDeclarator(): Pair<DeclarationSpecifier, Optional<Declarator>?>
+  fun preParseDeclarator(
+      validationRules: SpecValidationRules): Pair<DeclarationSpecifier, Optional<Declarator>?>
 
   /**
    * Parses a declaration where the [DeclarationSpecifier] and the first [Declarator] are already
@@ -55,8 +58,9 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   internal lateinit var specParser: SpecParser
 
-  override fun preParseDeclarator(): Pair<DeclarationSpecifier, Optional<Declarator>?> {
-    val declSpec = specParser.parseDeclSpecifiers()
+  override fun preParseDeclarator(
+      validationRules: SpecValidationRules): Pair<DeclarationSpecifier, Optional<Declarator>?> {
+    val declSpec = specParser.parseDeclSpecifiers(validationRules)
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat() // The ';'
@@ -74,6 +78,9 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       return Pair(declSpec, Optional.empty())
     }
     val declarator = if (declSpec.isEmpty()) null else Optional.of(parseDeclarator(tokenCount))
+    if (declarator != null && declarator.get() is FunctionDeclarator) {
+      SpecValidationRules.FUNCTION_DECLARATION.validate(specParser, declSpec)
+    }
     return Pair(declSpec, declarator)
   }
 
@@ -117,7 +124,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         break
       }
-      val specs = specParser.parseDeclSpecifiers()
+      val specs = specParser.parseDeclSpecifiers(SpecValidationRules.FUNCTION_PARAMETER)
       if (specs.isEmpty()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
@@ -409,6 +416,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
         }
         val bitWidthExpr = parseExpr(stopIdx)
+        // FIXME: bit field type must be _Bool, signed int, unsigned int (6.7.2.1.5)
         // FIXME: expr MUST be a constant expression
         StructDeclarator(declarator, bitWidthExpr)
       } else {

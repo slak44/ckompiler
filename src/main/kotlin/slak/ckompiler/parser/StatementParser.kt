@@ -42,7 +42,7 @@ class StatementParser(declarationParser: DeclarationParser,
     fun parseCompoundItems(scope: LexicalScope): CompoundStatement {
       val items = mutableListOf<BlockItem>()
       while (isNotEaten()) {
-        val item = parseDeclaration()?.let { d -> DeclarationItem(d) }
+        val item = parseDeclaration(SpecValidationRules.NONE)?.let { d -> DeclarationItem(d) }
             ?: parseStatement()?.let { s -> StatementItem(s) }
             ?: continue
         items += item
@@ -319,7 +319,7 @@ class StatementParser(declarationParser: DeclarationParser,
       } else {
         // parseDeclaration wants to see the semicolon as well, so +1
         tokenContext(firstSemi + 1) {
-          parseDeclaration()?.let { d -> DeclarationInitializer(d) }
+          parseDeclaration(SpecValidationRules.NONE)?.let { d -> DeclarationInitializer(d) }
         } ?: parseExpr(firstSemi)?.let { e -> ExpressionInitializer(e) } ?: ErrorInitializer()
       }
       // We only eat the first ';' if parseDeclaration didn't do that
