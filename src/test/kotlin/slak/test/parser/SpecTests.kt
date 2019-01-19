@@ -286,12 +286,4 @@ class SpecTests {
     """.trimIndent(), source)
     p.assertDiags(*Array(4) { DiagnosticId.ILLEGAL_STORAGE_CLASS })
   }
-
-  @Test
-  fun `Function Parameters No Initializers`() {
-    val p = prepareCode("""
-      int f(int y = 1, int x = 54 + 3 / 34 >> 3);
-    """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.NO_DEFAULT_ARGS, DiagnosticId.NO_DEFAULT_ARGS)
-  }
 }

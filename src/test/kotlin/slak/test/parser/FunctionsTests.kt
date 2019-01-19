@@ -115,4 +115,12 @@ class FunctionsTests {
         DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
     int func ("f" withParamsV emptyList()) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Function Parameters No Initializers`() {
+    val p = prepareCode("""
+      int f(int y = 1, int x = 54 + 3 / 34 >> 3);
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.NO_DEFAULT_ARGS, DiagnosticId.NO_DEFAULT_ARGS)
+  }
 }
