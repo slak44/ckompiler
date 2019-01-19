@@ -5,7 +5,7 @@ import slak.ckompiler.lexer.*
 
 interface IExpressionParser {
   /**
-   * Parses an expression.
+   * Parses an expression. Eats it.
    * C standard: A.2.1
    * @return null if there is no expression, the [Expression] otherwise
    */
