@@ -52,8 +52,10 @@ class SpecTests {
   @Test
   fun `Thread Local Incompatibilities`() {
     val p = prepareCode("""
-      _Thread_local auto int a = 1;
-      register _Thread_local int b = 1;
+      int main() {
+        _Thread_local auto int a = 1;
+        register _Thread_local int b = 1;
+      }
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC, DiagnosticId.INCOMPATIBLE_DECL_SPEC)
   }
@@ -255,8 +257,8 @@ class SpecTests {
   @Test
   fun `Function Invalid Storage Class Specifiers`() {
     val p = prepareCode("""
-      register int f();
-      auto int g();
+      register int f(); // 2 errors here
+      auto int g(); // 2 errors here
       _Thread_local int h();
 
       int main() {
@@ -265,6 +267,15 @@ class SpecTests {
         _Thread_local int f3();
       }
     """.trimIndent(), source)
-    p.assertDiags(*Array(6) { DiagnosticId.ILLEGAL_STORAGE_CLASS })
+    p.assertDiags(*Array(8) { DiagnosticId.ILLEGAL_STORAGE_CLASS })
+  }
+
+  @Test
+  fun `Invalid Storage Class Specifiers On File Scoped Variables`() {
+    val p = prepareCode("""
+      register int x;
+      auto int y;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ILLEGAL_STORAGE_CLASS, DiagnosticId.ILLEGAL_STORAGE_CLASS)
   }
 }
