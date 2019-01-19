@@ -278,4 +278,20 @@ class SpecTests {
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.ILLEGAL_STORAGE_CLASS, DiagnosticId.ILLEGAL_STORAGE_CLASS)
   }
+
+  @Test
+  fun `Function Parameters Storage Class Can Only Be Register`() {
+    val p = prepareCode("""
+      int f(int x, register int y, auto int z, _Thread_local int a, extern int b, static int c);
+    """.trimIndent(), source)
+    p.assertDiags(*Array(4) { DiagnosticId.ILLEGAL_STORAGE_CLASS })
+  }
+
+  @Test
+  fun `Function Parameters No Initializers`() {
+    val p = prepareCode("""
+      int f(int y = 1, int x = 54 + 3 / 34 >> 3);
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.NO_DEFAULT_ARGS, DiagnosticId.NO_DEFAULT_ARGS)
+  }
 }
