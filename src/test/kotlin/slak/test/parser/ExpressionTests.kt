@@ -115,6 +115,18 @@ class ExpressionTests {
   }
 
   @Test
+  fun `Unary Expect Primary`() {
+    val p = prepareCode("int a = &;", source)
+    p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
+  }
+
+  @Test
+  fun `Unary Expect Expression At End Of Input`() {
+    val p = prepareCode("int a = &", source)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR, DiagnosticId.EXPECTED_SEMI_AFTER)
+  }
+
+  @Test
   fun `Unary Lots Of Operators`() {
     val p = prepareCode("int a = *&+-~!b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)

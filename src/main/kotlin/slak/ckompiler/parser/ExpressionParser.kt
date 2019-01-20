@@ -6,6 +6,7 @@ import slak.ckompiler.lexer.*
 interface IExpressionParser {
   /**
    * Parses an expression. Eats it.
+   *
    * C standard: A.2.1
    * @return null if there is no expression, the [Expression] otherwise
    */
@@ -19,43 +20,36 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     IScopeHandler by scopeHandler,
     IParenMatcher by parenMatcher {
 
-  /** @see IExpressionParser.parseExpr */
-  override fun parseExpr(endIdx: Int): Expression? = tokenContext(endIdx) {
-    val primary: Expression = parsePrimaryExpr().let { expr ->
-      if (expr != null) return@let expr
-      parserDiagnostic {
-        id = DiagnosticId.EXPECTED_PRIMARY
-        errorOn(safeToken(1))
-      }
-      return@tokenContext null
-    }
-    return@tokenContext parseExprImpl(primary, 0)
-  }
-
   private fun errorExpr() = ErrorExpression().withRange(rangeOne())
 
+  /**
+   * Base case of precedence climbing method.
+   * @see IExpressionParser.parseExpr
+   * @see parseExprImpl
+   */
+  override fun parseExpr(endIdx: Int): Expression? = tokenContext(endIdx) {
+    return@tokenContext parseExprImpl(parsePrimaryExpr() ?: return@tokenContext null, 0)
+  }
+
+  /**
+   * Recursive case of precedence climbing method.
+   * @see parseExpr
+   */
   private fun parseExprImpl(lhsInit: Expression, minPrecedence: Int): Expression {
     var lhs = lhsInit
-    while (true) {
-      if (isEaten()) break
-      val op = current().asBinaryOperator() ?: break
-      if (op.precedence < minPrecedence) break
+    outerLoop@ while (true) {
+      if (isEaten()) break@outerLoop
+      val op = current().asBinaryOperator() ?: break@outerLoop
+      if (op.precedence < minPrecedence) break@outerLoop
       eat()
-      var rhs: Expression = parsePrimaryExpr().let {
-        if (it != null) return@let it
-        parserDiagnostic {
-          id = DiagnosticId.EXPECTED_PRIMARY
-          errorOn(safeToken(0))
-        }
-        return@parseExprImpl errorExpr()
-      }
-      while (true) {
-        if (isEaten()) break
-        val innerOp = current().asBinaryOperator() ?: break
+      var rhs: Expression = parsePrimaryExpr() ?: return errorExpr()
+      innerLoop@ while (true) {
+        if (isEaten()) break@innerLoop
+        val innerOp = current().asBinaryOperator() ?: break@innerLoop
         if (innerOp.precedence <= op.precedence &&
             !(innerOp.assoc == Associativity.RIGHT_TO_LEFT &&
                 innerOp.precedence == op.precedence)) {
-          break
+          break@innerLoop
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
@@ -220,7 +214,8 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
    *
    * C standard: A.2.1, 6.4.4, 6.5.3
    * @see parseTerminal
-   * @return null if no primary was found, or the [Expression] otherwise
+   * @see parseExpr
+   * @return null if no primary was found (generates diagnostic), or the [Expression] otherwise
    */
   private fun parsePrimaryExpr(): Expression? {
     if (isEaten()) {
@@ -232,11 +227,17 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       return errorExpr()
     }
     // FIXME: here we can also have a cast, that needs to be differentiated from `( expression )`
-    return parseUnaryExpression()
+    val expr = parseUnaryExpression()
+    if (expr == null) parserDiagnostic {
+      id = DiagnosticId.EXPECTED_PRIMARY
+      errorOn(safeToken(0))
+    }
+    return expr
   }
 
   /**
    * All terminals are one token long. Does not eat anything.
+   *
    * C standard: A.2.1, 6.5.1, 6.4.4.4
    * @see CharacterConstantNode
    * @return the [Terminal] node, or null if no terminal was found
