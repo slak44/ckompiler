@@ -319,7 +319,8 @@ class StatementParser(declarationParser: DeclarationParser,
       } else {
         // parseDeclaration wants to see the semicolon as well, so +1
         tokenContext(firstSemi + 1) {
-          parseDeclaration(SpecValidationRules.NONE)?.let { d -> DeclarationInitializer(d) }
+          parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)
+              ?.let { d -> DeclarationInitializer(d) }
         } ?: parseExpr(firstSemi)?.let { e -> ExpressionInitializer(e) } ?: ErrorInitializer()
       }
       // We only eat the first ';' if parseDeclaration didn't do that

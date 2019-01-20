@@ -22,6 +22,26 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     }
   }),
   /**
+   * 6.8.5.3: Valid storage classes are auto and register
+   *
+   * C standard: 6.8.5.3
+   */
+  FOR_INIT_DECLARATION(lambda@ {
+    if (it.isThreadLocal()) parserDiagnostic {
+      id = DiagnosticId.ILLEGAL_STORAGE_CLASS
+      formatArgs(it.threadLocal!!.value.keyword, "for loop initializer")
+      errorOn(it.threadLocal)
+    }
+    if (!it.hasStorageClass()) return@lambda
+    val storage = it.storageClass!!.value
+    if (storage == Keywords.REGISTER || storage == Keywords.AUTO) return@lambda
+    parserDiagnostic {
+      id = DiagnosticId.ILLEGAL_STORAGE_CLASS
+      formatArgs(storage.keyword, "for loop initializer")
+      errorOn(it.storageClass)
+    }
+  }),
+  /**
    * 6.7.1.4: Can't have _Thread_local on a function
    * 6.9.1.4: Valid storage classes are extern and static on functions
    *
@@ -87,7 +107,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
       formatArgs("storage specifier")
       errorOn((it.threadLocal ?: it.storageClass)!!)
     }
-  })
+  });
 }
 
 class SpecParser(declarationParser: DeclarationParser) :

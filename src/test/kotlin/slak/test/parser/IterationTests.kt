@@ -348,4 +348,15 @@ class IterationTests {
         forSt(ErrorInitializer(), ErrorExpression(), ErrorExpression(), ErrorStatement())
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `For Declaration Initializer With Illegal Storage Classes`() {
+    val p = prepareCode("""
+      int main() {
+        for (typedef int MY_INT; 1 + 1; 1 + 1);
+        for (_Thread_local int x; 1 + 1; 1 + 1);
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ILLEGAL_STORAGE_CLASS, DiagnosticId.ILLEGAL_STORAGE_CLASS)
+  }
 }
