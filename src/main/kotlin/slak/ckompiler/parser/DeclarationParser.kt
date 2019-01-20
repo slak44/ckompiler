@@ -343,7 +343,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       firstDecl?.name()?.let { newIdentifier(it) }
       return listOfNotNull(firstDecl)
     }
-    // FIXME typedef is to be handled specially, see 6.7.1 paragraph 5
+    // FIXME typedef is to be handled specially, see 6.7.1.5
     val declaratorList = mutableListOf<Declarator>()
     // If firstDecl is null, we act as if it was already processed
     var firstDeclUsed = firstDecl == null

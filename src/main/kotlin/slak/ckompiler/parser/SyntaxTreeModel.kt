@@ -262,7 +262,7 @@ data class FloatingConstantNode(val value: Double,
  *
  * Also, empty char constants are not defined; here they are equal to 0, and produce a warning.
  *
- * C standard: 6.4.4.4 paragraph 10
+ * C standard: 6.4.4.4.10
  */
 data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : Expression(), Terminal
 
