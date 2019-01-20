@@ -5,7 +5,7 @@ import slak.ckompiler.lexer.*
 
 interface IStatementParser {
   /**
-   * Parses a compound-statement, including the { } brackets.
+   * Parses a `compound-statement`, including the { } brackets.
    *
    * C standard: A.2.3
    * @param functionScope the scope of the function for which this is a block, null otherwise
@@ -98,7 +98,7 @@ class StatementParser(declarationParser: DeclarationParser,
       tokenContext(condParenEnd) {
         while (isNotEaten()) eat()
       }
-      ErrorExpression()
+      errorExpr()
     } else {
       condExpr
     }
@@ -192,7 +192,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val condition = if (cond == null) {
       // Eat everything between parens
       eatUntil(rparen)
-      ErrorExpression()
+      errorExpr()
     } else {
       cond
     }
@@ -250,16 +250,16 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       eatToSemi()
       if (isNotEaten()) eat()
-      return DoWhileStatement(ErrorExpression(), loopable)
+      return DoWhileStatement(errorExpr(), loopable)
     }
     val condRParen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condRParen == -1) return DoWhileStatement(ErrorExpression(), loopable)
+    if (condRParen == -1) return DoWhileStatement(errorExpr(), loopable)
     eat() // The '('
     val cond = parseExpr(condRParen)
     val condition = if (cond == null) {
       // Eat everything between parens
       eatUntil(condRParen)
-      ErrorExpression()
+      errorExpr()
     } else {
       cond
     }
@@ -311,7 +311,7 @@ class StatementParser(declarationParser: DeclarationParser,
           if (it.isNotEmpty()) errorOn(safeToken(it.size))
           else errorOn(parentContext()[rparen])
         }
-        return@tokenContext Triple(ErrorInitializer(), ErrorExpression(), ErrorExpression())
+        return@tokenContext Triple(ErrorInitializer(), errorExpr(), errorExpr())
       }
       // Handle the case where we have an empty clause1
       val clause1 = if (firstSemi == 0) {
@@ -330,7 +330,7 @@ class StatementParser(declarationParser: DeclarationParser,
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
           errorOn(safeToken(it.size))
         }
-        return@tokenContext Triple(clause1, ErrorExpression(), ErrorExpression())
+        return@tokenContext Triple(clause1, errorExpr(), errorExpr())
       }
       // Handle the case where we have an empty expr2
       val expr2 = if (secondSemi == firstSemi + 1) null else parseExpr(secondSemi)
@@ -357,7 +357,7 @@ class StatementParser(declarationParser: DeclarationParser,
       // Attempt to eat the error
       eatToSemi()
       if (isNotEaten()) eat()
-      return ForStatement(clause1, expr2, expr3, ErrorExpression())
+      return ForStatement(clause1, expr2, expr3, errorExpr())
           .withRange(forTok until safeToken(0))
     }
     return ForStatement(clause1, expr2, expr3, loopable)

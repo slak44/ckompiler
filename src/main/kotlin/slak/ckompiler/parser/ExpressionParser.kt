@@ -11,6 +11,9 @@ interface IExpressionParser {
    * @return null if there is no expression, the [Expression] otherwise
    */
   fun parseExpr(endIdx: Int): Expression?
+
+  /** Factory for [ErrorExpression]. */
+  fun errorExpr(): ErrorExpression
 }
 
 class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
@@ -20,7 +23,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     IScopeHandler by scopeHandler,
     IParenMatcher by parenMatcher {
 
-  private fun errorExpr() = ErrorExpression().withRange(rangeOne())
+  override fun errorExpr() = ErrorExpression().withRange(rangeOne())
 
   /**
    * Base case of precedence climbing method.
