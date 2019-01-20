@@ -7,7 +7,7 @@ import slak.test.*
 
 class StatementTests {
   @Test
-  fun `Statement If Simple`() {
+  fun `If Basic`() {
     val p = prepareCode("""
       int main() {
         if (123) 1 + 1;
@@ -22,7 +22,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If With Else`() {
+  fun `If With Else`() {
     val p = prepareCode("""
       int main() {
         if (123) 1 + 1; else 2 + 2;
@@ -39,7 +39,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If With Block`() {
+  fun `If With Block`() {
     val p = prepareCode("""
       int main() {
         if (123) {
@@ -56,7 +56,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If With Blocks And Else`() {
+  fun `If With Blocks And Else`() {
     val p = prepareCode("""
       int main() {
         if (123) {
@@ -77,7 +77,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If Errored Condition`() {
+  fun `If Error'd Condition`() {
     val p = prepareCode("""
       int main() {
         if (int) 1 + 1;
@@ -92,7 +92,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If Missing Condition`() {
+  fun `If With Missing Condition`() {
     val p = prepareCode("""
       int main() {
         if () 1 + 1;
@@ -107,7 +107,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If Bad Block`() {
+  fun `If With Bad Block`() {
     val p = prepareCode("""
       int main() {
         if (123)
@@ -120,7 +120,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If Bad Block With Else After`() {
+  fun `If With Bad Block And Else After`() {
     val p = prepareCode("""
       int main() {
         if (123) else 1 + 1;
@@ -133,7 +133,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Statement If No Op`() {
+  fun `If No Op`() {
     val p = prepareCode("""
       int main() {
         if (1); else;
@@ -150,7 +150,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Return Simple`() {
+  fun `Return Basic`() {
     val p = prepareCode("""
       int main() {
         return 0;
@@ -163,7 +163,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Return Expr`() {
+  fun `Return Expression`() {
     val p = prepareCode("""
       int main() {
         return (1 + 1) / 2;
@@ -275,7 +275,7 @@ class StatementTests {
   }
 
   @Test
-  fun `Labeled Expr`() {
+  fun `Labeled Expression`() {
     val p = prepareCode("""
       int main() {
         label: 1 + 1;
