@@ -153,12 +153,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       declarator.name()?.let { name -> newIdentifier(name) }
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
-        eat() // The '='
-        // FIXME: use parseInitializer
-        val expr = parseExpr(paramEndIdx)
+        val initializer = parseInitializer()
         parserDiagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
-          columns(expr?.tokenRange ?: rangeOne())
+          columns(initializer.tokenRange)
         }
       }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
