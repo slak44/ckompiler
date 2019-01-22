@@ -4,6 +4,7 @@ import mu.KLogger
 import slak.ckompiler.DiagnosticKind.*
 import slak.ckompiler.lexer.Token
 import kotlin.math.max
+import kotlin.math.min
 
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
@@ -72,15 +73,16 @@ data class Diagnostic(val id: DiagnosticId,
   /**
    * @returns (line, col, lineText) of the [col] in the [sourceText]
    */
-  fun errorOf(col: IntRange?): Triple<Int, Int, String> =
-      if (sourceText.isNotEmpty() && col != null) {
+  fun errorOf(
+      col: IntRange?): Triple<Int, Int, String> = if (sourceText.isNotEmpty() && col != null) {
     var currLine = 1
     var currLineStart = 0
     var currLineText = ""
+    sourceText
     for ((idx, it) in sourceText.withIndex()) {
       if (it == '\n') {
         currLineText = sourceText.slice(currLineStart until idx)
-        if (col.start >= currLineStart && col.endInclusive <= idx) {
+        if (col.start in currLineStart..idx) {
           break
         }
         currLine++
@@ -97,12 +99,14 @@ data class Diagnostic(val id: DiagnosticId,
 
   private val printable: String by lazy {
     val (line, col, lineText) = errorOf(if (sourceColumns.isNotEmpty()) caret else null)
-    val caretTargetLength = caret.endInclusive - caret.start
-    val lineStr = if (line == -1) "?" else line.toString()
-    val colStr = if (col == -1) "?" else col.toString()
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
-    val firstLine = "$sourceFileName:$lineStr:$colStr: ${id.kind.text}: $msg [$origin|${id.name}]"
-    val caretLine = " ".repeat(max(col, 0)) + '^' + "~".repeat(max(caretTargetLength, 0))
+    val spacesCount = max(col, 0)
+    val tildeCount = min(
+        max(caret.endInclusive - caret.start, 0), // Size of provided range
+        max(lineText.length - spacesCount + 1, 0) // Size of spaces + 1 for the caret
+    )
+    val firstLine = "$sourceFileName:$line:$col: ${id.kind.text}: $msg [$origin|${id.name}]"
+    val caretLine = " ".repeat(spacesCount) + '^' + "~".repeat(tildeCount)
     // FIXME add tildes for the other sourceColumns
     return@lazy "$firstLine\n$lineText\n$caretLine"
   }

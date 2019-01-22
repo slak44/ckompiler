@@ -98,7 +98,7 @@ private class TranslationUnitParser(
     }
     val block = parseCompoundStatement(funDecl.scope) ?: ErrorStatement().withRange(rangeOne())
     val start = if (declSpec.isEmpty()) block.tokenRange else declSpec.range!!
-    return FunctionDefinition(declSpec, funDecl, block).withRange(start between block.tokenRange)
+    return FunctionDefinition(declSpec, funDecl, block).withRange(start..block.tokenRange)
   }
 
   /** C standard: A.2.4, 6.9 */

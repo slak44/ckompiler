@@ -1,6 +1,7 @@
 package slak.test
 
 import org.junit.Test
+import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.Parser
@@ -51,5 +52,25 @@ class DiagnosticTests {
   fun `Parser Diagnostic Correct Column 0 In Line`() {
     val p = prepareCode("register int x;", source)
     p.assertDiagCaret(diagNr = 0, line = 1, col = 0)
+  }
+
+  @Test
+  fun `Parser Diagnostic Correct Range Length`() {
+    val p = prepareCode("""
+      typedef unsigned int X = 1 + 1;
+    """.trimIndent(), source)
+    //                       ^~~~~~~
+    //                       7 chars
+    p.assertDiagCaret(diagNr = 0, line = 1)
+    assertEquals(7, p.diags[0].caret.endInclusive + 1 - p.diags[0].caret.start)
+  }
+
+  @Test
+  fun `Parser Diagnostic Multi-line Range`() {
+    val p = prepareCode("""
+      typedef unsigned int X = 1 + 1 +
+      1 + 1 + 1;
+    """.trimIndent(), source)
+    p.assertDiagCaret(diagNr = 0, line = 1)
   }
 }

@@ -6,10 +6,13 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("AST")
 
-// FIXME: these ranges are possibly wrong
 infix fun Token.until(other: Token): IntRange = this.startIdx..other.startIdx
 
-infix fun IntRange.between(other: IntRange) = this.start until other.endInclusive + 1
+operator fun IntRange.rangeTo(other: IntRange) = this.start..other.endInclusive
+
+operator fun Token.rangeTo(other: ASTNode) = this.startIdx..other.tokenRange.endInclusive
+
+operator fun ASTNode.rangeTo(other: ASTNode) = tokenRange..other.tokenRange
 
 /**
  * Base class of all nodes from an Abstract Syntax Tree.

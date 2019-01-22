@@ -153,10 +153,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       declarator.name()?.let { name -> newIdentifier(name) }
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
+        val assignTok = current()
         val initializer = parseInitializer()
         parserDiagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
-          columns(initializer.tokenRange)
+          columns(assignTok..initializer)
         }
       }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
@@ -380,12 +381,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         if (ds.isTypedef()) {
           parserDiagnostic {
             id = DiagnosticId.TYPEDEF_NO_INITIALIZER
-            columns(assignTok.startIdx until initializer.tokenRange.endInclusive)
+            columns(assignTok..initializer)
           }
           declarator
         } else {
-          InitDeclarator(declarator, initializer)
-              .withRange(declarator.tokenRange between initializer.tokenRange)
+          InitDeclarator(declarator, initializer).withRange(declarator..initializer)
         }
       } else {
         declarator
