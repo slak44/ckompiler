@@ -73,4 +73,13 @@ class DiagnosticTests {
     """.trimIndent(), source)
     p.assertDiagCaret(diagNr = 0, line = 1)
   }
+
+  @Test
+  fun `Parser Correct Columns For Stuff After Variadic Dots`() {
+    val p = prepareCode("""
+      int f(..., int a);
+    """.trimIndent(), source)
+    p.assertDiagCaret(diagNr = 0, line = 1, col = 9)
+    p.assertDiagCaret(diagNr = 1, line = 1, col = 9)
+  }
 }

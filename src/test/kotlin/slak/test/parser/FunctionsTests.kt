@@ -104,7 +104,7 @@ class FunctionsTests {
   @Test
   fun `Arg After Variadic`() {
     val p = prepareCode("int f(int x, ..., int a);", source)
-    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+    p.assertDiags(DiagnosticId.EXPECTED_RPAREN_AFTER_VARIADIC)
     int func ("f" withParamsV listOf(int param "x")) assertEquals p.root.decls[0]
   }
 
@@ -118,8 +118,7 @@ class FunctionsTests {
   @Test
   fun `Variadic Nothing Before And Something After`() {
     val p = prepareCode("int f(..., int a);", source)
-    p.assertDiags(DiagnosticId.PARAM_BEFORE_VARIADIC,
-        DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+    p.assertDiags(DiagnosticId.PARAM_BEFORE_VARIADIC, DiagnosticId.EXPECTED_RPAREN_AFTER_VARIADIC)
     int func ("f" withParamsV emptyList()) assertEquals p.root.decls[0]
   }
 

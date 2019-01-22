@@ -121,13 +121,22 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     while (isNotEaten()) {
       // Variadic functions
       if (current().asPunct() == Punctuators.DOTS) {
-        eat()
+        eat() // The '...'
         isVariadic = true
         if (params.isEmpty()) {
           parserDiagnostic {
             id = DiagnosticId.PARAM_BEFORE_VARIADIC
             errorOn(safeToken(0))
           }
+        }
+        // There can be nothing after the variadic dots
+        if (isNotEaten()) {
+          parserDiagnostic {
+            id = DiagnosticId.EXPECTED_RPAREN_AFTER_VARIADIC
+            errorOn(safeToken(0))
+          }
+          // Eat the ", other_stuff" inside the function call: `f(stuff, ..., other_stuff)`
+          while (isNotEaten()) eat()
         }
         break
       }

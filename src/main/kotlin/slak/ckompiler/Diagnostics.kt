@@ -32,6 +32,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNEXPECTED_IN_FOR(ERROR, "Unexpected token in 'for' statement specifier"),
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
+  EXPECTED_RPAREN_AFTER_VARIADIC(ERROR, "Expected ')' after variadic '...'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
