@@ -414,6 +414,8 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
 
   fun hasStorageClass() = storageClass != null
 
+  fun isTypedef() = storageClass?.value == Keywords.TYPEDEF
+
   override fun toString(): String {
     val otherSpecs = listOf(typeQualifiers, functionSpecs)
         .filter { it.isNotEmpty() }

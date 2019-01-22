@@ -297,4 +297,12 @@ class SpecTests {
     """.trimIndent(), source)
     p.assertDiags(*Array(4) { DiagnosticId.ILLEGAL_STORAGE_CLASS })
   }
+
+  @Test
+  fun `Typedef Can't Have Initializers`() {
+    val p = prepareCode("""
+      typedef unsigned int blabla = 23;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.TYPEDEF_NO_INITIALIZER)
+  }
 }

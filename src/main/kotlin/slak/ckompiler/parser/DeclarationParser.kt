@@ -86,7 +86,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator?): Declaration {
-    val d = Declaration(declSpec, parseInitDeclaratorList(declarator))
+    val d = Declaration(declSpec, parseInitDeclaratorList(declSpec, declarator))
     val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.range!!.start
     return d.withRange(start until safeToken(0).startIdx)
   }
@@ -154,6 +154,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
         eat() // The '='
+        // FIXME: use parseInitializer
         val expr = parseExpr(paramEndIdx)
         parserDiagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
@@ -332,18 +333,19 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    * Parse a `init-declarator-list`, a part of a `declaration`.
    *
    * C standard: A.2.2
+   * @param ds the declaration's [DeclarationSpecifier]
    * @param firstDecl if not null, this will be treated as the first declarator in the list that was
    * pre-parsed
    * @return the list of comma-separated declarators
    */
-  private fun parseInitDeclaratorList(firstDecl: Declarator? = null): List<Declarator> {
+  private fun parseInitDeclaratorList(ds: DeclarationSpecifier,
+                                      firstDecl: Declarator? = null): List<Declarator> {
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       eat()
       firstDecl?.name()?.let { newIdentifier(it) }
       return listOfNotNull(firstDecl)
     }
-    // FIXME typedef is to be handled specially, see 6.7.1.5
     val declaratorList = mutableListOf<Declarator>()
     // If firstDecl is null, we act as if it was already processed
     var firstDeclUsed = firstDecl == null
@@ -375,9 +377,18 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         break
       }
       declaratorList += if (current().asPunct() == Punctuators.ASSIGN) {
-        val d = InitDeclarator(declarator, parseInitializer())
-        d.withRange(declarator.tokenRange between d.initializer.tokenRange)
-        d
+        val assignTok = current()
+        val initializer = parseInitializer()
+        if (ds.isTypedef()) {
+          parserDiagnostic {
+            id = DiagnosticId.TYPEDEF_NO_INITIALIZER
+            columns(assignTok.startIdx until initializer.tokenRange.endInclusive)
+          }
+          declarator
+        } else {
+          InitDeclarator(declarator, initializer)
+              .withRange(declarator.tokenRange between initializer.tokenRange)
+        }
       } else {
         declarator
       }
