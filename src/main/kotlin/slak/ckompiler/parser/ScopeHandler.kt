@@ -26,6 +26,12 @@ interface IScopeHandler {
   fun newIdentifier(id: IdentifierNode, isLabel: Boolean = false)
 
   /**
+   * Creates a typedef in the current scope. If one already exists, and the defined type differs,
+   * a diagnostic is printed.
+   */
+  fun createTypedef(td: TypedefName)
+
+  /**
    * Searches all the scopes for a given identifier.
    * @return null if no such identifier exists, or the previous [IdentifierNode] otherwise
    */
@@ -45,6 +51,26 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     val ret = this.block()
     scopeStack.pop()
     return ret
+  }
+
+  override fun createTypedef(td: TypedefName) {
+    val names = scopeStack.peek().typedefNames
+    val foundTypedef = names.firstOrNull { it.typedefIdent.name == td.typedefIdent.name }
+    // Repeated typedefs are only allowed if they define the same thing
+    // So if they're different, complain
+    if (foundTypedef != null && td != foundTypedef) {
+      parserDiagnostic {
+        id = DiagnosticId.REDEFINITION_TYPEDEF
+        formatArgs(td.typedefedToString(), foundTypedef.typedefedToString())
+        columns(td.typedefIdent.tokenRange)
+      }
+      parserDiagnostic {
+        id = DiagnosticId.REDEFINITION_PREVIOUS
+        columns(foundTypedef.typedefIdent.tokenRange)
+      }
+    } else {
+      names += td
+    }
   }
 
   override fun newIdentifier(id: IdentifierNode, isLabel: Boolean) {

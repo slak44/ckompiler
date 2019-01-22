@@ -348,10 +348,28 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   private fun parseInitDeclaratorList(ds: DeclarationSpecifier,
                                       firstDecl: Declarator? = null): List<Declarator> {
+    fun addDeclaratorToScope(declarator: Declarator?) {
+      if (declarator == null) return
+      if (ds.isTypedef()) {
+        // Add typedef to scope
+        val name = declarator.name()
+        if (name != null) {
+          createTypedef(TypedefName(ds, declarator.indirection, name))
+        } else {
+          parserDiagnostic {
+            id = DiagnosticId.TYPEDEF_REQUIRES_NAME
+            columns(ds.range!!)
+          }
+        }
+      } else {
+        // Add ident to scope
+        declarator.name()?.let { newIdentifier(it) }
+      }
+    }
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       eat()
-      firstDecl?.name()?.let { newIdentifier(it) }
+      addDeclaratorToScope(firstDecl)
       return listOfNotNull(firstDecl)
     }
     val declaratorList = mutableListOf<Declarator>()
@@ -364,7 +382,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         firstDeclUsed = true
         firstDecl!!
       })
-      declarator.name()?.let { newIdentifier(it) }
       if (declarator is ErrorDeclarator) {
         val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
         if (parenEndIdx == -1) {
@@ -375,6 +392,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         if (stopIdx != -1) eatUntil(stopIdx)
       }
+      addDeclaratorToScope(declarator)
       if (isEaten()) {
         parserDiagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER

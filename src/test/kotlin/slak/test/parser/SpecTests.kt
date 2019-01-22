@@ -31,9 +31,9 @@ class SpecTests {
     val p = prepareCode("const static int a;", source)
     p.assertNoDiagnostics()
     val spec = DeclarationSpecifier(
-        typeQualifiers = listOf(Keyword(Keywords.CONST)),
-        storageClass = Keyword(Keywords.STATIC),
-        typeSpec = IntType(Keyword(Keywords.INT)))
+        typeQualifiers = listOf(Keywords.CONST.kw),
+        storageClass = Keywords.STATIC.kw,
+        typeSpec = IntType(Keywords.INT.kw))
     assertEquals(listOf(spec declare "a"), p.root.decls)
   }
 

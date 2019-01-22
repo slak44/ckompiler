@@ -2,6 +2,8 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.lexer.Keywords
+import slak.ckompiler.parser.DeclarationSpecifier
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -57,5 +59,35 @@ class ScopeTests {
   fun `Undeclared Usage`() {
     val p = prepareCode("int main() { int x = y; }", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
+  }
+
+  @Test
+  fun `Typedef Valid Redefinition`() {
+    val p = prepareCode("typedef int myint; typedef int myint;", source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Typedef Redefinition With Different Type Specifiers`() {
+    val p = prepareCode("typedef int myint; typedef unsigned int myint;", source)
+    p.assertDiags(DiagnosticId.REDEFINITION_TYPEDEF, DiagnosticId.REDEFINITION_PREVIOUS)
+  }
+
+  @Test
+  fun `Typedef Redefinition With Different Type Qualifiers`() {
+    val p = prepareCode("typedef int myint; typedef const int myint;", source)
+    p.assertDiags(DiagnosticId.REDEFINITION_TYPEDEF, DiagnosticId.REDEFINITION_PREVIOUS)
+  }
+
+  @Test
+  fun `Typedef Redefinition With Different Indirection Level`() {
+    val p = prepareCode("typedef int myint; typedef int* myint;", source)
+    p.assertDiags(DiagnosticId.REDEFINITION_TYPEDEF, DiagnosticId.REDEFINITION_PREVIOUS)
+  }
+
+  @Test
+  fun `Typedef Redefinition With Different Indirection Qualifier`() {
+    val p = prepareCode("typedef int * myint; typedef unsigned int * const myint;", source)
+    p.assertDiags(DiagnosticId.REDEFINITION_TYPEDEF, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 }

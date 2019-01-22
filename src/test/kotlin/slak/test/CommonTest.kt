@@ -25,13 +25,15 @@ internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, Integral
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
-internal val int = DeclarationSpecifier(typeSpec = IntType(Keyword(Keywords.INT)))
-internal val double = DeclarationSpecifier(typeSpec = DoubleType(Keyword(Keywords.DOUBLE)))
-internal val longLong = DeclarationSpecifier(typeSpec = LongLong(Keyword(Keywords.LONG)))
+internal val Keywords.kw get() = Keyword(this)
+
+internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw))
+internal val double = DeclarationSpecifier(typeSpec = DoubleType(Keywords.DOUBLE.kw))
+internal val longLong = DeclarationSpecifier(typeSpec = LongLong(Keywords.LONG.kw))
 internal val uLongLong =
-    DeclarationSpecifier(typeSpec = UnsignedLongLong(Keyword(Keywords.UNSIGNED)))
-internal val longDouble = DeclarationSpecifier(typeSpec = LongDouble(Keyword(Keywords.LONG)))
-internal val signedChar = DeclarationSpecifier(typeSpec = SignedChar(Keyword(Keywords.SIGNED)))
+    DeclarationSpecifier(typeSpec = UnsignedLongLong(Keywords.UNSIGNED.kw))
+internal val longDouble = DeclarationSpecifier(typeSpec = LongDouble(Keywords.LONG.kw))
+internal val signedChar = DeclarationSpecifier(typeSpec = SignedChar(Keywords.SIGNED.kw))
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 

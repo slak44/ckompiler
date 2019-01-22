@@ -290,7 +290,7 @@ class LexerTests {
     val l = Lexer("int a = 1;\n", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
-        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
         IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL),
         Punctuator(Punctuators.SEMICOLON)
     ), l.tokens)
@@ -301,7 +301,7 @@ class LexerTests {
     val l = Lexer("int a = f(123, 5.5);", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
-        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
         Identifier("f"), Punctuator(Punctuators.LPAREN),
         IntegralConstant("123", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.COMMA),
         FloatingConstant("5.5", FloatingSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.RPAREN),
@@ -317,7 +317,7 @@ class LexerTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
-        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
         IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.SEMICOLON)
     ), l.tokens)
   }
@@ -334,7 +334,7 @@ class LexerTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
-        Keyword(Keywords.INT), Identifier("a"), Punctuator(Punctuators.ASSIGN),
+        Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
         IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.SEMICOLON)
     ), l.tokens)
   }

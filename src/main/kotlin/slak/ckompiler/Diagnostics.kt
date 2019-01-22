@@ -49,10 +49,12 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ILLEGAL_STORAGE_CLASS(ERROR, "Illegal storage class '%s' on %s"),
   NO_DEFAULT_ARGS(ERROR, "C does not support default arguments"),
   TYPEDEF_NO_INITIALIZER(ERROR, "Illegal initializer (only variables can be initialized)"),
+  TYPEDEF_REQUIRES_NAME(WARNING, "typedef requires a name"),
 
   // Scope issues
   REDEFINITION(ERROR, "Redefinition of '%s'"),
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
+  REDEFINITION_TYPEDEF(ERROR, "typedef redefinition with different types ('%s' vs '%s')"),
   REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
   USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
 }

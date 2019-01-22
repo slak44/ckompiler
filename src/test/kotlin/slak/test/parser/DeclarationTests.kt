@@ -121,9 +121,9 @@ class DeclarationTests {
     p.assertNoDiagnostics()
     val d = int declare "a".withPtrs(
         listOf(),
-        listOf(Keyword(Keywords.CONST), Keyword(Keywords.VOLATILE), Keyword(Keywords.ATOMIC)),
-        listOf(Keyword(Keywords.VOLATILE)),
-        listOf(Keyword(Keywords.ATOMIC))
+        listOf(Keywords.CONST.kw, Keywords.VOLATILE.kw, Keywords.ATOMIC.kw),
+        listOf(Keywords.VOLATILE.kw),
+        listOf(Keywords.ATOMIC.kw)
     )
     assertEquals(listOf(d), p.root.decls)
   }
@@ -144,5 +144,11 @@ class DeclarationTests {
   fun `Declarator With Pointer But Ends Too Early`() {
     val p = prepareCode("int *", source)
     p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN, DiagnosticId.EXPECTED_SEMI_AFTER)
+  }
+
+  @Test
+  fun `Typedef Multiple Declarators`() {
+    val p = prepareCode("typedef int new_int, * new_int2, * const new_int3;", source)
+    p.assertNoDiagnostics()
   }
 }

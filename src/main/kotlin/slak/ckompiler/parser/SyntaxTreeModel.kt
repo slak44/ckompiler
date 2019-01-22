@@ -84,12 +84,32 @@ fun <T : ASTNode> T.withRange(range: IntRange): T {
   return this
 }
 
+/** Stores the data of a scoped `typedef`. */
+data class TypedefName(val declSpec: DeclarationSpecifier,
+                       val indirection: List<TypeQualifierList>,
+                       val typedefIdent: IdentifierNode) {
+  fun typedefedToString(): String {
+    val ind = indirection.joinToString { '*' + it.joinToString(" ") { (value) -> value.keyword } }
+    val indStr = if (ind.isBlank()) "" else " $ind"
+    // The storage class is "typedef", and we don't want to print it
+    val dsNoStorage = DeclarationSpecifier(
+        storageClass = null,
+        typeSpec = declSpec.typeSpec,
+        functionSpecs = declSpec.functionSpecs,
+        typeQualifiers = declSpec.typeQualifiers,
+        range = null,
+        threadLocal = declSpec.threadLocal)
+    return "$dsNoStorage$indStr"
+  }
+}
+
 /**
  * This class stores lexically-scoped identifiers.
  *
  * C standard: 6.2.1
  */
 class LexicalScope {
+  val typedefNames = mutableListOf<TypedefName>()
   val idents = mutableListOf<IdentifierNode>()
   val labels = mutableListOf<IdentifierNode>()
 
@@ -97,6 +117,7 @@ class LexicalScope {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
     other as LexicalScope
+    if (typedefNames != other.typedefNames) return false
     if (idents != other.idents) return false
     if (labels != other.labels) return false
     return true
@@ -105,12 +126,16 @@ class LexicalScope {
   override fun hashCode(): Int {
     var result = idents.hashCode()
     result = 31 * result + labels.hashCode()
+    result = 31 * result + typedefNames.hashCode()
     return result
   }
 
   override fun toString(): String {
-    return "LexicalScope(idents=[${idents.joinToString(", ") { it.name }}], " +
-        "labels=[${labels.joinToString(", ") { it.name }}])"
+    val identStr = idents.joinToString(", ") { it.name }
+    val labelStr = idents.joinToString(", ") { it.name }
+    val typedefStr =
+        typedefNames.joinToString(", ") { "${it.typedefedToString()} ${it.typedefIdent.name}" }
+    return "LexicalScope(idents=[$identStr], labels=[$labelStr], typedefs=[$typedefStr])"
   }
 }
 
@@ -428,7 +453,7 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
     val otherSpecsStr = if (otherSpecs.isBlank()) "" else "$otherSpecs "
     val storageClassStr = if (hasStorageClass()) "${storageClass!!.value.keyword} " else ""
     val threadLocalStr = if (isThreadLocal()) "${Keywords.THREAD_LOCAL.keyword} " else ""
-    return "($threadLocalStr$storageClassStr$otherSpecsStr$typeSpec)"
+    return "$threadLocalStr$storageClassStr$otherSpecsStr$typeSpec"
   }
 
   override fun equals(other: Any?): Boolean {
