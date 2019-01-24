@@ -317,4 +317,21 @@ class SpecTests {
         typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
     "special_int".typedefBy(typedefSpec) declare ("x" assign 213) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Typedef As Type Specifier For Declaration Statement In Inner Scope`() {
+    val p = prepareCode("""
+      typedef const unsigned int special_int;
+      int main() {
+        special_int x = 213;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
+        typeQualifiers = listOf(Keywords.CONST.kw),
+        typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
+    int func "main" body compoundOf(
+        "special_int".typedefBy(typedefSpec) declare ("x" assign 213)
+    ) assertEquals p.root.decls[0]
+  }
 }
