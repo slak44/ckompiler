@@ -44,6 +44,15 @@ class SpecTests {
   }
 
   @Test
+  fun `Incompatible Typedef With Int`() {
+    val p = prepareCode("""
+      typedef int const unsigned nice_int;
+      nice_int int x;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+  }
+
+  @Test
   fun `Incompatible Multiple Storage Classes`() {
     val p = prepareCode("static extern auto int a = 1;", source)
     p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC, DiagnosticId.INCOMPATIBLE_DECL_SPEC)
