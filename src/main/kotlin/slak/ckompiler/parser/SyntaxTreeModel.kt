@@ -117,27 +117,9 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
  *
  * C standard: 6.2.1
  */
-class LexicalScope {
-  val typedefNames = mutableListOf<TypedefName>()
-  val idents = mutableListOf<IdentifierNode>()
-  val labels = mutableListOf<IdentifierNode>()
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-    other as LexicalScope
-    if (typedefNames != other.typedefNames) return false
-    if (idents != other.idents) return false
-    if (labels != other.labels) return false
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = idents.hashCode()
-    result = 31 * result + labels.hashCode()
-    result = 31 * result + typedefNames.hashCode()
-    return result
-  }
+data class LexicalScope(val typedefNames: MutableList<TypedefName> = mutableListOf(),
+                        val idents: MutableList<IdentifierNode> = mutableListOf(),
+                        val labels: MutableList<IdentifierNode> = mutableListOf()) {
 
   override fun toString(): String {
     val identStr = idents.joinToString(", ") { it.name }
@@ -332,6 +314,7 @@ data class TypedefNameSpecifier(val name: IdentifierNode, val type: TypedefName)
 data class StructNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
   override fun toString() = "struct ${name.name}"
 }
+
 data class UnionNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
   override fun toString() = "union ${name.name}"
 }
