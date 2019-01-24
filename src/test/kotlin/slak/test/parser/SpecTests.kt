@@ -18,11 +18,11 @@ class SpecTests {
       char signed e = 5;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int declare ("a" assign int(1)) assertEquals p.root.decls[0]
-    longLong declare ("b" assign int(2)) assertEquals p.root.decls[1]
-    uLongLong declare ("c" assign int(3)) assertEquals p.root.decls[2]
-    longDouble declare ("d" assign int(4)) assertEquals p.root.decls[3]
-    signedChar declare ("e" assign int(5)) assertEquals p.root.decls[4]
+    int declare ("a" assign 1) assertEquals p.root.decls[0]
+    longLong declare ("b" assign 2) assertEquals p.root.decls[1]
+    uLongLong declare ("c" assign 3) assertEquals p.root.decls[2]
+    longDouble declare ("d" assign 4) assertEquals p.root.decls[3]
+    signedChar declare ("e" assign 5) assertEquals p.root.decls[4]
   }
 
   @Test
@@ -315,6 +315,6 @@ class SpecTests {
     val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
         typeQualifiers = listOf(Keywords.CONST.kw),
         typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
-    "special_int".typedefBy(typedefSpec) declare ("x" assign int(213)) assertEquals p.root.decls[0]
+    "special_int".typedefBy(typedefSpec) declare ("x" assign 213) assertEquals p.root.decls[0]
   }
 }

@@ -10,14 +10,14 @@ class FunctionsTests {
   fun `Function Declaration Explicitly No Parameters`() {
     val p = prepareCode("int f(void);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams emptyList()) assertEquals p.root.decls[0]
+    int func "f" assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Function Declaration No Parameters`() {
     val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams emptyList()) assertEquals p.root.decls[0]
+    int func "f" assertEquals p.root.decls[0]
   }
 
   @Test
@@ -61,14 +61,14 @@ class FunctionsTests {
   fun `Empty Function Definition`() {
     val p = prepareCode("int main() {}", source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body emptyList() assertEquals p.root.decls[0]
+    int func "main" body emptyList() assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Function Definition Unmatched Brackets`() {
     val p = prepareCode("int main() {", source)
     p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
-    int func ("main" withParams emptyList()) body ErrorStatement() assertEquals p.root.decls[0]
+    int func "main" body ErrorStatement() assertEquals p.root.decls[0]
   }
 
   @Test
@@ -83,7 +83,7 @@ class FunctionsTests {
   fun `Basic Function Definition With Expression`() {
     val p = prepareCode("int main() { 1 + 1; }", source)
     p.assertNoDiagnostics()
-    int func ("main" withParams emptyList()) body compoundOf(1 add 1) assertEquals
+    int func "main" body compoundOf(1 add 1) assertEquals
         p.root.decls[0]
   }
 

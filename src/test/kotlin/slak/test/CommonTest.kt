@@ -55,7 +55,7 @@ internal fun Declarator.withPtrs(vararg q: TypeQualifierList): Declarator {
 
 internal fun String.withPtrs(vararg q: TypeQualifierList) = nameDecl(this).withPtrs(*q)
 
-internal infix fun String.assign(value: Expression) = InitDeclarator(nameDecl(this), value)
+internal infix fun <T> String.assign(it: T) = InitDeclarator(nameDecl(this), parseDSLElement(it))
 
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
     Declaration(this, listOf(decl))
@@ -70,6 +70,9 @@ internal infix fun DeclarationSpecifier.declare(list: List<String>) =
 
 internal infix fun DeclarationSpecifier.func(decl: Declarator) =
     Declaration(this, listOf(decl))
+
+internal infix fun DeclarationSpecifier.func(s: String) =
+    Declaration(this, listOf(s withParams emptyList()))
 
 internal infix fun DeclarationSpecifier.declare(s: String) =
     Declaration(this, listOf(nameDecl(s)))

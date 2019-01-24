@@ -34,14 +34,14 @@ class DeclarationTests {
   fun `Simple Initializer`() {
     val p = prepareCode("int a = 1;", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign int(1))), p.root.decls)
+    assertEquals(listOf(int declare ("a" assign 1)), p.root.decls)
   }
 
   @Test
   fun `Identifier Initializer`() {
     val p = prepareCode("int a = someVariable;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    assertEquals(listOf(int declare ("a" assign IdentifierNode("someVariable"))), p.root.decls)
+    assertEquals(listOf(int declare ("a" assign "someVariable")), p.root.decls)
   }
 
   @Test
@@ -63,7 +63,7 @@ class DeclarationTests {
   fun `Simple Paren Initializer`() {
     val p = prepareCode("int a = (1);", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign int(1))), p.root.decls)
+    assertEquals(listOf(int declare ("a" assign 1)), p.root.decls)
   }
 
   @Test

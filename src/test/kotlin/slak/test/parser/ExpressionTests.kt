@@ -65,7 +65,7 @@ class ExpressionTests {
       }
     """.trimIndent(), source)
     assert(p.diags.ids.contains(DiagnosticId.EXPECTED_SEMI_AFTER))
-    int func ("main" withParams emptyList()) body compoundOf(
+    int func "main" body compoundOf(
         1 add 1 add ErrorExpression()
     ) assertEquals p.root.decls[0]
   }
