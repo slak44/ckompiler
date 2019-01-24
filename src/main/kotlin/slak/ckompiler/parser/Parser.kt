@@ -116,13 +116,7 @@ private class TranslationUnitParser(
       if (isNotEaten()) eat()
       return translationUnit()
     }
-    if (!declaratorOpt!!.isPresent) {
-      if (declSpec.canBeTag()) {
-        root.addExternalDeclaration(Declaration(declSpec, emptyList()))
-        // FIXME: struct/union/enum/something declaration or definition, do something with it
-      }
-      return translationUnit()
-    }
+    if (!declaratorOpt!!.isPresent) return translationUnit()
     val declarator = declaratorOpt.get()
     if (declarator is FunctionDeclarator && current().asPunct() != Punctuators.SEMICOLON) {
       if (declarator.name()?.name == "main") {

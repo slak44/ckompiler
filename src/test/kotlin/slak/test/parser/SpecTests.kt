@@ -152,7 +152,7 @@ class SpecTests {
   fun `Struct Declaration`() {
     val p = prepareCode("struct x a = 1;", source)
     p.assertNoDiagnostics()
-    assertEquals(StructNameSpecifier(name("x")),
+    assertEquals(StructNameSpecifier(name("x"), tagKindKeyword = Keywords.STRUCT.kw),
         (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }
 
@@ -164,7 +164,7 @@ class SpecTests {
 
   @Test
   fun `Struct Simple`() {
-    val p = prepareCode("struct vec2 {int x, y;};", source)
+    val p = prepareCode("struct vec2 {int x, y;} a;", source)
     p.assertNoDiagnostics()
     val structDef = struct("vec2", listOf(
         int declare listOf("x", "y")
@@ -224,7 +224,7 @@ class SpecTests {
 
   @Test
   fun `Struct Bits`() {
-    val p = prepareCode("struct vec2 {int x : 16, y : 20;};", source)
+    val p = prepareCode("struct vec2 {int x : 16, y : 20;} a;", source)
     p.assertNoDiagnostics()
     val structDef = struct("vec2", listOf(
         int declare listOf("x" bitSize 16, "y" bitSize 20)

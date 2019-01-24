@@ -14,7 +14,7 @@ interface IDeclarationParser {
   fun parseDeclaration(validationRules: SpecValidationRules): Declaration? {
     val (declSpec, firstDecl) = preParseDeclarator(validationRules)
     if (declSpec.isEmpty()) return null
-    if (!firstDecl!!.isPresent) return null
+    if (!firstDecl!!.isPresent) return Declaration(declSpec, emptyList())
     return parseDeclaration(declSpec, firstDecl.get())
   }
 
@@ -61,13 +61,14 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   override fun preParseDeclarator(
       validationRules: SpecValidationRules): Pair<DeclarationSpecifier, Optional<Declarator>?> {
     val declSpec = specParser.parseDeclSpecifiers(validationRules)
+    if (declSpec.isTag() && !(declSpec.typeSpec as TagSpecifier).isAnonymous) {
+      createTag(declSpec.typeSpec)
+    }
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat() // The ';'
       when {
-        declSpec.canBeTag() -> {
-          // FIXME: actually do something with the "tag"
-        }
+        declSpec.isTag() -> { /* Do nothing intentionally */ }
         declSpec.isTypedef() -> parserDiagnostic {
           id = DiagnosticId.TYPEDEF_REQUIRES_NAME
           columns(declSpec.range!!)
@@ -77,16 +78,14 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           columns(declSpec.range!!)
         }
       }
-      return Pair(declSpec, Optional.empty())
+      return declSpec to Optional.empty()
     }
-    if (declSpec.canBeTag() && isEaten()) {
-      return Pair(declSpec, Optional.empty())
-    }
+    if (declSpec.isTag() && isEaten()) return declSpec to Optional.empty()
     val declarator = if (declSpec.isEmpty()) null else Optional.of(parseDeclarator(tokenCount))
     if (declarator != null && declarator.get() is FunctionDeclarator) {
       SpecValidationRules.FUNCTION_DECLARATION.validate(specParser, declSpec)
     }
-    return Pair(declSpec, declarator)
+    return declSpec to declarator
   }
 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,

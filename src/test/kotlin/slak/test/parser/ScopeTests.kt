@@ -2,8 +2,6 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Keywords
-import slak.ckompiler.parser.DeclarationSpecifier
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -89,5 +87,58 @@ class ScopeTests {
   fun `Typedef Redefinition With Different Indirection Qualifier`() {
     val p = prepareCode("typedef int * myint; typedef unsigned int * const myint;", source)
     p.assertDiags(DiagnosticId.REDEFINITION_TYPEDEF, DiagnosticId.REDEFINITION_PREVIOUS)
+  }
+  @Test
+  fun `Tag Mismatch With Incomplete Types`() {
+    val p = prepareCode("""
+      struct x;
+      union x;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.TAG_MISMATCH, DiagnosticId.TAG_MISMATCH_PREVIOUS)
+  }
+
+  @Test
+  fun `Tag Mismatch With Complete Types`() {
+    val p = prepareCode("""
+      struct vec2 {int x,y;};
+      union vec2 {int a,b;};
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.TAG_MISMATCH, DiagnosticId.TAG_MISMATCH_PREVIOUS)
+  }
+
+  @Test
+  fun `Tag And Typedef With Same Name Are Allowed`() {
+    val p = prepareCode("""
+      struct my_type {int x,y;};
+      typedef const int my_type;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Tag Forward Declared After Definition Is Allowed`() {
+    val p = prepareCode("""
+      struct my_type {int x,y;};
+      struct my_type;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Tag Replace Forward Definition`() {
+    val p = prepareCode("""
+      union my_type;
+      union my_type {int x,y;};
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Tag Redefinition`() {
+    val p = prepareCode("""
+      union my_type {int x,y;};
+      union my_type {int x,y;};
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
 }

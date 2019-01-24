@@ -312,4 +312,17 @@ class StatementTests {
         goto("fakeLabel")
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Struct Definition As Statement`() {
+    val p = prepareCode("""
+      int main() {
+        struct vec {int x, y;};
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func "main" body compoundOf(
+        struct("vec", listOf(int declare listOf("x", "y")))
+    ) assertEquals p.root.decls[0]
+  }
 }

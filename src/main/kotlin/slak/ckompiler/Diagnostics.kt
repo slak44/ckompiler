@@ -3,7 +3,6 @@ package slak.ckompiler
 import mu.KLogger
 import slak.ckompiler.DiagnosticKind.*
 import slak.ckompiler.lexer.Token
-import slak.ckompiler.parser.ASTNode
 import kotlin.math.max
 import kotlin.math.min
 
@@ -57,6 +56,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
   REDEFINITION_TYPEDEF(ERROR, "typedef redefinition with different types ('%s' vs '%s')"),
   REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
+  TAG_MISMATCH(ERROR, "Use of '%s' with tag type that does not match previous declaration"),
+  TAG_MISMATCH_PREVIOUS(OTHER, "Previous use is here"),
   USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
 }
 

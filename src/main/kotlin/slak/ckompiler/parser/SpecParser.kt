@@ -233,7 +233,7 @@ class SpecParser(declarationParser: DeclarationParser) :
    * C standard: 6.7.2.1
    */
   private fun parseStructUnion(): TypeSpecifier? {
-    val startTok = current()
+    val tagKindKeyword = current() as Keyword
     val isUnion = current().asKeyword() == Keywords.UNION
     eat() // struct or union
     val name = if (current() is Identifier) IdentifierNode.from(current()) else null
@@ -246,11 +246,12 @@ class SpecParser(declarationParser: DeclarationParser) :
       if (name == null) {
         parserDiagnostic {
           id = DiagnosticId.ANON_STRUCT_MUST_DEFINE
-          errorOn(startTok)
+          errorOn(tagKindKeyword)
         }
         return null
       }
-      return if (isUnion) UnionNameSpecifier(name) else StructNameSpecifier(name)
+      return if (isUnion) UnionNameSpecifier(name, tagKindKeyword)
+      else StructNameSpecifier(name, tagKindKeyword)
     }
     val endIdx = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
     eat() // The {
@@ -263,7 +264,7 @@ class SpecParser(declarationParser: DeclarationParser) :
         }
         if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
           eat() // The ';'
-          if (specQualList.canBeTag()) {
+          if (specQualList.isTag()) {
             declarations += Declaration(specQualList, emptyList())
           } else {
             parserDiagnostic {
@@ -284,8 +285,8 @@ class SpecParser(declarationParser: DeclarationParser) :
         column(colPastTheEnd(0))
       }
     }
-    return if (isUnion) UnionDefinition(name, declarations)
-    else StructDefinition(name, declarations)
+    return if (isUnion) UnionDefinition(name, declarations, tagKindKeyword)
+    else StructDefinition(name, declarations, tagKindKeyword)
   }
 
   /**

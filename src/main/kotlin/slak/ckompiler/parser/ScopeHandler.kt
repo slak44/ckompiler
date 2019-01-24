@@ -1,6 +1,7 @@
 package slak.ckompiler.parser
 
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.throwICE
 import java.util.*
 
 interface IScopeHandler {
@@ -30,6 +31,16 @@ interface IScopeHandler {
    * a diagnostic is printed.
    */
   fun createTypedef(td: TypedefName)
+
+  /**
+   * Adds a tag to the current scope. If one already exists, and:
+   * 1. The tag type differs, a diagnostic is printed.
+   * 2. The new type is incomplete, nothing happens.
+   * 3. The existing type is incomplete and the new type is complete, the old type is replaced.
+   * 4. Both types are complete, a diagnostic is printed.
+   * @param tag an error is thrown if [TagSpecifier.isAnonymous] is true
+   */
+  fun createTag(tag: TagSpecifier)
 
   /**
    * Searches all the scopes for a given identifier.
@@ -76,6 +87,44 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       }
     } else {
       names += td
+    }
+  }
+
+  override fun createTag(tag: TagSpecifier) {
+    if (tag.isAnonymous) {
+      logger.throwICE("Cannot store the tag name of an anonymous tag specifier") { "tag: $tag" }
+    }
+    val names = scopeStack.peek().tagNames
+    val foundTag = names.firstOrNull { it.tagIdent.name == tag.tagIdent.name }
+    when {
+      foundTag == null -> names += tag
+      tag.tagKindKeyword.value != foundTag.tagKindKeyword.value -> {
+        parserDiagnostic {
+          id = DiagnosticId.TAG_MISMATCH
+          formatArgs(tag.tagIdent.name)
+          errorOn(tag.tagKindKeyword)
+        }
+        parserDiagnostic {
+          id = DiagnosticId.TAG_MISMATCH_PREVIOUS
+          columns(foundTag.tagIdent.tokenRange)
+        }
+      }
+      !tag.isCompleteType -> { /* Do nothing intentionally */ }
+      !foundTag.isCompleteType && tag.isCompleteType -> {
+        names -= foundTag
+        names += tag
+      }
+      foundTag.isCompleteType && tag.isCompleteType -> {
+        parserDiagnostic {
+          id = DiagnosticId.REDEFINITION
+          formatArgs(tag.tagIdent.name)
+          columns(tag.tagIdent.tokenRange)
+        }
+        parserDiagnostic {
+          id = DiagnosticId.REDEFINITION_PREVIOUS
+          columns(foundTag.tagIdent.tokenRange)
+        }
+      }
     }
   }
 

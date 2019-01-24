@@ -118,14 +118,15 @@ internal infix fun IfStatement.elseSt(failure: CompoundStatement) =
 
 internal fun returnSt(e: Expression) = ReturnStatement(e)
 
-internal fun <T : ASTNode> compoundOf(vararg elements: T) = listOf(*elements).compound()
+internal fun <T> compoundOf(vararg elements: T) = listOf(*elements).compound()
 
 internal fun emptyCompound() = CompoundStatement(emptyList(), LexicalScope())
 
-internal fun List<ASTNode>.compound() = CompoundStatement(map {
+internal fun <T> List<T>.compound() = CompoundStatement(map {
   when (it) {
     is Statement -> StatementItem(it)
     is Declaration -> DeclarationItem(it)
+    is TagSpecifier -> DeclarationItem(Declaration(it.toSpec(), emptyList()))
     else -> throw IllegalArgumentException("Bad type")
   }
 }, with(LexicalScope()) {
@@ -137,8 +138,8 @@ internal fun List<ASTNode>.compound() = CompoundStatement(map {
         if (names != null) idents += names
       }
       is LabeledStatement -> labels += it.label
-      is Statement -> {
-      } // Nothing
+      is Statement -> { /* Do nothing intentionally */ }
+      is TagSpecifier -> tagNames += it
       else -> throw IllegalArgumentException("Bad type")
     }
   }
@@ -183,10 +184,11 @@ internal fun struct(name: String?, decls: List<Declaration>): StructDefinition {
       else StructDeclarator(it, null)
     })
   }
-  return StructDefinition(name = name?.let { name(it) }, decls = d)
+  return StructDefinition(
+      name = name?.let { name(it) }, decls = d, tagKindKeyword = Keywords.STRUCT.kw)
 }
 
-internal fun StructDefinition.toSpec() = DeclarationSpecifier(typeSpec = this)
+internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this)
 
 internal infix fun String.bitSize(expr: Expression) = StructDeclarator(nameDecl(this), expr)
 internal infix fun String.bitSize(it: Long) = this bitSize int(it)

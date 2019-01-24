@@ -118,6 +118,7 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
  * C standard: 6.2.1
  */
 data class LexicalScope(val typedefNames: MutableList<TypedefName> = mutableListOf(),
+                        val tagNames: MutableList<TagSpecifier> = mutableListOf(),
                         val idents: MutableList<IdentifierNode> = mutableListOf(),
                         val labels: MutableList<IdentifierNode> = mutableListOf()) {
 
@@ -311,21 +312,45 @@ data class TypedefNameSpecifier(val name: IdentifierNode, val type: TypedefName)
   override fun toString() = "${name.name} (aka ${type.typedefedToString()})"
 }
 
-data class StructNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
+// FIXME: if a declaration has an incomplete type that never gets completed, print a diagnostic
+sealed class TagSpecifier : TypeSpecifier() {
+  abstract val isCompleteType: Boolean
+  abstract val isAnonymous: Boolean
+  abstract val tagIdent: IdentifierNode
+  abstract val tagKindKeyword: Keyword
+}
+
+data class StructNameSpecifier(val name: IdentifierNode,
+                               override val tagKindKeyword: Keyword) : TagSpecifier() {
+  override val isCompleteType = false
+  override val isAnonymous = false
+  override val tagIdent = name
   override fun toString() = "struct ${name.name}"
 }
 
-data class UnionNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
+data class UnionNameSpecifier(val name: IdentifierNode,
+                              override val tagKindKeyword: Keyword) : TagSpecifier() {
+  override val isCompleteType = false
+  override val isAnonymous = false
+  override val tagIdent = name
   override fun toString() = "union ${name.name}"
 }
 
 data class StructDefinition(val name: IdentifierNode?,
-                            val decls: List<Declaration>) : TypeSpecifier() {
+                            val decls: List<Declaration>,
+                            override val tagKindKeyword: Keyword) : TagSpecifier() {
+  override val isCompleteType = true
+  override val isAnonymous get() = name == null
+  override val tagIdent: IdentifierNode get() = name!!
   override fun toString() = "struct ${if (name != null) "${name.name} " else ""}{...}"
 }
 
 data class UnionDefinition(val name: IdentifierNode?,
-                           val decls: List<Declaration>) : TypeSpecifier() {
+                           val decls: List<Declaration>,
+                           override val tagKindKeyword: Keyword) : TagSpecifier() {
+  override val isCompleteType = true
+  override val isAnonymous get() = name == null
+  override val tagIdent: IdentifierNode get() = name!!
   override fun toString() = "union ${if (name != null) "${name.name} " else ""}{...}"
 }
 
@@ -441,8 +466,7 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
    * @return true if this [DeclarationSpecifier] is sufficient by itself, and does not necessarily
    * need declarators after it
    */
-  fun canBeTag() = typeSpec is StructDefinition || typeSpec is UnionDefinition ||
-      typeSpec is StructNameSpecifier || typeSpec is UnionNameSpecifier || typeSpec is EnumSpecifier
+  fun isTag() = typeSpec is TagSpecifier
 
   fun isThreadLocal() = threadLocal != null
 
