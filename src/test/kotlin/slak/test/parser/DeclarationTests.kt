@@ -2,7 +2,6 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -150,5 +149,11 @@ class DeclarationTests {
   fun `Typedef Multiple Declarators`() {
     val p = prepareCode("typedef int new_int, * new_int2, * const new_int3;", source)
     p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Typedef Requires Name`() {
+    val p = prepareCode("typedef int;", source)
+    p.assertDiags(DiagnosticId.TYPEDEF_REQUIRES_NAME)
   }
 }

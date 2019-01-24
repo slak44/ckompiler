@@ -64,12 +64,17 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat() // The ';'
-      if (declSpec.canBeTag()) {
-        // FIXME: actually do something with the "tag"
-      } else {
-        parserDiagnostic {
+      when {
+        declSpec.canBeTag() -> {
+          // FIXME: actually do something with the "tag"
+        }
+        declSpec.isTypedef() -> parserDiagnostic {
+          id = DiagnosticId.TYPEDEF_REQUIRES_NAME
+          columns(declSpec.range!!)
+        }
+        else -> parserDiagnostic {
           id = DiagnosticId.MISSING_DECLARATIONS
-          errorOn(safeToken(0))
+          columns(declSpec.range!!)
         }
       }
       return Pair(declSpec, Optional.empty())
@@ -352,15 +357,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       if (declarator == null) return
       if (ds.isTypedef()) {
         // Add typedef to scope
-        val name = declarator.name()
-        if (name != null) {
-          createTypedef(TypedefName(ds, declarator.indirection, name))
-        } else {
-          parserDiagnostic {
-            id = DiagnosticId.TYPEDEF_REQUIRES_NAME
-            columns(ds.range!!)
-          }
-        }
+        createTypedef(TypedefName(ds, declarator.indirection, declarator.name()!!))
       } else {
         // Add ident to scope
         declarator.name()?.let { newIdentifier(it) }
