@@ -42,7 +42,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
       if (isNotEaten()) eat()
       return ErrorStatement().withRange(rangeOne())
     } else {
-      val ident = IdentifierNode((current() as Identifier).name).withRange(rangeOne())
+      val ident = IdentifierNode.from(current())
       eat() // The ident
       if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
         parserDiagnostic {

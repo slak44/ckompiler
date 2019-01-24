@@ -139,7 +139,7 @@ class DiagnosticBuilder {
   }
 
   fun errorOn(token: Token) {
-    sourceColumns.add(token.startIdx until token.startIdx + token.consumedChars)
+    sourceColumns.add(token.range)
   }
 
   fun formatArgs(vararg args: Any) {

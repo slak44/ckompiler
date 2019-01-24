@@ -18,10 +18,7 @@ interface ITokenHandler {
   }
 
   /** Get a range of the current token. Useful for [ErrorNode]s or [Terminal]s. */
-  fun rangeOne(): IntRange {
-    val tok = safeToken(0)
-    return tok.startIdx until tok.startIdx + tok.consumedChars
-  }
+  fun rangeOne() = safeToken(0).range
 
   fun parentContext(): List<Token>
   fun parentIdx(): Int

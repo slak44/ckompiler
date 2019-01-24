@@ -257,7 +257,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   /** C standard: 6.7.6.1 */
   private fun parseNameDeclarator(): NameDeclarator? {
     val id = current() as? Identifier ?: return null
-    val name = NameDeclarator(IdentifierNode(id.name).withRange(rangeOne())).withRange(rangeOne())
+    val name = NameDeclarator.from(id)
     eat() // The identifier token
     return name
   }

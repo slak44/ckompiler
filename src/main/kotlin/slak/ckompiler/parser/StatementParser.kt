@@ -70,7 +70,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val ident = current()
     // FIXME: this only parses the first kind of labeled statement (6.8.1)
     if (ident !is Identifier || relative(1).asPunct() != Punctuators.COLON) return null
-    val label = IdentifierNode(ident.name).withRange(rangeOne())
+    val label = IdentifierNode.from(ident)
     newIdentifier(label, isLabel = true)
     eat() // Get rid of ident
     eat() // Get rid of ':'

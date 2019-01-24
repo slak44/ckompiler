@@ -279,7 +279,18 @@ data class BinaryExpression(val op: Operators,
   override fun toString() = "($lhs $op $rhs)"
 }
 
-data class IdentifierNode(val name: String) : Expression(), Terminal
+data class IdentifierNode(val name: String) : Expression(), Terminal {
+  constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)
+
+  companion object {
+    /**
+     * Creates an [IdentifierNode] from an [Identifier].
+     * @param identifier this [Token] is casted to an [Identifier]
+     */
+    fun from(identifier: Token) =
+        IdentifierNode(identifier as Identifier).withRange(identifier.range)
+  }
+}
 
 data class IntegerConstantNode(val value: Long,
                                val suffix: IntegralSuffix) : Expression(), Terminal {
@@ -527,6 +538,16 @@ data class NameDeclarator(val name: IdentifierNode) : Declarator() {
   }
 
   override fun toString() = "NameDeclarator(${name.name})"
+
+  companion object {
+    /**
+     * Creates a [NameDeclarator] from an [Identifier].
+     * @param identifier this [Token] is casted to an [Identifier]
+     * @see IdentifierNode.from
+     */
+    fun from(identifier: Token) =
+        NameDeclarator(IdentifierNode.from(identifier)).withRange(identifier.range)
+  }
 }
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list

@@ -236,10 +236,8 @@ class SpecParser(declarationParser: DeclarationParser) :
     val startTok = current()
     val isUnion = current().asKeyword() == Keywords.UNION
     eat() // struct or union
-    val name = (current() as? Identifier)?.let {
-      eat()
-      IdentifierNode(it.name)
-    }
+    val name = if (current() is Identifier) IdentifierNode.from(current()) else null
+    if (name != null) eat() // The identifier
     if (current().asPunct() != Punctuators.LBRACKET) {
       // This is the case where it's just a type specifier
       // Like "struct person p;"
@@ -347,7 +345,7 @@ class SpecParser(declarationParser: DeclarationParser) :
       // Only look for `typedef-name` if we don't already have a `type-specifier`
       if (current() is Identifier && typeSpecifier == null) {
         // FIXME: this identifiernode boilerplate
-        val identifier = IdentifierNode((current() as Identifier).name).withRange(rangeOne())
+        val identifier = IdentifierNode.from(current())
         // If there is no typedef, it's probably a declarator name, so we're done with decl specs
         val possibleTypedef = searchTypedef(identifier) ?: break@specLoop
         eat() // The identifier

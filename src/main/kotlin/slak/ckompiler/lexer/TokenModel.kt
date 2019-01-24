@@ -212,6 +212,8 @@ sealed class Token(val consumedChars: Int) {
       return field
     }
 
+  val range: IntRange by lazy { startIdx until startIdx + consumedChars }
+
   init {
     if (consumedChars == 0) {
       logger.throwICE("Zero-length token created") { "token: $this" }
