@@ -2,7 +2,6 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -304,5 +303,18 @@ class SpecTests {
       typedef unsigned int blabla = 23;
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.TYPEDEF_NO_INITIALIZER)
+  }
+
+  @Test
+  fun `Typedef As Type Specifier For External Declaration`() {
+    val p = prepareCode("""
+      typedef const unsigned int special_int;
+      special_int x = 213;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
+        typeQualifiers = listOf(Keywords.CONST.kw),
+        typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
+    "special_int".typedefBy(typedefSpec) declare ("x" assign int(213)) assertEquals p.root.decls[0]
   }
 }

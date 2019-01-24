@@ -188,6 +188,12 @@ internal fun StructDefinition.toSpec() = DeclarationSpecifier(typeSpec = this)
 internal infix fun String.bitSize(expr: Expression) = StructDeclarator(nameDecl(this), expr)
 internal infix fun String.bitSize(it: Long) = this bitSize int(it)
 
+internal fun String.typedefBy(ds: DeclarationSpecifier): DeclarationSpecifier {
+  if (!ds.isTypedef()) throw IllegalArgumentException("Not typedef")
+  val td = TypedefName(ds, emptyList(), name(this))
+  return DeclarationSpecifier(typeSpec = TypedefNameSpecifier(name(this), td))
+}
+
 internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.ADD
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB
 internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.MUL
