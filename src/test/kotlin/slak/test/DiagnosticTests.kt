@@ -1,7 +1,7 @@
 package slak.test
 
 import org.junit.Test
-import slak.ckompiler.DiagnosticId
+import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.Parser
@@ -20,11 +20,15 @@ class DiagnosticTests {
     assertEquals(text.length - 1, l.diags[0].sourceColumns[0].start)
   }
 
-  private fun Parser.assertDiagCaret(diagNr: Int, line: Int? = null, col: Int? = null) {
+  private fun Parser.assertDiagCaret(diagNr: Int,
+                                     line: Int? = null,
+                                     col: Int? = null,
+                                     colCount: Int? = null) {
     assert(diagNr >= 0 && diagNr < diags.size)
     val (errLine, errCol, _) = diags[diagNr].errorOf(diags[diagNr].caret)
     line?.let { assertEquals(line, errLine) }
     col?.let { assertEquals(col, errCol) }
+    colCount?.let { assertEquals(it, diags[diagNr].caret.length()) }
   }
 
   @Test
@@ -45,7 +49,7 @@ class DiagnosticTests {
   fun `Parser Diagnostic Correct Column In Line`() {
     val code = "int;"
     val p = prepareCode(code, source)
-    p.assertDiagCaret(diagNr = 0, line = 1, col = code.indexOf(';'))
+    p.assertDiagCaret(diagNr = 0, line = 1, col = 0, colCount = 3)
   }
 
   @Test
@@ -61,8 +65,7 @@ class DiagnosticTests {
     """.trimIndent(), source)
     //                       ^~~~~~~
     //                       7 chars
-    p.assertDiagCaret(diagNr = 0, line = 1)
-    assertEquals(7, p.diags[0].caret.endInclusive + 1 - p.diags[0].caret.start)
+    p.assertDiagCaret(diagNr = 0, line = 1, colCount = 7)
   }
 
   @Test

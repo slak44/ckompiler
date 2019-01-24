@@ -3,6 +3,7 @@ package slak.ckompiler
 import mu.KLogger
 import slak.ckompiler.DiagnosticKind.*
 import slak.ckompiler.lexer.Token
+import slak.ckompiler.parser.ASTNode
 import kotlin.math.max
 import kotlin.math.min
 
@@ -65,6 +66,8 @@ enum class DiagnosticKind(val text: String) {
 
 typealias SourceFileName = String
 
+fun IntRange.length() = endInclusive + 1 - start
+
 data class Diagnostic(val id: DiagnosticId,
                       val messageFormatArgs: List<Any>,
                       val sourceFileName: SourceFileName,
@@ -105,7 +108,7 @@ data class Diagnostic(val id: DiagnosticId,
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     val spacesCount = max(col, 0)
     val tildeCount = min(
-        max(caret.endInclusive - caret.start, 0), // Size of provided range
+        max(caret.length() - 1, 0), // Size of provided range (caret eats one)
         max(lineText.length - spacesCount + 1, 0) // Size of spaces + 1 for the caret
     )
     val firstLine = "$sourceFileName:$line:$col: ${id.kind.text}: $msg [$origin|${id.name}]"

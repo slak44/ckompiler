@@ -54,7 +54,7 @@ class StatementParser(declarationParser: DeclarationParser,
       tokenContext(rbracket) { parseCompoundItems(this) }
     }
     eat() // Get rid of '}'
-    return compound.withRange(lbracket until tokenAt(rbracket))
+    return compound.withRange(lbracket..tokenAt(rbracket))
   }
 
   /**
@@ -77,8 +77,7 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       return errorSt()
     }
-    return LabeledStatement(label, labeled)
-        .withRange(ident.startIdx until labeled.tokenRange.endInclusive + 1)
+    return LabeledStatement(label, labeled).withRange(ident..labeled)
   }
 
   /**
@@ -141,10 +140,9 @@ class StatementParser(declarationParser: DeclarationParser,
         elseStatement
       }
       return IfStatement(cond, statementSuccess, statementFailure)
-          .withRange(ifTok.startIdx until statementFailure.tokenRange.endInclusive + 1)
+          .withRange(ifTok..statementFailure)
     } else {
-      return IfStatement(cond, statementSuccess, null)
-          .withRange(ifTok.startIdx until statementSuccess.tokenRange.endInclusive + 1)
+      return IfStatement(cond, statementSuccess, null).withRange(ifTok..statementSuccess)
     }
   }
 
@@ -210,8 +208,7 @@ class StatementParser(declarationParser: DeclarationParser,
     } else {
       statement
     }
-    return WhileStatement(condition, loopable)
-        .withRange(whileTok.startIdx until loopable.tokenRange.endInclusive + 1)
+    return WhileStatement(condition, loopable).withRange(whileTok..loopable)
   }
 
   /**
@@ -276,8 +273,7 @@ class StatementParser(declarationParser: DeclarationParser,
     } else {
       eat() // The ';'
     }
-    return DoWhileStatement(condition, loopable)
-        .withRange(doTok.startIdx until condition.tokenRange.endInclusive + 1)
+    return DoWhileStatement(condition, loopable).withRange(doTok..condition)
   }
 
   /**
@@ -361,8 +357,7 @@ class StatementParser(declarationParser: DeclarationParser,
       return ForStatement(clause1, expr2, expr3, errorExpr())
           .withRange(forTok until safeToken(0))
     }
-    return ForStatement(clause1, expr2, expr3, loopable)
-        .withRange(forTok.startIdx until loopable.tokenRange.endInclusive + 1)
+    return ForStatement(clause1, expr2, expr3, loopable).withRange(forTok..loopable)
   }
 
   /**

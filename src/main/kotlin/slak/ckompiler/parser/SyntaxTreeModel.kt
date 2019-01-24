@@ -6,11 +6,16 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("AST")
 
-infix fun Token.until(other: Token): IntRange = this.startIdx..other.startIdx
+infix fun Token.until(other: Token): IntRange = this.startIdx until other.startIdx
+
+operator fun Token.rangeTo(other: Token) = startIdx until (other.startIdx + other.consumedChars)
 
 operator fun IntRange.rangeTo(other: IntRange) = this.start..other.endInclusive
 
 operator fun Token.rangeTo(other: ASTNode) = this.startIdx..other.tokenRange.endInclusive
+
+operator fun ASTNode.rangeTo(other: Token) =
+    tokenRange.start until (other.startIdx + other.consumedChars)
 
 operator fun ASTNode.rangeTo(other: ASTNode) = tokenRange..other.tokenRange
 

@@ -56,8 +56,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
-      lhs = BinaryExpression(op, lhs, rhs)
-          .withRange(lhs.tokenRange.start..rhs.tokenRange.endInclusive)
+      lhs = BinaryExpression(op, lhs, rhs).withRange(lhs..rhs)
     }
     return lhs
   }
@@ -159,7 +158,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
       current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
         val c = current().asPunct()
-        val r = expr.tokenRange.start..rangeOne().endInclusive
+        val r = expr..safeToken(0)
         eat() // The postfix op
         if (c == Punctuators.INC) PostfixIncrement(expr).withRange(r)
         else PostfixDecrement(expr).withRange(r)
@@ -173,16 +172,15 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       val c = current()
       eat() // The prefix op
       val expr = parseUnaryExpression() ?: errorExpr()
-      val range = c.startIdx until expr.tokenRange.endInclusive + 1
-      if (c.asPunct() == Punctuators.INC) PrefixIncrement(expr).withRange(range)
-      else PrefixDecrement(expr).withRange(range)
+      if (c.asPunct() == Punctuators.INC) PrefixIncrement(expr).withRange(c..expr)
+      else PrefixDecrement(expr).withRange(c..expr)
     }
     current().asUnaryOperator() != null -> {
       val c = current()
       val op = c.asUnaryOperator()!!
       eat() // The unary op
       val expr = parsePrimaryExpr() ?: errorExpr()
-      UnaryExpression(op, expr).withRange(c.startIdx until expr.tokenRange.endInclusive + 1)
+      UnaryExpression(op, expr).withRange(c..expr)
     }
     current().asKeyword() == Keywords.ALIGNOF -> {
       eat() // The ALIGNOF
@@ -201,8 +199,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         }
         else -> {
           val expr = parseUnaryExpression() ?: errorExpr()
-          SizeofExpression(expr)
-              .withRange(relative(-1).startIdx until expr.tokenRange.endInclusive + 1)
+          SizeofExpression(expr).withRange(relative(-1)..expr)
         }
       }
     }
