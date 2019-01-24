@@ -115,6 +115,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     IDebugHandler by declarationParser,
     ITokenHandler by declarationParser,
     IParenMatcher by declarationParser,
+    IScopeHandler by declarationParser,
     IDeclarationParser by declarationParser {
 
   private fun diagDuplicate(last: Keyword) = parserDiagnostic {
@@ -343,6 +344,15 @@ class SpecParser(declarationParser: DeclarationParser) :
     var typeSpecifier: TypeSpecifier? = null
 
     specLoop@ while (isNotEaten()) {
+      // Only look for `typedef-name` if we don't already have a `type-specifier`
+      if (current() is Identifier && typeSpecifier == null) {
+        // FIXME: this identifiernode boilerplate
+        val identifier = IdentifierNode((current() as Identifier).name).withRange(rangeOne())
+        // If there is no typedef, it's probably a declarator name, so we're done with decl specs
+        val possibleTypedef = searchTypedef(identifier) ?: break@specLoop
+        eat() // The identifier
+        typeSpecifier = TypedefNameSpecifier(identifier, possibleTypedef)
+      }
       val tok = current() as? Keyword ?: break@specLoop
       when (tok.value) {
         Keywords.COMPLEX -> parserDiagnostic {

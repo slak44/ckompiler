@@ -42,8 +42,13 @@ class StatementParser(declarationParser: DeclarationParser,
     fun parseCompoundItems(scope: LexicalScope): CompoundStatement {
       val items = mutableListOf<BlockItem>()
       while (isNotEaten()) {
-        val item = parseDeclaration(SpecValidationRules.NONE)?.let { d -> DeclarationItem(d) }
-            ?: parseStatement()?.let { s -> StatementItem(s) }
+        // Parse declarations after statements (if the first thing is an identifier, the
+        // [SpecParser] gets confused)
+        // Parse expressions after declarations (we get fake diagnostics about expecting a primary
+        // expression, when the construct was actually just part of a [DeclarationSpecifier])
+        val item = parseStatement(parseExpressionStatement = false)?.let { s -> StatementItem(s) }
+            ?: parseDeclaration(SpecValidationRules.NONE)?.let { d -> DeclarationItem(d) }
+            ?: parseExpressionStatement()?.let { s -> StatementItem(s) }
             ?: continue
         items += item
       }
@@ -362,16 +367,17 @@ class StatementParser(declarationParser: DeclarationParser,
 
   /**
    * C standard: A.2.3
+   * @param parseExpressionStatement if false, this function will not parse expression statements
    * @return null if no statement was found, or the [Statement] otherwise
    */
-  private fun parseStatement(): Statement? {
+  private fun parseStatement(parseExpressionStatement: Boolean = true): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
       val n = Noop().withRange(rangeOne())
       eat()
       return n
     }
-    return parseLabeledStatement()
+    val res = parseLabeledStatement()
         ?: parseCompoundStatement()
         ?: parseIfStatement()
         ?: parseGotoStatement()
@@ -381,7 +387,7 @@ class StatementParser(declarationParser: DeclarationParser,
         ?: parseContinue()
         ?: parseBreak()
         ?: parseReturn()
-        ?: parseExpressionStatement()
-        ?: TODO("unimplemented grammar")
+    if (res != null) return res
+    return if (parseExpressionStatement) parseExpressionStatement() else null
   }
 }

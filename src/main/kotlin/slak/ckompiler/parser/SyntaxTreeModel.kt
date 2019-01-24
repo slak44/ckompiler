@@ -89,7 +89,11 @@ fun <T : ASTNode> T.withRange(range: IntRange): T {
   return this
 }
 
-/** Stores the data of a scoped `typedef`. */
+/**
+ * Stores the data of a scoped `typedef`.
+ * @param typedefIdent this is the [IdentifierNode] found at the place where the typedef was
+ * declared; actual declarations that use this typedef will have their own identifiers
+ */
 data class TypedefName(val declSpec: DeclarationSpecifier,
                        val indirection: List<TypeQualifierList>,
                        val typedefIdent: IdentifierNode) {
@@ -309,7 +313,10 @@ data class StringLiteralNode(val string: String,
 sealed class TypeSpecifier
 
 data class EnumSpecifier(val name: IdentifierNode) : TypeSpecifier()
-data class TypedefNameSpecifier(val name: IdentifierNode) : TypeSpecifier()
+
+data class TypedefNameSpecifier(val name: IdentifierNode, val type: TypedefName) : TypeSpecifier() {
+  override fun toString() = "${name.name} (aka ${type.typedefedToString()})"
+}
 
 data class StructNameSpecifier(val name: IdentifierNode) : TypeSpecifier() {
   override fun toString() = "struct ${name.name}"

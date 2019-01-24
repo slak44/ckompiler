@@ -247,7 +247,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     when (tok) {
       is Identifier -> {
         val ident = IdentifierNode(tok.name)
-        val existingIdent = searchInScope(ident)
+        val existingIdent = searchIdent(ident)
         if (existingIdent == null) parserDiagnostic {
           id = DiagnosticId.USE_UNDECLARED
           formatArgs(tok.name)

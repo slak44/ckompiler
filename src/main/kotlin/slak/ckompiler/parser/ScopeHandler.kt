@@ -35,7 +35,13 @@ interface IScopeHandler {
    * Searches all the scopes for a given identifier.
    * @return null if no such identifier exists, or the previous [IdentifierNode] otherwise
    */
-  fun searchInScope(target: IdentifierNode): IdentifierNode?
+  fun searchIdent(target: IdentifierNode): IdentifierNode?
+
+  /**
+   * Searches all the scopes for a typedef.
+   * @return null if no such identifier exists, or the [TypedefName] otherwise
+   */
+  fun searchTypedef(target: IdentifierNode): TypedefName?
 }
 
 /** @see IScopeHandler */
@@ -94,10 +100,18 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     listRef += id
   }
 
-  override fun searchInScope(target: IdentifierNode): IdentifierNode? {
+  override fun searchIdent(target: IdentifierNode): IdentifierNode? {
     scopeStack.forEach {
       val idx = it.idents.indexOfFirst { (name) -> name == target.name }
       if (idx != -1) return it.idents[idx]
+    }
+    return null
+  }
+
+  override fun searchTypedef(target: IdentifierNode): TypedefName? {
+    scopeStack.forEach {
+      val idx = it.typedefNames.indexOfFirst { (_, _, ident) -> ident.name == target.name }
+      if (idx != -1) return it.typedefNames[idx]
     }
     return null
   }
