@@ -2,7 +2,7 @@ import java.net.URI
 
 plugins {
   application
-  kotlin("jvm") version "1.3.11"
+  kotlin("jvm") version "1.3.20"
 }
 
 group = "ckompiler"
