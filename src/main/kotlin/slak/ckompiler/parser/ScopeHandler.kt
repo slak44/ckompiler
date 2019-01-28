@@ -53,11 +53,14 @@ interface IScopeHandler {
    * @return null if no such identifier exists, or the [TypedefName] otherwise
    */
   fun searchTypedef(target: IdentifierNode): TypedefName?
+
+  val rootScope: LexicalScope
 }
 
 /** @see IScopeHandler */
 class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by debugHandler {
   private val scopeStack = Stack<LexicalScope>()
+  override val rootScope: LexicalScope get() = scopeStack.first()
 
   init {
     scopeStack.push(LexicalScope())

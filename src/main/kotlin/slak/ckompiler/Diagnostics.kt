@@ -33,6 +33,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
   EXPECTED_RPAREN_AFTER_VARIADIC(ERROR, "Expected ')' after variadic '...'"),
+  TRANSLATION_UNIT_NEEDS_DECL(WARNING, """
+    ISO C requires a translation unit to contain at least one declaration
+  """.trimIndent()),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

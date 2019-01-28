@@ -74,8 +74,17 @@ private class TranslationUnitParser(
   val root = RootNode()
 
   init {
-    root.setRange(tokenAt(0) until relative(tokenCount - 1))
+    if (tokenCount > 0) root.setRange(tokenAt(0) until relative(tokenCount - 1))
     translationUnit()
+    if (root.decls.isEmpty() &&
+        rootScope.tagNames.isEmpty() &&
+        rootScope.typedefNames.isEmpty() &&
+        diags.isEmpty()) {
+      parserDiagnostic {
+        id = DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL
+        column(0)
+      }
+    }
     diags.forEach { it.print() }
   }
 
