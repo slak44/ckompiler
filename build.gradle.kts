@@ -23,6 +23,6 @@ dependencies {
   implementation(group = "com.github.Kotlin", name = "kotlinx.cli", version = "-SNAPSHOT")
   implementation(group = "org.slf4j", name = "slf4j-log4j12", version = "1.7.25")
   implementation(group = "io.github.microutils", name = "kotlin-logging", version = "1.6.10")
-  testImplementation(kotlin("test-junit", "1.3.11"))
+  testImplementation(kotlin("test-junit"))
   testImplementation(group = "junit", name = "junit", version = "4.11")
 }
