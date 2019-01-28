@@ -1,7 +1,10 @@
-package slak.test
+package slak.test.analysis
 
 import org.junit.Test
 import slak.ckompiler.analysis.CodeGenerator
+import slak.test.assertNoDiagnostics
+import slak.test.prepareCode
+import slak.test.source
 
 class CodegenTests {
   @Test
