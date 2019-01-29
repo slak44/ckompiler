@@ -223,7 +223,35 @@ sealed class Token(val consumedChars: Int) {
   }
 }
 
-class ErrorToken(consumedChars: Int) : Token(consumedChars)
+/**
+ * Implementors represent preprocessing tokens.
+ *
+ * C standard: A.1.1
+ */
+interface PPToken {
+  val consumedChars: Int
+}
+
+data class PPOther(val extraneous: Char): PPToken {
+  init {
+    if (extraneous.isWhitespace()) {
+      logger.throwICE("PPOther is not allowed to be whitespace") { this }
+    }
+  }
+  override val consumedChars = 1
+}
+
+/** C standard: A.1.8 */
+data class HeaderName(val data: String, val kind: Char) : PPToken {
+  override val consumedChars = data.length + 1
+}
+
+/** C standard: A.1.9 */
+data class PPNumber(val data: String) : PPToken {
+  override val consumedChars = data.length
+}
+
+class ErrorToken(consumedChars: Int) : Token(consumedChars), PPToken
 
 sealed class StaticToken(consumedChars: Int) : Token(consumedChars) {
   abstract val enum: StaticTokenEnum
@@ -235,13 +263,13 @@ data class Keyword(val value: Keywords) : StaticToken(value.keyword.length) {
 
 fun Token.asKeyword(): Keywords? = (this as? Keyword)?.value
 
-data class Punctuator(val pct: Punctuators) : StaticToken(pct.s.length) {
+data class Punctuator(val pct: Punctuators) : StaticToken(pct.s.length), PPToken {
   override val enum: StaticTokenEnum get() = pct
 }
 
 fun Token.asPunct(): Punctuators? = (this as? Punctuator)?.pct
 
-data class Identifier(val name: String) : Token(name.length)
+data class Identifier(val name: String) : Token(name.length), PPToken
 
 data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix: Radix) :
     Token(radix.prefixLength + n.length + suffix.length) {
@@ -275,7 +303,7 @@ data class FloatingConstant(val f: String,
 }
 
 sealed class CharSequence(dataLength: Int,
-                          prefixLength: Int) : Token(prefixLength + dataLength + 2)
+                          prefixLength: Int) : Token(prefixLength + dataLength + 2), PPToken
 
 data class StringLiteral(
     val data: String,

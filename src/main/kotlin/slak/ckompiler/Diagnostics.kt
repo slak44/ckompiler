@@ -10,6 +10,9 @@ import kotlin.math.min
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
 
+  // Preprocessor
+  EXPECTED_H_Q_CHAR_SEQUENCE(ERROR, "Expected %cFILENAME%c"),
+
   // Lexer
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
   MISSING_QUOTE(ERROR, "Missing terminating %c character"),
