@@ -5,6 +5,7 @@ import mu.KotlinLogging
 import slak.ckompiler.analysis.createGraphFor
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.lexer.Lexer
+import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File
@@ -13,6 +14,7 @@ import kotlin.system.exitProcess
 fun main(args: Array<String>) {
   val logger = KotlinLogging.logger("CLI")
   val cli = CommandLineInterface("ckompiler")
+  val ppOnly by cli.flagArgument("-E", "Preprocess only")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
   val files by cli.positionalArgumentsList(
@@ -27,7 +29,15 @@ fun main(args: Array<String>) {
   }
   files.map { File(it) }.forEach {
     val text = it.readText()
-    val l = Lexer(text, it.absolutePath)
+    val pp = Preprocessor(text, it.absolutePath)
+    if (pp.diags.isNotEmpty()) {
+      return@forEach
+    }
+    if (ppOnly) {
+      println(pp.alteredSourceText)
+      return@forEach
+    }
+    val l = Lexer(pp.alteredSourceText, it.absolutePath)
     if (l.diags.isNotEmpty()) {
       return@forEach
     }

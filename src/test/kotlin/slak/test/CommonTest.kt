@@ -8,13 +8,14 @@ import slak.ckompiler.parser.*
 import java.io.File
 import kotlin.test.assertEquals
 
-internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
+internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s).file)
 
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
-  val lexer = Lexer(s, source)
+  val pp = Preprocessor(s, source)
+  val lexer = Lexer(pp.alteredSourceText, source)
   lexer.assertNoDiagnostics()
   return Parser(lexer.tokens, source, s)
 }
