@@ -1,5 +1,7 @@
 package slak.ckompiler.parser
 
+import slak.ckompiler.DebugHandler
+import slak.ckompiler.IDebugHandler
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.Token
 import slak.ckompiler.lexer.asPunct

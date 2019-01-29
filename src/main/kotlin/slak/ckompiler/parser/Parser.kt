@@ -31,31 +31,6 @@ class Parser(tokens: List<Token>, srcFileName: SourceFileName, srcText: String) 
   val root = parser.root
 }
 
-interface IDebugHandler {
-  val logger: KLogger
-  val diags: List<Diagnostic>
-  fun diagnostic(build: DiagnosticBuilder.() -> Unit)
-}
-
-class DebugHandler(private val srcFileName: SourceFileName,
-                   private val srcText: String) : IDebugHandler {
-  override val logger: KLogger get() = DebugHandler.logger
-  override val diags = mutableListOf<Diagnostic>()
-
-  override fun diagnostic(build: DiagnosticBuilder.() -> Unit) {
-    diags += createDiagnostic {
-      sourceFileName = srcFileName
-      sourceText = srcText
-      origin = "Parser"
-      this.build()
-    }
-  }
-
-  companion object {
-    private val logger = KotlinLogging.logger("Parser")
-  }
-}
-
 /**
  * Parses a translation unit.
  *

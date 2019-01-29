@@ -1,6 +1,8 @@
 package slak.ckompiler.parser
 
+import slak.ckompiler.DebugHandler
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.IDebugHandler
 import slak.ckompiler.throwICE
 import java.util.*
 
