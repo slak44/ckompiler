@@ -2,11 +2,10 @@ package slak.ckompiler.lexer
 
 import slak.ckompiler.*
 
-class Lexer(private val textSource: String, private val srcFileName: SourceFileName) :
-    IDebugHandler by DebugHandler("Lexer", srcFileName, textSource) {
+class Lexer(textSource: String, srcFileName: SourceFileName) :
+    IDebugHandler by DebugHandler("Lexer", srcFileName, textSource),
+    ITextSourceHandler by TextSourceHandler(textSource, srcFileName) {
   val tokens = mutableListOf<Token>()
-  private var src: String = textSource
-  private var currentOffset: Int = 0
 
   init {
     tokenize()
@@ -43,47 +42,63 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
       }
       return if (idx == -1) s.length else idx
     }
-  }
 
-  /** C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5 */
-  private fun charSequence(s: String, quoteChar: Char, prefixLength: Int): String {
-    val noPrefix = s.drop(1 + prefixLength)
-    // FIXME implement escape sequences
-    val stopIdx = noPrefix.indexOfFirst { it == '\n' || it == quoteChar }
-    if (stopIdx == -1 || noPrefix[stopIdx] == '\n') diagnostic {
-      id = DiagnosticId.MISSING_QUOTE
-      messageFormatArgs = listOf(quoteChar)
-      column(currentOffset)
-      if (stopIdx != -1) column(currentOffset - 1 + stopIdx - 1)
+    /**
+     * C standard: A.1.3, A.1.4
+     * @return an null if the string is not an identifier, or the [Identifier] otherwise
+     */
+    private fun identifier(s: String): Identifier? {
+      // An identifier must start with a non-digit if it isn't a universal character name
+      if (!isNonDigit(s[0])) return null
+      // FIXME check for universal character names
+      val idx = s.indexOfFirst { !isDigit(it) && !isNonDigit(it) }
+      val ident = s.slice(0 until (if (idx == -1) s.length else idx))
+      return Identifier(ident)
     }
-    return noPrefix.slice(0 until stopIdx)
-  }
 
-  /** C standard: A.1.6, 6.4.5 */
-  private fun stringLiteral(s: String): StringLiteral? {
-    val encoding = when {
-      s.startsWith("\"") -> StringEncoding.CHAR
-      s.startsWith("u8\"") -> StringEncoding.UTF8
-      s.startsWith("L\"") -> StringEncoding.WCHAR_T
-      s.startsWith("u\"") -> StringEncoding.CHAR16_T
-      s.startsWith("U\"") -> StringEncoding.CHAR32_T
-      else -> return null
+    /** C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5 */
+    private fun IDebugHandler.charSequence(s: String,
+                                           currentOffset: Int,
+                                           quoteChar: Char,
+                                           prefixLength: Int): String {
+      val noPrefix = s.drop(1 + prefixLength)
+      // FIXME implement escape sequences
+      val stopIdx = noPrefix.indexOfFirst { it == '\n' || it == quoteChar }
+      if (stopIdx == -1 || noPrefix[stopIdx] == '\n') diagnostic {
+        id = DiagnosticId.MISSING_QUOTE
+        formatArgs(quoteChar)
+        column(currentOffset)
+        if (stopIdx != -1) column(currentOffset - 1 + stopIdx - 1)
+      }
+      return noPrefix.slice(0 until stopIdx)
     }
-    val data = charSequence(s, '"', encoding.prefixLength)
-    return StringLiteral(data, encoding)
-  }
 
-  /** C standard: A.1.5 */
-  private fun characterConstant(s: String): CharLiteral? {
-    val encoding = when {
-      s.startsWith("'") -> CharEncoding.UNSIGNED_CHAR
-      s.startsWith("L'") -> CharEncoding.WCHAR_T
-      s.startsWith("u'") -> CharEncoding.CHAR16_T
-      s.startsWith("U'") -> CharEncoding.CHAR32_T
-      else -> return null
+    /** C standard: A.1.6, 6.4.5 */
+    private fun IDebugHandler.stringLiteral(s: String, currentOffset: Int): StringLiteral? {
+      val encoding = when {
+        s.startsWith("\"") -> StringEncoding.CHAR
+        s.startsWith("u8\"") -> StringEncoding.UTF8
+        s.startsWith("L\"") -> StringEncoding.WCHAR_T
+        s.startsWith("u\"") -> StringEncoding.CHAR16_T
+        s.startsWith("U\"") -> StringEncoding.CHAR32_T
+        else -> return null
+      }
+      val data = charSequence(s, currentOffset, '"', encoding.prefixLength)
+      return StringLiteral(data, encoding)
     }
-    val data = charSequence(s, '\'', encoding.prefixLength)
-    return CharLiteral(data, encoding)
+
+    /** C standard: A.1.5 */
+    private fun IDebugHandler.characterConstant(s: String, currentOffset: Int): CharLiteral? {
+      val encoding = when {
+        s.startsWith("'") -> CharEncoding.UNSIGNED_CHAR
+        s.startsWith("L'") -> CharEncoding.WCHAR_T
+        s.startsWith("u'") -> CharEncoding.CHAR16_T
+        s.startsWith("U'") -> CharEncoding.CHAR32_T
+        else -> return null
+      }
+      val data = charSequence(s, currentOffset, '\'', encoding.prefixLength)
+      return CharLiteral(data, encoding)
+    }
   }
 
   /**
@@ -131,7 +146,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     val integerPartEnd = s.slice(0..dotIdx).indexOfFirst { !isDigit(it) }
     if (integerPartEnd < dotIdx) diagnostic {
       id = DiagnosticId.INVALID_DIGIT
-      messageFormatArgs = listOf(s[integerPartEnd + 1])
+      formatArgs(s[integerPartEnd + 1])
       column(currentOffset + integerPartEnd + 1)
     } else if (integerPartEnd > dotIdx) {
       logger.throwICE("Integer part of float contains whitespace or dot") {
@@ -239,59 +254,26 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     return null
   }
 
-  /**
-   * C standard: A.1.3, A.1.4
-   * @return an empty optional if the string is not an identifier, or the identifier otherwise
-   */
-  private fun identifier(s: String): Identifier? {
-    // An identifier must start with a non-digit if it isn't a universal character name
-    if (!isNonDigit(s[0])) return null
-    // FIXME check for universal character names
-    val idx = s.indexOfFirst { !isDigit(it) && !isNonDigit(it) }
-    val ident = s.slice(0 until (if (idx == -1) s.length else idx))
-    return Identifier(ident)
-  }
-
   private tailrec fun tokenize() {
-    src = src.trimStart {
-      if (it.isWhitespace()) {
-        currentOffset++
-        return@trimStart true
-      }
-      return@trimStart false
-    }
-    if (src.isEmpty()) return
+    // Ignore whitespace
+    dropCharsWhile(Char::isWhitespace)
+    if (currentSrc.isEmpty()) return
 
     // Comments
-    if (src.startsWith("//")) {
-      currentOffset += 2
-      if (src.isEmpty()) return
-      src = src.dropWhile {
-        if (it == '\n') return@dropWhile false
-        currentOffset++
-        return@dropWhile true
-      }
+    if (currentSrc.startsWith("//")) {
+      dropCharsWhile { it != '\n' }
       return tokenize()
-    } else if (src.startsWith("/*")) {
-      currentOffset += 2
-      if (src.isEmpty()) return
-      var dropped = 0
-      src = src.dropWhile {
-        if (it == '*' && src[dropped + 1] == '/') return@dropWhile false
-        dropped++
-        return@dropWhile true
-      }
-      currentOffset += dropped
-      if (src.isEmpty()) {
+    } else if (currentSrc.startsWith("/*")) {
+      dropCharsWhile { it != '*' || currentSrc[currentOffset + 1] != '/' }
+      if (currentSrc.isEmpty()) {
         // Unterminated comment
         diagnostic {
           id = DiagnosticId.UNFINISHED_COMMENT
           column(currentOffset)
         }
       } else {
-        // Get rid of the */
-        src = src.drop(2)
-        currentOffset += 2
+        // Get rid of the '*/'
+        dropChars(2)
       }
       return tokenize()
     }
@@ -305,18 +287,17 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
 
     // Only consume one token in each iteration
     val tok =
-        keyword(src)
-            ?: floatingConstant(src)
-            ?: integerConstant(src)
-            ?: characterConstant(src)
-            ?: stringLiteral(src)
-            ?: identifier(src)
-            ?: punct(src)
+        keyword(currentSrc)
+            ?: floatingConstant(currentSrc)
+            ?: integerConstant(currentSrc)
+            ?: characterConstant(currentSrc, currentOffset)
+            ?: stringLiteral(currentSrc, currentOffset)
+            ?: identifier(currentSrc)
+            ?: punct(currentSrc)
             ?: TODO("extraneous/unhandled thing")
     tok.startIdx = currentOffset
     tokens += tok
-    currentOffset += tok.consumedChars
-    src = src.drop(tok.consumedChars)
+    dropChars(tok.consumedChars)
     return tokenize()
   }
 }
