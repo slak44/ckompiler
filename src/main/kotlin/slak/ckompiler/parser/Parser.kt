@@ -34,7 +34,7 @@ class Parser(tokens: List<Token>, srcFileName: SourceFileName, srcText: String) 
 interface IDebugHandler {
   val logger: KLogger
   val diags: List<Diagnostic>
-  fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit)
+  fun diagnostic(build: DiagnosticBuilder.() -> Unit)
 }
 
 class DebugHandler(private val srcFileName: SourceFileName,
@@ -42,7 +42,7 @@ class DebugHandler(private val srcFileName: SourceFileName,
   override val logger: KLogger get() = DebugHandler.logger
   override val diags = mutableListOf<Diagnostic>()
 
-  override fun parserDiagnostic(build: DiagnosticBuilder.() -> Unit) {
+  override fun diagnostic(build: DiagnosticBuilder.() -> Unit) {
     diags += createDiagnostic {
       sourceFileName = srcFileName
       sourceText = srcText
@@ -80,7 +80,7 @@ private class TranslationUnitParser(
         rootScope.tagNames.isEmpty() &&
         rootScope.typedefNames.isEmpty() &&
         diags.isEmpty()) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL
         column(0)
       }
@@ -117,7 +117,7 @@ private class TranslationUnitParser(
     if (declSpec.isEmpty()) {
       // If we got here it means the current thing isn't a translation unit
       // So spit out an error and eat tokens
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_EXTERNAL_DECL
         errorOn(safeToken(0))
       }

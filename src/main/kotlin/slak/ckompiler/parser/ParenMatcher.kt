@@ -64,7 +64,7 @@ class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler) :
       return end
     }
     if (end == -1 || (tokenAt(end) as StaticToken).enum != final) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
         formatArgs(final.realName)
         if (end == -1) {
@@ -73,7 +73,7 @@ class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler) :
           errorOn(tokenAt(end))
         }
       }
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.MATCH_PAREN_TARGET
         formatArgs(start.realName)
         errorOn(safeToken(0))

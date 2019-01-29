@@ -34,7 +34,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     if (current().asKeyword() != Keywords.GOTO) return null
     eat()
     if (current() !is Identifier) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_IDENT
         errorOn(safeToken(0))
       }
@@ -45,7 +45,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
       val ident = IdentifierNode.from(current())
       eat() // The ident
       if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("goto statement")
           column(colPastTheEnd(0))
@@ -63,7 +63,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     if (current().asKeyword() != Keywords.CONTINUE) return null
     eat()
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("continue statement")
         column(colPastTheEnd(0))
@@ -78,7 +78,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     if (current().asKeyword() != Keywords.BREAK) return null
     eat()
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("break statement")
         column(colPastTheEnd(0))
@@ -97,7 +97,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     val finalIdx = if (semiIdx == -1) tokenCount else semiIdx
     val expr = parseExpr(finalIdx)
     if (semiIdx == -1 || (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON)) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("return statement")
         column(colPastTheEnd(0))

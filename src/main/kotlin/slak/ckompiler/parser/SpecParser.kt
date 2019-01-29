@@ -15,7 +15,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value
     if (storage != Keywords.REGISTER && storage != Keywords.AUTO) return@lambda
-    parserDiagnostic {
+    diagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(storage.keyword, "file-scoped variable")
       errorOn(it.storageClass)
@@ -27,7 +27,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
    * C standard: 6.8.5.3
    */
   FOR_INIT_DECLARATION(lambda@ {
-    if (it.isThreadLocal()) parserDiagnostic {
+    if (it.isThreadLocal()) diagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(it.threadLocal!!.value.keyword, "for loop initializer")
       errorOn(it.threadLocal)
@@ -35,7 +35,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value
     if (storage == Keywords.REGISTER || storage == Keywords.AUTO) return@lambda
-    parserDiagnostic {
+    diagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(storage.keyword, "for loop initializer")
       errorOn(it.storageClass)
@@ -48,7 +48,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
    * C standard: 6.7.1.4, 6.9.1.4
    */
   FUNCTION_DECLARATION(lambda@ {
-    if (it.isThreadLocal()) parserDiagnostic {
+    if (it.isThreadLocal()) diagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(it.threadLocal!!.value.keyword, "function")
       errorOn(it.threadLocal)
@@ -56,7 +56,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value
     if (storage != Keywords.EXTERN || storage != Keywords.STATIC) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.ILLEGAL_STORAGE_CLASS
         formatArgs(storage.keyword, "function")
         errorOn(it.storageClass)
@@ -69,13 +69,13 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
    * C standard: 6.9.1.6
    */
   FUNCTION_PARAMETER({
-    if (it.isThreadLocal()) parserDiagnostic {
+    if (it.isThreadLocal()) diagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(it.threadLocal!!.value.keyword, "function declarator")
       errorOn(it.threadLocal)
     }
     if (it.hasStorageClass() && it.storageClass!!.asKeyword() != Keywords.REGISTER) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.ILLEGAL_STORAGE_CLASS
         formatArgs(it.storageClass.value.keyword, "function declarator")
         errorOn(it.storageClass)
@@ -97,12 +97,12 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
    * C standard: 6.7.2.1
    */
   SPECIFIER_QUALIFIER({
-    if (it.functionSpecs.isNotEmpty()) parserDiagnostic {
+    if (it.functionSpecs.isNotEmpty()) diagnostic {
       id = DiagnosticId.SPEC_NOT_ALLOWED
       formatArgs("function specifier")
       errorOn(it.functionSpecs.first())
     }
-    if (it.hasStorageClass() || it.isThreadLocal()) parserDiagnostic {
+    if (it.hasStorageClass() || it.isThreadLocal()) diagnostic {
       id = DiagnosticId.SPEC_NOT_ALLOWED
       formatArgs("storage specifier")
       errorOn((it.threadLocal ?: it.storageClass)!!)
@@ -118,19 +118,19 @@ class SpecParser(declarationParser: DeclarationParser) :
     IScopeHandler by declarationParser,
     IDeclarationParser by declarationParser {
 
-  private fun diagDuplicate(last: Keyword) = parserDiagnostic {
+  private fun diagDuplicate(last: Keyword) = diagnostic {
     id = DiagnosticId.DUPLICATE_DECL_SPEC
     formatArgs(last.value.keyword)
     errorOn(last)
   }
 
-  private fun diagIncompat(original: String, last: Keyword) = parserDiagnostic {
+  private fun diagIncompat(original: String, last: Keyword) = diagnostic {
     id = DiagnosticId.INCOMPATIBLE_DECL_SPEC
     formatArgs(original)
     errorOn(last)
   }
 
-  private fun diagNotSigned(original: String, signed: Keyword) = parserDiagnostic {
+  private fun diagNotSigned(original: String, signed: Keyword) = diagnostic {
     id = DiagnosticId.TYPE_NOT_SIGNED
     formatArgs(original)
     errorOn(signed)
@@ -244,7 +244,7 @@ class SpecParser(declarationParser: DeclarationParser) :
       // This means `name` can't be null, because the declaration of an anonymous struct must
       // be a definition, and since we have no bracket, it isn't one
       if (name == null) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.ANON_STRUCT_MUST_DEFINE
           errorOn(tagKindKeyword)
         }
@@ -267,7 +267,7 @@ class SpecParser(declarationParser: DeclarationParser) :
           if (specQualList.isTag()) {
             declarations += Declaration(specQualList, emptyList())
           } else {
-            parserDiagnostic {
+            diagnostic {
               id = DiagnosticId.MISSING_DECLARATIONS
               errorOn(safeToken(0))
             }
@@ -279,7 +279,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     }
     eat() // The }
     if (isEaten()) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs(if (isUnion) "union" else "struct")
         column(colPastTheEnd(0))
@@ -354,7 +354,7 @@ class SpecParser(declarationParser: DeclarationParser) :
       }
       val tok = current() as? Keyword ?: break@specLoop
       when (tok.value) {
-        Keywords.COMPLEX -> parserDiagnostic {
+        Keywords.COMPLEX -> diagnostic {
           id = DiagnosticId.UNSUPPORTED_COMPLEX
           errorOn(safeToken(0))
         }
@@ -375,7 +375,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     // We found declaration specifiers, so this *is* a declarator, but there are no type specs
     if ((storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()) &&
         typeSpecifier == null) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.MISSING_TYPE_SPEC
         errorOn(safeToken(0))
       }

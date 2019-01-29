@@ -79,12 +79,12 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     // Repeated typedefs are only allowed if they define the same thing
     // So if they're different, complain
     if (foundTypedef != null && td != foundTypedef) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.REDEFINITION_TYPEDEF
         formatArgs(td.typedefedToString(), foundTypedef.typedefedToString())
         columns(td.typedefIdent.tokenRange)
       }
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.REDEFINITION_PREVIOUS
         columns(foundTypedef.typedefIdent.tokenRange)
       }
@@ -102,12 +102,12 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     when {
       foundTag == null -> names += tag
       tag.tagKindKeyword.value != foundTag.tagKindKeyword.value -> {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.TAG_MISMATCH
           formatArgs(tag.tagIdent.name)
           errorOn(tag.tagKindKeyword)
         }
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.TAG_MISMATCH_PREVIOUS
           columns(foundTag.tagIdent.tokenRange)
         }
@@ -118,12 +118,12 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
         names += tag
       }
       foundTag.isCompleteType && tag.isCompleteType -> {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.REDEFINITION
           formatArgs(tag.tagIdent.name)
           columns(tag.tagIdent.tokenRange)
         }
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.REDEFINITION_PREVIOUS
           columns(foundTag.tagIdent.tokenRange)
         }
@@ -138,12 +138,12 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     // FIXME: this can be used to maybe give a diagnostic about name shadowing
     // val isShadowed = scopeStack.peek().idents.any { it.name == id.name }
     if (foundId != null) {
-      parserDiagnostic {
+      diagnostic {
         this.id = if (isLabel) DiagnosticId.REDEFINITION_LABEL else DiagnosticId.REDEFINITION
         formatArgs(id.name)
         columns(id.tokenRange)
       }
-      parserDiagnostic {
+      diagnostic {
         this.id = DiagnosticId.REDEFINITION_PREVIOUS
         columns(foundId.tokenRange)
       }

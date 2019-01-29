@@ -66,7 +66,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     current().asPunct() == Punctuators.RPAREN -> {
       // This usually happens when there are unmatched parens
       eat()
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
@@ -74,7 +74,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     }
     current().asPunct() == Punctuators.LPAREN -> {
       if (relative(1).asPunct() == Punctuators.RPAREN) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_EXPR
           errorOn(safeToken(1))
         }
@@ -219,7 +219,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
    */
   private fun parsePrimaryExpr(): Expression? {
     if (isEaten()) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_EXPR
         if (tokenCount != 0) errorOn(safeToken(0))
         else errorOn(parentContext()[parentIdx()])
@@ -228,7 +228,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     }
     // FIXME: here we can also have a cast, that needs to be differentiated from `( expression )`
     val expr = parseUnaryExpression()
-    if (expr == null) parserDiagnostic {
+    if (expr == null) diagnostic {
       id = DiagnosticId.EXPECTED_PRIMARY
       errorOn(safeToken(0))
     }
@@ -248,7 +248,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       is Identifier -> {
         val ident = IdentifierNode(tok.name)
         val existingIdent = searchIdent(ident)
-        if (existingIdent == null) parserDiagnostic {
+        if (existingIdent == null) diagnostic {
           id = DiagnosticId.USE_UNDECLARED
           formatArgs(tok.name)
           errorOn(safeToken(0))
@@ -270,7 +270,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         val char = if (tok.data.isNotEmpty()) {
           tok.data[0].toInt()
         } else {
-          parserDiagnostic {
+          diagnostic {
             id = DiagnosticId.EMPTY_CHAR_CONSTANT
             errorOn(safeToken(0))
           }

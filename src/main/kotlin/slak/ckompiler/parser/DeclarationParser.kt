@@ -69,11 +69,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eat() // The ';'
       when {
         declSpec.isTag() -> { /* Do nothing intentionally */ }
-        declSpec.isTypedef() -> parserDiagnostic {
+        declSpec.isTypedef() -> diagnostic {
           id = DiagnosticId.TYPEDEF_REQUIRES_NAME
           columns(declSpec.range!!)
         }
-        else -> parserDiagnostic {
+        else -> diagnostic {
           id = DiagnosticId.MISSING_DECLARATIONS
           columns(declSpec.range!!)
         }
@@ -128,14 +128,14 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         eat() // The '...'
         isVariadic = true
         if (params.isEmpty()) {
-          parserDiagnostic {
+          diagnostic {
             id = DiagnosticId.PARAM_BEFORE_VARIADIC
             errorOn(safeToken(0))
           }
         }
         // There can be nothing after the variadic dots
         if (isNotEaten()) {
-          parserDiagnostic {
+          diagnostic {
             id = DiagnosticId.EXPECTED_RPAREN_AFTER_VARIADIC
             errorOn(safeToken(0))
           }
@@ -168,7 +168,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
         val assignTok = current()
         val initializer = parseInitializer()
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
           columns(assignTok..initializer)
         }
@@ -192,7 +192,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     if (end == -1) return errorDecl()
     // If the declarator slice will be empty, error out
     if (end - 1 == 0) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_DECL
         errorOn(safeToken(1))
       }
@@ -223,12 +223,12 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         val (paramList, variadic) = parseParameterList(rparenIdx)
         // Bad params, usually happens if there are other args after '...'
         if (current().asPunct() != Punctuators.RPAREN) {
-          parserDiagnostic {
+          diagnostic {
             id = DiagnosticId.UNMATCHED_PAREN
             formatArgs(Punctuators.RPAREN.s)
             errorOn(tokenAt(rparenIdx))
           }
-          parserDiagnostic {
+          diagnostic {
             id = DiagnosticId.MATCH_PAREN_TARGET
             formatArgs(Punctuators.LPAREN.s)
             errorOn(lparen)
@@ -265,7 +265,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   private fun parseDirectDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
     val primaryDecl = parseNameDeclarator() ?: parseNestedDeclarator()
     if (primaryDecl == null) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
         errorOn(safeToken(0))
       }
@@ -302,7 +302,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   /** C standard: 6.7.6.1 */
   private fun parseDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
     if (it.isEmpty()) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
         column(colPastTheEnd(0))
       }
@@ -310,7 +310,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     val pointers = parsePointer(it.size)
     if (isEaten()) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
         column(colPastTheEnd(0))
       }
@@ -326,7 +326,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
@@ -390,7 +390,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
       addDeclaratorToScope(declarator)
       if (isEaten()) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("declarator")
           column(colPastTheEnd(0))
@@ -402,7 +402,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         val assignTok = current()
         val initializer = parseInitializer()
         if (ds.isTypedef()) {
-          parserDiagnostic {
+          diagnostic {
             id = DiagnosticId.TYPEDEF_NO_INITIALIZER
             columns(assignTok..initializer)
           }
@@ -423,7 +423,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         break
       } else {
         // Missing semicolon
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("declarator")
           column(colPastTheEnd(0))
@@ -450,7 +450,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         eatUntil(stopIdx)
       }
       if (isEaten()) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
           formatArgs("struct declarator list")
           column(colPastTheEnd(0))
@@ -485,7 +485,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         else -> {
           // Missing semicolon
-          parserDiagnostic {
+          diagnostic {
             id = DiagnosticId.EXPECTED_SEMI_AFTER
             formatArgs("struct declarator list")
             column(colPastTheEnd(0))

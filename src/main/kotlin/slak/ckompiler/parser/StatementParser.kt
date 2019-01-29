@@ -76,7 +76,7 @@ class StatementParser(declarationParser: DeclarationParser,
     eat() // Get rid of ':'
     val labeled = parseStatement()
     if (labeled == null) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(relative(-1))
       }
@@ -108,7 +108,7 @@ class StatementParser(declarationParser: DeclarationParser,
     }
     eat() // The ')' from the if
     val statementSuccess = if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
       }
@@ -116,7 +116,7 @@ class StatementParser(declarationParser: DeclarationParser,
     } else {
       val statement = parseStatement()
       if (statement == null) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_STATEMENT
           errorOn(safeToken(0))
         }
@@ -133,7 +133,7 @@ class StatementParser(declarationParser: DeclarationParser,
       eat() // The 'else'
       val elseStatement = parseStatement()
       val statementFailure = if (elseStatement == null) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_STATEMENT
           errorOn(safeToken(0))
         }
@@ -155,7 +155,7 @@ class StatementParser(declarationParser: DeclarationParser,
   private fun parseExpressionStatement(): Expression? {
     val expr = parseExpr(tokenCount) ?: return null
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("expression")
         column(colPastTheEnd(0))
@@ -176,7 +176,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val whileTok = current()
     eat() // The WHILE
     if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_LPAREN_AFTER
         formatArgs(Keywords.WHILE.keyword)
         errorOn(safeToken(0))
@@ -202,7 +202,7 @@ class StatementParser(declarationParser: DeclarationParser,
     eat() // The ')'
     val statement = parseStatement()
     val loopable = if (statement == null) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
       }
@@ -229,7 +229,7 @@ class StatementParser(declarationParser: DeclarationParser,
     if (theWhile == -1) return errorSt()
     val statement = tokenContext(theWhile) { parseStatement() }
     val loopable = if (statement == null) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
       }
@@ -245,7 +245,7 @@ class StatementParser(declarationParser: DeclarationParser,
     }
     eat() // The WHILE
     if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_LPAREN_AFTER
         formatArgs(Keywords.WHILE.keyword)
         errorOn(safeToken(0))
@@ -267,7 +267,7 @@ class StatementParser(declarationParser: DeclarationParser,
     }
     eat() // The ')'
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("do/while statement")
         errorOn(safeToken(0))
@@ -291,7 +291,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val forTok = current()
     eat() // The FOR
     if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_LPAREN_AFTER
         formatArgs(Keywords.FOR.keyword)
         errorOn(safeToken(0))
@@ -307,7 +307,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val (clause1, expr2, expr3) = tokenContext(rparen) {
       val firstSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
       if (firstSemi == -1) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
           if (it.isNotEmpty()) errorOn(safeToken(it.size))
           else errorOn(parentContext()[rparen])
@@ -328,7 +328,7 @@ class StatementParser(declarationParser: DeclarationParser,
       if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
       val secondSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
       if (secondSemi == -1) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
           errorOn(safeToken(it.size))
         }
@@ -341,7 +341,7 @@ class StatementParser(declarationParser: DeclarationParser,
       val expr3 =
           if (secondSemi + 1 == tokenCount) null else parseExpr(tokenCount)
       if (isNotEaten()) {
-        parserDiagnostic {
+        diagnostic {
           id = DiagnosticId.UNEXPECTED_IN_FOR
           errorOn(safeToken(0))
         }
@@ -352,7 +352,7 @@ class StatementParser(declarationParser: DeclarationParser,
     eat() // The ')'
     val loopable = parseStatement()
     if (loopable == null) {
-      parserDiagnostic {
+      diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
       }
