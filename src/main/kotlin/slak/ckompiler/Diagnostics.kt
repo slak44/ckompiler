@@ -161,28 +161,33 @@ fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
   return builder.create()
 }
 
+/**
+ * Useful for delegation.
+ * @see DebugHandler
+ */
 interface IDebugHandler {
   val logger: KLogger
   val diags: List<Diagnostic>
   fun diagnostic(build: DiagnosticBuilder.() -> Unit)
 }
 
-class DebugHandler(private val srcFileName: SourceFileName,
+/**
+ * This class handles [Diagnostic]s and logging for a particular source
+ * (eg [slak.ckompiler.parser.Parser]). It is intended for use with delegation via [IDebugHandler].
+ */
+class DebugHandler(private val diagSource: String,
+                   private val srcFileName: SourceFileName,
                    private val srcText: String) : IDebugHandler {
-  override val logger: KLogger get() = DebugHandler.logger
+  override val logger: KLogger get() = KotlinLogging.logger(diagSource)
   override val diags = mutableListOf<Diagnostic>()
 
   override fun diagnostic(build: DiagnosticBuilder.() -> Unit) {
     diags += createDiagnostic {
       sourceFileName = srcFileName
       sourceText = srcText
-      origin = "Parser"
+      origin = diagSource
       this.build()
     }
-  }
-
-  companion object {
-    private val logger = KotlinLogging.logger("Parser")
   }
 }
 

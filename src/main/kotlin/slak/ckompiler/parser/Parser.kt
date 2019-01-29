@@ -1,8 +1,9 @@
 package slak.ckompiler.parser
 
-import mu.KLogger
-import mu.KotlinLogging
-import slak.ckompiler.*
+import slak.ckompiler.DebugHandler
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.IDebugHandler
+import slak.ckompiler.SourceFileName
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.Token
 import slak.ckompiler.lexer.asPunct
@@ -12,10 +13,10 @@ import slak.ckompiler.lexer.asPunct
  * @param srcFileName the name of the file in which the tokens were extracted from
  */
 class Parser(tokens: List<Token>, srcFileName: SourceFileName, srcText: String) {
-  private val parser: TranslationUnitParser
+  private val trParser: TranslationUnitParser
 
   init {
-    val debugHandler = DebugHandler(srcFileName, srcText)
+    val debugHandler = DebugHandler("Parser", srcFileName, srcText)
     val tokenHandler = TokenHandler(tokens, debugHandler)
     val scopeHandler = ScopeHandler(debugHandler)
     val parenMatcher = ParenMatcher(debugHandler, tokenHandler)
@@ -24,11 +25,11 @@ class Parser(tokens: List<Token>, srcFileName: SourceFileName, srcText: String) 
     declParser.specParser = SpecParser(declParser)
     val controlKeywordParser = ControlKeywordParser(expressionParser)
     val statementParser = StatementParser(declParser, controlKeywordParser)
-    parser = TranslationUnitParser(declParser.specParser, statementParser)
+    trParser = TranslationUnitParser(declParser.specParser, statementParser)
   }
 
-  val diags = parser.diags
-  val root = parser.root
+  val diags = trParser.diags
+  val root = trParser.root
 }
 
 /**
@@ -36,9 +37,8 @@ class Parser(tokens: List<Token>, srcFileName: SourceFileName, srcText: String) 
  *
  * C standard: A.2.4, 6.9
  */
-private class TranslationUnitParser(
-    private val specParser: SpecParser,
-    statementParser: StatementParser) :
+private class TranslationUnitParser(private val specParser: SpecParser,
+                                    statementParser: StatementParser) :
     IDebugHandler by statementParser,
     ITokenHandler by statementParser,
     IScopeHandler by statementParser,

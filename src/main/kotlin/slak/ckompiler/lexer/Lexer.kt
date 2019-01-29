@@ -1,11 +1,10 @@
 package slak.ckompiler.lexer
 
-import mu.KotlinLogging
 import slak.ckompiler.*
 
-class Lexer(private val textSource: String, private val srcFileName: SourceFileName) {
+class Lexer(private val textSource: String, private val srcFileName: SourceFileName) :
+    IDebugHandler by DebugHandler("Lexer", srcFileName, textSource) {
   val tokens = mutableListOf<Token>()
-  val diags = mutableListOf<Diagnostic>()
   private var src: String = textSource
   private var currentOffset: Int = 0
 
@@ -14,18 +13,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     diags.forEach { it.print() }
   }
 
-  private fun lexerDiagnostic(build: DiagnosticBuilder.() -> Unit) {
-    diags += createDiagnostic {
-      sourceFileName = srcFileName
-      sourceText = textSource
-      origin = "Lexer"
-      this.build()
-    }
-  }
-
   companion object {
-    private val logger = KotlinLogging.logger("Lexer")
-
     private fun keyword(s: String) = Keywords.values()
         .find { s.slice(0 until nextWhitespaceOrPunct(s)) == it.keyword }
         ?.let { Keyword(it) }
@@ -62,7 +50,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     val noPrefix = s.drop(1 + prefixLength)
     // FIXME implement escape sequences
     val stopIdx = noPrefix.indexOfFirst { it == '\n' || it == quoteChar }
-    if (stopIdx == -1 || noPrefix[stopIdx] == '\n') lexerDiagnostic {
+    if (stopIdx == -1 || noPrefix[stopIdx] == '\n') diagnostic {
       id = DiagnosticId.MISSING_QUOTE
       messageFormatArgs = listOf(quoteChar)
       column(currentOffset)
@@ -113,7 +101,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     // Float looks like 123.245E-10L
     s[0].toUpperCase() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE
     else -> {
-      lexerDiagnostic {
+      diagnostic {
         id = DiagnosticId.INVALID_SUFFIX
         formatArgs(s, "floating")
         columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
@@ -141,7 +129,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
     // Not a float: found non-digit(s) before dot
     if (s.slice(0 until dotIdx).any { !isDigit(it) }) return null
     val integerPartEnd = s.slice(0..dotIdx).indexOfFirst { !isDigit(it) }
-    if (integerPartEnd < dotIdx) lexerDiagnostic {
+    if (integerPartEnd < dotIdx) diagnostic {
       id = DiagnosticId.INVALID_DIGIT
       messageFormatArgs = listOf(s[integerPartEnd + 1])
       column(currentOffset + integerPartEnd + 1)
@@ -179,7 +167,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
       val tokenEnd = exponentStartIdx + exponentEndIdx +
           nextWhitespaceOrPunct(s.drop(exponentStartIdx + exponentEndIdx))
       if (exponent.isEmpty()) {
-        lexerDiagnostic {
+        diagnostic {
           id = DiagnosticId.NO_EXP_DIGITS
           column(currentOffset + exponentStartIdx)
         }
@@ -213,7 +201,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
       t.startsWith("U") -> IntegralSuffix.UNSIGNED
       else -> IntegralSuffix.NONE
     }
-    if (s.drop(suffix.length).isNotEmpty()) lexerDiagnostic {
+    if (s.drop(suffix.length).isNotEmpty()) diagnostic {
       id = DiagnosticId.INVALID_SUFFIX
       formatArgs(s, "integer")
       columns(currentOffset + nrLength until currentOffset + nextWhitespaceOrPunct(s))
@@ -296,7 +284,7 @@ class Lexer(private val textSource: String, private val srcFileName: SourceFileN
       currentOffset += dropped
       if (src.isEmpty()) {
         // Unterminated comment
-        lexerDiagnostic {
+        diagnostic {
           id = DiagnosticId.UNFINISHED_COMMENT
           column(currentOffset)
         }
