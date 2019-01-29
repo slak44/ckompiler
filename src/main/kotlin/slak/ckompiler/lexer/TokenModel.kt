@@ -261,10 +261,10 @@ data class FloatingConstant(val f: String,
         suffix.length) {
   init {
     if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported") {}
-    if (!f.any { Lexer.isDigit(it) || it == '.' }) {
+    if (!f.any { isDigit(it) || it == '.' }) {
       logger.throwICE("Float is not just digits") { "token: $this" }
     }
-    if (exponent.any { !Lexer.isDigit(it) }) {
+    if (exponent.any { !isDigit(it) }) {
       logger.throwICE("Exp is not just digits") { "token: $this" }
     }
   }
