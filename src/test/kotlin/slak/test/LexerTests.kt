@@ -331,6 +331,13 @@ class LexerTests {
   }
 
   @Test
+  fun `Comment Multi-line Empty`() {
+    val l = Lexer("/**/", source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
+  }
+
+  @Test
   fun `Comment Multi-line Unfinished`() {
     assertDiagnostic("""
       /* lalalalla int = dgdgd 1 .34/ // ////* /*
