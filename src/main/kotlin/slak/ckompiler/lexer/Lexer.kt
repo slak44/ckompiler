@@ -86,7 +86,7 @@ class Lexer(textSource: String, srcFileName: SourceFileName) :
       // The rest of the string is the exponent
       if (exponentEndIdx == -1 || exponentStartIdx + exponentEndIdx == s.length) {
         return FloatingConstant(float, FloatingSuffix.NONE, Radix.DECIMAL,
-            exponentSign = sign, exponent = s.substring(exponentStartIdx))
+            Exponent(s.substring(exponentStartIdx), sign))
       }
       val exponent = s.slice(exponentStartIdx until exponentStartIdx + exponentEndIdx)
       val totalLengthWithoutSuffix = float.length + 1 + signLen + exponent.length
@@ -102,7 +102,7 @@ class Lexer(textSource: String, srcFileName: SourceFileName) :
       val suffixStr = s.slice(exponentStartIdx + exponentEndIdx until tokenEnd)
       val suffix = floatingSuffix(suffixStr, totalLengthWithoutSuffix)
           ?: return ErrorToken(tokenEnd)
-      return FloatingConstant(float, suffix, Radix.DECIMAL, sign, exponent)
+      return FloatingConstant(float, suffix, Radix.DECIMAL, Exponent(exponent, sign))
     }
     val tokenEnd = bonusIdx + nextWhitespaceOrPunct(s.drop(bonusIdx))
     val suffix = floatingSuffix(s.slice(bonusIdx until tokenEnd), float.length)

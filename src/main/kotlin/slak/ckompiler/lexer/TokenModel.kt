@@ -232,12 +232,13 @@ interface PPToken {
   val consumedChars: Int
 }
 
-data class PPOther(val extraneous: Char): PPToken {
+data class PPOther(val extraneous: Char) : PPToken {
   init {
     if (extraneous.isWhitespace()) {
       logger.throwICE("PPOther is not allowed to be whitespace") { this }
     }
   }
+
   override val consumedChars = 1
 }
 
@@ -276,30 +277,31 @@ data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix
   override fun toString(): String = "${javaClass.simpleName}[$radix $n $suffix]"
 }
 
-data class FloatingConstant(val f: String,
-                            val suffix: FloatingSuffix,
-                            val radix: Radix,
-                            val exponentSign: Char? = null,
-                            val exponent: String = "") : Token(
-    radix.prefixLength +
-        f.length +
-        (if (exponentSign == null) 0 else 1) +
-        (if (exponent.isEmpty()) 0 else 1) +
-        exponent.length +
-        suffix.length) {
+data class Exponent(val exponent: String, val exponentSign: Char? = null) {
   init {
-    if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported") {}
-    if (!f.any { isDigit(it) || it == '.' }) {
-      logger.throwICE("Float is not just digits") { "token: $this" }
-    }
     if (exponent.any { !isDigit(it) }) {
       logger.throwICE("Exp is not just digits") { "token: $this" }
     }
   }
 
-  override fun toString(): String =
-      "${javaClass.simpleName}[$radix $f ${exponentSign ?: "_"}" +
-          "${if (exponent.isEmpty()) "_" else exponent} $suffix]"
+  val length = (if (exponentSign == null) 0 else 1) + 1 + exponent.length
+
+  override fun toString() = "E${exponentSign ?: "_"}$exponent"
+}
+
+data class FloatingConstant(val f: String,
+                            val suffix: FloatingSuffix,
+                            val radix: Radix,
+                            val exponent: Exponent? = null) :
+    Token(radix.prefixLength + f.length + suffix.length + (exponent?.length ?: 0)) {
+  init {
+    if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported") {}
+    if (!f.any { isDigit(it) || it == '.' }) {
+      logger.throwICE("Float is not just digits") { "token: $this" }
+    }
+  }
+
+  override fun toString() = "${javaClass.simpleName}[$radix $f ${exponent ?: '_'} $suffix]"
 }
 
 sealed class CharSequence(dataLength: Int,

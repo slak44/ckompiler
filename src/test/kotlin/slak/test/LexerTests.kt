@@ -92,20 +92,17 @@ class LexerTests {
         FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
         FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant("1.1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
-        FloatingConstant("1.", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
-        FloatingConstant(".1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
+        FloatingConstant("1.1", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2")),
+        FloatingConstant("1.", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2")),
+        FloatingConstant(".1", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2")),
 
-        FloatingConstant("1.1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
-        FloatingConstant("1.", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
-        FloatingConstant(".1", FloatingSuffix.NONE, Radix.DECIMAL, exponent = "2"),
+        FloatingConstant("1.1", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2")),
+        FloatingConstant("1.", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2")),
+        FloatingConstant(".1", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2")),
 
-        FloatingConstant("12.1", FloatingSuffix.NONE, Radix.DECIMAL,
-            exponent = "10", exponentSign = '-'),
-        FloatingConstant("12.", FloatingSuffix.NONE, Radix.DECIMAL,
-            exponent = "2", exponentSign = '-'),
-        FloatingConstant(".12", FloatingSuffix.NONE, Radix.DECIMAL,
-            exponent = "2", exponentSign = '-')
+        FloatingConstant("12.1", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("10", '-')),
+        FloatingConstant("12.", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2", '-')),
+        FloatingConstant(".12", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("2", '-'))
     )
     assertEquals(res, l.tokens)
   }
@@ -122,12 +119,9 @@ class LexerTests {
         FloatingConstant("12.", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
         FloatingConstant(".12", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
 
-        FloatingConstant("12.1", FloatingSuffix.FLOAT, Radix.DECIMAL,
-            exponentSign = '+', exponent = "10"),
-        FloatingConstant("12.", FloatingSuffix.FLOAT, Radix.DECIMAL,
-            exponentSign = '+', exponent = "10"),
-        FloatingConstant(".12", FloatingSuffix.FLOAT, Radix.DECIMAL,
-            exponentSign = '+', exponent = "10")
+        FloatingConstant("12.1", FloatingSuffix.FLOAT, Radix.DECIMAL, Exponent("10", '+')),
+        FloatingConstant("12.", FloatingSuffix.FLOAT, Radix.DECIMAL, Exponent("10", '+')),
+        FloatingConstant(".12", FloatingSuffix.FLOAT, Radix.DECIMAL, Exponent("10", '+'))
     )
     assertEquals(res, l.tokens)
   }
@@ -229,7 +223,7 @@ class LexerTests {
         IntegralConstant("456", IntegralSuffix.UNSIGNED_LONG_LONG, Radix.DECIMAL),
         FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
 
-        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL, '-', "12"),
+        FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL, Exponent("12", '-')),
         IntegralConstant("456", IntegralSuffix.NONE, Radix.DECIMAL)
     ), l.tokens)
   }
@@ -270,7 +264,7 @@ class LexerTests {
         Punctuator(Punctuators.DOT),
         Identifier("other"),
 
-        FloatingConstant("123.", FloatingSuffix.FLOAT, Radix.DECIMAL, exponent = "1"),
+        FloatingConstant("123.", FloatingSuffix.FLOAT, Radix.DECIMAL, Exponent("1")),
         Punctuator(Punctuators.DOT),
         Identifier("other")
     ), l.tokens)
