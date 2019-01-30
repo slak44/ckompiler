@@ -11,6 +11,7 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
     val l = PPLexer(debugHandler, sourceText, srcFileName)
     val p = PPParser(TokenHandler(l.ppTokens, debugHandler))
     alteredSourceText = sourceText // FIXME
+    diags.forEach { it.print() }
   }
 }
 
@@ -80,6 +81,11 @@ private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileNam
         characterConstant(currentSrc, currentOffset)?.toPPToken() ?:
         stringLiteral(currentSrc, currentOffset)?.toPPToken() ?:
         punct(currentSrc)?.toPPToken() ?: PPOther(currentSrc[0])
+
+    if (token is PPCharLiteral && token.data.isEmpty()) diagnostic {
+      id = DiagnosticId.EMPTY_CHAR_CONSTANT
+      columns(currentOffset..(currentOffset + 1))
+    }
     token.startIdx = currentOffset
     ppTokens += token
     dropChars(token.consumedChars)

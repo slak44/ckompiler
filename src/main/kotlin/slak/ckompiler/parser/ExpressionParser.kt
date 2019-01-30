@@ -338,15 +338,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
       // FIXME handle enum constants
       is CharLiteral -> {
-        val char = if (tok.data.isNotEmpty()) {
-          tok.data[0].toInt()
-        } else {
-          diagnostic {
-            id = DiagnosticId.EMPTY_CHAR_CONSTANT
-            errorOn(safeToken(0))
-          }
-          0
-        }
+        val char = if (tok.data.isNotEmpty()) tok.data[0].toInt() else 0
         return CharacterConstantNode(char, tok.encoding)
       }
       is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding)

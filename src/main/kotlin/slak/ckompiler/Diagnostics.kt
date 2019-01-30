@@ -12,6 +12,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
 
   // Preprocessor
   EXPECTED_H_Q_CHAR_SEQUENCE(ERROR, "Expected %cFILENAME%c"),
+  EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),
 
   // Lexer
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
@@ -21,8 +22,6 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNFINISHED_COMMENT(ERROR, "Unterminated /* comment"),
 
   // Parser
-  // FIXME: this should be a warning printed by the preprocessor
-  EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),
   EXPECTED_EXPR(ERROR, "Expected expression"),
   EXPECTED_PRIMARY(ERROR, "Expected primary expression"),
   EXPECTED_EXTERNAL_DECL(ERROR, "Expected a declaration or a function definition"),
