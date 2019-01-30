@@ -4,17 +4,34 @@ import slak.ckompiler.DebugHandler
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.SourceFileName
+import slak.ckompiler.parser.ITokenHandler
+import slak.ckompiler.parser.TokenHandler
 
-class Preprocessor(sourceText: String, srcFileName: SourceFileName) :
-    IDebugHandler by DebugHandler("Preprocessor", srcFileName, sourceText),
-    ITextSourceHandler by TextSourceHandler(sourceText, srcFileName) {
-
-  private val ppTokens = mutableListOf<PPToken>()
+class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
+  private val debugHandler = DebugHandler("Preprocessor", srcFileName, sourceText)
+  val diags = debugHandler.diags
   val alteredSourceText: String
 
   init {
-    getPPTokens()
+    val l = PPLexer(debugHandler, sourceText, srcFileName)
+    val p = PPParser(TokenHandler(l.ppTokens, debugHandler))
     alteredSourceText = sourceText // FIXME
+  }
+}
+
+private class PPParser(tokenHandler: TokenHandler<PPToken>) :
+    IDebugHandler by tokenHandler,
+    ITokenHandler<PPToken> by tokenHandler {
+  // FIXME
+}
+
+private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceFileName) :
+    IDebugHandler by debugHandler,
+    ITextSourceHandler by TextSourceHandler(sourceText, srcFileName) {
+  val ppTokens = mutableListOf<PPToken>()
+
+  init {
+    tokenize()
   }
 
   /** C standard: A.1.8, 6.4.0.4 */
@@ -59,7 +76,7 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) :
    *
    * C standard: A.1.1, 6.4.0.3
    */
-  private tailrec fun getPPTokens() {
+  private tailrec fun tokenize() {
     dropCharsWhile(Char::isWhitespace)
     if (currentSrc.isEmpty()) return
     val token = headerName(currentSrc) ?:
@@ -72,6 +89,6 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) :
     token.startIdx = currentOffset
     ppTokens += token
     dropChars(token.consumedChars)
-    return getPPTokens()
+    return tokenize()
   }
 }
