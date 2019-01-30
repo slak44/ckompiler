@@ -135,7 +135,7 @@ class DiagnosticBuilder {
   var sourceFileName: SourceFileName = "<unknown>"
   var sourceText: String = ""
   var origin: String = "<unknown>"
-  var messageFormatArgs: List<Any> = listOf()
+  private var messageFormatArgs: List<Any> = listOf()
   private var sourceColumns = mutableListOf<IntRange>()
 
   fun column(col: Int) {
