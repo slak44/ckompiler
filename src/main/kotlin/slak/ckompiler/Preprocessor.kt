@@ -1,11 +1,6 @@
-package slak.ckompiler.lexer
+package slak.ckompiler
 
-import slak.ckompiler.DebugHandler
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.SourceFileName
-import slak.ckompiler.parser.ITokenHandler
-import slak.ckompiler.parser.TokenHandler
+import slak.ckompiler.lexer.*
 
 class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
   private val debugHandler = DebugHandler("Preprocessor", srcFileName, sourceText)
@@ -84,8 +79,7 @@ private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileNam
         ppNumber(currentSrc) ?:
         characterConstant(currentSrc, currentOffset)?.toPPToken() ?:
         stringLiteral(currentSrc, currentOffset)?.toPPToken() ?:
-        punct(currentSrc)?.toPPToken() ?:
-        PPOther(currentSrc[0])
+        punct(currentSrc)?.toPPToken() ?: PPOther(currentSrc[0])
     token.startIdx = currentOffset
     ppTokens += token
     dropChars(token.consumedChars)

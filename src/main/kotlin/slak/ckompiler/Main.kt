@@ -5,7 +5,6 @@ import mu.KotlinLogging
 import slak.ckompiler.analysis.createGraphFor
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.lexer.Lexer
-import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File

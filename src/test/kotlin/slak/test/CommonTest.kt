@@ -2,6 +2,7 @@ package slak.test
 
 import slak.ckompiler.Diagnostic
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.Preprocessor
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*

@@ -1,9 +1,6 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.DebugHandler
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.SourceFileName
+import slak.ckompiler.*
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.asPunct
