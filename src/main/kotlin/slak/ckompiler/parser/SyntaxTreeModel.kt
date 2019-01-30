@@ -6,15 +6,15 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("AST")
 
-infix fun Token.until(other: Token): IntRange = this.startIdx until other.startIdx
+infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx until other.startIdx
 
-operator fun Token.rangeTo(other: Token) = startIdx until (other.startIdx + other.consumedChars)
+operator fun LexicalToken.rangeTo(other: LexicalToken) = startIdx until (other.startIdx + other.consumedChars)
 
 operator fun IntRange.rangeTo(other: IntRange) = this.start..other.endInclusive
 
-operator fun Token.rangeTo(other: ASTNode) = this.startIdx..other.tokenRange.endInclusive
+operator fun LexicalToken.rangeTo(other: ASTNode) = this.startIdx..other.tokenRange.endInclusive
 
-operator fun ASTNode.rangeTo(other: Token) =
+operator fun ASTNode.rangeTo(other: LexicalToken) =
     tokenRange.start until (other.startIdx + other.consumedChars)
 
 operator fun ASTNode.rangeTo(other: ASTNode) = tokenRange..other.tokenRange
@@ -61,7 +61,7 @@ sealed class ASTNode(val isRoot: Boolean = false) {
   }
 
   /**
-   * The first and last [Token]s of this node.
+   * The first and last [LexicalToken]s of this node.
    * @throws slak.ckompiler.InternalCompilerError if accessed on a node without a range set
    */
   val tokenRange: IntRange by lazy {
@@ -268,9 +268,9 @@ data class IdentifierNode(val name: String) : Expression(), Terminal {
   companion object {
     /**
      * Creates an [IdentifierNode] from an [Identifier].
-     * @param identifier this [Token] is casted to an [Identifier]
+     * @param identifier this [LexicalToken] is casted to an [Identifier]
      */
-    fun from(identifier: Token) =
+    fun from(identifier: LexicalToken) =
         IdentifierNode(identifier as Identifier).withRange(identifier.range)
   }
 }
@@ -549,10 +549,10 @@ data class NameDeclarator(val name: IdentifierNode) : Declarator() {
   companion object {
     /**
      * Creates a [NameDeclarator] from an [Identifier].
-     * @param identifier this [Token] is casted to an [Identifier]
+     * @param identifier this [LexicalToken] is casted to an [Identifier]
      * @see IdentifierNode.from
      */
-    fun from(identifier: Token) =
+    fun from(identifier: LexicalToken) =
         NameDeclarator(IdentifierNode.from(identifier)).withRange(identifier.range)
   }
 }

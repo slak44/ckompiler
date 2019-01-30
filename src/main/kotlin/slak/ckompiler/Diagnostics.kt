@@ -3,7 +3,7 @@ package slak.ckompiler
 import mu.KLogger
 import mu.KotlinLogging
 import slak.ckompiler.DiagnosticKind.*
-import slak.ckompiler.lexer.Token
+import slak.ckompiler.lexer.LexicalToken
 import kotlin.math.max
 import kotlin.math.min
 
@@ -146,7 +146,7 @@ class DiagnosticBuilder {
     sourceColumns.add(range)
   }
 
-  fun errorOn(token: Token) {
+  fun errorOn(token: LexicalToken) {
     sourceColumns.add(token.range)
   }
 

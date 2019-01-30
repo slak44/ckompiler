@@ -3,12 +3,123 @@ package slak.ckompiler.lexer
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 
+interface StaticTokenEnum {
+  val realName: String
+}
+
+enum class Keywords(val keyword: String) : StaticTokenEnum {
+  AUTO("auto"),
+  BREAK("break"),
+  CASE("case"),
+  CHAR("char"),
+  CONST("const"),
+  CONTINUE("continue"),
+  DEFAULT("default"),
+  DOUBLE("double"),
+  DO("do"),
+  ELSE("else"),
+  ENUM("enum"),
+  EXTERN("extern"),
+  FLOAT("float"),
+  FOR("for"),
+  GOTO("goto"),
+  IF("if"),
+  INLINE("inline"),
+  INT("int"),
+  LONG("long"),
+  REGISTER("register"),
+  RESTRICT("restrict"),
+  RETURN("return"),
+  SHORT("short"),
+  SIGNED("signed"),
+  SIZEOF("sizeof"),
+  STATIC("static"),
+  STRUCT("struct"),
+  SWITCH("switch"),
+  TYPEDEF("typedef"),
+  UNION("union"),
+  UNSIGNED("unsigned"),
+  VOID("void"),
+  VOLATILE("volatile"),
+  WHILE("while"),
+  ALIGNAS("_Alignas"),
+  ALIGNOF("_Alignof"),
+  ATOMIC("_Atomic"),
+  BOOL("_Bool"),
+  COMPLEX("_Complex"),
+  GENERIC("_Generic"),
+  IMAGINARY("_Imaginary"),
+  NORETURN("_Noreturn"),
+  STATIC_ASSERT("_Static_assert"),
+  THREAD_LOCAL("_Thread_local");
+
+  override val realName get() = keyword
+}
+
+enum class Punctuators(val s: String) : StaticTokenEnum {
+  LSQPAREN("["), RSQPAREN("]"), LPAREN("("), RPAREN(")"),
+  LBRACKET("{"), RBRACKET("}"), DOTS("..."), DOT("."), ARROW("->"),
+  MUL_ASSIGN("*="), DIV_ASSIGN("/="), MOD_ASSIGN("%="), PLUS_ASSIGN("+="),
+  SUB_ASSIGN("-="), LSH_ASSIGN("<<="), RSH_ASSIGN(">>="),
+  AND_ASSIGN("&="), XOR_ASSIGN("^="), OR_ASSIGN("|="),
+  AND("&&"), OR("||"),
+  INC("++"), DEC("--"), AMP("&"), STAR("*"), PLUS("+"), MINUS("-"),
+  TILDE("~"),
+  LESS_COLON("<:"), LESS_PERCENT("<%"),
+  SLASH("/"), LSH("<<"), RSH(">>"),
+  LEQ("<="), GEQ(">="), LT("<"), GT(">"),
+  EQUALS("=="), NEQUALS("!="), CARET("^"), PIPE("|"),
+  QMARK("?"), SEMICOLON(";"),
+  NOT("!"),
+  ASSIGN("="),
+  COMMA(","), DOUBLE_HASH("##"), HASH("#"),
+  COLON_MORE(":>"), COLON(":"), PERCENT_MORE("%>"),
+  PERCENT_COLON_PERCENT_COLON("%:%:"), PERCENT_COLON("%:"), PERCENT("%");
+
+  override val realName get() = s
+}
+
 fun keyword(s: String) = Keywords.values()
     .find { s.slice(0 until nextWhitespaceOrPunct(s)) == it.keyword }
     ?.let { Keyword(it) }
 
 fun punct(s: String) =
     Punctuators.values().find { s.startsWith(it.s) }?.let { Punctuator(it) }
+
+enum class IntegralSuffix(val length: Int) {
+  UNSIGNED(1), LONG(1), LONG_LONG(2),
+  UNSIGNED_LONG(2), UNSIGNED_LONG_LONG(3),
+  NONE(0);
+
+  override fun toString() = when (this) {
+    IntegralSuffix.UNSIGNED -> "u"
+    IntegralSuffix.LONG -> "l"
+    IntegralSuffix.LONG_LONG -> "ll"
+    IntegralSuffix.UNSIGNED_LONG -> "ul"
+    IntegralSuffix.UNSIGNED_LONG_LONG -> "ull"
+    IntegralSuffix.NONE -> "i"
+  }
+}
+
+enum class FloatingSuffix(val length: Int) {
+  FLOAT(1), LONG_DOUBLE(1), NONE(0);
+
+  override fun toString() = when (this) {
+    FLOAT -> "f"
+    LONG_DOUBLE -> "ld"
+    NONE -> "d"
+  }
+}
+
+enum class Radix(val prefixLength: Int) {
+  DECIMAL(0), OCTAL(0), HEXADECIMAL(2);
+
+  fun toInt(): Int = when (this) {
+    DECIMAL -> 10
+    OCTAL -> 8
+    HEXADECIMAL -> 16
+  }
+}
 
 /** C standard: A.1.3 */
 fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
@@ -61,6 +172,14 @@ fun IDebugHandler.charSequence(s: String,
     if (stopIdx != -1) column(currentOffset - 1 + stopIdx - 1)
   }
   return noPrefix.slice(0 until stopIdx)
+}
+
+enum class StringEncoding(val prefixLength: Int) {
+  CHAR(0), UTF8(2), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
+}
+
+enum class CharEncoding(val prefixLength: Int) {
+  UNSIGNED_CHAR(0), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
 }
 
 /** C standard: A.1.6, 6.4.5 */

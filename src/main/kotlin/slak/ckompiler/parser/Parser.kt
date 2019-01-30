@@ -5,14 +5,14 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.lexer.Punctuators
-import slak.ckompiler.lexer.Token
+import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.asPunct
 
 /**
  * @param tokens list of tokens to parse
  * @param srcFileName the name of the file in which the tokens were extracted from
  */
-class Parser(tokens: List<Token>, srcFileName: SourceFileName, srcText: String) {
+class Parser(tokens: List<LexicalToken>, srcFileName: SourceFileName, srcText: String) {
   private val trParser: TranslationUnitParser
 
   init {

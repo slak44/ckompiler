@@ -2,11 +2,7 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Operators
-import slak.ckompiler.parser.ErrorExpression
-import slak.ckompiler.parser.PostfixIncrement
-import slak.ckompiler.parser.PrefixIncrement
-import slak.ckompiler.parser.SizeofExpression
+import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
 

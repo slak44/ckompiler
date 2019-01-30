@@ -22,9 +22,9 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) :
     // We are required by 6.4.0.4 to only recognize the `header-name` pp-token within #include or
     // #pragma directives
     val canBeHeaderName = ppTokens.size > 1 &&
-        ppTokens[ppTokens.size - 2] == Punctuator(Punctuators.HASH) &&
-        (ppTokens[ppTokens.size - 1] == Identifier("include") ||
-            ppTokens[ppTokens.size - 1] == Identifier("pragma"))
+        ppTokens[ppTokens.size - 2] == PPPunctuator(Punctuators.HASH) &&
+        (ppTokens[ppTokens.size - 1] == PPIdentifier("include") ||
+            ppTokens[ppTokens.size - 1] == PPIdentifier("pragma"))
     if (!canBeHeaderName) return null
     val quote = s[0]
     if (quote != '<' && quote != '"') return null
@@ -36,7 +36,7 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) :
         formatArgs(quote, otherQuote)
         column(if (endIdx == -1) currentOffset + s.length else currentOffset + 1 + endIdx)
       }
-      return ErrorToken(if (endIdx == -1) s.length else 1 + endIdx)
+      return ErrorPPToken(if (endIdx == -1) s.length else 1 + endIdx)
     }
     return HeaderName(s.slice(1 until endIdx), quote)
   }
@@ -63,12 +63,13 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) :
     dropCharsWhile(Char::isWhitespace)
     if (currentSrc.isEmpty()) return
     val token = headerName(currentSrc) ?:
-        identifier(currentSrc) ?:
+        identifier(currentSrc)?.toPPToken() ?:
         ppNumber(currentSrc) ?:
-        characterConstant(currentSrc, currentOffset) ?:
-        stringLiteral(currentSrc, currentOffset) ?:
-        punct(currentSrc) ?:
+        characterConstant(currentSrc, currentOffset)?.toPPToken() ?:
+        stringLiteral(currentSrc, currentOffset)?.toPPToken() ?:
+        punct(currentSrc)?.toPPToken() ?:
         PPOther(currentSrc[0])
+    token.startIdx = currentOffset
     ppTokens += token
     dropChars(token.consumedChars)
     return getPPTokens()

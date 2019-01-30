@@ -5,7 +5,7 @@ import slak.ckompiler.*
 class Lexer(textSource: String, srcFileName: SourceFileName) :
     IDebugHandler by DebugHandler("Lexer", srcFileName, textSource),
     ITextSourceHandler by TextSourceHandler(textSource, srcFileName) {
-  val tokens = mutableListOf<Token>()
+  val tokens = mutableListOf<LexicalToken>()
 
   init {
     tokenize()
@@ -38,7 +38,7 @@ class Lexer(textSource: String, srcFileName: SourceFileName) :
 
   // FIXME: missing hex floating constants
   /** C standard: A.1.5 */
-  private fun floatingConstant(s: String): Token? {
+  private fun floatingConstant(s: String): LexicalToken? {
     // Not a float: must start with either digit or dot
     if (!isDigit(s[0]) && s[0] != '.') return null
     // Not a float: just a dot

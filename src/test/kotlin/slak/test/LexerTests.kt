@@ -16,7 +16,7 @@ class LexerTests {
     val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2", "struct1")
     val l = Lexer(idents.joinToString(" "), source)
     l.assertNoDiagnostics()
-    val res: List<Token> = idents.map { Identifier(it) }
+    val res: List<LexicalToken> = idents.map { Identifier(it) }
     assertEquals(res, l.tokens)
   }
 
@@ -24,7 +24,7 @@ class LexerTests {
   fun `Keywords All`() {
     val l = Lexer(Keywords.values().joinToString(" ") { it.keyword }, source)
     l.assertNoDiagnostics()
-    val res: List<Token> = Keywords.values().map { Keyword(it) }
+    val res: List<LexicalToken> = Keywords.values().map { Keyword(it) }
     assertEquals(res, l.tokens)
   }
 
@@ -32,7 +32,7 @@ class LexerTests {
   fun `Punctuators All`() {
     val l = Lexer(Punctuators.values().joinToString(" ") { it.s }, source)
     l.assertNoDiagnostics()
-    val res: List<Token> = Punctuators.values().map { Punctuator(it) }
+    val res: List<LexicalToken> = Punctuators.values().map { Punctuator(it) }
     assertEquals(res, l.tokens)
   }
 
@@ -40,7 +40,7 @@ class LexerTests {
   fun `Integers Basic`() {
     val l = Lexer("1234 07 0xF 0", source)
     l.assertNoDiagnostics()
-    val res: List<Token> = listOf(
+    val res: List<LexicalToken> = listOf(
         IntegralConstant("1234", IntegralSuffix.NONE, Radix.DECIMAL),
         IntegralConstant("07", IntegralSuffix.NONE, Radix.OCTAL),
         IntegralConstant("F", IntegralSuffix.NONE, Radix.HEXADECIMAL),
@@ -53,7 +53,7 @@ class LexerTests {
   fun `Integer Suffixes`() {
     val l = Lexer("1U 1L 1UL 1LU 1ULL 1LLU 1LL 1lLu", source)
     l.assertNoDiagnostics()
-    val res: List<Token> = listOf(
+    val res: List<LexicalToken> = listOf(
         IntegralConstant("1", IntegralSuffix.UNSIGNED, Radix.DECIMAL),
         IntegralConstant("1", IntegralSuffix.LONG, Radix.DECIMAL),
         IntegralConstant("1", IntegralSuffix.UNSIGNED_LONG, Radix.DECIMAL),
@@ -87,7 +87,7 @@ class LexerTests {
       12.1E-10 12.E-2 .12E-2
     """.trimIndent(), source)
     l.assertNoDiagnostics()
-    val res: List<Token> = listOf(
+    val res: List<LexicalToken> = listOf(
         FloatingConstant("123.123", FloatingSuffix.NONE, Radix.DECIMAL),
         FloatingConstant("123.", FloatingSuffix.NONE, Radix.DECIMAL),
         FloatingConstant(".123", FloatingSuffix.NONE, Radix.DECIMAL),
@@ -114,7 +114,7 @@ class LexerTests {
       12.1E+10F 12.E+10F .12E+10F
     """.trimIndent(), source)
     l.assertNoDiagnostics()
-    val res: List<Token> = listOf(
+    val res: List<LexicalToken> = listOf(
         FloatingConstant("12.1", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
         FloatingConstant("12.", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
         FloatingConstant(".12", FloatingSuffix.LONG_DOUBLE, Radix.DECIMAL),
@@ -151,7 +151,7 @@ class LexerTests {
     val chars = listOf("a", "*", "asdf", "\"")
     val l = Lexer(chars.joinToString(" ") { "'$it'" }, source)
     l.assertNoDiagnostics()
-    val res: List<Token> = chars.map { CharLiteral(it, CharEncoding.UNSIGNED_CHAR) }
+    val res: List<LexicalToken> = chars.map { CharLiteral(it, CharEncoding.UNSIGNED_CHAR) }
     assertEquals(res, l.tokens)
   }
 
@@ -159,7 +159,7 @@ class LexerTests {
   fun `Char Prefixes`() {
     val l = Lexer("L'a' u'a' U'a'", source)
     l.assertNoDiagnostics()
-    val res = listOf<Token>(
+    val res = listOf<LexicalToken>(
         CharLiteral("a", CharEncoding.WCHAR_T),
         CharLiteral("a", CharEncoding.CHAR16_T),
         CharLiteral("a", CharEncoding.CHAR32_T)
@@ -178,7 +178,7 @@ class LexerTests {
     val strings = listOf("a", "*", "asdf", "'")
     val l = Lexer(strings.joinToString(" ") { "\"$it\"" }, source)
     l.assertNoDiagnostics()
-    val res: List<Token> = strings.map { StringLiteral(it, StringEncoding.CHAR) }
+    val res: List<LexicalToken> = strings.map { StringLiteral(it, StringEncoding.CHAR) }
     assertEquals(res, l.tokens)
   }
 
@@ -191,7 +191,7 @@ class LexerTests {
       U"string"
     """.trimIndent(), source)
     l.assertNoDiagnostics()
-    val res = listOf<Token>(
+    val res = listOf<LexicalToken>(
         StringLiteral("string", StringEncoding.UTF8),
         StringLiteral("string", StringEncoding.WCHAR_T),
         StringLiteral("string", StringEncoding.CHAR16_T),
