@@ -90,7 +90,7 @@ fun LexicalToken.asUnaryOperator(): Operators? = asPunct()?.asUnaryOperator()
 class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     IExpressionParser,
     IDebugHandler by parenMatcher,
-    ITokenHandler by parenMatcher,
+    ILexicalTokenHandler by parenMatcher,
     IScopeHandler by scopeHandler,
     IParenMatcher by parenMatcher {
 

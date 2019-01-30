@@ -48,7 +48,7 @@ interface IDeclarationParser {
 class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: ExpressionParser) :
     IDeclarationParser,
     IDebugHandler by scopeHandler,
-    ITokenHandler by expressionParser,
+    ILexicalTokenHandler by expressionParser,
     IScopeHandler by scopeHandler,
     IParenMatcher by expressionParser,
     IExpressionParser by expressionParser {

@@ -19,7 +19,7 @@ class StatementParser(declarationParser: DeclarationParser,
                       controlKeywordParser: ControlKeywordParser) :
     IStatementParser,
     IDebugHandler by declarationParser,
-    ITokenHandler by declarationParser,
+    ILexicalTokenHandler by declarationParser,
     IScopeHandler by declarationParser,
     IParenMatcher by declarationParser,
     IExpressionParser by declarationParser,

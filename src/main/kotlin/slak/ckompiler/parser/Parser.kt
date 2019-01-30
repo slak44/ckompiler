@@ -8,6 +8,16 @@ import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.asPunct
 
+typealias ILexicalTokenHandler = ITokenHandler<LexicalToken>
+
+/**
+ * Eats tokens unconditionally until a semicolon or the end of the token list.
+ * Does not eat the semicolon.
+ */
+fun ILexicalTokenHandler.eatToSemi()  {
+  while (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
+}
+
 /**
  * @param tokens list of tokens to parse
  * @param srcFileName the name of the file in which the tokens were extracted from
@@ -40,7 +50,7 @@ class Parser(tokens: List<LexicalToken>, srcFileName: SourceFileName, srcText: S
 private class TranslationUnitParser(private val specParser: SpecParser,
                                     statementParser: StatementParser) :
     IDebugHandler by statementParser,
-    ITokenHandler by statementParser,
+    ILexicalTokenHandler by statementParser,
     IScopeHandler by statementParser,
     ISpecParser by specParser,
     IDeclarationParser by statementParser,
