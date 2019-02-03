@@ -14,7 +14,8 @@ val BlockItem.st get() = (this as StatementItem).statement
 
 infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx until other.startIdx
 
-operator fun LexicalToken.rangeTo(other: LexicalToken) = startIdx until (other.startIdx + other.consumedChars)
+operator fun LexicalToken.rangeTo(other: LexicalToken) =
+    startIdx until (other.startIdx + other.consumedChars)
 
 operator fun IntRange.rangeTo(other: IntRange) = this.start..other.endInclusive
 
