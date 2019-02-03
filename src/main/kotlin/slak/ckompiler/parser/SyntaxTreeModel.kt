@@ -200,15 +200,19 @@ class Noop : Statement(), Terminal {
 /**
  * Represents an expression.
  *
+ * FIXME: the [type] should actually be a `type-name` (6.7.7) that stores a bit more info
+ *
  * C standard: A.2.3, 6.8.3
  */
-sealed class Expression : Statement()
+sealed class Expression(val type: TypeSpecifier) : Statement()
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
-class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl
+class ErrorExpression : Expression(VoidType(Keyword(Keywords.VOID))), ErrorNode by ErrorNodeImpl
 
-data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : Expression() {
+data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) :
+    Expression(calledExpr.type /* FIXME: wrong, cast the thing to func and get the ret type */) {
   init {
+    // FIXME: check if calledExpr is allowed to be called
     calledExpr.setParent(this)
     args.forEach { it.setParent(this) }
   }
@@ -219,39 +223,52 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
  * "unary-operator cast-expression" part of it.
  * C standard: A.2.1
  */
-data class UnaryExpression(val op: Operators, val operand: Expression) : Expression() {
+data class UnaryExpression(val op: Operators, val operand: Expression) : Expression(when (op) {
+  // FIXME: this is slightly more nuanced (6.5.3.3)
+  Operators.PLUS, Operators.MINUS, Operators.BIT_NOT,
+  Operators.NOT, Operators.REF, Operators.DEREF -> operand.type
+  else -> logger.throwICE("Cannot determine type of UnaryExpression") { "$op" }
+}) {
   init {
+    if (op !in Operators.unaryOperators) {
+      logger.throwICE("UnaryExpression with non-unary operator") { this }
+    }
     operand.setParent(this)
   }
 }
 
 /** C standard: A.2.1 */
-data class SizeofExpression(val sizeExpr: Expression) : Expression() {
+data class SizeofExpression(val sizeExpr: Expression) : Expression(IntType(Keyword(Keywords.INT))) {
   init {
+    // FIXME: disallow function types/incomplete types/bitfield members
     sizeExpr.setParent(this)
   }
 }
 
-data class PrefixIncrement(val expr: Expression) : Expression() {
+data class PrefixIncrement(val expr: Expression) : Expression(expr.type) {
   init {
+    // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
 
-data class PrefixDecrement(val expr: Expression) : Expression() {
+data class PrefixDecrement(val expr: Expression) : Expression(expr.type) {
   init {
+    // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
 
-data class PostfixIncrement(val expr: Expression) : Expression() {
+data class PostfixIncrement(val expr: Expression) : Expression(expr.type) {
   init {
+    // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
 
-data class PostfixDecrement(val expr: Expression) : Expression() {
+data class PostfixDecrement(val expr: Expression) : Expression(expr.type) {
   init {
+    // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
@@ -259,8 +276,10 @@ data class PostfixDecrement(val expr: Expression) : Expression() {
 /** Represents a binary operation in an expression. */
 data class BinaryExpression(val op: Operators,
                             val lhs: Expression,
-                            val rhs: Expression) : Expression() {
+                            val rhs: Expression) : Expression(lhs.type /* FIXME: clearly temp */) {
   init {
+    // FIXME: disallow non-binary ops
+    // FIXME: check lhs/rhs types against what the op expects
     lhs.setParent(this)
     rhs.setParent(this)
   }
@@ -268,8 +287,27 @@ data class BinaryExpression(val op: Operators,
   override fun toString() = "($lhs $op $rhs)"
 }
 
-data class IdentifierNode(val name: String) : Expression(), Terminal {
-  constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)
+class IdentifierNode(val name: String, type: TypeSpecifier =
+    IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */) : Expression(type), Terminal {
+  constructor(lexerIdentifier: Identifier, type: TypeSpecifier =
+      IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */) : this(lexerIdentifier.name, type)
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is IdentifierNode) return false
+
+    if (name != other.name) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = super.hashCode()
+    result = 31 * result + name.hashCode()
+    return result
+  }
+
+  override fun toString() = name
 
   companion object {
     /**
@@ -281,13 +319,13 @@ data class IdentifierNode(val name: String) : Expression(), Terminal {
   }
 }
 
-data class IntegerConstantNode(val value: Long,
-                               val suffix: IntegralSuffix) : Expression(), Terminal {
+data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) :
+    Expression(IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */), Terminal {
   override fun toString() = "$value$suffix"
 }
 
-data class FloatingConstantNode(val value: Double,
-                                val suffix: FloatingSuffix) : Expression(), Terminal {
+data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
+    Expression(DoubleType(Keyword(Keywords.DOUBLE)) /* FIXME: clearly temp */), Terminal {
   override fun toString() = "$value$suffix"
 }
 
@@ -301,10 +339,11 @@ data class FloatingConstantNode(val value: Double,
  *
  * C standard: 6.4.4.4.10
  */
-data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) : Expression(), Terminal
+data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) :
+    Expression(UnsignedChar(Keyword(Keywords.UNSIGNED)) /* FIXME: clearly temp */), Terminal
 
-data class StringLiteralNode(val string: String,
-                             val encoding: StringEncoding) : Expression(), Terminal
+data class StringLiteralNode(val string: String, val encoding: StringEncoding) :
+    Expression(Char(Keyword(Keywords.CHAR)) /* FIXME: clearly temp */), Terminal
 
 /**
  * FIXME: add `ComplexFloat` `ComplexDouble` `ComplexLongDouble`

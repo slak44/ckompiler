@@ -156,7 +156,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
 
   override fun searchIdent(target: IdentifierNode): IdentifierNode? {
     scopeStack.forEach {
-      val idx = it.idents.indexOfFirst { (name) -> name == target.name }
+      val idx = it.idents.indexOfFirst { id -> id.name == target.name }
       if (idx != -1) return it.idents[idx]
     }
     return null
