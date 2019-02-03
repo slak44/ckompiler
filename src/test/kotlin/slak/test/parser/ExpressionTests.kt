@@ -131,4 +131,14 @@ class ExpressionTests {
             (Operators.MINUS apply (Operators.BIT_NOT apply (Operators.NOT apply name("b"))))))
         )) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Comma Operator`() {
+    val p = prepareCode("""
+      int main() {
+        123 + 124, 35 + 36;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
 }

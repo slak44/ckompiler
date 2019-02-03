@@ -158,7 +158,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       if (parenEndIdx == -1) {
         TODO("handle error case where there is an unmatched paren in the parameter list")
       }
-      val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
+      val commaIdx = indexOfFirst { c -> c.asPunct() == Punctuators.COMMA }
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
       val declarator = parseDeclarator(paramEndIdx)
       params += ParameterDeclaration(specs, declarator)
@@ -168,7 +168,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
         val assignTok = current()
-        val initializer = parseInitializer()
+        val initializer = parseInitializer(paramEndIdx)
         diagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
           columns(assignTok..initializer)
@@ -323,7 +323,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   }
 
   // FIXME: return type will change with the initializer list
-  private fun parseInitializer(): Expression {
+  private fun parseInitializer(endIdx: Int): Expression {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
@@ -339,7 +339,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
-    return parseExpr(tokenCount) ?: errorExpr()
+    return parseExpr(endIdx) ?: errorExpr()
   }
 
   /**
@@ -401,7 +401,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
       declaratorList += if (current().asPunct() == Punctuators.ASSIGN) {
         val assignTok = current()
-        val initializer = parseInitializer()
+        val initializer = parseInitializer(tokenCount)
         if (ds.isTypedef()) {
           diagnostic {
             id = DiagnosticId.TYPEDEF_NO_INITIALIZER
