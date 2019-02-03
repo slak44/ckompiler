@@ -182,9 +182,7 @@ class StatementParser(declarationParser: DeclarationParser,
         formatArgs(Keywords.WHILE.keyword)
         errorOn(safeToken(0))
       }
-      val end = indexOfFirst {
-        it.asPunct() == Punctuators.LBRACKET || it.asPunct() == Punctuators.SEMICOLON
-      }
+      val end = indexOfFirst(Punctuators.LBRACKET, Punctuators.SEMICOLON)
       eatUntil(end)
       if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
       return errorSt()
@@ -235,9 +233,7 @@ class StatementParser(declarationParser: DeclarationParser,
         errorOn(safeToken(0))
       }
       // Attempt to eat the error
-      val end = indexOfFirst {
-        it.asPunct() == Punctuators.SEMICOLON || it.asKeyword() == Keywords.WHILE
-      }
+      val end = indexOfFirst(Punctuators.SEMICOLON, Keywords.WHILE)
       if (end == -1) eatToSemi()
       eatUntil(end)
       errorSt()
@@ -306,7 +302,7 @@ class StatementParser(declarationParser: DeclarationParser,
     if (rparen == -1) return errorSt()
     // The 3 components of a for loop
     val (clause1, expr2, expr3) = tokenContext(rparen) {
-      val firstSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
+      val firstSemi = indexOfFirst(Punctuators.SEMICOLON)
       if (firstSemi == -1) {
         diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
@@ -327,7 +323,7 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       // We only eat the first ';' if parseDeclaration didn't do that
       if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
-      val secondSemi = indexOfFirst { c -> c.asPunct() == Punctuators.SEMICOLON }
+      val secondSemi = indexOfFirst(Punctuators.SEMICOLON)
       if (secondSemi == -1) {
         diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR

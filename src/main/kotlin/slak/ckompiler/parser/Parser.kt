@@ -1,9 +1,7 @@
 package slak.ckompiler.parser
 
 import slak.ckompiler.*
-import slak.ckompiler.lexer.Punctuators
-import slak.ckompiler.lexer.LexicalToken
-import slak.ckompiler.lexer.asPunct
+import slak.ckompiler.lexer.*
 
 typealias ILexicalTokenHandler = ITokenHandler<LexicalToken>
 
@@ -13,6 +11,17 @@ typealias ILexicalTokenHandler = ITokenHandler<LexicalToken>
  */
 fun ILexicalTokenHandler.eatToSemi()  {
   while (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
+}
+
+/**
+ * Like [TokenHandler.indexOfFirst], but stops on the first [Keyword]/[Punctuator] whose
+ * [StaticToken.enum] matches one of the [t] arguments.
+ * @see TokenHandler.indexOfFirst
+ */
+fun ILexicalTokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
+  return indexOfFirst { tok ->
+    t.any { tok.asKeyword() == it || tok.asPunct() == it }
+  }
 }
 
 /**

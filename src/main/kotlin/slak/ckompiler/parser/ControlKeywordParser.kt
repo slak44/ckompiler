@@ -94,7 +94,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     val retKey = current()
     if (current().asKeyword() != Keywords.RETURN) return null
     eat()
-    val semiIdx = indexOfFirst { it.asPunct() == Punctuators.SEMICOLON }
+    val semiIdx = indexOfFirst(Punctuators.SEMICOLON)
     val finalIdx = if (semiIdx == -1) tokenCount else semiIdx
     val expr = parseExpr(finalIdx)
     if (semiIdx == -1 || (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON)) {

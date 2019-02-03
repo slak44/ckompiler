@@ -158,7 +158,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       if (parenEndIdx == -1) {
         TODO("handle error case where there is an unmatched paren in the parameter list")
       }
-      val commaIdx = indexOfFirst { c -> c.asPunct() == Punctuators.COMMA }
+      val commaIdx = indexOfFirst(Punctuators.COMMA)
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
       val declarator = parseDeclarator(paramEndIdx)
       params += ParameterDeclaration(specs, declarator)
@@ -384,9 +384,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         if (parenEndIdx == -1) {
           TODO("handle error case where there is an unmatched paren in the initializer")
         }
-        val stopIdx = indexOfFirst {
-          it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
-        }
+        val stopIdx = indexOfFirst(Punctuators.COMMA, Punctuators.SEMICOLON)
         if (stopIdx != -1) eatUntil(stopIdx)
       }
       addDeclaratorToScope(declarator)
@@ -445,9 +443,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         if (parenEndIdx == -1) {
           TODO("handle error case where there is an unmatched paren in the decl")
         }
-        val stopIdx = indexOfFirst {
-          it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
-        }
+        val stopIdx = indexOfFirst(Punctuators.COMMA, Punctuators.SEMICOLON)
         eatUntil(stopIdx)
       }
       if (isEaten()) {
@@ -462,9 +458,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       declaratorList += if (current().asPunct() == Punctuators.COLON) {
         // Has bit width
         eat()
-        val stopIdx = indexOfFirst {
-          it.asPunct() == Punctuators.COMMA || it.asPunct() == Punctuators.SEMICOLON
-        }
+        val stopIdx = indexOfFirst(Punctuators.COMMA, Punctuators.SEMICOLON)
         val bitWidthExpr = parseExpr(stopIdx)
         // FIXME: bit field type must be _Bool, signed int, unsigned int (6.7.2.1.5)
         // FIXME: expr MUST be a constant expression

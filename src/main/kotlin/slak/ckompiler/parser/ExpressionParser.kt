@@ -197,7 +197,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
           TODO("handle error case where there is an unmatched" +
               "paren in the argument-expression-list")
         }
-        val commaIdx = indexOfFirst { c -> c == Punctuators.COMMA }
+        val commaIdx = indexOfFirst(Punctuators.COMMA)
         val arg = parseExpr(if (commaIdx == -1) it.size else commaIdx)
             ?: TODO("handle error case with a null (error'd) expr")
         funcArgs += arg
