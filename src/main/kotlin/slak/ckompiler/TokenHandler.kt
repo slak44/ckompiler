@@ -30,6 +30,8 @@ interface ITokenHandler<Token : TokenObject> {
    */
   fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T
 
+  // FIXME: add indexOfFirstOrNull
+  // FIXME: add safer methods for first [Keywords]/[Punctuators]
   /** @return the first (real) index matching the condition, or -1 if there is none */
   fun indexOfFirst(block: (Token) -> Boolean): Int
 
