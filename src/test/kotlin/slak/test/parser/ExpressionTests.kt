@@ -140,5 +140,18 @@ class ExpressionTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
+    (123 add 124) comma (35 add 36) assertEquals p.root.decls[0].fn.block.items[0].st
+  }
+
+  @Test
+  fun `Comma Operator Has Correct Associativity`() {
+    val p = prepareCode("""
+      int main() {
+        123 + 124, 35 + 36, 1 + 2;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    ((123 add 124) comma (35 add 36)) comma (1 add 2) assertEquals
+        p.root.decls[0].fn.block.items[0].st
   }
 }

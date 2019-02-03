@@ -209,6 +209,7 @@ internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.A
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB
 internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.MUL
 internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with Operators.DIV
+internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with Operators.COMMA
 
 private fun <T> parseDSLElement(it: T): Expression {
   return when (it) {

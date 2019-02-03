@@ -70,7 +70,7 @@ enum class Operators(val op: Punctuators,
   XOR_ASSIGN(Punctuators.XOR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
   // Comma
-  COMMA(Punctuators.COMMA, 10, Arity.BINARY, Associativity.RIGHT_TO_LEFT);
+  COMMA(Punctuators.COMMA, 10, Arity.BINARY, Associativity.LEFT_TO_RIGHT);
 
   enum class Associativity { LEFT_TO_RIGHT, RIGHT_TO_LEFT }
 
