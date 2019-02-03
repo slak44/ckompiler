@@ -4,10 +4,6 @@ import mu.KotlinLogging
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-internal val Declarator.name get() = name()!!.name
-internal val FunctionDefinition.name get() = functionDeclarator.name
-internal val FunctionDefinition.block get() = compoundStatement as CompoundStatement
-
 private val logger = KotlinLogging.logger("ControlFlow")
 
 sealed class CFGNode {

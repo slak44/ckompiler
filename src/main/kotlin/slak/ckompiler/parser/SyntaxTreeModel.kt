@@ -6,6 +6,10 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("AST")
 
+val Declarator.name get() = name()!!.name
+val FunctionDefinition.name get() = functionDeclarator.name
+val FunctionDefinition.block get() = compoundStatement as CompoundStatement
+
 infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx until other.startIdx
 
 operator fun LexicalToken.rangeTo(other: LexicalToken) = startIdx until (other.startIdx + other.consumedChars)
