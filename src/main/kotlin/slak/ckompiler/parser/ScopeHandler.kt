@@ -154,6 +154,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     listRef += id
   }
 
+  // FIXME: add spell-checker: "https://en.wikipedia.org/wiki/Wagner%E2%80%93Fischer_algorithm"
   override fun searchIdent(target: IdentifierNode): IdentifierNode? {
     scopeStack.forEach {
       val idx = it.idents.indexOfFirst { id -> id.name == target.name }

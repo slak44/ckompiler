@@ -7,6 +7,7 @@ import slak.ckompiler.lexer.LexicalToken
 import kotlin.math.max
 import kotlin.math.min
 
+// FIXME: learn from "http://blog.llvm.org/2010/04/amazing-feats-of-clang-error-recovery.html"
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
 
