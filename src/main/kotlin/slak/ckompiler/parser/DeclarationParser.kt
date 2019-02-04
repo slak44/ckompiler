@@ -206,17 +206,18 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   }
 
   /**
-   * This function parses the things that can come after a `direct-declarator`.
-   * FIXME: parse in a loop, to catch things like `int v[12][23];`
-   * C standard: 6.7.6.1
+   * This function parses the things that can come after a `direct-declarator`, but only one.
+   * For example, in `int v[4][5];` the `[4]` and the `[5]` will be parsed one at a time.
+   *
+   * C standard: 6.7.6.1, A.2.2
+   * @return the suffix with the declarator, or null if there is no suffix
    */
-  private fun parseDirectDeclaratorSuffixes(primary: Declarator): Declarator = when {
-    isEaten() -> primary
+  private fun parseDirectDeclaratorSuffix(primary: Declarator): Declarator? = when {
+    isEaten() -> null
     current().asPunct() == Punctuators.LPAREN -> {
       val lparen = safeToken(0)
       val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
       eat() // Get rid of "("
-      // FIXME: we can return something better than an ErrorNode (have the ident)
       if (rparenIdx == -1) {
         // FIXME: maybe we should eat stuff here?
         errorDecl()
@@ -251,7 +252,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         logger.throwICE("Unimplemented grammar") { current() }
       }
     }
-    else -> primary
+    else -> null
   }
 
   /** C standard: 6.7.6.1 */
@@ -272,7 +273,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
       return@tokenContext errorDecl()
     }
-    return@tokenContext parseDirectDeclaratorSuffixes(primaryDecl)
+    var declarator: Declarator = primaryDecl
+    while (isNotEaten()) {
+      declarator = parseDirectDeclaratorSuffix(declarator) ?: break
+    }
+    return@tokenContext declarator
   }
 
   /**
