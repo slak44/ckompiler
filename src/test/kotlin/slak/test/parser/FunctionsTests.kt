@@ -1,5 +1,6 @@
 package slak.test.parser
 
+import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.ErrorStatement
@@ -128,5 +129,19 @@ class FunctionsTests {
       int f(int y = 1, int x = 54 + 3 / 34 >> 3);
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.NO_DEFAULT_ARGS, DiagnosticId.NO_DEFAULT_ARGS)
+  }
+
+  @Test
+  @Ignore("We can't parse that yet")
+  fun `Function Prototype Declaration Can't Return Function Type`() {
+    val p = prepareCode("int f(int)(int);", source)
+    // FIXME: function cannot return function type 'int (int)'
+  }
+
+  @Test
+  @Ignore("We can't parse that yet")
+  fun `Function Prototype Return Pointer To Function`() {
+    val p = prepareCode("int (*f(int x))(int y);", source)
+    p.assertNoDiagnostics()
   }
 }

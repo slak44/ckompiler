@@ -1,5 +1,6 @@
 package slak.test.parser
 
+import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
@@ -155,5 +156,12 @@ class DeclarationTests {
   fun `Typedef Requires Name`() {
     val p = prepareCode("typedef int;", source)
     p.assertDiags(DiagnosticId.TYPEDEF_REQUIRES_NAME)
+  }
+
+  @Test
+  @Ignore("We can't parse that yet")
+  fun `Array Simple Declaration`() {
+    val p = prepareCode("int array_of_stuff[734];", source)
+    p.assertNoDiagnostics()
   }
 }
