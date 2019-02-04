@@ -3,7 +3,6 @@ package slak.ckompiler.parser
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.lexer.*
-import slak.ckompiler.throwICE
 import java.util.*
 
 interface IDeclarationParser {
@@ -205,12 +204,64 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     return declarator
   }
 
+  /** C standard: 6.7.6.2 */
+  private fun parseArrayTypeSize(endIdx: Int): ArrayTypeSize = tokenContext(endIdx) {
+    if (it.isEmpty()) return@tokenContext NoSize
+    fun parseTypeQualifierList(startIdx: Int): TypeQualifierList {
+      val quals = it.drop(startIdx).takeWhile { k -> k.asKeyword() in SpecParser.typeQualifiers }
+      eatUntil(startIdx + quals.size)
+      return quals.map { k -> k as Keyword }
+    }
+    fun qualsAndStatic(quals: TypeQualifierList, staticKw: LexicalToken): FunctionParameterSize {
+      if (isEaten()) {
+        diagnostic {
+          id = DiagnosticId.ARRAY_STATIC_NO_SIZE
+          errorOn(staticKw)
+        }
+        return FunctionParameterSize(quals, true, errorExpr())
+      }
+      return FunctionParameterSize(quals, true, parseExpr(it.size) ?: errorExpr())
+    }
+    if (current().asKeyword() == Keywords.STATIC) {
+      val staticKw = current()
+      eat() // The 'static' keyword
+      val quals = parseTypeQualifierList(1)
+      return@tokenContext qualsAndStatic(quals, staticKw)
+    }
+    val quals = parseTypeQualifierList(0)
+    if (current().asKeyword() == Keywords.STATIC) {
+      val staticKw = current()
+      eat() // The 'static' keyword
+      return@tokenContext qualsAndStatic(quals, staticKw)
+    }
+    if (current().asPunct() == Punctuators.STAR) {
+      val star = current()
+      eat() // The VLA '*'
+      diagnostic {
+        id = DiagnosticId.UNSUPPORTED_VLA
+        errorOn(star)
+      }
+      return@tokenContext UnconfinedVariableSize(quals, star as Punctuator)
+    }
+    if (isEaten()) {
+      return@tokenContext FunctionParameterSize(quals, false, null)
+    }
+    val expr = parseExpr(it.size) ?: errorExpr()
+    if (quals.isEmpty()) {
+      return@tokenContext ExpressionSize(expr)
+    } else {
+      return@tokenContext FunctionParameterSize(quals, false, expr)
+    }
+  }
+
   /**
    * This function parses the things that can come after a `direct-declarator`, but only one.
    * For example, in `int v[4][5];` the `[4]` and the `[5]` will be parsed one at a time.
    *
    * C standard: 6.7.6.1, A.2.2
    * @return the suffix with the declarator, or null if there is no suffix
+   * @see parseArrayTypeSize
+   * @see parseParameterList
    */
   private fun parseDirectDeclaratorSuffix(primary: Declarator): Declarator? = when {
     isEaten() -> null
@@ -244,13 +295,31 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
     }
     current().asPunct() == Punctuators.LSQPAREN -> {
+      val lSqParen = safeToken(0)
       val rSqParenIdx = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+      eat() // The '['
       if (rSqParenIdx == -1) {
         eatToSemi()
         errorDecl()
       } else {
-        // FIXME: A.2.2/6.7.6 direct-declarator with square brackets
-        logger.throwICE("Unimplemented grammar") { current() }
+        val arraySize = parseArrayTypeSize(rSqParenIdx)
+        // Extraneous stuff in array size
+        if (current().asPunct() != Punctuators.RSQPAREN) {
+          diagnostic {
+            id = DiagnosticId.UNMATCHED_PAREN
+            formatArgs(Punctuators.RSQPAREN.s)
+            errorOn(tokenAt(rSqParenIdx))
+          }
+          diagnostic {
+            id = DiagnosticId.MATCH_PAREN_TARGET
+            formatArgs(Punctuators.LSQPAREN.s)
+            errorOn(lSqParen)
+          }
+          eatUntil(rSqParenIdx)
+        }
+        eat() // Eat ']'
+        // FIXME: not all array sizes are allowed everywhere
+        ArrayDeclarator(primary, arraySize)
       }
     }
     else -> null
@@ -290,7 +359,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   private fun parsePointer(endIdx: Int): List<TypeQualifierList> = tokenContext(endIdx) {
     if (isEaten() || current().asPunct() != Punctuators.STAR) return@tokenContext emptyList()
-    val indirectionList = mutableListOf<List<Keyword>>()
+    val indirectionList = mutableListOf<TypeQualifierList>()
     var currentIdx = 0
     while (isNotEaten() && current().asPunct() == Punctuators.STAR) {
       eat() // The '*'

@@ -159,9 +159,33 @@ class DeclarationTests {
   }
 
   @Test
-  @Ignore("We can't parse that yet")
   fun `Array Simple Declaration`() {
     val p = prepareCode("int array_of_stuff[734];", source)
     p.assertNoDiagnostics()
+    int declare nameDecl("array_of_stuff")[734] assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Array 2D Declaration`() {
+    val p = prepareCode("int array2d[73][23];", source)
+    p.assertNoDiagnostics()
+    int declare nameDecl("array2d")[73][23] assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Array 6D Declaration`() {
+    val p = prepareCode("int array6d[73][23][2][78 + 1][3 / 1][1];", source)
+    p.assertNoDiagnostics()
+    int declare nameDecl("array6d")[73][23][2][78 add 1][3 div 1][1] assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Array Static Without Size`() {
+    val p = prepareCode("""
+      int f(int a[static]);
+      int g(int a[static const]);
+      int h(int a[const static]);
+    """.trimIndent(), source)
+    p.assertDiags(*Array(3) { DiagnosticId.ARRAY_STATIC_NO_SIZE })
   }
 }

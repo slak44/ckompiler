@@ -579,6 +579,7 @@ sealed class Declarator : ASTNode() {
     is FunctionDeclarator -> declarator.name()
     is ParameterDeclaration -> declarator.name()
     is StructDeclarator -> declarator.name()
+    is ArrayDeclarator -> declarator.name()
   }
 }
 
@@ -635,6 +636,64 @@ data class StructDeclarator(val declarator: Declarator, val constExpr: Expressio
   init {
     declarator.setParent(this)
     constExpr?.setParent(this)
+  }
+}
+
+/** Contains the size of an array type. */
+sealed class ArrayTypeSize(val hasVariableSize: Boolean)
+
+/** Describes an array type that specifies no size in the square brackets. */
+object NoSize : ArrayTypeSize(false)
+
+/**
+ * Describes an array type of variable length ("variable length array", "VLA").
+ * Can only appear in declarations or `type-name`s with function prototype scope.
+ * This kind of array is **unsupported** by this implementation.
+ *
+ * C standard: 6.7.6.2.4, 6.10.8.3.1
+ * @param typeQuals the `type-qualifier`s before the *: `int v[const *];`
+ * @param vlaStar (diagnostic data) the * in the square brackets: `int v[*];`
+ */
+data class UnconfinedVariableSize(val typeQuals: TypeQualifierList,
+                                  val vlaStar: Punctuator) : ArrayTypeSize(true)
+
+/**
+ * Describes an array type whose size is specified by [expr], where the type is a function
+ * parameter's type. A non-constant [expr] describes a VLA, which this implementation does **not
+ * support**. A null [expr] means that [typeQuals] must be non-empty. If [isStatic] is true, [expr]
+ * must not be null.
+ *
+ * C standard: 6.7.6.2.3, 6.7.6.3.7
+ * @param typeQuals the `type-qualifier`s between the square brackets
+ * @param isStatic if the keyword "static" appears between the square brackets
+ */
+data class FunctionParameterSize(val typeQuals: TypeQualifierList,
+                                 val isStatic: Boolean,
+                                 val expr: Expression?) :
+    ArrayTypeSize(false /* FIXME: not always false */) {
+  init {
+    if (isStatic && expr == null) logger.throwICE("Array size, static without expr") { this }
+    if (expr == null && typeQuals.isEmpty()) {
+      logger.throwICE("Array size, no type quals and no expr") { this }
+    }
+  }
+}
+
+/**
+ * Describes an array type whose size is specified by [expr]. A non-constant [expr] describes a VLA,
+ * which this implementation does **not support**.
+ * @param expr integral expression
+ */
+data class ExpressionSize(val expr: Expression) : ArrayTypeSize(false /* FIXME: not always false */)
+
+/** C standard: 6.7.6.2 */
+data class ArrayDeclarator(val declarator: Declarator, val size: ArrayTypeSize) : Declarator() {
+  init {
+    declarator.setParent(this)
+    when (size) {
+      is FunctionParameterSize -> size.expr?.setParent(this)
+      is ExpressionSize -> size.expr.setParent(this)
+    }
   }
 }
 

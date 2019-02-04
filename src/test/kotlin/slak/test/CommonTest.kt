@@ -205,6 +205,9 @@ internal fun String.typedefBy(ds: DeclarationSpecifier): DeclarationSpecifier {
   return DeclarationSpecifier(typeSpec = TypedefNameSpecifier(name(this), td))
 }
 
+internal operator fun <T> Declarator.get(arraySize: T) =
+    ArrayDeclarator(this, ExpressionSize(parseDSLElement(arraySize)))
+
 internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.ADD
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB
 internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.MUL

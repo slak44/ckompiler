@@ -40,6 +40,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   TRANSLATION_UNIT_NEEDS_DECL(WARNING, """
     ISO C requires a translation unit to contain at least one declaration
   """.trimIndent()),
+  ARRAY_STATIC_NO_SIZE(ERROR, "'static' may not be used without an array size"),
+  UNSUPPORTED_VLA(ERROR, "Variable length arrays are not supported by this implementation"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
