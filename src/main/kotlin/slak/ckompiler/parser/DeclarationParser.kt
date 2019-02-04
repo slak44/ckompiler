@@ -215,37 +215,38 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   private fun parseDirectDeclaratorSuffix(primary: Declarator): Declarator? = when {
     isEaten() -> null
     current().asPunct() == Punctuators.LPAREN -> {
-      val lparen = safeToken(0)
-      val rparenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+      val lParen = safeToken(0)
+      val rParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
       eat() // Get rid of "("
-      if (rparenIdx == -1) {
-        // FIXME: maybe we should eat stuff here?
+      if (rParenIdx == -1) {
+        eatToSemi()
         errorDecl()
       } else scoped {
-        val (paramList, variadic) = parseParameterList(rparenIdx)
+        val (paramList, variadic) = parseParameterList(rParenIdx)
         // Bad params, usually happens if there are other args after '...'
         if (current().asPunct() != Punctuators.RPAREN) {
           diagnostic {
             id = DiagnosticId.UNMATCHED_PAREN
             formatArgs(Punctuators.RPAREN.s)
-            errorOn(tokenAt(rparenIdx))
+            errorOn(tokenAt(rParenIdx))
           }
           diagnostic {
             id = DiagnosticId.MATCH_PAREN_TARGET
             formatArgs(Punctuators.LPAREN.s)
-            errorOn(lparen)
+            errorOn(lParen)
           }
-          eatUntil(rparenIdx)
+          eatUntil(rParenIdx)
         }
         eat() // Get rid of ")"
         FunctionDeclarator(
             declarator = primary, params = paramList, scope = this, variadic = variadic)
-            .withRange(primary.tokenRange.start until tokenAt(rparenIdx).startIdx)
+            .withRange(primary.tokenRange.start until tokenAt(rParenIdx).startIdx)
       }
     }
     current().asPunct() == Punctuators.LSQPAREN -> {
-      val end = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
-      if (end == -1) {
+      val rSqParenIdx = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+      if (rSqParenIdx == -1) {
+        eatToSemi()
         errorDecl()
       } else {
         // FIXME: A.2.2/6.7.6 direct-declarator with square brackets

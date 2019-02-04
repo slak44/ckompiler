@@ -96,4 +96,19 @@ class ResilienceTests {
         returnSt(double(0.1))
     ) assertEquals p.root.decls[1]
   }
+
+  @Test
+  fun `Parser Direct Declarator Suffix Must Recover After Unmatched Parens`() {
+    val p = prepareCode("""
+      int a(int ;
+      int x;
+      int a(
+    """.trimIndent(), source)
+    int declare "x" assertEquals p.root.decls[1]
+    p.assertDiags(
+        DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET,
+        DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET,
+        DiagnosticId.EXPECTED_SEMI_AFTER
+    )
+  }
 }
