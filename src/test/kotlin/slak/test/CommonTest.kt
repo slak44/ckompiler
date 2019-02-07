@@ -92,7 +92,7 @@ private fun String.withParams(params: List<ParameterDeclaration>,
     s.idents += it
     s
   }
-  return FunctionDeclarator(nameDecl(this), params, variadic = variadic, scope = scope)
+  return FunctionDeclarator(nameDecl(this), ParameterTypeList(params, variadic), scope = scope)
 }
 
 internal infix fun String.withParams(params: List<ParameterDeclaration>) = withParams(params, false)
@@ -106,7 +106,7 @@ internal infix fun Declaration.body(s: Statement): FunctionDefinition {
   val d = declaratorList[0] as? FunctionDeclarator ?: throw IllegalArgumentException("Not function")
   val st = s as? CompoundStatement
   val scope = if (st == null || st.items.isEmpty()) d.scope else st.scope
-  val fdecl = FunctionDeclarator(d.declarator, d.params, d.variadic, scope)
+  val fdecl = FunctionDeclarator(d.declarator, d.ptl, scope)
   val newCompound = if (st == null) s else CompoundStatement(st.items, scope)
   return FunctionDefinition(declSpecs, fdecl, newCompound)
 }

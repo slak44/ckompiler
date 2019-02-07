@@ -270,7 +270,7 @@ class StatementTests {
     val scope = LexicalScope()
     scope.labels += name("label")
     val block = CompoundStatement(listOf(StatementItem(ErrorStatement())), scope)
-    int func FunctionDeclarator(nameDecl("main"), emptyList(), scope = scope) body
+    int func FunctionDeclarator(nameDecl("main"), ParameterTypeList(emptyList()), scope) body
         block assertEquals p.root.decls[0]
   }
 

@@ -109,16 +109,15 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    *        ^^^^
    * ```
    * C standard: A.2.2, 6.9.1.5
-   * @return the list of [ParameterDeclaration]s, and whether or not the function is variadic
+   * @return the [ParameterTypeList]
    */
-  private fun parseParameterList(endIdx: Int):
-      Pair<List<ParameterDeclaration>, Boolean> = tokenContext(endIdx) {
+  private fun parseParameterList(endIdx: Int): ParameterTypeList = tokenContext(endIdx) {
     // No parameters; this is not an error case
-    if (isEaten()) return@tokenContext Pair(emptyList(), false)
+    if (isEaten()) return@tokenContext ParameterTypeList(emptyList(), false)
     // The only thing between parens is "void" => no params
     if (it.size == 1 && it[0].asKeyword() == Keywords.VOID) {
       eat() // The 'void'
-      return@tokenContext Pair(emptyList(), false)
+      return@tokenContext ParameterTypeList(emptyList(), false)
     }
     var isVariadic = false
     val params = mutableListOf<ParameterDeclaration>()
@@ -178,7 +177,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         eat()
       }
     }
-    return@tokenContext Pair(params, isVariadic)
+    return@tokenContext ParameterTypeList(params, isVariadic)
   }
 
   /**
@@ -273,7 +272,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         eatToSemi()
         errorDecl()
       } else scoped {
-        val (paramList, variadic) = parseParameterList(rParenIdx)
+        val ptl = parseParameterList(rParenIdx)
         // Bad params, usually happens if there are other args after '...'
         if (current().asPunct() != Punctuators.RPAREN) {
           diagnostic {
@@ -289,8 +288,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           eatUntil(rParenIdx)
         }
         eat() // Get rid of ")"
-        FunctionDeclarator(
-            declarator = primary, params = paramList, scope = this, variadic = variadic)
+        FunctionDeclarator(declarator = primary, ptl = ptl, scope = this)
             .withRange(primary.tokenRange.start until tokenAt(rParenIdx).startIdx)
       }
     }

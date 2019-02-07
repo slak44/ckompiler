@@ -559,6 +559,15 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
 
 typealias TypeQualifierList = List<Keyword>
 
+sealed class DeclaratorSuffix
+
+/**
+ * C standard: 6.7.7
+ */
+data class TypeName(val specQuals: DeclarationSpecifier,
+                    val indirection: List<TypeQualifierList>,
+                    val suffixes: List<DeclaratorSuffix>)
+
 /** C standard: 6.7.6 */
 sealed class Declarator : ASTNode() {
   private var indirectionImpl: List<TypeQualifierList>? = null
@@ -621,14 +630,19 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
   }
 }
 
+/**
+ * C standard: 6.7.6.0.1
+ */
+data class ParameterTypeList(val params: List<ParameterDeclaration>,
+                             val variadic: Boolean = false) : DeclaratorSuffix()
+
 // FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
 data class FunctionDeclarator(val declarator: Declarator,
-                              val params: List<ParameterDeclaration>,
-                              val variadic: Boolean = false,
+                              val ptl: ParameterTypeList,
                               val scope: LexicalScope) : Declarator() {
   init {
     declarator.setParent(this)
-    params.forEach { it.setParent(this) }
+    ptl.params.forEach { it.setParent(this) }
   }
 }
 
@@ -640,7 +654,7 @@ data class StructDeclarator(val declarator: Declarator, val constExpr: Expressio
 }
 
 /** Contains the size of an array type. */
-sealed class ArrayTypeSize(val hasVariableSize: Boolean)
+sealed class ArrayTypeSize(val hasVariableSize: Boolean) : DeclaratorSuffix()
 
 /** Describes an array type that specifies no size in the square brackets. */
 object NoSize : ArrayTypeSize(false)
