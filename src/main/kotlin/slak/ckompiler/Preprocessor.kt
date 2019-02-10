@@ -9,16 +9,27 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
 
   init {
     val l = PPLexer(debugHandler, sourceText, srcFileName)
-//    val p = PPParser(TokenHandler(l.ppTokens, debugHandler))
+    val parserTokens = mutableListOf<PPToken>()
+    // FIXME: we are passing a list that we WILL mutate, to TokenHandler, which uses List.subList
+    // FIXME: the behaviour is technically undefined; in practice the only mutation is pushing
+    // FIXME: stuff to the end of the list, which *shouldn't* fuck up the sublists, but who knows
+    val p = PPParser(l.tokenSequence, parserTokens, TokenHandler(parserTokens, debugHandler))
     alteredSourceText = sourceText // FIXME
     diags.forEach { it.print() }
   }
 }
 
-private class PPParser(tokenHandler: TokenHandler<PPToken>) :
+private class PPParser(private val tokSrc: Sequence<PPToken>,
+                       private val rootToks: MutableList<PPToken>,
+                       tokenHandler: TokenHandler<PPToken>) :
     IDebugHandler by tokenHandler,
     ITokenHandler<PPToken> by tokenHandler {
-  // FIXME
+
+  fun areTokensLeft() = tokSrc.iterator().hasNext()
+
+  init {
+
+  }
 }
 
 private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceFileName) :
