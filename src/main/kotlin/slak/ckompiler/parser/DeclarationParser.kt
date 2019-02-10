@@ -432,7 +432,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       if (declarator == null) return
       if (ds.isTypedef()) {
         // Add typedef to scope
-        createTypedef(TypedefName(ds, declarator.indirection, declarator.name()!!))
+        newIdentifier(TypedefName(ds, declarator.indirection, declarator.name()!!))
       } else {
         // Add ident to scope
         declarator.name()?.let { newIdentifier(it) }

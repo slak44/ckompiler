@@ -88,6 +88,25 @@ class ScopeTests {
     val p = prepareCode("typedef int * myint; typedef unsigned int * const myint;", source)
     p.assertDiags(DiagnosticId.REDEFINITION_TYPEDEF, DiagnosticId.REDEFINITION_PREVIOUS)
   }
+
+  @Test
+  fun `Typedef Shares Namespace With Other Identifiers`() {
+    val p = prepareCode("""
+      typedef unsigned int blabla;
+      char blabla = 'x';
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.REDEFINITION_OTHER_SYM, DiagnosticId.REDEFINITION_PREVIOUS)
+  }
+
+  @Test
+  fun `Typedef Unexpected In Expression`() {
+    val p = prepareCode("""
+      typedef unsigned int blabla;
+      int thing = 1 + blabla * 2;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.UNEXPECTED_TYPEDEF_USE)
+  }
+
   @Test
   fun `Tag Mismatch With Incomplete Types`() {
     val p = prepareCode("""

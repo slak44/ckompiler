@@ -348,7 +348,7 @@ class SpecParser(declarationParser: DeclarationParser) :
       if (current() is Identifier && typeSpecifier == null) {
         val identifier = IdentifierNode.from(current())
         // If there is no typedef, it's probably a declarator name, so we're done with decl specs
-        val possibleTypedef = searchTypedef(identifier) ?: break@specLoop
+        val possibleTypedef = searchIdent(identifier) as? TypedefName ?: break@specLoop
         eat() // The identifier
         typeSpecifier = TypedefNameSpecifier(identifier, possibleTypedef)
       }

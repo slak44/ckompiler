@@ -64,10 +64,12 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   REDEFINITION(ERROR, "Redefinition of '%s'"),
   REDEFINITION_LABEL(ERROR, "Redefinition of label '%s'"),
   REDEFINITION_TYPEDEF(ERROR, "typedef redefinition with different types ('%s' vs '%s')"),
+  REDEFINITION_OTHER_SYM(ERROR, "Redefinition of '%s' as different kind of symbol (was %s, is %s)"),
   REDEFINITION_PREVIOUS(OTHER, "Previous definition is here"),
   TAG_MISMATCH(ERROR, "Use of '%s' with tag type that does not match previous declaration"),
   TAG_MISMATCH_PREVIOUS(OTHER, "Previous use is here"),
   USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
+  UNEXPECTED_TYPEDEF_USE(ERROR, "Unexpected type name '%s'; expected primary expression"),
 }
 
 enum class DiagnosticKind(val text: String) {

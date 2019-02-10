@@ -77,7 +77,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     translationUnit()
     if (root.decls.isEmpty() &&
         rootScope.tagNames.isEmpty() &&
-        rootScope.typedefNames.isEmpty() &&
+        rootScope.idents.isEmpty() &&
         diags.isEmpty()) {
       diagnostic {
         id = DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL
