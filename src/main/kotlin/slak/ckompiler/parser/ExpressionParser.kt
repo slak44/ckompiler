@@ -23,9 +23,9 @@ interface IExpressionParser {
  * C standard: A.2.1
  */
 enum class Operators(val op: Punctuators,
-                             val precedence: Int,
-                             val arity: Arity,
-                             val assoc: Associativity) {
+                     val precedence: Int,
+                     val arity: Arity,
+                     val assoc: Associativity) {
   // Unary
   REF(Punctuators.AMP, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),

@@ -9,7 +9,7 @@ typealias ILexicalTokenHandler = ITokenHandler<LexicalToken>
  * Eats tokens unconditionally until a semicolon or the end of the token list.
  * Does not eat the semicolon.
  */
-fun ILexicalTokenHandler.eatToSemi()  {
+fun ILexicalTokenHandler.eatToSemi() {
   while (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
 }
 
