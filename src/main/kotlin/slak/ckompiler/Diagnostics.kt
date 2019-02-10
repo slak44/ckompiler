@@ -69,7 +69,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   TAG_MISMATCH(ERROR, "Use of '%s' with tag type that does not match previous declaration"),
   TAG_MISMATCH_PREVIOUS(OTHER, "Previous use is here"),
   USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
-  UNEXPECTED_TYPEDEF_USE(ERROR, "Unexpected type name '%s'; expected primary expression"),
+  UNEXPECTED_TYPEDEF_USE(ERROR, """
+    Unexpected type name '%s' (aka '%s'); expected primary expression
+  """.trimIndent()),
 }
 
 enum class DiagnosticKind(val text: String) {

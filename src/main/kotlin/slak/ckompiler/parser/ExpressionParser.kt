@@ -328,7 +328,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         }
         if (existingIdent is TypedefName) diagnostic {
           id = DiagnosticId.UNEXPECTED_TYPEDEF_USE
-          formatArgs(existingIdent.typedefedToString())
+          formatArgs(existingIdent.name, existingIdent.typedefedToString())
           errorOn(safeToken(0))
         }
         // When this ident not a valid thing to put in an expression, we can report the error but
