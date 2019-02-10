@@ -1,6 +1,7 @@
 package slak.ckompiler.analysis
 
 import slak.ckompiler.analysis.GraphvizColors.*
+import slak.ckompiler.parser.ASTNode
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE
@@ -49,6 +50,9 @@ private enum class GraphvizColors(val color: String) {
 
   override fun toString() = color
 }
+
+/** Gets the piece of the source code that this node was created from. */
+private fun ASTNode.originalCode(sourceCode: String) = sourceCode.substring(tokenRange).trim()
 
 /**
  * Pretty graph for debugging purposes.

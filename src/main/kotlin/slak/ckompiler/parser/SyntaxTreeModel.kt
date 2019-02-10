@@ -68,7 +68,7 @@ sealed class ASTNode(val isRoot: Boolean = false) {
   }
 
   /**
-   * The first and last [LexicalToken]s of this node.
+   * The range of 'stuff' in this node. Usually created from [TokenObject]'s range data.
    * @throws slak.ckompiler.InternalCompilerError if accessed on a node without a range set
    */
   val tokenRange: IntRange by lazy {
@@ -82,9 +82,6 @@ sealed class ASTNode(val isRoot: Boolean = false) {
   fun setRange(range: IntRange) {
     lateTokenRange = range
   }
-
-  /** Gets the piece of the source code that this node was created from. */
-  fun originalCode(sourceCode: String) = sourceCode.substring(tokenRange).trim()
 
   override fun equals(other: Any?) = other is ASTNode
   override fun hashCode() = javaClass.hashCode()
