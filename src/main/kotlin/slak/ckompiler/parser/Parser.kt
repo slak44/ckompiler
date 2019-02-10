@@ -25,6 +25,14 @@ fun ILexicalTokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
 }
 
 /**
+ * Generic way to construct [ErrorNode] instances, like [ErrorExpression] or [ErrorStatement].
+ * FIXME: actually use this thing instead of the ultra-ugly factory methods (or the copy paste)
+ */
+inline fun <reified T> ILexicalTokenHandler.error(): T where T : ASTNode, T : ErrorNode {
+  return T::class.java.newInstance().withRange(rangeOne())
+}
+
+/**
  * @param tokens list of tokens to parse
  * @param srcFileName the name of the file in which the tokens were extracted from
  */
