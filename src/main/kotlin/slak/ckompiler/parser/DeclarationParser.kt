@@ -304,10 +304,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           eatUntil(rParenIdx)
         }
         eat() // Get rid of ")"
-        ptl
-        // FIXME: below
-//        FunctionDeclarator(declarator = primary, ptl = ptl, scope = this)
-//            .withRange(primary.tokenRange.start until tokenAt(rParenIdx).startIdx)
+        ptl.withRange(lParen..tokenAt(rParenIdx))
       }
     }
     current().asPunct() == Punctuators.LSQPAREN -> {
@@ -335,7 +332,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         eat() // Eat ']'
         // FIXME: not all array sizes are allowed everywhere
-        arraySize
+        arraySize.withRange(lSqParen..tokenAt(rSqParenIdx))
       }
     }
     else -> null
