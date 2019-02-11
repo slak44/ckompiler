@@ -29,7 +29,7 @@ fun ILexicalTokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
  * FIXME: actually use this thing instead of the ultra-ugly factory methods (or the copy paste)
  */
 inline fun <reified T> ILexicalTokenHandler.error(): T where T : ASTNode, T : ErrorNode {
-  return T::class.java.newInstance().withRange(rangeOne())
+  return T::class.constructors.first { it.parameters.isEmpty() }.call().withRange(rangeOne())
 }
 
 /**
