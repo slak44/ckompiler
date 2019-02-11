@@ -428,7 +428,10 @@ data class NamedDeclarator(val name: IdentifierNode,
     suffixes.forEach { it.setParent(this) }
   }
 
-  override fun toString() = "${indirection.stringify()} $name $suffixes"
+  override fun toString(): String {
+    val suffixesStr = suffixes.joinToString("")
+    return "${indirection.stringify()}$name$suffixesStr"
+  }
 }
 
 /** C standard: 6.7.7.0.1 */
@@ -560,6 +563,14 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
    */
   fun identifiers(): List<IdentifierNode> {
     return declaratorList.map { it.first.name }
+  }
+
+  override fun toString(): String {
+    val declList = declaratorList.joinToString(", ") {
+      val initStr = if (it.second == null) "" else " = ${it.second}"
+      "${it.first}$initStr"
+    }
+    return "Declaration($declSpecs $declList)"
   }
 }
 

@@ -44,10 +44,12 @@ internal val signedChar = DeclarationSpecifier(typeSpec = SignedChar(Keywords.SI
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s)
-internal fun nameDecl(s: String) = NamedDeclarator(name(s), emptyList(), emptyList())
+internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
 
-// Yes, the nested empty lists are correct
-internal fun ptr(s: String) = NamedDeclarator(name(s), listOf(listOf()), emptyList())
+internal fun ptr(d: Declarator) =
+    NamedDeclarator(d.name, d.indirection + listOf(listOf()), d.suffixes)
+
+internal fun ptr(s: String) = ptr(nameDecl(s))
 
 internal fun String.withPtrs(vararg q: TypeQualifierList) =
     NamedDeclarator(name(this), q.asList(), emptyList())
@@ -88,15 +90,21 @@ internal infix fun DeclarationSpecifier.declare(sm: List<StructMember>) =
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
 
-private fun String.withParams(params: List<ParameterDeclaration>, variadic: Boolean): Declarator {
+internal fun Declarator.withParams(params: List<ParameterDeclaration>,
+                                   variadic: Boolean): Declarator {
   val scope = params.mapTo(mutableListOf()) { it.declarator.name }.let {
     val s = LexicalScope()
     s.idents += it
     s
   }
-  return NamedDeclarator(name(this), emptyList(),
-      listOf(ParameterTypeList(params, scope, variadic)))
+  return NamedDeclarator(name, indirection, suffixes + ParameterTypeList(params, scope, variadic))
 }
+
+internal infix fun Declarator.withParams(params: List<ParameterDeclaration>) =
+    withParams(params, false)
+
+private fun String.withParams(params: List<ParameterDeclaration>, variadic: Boolean) =
+    nameDecl(this).withParams(params, variadic)
 
 internal infix fun String.withParams(params: List<ParameterDeclaration>) = withParams(params, false)
 internal infix fun String.withParamsV(params: List<ParameterDeclaration>) = withParams(params, true)

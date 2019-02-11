@@ -139,9 +139,10 @@ class FunctionsTests {
   }
 
   @Test
-  @Ignore("We can't parse that yet")
   fun `Function Prototype Return Pointer To Function`() {
     val p = prepareCode("int (*f(int x))(int y);", source)
     p.assertNoDiagnostics()
+    val f = int declare ptr("f" withParams listOf(int param "x") withParams listOf(int param "y"))
+    f assertEquals p.root.decls[0]
   }
 }

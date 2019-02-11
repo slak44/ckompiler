@@ -204,12 +204,14 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eatToSemi()
       return error<ErrorDeclarator>()
     }
+    eat() // The '('
     val declarator = when (T::class) {
       NamedDeclarator::class -> parseNamedDeclarator(end)
       AbstractDeclarator::class -> parseAbstractDeclarator(end)
       else -> logger.throwICE("Bad declarator type for nested declarators") { "T: ${T::class}" }
     }
     if (declarator is ErrorNode) eatToSemi()
+    else eat() // The ')'
     return declarator
   }
 
@@ -376,22 +378,20 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
       return error()
     }
-
-    fun namedDeclarator(pointers: List<TypeQualifierList>,
-                        otherSuffixes: List<DeclaratorSuffix> = emptyList()): Declarator {
-      val nameTok = current() as? Identifier ?: return emitDiagnostic(safeToken(0))
-      eat() // The identifier token
-      val name = IdentifierNode.from(nameTok)
-      return NamedDeclarator(name, pointers, otherSuffixes + parseSuffixes(it.size))
-    }
     if (it.isEmpty()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
     val pointers = parsePointer(it.size)
     if (isEaten()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
-    val nested =
-        parseNestedDeclarator<NamedDeclarator>() ?: return@tokenContext namedDeclarator(pointers)
+    val nested = parseNestedDeclarator<NamedDeclarator>()
+    if (nested == null) {
+      val nameTok = current() as? Identifier ?: return@tokenContext emitDiagnostic(safeToken(0))
+      eat() // The identifier token
+      val name = IdentifierNode.from(nameTok)
+      return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size))
+    }
     if (nested is ErrorNode) return@tokenContext error<ErrorDeclarator>()
     nested as NamedDeclarator
-    return@tokenContext namedDeclarator(pointers + nested.indirection, nested.suffixes)
+    return@tokenContext NamedDeclarator(nested.name,
+        pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
   }
 
   /** C standard: 6.7.7.0.1 */
