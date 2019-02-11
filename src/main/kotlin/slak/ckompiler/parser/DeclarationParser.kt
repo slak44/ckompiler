@@ -83,7 +83,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       return declSpec to Optional.empty()
     }
     if (declSpec.isTag() && isEaten()) return declSpec to Optional.empty()
-    val declarator = if (declSpec.isEmpty()) null else Optional.of(parseDeclarator(tokenCount))
+    val declarator = if (declSpec.isEmpty()) null else Optional.of(parseNamedDeclarator(tokenCount))
     if (declarator != null && declarator.get().isFunction()) {
       SpecValidationRules.FUNCTION_DECLARATION.validate(specParser, declSpec)
     }
@@ -152,7 +152,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       // We're interested in the comma that comes after the parameter
       // So balance the parens, and look for the first comma after them
       // Also, we do not eat what we find; we're only searching for the end of the current param
-      // Once found, parseDeclarator handles parsing the param and eating it
+      // Once found, parseNamedDeclarator handles parsing the param and eating it
       val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
       if (parenEndIdx == -1) {
         TODO("handle error case where there is an unmatched paren in the parameter list")
@@ -160,7 +160,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       val commaIdx = indexOfFirst(Punctuators.COMMA)
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
       // FIXME: abstract declarator allowed here
-      val declarator = parseDeclarator(paramEndIdx)
+      val declarator = parseNamedDeclarator(paramEndIdx)
       params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
@@ -205,7 +205,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       return error<ErrorDeclarator>()
     }
     val declarator = when (T::class) {
-      NamedDeclarator::class -> parseDeclarator(end)
+      NamedDeclarator::class -> parseNamedDeclarator(end)
       AbstractDeclarator::class -> parseAbstractDeclarator(end)
       else -> logger.throwICE("Bad declarator type for nested declarators") { "T: ${T::class}" }
     }
@@ -368,13 +368,13 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   }
 
   /** C standard: 6.7.6.0.1 */
-  private fun parseDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
+  private fun parseNamedDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
     fun emitDiagnostic(data: Any): ErrorDeclarator {
       diagnostic {
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
         diagData(data)
       }
-      return error<ErrorDeclarator>()
+      return error()
     }
 
     fun namedDeclarator(pointers: List<TypeQualifierList>,
@@ -468,7 +468,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     var firstDeclUsed = firstDecl == null
     while (true) {
       val declarator = (if (firstDeclUsed) {
-        parseDeclarator(tokenCount)
+        parseNamedDeclarator(tokenCount)
       } else {
         firstDeclUsed = true
         firstDecl!!
@@ -530,7 +530,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   override fun parseStructDeclaratorList(): List<StructMember> {
     val declaratorList = mutableListOf<StructMember>()
     declLoop@ while (true) {
-      val declarator = parseDeclarator(tokenCount)
+      val declarator = parseNamedDeclarator(tokenCount)
       // FIXME: bitfield width decls without actual declarators are allowed, and should be handled
       if (declarator is ErrorDeclarator) {
         val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
