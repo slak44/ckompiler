@@ -93,73 +93,6 @@ fun <T : ASTNode> T.withRange(range: IntRange): T {
   return this
 }
 
-/**
- * Stores the data of a scoped `typedef`.
- * @param typedefIdent this is the [IdentifierNode] found at the place where the typedef was
- * declared; actual declarations that use this typedef will have their own identifiers
- */
-data class TypedefName(val declSpec: DeclarationSpecifier,
-                       val indirection: List<TypeQualifierList>,
-                       val typedefIdent: IdentifierNode) : OrdinaryIdentifier by typedefIdent {
-  override val kindName = "typedef"
-
-  fun typedefedToString(): String {
-    val ind = indirection.stringify()
-    val indStr = if (ind.isBlank()) "" else " $ind"
-    // The storage class is "typedef", and we don't want to print it
-    val dsNoStorage = DeclarationSpecifier(
-        storageClass = null,
-        typeSpec = declSpec.typeSpec,
-        functionSpecs = declSpec.functionSpecs,
-        typeQualifiers = declSpec.typeQualifiers,
-        threadLocal = declSpec.threadLocal)
-    return "$dsNoStorage$indStr"
-  }
-}
-
-/**
- * Implementors of this interface belong in the "ordinary identifier" namespace.
- *
- * C standard: 6.2.3.0.1
- * @see LexicalScope
- */
-interface OrdinaryIdentifier {
-  val name: String
-  /** @see ASTNode.tokenRange */
-  val tokenRange: IntRange
-  /**
-   * A string that identifies what kind of identifier this is. For example: 'typedef', 'variable'.
-   * Is used by diagnostic messages.
-   */
-  val kindName: String
-}
-
-/**
- * This class stores lexically-scoped identifiers.
- *
- * The standard specifies multiple namespaces:
- * 1. Label namespace ([labels])
- * 2. Tag namespace ([tagNames])
- * 3. "Ordinary identifiers", AKA everything else, including typedef names ([idents])
- *
- * C standard: 6.2.1, 6.2.3.0.1
- */
-data class LexicalScope(val tagNames: MutableList<TagSpecifier> = mutableListOf(),
-                        val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
-                        val labels: MutableList<IdentifierNode> = mutableListOf()) {
-
-  override fun toString(): String {
-    val identStr = idents.filter { it !is TypedefName }.joinToString(", ") { it.name }
-    val labelStr = labels.joinToString(", ") { it.name }
-    val typedefStr = idents.mapNotNull { it as? TypedefName }
-        .joinToString(", ") { "${it.typedefedToString()} ${it.typedefIdent.name}" }
-    val tags = tagNames
-        .joinToString(", ") { "${it.tagKindKeyword.value.keyword} ${it.tagIdent.name}" }
-    return "LexicalScope(" +
-        "idents=[$identStr], labels=[$labelStr], typedefs=[$typedefStr], tags=[$tags])"
-  }
-}
-
 /** Represents a leaf node of an AST (ie an [ASTNode] that is a parent to nobody). */
 interface Terminal
 
@@ -396,153 +329,6 @@ data class StringLiteralNode(val string: String, val encoding: StringEncoding) :
     }, ExpressionSize(IntegerConstantNode(string.length.toLong(), IntegralSuffix.NONE)))), Terminal
 
 /**
- * FIXME: add `ComplexFloat` `ComplexDouble` `ComplexLongDouble`
- * FIXME: add atomic-type-specifier (6.7.2.4)
- */
-sealed class TypeSpecifier
-
-data class EnumSpecifier(val name: IdentifierNode) : TypeSpecifier()
-
-data class TypedefNameSpecifier(val name: IdentifierNode, val type: TypedefName) : TypeSpecifier() {
-  override fun toString() = "${name.name} (aka ${type.typedefedToString()})"
-}
-
-// FIXME: if a declaration has an incomplete type that never gets completed, print a diagnostic
-sealed class TagSpecifier : TypeSpecifier() {
-  abstract val isCompleteType: Boolean
-  abstract val isAnonymous: Boolean
-  abstract val tagIdent: IdentifierNode
-  abstract val tagKindKeyword: Keyword
-}
-
-data class StructNameSpecifier(val name: IdentifierNode,
-                               override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = false
-  override val isAnonymous = false
-  override val tagIdent = name
-  override fun toString() = "struct ${name.name}"
-}
-
-data class UnionNameSpecifier(val name: IdentifierNode,
-                              override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = false
-  override val isAnonymous = false
-  override val tagIdent = name
-  override fun toString() = "union ${name.name}"
-}
-
-data class StructDefinition(val name: IdentifierNode?,
-                            val decls: List<StructDeclaration>,
-                            override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = true
-  override val isAnonymous get() = name == null
-  override val tagIdent: IdentifierNode get() = name!!
-  override fun toString() = "struct ${if (name != null) "${name.name} " else ""}{...}"
-}
-
-data class UnionDefinition(val name: IdentifierNode?,
-                           val decls: List<StructDeclaration>,
-                           override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = true
-  override val isAnonymous get() = name == null
-  override val tagIdent: IdentifierNode get() = name!!
-  override fun toString() = "union ${if (name != null) "${name.name} " else ""}{...}"
-}
-
-sealed class BasicTypeSpecifier(val first: Keyword) : TypeSpecifier() {
-  override fun equals(other: Any?) = this.javaClass == other?.javaClass
-  override fun hashCode() = javaClass.hashCode()
-}
-
-class VoidTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.VOID.keyword
-}
-
-class Bool(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.BOOL.keyword
-}
-
-class Signed(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.SIGNED.keyword
-}
-
-class Unsigned(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.UNSIGNED.keyword
-}
-
-class Char(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.CHAR.keyword
-}
-
-class SignedChar(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Char"
-}
-
-class UnsignedChar(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Char"
-}
-
-class Short(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.SHORT.keyword
-}
-
-class SignedShort(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Short"
-}
-
-class UnsignedShort(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Short"
-}
-
-class IntType(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.INT.keyword
-}
-
-class SignedInt(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} ${Keywords.INT.keyword}"
-}
-
-class UnsignedInt(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} ${Keywords.INT.keyword}"
-}
-
-class LongType(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.LONG.keyword
-}
-
-class SignedLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Long"
-}
-
-class UnsignedLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Long"
-}
-
-class LongLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "$Long $Long"
-}
-
-class SignedLongLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Long $Long"
-}
-
-class UnsignedLongLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Long $Long"
-}
-
-class FloatTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.FLOAT.keyword
-}
-
-class DoubleTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = Keywords.DOUBLE.keyword
-}
-
-class LongDouble(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "$Long $Double"
-}
-
-/**
  * Stores declaration specifiers that come before declarators.
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
@@ -582,11 +368,6 @@ data class DeclarationSpecifier(val storageClass: Keyword? = null,
   }
 }
 
-typealias TypeQualifierList = List<Keyword>
-
-fun List<TypeQualifierList>.stringify() =
-    this.joinToString { '*' + it.joinToString(" ") { (value) -> value.keyword } }
-
 sealed class DeclaratorSuffix : ASTNode()
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
@@ -620,6 +401,11 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
 
   override fun toString() = "$declSpec $declarator"
 }
+
+typealias TypeQualifierList = List<Keyword>
+
+fun List<TypeQualifierList>.stringify() =
+    this.joinToString { '*' + it.joinToString(" ") { (value) -> value.keyword } }
 
 sealed class Declarator : ASTNode() {
   abstract val indirection: List<TypeQualifierList>

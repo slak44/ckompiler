@@ -6,6 +6,73 @@ import slak.ckompiler.IDebugHandler
 import slak.ckompiler.throwICE
 import java.util.*
 
+/**
+ * Stores the data of a scoped `typedef`.
+ * @param typedefIdent this is the [IdentifierNode] found at the place where the typedef was
+ * declared; actual declarations that use this typedef will have their own identifiers
+ */
+data class TypedefName(val declSpec: DeclarationSpecifier,
+                       val indirection: List<TypeQualifierList>,
+                       val typedefIdent: IdentifierNode) : OrdinaryIdentifier by typedefIdent {
+  override val kindName = "typedef"
+
+  fun typedefedToString(): String {
+    val ind = indirection.stringify()
+    val indStr = if (ind.isBlank()) "" else " $ind"
+    // The storage class is "typedef", and we don't want to print it
+    val dsNoStorage = DeclarationSpecifier(
+        storageClass = null,
+        typeSpec = declSpec.typeSpec,
+        functionSpecs = declSpec.functionSpecs,
+        typeQualifiers = declSpec.typeQualifiers,
+        threadLocal = declSpec.threadLocal)
+    return "$dsNoStorage$indStr"
+  }
+}
+
+/**
+ * Implementors of this interface belong in the "ordinary identifier" namespace.
+ *
+ * C standard: 6.2.3.0.1
+ * @see LexicalScope
+ */
+interface OrdinaryIdentifier {
+  val name: String
+  /** @see ASTNode.tokenRange */
+  val tokenRange: IntRange
+  /**
+   * A string that identifies what kind of identifier this is. For example: 'typedef', 'variable'.
+   * Is used by diagnostic messages.
+   */
+  val kindName: String
+}
+
+/**
+ * This class stores lexically-scoped identifiers.
+ *
+ * The standard specifies multiple namespaces:
+ * 1. Label namespace ([labels])
+ * 2. Tag namespace ([tagNames])
+ * 3. "Ordinary identifiers", AKA everything else, including typedef names ([idents])
+ *
+ * C standard: 6.2.1, 6.2.3.0.1
+ */
+data class LexicalScope(val tagNames: MutableList<TagSpecifier> = mutableListOf(),
+                        val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
+                        val labels: MutableList<IdentifierNode> = mutableListOf()) {
+
+  override fun toString(): String {
+    val identStr = idents.filter { it !is TypedefName }.joinToString(", ") { it.name }
+    val labelStr = labels.joinToString(", ") { it.name }
+    val typedefStr = idents.mapNotNull { it as? TypedefName }
+        .joinToString(", ") { "${it.typedefedToString()} ${it.typedefIdent.name}" }
+    val tags = tagNames
+        .joinToString(", ") { "${it.tagKindKeyword.value.keyword} ${it.tagIdent.name}" }
+    return "LexicalScope(" +
+        "idents=[$identStr], labels=[$labelStr], typedefs=[$typedefStr], tags=[$tags])"
+  }
+}
+
 interface IScopeHandler {
   /**
    * Run the given [block] within the receiver scope.
