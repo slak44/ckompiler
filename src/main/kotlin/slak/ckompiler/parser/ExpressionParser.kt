@@ -216,6 +216,14 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
       current().asPunct() == Punctuators.LPAREN -> {
         val (args, endParenTok) = parseArgumentExprList()
+        if (!expr.type.isFunction()) {
+          diagnostic {
+            id = DiagnosticId.CALL_OBJECT_TYPE
+            formatArgs(expr.type)
+            columns(expr.tokenRange)
+          }
+          return error<ErrorExpression>()
+        }
         return FunctionCall(expr, args).withRange(expr.tokenRange.start until endParenTok.startIdx)
       }
       current().asPunct() == Punctuators.DOT -> {

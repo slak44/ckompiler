@@ -43,6 +43,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   """.trimIndent()),
   ARRAY_STATIC_NO_SIZE(ERROR, "'static' may not be used without an array size"),
   UNSUPPORTED_VLA(ERROR, "Variable length arrays are not supported by this implementation"),
+  CALL_OBJECT_TYPE(ERROR, "Called object type '%s' is not a function or function pointer"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

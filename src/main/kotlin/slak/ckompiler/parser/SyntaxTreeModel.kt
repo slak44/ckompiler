@@ -227,15 +227,23 @@ class Noop : Statement(), Terminal {
  *
  * C standard: A.2.3, 6.8.3
  */
-sealed class Expression(val type: TypeSpecifier) : Statement()
+sealed class Expression(val type: TypeName) : Statement() {
+  constructor(typeSpec: TypeSpecifier) : this(TypeName(typeSpec))
+}
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorExpression : Expression(VoidType(Keyword(Keywords.VOID))), ErrorNode by ErrorNodeImpl
 
+/**
+ * Represents a function call in an [Expression].
+ *
+ * C standard: 6.5.2.2
+ * @param calledExpr MUST have [TypeName.isFunction] be true
+ */
 data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) :
-    Expression(calledExpr.type /* FIXME: wrong, cast the thing to func and get the ret type */) {
+    Expression(calledExpr.type.retType()) {
   init {
-    // FIXME: check if calledExpr is allowed to be called
+    if (!calledExpr.type.isFunction()) logger.throwICE("Attempt to call non-function") { this }
     calledExpr.setParent(this)
     args.forEach { it.setParent(this) }
   }
@@ -597,10 +605,38 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
   override fun toString() = "$declSpec $declarator"
 }
 
-/**
- * C standard: 6.7.7
- */
-data class TypeName(val specQuals: DeclarationSpecifier, val decl: Declarator)
+/** C standard: 6.7.7 */
+data class TypeName(val specQuals: DeclarationSpecifier, val decl: AbstractDeclarator) {
+  constructor(specQuals: DeclarationSpecifier, decl: NamedDeclarator) :
+      this(specQuals, AbstractDeclarator(decl.indirection, decl.suffixes))
+  constructor(typeSpec: TypeSpecifier) :
+      this(DeclarationSpecifier(typeSpec = typeSpec), AbstractDeclarator(emptyList(), emptyList()))
+
+  fun isFunction() = decl.isFunction()
+
+  /**
+   * C standard: 6.2.5.0.19, 6.2.5.0.20
+   */
+  fun isComplete(): Boolean {
+    // Pointer types are always complete
+    if (decl.indirection.isNotEmpty()) return true
+    if (specQuals.typeSpec is VoidType && decl.suffixes.isEmpty()) {
+      // Void type is always incomplete
+      return false
+    }
+    // FIXME: check for other incomplete types
+    return true
+  }
+
+  /** Throws if [isFunction] is false. */
+  fun retType(): TypeName {
+    return this // FIXME: placeholder
+  }
+
+  override fun toString(): String {
+    return super.toString()
+  }
+}
 
 sealed class Declarator : ASTNode() {
   abstract val indirection: List<TypeQualifierList>

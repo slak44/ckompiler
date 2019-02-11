@@ -181,7 +181,10 @@ internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNod
 
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
-internal infix fun String.call(l: List<Expression>) = FunctionCall(name(this), l.map { it })
+internal infix fun <T : Any> String.call(l: List<T>) = name(this) call l
+
+internal infix fun <Receiver, T : Any> Receiver.call(l: List<T>) =
+    FunctionCall(parseDSLElement(this), l.map { parseDSLElement(it) })
 
 internal inline fun <reified T> struct(name: String?, decls: List<T>): StructDefinition {
   val d = decls.map {
