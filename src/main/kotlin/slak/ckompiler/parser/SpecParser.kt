@@ -178,14 +178,14 @@ class SpecParser(declarationParser: DeclarationParser) :
     if (this == null) return when (next.value) {
       Keywords.SIGNED -> Signed(next)
       Keywords.UNSIGNED -> Unsigned(next)
-      Keywords.VOID -> VoidType(next)
+      Keywords.VOID -> VoidTypeSpec(next)
       Keywords.BOOL -> Bool(next)
       Keywords.CHAR -> Char(next)
       Keywords.SHORT -> Short(next)
       Keywords.INT -> IntType(next)
       Keywords.LONG -> LongType(next)
-      Keywords.FLOAT -> FloatType(next)
-      Keywords.DOUBLE -> DoubleType(next)
+      Keywords.FLOAT -> FloatTypeSpec(next)
+      Keywords.DOUBLE -> DoubleTypeSpec(next)
       else -> logger.throwICE("Bad keyword interpreted as type specifier") { next }
     }
     if (next.value == Keywords.SIGNED || next.value == Keywords.UNSIGNED) {
@@ -205,7 +205,7 @@ class SpecParser(declarationParser: DeclarationParser) :
         Keywords.LONG -> return UnsignedLongLong(this.first)
         else -> diagIncompat(this.toString(), next)
       }
-      is DoubleType -> when (next.value) {
+      is DoubleTypeSpec -> when (next.value) {
         Keywords.LONG -> return LongDouble(this.first)
         else -> diagIncompat(this.toString(), next)
       }

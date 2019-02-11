@@ -34,7 +34,7 @@ internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, F
 internal val Keywords.kw get() = Keyword(this)
 
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw))
-internal val double = DeclarationSpecifier(typeSpec = DoubleType(Keywords.DOUBLE.kw))
+internal val double = DeclarationSpecifier(typeSpec = DoubleTypeSpec(Keywords.DOUBLE.kw))
 internal val longLong = DeclarationSpecifier(typeSpec = LongLong(Keywords.LONG.kw))
 internal val uLongLong =
     DeclarationSpecifier(typeSpec = UnsignedLongLong(Keywords.UNSIGNED.kw))

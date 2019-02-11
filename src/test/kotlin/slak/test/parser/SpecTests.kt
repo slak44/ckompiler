@@ -137,7 +137,7 @@ class SpecTests {
   fun `Void Function`() {
     val p = prepareCode("void f();", source)
     p.assertNoDiagnostics()
-    assert((p.root.decls[0] as Declaration).declSpecs.typeSpec is VoidType)
+    assert((p.root.decls[0] as Declaration).declSpecs.typeSpec is VoidTypeSpec)
   }
 
   @Test

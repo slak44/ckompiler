@@ -50,6 +50,12 @@ interface IScopeHandler {
    */
   fun searchIdent(target: IdentifierNode): OrdinaryIdentifier?
 
+  /**
+   * Searches all the scopes for the tag with the given name.
+   * @return null if no such tag exists, or the previous [TagSpecifier] otherwise
+   */
+  fun searchTag(target: IdentifierNode): TagSpecifier?
+
   val rootScope: LexicalScope
 }
 
@@ -182,6 +188,14 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     scopeStack.forEach {
       val idx = it.idents.indexOfFirst { id -> id.name == target.name }
       if (idx != -1) return it.idents[idx]
+    }
+    return null
+  }
+
+  override fun searchTag(target: IdentifierNode): TagSpecifier? {
+    scopeStack.forEach {
+      val idx = it.tagNames.indexOfFirst { tag -> tag.tagIdent.name == target.name }
+      if (idx != -1) return it.tagNames[idx]
     }
     return null
   }

@@ -216,7 +216,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       }
       current().asPunct() == Punctuators.LPAREN -> {
         val (args, endParenTok) = parseArgumentExprList()
-        if (!expr.type.isFunction()) {
+        if (expr.type.asCallable() == null) {
           diagnostic {
             id = DiagnosticId.CALL_OBJECT_TYPE
             formatArgs(expr.type)

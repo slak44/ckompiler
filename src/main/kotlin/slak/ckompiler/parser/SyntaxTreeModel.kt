@@ -223,27 +223,24 @@ class Noop : Statement(), Terminal {
 /**
  * Represents an expression.
  *
- * FIXME: the [type] should actually be a `type-name` (6.7.7) that stores a bit more info
- *
  * C standard: A.2.3, 6.8.3
  */
-sealed class Expression(val type: TypeName) : Statement() {
-  constructor(typeSpec: TypeSpecifier) : this(TypeName(typeSpec))
-}
+sealed class Expression(val type: TypeName) : Statement()
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
-class ErrorExpression : Expression(VoidType(Keyword(Keywords.VOID))), ErrorNode by ErrorNodeImpl
+class ErrorExpression : Expression(VoidType), ErrorNode by ErrorNodeImpl
 
 /**
  * Represents a function call in an [Expression].
  *
  * C standard: 6.5.2.2
- * @param calledExpr MUST have [TypeName.isFunction] be true
+ * @param calledExpr must have [Expression.type] be [FunctionType] (or [PointerType] to a
+ * [FunctionType])
  */
 data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) :
-    Expression(calledExpr.type.retType()) {
+    Expression(calledExpr.type.asCallable()
+        ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }) {
   init {
-    if (!calledExpr.type.isFunction()) logger.throwICE("Attempt to call non-function") { this }
     calledExpr.setParent(this)
     args.forEach { it.setParent(this) }
   }
@@ -268,8 +265,10 @@ data class UnaryExpression(val op: Operators, val operand: Expression) : Express
   }
 }
 
-/** C standard: A.2.1 */
-data class SizeofExpression(val sizeExpr: Expression) : Expression(IntType(Keyword(Keywords.INT))) {
+/**
+ * C standard: A.2.1
+ */
+data class SizeofExpression(val sizeExpr: Expression) : Expression(UnsignedIntType) {
   init {
     // FIXME: disallow function types/incomplete types/bitfield members
     sizeExpr.setParent(this)
@@ -318,11 +317,10 @@ data class BinaryExpression(val op: Operators,
   override fun toString() = "($lhs $op $rhs)"
 }
 
-class IdentifierNode(override val name: String, type: TypeSpecifier =
-    IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */) :
+class IdentifierNode(override val name: String, type: TypeName = VoidType /* FIXME: temp */) :
     Expression(type), Terminal, OrdinaryIdentifier {
-  constructor(lexerIdentifier: Identifier, type: TypeSpecifier =
-      IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */) : this(lexerIdentifier.name, type)
+  constructor(lexerIdentifier: Identifier, type: TypeName = VoidType /* FIXME: clearly temp */) :
+      this(lexerIdentifier.name, type)
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -354,30 +352,48 @@ class IdentifierNode(override val name: String, type: TypeSpecifier =
 }
 
 data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) :
-    Expression(IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */), Terminal {
+    Expression(when (suffix) {
+      IntegralSuffix.UNSIGNED -> UnsignedIntType
+      IntegralSuffix.UNSIGNED_LONG -> UnsignedLongType
+      IntegralSuffix.UNSIGNED_LONG_LONG -> UnsignedLongLongType
+      IntegralSuffix.LONG -> SignedLongType
+      IntegralSuffix.LONG_LONG -> SignedLongLongType
+      IntegralSuffix.NONE -> SignedIntType
+    }), Terminal {
   override fun toString() = "$value$suffix"
 }
 
 data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
-    Expression(DoubleType(Keyword(Keywords.DOUBLE)) /* FIXME: clearly temp */), Terminal {
+    Expression(when (suffix) {
+      FloatingSuffix.FLOAT -> FloatType
+      FloatingSuffix.LONG_DOUBLE -> LongDoubleType
+      FloatingSuffix.NONE -> DoubleType
+    }), Terminal {
   override fun toString() = "$value$suffix"
 }
 
 /**
  * Stores a character constant.
  *
- * According to the C standard, the value of multi-byte character constants is
- * implementation-defined. This implementation truncates the constants to the first byte.
+ * According to the standard, the value of multi-byte character constants is
+ * implementation-defined. This implementation truncates the constants to the first char.
  *
  * Also, empty char constants are not defined; here they are equal to 0, and produce a warning.
  *
- * C standard: 6.4.4.4.10
+ * C standard: 6.4.4.4.0.10
  */
 data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) :
-    Expression(UnsignedChar(Keyword(Keywords.UNSIGNED)) /* FIXME: clearly temp */), Terminal
+    Expression(UnsignedIntType), Terminal
 
+/**
+ * FIXME: UTF-8 handling. Array size is not string.length
+ * FIXME: wchar_t & friends should have more specific element type
+ */
 data class StringLiteralNode(val string: String, val encoding: StringEncoding) :
-    Expression(Char(Keyword(Keywords.CHAR)) /* FIXME: clearly temp */), Terminal
+    Expression(ArrayType(when (encoding) {
+      StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
+      else -> UnsignedLongLongType
+    }, ExpressionSize(IntegerConstantNode(string.length.toLong(), IntegralSuffix.NONE)))), Terminal
 
 /**
  * FIXME: add `ComplexFloat` `ComplexDouble` `ComplexLongDouble`
@@ -438,7 +454,7 @@ sealed class BasicTypeSpecifier(val first: Keyword) : TypeSpecifier() {
   override fun hashCode() = javaClass.hashCode()
 }
 
-class VoidType(first: Keyword) : BasicTypeSpecifier(first) {
+class VoidTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.VOID.keyword
 }
 
@@ -514,11 +530,11 @@ class UnsignedLongLong(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = "${Keywords.UNSIGNED.keyword} $Long $Long"
 }
 
-class FloatType(first: Keyword) : BasicTypeSpecifier(first) {
+class FloatTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.FLOAT.keyword
 }
 
-class DoubleType(first: Keyword) : BasicTypeSpecifier(first) {
+class DoubleTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
   override fun toString() = Keywords.DOUBLE.keyword
 }
 
@@ -603,39 +619,6 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
   }
 
   override fun toString() = "$declSpec $declarator"
-}
-
-/** C standard: 6.7.7 */
-data class TypeName(val specQuals: DeclarationSpecifier, val decl: AbstractDeclarator) {
-  constructor(specQuals: DeclarationSpecifier, decl: NamedDeclarator) :
-      this(specQuals, AbstractDeclarator(decl.indirection, decl.suffixes))
-  constructor(typeSpec: TypeSpecifier) :
-      this(DeclarationSpecifier(typeSpec = typeSpec), AbstractDeclarator(emptyList(), emptyList()))
-
-  fun isFunction() = decl.isFunction()
-
-  /**
-   * C standard: 6.2.5.0.19, 6.2.5.0.20
-   */
-  fun isComplete(): Boolean {
-    // Pointer types are always complete
-    if (decl.indirection.isNotEmpty()) return true
-    if (specQuals.typeSpec is VoidType && decl.suffixes.isEmpty()) {
-      // Void type is always incomplete
-      return false
-    }
-    // FIXME: check for other incomplete types
-    return true
-  }
-
-  /** Throws if [isFunction] is false. */
-  fun retType(): TypeName {
-    return this // FIXME: placeholder
-  }
-
-  override fun toString(): String {
-    return super.toString()
-  }
 }
 
 sealed class Declarator : ASTNode() {
