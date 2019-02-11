@@ -9,25 +9,38 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
 
   init {
     val l = PPLexer(debugHandler, sourceText, srcFileName)
-    val p = PPParser(TokenHandler(l.ppTokens, debugHandler))
+    val parserTokens = mutableListOf<PPToken>()
+    // FIXME: we are passing a list that we WILL mutate, to TokenHandler, which uses List.subList
+    // FIXME: the behaviour is technically undefined; in practice the only mutation is pushing
+    // FIXME: stuff to the end of the list, which *shouldn't* fuck up the sublists, but who knows
+    val p = PPParser(l.tokenSequence, parserTokens, TokenHandler(parserTokens, debugHandler))
     alteredSourceText = sourceText // FIXME
     diags.forEach { it.print() }
   }
 }
 
-private class PPParser(tokenHandler: TokenHandler<PPToken>) :
+private class PPParser(private val tokSrc: Sequence<PPToken>,
+                       private val rootToks: MutableList<PPToken>,
+                       tokenHandler: TokenHandler<PPToken>) :
     IDebugHandler by tokenHandler,
     ITokenHandler<PPToken> by tokenHandler {
-  // FIXME
+
+  fun areTokensLeft() = tokSrc.iterator().hasNext()
+
+  init {
+
+  }
 }
 
 private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceFileName) :
     IDebugHandler by debugHandler,
     ITextSourceHandler by TextSourceHandler(sourceText, srcFileName) {
-  val ppTokens = mutableListOf<PPToken>()
 
-  init {
-    tokenize()
+  private val ppTokens = mutableListOf<PPToken>()
+
+  val tokenSequence = generateSequence {
+    if (!tokenize()) return@generateSequence null
+    else return@generateSequence ppTokens.last()
   }
 
   /** C standard: A.1.8, 6.4.0.4 */
@@ -58,7 +71,7 @@ private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileNam
   private fun ppNumber(s: String): PPNumber? {
     if (s[0] != '.' && !isDigit(s[0])) return null
     if (s[0] == '.' && (s.length < 2 || !isDigit(s[1]))) return null
-    // FIXME: this is technically non-conforming
+    // FIXME: this is technically non-conforming (a massive corner is cut here)
     val endIdx = s.indexOfFirst {
       it != '.' && !isDigit(it) && !isNonDigit(it) && it != '+' && it != '-'
     }
@@ -67,14 +80,16 @@ private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileNam
   }
 
   /**
+   * Reads and adds a single [PPToken] to the [ppTokens] list.
    * [PPToken] search order lifted from the standard.
    * Unmatched ' or " are undefined behaviour.
    *
    * C standard: A.1.1, 6.4.0.3
+   * @return false if there are no more tokens, true otherwise
    */
-  private tailrec fun tokenize() {
+  private fun tokenize(): Boolean {
     dropCharsWhile(Char::isWhitespace)
-    if (currentSrc.isEmpty()) return
+    if (currentSrc.isEmpty()) return false
     val token = headerName(currentSrc) ?:
         identifier(currentSrc)?.toPPToken() ?:
         ppNumber(currentSrc) ?:
@@ -89,6 +104,7 @@ private class PPLexer(debugHandler: DebugHandler, sourceText: String, srcFileNam
     token.startIdx = currentOffset
     ppTokens += token
     dropChars(token.consumedChars)
-    return tokenize()
+    dropCharsWhile(Char::isWhitespace)
+    return true
   }
 }

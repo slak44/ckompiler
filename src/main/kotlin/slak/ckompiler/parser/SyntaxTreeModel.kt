@@ -68,7 +68,7 @@ sealed class ASTNode(val isRoot: Boolean = false) {
   }
 
   /**
-   * The first and last [LexicalToken]s of this node.
+   * The range of 'stuff' in this node. Usually created from [TokenObject]'s range data.
    * @throws slak.ckompiler.InternalCompilerError if accessed on a node without a range set
    */
   val tokenRange: IntRange by lazy {
@@ -82,9 +82,6 @@ sealed class ASTNode(val isRoot: Boolean = false) {
   fun setRange(range: IntRange) {
     lateTokenRange = range
   }
-
-  /** Gets the piece of the source code that this node was created from. */
-  fun originalCode(sourceCode: String) = sourceCode.substring(tokenRange).trim()
 
   override fun equals(other: Any?) = other is ASTNode
   override fun hashCode() = javaClass.hashCode()
@@ -103,7 +100,9 @@ fun <T : ASTNode> T.withRange(range: IntRange): T {
  */
 data class TypedefName(val declSpec: DeclarationSpecifier,
                        val indirection: List<TypeQualifierList>,
-                       val typedefIdent: IdentifierNode) {
+                       val typedefIdent: IdentifierNode) : OrdinaryIdentifier by typedefIdent {
+  override val kindName = "typedef"
+
   fun typedefedToString(): String {
     val ind = indirection.stringify()
     val indStr = if (ind.isBlank()) "" else " $ind"
@@ -120,21 +119,45 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
 }
 
 /**
+ * Implementors of this interface belong in the "ordinary identifier" namespace.
+ *
+ * C standard: 6.2.3.0.1
+ * @see LexicalScope
+ */
+interface OrdinaryIdentifier {
+  val name: String
+  /** @see ASTNode.tokenRange */
+  val tokenRange: IntRange
+  /**
+   * A string that identifies what kind of identifier this is. For example: 'typedef', 'variable'.
+   * Is used by diagnostic messages.
+   */
+  val kindName: String
+}
+
+/**
  * This class stores lexically-scoped identifiers.
  *
- * C standard: 6.2.1
+ * The standard specifies multiple namespaces:
+ * 1. Label namespace ([labels])
+ * 2. Tag namespace ([tagNames])
+ * 3. "Ordinary identifiers", AKA everything else, including typedef names ([idents])
+ *
+ * C standard: 6.2.1, 6.2.3.0.1
  */
-data class LexicalScope(val typedefNames: MutableList<TypedefName> = mutableListOf(),
-                        val tagNames: MutableList<TagSpecifier> = mutableListOf(),
-                        val idents: MutableList<IdentifierNode> = mutableListOf(),
+data class LexicalScope(val tagNames: MutableList<TagSpecifier> = mutableListOf(),
+                        val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
                         val labels: MutableList<IdentifierNode> = mutableListOf()) {
 
   override fun toString(): String {
-    val identStr = idents.joinToString(", ") { it.name }
-    val labelStr = idents.joinToString(", ") { it.name }
-    val typedefStr =
-        typedefNames.joinToString(", ") { "${it.typedefedToString()} ${it.typedefIdent.name}" }
-    return "LexicalScope(idents=[$identStr], labels=[$labelStr], typedefs=[$typedefStr])"
+    val identStr = idents.filter { it !is TypedefName }.joinToString(", ") { it.name }
+    val labelStr = labels.joinToString(", ") { it.name }
+    val typedefStr = idents.mapNotNull { it as? TypedefName }
+        .joinToString(", ") { "${it.typedefedToString()} ${it.typedefIdent.name}" }
+    val tags = tagNames
+        .joinToString(", ") { "${it.tagKindKeyword.value.keyword} ${it.tagIdent.name}" }
+    return "LexicalScope(" +
+        "idents=[$identStr], labels=[$labelStr], typedefs=[$typedefStr], tags=[$tags])"
   }
 }
 
@@ -288,8 +311,9 @@ data class BinaryExpression(val op: Operators,
   override fun toString() = "($lhs $op $rhs)"
 }
 
-class IdentifierNode(val name: String, type: TypeSpecifier =
-    IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */) : Expression(type), Terminal {
+class IdentifierNode(override val name: String, type: TypeSpecifier =
+    IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */) :
+    Expression(type), Terminal, OrdinaryIdentifier {
   constructor(lexerIdentifier: Identifier, type: TypeSpecifier =
       IntType(Keyword(Keywords.INT)) /* FIXME: clearly temp */) : this(lexerIdentifier.name, type)
 
@@ -309,6 +333,8 @@ class IdentifierNode(val name: String, type: TypeSpecifier =
   }
 
   override fun toString() = name
+
+  override val kindName = "variable"
 
   companion object {
     /**

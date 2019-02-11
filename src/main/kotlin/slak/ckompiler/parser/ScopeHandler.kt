@@ -23,16 +23,16 @@ interface IScopeHandler {
   fun <R> scoped(block: LexicalScope.() -> R): R = LexicalScope().withScope(block)
 
   /**
-   * Adds a new identifier to the current scope. If the identifier already was in the current scope,
-   * it is not added again, and diagnostics are printed.
+   * Adds a new [OrdinaryIdentifier] to the current scope. If the identifier name already was in the
+   * current scope, it is not added again, and diagnostics are printed.
    */
-  fun newIdentifier(id: IdentifierNode, isLabel: Boolean = false)
+  fun newIdentifier(id: OrdinaryIdentifier)
 
   /**
-   * Creates a typedef in the current scope. If one already exists, and the defined type differs,
-   * a diagnostic is printed.
+   * [newIdentifier] for labels.
+   * @see newIdentifier
    */
-  fun createTypedef(td: TypedefName)
+  fun newLabel(labelIdent: IdentifierNode)
 
   /**
    * Adds a tag to the current scope. If one already exists, and:
@@ -46,15 +46,9 @@ interface IScopeHandler {
 
   /**
    * Searches all the scopes for a given identifier.
-   * @return null if no such identifier exists, or the previous [IdentifierNode] otherwise
+   * @return null if no such identifier exists, or the previous [OrdinaryIdentifier] otherwise
    */
-  fun searchIdent(target: IdentifierNode): IdentifierNode?
-
-  /**
-   * Searches all the scopes for a typedef.
-   * @return null if no such identifier exists, or the [TypedefName] otherwise
-   */
-  fun searchTypedef(target: IdentifierNode): TypedefName?
+  fun searchIdent(target: IdentifierNode): OrdinaryIdentifier?
 
   val rootScope: LexicalScope
 }
@@ -73,26 +67,6 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     val ret = this.block()
     scopeStack.pop()
     return ret
-  }
-
-  override fun createTypedef(td: TypedefName) {
-    val names = scopeStack.peek().typedefNames
-    val foundTypedef = names.firstOrNull { it.typedefIdent.name == td.typedefIdent.name }
-    // Repeated typedefs are only allowed if they define the same thing
-    // So if they're different, complain
-    if (foundTypedef != null && td != foundTypedef) {
-      diagnostic {
-        id = DiagnosticId.REDEFINITION_TYPEDEF
-        formatArgs(td.typedefedToString(), foundTypedef.typedefedToString())
-        columns(td.typedefIdent.tokenRange)
-      }
-      diagnostic {
-        id = DiagnosticId.REDEFINITION_PREVIOUS
-        columns(foundTypedef.typedefIdent.tokenRange)
-      }
-    } else {
-      names += td
-    }
   }
 
   override fun createTag(tag: TagSpecifier) {
@@ -133,40 +107,81 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     }
   }
 
-  override fun newIdentifier(id: IdentifierNode, isLabel: Boolean) {
-    val listRef = if (isLabel) scopeStack.peek().labels else scopeStack.peek().idents
+  override fun newIdentifier(id: OrdinaryIdentifier) {
+    val idents = scopeStack.peek().idents
     // FIXME: we really should know more data about these idents, like symbol type (func/var)
-    val foundId = listRef.firstOrNull { it.name == id.name }
+    val found = idents.firstOrNull { it.name == id.name }
     // FIXME: this can be used to maybe give a diagnostic about name shadowing
     // val isShadowed = scopeStack.peek().idents.any { it.name == id.name }
-    if (foundId != null) {
+    if (found == null) {
+      idents += id
+      return
+    }
+    // Can't redefine name as a different kind of symbol
+    if (id.javaClass != found.javaClass) {
       diagnostic {
-        this.id = if (isLabel) DiagnosticId.REDEFINITION_LABEL else DiagnosticId.REDEFINITION
-        formatArgs(id.name)
+        this.id = DiagnosticId.REDEFINITION_OTHER_SYM
+        formatArgs(found.name, found.kindName, id.kindName)
         columns(id.tokenRange)
       }
       diagnostic {
         this.id = DiagnosticId.REDEFINITION_PREVIOUS
+        columns(found.tokenRange)
+      }
+      return
+    }
+    // Repeated typedefs are only allowed if they define the same thing
+    // So complain only if they're different
+    if (id is TypedefName && id == found) return
+    if (id is TypedefName && id != found) {
+      found as TypedefName // We already know id and found have the same type
+      diagnostic {
+        this.id = DiagnosticId.REDEFINITION_TYPEDEF
+        formatArgs(id.typedefedToString(), found.typedefedToString())
+        columns(id.tokenRange)
+      }
+      diagnostic {
+        this.id = DiagnosticId.REDEFINITION_PREVIOUS
+        columns(found.tokenRange)
+      }
+      return
+    }
+    diagnostic {
+      this.id = DiagnosticId.REDEFINITION
+      formatArgs(id.name)
+      columns(id.tokenRange)
+    }
+    diagnostic {
+      this.id = DiagnosticId.REDEFINITION_PREVIOUS
+      columns(found.tokenRange)
+    }
+  }
+
+  override fun newLabel(labelIdent: IdentifierNode) {
+    val labels = scopeStack.peek().labels
+    // FIXME: we really should know more data about these idents
+    // FIXME: in particular, a reference to a [LabeledStatement] might be required to be stored
+    val foundId = labels.firstOrNull { it.name == labelIdent.name }
+    if (foundId != null) {
+      diagnostic {
+        id = DiagnosticId.REDEFINITION_LABEL
+        formatArgs(labelIdent.name)
+        columns(labelIdent.tokenRange)
+      }
+      diagnostic {
+        id = DiagnosticId.REDEFINITION_PREVIOUS
         columns(foundId.tokenRange)
       }
       return
     }
-    listRef += id
+    labels += labelIdent
   }
 
   // FIXME: add spell-checker: "https://en.wikipedia.org/wiki/Wagner%E2%80%93Fischer_algorithm"
-  override fun searchIdent(target: IdentifierNode): IdentifierNode? {
+  override fun searchIdent(target: IdentifierNode): OrdinaryIdentifier? {
     scopeStack.forEach {
       val idx = it.idents.indexOfFirst { id -> id.name == target.name }
       if (idx != -1) return it.idents[idx]
-    }
-    return null
-  }
-
-  override fun searchTypedef(target: IdentifierNode): TypedefName? {
-    scopeStack.forEach {
-      val idx = it.typedefNames.indexOfFirst { (_, _, ident) -> ident.name == target.name }
-      if (idx != -1) return it.typedefNames[idx]
     }
     return null
   }

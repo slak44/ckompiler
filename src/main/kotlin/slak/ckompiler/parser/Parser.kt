@@ -9,7 +9,7 @@ typealias ILexicalTokenHandler = ITokenHandler<LexicalToken>
  * Eats tokens unconditionally until a semicolon or the end of the token list.
  * Does not eat the semicolon.
  */
-fun ILexicalTokenHandler.eatToSemi()  {
+fun ILexicalTokenHandler.eatToSemi() {
   while (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
 }
 
@@ -22,6 +22,14 @@ fun ILexicalTokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
   return indexOfFirst { tok ->
     t.any { tok.asKeyword() == it || tok.asPunct() == it }
   }
+}
+
+/**
+ * Generic way to construct [ErrorNode] instances, like [ErrorExpression] or [ErrorStatement].
+ * FIXME: actually use this thing instead of the ultra-ugly factory methods (or the copy paste)
+ */
+inline fun <reified T> ILexicalTokenHandler.error(): T where T : ASTNode, T : ErrorNode {
+  return T::class.java.newInstance().withRange(rangeOne())
 }
 
 /**
@@ -69,7 +77,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     translationUnit()
     if (root.decls.isEmpty() &&
         rootScope.tagNames.isEmpty() &&
-        rootScope.typedefNames.isEmpty() &&
+        rootScope.idents.isEmpty() &&
         diags.isEmpty()) {
       diagnostic {
         id = DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL

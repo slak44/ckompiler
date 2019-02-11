@@ -23,9 +23,9 @@ interface IExpressionParser {
  * C standard: A.2.1
  */
 enum class Operators(val op: Punctuators,
-                             val precedence: Int,
-                             val arity: Arity,
-                             val assoc: Associativity) {
+                     val precedence: Int,
+                     val arity: Arity,
+                     val assoc: Associativity) {
   // Unary
   REF(Punctuators.AMP, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
   DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
@@ -326,8 +326,14 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
           formatArgs(tok.name)
           errorOn(safeToken(0))
         }
-        // When this ident is being used as undeclared, we can report the error but keep going with
-        // it undeclared
+        if (existingIdent is TypedefName) diagnostic {
+          id = DiagnosticId.UNEXPECTED_TYPEDEF_USE
+          formatArgs(existingIdent.name, existingIdent.typedefedToString())
+          errorOn(safeToken(0))
+        }
+        // When this ident not a valid thing to put in an expression, we can report the error but
+        // keep going with it anyway. That allows us to report errors more sensibly by not eating
+        // more tokens than necessary.
         return ident
       }
       is IntegralConstant -> {
