@@ -44,74 +44,74 @@ internal val signedChar = DeclarationSpecifier(typeSpec = SignedChar(Keywords.SI
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s)
-internal fun nameDecl(s: String) = NameDeclarator(name(s))
+internal fun nameDecl(s: String) = NamedDeclarator(name(s), emptyList(), emptyList())
 
-internal fun ptr(d: Declarator): Declarator {
-  // Yes, the nested empty lists are correct
-  d.setIndirection(listOf(listOf()))
-  return d
-}
+// Yes, the nested empty lists are correct
+internal fun ptr(s: String) = NamedDeclarator(name(s), listOf(listOf()), emptyList())
 
-internal fun ptr(s: String) = ptr(nameDecl(s))
+internal fun String.withPtrs(vararg q: TypeQualifierList) =
+    NamedDeclarator(name(this), q.asList(), emptyList())
 
-internal fun Declarator.withPtrs(vararg q: TypeQualifierList): Declarator {
-  setIndirection(q.asList())
-  return this
-}
+internal infix fun <T> String.assign(it: T) =
+    nameDecl(this) to ExpressionInitializer(parseDSLElement(it))
 
-internal fun String.withPtrs(vararg q: TypeQualifierList) = nameDecl(this).withPtrs(*q)
+internal typealias DeclInit = Pair<Declarator, Initializer?>
 
-internal infix fun <T> String.assign(it: T) = InitDeclarator(nameDecl(this), parseDSLElement(it))
-
-internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
+internal infix fun DeclarationSpecifier.declare(decl: DeclInit) =
     Declaration(this, listOf(decl))
 
+internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
+    Declaration(this, listOf(decl to null))
+
 @JvmName("declareDeclarators")
-internal infix fun DeclarationSpecifier.declare(list: List<Declarator>) =
+internal infix fun DeclarationSpecifier.declare(list: List<DeclInit>) =
     Declaration(this, list.map { it })
 
 @JvmName("declareStrings")
 internal infix fun DeclarationSpecifier.declare(list: List<String>) =
-    Declaration(this, list.map { nameDecl(it) })
+    Declaration(this, list.map { nameDecl(it) to null })
 
-internal infix fun DeclarationSpecifier.func(decl: Declarator) =
-    Declaration(this, listOf(decl))
+internal infix fun DeclarationSpecifier.proto(decl: Declarator) =
+    Declaration(this, listOf(decl to null))
 
-internal infix fun DeclarationSpecifier.func(s: String) =
-    Declaration(this, listOf(s withParams emptyList()))
+internal infix fun DeclarationSpecifier.proto(s: String) = this proto (s withParams emptyList())
+
+internal infix fun DeclarationSpecifier.func(decl: Declarator) = this to decl
+
+internal infix fun DeclarationSpecifier.func(s: String) = this to (s withParams emptyList())
 
 internal infix fun DeclarationSpecifier.declare(s: String) =
-    Declaration(this, listOf(nameDecl(s)))
+    Declaration(this, listOf(nameDecl(s) to null))
+
+internal infix fun DeclarationSpecifier.declare(sm: List<StructMember>) =
+    StructDeclaration(this, sm)
 
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
 
-private fun String.withParams(params: List<ParameterDeclaration>,
-                              variadic: Boolean): FunctionDeclarator {
-  val scope = params.mapTo(mutableListOf()) { it.name()!! }.let {
+private fun String.withParams(params: List<ParameterDeclaration>, variadic: Boolean): Declarator {
+  val scope = params.mapTo(mutableListOf()) { it.declarator.name }.let {
     val s = LexicalScope()
     s.idents += it
     s
   }
-  return FunctionDeclarator(nameDecl(this), ParameterTypeList(params, variadic), scope = scope)
+  return NamedDeclarator(name(this), emptyList(),
+      listOf(ParameterTypeList(params, scope, variadic)))
 }
 
 internal infix fun String.withParams(params: List<ParameterDeclaration>) = withParams(params, false)
 internal infix fun String.withParamsV(params: List<ParameterDeclaration>) = withParams(params, true)
 
-internal infix fun Declaration.body(s: Statement): FunctionDefinition {
-  if (s !is CompoundStatement && s !is ErrorStatement) {
-    throw IllegalArgumentException("Not compound or error")
-  }
-  if (declaratorList.size != 1) throw IllegalArgumentException("Not function")
-  val d = declaratorList[0] as? FunctionDeclarator ?: throw IllegalArgumentException("Not function")
-  val st = s as? CompoundStatement
-  val scope = if (st == null || st.items.isEmpty()) d.scope else st.scope
-  val fdecl = FunctionDeclarator(d.declarator, d.ptl, scope)
-  val newCompound = if (st == null) s else CompoundStatement(st.items, scope)
-  return FunctionDefinition(declSpecs, fdecl, newCompound)
+internal infix fun Pair<DeclarationSpecifier, Declarator>.body(s: Statement): FunctionDefinition {
+  if (s is ErrorStatement) return FunctionDefinition(first, second, s)
+  if (s !is CompoundStatement) throw IllegalArgumentException("Not compound")
+  if (!second.isFunction()) throw IllegalArgumentException("Not function")
+  val ptl = second.getFunctionTypeList()
+  ptl.scope.typedefNames += s.scope.typedefNames
+  ptl.scope.idents += s.scope.idents
+  ptl.scope.labels += s.scope.labels
+  ptl.scope.tagNames += s.scope.tagNames
+  return FunctionDefinition(first, second, CompoundStatement(s.items, ptl.scope))
 }
-
-internal infix fun Declaration.body(list: List<BlockItem>) = this body list.compound()
 
 internal fun ifSt(e: Expression, success: () -> Statement) = IfStatement(e, success(), null)
 internal fun ifSt(e: Expression, success: CompoundStatement) = IfStatement(e, success, null)
@@ -124,18 +124,19 @@ internal infix fun IfStatement.elseSt(failure: CompoundStatement) =
 
 internal fun returnSt(e: Expression) = ReturnStatement(e)
 
-internal fun <T> compoundOf(vararg elements: T) = listOf(*elements).compound()
+internal fun <T> compoundOf(vararg elements: T, scope: LexicalScope? = null) =
+    listOf(*elements).compound(scope)
 
 internal fun emptyCompound() = CompoundStatement(emptyList(), LexicalScope())
 
-internal fun <T> List<T>.compound() = CompoundStatement(map {
+internal fun <T> List<T>.compound(scope: LexicalScope? = null) = CompoundStatement(map {
   when (it) {
     is Statement -> StatementItem(it)
     is Declaration -> DeclarationItem(it)
     is TagSpecifier -> DeclarationItem(Declaration(it.toSpec(), emptyList()))
     else -> throw IllegalArgumentException("Bad type")
   }
-}, with(LexicalScope()) {
+}, with(scope ?: LexicalScope()) {
   forEach {
     when (it) {
       is Declaration -> idents += it.identifiers()
@@ -167,7 +168,7 @@ internal fun forSt(e: Expression,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(ExpressionInitializer(e), cond, cont, loopable)
+  return ForStatement(ForExpressionInitializer(e), cond, cont, loopable)
 }
 
 internal fun forSt(e: Declaration,
@@ -183,12 +184,18 @@ internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
 internal infix fun String.call(l: List<Expression>) = FunctionCall(name(this), l.map { it })
 
-internal fun struct(name: String?, decls: List<Declaration>): StructDefinition {
-  val d = decls.map { (declSpecs, declaratorList) ->
-    Declaration(declSpecs, declaratorList.map {
-      if (it is StructDeclarator) it
-      else StructDeclarator(it, null)
-    })
+internal inline fun <reified T> struct(name: String?, decls: List<T>): StructDefinition {
+  val d = decls.map {
+    when (T::class) {
+      StructDeclaration::class -> it as StructDeclaration
+      Declaration::class -> {
+        it as Declaration
+        StructDeclaration(it.declSpecs, it.declaratorList.map { (first, _) ->
+          StructMember(first, null)
+        })
+      }
+      else -> throw IllegalArgumentException("Bad decls in struct")
+    }
   }
   return StructDefinition(
       name = name?.let { name(it) }, decls = d, tagKindKeyword = Keywords.STRUCT.kw)
@@ -196,7 +203,7 @@ internal fun struct(name: String?, decls: List<Declaration>): StructDefinition {
 
 internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this)
 
-internal infix fun String.bitSize(expr: Expression) = StructDeclarator(nameDecl(this), expr)
+internal infix fun String.bitSize(expr: Expression) = StructMember(nameDecl(this), expr)
 internal infix fun String.bitSize(it: Long) = this bitSize int(it)
 
 internal fun String.typedefBy(ds: DeclarationSpecifier): DeclarationSpecifier {
@@ -205,8 +212,12 @@ internal fun String.typedefBy(ds: DeclarationSpecifier): DeclarationSpecifier {
   return DeclarationSpecifier(typeSpec = TypedefNameSpecifier(name(this), td))
 }
 
-internal operator fun <T> Declarator.get(arraySize: T) =
-    ArrayDeclarator(this, ExpressionSize(parseDSLElement(arraySize)))
+internal operator fun <T> IdentifierNode.get(arraySize: T) =
+    NamedDeclarator(this, emptyList(), listOf(ExpressionSize(parseDSLElement(arraySize))))
+
+internal operator fun <T> NamedDeclarator.get(arraySize: T): NamedDeclarator {
+  return NamedDeclarator(name, indirection, suffixes + ExpressionSize(parseDSLElement(arraySize)))
+}
 
 internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.ADD
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB

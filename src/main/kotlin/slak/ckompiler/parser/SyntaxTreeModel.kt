@@ -6,7 +6,7 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("AST")
 
-val Declarator.name get() = name()!!.name
+val Declarator.name get() = (this as NamedDeclarator).name
 val ExternalDeclaration.fn get() = this as FunctionDefinition
 val FunctionDefinition.name get() = functionDeclarator.name
 val FunctionDefinition.block get() = compoundStatement as CompoundStatement
@@ -105,7 +105,7 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
                        val indirection: List<TypeQualifierList>,
                        val typedefIdent: IdentifierNode) {
   fun typedefedToString(): String {
-    val ind = indirection.joinToString { '*' + it.joinToString(" ") { (value) -> value.keyword } }
+    val ind = indirection.stringify()
     val indStr = if (ind.isBlank()) "" else " $ind"
     // The storage class is "typedef", and we don't want to print it
     val dsNoStorage = DeclarationSpecifier(
@@ -178,7 +178,7 @@ private object StringClassNameImpl : StringClassName {
 }
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
-class RootNode : ASTNode(isRoot = true) {
+class RootNode(val scope: LexicalScope) : ASTNode(isRoot = true) {
   private val declarations = mutableListOf<ExternalDeclaration>()
   val decls: List<ExternalDeclaration> = declarations
 
@@ -383,7 +383,7 @@ data class UnionNameSpecifier(val name: IdentifierNode,
 }
 
 data class StructDefinition(val name: IdentifierNode?,
-                            val decls: List<Declaration>,
+                            val decls: List<StructDeclaration>,
                             override val tagKindKeyword: Keyword) : TagSpecifier() {
   override val isCompleteType = true
   override val isAnonymous get() = name == null
@@ -392,7 +392,7 @@ data class StructDefinition(val name: IdentifierNode?,
 }
 
 data class UnionDefinition(val name: IdentifierNode?,
-                           val decls: List<Declaration>,
+                           val decls: List<StructDeclaration>,
                            override val tagKindKeyword: Keyword) : TagSpecifier() {
   override val isCompleteType = true
   override val isAnonymous get() = name == null
@@ -559,101 +559,117 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
 
 typealias TypeQualifierList = List<Keyword>
 
-sealed class DeclaratorSuffix
+fun List<TypeQualifierList>.stringify() =
+    this.joinToString { '*' + it.joinToString(" ") { (value) -> value.keyword } }
+
+sealed class DeclaratorSuffix : ASTNode()
+
+@Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
+class ErrorSuffix : DeclaratorSuffix(), ErrorNode by ErrorNodeImpl
+
+/**
+ * The scope contains names from [params].
+ *
+ * C standard: 6.7.6.0.1
+ */
+data class ParameterTypeList(val params: List<ParameterDeclaration>,
+                             val scope: LexicalScope = LexicalScope(),
+                             val variadic: Boolean = false) : DeclaratorSuffix() {
+  init {
+    params.forEach { it.setParent(this) }
+  }
+
+  override fun toString(): String {
+    val paramStr = params.joinToString(", ")
+    val variadicStr = if (!variadic) "" else ", ..."
+    return "($paramStr$variadicStr)"
+  }
+}
+
+data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
+                                val declarator: Declarator) : ASTNode() {
+  init {
+    declarator.setParent(this)
+  }
+
+  override fun toString() = "$declSpec $declarator"
+}
 
 /**
  * C standard: 6.7.7
  */
-data class TypeName(val specQuals: DeclarationSpecifier,
-                    val indirection: List<TypeQualifierList>,
-                    val suffixes: List<DeclaratorSuffix>)
+data class TypeName(val specQuals: DeclarationSpecifier, val decl: Declarator)
+
+sealed class Declarator : ASTNode() {
+  abstract val indirection: List<TypeQualifierList>
+  abstract val suffixes: List<DeclaratorSuffix>
+
+  fun isFunction(): Boolean {
+    // FIXME: this might not be enough
+    return suffixes.isNotEmpty() && suffixes[0] is ParameterTypeList
+  }
+
+  fun getFunctionTypeList(): ParameterTypeList = suffixes[0] as ParameterTypeList
+}
 
 /** C standard: 6.7.6 */
-sealed class Declarator : ASTNode() {
-  private var indirectionImpl: List<TypeQualifierList>? = null
-
-  val indirection: List<TypeQualifierList> by lazy {
-    indirectionImpl
-        ?: logger.throwICE("Accessing lazily initialized property before it was set") { this }
+data class NamedDeclarator(val name: IdentifierNode,
+                           override val indirection: List<TypeQualifierList>,
+                           override val suffixes: List<DeclaratorSuffix>) : Declarator() {
+  init {
+    name.setParent(this)
+    suffixes.forEach { it.setParent(this) }
   }
 
-  fun setIndirection(list: List<TypeQualifierList>) {
-    indirectionImpl = list
+  override fun toString() = "${indirection.stringify()} $name $suffixes"
+}
+
+/** C standard: 6.7.7.0.1 */
+data class AbstractDeclarator(override val indirection: List<TypeQualifierList>,
+                              override val suffixes: List<DeclaratorSuffix>) : Declarator() {
+  init {
+    suffixes.forEach { it.setParent(this) }
   }
 
-  fun name(): IdentifierNode? = when (this) {
-    is ErrorDeclarator -> null
-    is NameDeclarator -> name
-    is InitDeclarator -> declarator.name()
-    is FunctionDeclarator -> declarator.name()
-    is ParameterDeclaration -> declarator.name()
-    is StructDeclarator -> declarator.name()
-    is ArrayDeclarator -> declarator.name()
-  }
+  override fun toString() = "(${indirection.stringify()}) $suffixes"
 }
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
-class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl
-
-data class NameDeclarator(val name: IdentifierNode) : Declarator() {
-  init {
-    name.setParent(this)
-  }
-
-  override fun toString() = "NameDeclarator(${name.name})"
-
-  companion object {
-    /**
-     * Creates a [NameDeclarator] from an [Identifier].
-     * @param identifier this [LexicalToken] is casted to an [Identifier]
-     * @see IdentifierNode.from
-     */
-    fun from(identifier: LexicalToken) =
-        NameDeclarator(IdentifierNode.from(identifier)).withRange(identifier.range)
-  }
+class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl {
+  override val suffixes = emptyList<DeclaratorSuffix>()
+  override val indirection = emptyList<TypeQualifierList>()
 }
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
-data class InitDeclarator(val declarator: Declarator, val initializer: Expression) : Declarator() {
+sealed class Initializer : ASTNode()
+
+data class ExpressionInitializer(val expr: Expression) : Initializer() {
   init {
-    declarator.setParent(this)
-    initializer.setParent(this)
+    expr.setParent(this)
   }
 
-  override fun toString() = "InitDeclarator($declarator = $initializer)"
+  override fun toString() = expr.toString()
 }
 
-data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
-                                val declarator: Declarator) : Declarator() {
-  init {
-    declarator.setParent(this)
-  }
-}
-
-/**
- * C standard: 6.7.6.0.1
- */
-data class ParameterTypeList(val params: List<ParameterDeclaration>,
-                             val variadic: Boolean = false) : DeclaratorSuffix()
-
-// FIXME: params can also be abstract-declarators (6.7.6/A.2.4)
-data class FunctionDeclarator(val declarator: Declarator,
-                              val ptl: ParameterTypeList,
-                              val scope: LexicalScope) : Declarator() {
-  init {
-    declarator.setParent(this)
-    ptl.params.forEach { it.setParent(this) }
-  }
-}
-
-data class StructDeclarator(val declarator: Declarator, val constExpr: Expression?) : Declarator() {
+data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode() {
   init {
     declarator.setParent(this)
     constExpr?.setParent(this)
   }
 }
 
-/** Contains the size of an array type. */
+data class StructDeclaration(val declSpecs: DeclarationSpecifier,
+                             val declaratorList: List<StructMember>) : ASTNode() {
+  init {
+    declaratorList.forEach { it.setParent(this) }
+  }
+}
+
+/**
+ * Contains the size of an array type.
+ *
+ * C standard: 6.7.6.2
+ */
 sealed class ArrayTypeSize(val hasVariableSize: Boolean) : DeclaratorSuffix()
 
 /** Describes an array type that specifies no size in the square brackets. */
@@ -690,6 +706,7 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
     if (expr == null && typeQuals.isEmpty()) {
       logger.throwICE("Array size, no type quals and no expr") { this }
     }
+    expr?.setParent(this)
   }
 }
 
@@ -698,16 +715,10 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
  * which this implementation does **not support**.
  * @param expr integral expression
  */
-data class ExpressionSize(val expr: Expression) : ArrayTypeSize(false /* FIXME: not always false */)
-
-/** C standard: 6.7.6.2 */
-data class ArrayDeclarator(val declarator: Declarator, val size: ArrayTypeSize) : Declarator() {
+data class ExpressionSize(val expr: Expression) :
+    ArrayTypeSize(false /* FIXME: not always false */) {
   init {
-    declarator.setParent(this)
-    when (size) {
-      is FunctionParameterSize -> size.expr?.setParent(this)
-      is ExpressionSize -> size.expr.setParent(this)
-    }
+    expr.setParent(this)
   }
 }
 
@@ -722,16 +733,20 @@ sealed class ExternalDeclaration : ASTNode()
  * C standard: A.2.2
  */
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<Declarator>) : ExternalDeclaration() {
+                       val declaratorList: List<Pair<Declarator, Initializer?>>) :
+    ExternalDeclaration() {
   init {
-    declaratorList.forEach { it.setParent(this) }
+    declaratorList.forEach {
+      it.first.setParent(this)
+      it.second?.setParent(this)
+    }
   }
 
   /**
    * @return a list of [IdentifierNode]s of declarators in the declaration.
    */
   fun identifiers(): List<IdentifierNode> {
-    return declaratorList.mapNotNull { it.name() }
+    return declaratorList.map { it.first.name }
   }
 }
 
@@ -845,7 +860,7 @@ data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   override fun toString() = value.toString()
 }
 
-data class ExpressionInitializer(val value: Expression) : ForInitializer() {
+data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
   init {
     value.setParent(this)
   }

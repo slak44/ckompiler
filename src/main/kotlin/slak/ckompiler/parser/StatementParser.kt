@@ -319,7 +319,7 @@ class StatementParser(declarationParser: DeclarationParser,
         tokenContext(firstSemi + 1) {
           parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)
               ?.let { d -> DeclarationInitializer(d) }
-        } ?: parseExpr(firstSemi)?.let { e -> ExpressionInitializer(e) } ?: ErrorInitializer()
+        } ?: parseExpr(firstSemi)?.let { e -> ForExpressionInitializer(e) } ?: ErrorInitializer()
       }
       // We only eat the first ';' if parseDeclaration didn't do that
       if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()

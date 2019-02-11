@@ -62,7 +62,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     IDeclarationParser by statementParser,
     IStatementParser by statementParser {
 
-  val root = RootNode()
+  val root = RootNode(rootScope)
 
   init {
     if (tokenCount > 0) root.setRange(tokenAt(0) until relative(tokenCount - 1))
@@ -81,7 +81,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
 
   /**
    * Parses a function _definition_. That means everything after the declarator, so not the
-   * `declaration-specifiers` or the [FunctionDeclarator], but the `compound-statement` and
+   * `declaration-specifiers` or the declarator, but the `compound-statement` and
    * optionally the `declaration-list` (for old-style functions). Function _declarations_ are
    * **not** parsed here (see [parseDeclaration]).
    *
@@ -91,12 +91,15 @@ private class TranslationUnitParser(private val specParser: SpecParser,
    * @return the [FunctionDefinition]
    */
   private fun parseFunctionDefinition(declSpec: DeclarationSpecifier,
-                                      funDecl: FunctionDeclarator): FunctionDefinition {
-    funDecl.name()?.let { name -> newIdentifier(name) }
+                                      funDecl: Declarator): FunctionDefinition {
+    if (!funDecl.isFunction()) logger.throwICE("Not a function declarator") { funDecl }
+    if (funDecl !is NamedDeclarator) logger.throwICE("Function definition without name") { funDecl }
+    newIdentifier(funDecl.name)
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
-    val block = parseCompoundStatement(funDecl.scope) ?: ErrorStatement().withRange(rangeOne())
+    val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope)
+        ?: ErrorStatement().withRange(rangeOne())
     val start = if (declSpec.isEmpty()) block.tokenRange else declSpec.range!!
     return FunctionDefinition(declSpec, funDecl, block).withRange(start..block.tokenRange)
   }
@@ -118,8 +121,8 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     }
     if (!declaratorOpt!!.isPresent) return translationUnit()
     val declarator = declaratorOpt.get()
-    if (declarator is FunctionDeclarator && current().asPunct() != Punctuators.SEMICOLON) {
-      if (declarator.name()?.name == "main") {
+    if (declarator.isFunction() && current().asPunct() != Punctuators.SEMICOLON) {
+      if (declarator.name.name == "main") {
         SpecValidationRules.MAIN_FUNCTION_DECLARATION.validate(specParser, declSpec)
       }
       root.addExternalDeclaration(parseFunctionDefinition(declSpec, declarator))

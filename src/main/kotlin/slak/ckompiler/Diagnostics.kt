@@ -4,6 +4,7 @@ import mu.KLogger
 import mu.KotlinLogging
 import slak.ckompiler.DiagnosticKind.*
 import slak.ckompiler.lexer.LexicalToken
+import slak.ckompiler.lexer.TokenObject
 import kotlin.math.max
 import kotlin.math.min
 
@@ -148,8 +149,15 @@ class DiagnosticBuilder {
     sourceColumns.add(range)
   }
 
-  fun errorOn(token: LexicalToken) {
+  fun errorOn(token: TokenObject) {
     sourceColumns.add(token.range)
+  }
+
+  inline fun <reified T> diagData(data: T) = when (data) {
+    is IntRange -> columns(data)
+    is Int -> column(data)
+    is TokenObject -> errorOn(data)
+    else -> throw IllegalArgumentException("T must be Int, IntRange, or TokenObject")
   }
 
   fun formatArgs(vararg args: Any) {

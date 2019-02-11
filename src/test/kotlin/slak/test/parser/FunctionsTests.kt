@@ -11,35 +11,35 @@ class FunctionsTests {
   fun `Function Declaration Explicitly No Parameters`() {
     val p = prepareCode("int f(void);", source)
     p.assertNoDiagnostics()
-    int func "f" assertEquals p.root.decls[0]
+    int proto "f" assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Function Declaration No Parameters`() {
     val p = prepareCode("int f();", source)
     p.assertNoDiagnostics()
-    int func "f" assertEquals p.root.decls[0]
+    int proto "f" assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Function Declaration One Parameter`() {
     val p = prepareCode("int f(double dbl);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams listOf(double param "dbl")) assertEquals p.root.decls[0]
+    int proto ("f" withParams listOf(double param "dbl")) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Function Declaration Two Parameters`() {
     val p = prepareCode("int f(double dbl, int x);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams listOf(double param "dbl", int param "x")) assertEquals p.root.decls[0]
+    int proto ("f" withParams listOf(double param "dbl", int param "x")) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Function Declaration Three Parameters`() {
     val p = prepareCode("int f(double dbl, int x, int y);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams listOf(double param "dbl", int param "x", int param "y")) assertEquals
+    int proto ("f" withParams listOf(double param "dbl", int param "x", int param "y")) assertEquals
         p.root.decls[0]
   }
 
@@ -47,7 +47,7 @@ class FunctionsTests {
   fun `Function Declaration Four Parameters`() {
     val p = prepareCode("int f(double dbl, int x, int y, double asd);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParams
+    int proto ("f" withParams
         listOf(double param "dbl", int param "x", int param "y", double param "asd")) assertEquals
         p.root.decls[0]
   }
@@ -62,7 +62,7 @@ class FunctionsTests {
   fun `Empty Function Definition`() {
     val p = prepareCode("int main() {}", source)
     p.assertNoDiagnostics()
-    int func "main" body emptyList() assertEquals p.root.decls[0]
+    int func "main" body emptyCompound() assertEquals p.root.decls[0]
   }
 
   @Test
@@ -92,35 +92,35 @@ class FunctionsTests {
   fun `Variadic Basic`() {
     val p = prepareCode("int f(int a, ...);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParamsV listOf(int param "a")) assertEquals p.root.decls[0]
+    int proto ("f" withParamsV listOf(int param "a")) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Variadic 2 Args`() {
     val p = prepareCode("int f(int a, double b, ...);", source)
     p.assertNoDiagnostics()
-    int func ("f" withParamsV listOf(int param "a", double param "b")) assertEquals p.root.decls[0]
+    int proto ("f" withParamsV listOf(int param "a", double param "b")) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Arg After Variadic`() {
     val p = prepareCode("int f(int x, ..., int a);", source)
     p.assertDiags(DiagnosticId.EXPECTED_RPAREN_AFTER_VARIADIC)
-    int func ("f" withParamsV listOf(int param "x")) assertEquals p.root.decls[0]
+    int proto ("f" withParamsV listOf(int param "x")) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Variadic Alone`() {
     val p = prepareCode("int f(...);", source)
     p.assertDiags(DiagnosticId.PARAM_BEFORE_VARIADIC)
-    int func ("f" withParamsV emptyList()) assertEquals p.root.decls[0]
+    int proto ("f" withParamsV emptyList()) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Variadic Nothing Before And Something After`() {
     val p = prepareCode("int f(..., int a);", source)
     p.assertDiags(DiagnosticId.PARAM_BEFORE_VARIADIC, DiagnosticId.EXPECTED_RPAREN_AFTER_VARIADIC)
-    int func ("f" withParamsV emptyList()) assertEquals p.root.decls[0]
+    int proto ("f" withParamsV emptyList()) assertEquals p.root.decls[0]
   }
 
   @Test

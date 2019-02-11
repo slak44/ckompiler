@@ -1,6 +1,5 @@
 package slak.test.parser
 
-import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
@@ -21,7 +20,7 @@ class DeclarationTests {
   fun `Multiple Declarators`() {
     val p = prepareCode("int a, b, c;", source)
     p.assertNoDiagnostics()
-    assertEquals(int declare listOf("a", "b", "c").map { nameDecl(it) }, p.root.decls[0])
+    assertEquals(int declare listOf("a", "b", "c"), p.root.decls[0])
   }
 
   @Test
@@ -117,13 +116,13 @@ class DeclarationTests {
 
   @Test
   fun `Declarator With Type Qualifiers On Pointers`() {
-    val p = prepareCode("int * const volatile _Atomic* volatile* _Atomic* a;", source)
+    val p = prepareCode("int *const volatile _Atomic *volatile *_Atomic * a;", source)
     p.assertNoDiagnostics()
     val d = int declare "a".withPtrs(
-        listOf(),
         listOf(Keywords.CONST.kw, Keywords.VOLATILE.kw, Keywords.ATOMIC.kw),
         listOf(Keywords.VOLATILE.kw),
-        listOf(Keywords.ATOMIC.kw)
+        listOf(Keywords.ATOMIC.kw),
+        listOf()
     )
     assertEquals(listOf(d), p.root.decls)
   }

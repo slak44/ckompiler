@@ -50,13 +50,14 @@ class CodeGenerator(val ast: RootNode) {
   private fun declRunInitializers(d: Declaration): Instructions {
     val instr = mutableListOf<String>()
     if (d.declSpecs.typeSpec !is IntType) TODO("only ints are implemented for now")
-    val inits = d.declaratorList.mapNotNull { it as? InitDeclarator }
+    val inits = d.declaratorList.map { it.first to it.second as? ExpressionInitializer }
     if (inits.size > 6) TODO("all values are in registers, and there are not many of those")
     inits.forEach {
+      if (it.second == null) TODO()
       val regIdx = registers.indexOfFirst { reg -> reg.itemName.isEmpty() }
       if (regIdx == -1) TODO("out of registers?")
-      registers[regIdx].itemName = it.name
-      val resRegister = genExpr(it.initializer)
+      registers[regIdx].itemName = it.first.name.name
+      val resRegister = genExpr(it.second!!.expr)
       instr += "mov ${registers[regIdx].name}, ${resRegister.name}"
     }
     return instr

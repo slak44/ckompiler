@@ -256,7 +256,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     }
     val endIdx = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
     eat() // The {
-    val declarations = mutableListOf<Declaration>()
+    val declarations = mutableListOf<StructDeclaration>()
     tokenContext(endIdx) {
       while (isNotEaten()) {
         val specQualList = parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
@@ -266,7 +266,7 @@ class SpecParser(declarationParser: DeclarationParser) :
         if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
           eat() // The ';'
           if (specQualList.isTag()) {
-            declarations += Declaration(specQualList, emptyList())
+            declarations += StructDeclaration(specQualList, emptyList())
           } else {
             diagnostic {
               id = DiagnosticId.MISSING_DECLARATIONS
@@ -274,7 +274,7 @@ class SpecParser(declarationParser: DeclarationParser) :
             }
           }
         } else {
-          declarations += Declaration(specQualList, parseStructDeclaratorList())
+          declarations += StructDeclaration(specQualList, parseStructDeclaratorList())
         }
       }
     }

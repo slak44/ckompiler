@@ -3,6 +3,7 @@ package slak.ckompiler.parser
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.lexer.*
+import slak.ckompiler.throwICE
 import java.util.*
 
 interface IDeclarationParser {
@@ -39,9 +40,9 @@ interface IDeclarationParser {
    * Parses the declarators in a struct (`struct-declarator-list`).
    *
    * C standard: 6.7.2.1
-   * @return the list of [StructDeclarator]s
+   * @return the list of [StructMember]s
    */
-  fun parseStructDeclaratorList(): List<StructDeclarator>
+  fun parseStructDeclaratorList(): List<StructMember>
 }
 
 class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: ExpressionParser) :
@@ -68,7 +69,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat() // The ';'
       when {
-        declSpec.isTag() -> { /* Do nothing intentionally */ }
+        declSpec.isTag() -> { /* Do nothing intentionally */
+        }
         declSpec.isTypedef() -> diagnostic {
           id = DiagnosticId.TYPEDEF_REQUIRES_NAME
           columns(declSpec.range!!)
@@ -82,7 +84,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     if (declSpec.isTag() && isEaten()) return declSpec to Optional.empty()
     val declarator = if (declSpec.isEmpty()) null else Optional.of(parseDeclarator(tokenCount))
-    if (declarator != null && declarator.get() is FunctionDeclarator) {
+    if (declarator != null && declarator.get().isFunction()) {
       SpecValidationRules.FUNCTION_DECLARATION.validate(specParser, declSpec)
     }
     return declSpec to declarator
@@ -95,7 +97,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     return d.withRange(start until safeToken(0).startIdx)
   }
 
+  // FIXME: `ITokenHander.err<T : ErrorNode>()`
   private fun errorDecl() = ErrorDeclarator().withRange(rangeOne())
+
+  private fun errorSuffix() = ErrorSuffix().withRange(rangeOne())
 
   /**
    * Parses the params in a function declaration (`parameter-type-list`).
@@ -113,14 +118,15 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    */
   private fun parseParameterList(endIdx: Int): ParameterTypeList = tokenContext(endIdx) {
     // No parameters; this is not an error case
-    if (isEaten()) return@tokenContext ParameterTypeList(emptyList(), false)
+    if (isEaten()) return@tokenContext ParameterTypeList(emptyList())
     // The only thing between parens is "void" => no params
     if (it.size == 1 && it[0].asKeyword() == Keywords.VOID) {
       eat() // The 'void'
-      return@tokenContext ParameterTypeList(emptyList(), false)
+      return@tokenContext ParameterTypeList(emptyList())
     }
     var isVariadic = false
     val params = mutableListOf<ParameterDeclaration>()
+    val scope = LexicalScope()
     while (isNotEaten()) {
       // Variadic functions
       if (current().asPunct() == Punctuators.DOTS) {
@@ -158,11 +164,12 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       }
       val commaIdx = indexOfFirst(Punctuators.COMMA)
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
+      // FIXME: abstract declarator allowed here
       val declarator = parseDeclarator(paramEndIdx)
       params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
-      declarator.name()?.let { name -> newIdentifier(name) }
+      scope.withScope { newIdentifier(declarator.name) }
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
         val assignTok = current()
@@ -177,15 +184,19 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         eat()
       }
     }
-    return@tokenContext ParameterTypeList(params, isVariadic)
+    return@tokenContext ParameterTypeList(params, scope, isVariadic)
   }
 
   /**
-   * This function parses a `declarator` nested in a `direct-declarator`.
+   * This function parses a `declarator` nested in a `direct-declarator`, or an
+   * `abstract-declarator` nested in a `direct-abstract-declarator`.
    *
-   * C standard: 6.7.6.1
+   * This function produces a diagnostic if the nested context is empty.
+   *
+   * C standard: 6.7.6.0.1
+   * @return a [NamedDeclarator], [ErrorDeclarator] on error, null if there is no nesting
    */
-  private fun parseNestedDeclarator(): Declarator? {
+  private inline fun <reified T : Declarator> parseNestedDeclarator(): Declarator? {
     if (current().asPunct() != Punctuators.LPAREN) return null
     val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     if (end == -1) return errorDecl()
@@ -198,7 +209,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eatToSemi()
       return errorDecl()
     }
-    val declarator = parseDeclarator(end)
+    val declarator = when (T::class) {
+      NamedDeclarator::class -> parseDeclarator(end)
+      AbstractDeclarator::class -> parseAbstractDeclarator(end)
+      else -> logger.throwICE("Bad declarator type for nested declarators") { "T: ${T::class}" }
+    }
     if (declarator is ErrorNode) eatToSemi()
     return declarator
   }
@@ -211,6 +226,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eatUntil(startIdx + quals.size)
       return quals.map { k -> k as Keyword }
     }
+
     fun qualsAndStatic(quals: TypeQualifierList, staticKw: LexicalToken): FunctionParameterSize {
       if (isEaten()) {
         diagnostic {
@@ -257,12 +273,12 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    * This function parses the things that can come after a `direct-declarator`, but only one.
    * For example, in `int v[4][5];` the `[4]` and the `[5]` will be parsed one at a time.
    *
-   * C standard: 6.7.6.1, A.2.2
-   * @return the suffix with the declarator, or null if there is no suffix
+   * C standard: 6.7.6.0.1, A.2.2
+   * @return the [DeclaratorSuffix], or null if there is no suffix
    * @see parseArrayTypeSize
    * @see parseParameterList
    */
-  private fun parseDirectDeclaratorSuffix(primary: Declarator): Declarator? = when {
+  private fun parseDirectDeclaratorSuffix(): DeclaratorSuffix? = when {
     isEaten() -> null
     current().asPunct() == Punctuators.LPAREN -> {
       val lParen = safeToken(0)
@@ -270,7 +286,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eat() // Get rid of "("
       if (rParenIdx == -1) {
         eatToSemi()
-        errorDecl()
+        errorSuffix()
       } else scoped {
         val ptl = parseParameterList(rParenIdx)
         // Bad params, usually happens if there are other args after '...'
@@ -288,8 +304,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           eatUntil(rParenIdx)
         }
         eat() // Get rid of ")"
-        FunctionDeclarator(declarator = primary, ptl = ptl, scope = this)
-            .withRange(primary.tokenRange.start until tokenAt(rParenIdx).startIdx)
+        ptl
+        // FIXME: below
+//        FunctionDeclarator(declarator = primary, ptl = ptl, scope = this)
+//            .withRange(primary.tokenRange.start until tokenAt(rParenIdx).startIdx)
       }
     }
     current().asPunct() == Punctuators.LSQPAREN -> {
@@ -298,7 +316,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eat() // The '['
       if (rSqParenIdx == -1) {
         eatToSemi()
-        errorDecl()
+        errorSuffix()
       } else {
         val arraySize = parseArrayTypeSize(rSqParenIdx)
         // Extraneous stuff in array size
@@ -317,35 +335,19 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         eat() // Eat ']'
         // FIXME: not all array sizes are allowed everywhere
-        ArrayDeclarator(primary, arraySize)
+        arraySize
       }
     }
     else -> null
   }
 
-  /** C standard: 6.7.6.1 */
-  private fun parseNameDeclarator(): NameDeclarator? {
-    val id = current() as? Identifier ?: return null
-    val name = NameDeclarator.from(id)
-    eat() // The identifier token
-    return name
-  }
-
   /** C standard: A.2.2, 6.7 */
-  private fun parseDirectDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
-    val primaryDecl = parseNameDeclarator() ?: parseNestedDeclarator()
-    if (primaryDecl == null) {
-      diagnostic {
-        id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
-        errorOn(safeToken(0))
-      }
-      return@tokenContext errorDecl()
-    }
-    var declarator: Declarator = primaryDecl
+  private fun parseSuffixes(endIdx: Int): List<DeclaratorSuffix> = tokenContext(endIdx) {
+    val suffixes = mutableListOf<DeclaratorSuffix>()
     while (isNotEaten()) {
-      declarator = parseDirectDeclaratorSuffix(declarator) ?: break
+      suffixes += parseDirectDeclaratorSuffix() ?: break
     }
-    return@tokenContext declarator
+    return@tokenContext suffixes
   }
 
   /**
@@ -373,30 +375,56 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     return@tokenContext indirectionList
   }
 
-  /** C standard: 6.7.6.1 */
+  /** C standard: 6.7.6.0.1 */
   private fun parseDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
-    if (it.isEmpty()) {
+    fun emitDiagnostic(data: Any): ErrorDeclarator {
       diagnostic {
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
-        column(colPastTheEnd(0))
+        diagData(data)
       }
-      return@tokenContext errorDecl()
+      return errorDecl()
     }
+
+    fun namedDeclarator(pointers: List<TypeQualifierList>,
+                        otherSuffixes: List<DeclaratorSuffix> = emptyList()): Declarator {
+      val nameTok = current() as? Identifier ?: return emitDiagnostic(safeToken(0))
+      eat() // The identifier token
+      val name = IdentifierNode.from(nameTok)
+      return NamedDeclarator(name, pointers, otherSuffixes + parseSuffixes(it.size))
+    }
+    if (it.isEmpty()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
     val pointers = parsePointer(it.size)
-    if (isEaten()) {
-      diagnostic {
-        id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
-        column(colPastTheEnd(0))
-      }
-      return@tokenContext errorDecl()
+    if (isEaten()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
+    val nested =
+        parseNestedDeclarator<NamedDeclarator>() ?: return@tokenContext namedDeclarator(pointers)
+    if (nested is ErrorNode) return@tokenContext errorDecl()
+    nested as NamedDeclarator
+    return@tokenContext namedDeclarator(pointers + nested.indirection, nested.suffixes)
+  }
+
+  /** C standard: 6.7.7.0.1 */
+  private fun parseAbstractDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
+    // This function allows an "empty" abstract declarator, because `type-name` contains an
+    // optional `abstract-declarator`, and that is the primary (only?) use case for this function
+    if (it.isEmpty()) return@tokenContext AbstractDeclarator(emptyList(), emptyList())
+    val pointers = parsePointer(it.size)
+    // Some pointers and nothing else is a valid abstract declarator
+    if (isEaten()) return@tokenContext AbstractDeclarator(pointers, emptyList())
+    if (current().asPunct() == Punctuators.LPAREN && relative(1).asPunct() == Punctuators.RPAREN) {
+      return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
     }
-    val directDecl = parseDirectDeclarator(it.size)
-    directDecl.setIndirection(pointers)
-    return@tokenContext directDecl
+    val nested = parseNestedDeclarator<AbstractDeclarator>()
+    // If it isn't nested stuff, it's probably suffixes
+    if (nested == null || nested is ErrorNode) {
+      return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
+    }
+    nested as AbstractDeclarator
+    return@tokenContext AbstractDeclarator(
+        pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
   }
 
   // FIXME: return type will change with the initializer list
-  private fun parseInitializer(endIdx: Int): Expression {
+  private fun parseInitializer(endIdx: Int): ExpressionInitializer {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
@@ -404,7 +432,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      return errorExpr()
+      return ExpressionInitializer(errorExpr()).withRange(rangeOne())
     }
     // Parse initializer-list
     if (current().asPunct() == Punctuators.LBRACKET) {
@@ -412,7 +440,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
-    return parseExpr(endIdx) ?: errorExpr()
+    val expr = parseExpr(endIdx) ?: errorExpr()
+    return ExpressionInitializer(expr).withRange(expr.tokenRange)
   }
 
   /**
@@ -424,25 +453,26 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
    * pre-parsed
    * @return the list of comma-separated declarators
    */
-  private fun parseInitDeclaratorList(ds: DeclarationSpecifier,
-                                      firstDecl: Declarator? = null): List<Declarator> {
+  private fun parseInitDeclaratorList(ds: DeclarationSpecifier, firstDecl: Declarator? = null):
+      List<Pair<Declarator, Initializer?>> {
     fun addDeclaratorToScope(declarator: Declarator?) {
       if (declarator == null) return
+      if (declarator is ErrorNode) return
       if (ds.isTypedef()) {
         // Add typedef to scope
-        createTypedef(TypedefName(ds, declarator.indirection, declarator.name()!!))
+        createTypedef(TypedefName(ds, declarator.indirection, declarator.name))
       } else {
         // Add ident to scope
-        declarator.name()?.let { newIdentifier(it) }
+        newIdentifier(declarator.name)
       }
     }
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       eat()
       addDeclaratorToScope(firstDecl)
-      return listOfNotNull(firstDecl)
+      return listOfNotNull(firstDecl).map { it to null }
     }
-    val declaratorList = mutableListOf<Declarator>()
+    val declaratorList = mutableListOf<Pair<Declarator, Initializer?>>()
     // If firstDecl is null, we act as if it was already processed
     var firstDeclUsed = firstDecl == null
     while (true) {
@@ -467,7 +497,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           formatArgs("declarator")
           column(colPastTheEnd(0))
         }
-        declaratorList += declarator
+        declaratorList += declarator to null
         break
       }
       declaratorList += if (current().asPunct() == Punctuators.ASSIGN) {
@@ -478,12 +508,12 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
             id = DiagnosticId.TYPEDEF_NO_INITIALIZER
             columns(assignTok..initializer)
           }
-          declarator
+          declarator to null
         } else {
-          InitDeclarator(declarator, initializer).withRange(declarator..initializer)
+          declarator to initializer
         }
       } else {
-        declarator
+        declarator to null
       }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
@@ -506,8 +536,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     return declaratorList
   }
 
-  override fun parseStructDeclaratorList(): List<StructDeclarator> {
-    val declaratorList = mutableListOf<StructDeclarator>()
+  override fun parseStructDeclaratorList(): List<StructMember> {
+    val declaratorList = mutableListOf<StructMember>()
     declLoop@ while (true) {
       val declarator = parseDeclarator(tokenCount)
       // FIXME: bitfield width decls without actual declarators are allowed, and should be handled
@@ -525,7 +555,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           formatArgs("struct declarator list")
           column(colPastTheEnd(0))
         }
-        declaratorList += StructDeclarator(declarator, null)
+        declaratorList += StructMember(declarator, null)
         break@declLoop
       }
       declaratorList += if (current().asPunct() == Punctuators.COLON) {
@@ -535,10 +565,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         val bitWidthExpr = parseExpr(stopIdx)
         // FIXME: bit field type must be _Bool, signed int, unsigned int (6.7.2.1.5)
         // FIXME: expr MUST be a constant expression
-        StructDeclarator(declarator, bitWidthExpr)
+        StructMember(declarator, bitWidthExpr)
       } else {
         // No bit width
-        StructDeclarator(declarator, null)
+        StructMember(declarator, null)
       }
       when {
         current().asPunct() == Punctuators.COMMA -> {

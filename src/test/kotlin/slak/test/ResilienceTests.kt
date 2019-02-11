@@ -5,7 +5,6 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Lexer
-import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.ErrorDeclarator
 import kotlin.test.assertEquals
 
@@ -47,26 +46,22 @@ class ResilienceTests {
   @Test
   fun `Parser Keeps Going After Bad Function Declarator`() {
     val p = prepareCode("int default(); double dbl = 1.1;", source)
-    assert(p.diags.isNotEmpty())
-    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN)
     double declare ("dbl" assign 1.1) assertEquals p.root.decls[1]
   }
 
   @Test
   fun `Parser Keeps Going After Bad Declaration`() {
     val p = prepareCode("int default; double dbl = 1.1;", source)
-    assert(p.diags.isNotEmpty())
-    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN)
     double declare ("dbl" assign 1.1) assertEquals p.root.decls[1]
   }
 
   @Test
   fun `Parser Keeps Going In Declaration After Bad Declarator `() {
     val p = prepareCode("int default, x = 1;", source)
-    assert(p.diags.isNotEmpty())
-    assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)
-    val decl = Declaration(int, listOf(ErrorDeclarator(), "x" assign 1))
-    decl assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT_OR_PAREN)
+    int declare listOf(ErrorDeclarator() to null, "x" assign 1) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -91,7 +86,7 @@ class ResilienceTests {
         return 0.1;
       }
     """.trimIndent(), source)
-    int func ("f" withParams listOf(double param "x")) assertEquals p.root.decls[0]
+    int proto ("f" withParams listOf(double param "x")) assertEquals p.root.decls[0]
     double func "g" body compoundOf(
         returnSt(double(0.1))
     ) assertEquals p.root.decls[1]
@@ -102,7 +97,7 @@ class ResilienceTests {
     val p = prepareCode("""
       int a(int ;
       int x;
-      int a(
+      int b(
     """.trimIndent(), source)
     int declare "x" assertEquals p.root.decls[1]
     p.assertDiags(

@@ -127,7 +127,7 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     when (s.init) {
       is EmptyInitializer -> { /* Intentionally left empty */ }
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-      is ExpressionInitializer -> current.data += s.init.value
+      is ForExpressionInitializer -> current.data += s.init.value
       is DeclarationInitializer -> current.data += s.init.value
     }
     val loopBlock = BasicBlock(current)
