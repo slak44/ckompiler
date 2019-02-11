@@ -651,6 +651,10 @@ data class ExpressionInitializer(val expr: Expression) : Initializer() {
   }
 
   override fun toString() = expr.toString()
+
+  companion object {
+    fun from(expr: Expression) = ExpressionInitializer(expr).withRange(expr.tokenRange)
+  }
 }
 
 data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode() {
@@ -863,11 +867,19 @@ data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   }
 
   override fun toString() = value.toString()
+
+  companion object {
+    fun from(value: Declaration) = DeclarationInitializer(value).withRange(value.tokenRange)
+  }
 }
 
 data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
   init {
     value.setParent(this)
+  }
+
+  companion object {
+    fun from(expr: Expression) = ForExpressionInitializer(expr).withRange(expr.tokenRange)
   }
 }
 

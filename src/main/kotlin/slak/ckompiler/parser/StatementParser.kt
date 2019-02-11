@@ -103,7 +103,7 @@ class StatementParser(declarationParser: DeclarationParser,
       tokenContext(condParenEnd) {
         while (isNotEaten()) eat()
       }
-      errorExpr()
+      error<ErrorExpression>()
     } else {
       condExpr
     }
@@ -194,7 +194,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val condition = if (cond == null) {
       // Eat everything between parens
       eatUntil(rparen)
-      errorExpr()
+      error<ErrorExpression>()
     } else {
       cond
     }
@@ -249,16 +249,16 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       eatToSemi()
       if (isNotEaten()) eat()
-      return DoWhileStatement(errorExpr(), loopable)
+      return DoWhileStatement(error<ErrorExpression>(), loopable)
     }
     val condRParen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condRParen == -1) return DoWhileStatement(errorExpr(), loopable)
+    if (condRParen == -1) return DoWhileStatement(error<ErrorExpression>(), loopable)
     eat() // The '('
     val cond = parseExpr(condRParen)
     val condition = if (cond == null) {
       // Eat everything between parens
       eatUntil(condRParen)
-      errorExpr()
+      error<ErrorExpression>()
     } else {
       cond
     }
@@ -309,7 +309,8 @@ class StatementParser(declarationParser: DeclarationParser,
           if (it.isNotEmpty()) errorOn(safeToken(it.size))
           else errorOn(parentContext()[rparen])
         }
-        return@tokenContext Triple(ErrorInitializer(), errorExpr(), errorExpr())
+        return@tokenContext Triple(error<ErrorInitializer>(),
+            error<ErrorExpression>(), error<ErrorExpression>())
       }
       // Handle the case where we have an empty clause1
       val clause1 = if (firstSemi == 0) {
@@ -318,8 +319,9 @@ class StatementParser(declarationParser: DeclarationParser,
         // parseDeclaration wants to see the semicolon as well, so +1
         tokenContext(firstSemi + 1) {
           parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)
-              ?.let { d -> DeclarationInitializer(d) }
-        } ?: parseExpr(firstSemi)?.let { e -> ForExpressionInitializer(e) } ?: ErrorInitializer()
+              ?.let { d -> DeclarationInitializer.from(d) }
+        } ?: parseExpr(firstSemi)?.let { e -> ForExpressionInitializer.from(e) }
+          ?: error<ErrorInitializer>()
       }
       // We only eat the first ';' if parseDeclaration didn't do that
       if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
@@ -329,7 +331,7 @@ class StatementParser(declarationParser: DeclarationParser,
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
           errorOn(safeToken(it.size))
         }
-        return@tokenContext Triple(clause1, errorExpr(), errorExpr())
+        return@tokenContext Triple(clause1, error<ErrorExpression>(), error<ErrorExpression>())
       }
       // Handle the case where we have an empty expr2
       val expr2 = if (secondSemi == firstSemi + 1) null else parseExpr(secondSemi)
@@ -356,7 +358,7 @@ class StatementParser(declarationParser: DeclarationParser,
       // Attempt to eat the error
       eatToSemi()
       if (isNotEaten()) eat()
-      return ForStatement(clause1, expr2, expr3, errorExpr())
+      return ForStatement(clause1, expr2, expr3, error<ErrorExpression>())
           .withRange(forTok until safeToken(0))
     }
     return ForStatement(clause1, expr2, expr3, loopable).withRange(forTok..loopable)

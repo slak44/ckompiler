@@ -97,11 +97,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     return d.withRange(start until safeToken(0).startIdx)
   }
 
-  // FIXME: `ITokenHander.err<T : ErrorNode>()`
-  private fun errorDecl() = ErrorDeclarator().withRange(rangeOne())
-
-  private fun errorSuffix() = ErrorSuffix().withRange(rangeOne())
-
   /**
    * Parses the params in a function declaration (`parameter-type-list`).
    * Examples of what it parses:
@@ -199,7 +194,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   private inline fun <reified T : Declarator> parseNestedDeclarator(): Declarator? {
     if (current().asPunct() != Punctuators.LPAREN) return null
     val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (end == -1) return errorDecl()
+    if (end == -1) return error<ErrorDeclarator>()
     // If the declarator slice will be empty, error out
     if (end - 1 == 0) {
       diagnostic {
@@ -207,7 +202,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         errorOn(safeToken(1))
       }
       eatToSemi()
-      return errorDecl()
+      return error<ErrorDeclarator>()
     }
     val declarator = when (T::class) {
       NamedDeclarator::class -> parseDeclarator(end)
@@ -233,9 +228,9 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
           id = DiagnosticId.ARRAY_STATIC_NO_SIZE
           errorOn(staticKw)
         }
-        return FunctionParameterSize(quals, true, errorExpr())
+        return FunctionParameterSize(quals, true, error<ErrorExpression>())
       }
-      return FunctionParameterSize(quals, true, parseExpr(it.size) ?: errorExpr())
+      return FunctionParameterSize(quals, true, parseExpr(it.size) ?: error<ErrorExpression>())
     }
     if (current().asKeyword() == Keywords.STATIC) {
       val staticKw = current()
@@ -261,7 +256,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     if (isEaten()) {
       return@tokenContext FunctionParameterSize(quals, false, null)
     }
-    val expr = parseExpr(it.size) ?: errorExpr()
+    val expr = parseExpr(it.size) ?: error<ErrorExpression>()
     if (quals.isEmpty()) {
       return@tokenContext ExpressionSize(expr)
     } else {
@@ -286,7 +281,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eat() // Get rid of "("
       if (rParenIdx == -1) {
         eatToSemi()
-        errorSuffix()
+        error<ErrorSuffix>()
       } else scoped {
         val ptl = parseParameterList(rParenIdx)
         // Bad params, usually happens if there are other args after '...'
@@ -313,7 +308,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       eat() // The '['
       if (rSqParenIdx == -1) {
         eatToSemi()
-        errorSuffix()
+        error<ErrorSuffix>()
       } else {
         val arraySize = parseArrayTypeSize(rSqParenIdx)
         // Extraneous stuff in array size
@@ -379,7 +374,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         id = DiagnosticId.EXPECTED_IDENT_OR_PAREN
         diagData(data)
       }
-      return errorDecl()
+      return error<ErrorDeclarator>()
     }
 
     fun namedDeclarator(pointers: List<TypeQualifierList>,
@@ -394,7 +389,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     if (isEaten()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
     val nested =
         parseNestedDeclarator<NamedDeclarator>() ?: return@tokenContext namedDeclarator(pointers)
-    if (nested is ErrorNode) return@tokenContext errorDecl()
+    if (nested is ErrorNode) return@tokenContext error<ErrorDeclarator>()
     nested as NamedDeclarator
     return@tokenContext namedDeclarator(pointers + nested.indirection, nested.suffixes)
   }
@@ -429,7 +424,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      return ExpressionInitializer(errorExpr()).withRange(rangeOne())
+      return ExpressionInitializer.from(error<ErrorExpression>())
     }
     // Parse initializer-list
     if (current().asPunct() == Punctuators.LBRACKET) {
@@ -437,8 +432,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
-    val expr = parseExpr(endIdx) ?: errorExpr()
-    return ExpressionInitializer(expr).withRange(expr.tokenRange)
+    return ExpressionInitializer.from(parseExpr(endIdx) ?: error<ErrorExpression>())
   }
 
   /**

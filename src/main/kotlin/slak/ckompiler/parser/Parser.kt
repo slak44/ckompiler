@@ -26,7 +26,6 @@ fun ILexicalTokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
 
 /**
  * Generic way to construct [ErrorNode] instances, like [ErrorExpression] or [ErrorStatement].
- * FIXME: actually use this thing instead of the ultra-ugly factory methods (or the copy paste)
  */
 inline fun <reified T> ILexicalTokenHandler.error(): T where T : ASTNode, T : ErrorNode {
   return T::class.constructors.first { it.parameters.isEmpty() }.call().withRange(rangeOne())

@@ -41,7 +41,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
       }
       eatToSemi()
       if (isNotEaten()) eat()
-      return ErrorStatement().withRange(rangeOne())
+      return error<ErrorStatement>()
     } else {
       val ident = IdentifierNode.from(current())
       eat() // The ident
