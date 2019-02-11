@@ -106,7 +106,6 @@ internal infix fun Pair<DeclarationSpecifier, Declarator>.body(s: Statement): Fu
   if (s !is CompoundStatement) throw IllegalArgumentException("Not compound")
   if (!second.isFunction()) throw IllegalArgumentException("Not function")
   val ptl = second.getFunctionTypeList()
-  ptl.scope.typedefNames += s.scope.typedefNames
   ptl.scope.idents += s.scope.idents
   ptl.scope.labels += s.scope.labels
   ptl.scope.tagNames += s.scope.tagNames
