@@ -1,13 +1,9 @@
 package slak.ckompiler.parser
 
-import mu.KotlinLogging
-import slak.ckompiler.throwICE
-
-private val logger = KotlinLogging.logger("Types")
-
-fun IScopeHandler.typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
+fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
   val tagName = if (tagSpecifier.isAnonymous) null else tagSpecifier.tagIdent.name
-  val tagDef = if (tagSpecifier.isAnonymous) null else searchTag(tagSpecifier.tagIdent)
+//  val tagDef = if (tagSpecifier.isAnonymous) null else searchTag(tagSpecifier.tagIdent)
+  val tagDef: TagSpecifier? = null // FIXME: ???
   // The tag type differs, so error
   if (tagDef != null && tagDef.tagKindKeyword != tagSpecifier.tagKindKeyword) return ErrorType
   val tagMembers = when (tagDef) {
@@ -29,7 +25,7 @@ fun IScopeHandler.typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
   }
 }
 
-fun IScopeHandler.typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
+fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   if (decl is ErrorDeclarator || specQuals.isEmpty()) return ErrorType
   // Pointers
   if (decl.indirection.isNotEmpty()) {
@@ -38,8 +34,27 @@ fun IScopeHandler.typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator):
   }
   // Structure/Union
   if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)
-
-  TODO()
+  // FIXME: arrays, functions
+  return when (specQuals.typeSpec) {
+    null, is TagSpecifier -> ErrorType
+    is EnumSpecifier -> TODO()
+    is TypedefNameSpecifier -> TODO("typedefname should have suffixes")
+    is VoidTypeSpec -> VoidType
+    is Bool -> BooleanType
+    is Signed, is IntType, is SignedInt -> SignedIntType
+    is Unsigned, is UnsignedInt -> UnsignedIntType
+    is SignedChar, is Char -> SignedCharType
+    is UnsignedChar -> UnsignedCharType
+    is SignedShort, is Short -> SignedShortType
+    is UnsignedShort -> UnsignedShortType
+    is SignedLong, is LongType -> SignedLongType
+    is UnsignedLong -> UnsignedLongType
+    is LongLong, is SignedLongLong -> SignedLongLongType
+    is UnsignedLongLong -> UnsignedLongLongType
+    is FloatTypeSpec -> FloatType
+    is DoubleTypeSpec -> DoubleType
+    is LongDouble -> LongDoubleType
+  }
 }
 
 /**

@@ -322,8 +322,11 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     val tok = current()
     when (tok) {
       is Identifier -> {
-        val ident = IdentifierNode(tok.name)
+        val ident = tok.name
         val existingIdent = searchIdent(ident)
+        // When this ident not a valid thing to put in an expression, we can report the error(s) but
+        // keep going with it anyway. That allows us to report errors more sensibly by not eating
+        // more tokens than necessary.
         if (existingIdent == null) diagnostic {
           id = DiagnosticId.USE_UNDECLARED
           formatArgs(tok.name)
@@ -334,10 +337,8 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
           formatArgs(existingIdent.name, existingIdent.typedefedToString())
           errorOn(safeToken(0))
         }
-        // When this ident not a valid thing to put in an expression, we can report the error but
-        // keep going with it anyway. That allows us to report errors more sensibly by not eating
-        // more tokens than necessary.
-        return ident
+        return existingIdent as? TypedIdentifier
+            ?: TypedIdentifier(ident, ErrorType).withRange(rangeOne())
       }
       is IntegralConstant -> {
         // FIXME conversions might fail here?

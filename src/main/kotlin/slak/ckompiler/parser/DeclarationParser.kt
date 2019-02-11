@@ -164,7 +164,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope)
-      scope.withScope { newIdentifier(declarator.name) }
+      scope.withScope {
+        newIdentifier(TypedIdentifier(declarator.name.name, typeNameOf(specs, declarator))
+            .withRange(declarator.name.tokenRange))
+      }
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
         val assignTok = current()
@@ -454,7 +457,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         newIdentifier(TypedefName(ds, declarator.indirection, declarator.name))
       } else {
         // Add ident to scope
-        newIdentifier(declarator.name)
+        newIdentifier(TypedIdentifier(declarator.name.name, typeNameOf(ds, declarator))
+            .withRange(declarator.name.tokenRange))
       }
     }
     // This is the case where there are no declarators left for this function

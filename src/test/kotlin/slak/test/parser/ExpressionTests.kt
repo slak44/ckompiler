@@ -77,7 +77,7 @@ class ExpressionTests {
   fun `Simple Prefix Increment`() {
     val p = prepareCode("int a = ++b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    int declare ("a" assign PrefixIncrement(name("b"))) assertEquals p.root.decls[0]
+    int declare ("a" assign PrefixIncrement(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -92,7 +92,7 @@ class ExpressionTests {
   fun `Simple Postfix Increment`() {
     val p = prepareCode("int a = b++;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    int declare ("a" assign PostfixIncrement(name("b"))) assertEquals p.root.decls[0]
+    int declare ("a" assign PostfixIncrement(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -107,7 +107,7 @@ class ExpressionTests {
   fun `Unary Reference`() {
     val p = prepareCode("int a = &b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    int declare ("a" assign (Operators.REF apply name("b"))) assertEquals p.root.decls[0]
+    int declare ("a" assign (Operators.REF apply nameRef("b", ErrorType))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -128,7 +128,8 @@ class ExpressionTests {
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign (
         Operators.DEREF apply (Operators.REF apply (Operators.PLUS apply
-            (Operators.MINUS apply (Operators.BIT_NOT apply (Operators.NOT apply name("b"))))))
+            (Operators.MINUS apply (Operators.BIT_NOT apply (Operators.NOT apply
+                nameRef("b", ErrorType))))))
         )) assertEquals p.root.decls[0]
   }
 

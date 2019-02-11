@@ -13,7 +13,10 @@ import java.util.*
  */
 data class TypedefName(val declSpec: DeclarationSpecifier,
                        val indirection: List<TypeQualifierList>,
-                       val typedefIdent: IdentifierNode) : OrdinaryIdentifier by typedefIdent {
+                       val typedefIdent: IdentifierNode) : OrdinaryIdentifier {
+  override val name = typedefIdent.name
+  override val tokenRange = typedefIdent.tokenRange
+  override val type: TypeName = VoidType // FIXME: ???
   override val kindName = "typedef"
 
   fun typedefedToString(): String {
@@ -45,6 +48,10 @@ interface OrdinaryIdentifier {
    * Is used by diagnostic messages.
    */
   val kindName: String
+  /**
+   * [TypeName] of this identifier. What this property means depends on the kind of identifier.
+   */
+  val type: TypeName
 }
 
 /**
@@ -115,7 +122,7 @@ interface IScopeHandler {
    * Searches all the scopes for a given identifier.
    * @return null if no such identifier exists, or the previous [OrdinaryIdentifier] otherwise
    */
-  fun searchIdent(target: IdentifierNode): OrdinaryIdentifier?
+  fun searchIdent(target: String): OrdinaryIdentifier?
 
   /**
    * Searches all the scopes for the tag with the given name.
@@ -251,9 +258,9 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
   }
 
   // FIXME: add spell-checker: "https://en.wikipedia.org/wiki/Wagner%E2%80%93Fischer_algorithm"
-  override fun searchIdent(target: IdentifierNode): OrdinaryIdentifier? {
+  override fun searchIdent(target: String): OrdinaryIdentifier? {
     scopeStack.forEach {
-      val idx = it.idents.indexOfFirst { id -> id.name == target.name }
+      val idx = it.idents.indexOfFirst { id -> id.name == target }
       if (idx != -1) return it.idents[idx]
     }
     return null

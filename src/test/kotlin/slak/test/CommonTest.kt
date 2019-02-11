@@ -43,7 +43,8 @@ internal val signedChar = DeclarationSpecifier(typeSpec = SignedChar(Keywords.SI
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
-internal fun name(s: String): IdentifierNode = IdentifierNode(s)
+internal fun name(s: String): IdentifierNode = IdentifierNode(s).withRange(0..0)
+internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t)
 internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
 
 internal fun ptr(d: Declarator) =
@@ -92,11 +93,11 @@ internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(
 
 internal fun Declarator.withParams(params: List<ParameterDeclaration>,
                                    variadic: Boolean): Declarator {
-  val scope = params.mapTo(mutableListOf()) { it.declarator.name }.let {
-    val s = LexicalScope()
-    s.idents += it
-    s
+  val idents = params.mapTo(mutableListOf()) {
+    @Suppress("USELESS_CAST") // Hint, it's not useless
+    nameRef(it.declarator.name.name, typeNameOf(it.declSpec, it.declarator)) as OrdinaryIdentifier
   }
+  val scope = LexicalScope(idents = idents)
   return NamedDeclarator(name, indirection, suffixes + ParameterTypeList(params, scope, variadic))
 }
 
@@ -240,7 +241,6 @@ private fun <T> parseDSLElement(it: T): Expression {
     is Expression -> it
     is Int -> int(it.toLong())
     is Double -> double(it.toDouble())
-    is String -> name(it)
     else -> throw IllegalArgumentException("Bad types")
   }
 }

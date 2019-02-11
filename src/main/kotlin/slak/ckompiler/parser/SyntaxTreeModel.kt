@@ -158,10 +158,20 @@ class Noop : Statement(), Terminal {
  *
  * C standard: A.2.3, 6.8.3
  */
-sealed class Expression(val type: TypeName) : Statement()
+sealed class Expression : Statement() {
+  abstract val type: TypeName
+}
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
-class ErrorExpression : Expression(VoidType), ErrorNode by ErrorNodeImpl
+class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
+  override val type = VoidType
+}
+
+/** Like [IdentifierNode], but with an attached [TypeName]. */
+data class TypedIdentifier(override val name: String,
+                           override val type: TypeName) : Expression(), OrdinaryIdentifier {
+  override val kindName = "variable"
+}
 
 /**
  * Represents a function call in an [Expression].
@@ -170,9 +180,10 @@ class ErrorExpression : Expression(VoidType), ErrorNode by ErrorNodeImpl
  * @param calledExpr must have [Expression.type] be [FunctionType] (or [PointerType] to a
  * [FunctionType])
  */
-data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) :
-    Expression(calledExpr.type.asCallable()
-        ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }) {
+data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : Expression() {
+  override val type = calledExpr.type.asCallable()
+      ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }
+
   init {
     calledExpr.setParent(this)
     args.forEach { it.setParent(this) }
@@ -184,12 +195,14 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
  * "unary-operator cast-expression" part of it.
  * C standard: A.2.1
  */
-data class UnaryExpression(val op: Operators, val operand: Expression) : Expression(when (op) {
-  // FIXME: this is slightly more nuanced (6.5.3.3)
-  Operators.PLUS, Operators.MINUS, Operators.BIT_NOT,
-  Operators.NOT, Operators.REF, Operators.DEREF -> operand.type
-  else -> logger.throwICE("Cannot determine type of UnaryExpression") { "$op" }
-}) {
+data class UnaryExpression(val op: Operators, val operand: Expression) : Expression() {
+  override val type = when (op) {
+    // FIXME: this is slightly more nuanced (6.5.3.3)
+    Operators.PLUS, Operators.MINUS, Operators.BIT_NOT,
+    Operators.NOT, Operators.REF, Operators.DEREF -> operand.type
+    else -> logger.throwICE("Cannot determine type of UnaryExpression") { "$op" }
+  }
+
   init {
     if (op !in Operators.unaryOperators) {
       logger.throwICE("UnaryExpression with non-unary operator") { this }
@@ -201,35 +214,45 @@ data class UnaryExpression(val op: Operators, val operand: Expression) : Express
 /**
  * C standard: A.2.1
  */
-data class SizeofExpression(val sizeExpr: Expression) : Expression(UnsignedIntType) {
+data class SizeofExpression(val sizeExpr: Expression) : Expression() {
+  override val type = UnsignedIntType
+
   init {
     // FIXME: disallow function types/incomplete types/bitfield members
     sizeExpr.setParent(this)
   }
 }
 
-data class PrefixIncrement(val expr: Expression) : Expression(expr.type) {
+data class PrefixIncrement(val expr: Expression) : Expression() {
+  override val type = expr.type
+
   init {
     // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
 
-data class PrefixDecrement(val expr: Expression) : Expression(expr.type) {
+data class PrefixDecrement(val expr: Expression) : Expression() {
+  override val type = expr.type
+
   init {
     // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
 
-data class PostfixIncrement(val expr: Expression) : Expression(expr.type) {
+data class PostfixIncrement(val expr: Expression) : Expression() {
+  override val type = expr.type
+
   init {
     // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
 
-data class PostfixDecrement(val expr: Expression) : Expression(expr.type) {
+data class PostfixDecrement(val expr: Expression) : Expression() {
+  override val type = expr.type
+
   init {
     // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
@@ -237,9 +260,11 @@ data class PostfixDecrement(val expr: Expression) : Expression(expr.type) {
 }
 
 /** Represents a binary operation in an expression. */
-data class BinaryExpression(val op: Operators,
-                            val lhs: Expression,
-                            val rhs: Expression) : Expression(lhs.type /* FIXME: clearly temp */) {
+data class BinaryExpression(val op: Operators, val lhs: Expression, val rhs: Expression) :
+    Expression() {
+  // FIXME: this is temporary
+  override val type = lhs.type
+
   init {
     // FIXME: disallow non-binary ops
     // FIXME: check lhs/rhs types against what the op expects
@@ -250,58 +275,28 @@ data class BinaryExpression(val op: Operators,
   override fun toString() = "($lhs $op $rhs)"
 }
 
-class IdentifierNode(override val name: String, type: TypeName = VoidType /* FIXME: temp */) :
-    Expression(type), Terminal, OrdinaryIdentifier {
-  constructor(lexerIdentifier: Identifier, type: TypeName = VoidType /* FIXME: clearly temp */) :
-      this(lexerIdentifier.name, type)
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other !is IdentifierNode) return false
-
-    if (name != other.name) return false
-
-    return true
+data class IntegerConstantNode(val value: Long,
+                               val suffix: IntegralSuffix) : Expression(), Terminal {
+  override val type = when (suffix) {
+    IntegralSuffix.UNSIGNED -> UnsignedIntType
+    IntegralSuffix.UNSIGNED_LONG -> UnsignedLongType
+    IntegralSuffix.UNSIGNED_LONG_LONG -> UnsignedLongLongType
+    IntegralSuffix.LONG -> SignedLongType
+    IntegralSuffix.LONG_LONG -> SignedLongLongType
+    IntegralSuffix.NONE -> SignedIntType
   }
 
-  override fun hashCode(): Int {
-    var result = super.hashCode()
-    result = 31 * result + name.hashCode()
-    return result
-  }
-
-  override fun toString() = name
-
-  override val kindName = "variable"
-
-  companion object {
-    /**
-     * Creates an [IdentifierNode] from an [Identifier].
-     * @param identifier this [LexicalToken] is casted to an [Identifier]
-     */
-    fun from(identifier: LexicalToken) =
-        IdentifierNode(identifier as Identifier).withRange(identifier.range)
-  }
-}
-
-data class IntegerConstantNode(val value: Long, val suffix: IntegralSuffix) :
-    Expression(when (suffix) {
-      IntegralSuffix.UNSIGNED -> UnsignedIntType
-      IntegralSuffix.UNSIGNED_LONG -> UnsignedLongType
-      IntegralSuffix.UNSIGNED_LONG_LONG -> UnsignedLongLongType
-      IntegralSuffix.LONG -> SignedLongType
-      IntegralSuffix.LONG_LONG -> SignedLongLongType
-      IntegralSuffix.NONE -> SignedIntType
-    }), Terminal {
   override fun toString() = "$value$suffix"
 }
 
-data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
-    Expression(when (suffix) {
-      FloatingSuffix.FLOAT -> FloatType
-      FloatingSuffix.LONG_DOUBLE -> LongDoubleType
-      FloatingSuffix.NONE -> DoubleType
-    }), Terminal {
+data class FloatingConstantNode(val value: Double,
+                                val suffix: FloatingSuffix) : Expression(), Terminal {
+  override val type = when (suffix) {
+    FloatingSuffix.FLOAT -> FloatType
+    FloatingSuffix.LONG_DOUBLE -> LongDoubleType
+    FloatingSuffix.NONE -> DoubleType
+  }
+
   override fun toString() = "$value$suffix"
 }
 
@@ -315,18 +310,22 @@ data class FloatingConstantNode(val value: Double, val suffix: FloatingSuffix) :
  *
  * C standard: 6.4.4.4.0.10
  */
-data class CharacterConstantNode(val char: Int, val encoding: CharEncoding) :
-    Expression(UnsignedIntType), Terminal
+data class CharacterConstantNode(val char: Int,
+                                 val encoding: CharEncoding) : Expression(), Terminal {
+  override val type = UnsignedIntType
+}
 
 /**
  * FIXME: UTF-8 handling. Array size is not string.length
  * FIXME: wchar_t & friends should have more specific element type
  */
-data class StringLiteralNode(val string: String, val encoding: StringEncoding) :
-    Expression(ArrayType(when (encoding) {
-      StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
-      else -> UnsignedLongLongType
-    }, ExpressionSize(IntegerConstantNode(string.length.toLong(), IntegralSuffix.NONE)))), Terminal
+data class StringLiteralNode(val string: String,
+                             val encoding: StringEncoding) : Expression(), Terminal {
+  override val type = ArrayType(when (encoding) {
+    StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
+    else -> UnsignedLongLongType
+  }, ExpressionSize(IntegerConstantNode(string.length.toLong(), IntegralSuffix.NONE)))
+}
 
 /**
  * Stores declaration specifiers that come before declarators.
@@ -406,6 +405,21 @@ typealias TypeQualifierList = List<Keyword>
 
 fun List<TypeQualifierList>.stringify() =
     this.joinToString { '*' + it.joinToString(" ") { (value) -> value.keyword } }
+
+data class IdentifierNode(val name: String) : ASTNode(), Terminal {
+  constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)
+
+  override fun toString() = name
+
+  companion object {
+    /**
+     * Creates an [IdentifierNode] from an [Identifier].
+     * @param identifier this [LexicalToken] is casted to an [Identifier]
+     */
+    fun from(identifier: LexicalToken) =
+        IdentifierNode(identifier as Identifier).withRange(identifier.range)
+  }
+}
 
 sealed class Declarator : ASTNode() {
   abstract val indirection: List<TypeQualifierList>
@@ -559,10 +573,13 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
   }
 
   /**
-   * @return a list of [IdentifierNode]s of declarators in the declaration.
+   * @return a list of [TypedIdentifier]s of declarators in the declaration.
    */
-  fun identifiers(): List<IdentifierNode> {
-    return declaratorList.map { it.first.name }
+  fun identifiers(): List<TypedIdentifier> {
+    return declaratorList.map {
+      TypedIdentifier(it.first.name.name, typeNameOf(declSpecs, it.first))
+          .withRange(it.first.name.tokenRange)
+    }
   }
 
   override fun toString(): String {
