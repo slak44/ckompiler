@@ -73,11 +73,11 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         declSpec.isTypedef() -> diagnostic {
           id = DiagnosticId.TYPEDEF_REQUIRES_NAME
-          columns(declSpec.range!!)
+          columns(declSpec.tokenRange)
         }
         else -> diagnostic {
           id = DiagnosticId.MISSING_DECLARATIONS
-          columns(declSpec.range!!)
+          columns(declSpec.tokenRange)
         }
       }
       return declSpec to Optional.empty()
@@ -93,7 +93,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator?): Declaration {
     val d = Declaration(declSpec, parseInitDeclaratorList(declSpec, declarator))
-    val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.range!!.start
+    val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.tokenRange.start
     return d.withRange(start until safeToken(0).startIdx)
   }
 

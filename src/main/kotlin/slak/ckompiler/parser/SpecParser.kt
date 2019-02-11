@@ -387,16 +387,8 @@ class SpecParser(declarationParser: DeclarationParser) :
 
     val (threadLocal, storageClass) = validateStorageClass(storageSpecs)
 
-    val isEmpty =
-        storageSpecs.isEmpty() && funSpecs.isEmpty() && typeQuals.isEmpty() && typeSpecifier == null
-
-    val ds = DeclarationSpecifier(
-        storageClass = storageClass,
-        threadLocal = threadLocal,
-        functionSpecs = funSpecs,
-        typeQualifiers = typeQuals,
-        typeSpec = typeSpecifier,
-        range = if (isEmpty) null else startTok until safeToken(0))
+    val ds = DeclarationSpecifier(storageClass, threadLocal, typeQuals, funSpecs, typeSpecifier)
+    if (!ds.isEmpty()) ds.withRange(startTok until safeToken(0))
 
     validation.validate(this, ds)
     return ds

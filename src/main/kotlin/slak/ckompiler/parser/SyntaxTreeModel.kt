@@ -112,7 +112,6 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
         typeSpec = declSpec.typeSpec,
         functionSpecs = declSpec.functionSpecs,
         typeQualifiers = declSpec.typeQualifiers,
-        range = null,
         threadLocal = declSpec.threadLocal)
     return "$dsNoStorage$indStr"
   }
@@ -523,12 +522,12 @@ class LongDouble(first: Keyword) : BasicTypeSpecifier(first) {
  * Stores declaration specifiers that come before declarators.
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
-class DeclarationSpecifier(val storageClass: Keyword? = null,
-                           val threadLocal: Keyword? = null,
-                           val typeQualifiers: List<Keyword> = emptyList(),
-                           val functionSpecs: List<Keyword> = emptyList(),
-                           val typeSpec: TypeSpecifier? = null,
-                           val range: IntRange? = null) {
+data class DeclarationSpecifier(val storageClass: Keyword? = null,
+                                val threadLocal: Keyword? = null,
+                                val typeQualifiers: List<Keyword> = emptyList(),
+                                val functionSpecs: List<Keyword> = emptyList(),
+                                val typeSpec: TypeSpecifier? = null) : ASTNode() {
+
   /** @return true if no specifiers were found */
   fun isEmpty() = !hasStorageClass() && !isThreadLocal() && typeQualifiers.isEmpty() &&
       functionSpecs.isEmpty() && typeSpec == null
@@ -556,30 +555,6 @@ class DeclarationSpecifier(val storageClass: Keyword? = null,
     val storageClassStr = if (hasStorageClass()) "${storageClass!!.value.keyword} " else ""
     val threadLocalStr = if (isThreadLocal()) "${Keywords.THREAD_LOCAL.keyword} " else ""
     return "$threadLocalStr$storageClassStr$otherSpecsStr$typeSpec"
-  }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as DeclarationSpecifier
-
-    if (typeSpec != other.typeSpec) return false
-    if (storageClass != other.storageClass) return false
-    if (threadLocal != other.threadLocal) return false
-    if (typeQualifiers != other.typeQualifiers) return false
-    if (functionSpecs != other.functionSpecs) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = storageClass.hashCode()
-    result = 31 * result + threadLocal.hashCode()
-    result = 31 * result + typeSpec.hashCode()
-    result = 31 * result + typeQualifiers.hashCode()
-    result = 31 * result + functionSpecs.hashCode()
-    return result
   }
 }
 
@@ -615,6 +590,7 @@ data class ParameterTypeList(val params: List<ParameterDeclaration>,
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
                                 val declarator: Declarator) : ASTNode() {
   init {
+    declSpec.setParent(this)
     declarator.setParent(this)
   }
 
@@ -687,6 +663,7 @@ data class StructMember(val declarator: Declarator, val constExpr: Expression?) 
 data class StructDeclaration(val declSpecs: DeclarationSpecifier,
                              val declaratorList: List<StructMember>) : ASTNode() {
   init {
+    declSpecs.setParent(this)
     declaratorList.forEach { it.setParent(this) }
   }
 }
@@ -762,6 +739,7 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
                        val declaratorList: List<Pair<Declarator, Initializer?>>) :
     ExternalDeclaration() {
   init {
+    declSpecs.setParent(this)
     declaratorList.forEach {
       it.first.setParent(this)
       it.second?.setParent(this)
@@ -781,6 +759,7 @@ data class FunctionDefinition(val declSpec: DeclarationSpecifier,
                               val functionDeclarator: Declarator,
                               val compoundStatement: Statement) : ExternalDeclaration() {
   init {
+    declSpec.setParent(this)
     functionDeclarator.setParent(this)
     compoundStatement.setParent(this)
   }
