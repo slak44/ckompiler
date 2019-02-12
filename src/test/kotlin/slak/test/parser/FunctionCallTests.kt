@@ -84,17 +84,6 @@ class FunctionCallTests {
   }
 
   @Test
-  fun `Call An Expr`() {
-    val p = prepareCode("""
-      int f();
-      int a = (&f)();
-    """.trimIndent(), source)
-    p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, emptyList()))
-    int declare ("a" assign UnaryOperators.REF[f]()) assertEquals p.root.decls[1]
-  }
-
-  @Test
   fun `Can't Call Object Type`() {
     val p = prepareCode("""
       int a = 1();
