@@ -11,8 +11,9 @@ sealed class TypeSpecifier
 
 data class EnumSpecifier(val name: IdentifierNode) : TypeSpecifier()
 
-data class TypedefNameSpecifier(val name: IdentifierNode, val type: TypedefName) : TypeSpecifier() {
-  override fun toString() = "${name.name} (aka ${type.typedefedToString()})"
+data class TypedefNameSpecifier(val name: IdentifierNode,
+                                val typedefName: TypedefName) : TypeSpecifier() {
+  override fun toString() = "${name.name} (aka ${typedefName.typedefedToString()})"
 }
 
 // FIXME: if a declaration has an incomplete type that never gets completed, print a diagnostic

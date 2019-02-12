@@ -8,29 +8,22 @@ import java.util.*
 
 /**
  * Stores the data of a scoped `typedef`.
- * @param typedefIdent this is the [IdentifierNode] found at the place where the typedef was
- * declared; actual declarations that use this typedef will have their own identifiers
+ * @param declarator the declarator used for this typedef. The [IdentifierNode] in this declarator
+ * is the one used for scoping; actual declarations that use this typedef will have their own
+ * identifiers
  */
 data class TypedefName(val declSpec: DeclarationSpecifier,
-                       val indirection: List<TypeQualifierList>,
-                       val suffixes: List<DeclaratorSuffix>,
-                       val typedefIdent: IdentifierNode) : OrdinaryIdentifier {
-  override val name = typedefIdent.name
-  override val tokenRange = typedefIdent.tokenRange
-  override val type: TypeName = VoidType // FIXME: ???
+                       val declarator: NamedDeclarator) : OrdinaryIdentifier {
+  override val name = declarator.name.name
+  // Only highlight the typedef's name in diagnostics, not the entire thing
+  override val tokenRange = declarator.name.tokenRange
+  override val type = typeNameOf(declSpec, declarator)
   override val kindName = "typedef"
 
   fun typedefedToString(): String {
-    val ind = indirection.stringify()
-    val indStr = if (ind.isBlank()) "" else " $ind"
     // The storage class is "typedef", and we don't want to print it
-    val dsNoStorage = DeclarationSpecifier(
-        storageClass = null,
-        typeSpec = declSpec.typeSpec,
-        functionSpecs = declSpec.functionSpecs,
-        typeQualifiers = declSpec.typeQualifiers,
-        threadLocal = declSpec.threadLocal)
-    return "$dsNoStorage$indStr${suffixes.joinToString("")}"
+    val dsNoStorage = declSpec.copy(storageClass = null)
+    return "$dsNoStorage $type"
   }
 }
 
@@ -73,7 +66,7 @@ data class LexicalScope(val tagNames: MutableList<TagSpecifier> = mutableListOf(
     val identStr = idents.filter { it !is TypedefName }.joinToString(", ") { it.name }
     val labelStr = labels.joinToString(", ") { it.name }
     val typedefStr = idents.mapNotNull { it as? TypedefName }
-        .joinToString(", ") { "${it.typedefedToString()} ${it.typedefIdent.name}" }
+        .joinToString(", ") { "typedef ${it.typedefedToString()}" }
     val tags = tagNames
         .joinToString(", ") { "${it.tagKindKeyword.value.keyword} ${it.tagIdent.name}" }
     return "LexicalScope(" +
