@@ -16,6 +16,8 @@ fun main(args: Array<String>) {
   val ppOnly by cli.flagArgument("-E", "Preprocess only")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
+  val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
+      "Disable colors in diagnostic messages")
   val files by cli.positionalArgumentsList(
       "FILES...", "Translation units to be compiled", minArgs = 1)
   try {
@@ -26,6 +28,7 @@ fun main(args: Array<String>) {
     logger.error(err) { "Failed to parse CLI args" }
     exitProcess(1)
   }
+  Diagnostic.useColors = !disableColorDiags
   files.map { File(it) }.forEach {
     val text = it.readText()
     val pp = Preprocessor(text, it.absolutePath)

@@ -126,7 +126,7 @@ data class Diagnostic(val id: DiagnosticId,
   }
 
   private val printable: String by lazy {
-    val color = TermColors(TermColors.Level.TRUECOLOR)
+    val color = TermColors(if (useColors) TermColors.Level.TRUECOLOR else TermColors.Level.NONE)
     val (line, col, lineText) = errorOf(if (sourceColumns.isNotEmpty()) caret else null)
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     val spacesCount = max(col, 0)
@@ -148,6 +148,10 @@ data class Diagnostic(val id: DiagnosticId,
   fun print() = println(printable)
 
   override fun toString(): String = "${javaClass.simpleName}[$printable]"
+
+  companion object {
+    var useColors: Boolean = true
+  }
 }
 
 class DiagnosticBuilder {
