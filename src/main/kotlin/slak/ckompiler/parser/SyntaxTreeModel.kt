@@ -438,10 +438,7 @@ sealed class Declarator : ASTNode() {
   abstract val indirection: List<TypeQualifierList>
   abstract val suffixes: List<DeclaratorSuffix>
 
-  fun isFunction(): Boolean {
-    // FIXME: this might not be enough
-    return suffixes.isNotEmpty() && suffixes[0] is ParameterTypeList
-  }
+  fun isFunction() = suffixes.isNotEmpty() && suffixes[0] is ParameterTypeList
 
   fun getFunctionTypeList(): ParameterTypeList = suffixes[0] as ParameterTypeList
 }

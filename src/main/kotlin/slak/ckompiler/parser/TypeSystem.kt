@@ -34,10 +34,12 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   }
   // Structure/Union
   if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)
+  // Functions
   if (decl.isFunction()) {
-    // FIXME: do this correctly
-    val retType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), emptyList()))
-    return FunctionType(retType, emptyList())
+    val ptl = decl.getFunctionTypeList()
+    val paramTypes = ptl.params.map { typeNameOf(it.declSpec, it.declarator) }
+    val retType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
+    return FunctionType(retType, paramTypes, ptl.variadic)
   }
   // FIXME: arrays
   return when (specQuals.typeSpec) {
@@ -99,7 +101,9 @@ data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifier
   override fun toString() = "$referencedType ${ptrQuals.stringify()}"
 }
 
-data class FunctionType(val returnType: TypeName, val params: List<TypeName>) : TypeName() {
+data class FunctionType(val returnType: TypeName,
+                        val params: List<TypeName>,
+                        val variadic: Boolean = false) : TypeName() {
   override fun toString(): String {
     // FIXME: this doesn't really work when the return type is a function/array
     return "$returnType (${params.joinToString()})"
