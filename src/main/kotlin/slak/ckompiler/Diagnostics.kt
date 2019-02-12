@@ -1,5 +1,6 @@
 package slak.ckompiler
 
+import com.github.ajalt.mordant.TermColors
 import mu.KLogger
 import mu.KotlinLogging
 import slak.ckompiler.DiagnosticKind.*
@@ -125,6 +126,7 @@ data class Diagnostic(val id: DiagnosticId,
   }
 
   private val printable: String by lazy {
+    val color = TermColors(TermColors.Level.TRUECOLOR)
     val (line, col, lineText) = errorOf(if (sourceColumns.isNotEmpty()) caret else null)
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     val spacesCount = max(col, 0)
@@ -132,8 +134,13 @@ data class Diagnostic(val id: DiagnosticId,
         max(caret.length() - 1, 0), // Size of provided range (caret eats one)
         max(lineText.length - spacesCount + 1, 0) // Size of spaces + 1 for the caret
     )
-    val firstLine = "$sourceFileName:$line:$col: ${id.kind.text}: $msg [$origin|${id.name}]"
-    val caretLine = " ".repeat(spacesCount) + '^' + "~".repeat(tildeCount)
+    val kindText = when (id.kind) {
+      ERROR -> color.brightRed
+      WARNING -> color.brightMagenta
+      OTHER -> color.blue
+    }("${id.kind.text}:")
+    val firstLine = "$sourceFileName:$line:$col: $kindText $msg [$origin|${id.name}]"
+    val caretLine = color.green(" ".repeat(spacesCount) + '^' + "~".repeat(tildeCount))
     // FIXME add tildes for the other sourceColumns
     return@lazy "$firstLine\n$lineText\n$caretLine"
   }
