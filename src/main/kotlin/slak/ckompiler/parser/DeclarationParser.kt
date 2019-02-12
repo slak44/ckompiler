@@ -163,10 +163,9 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       val declarator = parseNamedDeclarator(paramEndIdx)
       params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
-      // function prototype scope)
-      scope.withScope {
-        newIdentifier(TypedIdentifier(declarator.name.name, typeNameOf(specs, declarator))
-            .withRange(declarator.name.tokenRange))
+      // function prototype scope). Ignore unnamed parameters.
+      if (declarator is NamedDeclarator) scope.withScope {
+        newIdentifier(TypedIdentifier.from(specs, declarator))
       }
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
@@ -450,15 +449,13 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
   private fun parseInitDeclaratorList(ds: DeclarationSpecifier, firstDecl: Declarator? = null):
       List<Pair<Declarator, Initializer?>> {
     fun addDeclaratorToScope(declarator: Declarator?) {
-      if (declarator == null) return
-      if (declarator is ErrorNode) return
+      if (declarator !is NamedDeclarator) return
       if (ds.isTypedef()) {
         // Add typedef to scope
         newIdentifier(TypedefName(ds, declarator.indirection, declarator.suffixes, declarator.name))
       } else {
         // Add ident to scope
-        newIdentifier(TypedIdentifier(declarator.name.name, typeNameOf(ds, declarator))
-            .withRange(declarator.name.tokenRange))
+        newIdentifier(TypedIdentifier.from(ds, declarator))
       }
     }
     // This is the case where there are no declarators left for this function

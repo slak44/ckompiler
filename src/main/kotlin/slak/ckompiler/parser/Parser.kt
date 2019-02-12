@@ -101,8 +101,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
                                       funDecl: Declarator): FunctionDefinition {
     if (!funDecl.isFunction()) logger.throwICE("Not a function declarator") { funDecl }
     if (funDecl !is NamedDeclarator) logger.throwICE("Function definition without name") { funDecl }
-    newIdentifier(TypedIdentifier(funDecl.name.name, typeNameOf(declSpec, funDecl))
-        .withRange(funDecl.name.tokenRange))
+    newIdentifier(TypedIdentifier.from(declSpec, funDecl))
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }

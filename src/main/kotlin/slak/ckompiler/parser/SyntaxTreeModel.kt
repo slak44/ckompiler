@@ -167,11 +167,16 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
   override val type = VoidType
 }
 
-// FIXME: factory from [DeclSpec] + [NamedDeclarator]
 /** Like [IdentifierNode], but with an attached [TypeName]. */
 data class TypedIdentifier(override val name: String,
                            override val type: TypeName) : Expression(), OrdinaryIdentifier {
   override val kindName = "variable"
+
+  companion object {
+    fun from(ds: DeclarationSpecifier, decl: NamedDeclarator): TypedIdentifier {
+      return TypedIdentifier(decl.name.name, typeNameOf(ds, decl)).withRange(decl.name.tokenRange)
+    }
+  }
 }
 
 /**
@@ -578,8 +583,7 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
    */
   fun identifiers(): List<TypedIdentifier> {
     return declaratorList.map {
-      TypedIdentifier(it.first.name.name, typeNameOf(declSpecs, it.first))
-          .withRange(it.first.name.tokenRange)
+      TypedIdentifier.from(declSpecs, it.first as NamedDeclarator)
     }
   }
 
