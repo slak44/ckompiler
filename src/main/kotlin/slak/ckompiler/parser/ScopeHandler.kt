@@ -13,6 +13,7 @@ import java.util.*
  */
 data class TypedefName(val declSpec: DeclarationSpecifier,
                        val indirection: List<TypeQualifierList>,
+                       val suffixes: List<DeclaratorSuffix>,
                        val typedefIdent: IdentifierNode) : OrdinaryIdentifier {
   override val name = typedefIdent.name
   override val tokenRange = typedefIdent.tokenRange
@@ -29,7 +30,7 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
         functionSpecs = declSpec.functionSpecs,
         typeQualifiers = declSpec.typeQualifiers,
         threadLocal = declSpec.threadLocal)
-    return "$dsNoStorage$indStr"
+    return "$dsNoStorage$indStr${suffixes.joinToString("")}"
   }
 }
 

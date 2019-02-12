@@ -38,7 +38,10 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   return when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
     is EnumSpecifier -> TODO()
-    is TypedefNameSpecifier -> TODO("typedefname should have suffixes")
+    is TypedefNameSpecifier -> {
+      val tDef = specQuals.typeSpec.type
+      typeNameOf(tDef.declSpec, AbstractDeclarator(tDef.indirection, tDef.suffixes))
+    }
     is VoidTypeSpec -> VoidType
     is Bool -> BooleanType
     is Signed, is IntType, is SignedInt -> SignedIntType

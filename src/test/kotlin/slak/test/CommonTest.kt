@@ -219,7 +219,7 @@ internal infix fun String.bitSize(it: Long) = this bitSize int(it)
 
 internal fun String.typedefBy(ds: DeclarationSpecifier): DeclarationSpecifier {
   if (!ds.isTypedef()) throw IllegalArgumentException("Not typedef")
-  val td = TypedefName(ds, emptyList(), name(this))
+  val td = TypedefName(ds, emptyList(), emptyList(), name(this))
   return DeclarationSpecifier(typeSpec = TypedefNameSpecifier(name(this), td))
 }
 

@@ -454,7 +454,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       if (declarator is ErrorNode) return
       if (ds.isTypedef()) {
         // Add typedef to scope
-        newIdentifier(TypedefName(ds, declarator.indirection, declarator.name))
+        newIdentifier(TypedefName(ds, declarator.indirection, declarator.suffixes, declarator.name))
       } else {
         // Add ident to scope
         newIdentifier(TypedIdentifier(declarator.name.name, typeNameOf(ds, declarator))
