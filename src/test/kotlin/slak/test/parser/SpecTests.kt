@@ -325,7 +325,8 @@ class SpecTests {
     val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
         typeQualifiers = listOf(Keywords.CONST.kw),
         typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
-    "special_int".typedefBy(typedefSpec) declare ("x" assign 213) assertEquals p.root.decls[0]
+    typedefSpec declare "special_int" assertEquals p.root.decls[0]
+    "special_int".typedefBy(typedefSpec) declare ("x" assign 213) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -340,9 +341,10 @@ class SpecTests {
     val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
         typeQualifiers = listOf(Keywords.CONST.kw),
         typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
+    typedefSpec declare "special_int" assertEquals p.root.decls[0]
     int func "main" body compoundOf(
         "special_int".typedefBy(typedefSpec) declare ("x" assign 213)
-    ) assertEquals p.root.decls[0]
+    ) assertEquals p.root.decls[1]
   }
 
   @Test

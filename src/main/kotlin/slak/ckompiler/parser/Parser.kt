@@ -139,10 +139,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
       }
       root.addExternalDeclaration(parseFunctionDefinition(declSpec, declarator))
     } else {
-      val declaration = parseDeclaration(declSpec, declarator)
-      // Typedefs are handled in the [DeclarationParser]; it's not a real declaration
-      if (declSpec.isTypedef()) return translationUnit()
-      root.addExternalDeclaration(declaration)
+      root.addExternalDeclaration(parseDeclaration(declSpec, declarator))
     }
     if (isEaten()) return
     else return translationUnit()
