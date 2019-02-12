@@ -14,6 +14,7 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
     // FIXME: the behaviour is technically undefined; in practice the only mutation is pushing
     // FIXME: stuff to the end of the list, which *shouldn't* fuck up the sublists, but who knows
     val p = PPParser(l.tokenSequence, parserTokens, TokenHandler(parserTokens, debugHandler))
+    l.tokenSequence.toList() // FIXME remove
     alteredSourceText = sourceText // FIXME
     diags.forEach { it.print() }
   }
@@ -25,7 +26,7 @@ private class PPParser(private val tokSrc: Sequence<PPToken>,
     IDebugHandler by tokenHandler,
     ITokenHandler<PPToken> by tokenHandler {
 
-  fun areTokensLeft() = tokSrc.iterator().hasNext()
+  fun isStreamDone() = tokSrc.iterator().hasNext()
 
   init {
 
