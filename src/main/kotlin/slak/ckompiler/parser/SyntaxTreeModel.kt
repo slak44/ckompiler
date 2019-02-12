@@ -409,8 +409,11 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
 
 typealias TypeQualifierList = List<Keyword>
 
-fun List<TypeQualifierList>.stringify() =
-    this.joinToString { '*' + it.joinToString(" ") { (value) -> value.keyword } }
+@JvmName("TypeQualifierList#stringify")
+fun TypeQualifierList.stringify() = '*' + joinToString(" ") { (value) -> value.keyword }
+
+@JvmName("List_TypeQualifierList_#stringify")
+fun List<TypeQualifierList>.stringify() = joinToString { it.stringify() }
 
 data class IdentifierNode(val name: String) : ASTNode(), Terminal {
   constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)
@@ -508,7 +511,9 @@ data class StructDeclaration(val declSpecs: DeclarationSpecifier,
 sealed class ArrayTypeSize(val hasVariableSize: Boolean) : DeclaratorSuffix()
 
 /** Describes an array type that specifies no size in the square brackets. */
-object NoSize : ArrayTypeSize(false)
+object NoSize : ArrayTypeSize(false) {
+  override fun toString() = ""
+}
 
 /**
  * Describes an array type of variable length ("variable length array", "VLA").
@@ -520,7 +525,9 @@ object NoSize : ArrayTypeSize(false)
  * @param vlaStar (diagnostic data) the * in the square brackets: `int v[*];`
  */
 data class UnconfinedVariableSize(val typeQuals: TypeQualifierList,
-                                  val vlaStar: Punctuator) : ArrayTypeSize(true)
+                                  val vlaStar: Punctuator) : ArrayTypeSize(true) {
+  override fun toString() = "${typeQuals.stringify()} *"
+}
 
 /**
  * Describes an array type whose size is specified by [expr], where the type is a function
@@ -543,6 +550,11 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
     }
     expr?.setParent(this)
   }
+
+  override fun toString(): String {
+    val exprStr = if (expr == null) "" else " $expr"
+    return "${if (isStatic) "static " else ""}${typeQuals.stringify()}$exprStr"
+  }
 }
 
 /**
@@ -555,6 +567,8 @@ data class ExpressionSize(val expr: Expression) :
   init {
     expr.setParent(this)
   }
+
+  override fun toString() = "$expr"
 }
 
 /** C standard: A.2.4 */

@@ -73,25 +73,46 @@ sealed class TypeName {
   }
 }
 
-object ErrorType : TypeName()
+object ErrorType : TypeName() {
+  override fun toString() = "<error type>"
+}
 
 /**
  * All pointer types are complete.
  *
  * C standard: 6.2.5.
  */
-data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifierList) : TypeName()
+data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifierList) : TypeName() {
+  override fun toString() = "$referencedType ${ptrQuals.stringify()}"
+}
 
-data class FunctionType(val returnType: TypeName, val params: List<TypeName>) : TypeName()
+data class FunctionType(val returnType: TypeName, val params: List<TypeName>) : TypeName() {
+  override fun toString(): String {
+    // FIXME: this doesn't really work when the return type is a function/array
+    return "$returnType ${params.joinToString()}"
+  }
+}
 
-data class ArrayType(val elementType: TypeName, val size: ArrayTypeSize) : TypeName()
+data class ArrayType(val elementType: TypeName, val size: ArrayTypeSize) : TypeName() {
+  override fun toString() = "$elementType[$size]"
+}
 
 // FIXME: implement these too
 data class BitfieldType(val elementType: TypeName, val size: Expression) : TypeName()
 
-data class StructureType(val name: String?, val members: List<TypeName>?) : TypeName()
+data class StructureType(val name: String?, val members: List<TypeName>?) : TypeName() {
+  override fun toString(): String {
+    val nameStr = if (name == null) "" else "$name "
+    return "struct $nameStr{...}"
+  }
+}
 
-data class UnionType(val name: String?, val optionTypes: List<TypeName>?) : TypeName()
+data class UnionType(val name: String?, val optionTypes: List<TypeName>?) : TypeName() {
+  override fun toString(): String {
+    val nameStr = if (name == null) "" else "$name "
+    return "union $nameStr{...}"
+  }
+}
 
 sealed class BasicType : TypeName()
 
@@ -102,27 +123,68 @@ sealed class BasicType : TypeName()
  */
 sealed class SignedIntegralType : BasicType()
 
-object SignedCharType : SignedIntegralType()
-object SignedShortType : SignedIntegralType()
-object SignedIntType : SignedIntegralType()
-object SignedLongType : SignedIntegralType()
-object SignedLongLongType : SignedIntegralType()
+object SignedCharType : SignedIntegralType() {
+  override fun toString() = "signed char"
+}
+
+object SignedShortType : SignedIntegralType() {
+  override fun toString() = "signed short"
+}
+
+object SignedIntType : SignedIntegralType() {
+  override fun toString() = "signed int"
+}
+
+object SignedLongType : SignedIntegralType() {
+  override fun toString() = "signed long"
+}
+
+object SignedLongLongType : SignedIntegralType() {
+  override fun toString() = "signed long long"
+}
 
 /** C standard: 6.2.5.0.6 */
 sealed class UnsignedIntegralType : BasicType()
 
-object BooleanType : UnsignedIntegralType()
-object UnsignedCharType : UnsignedIntegralType()
-object UnsignedShortType : UnsignedIntegralType()
-object UnsignedIntType : UnsignedIntegralType()
-object UnsignedLongType : UnsignedIntegralType()
-object UnsignedLongLongType : UnsignedIntegralType()
+object BooleanType : UnsignedIntegralType() {
+  override fun toString() = "_Bool"
+}
+
+object UnsignedCharType : UnsignedIntegralType() {
+  override fun toString() = "unsigned char"
+}
+
+object UnsignedShortType : UnsignedIntegralType() {
+  override fun toString() = "unsigned short"
+}
+
+object UnsignedIntType : UnsignedIntegralType() {
+  override fun toString() = "unsigned int"
+}
+
+object UnsignedLongType : UnsignedIntegralType() {
+  override fun toString() = "unsigned long"
+}
+
+object UnsignedLongLongType : UnsignedIntegralType() {
+  override fun toString() = "unsigned long long"
+}
 
 /** C standard: 6.2.5.0.10 */
 sealed class FloatingType : BasicType()
 
-object FloatType : FloatingType()
-object DoubleType : FloatingType()
-object LongDoubleType : FloatingType()
+object FloatType : FloatingType() {
+  override fun toString() = "float"
+}
 
-object VoidType : BasicType()
+object DoubleType : FloatingType() {
+  override fun toString() = "double"
+}
+
+object LongDoubleType : FloatingType() {
+  override fun toString() = "long double"
+}
+
+object VoidType : BasicType() {
+  override fun toString() = "void"
+}
