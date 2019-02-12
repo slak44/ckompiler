@@ -77,6 +77,8 @@ sealed class TypeName {
     else -> null
   }
 
+  fun isRealType(): Boolean = isArithmetic() // We don't implement complex types yet.
+
   /** C standard: 6.2.5.0.18 */
   fun isArithmetic(): Boolean = this is IntegralType || this is FloatingType
 

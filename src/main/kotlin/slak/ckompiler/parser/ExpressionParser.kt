@@ -262,13 +262,27 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     }
   }
 
+  /**
+   * C standard: 6.5.3.1
+   */
   private fun parseUnaryExpression(): Expression? = when {
     current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
       val c = current()
+      val isInc = c.asPunct() == Punctuators.INC
       eat() // The prefix op
       val expr = parseUnaryExpression() ?: error<ErrorExpression>()
-      if (c.asPunct() == Punctuators.INC) PrefixIncrement(expr).withRange(c..expr)
-      else PrefixDecrement(expr).withRange(c..expr)
+      val exprChecked =
+          if (expr.type != ErrorType && !expr.type.isRealType() && expr.type !is PointerType) {
+        diagnostic {
+          id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
+          formatArgs(if (isInc) "increment" else "decrement", expr.type)
+          columns(c..expr)
+        }
+        error<ErrorExpression>()
+      } else {
+        expr
+      }
+      (if (isInc) PrefixIncrement(exprChecked) else PrefixDecrement(exprChecked)).withRange(c..expr)
     }
     current().asUnaryOperator() != null -> {
       val c = current()
@@ -282,8 +296,10 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
           formatArgs(expr.type, op.op.s)
           columns(c..expr)
         }
+        UnaryExpression(op, error<ErrorExpression>()).withRange(c..expr)
+      } else {
+        UnaryExpression(op, expr).withRange(c..expr)
       }
-      UnaryExpression(op, expr).withRange(c..expr)
     }
     current().asKeyword() == Keywords.ALIGNOF -> {
       eat() // The ALIGNOF

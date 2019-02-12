@@ -2,9 +2,7 @@ package slak.test.analysis
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.FunctionType
-import slak.ckompiler.parser.SignedIntType
-import slak.ckompiler.parser.UnaryOperators
+import slak.ckompiler.parser.*
 import slak.test.*
 
 class TypeTests {
@@ -21,9 +19,8 @@ class TypeTests {
   fun `Unary Plus And Minus On Bad Type`() {
     val p = prepareCode("int main() {-main;}", source)
     p.assertDiags(DiagnosticId.INVALID_ARGUMENT_UNARY)
-    val main = nameRef("main", FunctionType(SignedIntType, emptyList()))
     int func ("main" withParams emptyList()) body compoundOf(
-        UnaryOperators.MINUS[main]
+        UnaryOperators.MINUS[ErrorExpression()]
     ) assertEquals p.root.decls[0]
   }
 
@@ -31,9 +28,8 @@ class TypeTests {
   fun `Unary Bitwise Not On Bad Type`() {
     val p = prepareCode("int main() {~main;}", source)
     p.assertDiags(DiagnosticId.INVALID_ARGUMENT_UNARY)
-    val main = nameRef("main", FunctionType(SignedIntType, emptyList()))
     int func ("main" withParams emptyList()) body compoundOf(
-        UnaryOperators.BIT_NOT[main]
+        UnaryOperators.BIT_NOT[ErrorExpression()]
     ) assertEquals p.root.decls[0]
   }
 
@@ -46,5 +42,14 @@ class TypeTests {
     p.assertNoDiagnostics()
     val f = nameRef("f", FunctionType(SignedIntType, emptyList()))
     int declare ("a" assign UnaryOperators.REF[f]()) assertEquals p.root.decls[1]
+  }
+
+  @Test
+  fun `Prefix Increment Bad Type`() {
+    val p = prepareCode("int main() {++main;}", source)
+    p.assertDiags(DiagnosticId.INVALID_INC_DEC_ARGUMENT)
+    int func ("main" withParams emptyList()) body compoundOf(
+        PrefixIncrement(ErrorExpression())
+    ) assertEquals p.root.decls[0]
   }
 }
