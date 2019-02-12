@@ -167,6 +167,7 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
   override val type = VoidType
 }
 
+// FIXME: factory from [DeclSpec] + [NamedDeclarator]
 /** Like [IdentifierNode], but with an attached [TypeName]. */
 data class TypedIdentifier(override val name: String,
                            override val type: TypeName) : Expression(), OrdinaryIdentifier {
