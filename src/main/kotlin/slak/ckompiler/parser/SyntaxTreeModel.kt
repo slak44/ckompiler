@@ -159,12 +159,13 @@ class Noop : Statement(), Terminal {
  * C standard: A.2.3, 6.8.3
  */
 sealed class Expression : Statement() {
+  /** The [TypeName] of this expression's result. */
   abstract val type: TypeName
 }
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
-  override val type = VoidType
+  override val type = ErrorType
 }
 
 /** Like [IdentifierNode], but with an attached [TypeName]. */
@@ -187,7 +188,7 @@ data class TypedIdentifier(override val name: String,
  * [FunctionType])
  */
 data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : Expression() {
-  override val type = calledExpr.type.asCallable()
+  override val type = calledExpr.type.asCallable()?.returnType
       ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }
 
   init {
@@ -201,18 +202,14 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
  * "unary-operator cast-expression" part of it.
  * C standard: A.2.1
  */
-data class UnaryExpression(val op: Operators, val operand: Expression) : Expression() {
+data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Expression() {
   override val type = when (op) {
     // FIXME: this is slightly more nuanced (6.5.3.3)
-    Operators.PLUS, Operators.MINUS, Operators.BIT_NOT,
-    Operators.NOT, Operators.REF, Operators.DEREF -> operand.type
-    else -> logger.throwICE("Cannot determine type of UnaryExpression") { "$op" }
+    UnaryOperators.PLUS, UnaryOperators.MINUS, UnaryOperators.BIT_NOT,
+    UnaryOperators.NOT, UnaryOperators.REF, UnaryOperators.DEREF -> operand.type
   }
 
   init {
-    if (op !in Operators.unaryOperators) {
-      logger.throwICE("UnaryExpression with non-unary operator") { this }
-    }
     operand.setParent(this)
   }
 }
@@ -266,7 +263,7 @@ data class PostfixDecrement(val expr: Expression) : Expression() {
 }
 
 /** Represents a binary operation in an expression. */
-data class BinaryExpression(val op: Operators, val lhs: Expression, val rhs: Expression) :
+data class BinaryExpression(val op: BinaryOperators, val lhs: Expression, val rhs: Expression) :
     Expression() {
   // FIXME: this is temporary
   override val type = lhs.type

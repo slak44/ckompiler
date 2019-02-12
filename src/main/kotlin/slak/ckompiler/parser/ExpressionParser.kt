@@ -15,76 +15,68 @@ interface IExpressionParser {
 }
 
 /**
+ * C standard: 6.5.3, A.2.1
+ * @see BinaryOperators
+ */
+enum class UnaryOperators(val op: Punctuators) {
+  REF(Punctuators.AMP), DEREF(Punctuators.STAR),
+  PLUS(Punctuators.PLUS), MINUS(Punctuators.MINUS),
+  BIT_NOT(Punctuators.TILDE), NOT(Punctuators.NOT),
+}
+
+/**
  * This class is used by the expression parser. The list is not complete, and the standard does not
  * define these properties; they are derived from the grammar.
  * C standard: A.2.1
  */
-enum class Operators(val op: Punctuators,
-                     val precedence: Int,
-                     val arity: Arity,
-                     val assoc: Associativity) {
-  // Unary
-  REF(Punctuators.AMP, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  DEREF(Punctuators.STAR, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  PLUS(Punctuators.PLUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  MINUS(Punctuators.MINUS, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  BIT_NOT(Punctuators.TILDE, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
-  NOT(Punctuators.NOT, 100, Arity.UNARY, Associativity.LEFT_TO_RIGHT),
+enum class BinaryOperators(val op: Punctuators, val precedence: Int, val assoc: Associativity) {
   // Arithmetic
-  MUL(Punctuators.STAR, 95, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  DIV(Punctuators.SLASH, 95, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  MOD(Punctuators.PERCENT, 95, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  ADD(Punctuators.PLUS, 90, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  SUB(Punctuators.MINUS, 90, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  MUL(Punctuators.STAR, 95, Associativity.LEFT_TO_RIGHT),
+  DIV(Punctuators.SLASH, 95, Associativity.LEFT_TO_RIGHT),
+  MOD(Punctuators.PERCENT, 95, Associativity.LEFT_TO_RIGHT),
+  ADD(Punctuators.PLUS, 90, Associativity.LEFT_TO_RIGHT),
+  SUB(Punctuators.MINUS, 90, Associativity.LEFT_TO_RIGHT),
   // Bit-shift
-  LSH(Punctuators.LSH, 80, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  RSH(Punctuators.RSH, 80, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  LSH(Punctuators.LSH, 80, Associativity.LEFT_TO_RIGHT),
+  RSH(Punctuators.RSH, 80, Associativity.LEFT_TO_RIGHT),
   // Relational
-  LT(Punctuators.LT, 70, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  GT(Punctuators.GT, 70, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  LEQ(Punctuators.LEQ, 70, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  GEQ(Punctuators.GEQ, 70, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  LT(Punctuators.LT, 70, Associativity.LEFT_TO_RIGHT),
+  GT(Punctuators.GT, 70, Associativity.LEFT_TO_RIGHT),
+  LEQ(Punctuators.LEQ, 70, Associativity.LEFT_TO_RIGHT),
+  GEQ(Punctuators.GEQ, 70, Associativity.LEFT_TO_RIGHT),
   // Equality
-  EQ(Punctuators.EQUALS, 60, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  NEQ(Punctuators.NEQUALS, 60, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  EQ(Punctuators.EQUALS, 60, Associativity.LEFT_TO_RIGHT),
+  NEQ(Punctuators.NEQUALS, 60, Associativity.LEFT_TO_RIGHT),
   // Bitwise
-  BIT_AND(Punctuators.AMP, 58, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  BIT_XOR(Punctuators.CARET, 54, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  BIT_OR(Punctuators.PIPE, 50, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  BIT_AND(Punctuators.AMP, 58, Associativity.LEFT_TO_RIGHT),
+  BIT_XOR(Punctuators.CARET, 54, Associativity.LEFT_TO_RIGHT),
+  BIT_OR(Punctuators.PIPE, 50, Associativity.LEFT_TO_RIGHT),
   // Logical
-  AND(Punctuators.AND, 45, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
-  OR(Punctuators.OR, 40, Arity.BINARY, Associativity.LEFT_TO_RIGHT),
+  AND(Punctuators.AND, 45, Associativity.LEFT_TO_RIGHT),
+  OR(Punctuators.OR, 40, Associativity.LEFT_TO_RIGHT),
   // Assignment
-  ASSIGN(Punctuators.ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  MUL_ASSIGN(Punctuators.MUL_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  DIV_ASSIGN(Punctuators.DIV_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  MOD_ASSIGN(Punctuators.MOD_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  PLUS_ASSIGN(Punctuators.PLUS_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  SUB_ASSIGN(Punctuators.SUB_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  LSH_ASSIGN(Punctuators.LSH_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  RSH_ASSIGN(Punctuators.RSH_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  AND_ASSIGN(Punctuators.AND_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  XOR_ASSIGN(Punctuators.XOR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
-  OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Arity.BINARY, Associativity.RIGHT_TO_LEFT),
+  ASSIGN(Punctuators.ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  MUL_ASSIGN(Punctuators.MUL_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  DIV_ASSIGN(Punctuators.DIV_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  MOD_ASSIGN(Punctuators.MOD_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  PLUS_ASSIGN(Punctuators.PLUS_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  SUB_ASSIGN(Punctuators.SUB_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  LSH_ASSIGN(Punctuators.LSH_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  RSH_ASSIGN(Punctuators.RSH_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  AND_ASSIGN(Punctuators.AND_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  XOR_ASSIGN(Punctuators.XOR_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+  OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
   // Comma
-  COMMA(Punctuators.COMMA, 10, Arity.BINARY, Associativity.LEFT_TO_RIGHT);
+  COMMA(Punctuators.COMMA, 10, Associativity.LEFT_TO_RIGHT);
 
   enum class Associativity { LEFT_TO_RIGHT, RIGHT_TO_LEFT }
-
-  enum class Arity { UNARY, BINARY, TERNARY }
-
-  companion object {
-    val binaryOperators = Operators.values().filter { it.arity == Arity.BINARY }
-    /** C standard: 6.5.3, A.2.1 */
-    val unaryOperators = Operators.values().filter { it.arity == Arity.UNARY }
-  }
 }
 
-private fun Punctuators.asBinaryOperator() = Operators.binaryOperators.find { it.op == this }
-private fun Punctuators.asUnaryOperator() = Operators.unaryOperators.find { it.op == this }
+private fun Punctuators.asBinaryOperator() = BinaryOperators.values().find { it.op == this }
+private fun Punctuators.asUnaryOperator() = UnaryOperators.values().find { it.op == this }
 
-fun LexicalToken.asBinaryOperator(): Operators? = asPunct()?.asBinaryOperator()
-fun LexicalToken.asUnaryOperator(): Operators? = asPunct()?.asUnaryOperator()
+fun LexicalToken.asBinaryOperator(): BinaryOperators? = asPunct()?.asBinaryOperator()
+fun LexicalToken.asUnaryOperator(): UnaryOperators? = asPunct()?.asUnaryOperator()
 
 class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     IExpressionParser,
@@ -118,7 +110,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         if (isEaten()) break@innerLoop
         val innerOp = current().asBinaryOperator() ?: break@innerLoop
         if (innerOp.precedence <= op.precedence &&
-            !(innerOp.assoc == Operators.Associativity.RIGHT_TO_LEFT &&
+            !(innerOp.assoc == BinaryOperators.Associativity.RIGHT_TO_LEFT &&
                 innerOp.precedence == op.precedence)) {
           break@innerLoop
         }

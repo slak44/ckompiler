@@ -107,7 +107,8 @@ class ExpressionTests {
   fun `Unary Reference`() {
     val p = prepareCode("int a = &b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    int declare ("a" assign (Operators.REF apply nameRef("b", ErrorType))) assertEquals p.root.decls[0]
+    int declare ("a" assign UnaryOperators.REF[nameRef("b", ErrorType)]) assertEquals
+        p.root.decls[0]
   }
 
   @Test
@@ -126,11 +127,10 @@ class ExpressionTests {
   fun `Unary Lots Of Operators`() {
     val p = prepareCode("int a = *&+-~!b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    int declare ("a" assign (
-        Operators.DEREF apply (Operators.REF apply (Operators.PLUS apply
-            (Operators.MINUS apply (Operators.BIT_NOT apply (Operators.NOT apply
-                nameRef("b", ErrorType))))))
-        )) assertEquals p.root.decls[0]
+    int declare ("a" assign
+        UnaryOperators.DEREF[UnaryOperators.REF[UnaryOperators.PLUS[UnaryOperators.MINUS[
+            UnaryOperators.BIT_NOT[UnaryOperators.NOT[nameRef("b", ErrorType)]]]]]]
+        ) assertEquals p.root.decls[0]
   }
 
   @Test

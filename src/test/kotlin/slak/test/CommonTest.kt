@@ -190,11 +190,6 @@ internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNod
 
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
-internal infix fun <T : Any> String.call(l: List<T>) = name(this) call l
-
-internal infix fun <Receiver, T : Any> Receiver.call(l: List<T>) =
-    FunctionCall(parseDSLElement(this), l.map { parseDSLElement(it) })
-
 internal inline fun <reified T> struct(name: String?, decls: List<T>): StructDefinition {
   val d = decls.map {
     when (T::class) {
@@ -230,11 +225,11 @@ internal operator fun <T> NamedDeclarator.get(arraySize: T): NamedDeclarator {
   return NamedDeclarator(name, indirection, suffixes + ExpressionSize(parseDSLElement(arraySize)))
 }
 
-internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with Operators.ADD
-internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with Operators.SUB
-internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with Operators.MUL
-internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with Operators.DIV
-internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with Operators.COMMA
+internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with BinaryOperators.ADD
+internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with BinaryOperators.SUB
+internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with BinaryOperators.MUL
+internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with BinaryOperators.DIV
+internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with BinaryOperators.COMMA
 
 private fun <T> parseDSLElement(it: T): Expression {
   return when (it) {
@@ -245,10 +240,21 @@ private fun <T> parseDSLElement(it: T): Expression {
   }
 }
 
-internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: Operators): BinaryExpression {
+internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: BinaryOperators): BinaryExpression {
   val lhs = parseDSLElement(first)
   val rhs = parseDSLElement(second)
   return BinaryExpression(op, lhs, rhs)
 }
 
-internal infix fun <T> Operators.apply(it: T) = UnaryExpression(this, parseDSLElement(it))
+internal operator fun <T> UnaryOperators.get(it: T) = UnaryExpression(this, parseDSLElement(it))
+
+internal operator fun <T : Any> String.invoke(vararg l: T) = name(this)(l)
+
+internal operator fun <Receiver> Receiver.invoke(): FunctionCall {
+  return FunctionCall(parseDSLElement(this), emptyList())
+}
+
+internal operator fun <Receiver, T : Any> Receiver.invoke(vararg l: T): FunctionCall {
+  return FunctionCall(parseDSLElement(this), l.map { parseDSLElement(it) })
+}
+
