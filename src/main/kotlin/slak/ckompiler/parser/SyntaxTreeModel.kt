@@ -203,11 +203,7 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
  * C standard: A.2.1
  */
 data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Expression() {
-  override val type = when (op) {
-    // FIXME: this is slightly more nuanced (6.5.3.3)
-    UnaryOperators.PLUS, UnaryOperators.MINUS, UnaryOperators.BIT_NOT,
-    UnaryOperators.NOT, UnaryOperators.REF, UnaryOperators.DEREF -> operand.type
-  }
+  override val type = op.applyTo(operand.type)
 
   init {
     operand.setParent(this)
@@ -233,20 +229,24 @@ data class SizeofExpression(val sizeExpr: Expression) : Expression() {
   }
 }
 
+/**
+ * @param expr expression to increment. Expected to be of correct type.
+ */
 data class PrefixIncrement(val expr: Expression) : Expression() {
   override val type = expr.type
 
   init {
-    // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
 
+/**
+ * @param expr expression to increment. Expected to be of correct type.
+ */
 data class PrefixDecrement(val expr: Expression) : Expression() {
   override val type = expr.type
 
   init {
-    // FIXME: filter on expr.type (6.5.3.1)
     expr.setParent(this)
   }
 }
@@ -276,7 +276,6 @@ data class BinaryExpression(val op: BinaryOperators, val lhs: Expression, val rh
   override val type = lhs.type
 
   init {
-    // FIXME: disallow non-binary ops
     // FIXME: check lhs/rhs types against what the op expects
     lhs.setParent(this)
     rhs.setParent(this)
