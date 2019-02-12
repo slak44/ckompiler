@@ -65,6 +65,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   NO_DEFAULT_ARGS(ERROR, "C does not support default arguments"),
   TYPEDEF_NO_INITIALIZER(ERROR, "Illegal initializer (only variables can be initialized)"),
   TYPEDEF_REQUIRES_NAME(WARNING, "typedef requires a name"),
+  FUNC_DEF_HAS_TYPEDEF(ERROR, "Function definition declared 'typedef'"),
 
   // Scope issues
   REDEFINITION(ERROR, "Redefinition of '%s'"),

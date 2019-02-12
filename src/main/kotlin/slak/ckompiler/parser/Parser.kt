@@ -105,8 +105,13 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
+    if (declSpec.storageClass?.value == Keywords.TYPEDEF) diagnostic {
+      id = DiagnosticId.FUNC_DEF_HAS_TYPEDEF
+      errorOn(declSpec.storageClass)
+      errorOn(safeToken(0))
+    }
     val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope)
-        ?: ErrorStatement().withRange(rangeOne())
+        ?: error<ErrorStatement>()
     val start = if (declSpec.isEmpty()) block.tokenRange else declSpec.tokenRange
     return FunctionDefinition(declSpec, funDecl, block).withRange(start..block.tokenRange)
   }

@@ -346,6 +346,24 @@ class SpecTests {
   }
 
   @Test
+  fun `Typedef On Function Prototype`() {
+    val p = prepareCode("typedef int f();", source)
+    p.assertNoDiagnostics()
+    val typedefSpec = DeclarationSpecifier(
+        storageClass = Keywords.TYPEDEF.kw, typeSpec = IntType(Keywords.INT.kw))
+    typedefSpec proto ("f" withParams emptyList()) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Typedef On Function Definition Is Not Allowed`() {
+    val p = prepareCode("typedef int f() {}", source)
+    p.assertDiags(DiagnosticId.FUNC_DEF_HAS_TYPEDEF)
+    val typedefSpec = DeclarationSpecifier(
+        storageClass = Keywords.TYPEDEF.kw, typeSpec = IntType(Keywords.INT.kw))
+    typedefSpec func ("f" withParams emptyList()) body emptyCompound() assertEquals p.root.decls[0]
+  }
+
+  @Test
   @Ignore("Type system dies on this test")
   fun `Typedef With Suffixes On Declarator`() {
     val p = prepareCode("""

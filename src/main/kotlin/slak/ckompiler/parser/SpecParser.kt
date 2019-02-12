@@ -44,7 +44,9 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
   }),
   /**
    * 6.7.1.4: Can't have _Thread_local on a function
-   * 6.9.1.4: Valid storage classes are extern and static on functions
+   * 6.9.1.4: Valid storage classes are extern and static on functions (note: we also allow typedef,
+   * since this validation can also be used for prototypes, and we catch it later and error if it
+   * shows up on a function definition)
    *
    * C standard: 6.7.1.4, 6.9.1.4
    */
@@ -56,7 +58,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     }
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value
-    if (storage != Keywords.EXTERN || storage != Keywords.STATIC) {
+    if (storage != Keywords.EXTERN && storage != Keywords.STATIC && storage != Keywords.TYPEDEF) {
       diagnostic {
         id = DiagnosticId.ILLEGAL_STORAGE_CLASS
         formatArgs(storage.keyword, "function")
