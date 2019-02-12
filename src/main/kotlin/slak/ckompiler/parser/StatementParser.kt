@@ -26,8 +26,6 @@ class StatementParser(declarationParser: DeclarationParser,
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser {
   
-  private fun errorSt() = ErrorStatement().withRange(rangeOne())
-
   /** @see [IStatementParser.parseCompoundStatement] */
   override fun parseCompoundStatement(functionScope: LexicalScope?): Statement? {
     val lbracket = current()
@@ -38,7 +36,7 @@ class StatementParser(declarationParser: DeclarationParser,
       // Try to recover
       eatToSemi()
       if (isNotEaten()) eat()
-      return errorSt()
+      return error<ErrorStatement>()
     }
     fun parseCompoundItems(scope: LexicalScope): CompoundStatement {
       val items = mutableListOf<BlockItem>()
@@ -81,7 +79,7 @@ class StatementParser(declarationParser: DeclarationParser,
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(relative(-1))
       }
-      return errorSt()
+      return error<ErrorStatement>()
     }
     return LabeledStatement(label, labeled).withRange(ident..labeled)
   }
@@ -95,7 +93,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val ifTok = current()
     eat() // The 'if'
     val condParenEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condParenEnd == -1) return errorSt()
+    if (condParenEnd == -1) return error<ErrorStatement>()
     eat() // The '(' from the if
     val condExpr = parseExpr(condParenEnd)
     val cond = if (condExpr == null) {
@@ -113,7 +111,7 @@ class StatementParser(declarationParser: DeclarationParser,
         id = DiagnosticId.EXPECTED_STATEMENT
         errorOn(safeToken(0))
       }
-      errorSt()
+      error<ErrorStatement>()
     } else {
       val statement = parseStatement()
       if (statement == null) {
@@ -125,7 +123,7 @@ class StatementParser(declarationParser: DeclarationParser,
         while (isNotEaten() &&
             current().asPunct() != Punctuators.SEMICOLON &&
             current().asKeyword() != Keywords.ELSE) eat()
-        errorSt()
+        error<ErrorStatement>()
       } else {
         statement
       }
@@ -141,7 +139,7 @@ class StatementParser(declarationParser: DeclarationParser,
         // Eat until the next thing
         eatToSemi()
         if (isNotEaten()) eat()
-        errorSt()
+        error<ErrorStatement>()
       } else {
         elseStatement
       }
@@ -185,11 +183,11 @@ class StatementParser(declarationParser: DeclarationParser,
       val end = indexOfFirst(Punctuators.LBRACKET, Punctuators.SEMICOLON)
       eatUntil(end)
       if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
-      return errorSt()
+      return error<ErrorStatement>()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
-    if (rparen == -1) return errorSt()
+    if (rparen == -1) return error<ErrorStatement>()
     val cond = parseExpr(rparen)
     val condition = if (cond == null) {
       // Eat everything between parens
@@ -208,7 +206,7 @@ class StatementParser(declarationParser: DeclarationParser,
       // Attempt to eat the error
       eatToSemi()
       if (isNotEaten()) eat()
-      errorSt()
+      error<ErrorStatement>()
     } else {
       statement
     }
@@ -225,7 +223,7 @@ class StatementParser(declarationParser: DeclarationParser,
     val doTok = current()
     val theWhile = findKeywordMatch(Keywords.DO, Keywords.WHILE, stopAtSemi = false)
     eat() // The DO
-    if (theWhile == -1) return errorSt()
+    if (theWhile == -1) return error<ErrorStatement>()
     val statement = tokenContext(theWhile) { parseStatement() }
     val loopable = if (statement == null) {
       diagnostic {
@@ -236,7 +234,7 @@ class StatementParser(declarationParser: DeclarationParser,
       val end = indexOfFirst(Punctuators.SEMICOLON, Keywords.WHILE)
       if (end == -1) eatToSemi()
       eatUntil(end)
-      errorSt()
+      error<ErrorStatement>()
     } else {
       statement
     }
@@ -295,11 +293,11 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       eatToSemi()
       if (isNotEaten()) eat()
-      return errorSt()
+      return error<ErrorStatement>()
     }
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
-    if (rparen == -1) return errorSt()
+    if (rparen == -1) return error<ErrorStatement>()
     // The 3 components of a for loop
     val (clause1, expr2, expr3) = tokenContext(rparen) {
       val firstSemi = indexOfFirst(Punctuators.SEMICOLON)
