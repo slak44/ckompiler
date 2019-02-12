@@ -21,7 +21,7 @@ interface IExpressionParser {
 enum class UnaryOperators(val op: Punctuators) {
   REF(Punctuators.AMP), DEREF(Punctuators.STAR),
   PLUS(Punctuators.PLUS), MINUS(Punctuators.MINUS),
-  BIT_NOT(Punctuators.TILDE), NOT(Punctuators.NOT),
+  BIT_NOT(Punctuators.TILDE), NOT(Punctuators.NOT);
 }
 
 /**
@@ -235,6 +235,33 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     }
   }
 
+  /**
+   * C standard: 6.5.3.3.1, 6.5.3.3.5
+   * @return the type of the expression after applying a unary operator ([ErrorType] if it can't be
+   * applied)
+   */
+  private fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
+    UnaryOperators.PLUS, UnaryOperators.MINUS -> {
+      // FIXME: apply promotion rules
+      if (!target.isArithmetic()) ErrorType else SignedIntType
+    }
+    UnaryOperators.BIT_NOT -> {
+      // FIXME: apply promotion rules and do 6.5.3.3.4
+      if (target !is IntegralType) ErrorType else SignedIntType
+    }
+    UnaryOperators.NOT -> {
+      // The result of this operator is always `int`, as per 6.5.3.3.5
+      if (!target.isScalar()) ErrorType else SignedIntType
+    }
+    UnaryOperators.REF -> {
+      // FIXME: check ALL the constraints from 6.5.3.2.1
+      PointerType(target, emptyList())
+    }
+    UnaryOperators.DEREF -> {
+      if (target !is PointerType) ErrorType else target.referencedType
+    }
+  }
+
   private fun parseUnaryExpression(): Expression? = when {
     current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
       val c = current()
@@ -248,6 +275,14 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
       val op = c.asUnaryOperator()!!
       eat() // The unary op
       val expr = parsePrimaryExpr() ?: error<ErrorExpression>()
+      val resType = op.applyTo(expr.type)
+      if (resType == ErrorType && expr.type != ErrorType) {
+        diagnostic {
+          id = DiagnosticId.INVALID_ARGUMENT_UNARY
+          formatArgs(expr.type, op.op.s)
+          columns(c..expr)
+        }
+      }
       UnaryExpression(op, expr).withRange(c..expr)
     }
     current().asKeyword() == Keywords.ALIGNOF -> {

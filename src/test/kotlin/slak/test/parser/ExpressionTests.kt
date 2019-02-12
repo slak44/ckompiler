@@ -124,13 +124,42 @@ class ExpressionTests {
   }
 
   @Test
-  fun `Unary Lots Of Operators`() {
+  fun `Unary With Lots Of Operators And Ignore Types`() {
     val p = prepareCode("int a = *&+-~!b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
     int declare ("a" assign
         UnaryOperators.DEREF[UnaryOperators.REF[UnaryOperators.PLUS[UnaryOperators.MINUS[
             UnaryOperators.BIT_NOT[UnaryOperators.NOT[nameRef("b", ErrorType)]]]]]]
         ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Unary Plus And Minus`() {
+    val p = prepareCode("int a = -1; int b = +a;", source)
+    p.assertNoDiagnostics()
+    val a = nameRef("a", SignedIntType)
+    int declare ("a" assign UnaryOperators.MINUS[1]) assertEquals p.root.decls[0]
+    int declare ("b" assign UnaryOperators.PLUS[a]) assertEquals p.root.decls[1]
+  }
+
+  @Test
+  fun `Unary Plus And Minus On Bad Type`() {
+    val p = prepareCode("int main() {-main;}", source)
+    p.assertDiags(DiagnosticId.INVALID_ARGUMENT_UNARY)
+    val main = nameRef("main", FunctionType(SignedIntType, emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        UnaryOperators.MINUS[main]
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Unary Bitwise Not On Bad Type`() {
+    val p = prepareCode("int main() {~main;}", source)
+    p.assertDiags(DiagnosticId.INVALID_ARGUMENT_UNARY)
+    val main = nameRef("main", FunctionType(SignedIntType, emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        UnaryOperators.BIT_NOT[main]
+    ) assertEquals p.root.decls[0]
   }
 
   @Test

@@ -34,7 +34,12 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   }
   // Structure/Union
   if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)
-  // FIXME: arrays, functions
+  if (decl.isFunction()) {
+    // FIXME: do this correctly
+    val retType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), emptyList()))
+    return FunctionType(retType, emptyList())
+  }
+  // FIXME: arrays
   return when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
     is EnumSpecifier -> TODO()
@@ -71,6 +76,12 @@ sealed class TypeName {
     is PointerType -> this.referencedType as? FunctionType
     else -> null
   }
+
+  /** C standard: 6.2.5.0.18 */
+  fun isArithmetic(): Boolean = this is IntegralType || this is FloatingType
+
+  /** C standard: 6.2.5.0.21 */
+  fun isScalar(): Boolean = isArithmetic() || this is PointerType
 }
 
 object ErrorType : TypeName() {
@@ -80,7 +91,7 @@ object ErrorType : TypeName() {
 /**
  * All pointer types are complete.
  *
- * C standard: 6.2.5.
+ * C standard: 6.2.5
  */
 data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifierList) : TypeName() {
   override fun toString() = "$referencedType ${ptrQuals.stringify()}"
@@ -89,7 +100,7 @@ data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifier
 data class FunctionType(val returnType: TypeName, val params: List<TypeName>) : TypeName() {
   override fun toString(): String {
     // FIXME: this doesn't really work when the return type is a function/array
-    return "$returnType ${params.joinToString()}"
+    return "$returnType (${params.joinToString()})"
   }
 }
 
@@ -116,12 +127,14 @@ data class UnionType(val name: String?, val optionTypes: List<TypeName>?) : Type
 
 sealed class BasicType : TypeName()
 
+sealed class IntegralType : BasicType()
+
 /**
  * We consider character types to be integral, and char to behave as signed char.
  *
  * C standard: 6.2.5.0.4, 6.2.5.0.15
  */
-sealed class SignedIntegralType : BasicType()
+sealed class SignedIntegralType : IntegralType()
 
 object SignedCharType : SignedIntegralType() {
   override fun toString() = "signed char"
@@ -144,7 +157,7 @@ object SignedLongLongType : SignedIntegralType() {
 }
 
 /** C standard: 6.2.5.0.6 */
-sealed class UnsignedIntegralType : BasicType()
+sealed class UnsignedIntegralType : IntegralType()
 
 object BooleanType : UnsignedIntegralType() {
   override fun toString() = "_Bool"
