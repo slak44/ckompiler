@@ -262,45 +262,52 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     }
   }
 
-  /**
-   * C standard: 6.5.3.1
-   */
+  /** C standard: 6.5.3.1 */
+  private fun parsePrefixIncDec(): Expression {
+    val c = current()
+    val isInc = c.asPunct() == Punctuators.INC
+    eat() // The prefix op
+    val expr = parseUnaryExpression() ?: error<ErrorExpression>()
+    val isNotValidType = !expr.type.isRealType() && expr.type !is PointerType
+    val exprChecked = if (expr.type != ErrorType && isNotValidType) {
+      diagnostic {
+        id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
+        formatArgs(if (isInc) "increment" else "decrement", expr.type)
+        columns(c..expr)
+      }
+      error<ErrorExpression>()
+    } else {
+      expr
+    }
+    return (if (isInc) PrefixIncrement(exprChecked) else PrefixDecrement(exprChecked))
+        .withRange(c..expr)
+  }
+
+  /** C standard: 6.5.3.2, 6.5.3.3 */
+  private fun parseSimpleUnaryOps(): Expression {
+    val c = current()
+    val op = c.asUnaryOperator()!!
+    eat() // The unary op
+    val expr = parsePrimaryExpr() ?: error<ErrorExpression>()
+    val resType = op.applyTo(expr.type)
+    val exprChecked = if (resType == ErrorType && expr.type != ErrorType) {
+      diagnostic {
+        id = DiagnosticId.INVALID_ARGUMENT_UNARY
+        formatArgs(expr.type, op.op.s)
+        columns(c..expr)
+      }
+      error<ErrorExpression>()
+    } else {
+      expr
+    }
+    return UnaryExpression(op, exprChecked).withRange(c..expr)
+  }
+
+  /** C standard: 6.5.3 */
   private fun parseUnaryExpression(): Expression? = when {
-    current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
-      val c = current()
-      val isInc = c.asPunct() == Punctuators.INC
-      eat() // The prefix op
-      val expr = parseUnaryExpression() ?: error<ErrorExpression>()
-      val exprChecked =
-          if (expr.type != ErrorType && !expr.type.isRealType() && expr.type !is PointerType) {
-        diagnostic {
-          id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
-          formatArgs(if (isInc) "increment" else "decrement", expr.type)
-          columns(c..expr)
-        }
-        error<ErrorExpression>()
-      } else {
-        expr
-      }
-      (if (isInc) PrefixIncrement(exprChecked) else PrefixDecrement(exprChecked)).withRange(c..expr)
-    }
-    current().asUnaryOperator() != null -> {
-      val c = current()
-      val op = c.asUnaryOperator()!!
-      eat() // The unary op
-      val expr = parsePrimaryExpr() ?: error<ErrorExpression>()
-      val resType = op.applyTo(expr.type)
-      if (resType == ErrorType && expr.type != ErrorType) {
-        diagnostic {
-          id = DiagnosticId.INVALID_ARGUMENT_UNARY
-          formatArgs(expr.type, op.op.s)
-          columns(c..expr)
-        }
-        UnaryExpression(op, error<ErrorExpression>()).withRange(c..expr)
-      } else {
-        UnaryExpression(op, expr).withRange(c..expr)
-      }
-    }
+    current().asPunct() == Punctuators.INC ||
+        current().asPunct() == Punctuators.DEC -> parsePrefixIncDec()
+    current().asUnaryOperator() != null -> parseSimpleUnaryOps()
     current().asKeyword() == Keywords.ALIGNOF -> {
       eat() // The ALIGNOF
       if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
