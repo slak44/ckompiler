@@ -164,8 +164,21 @@ class ExpressionTests {
   }
 
   @Test
+  fun `Sizeof Parenthesized Expression`() {
+    val p = prepareCode("int a = sizeof(1 + 2 * 3);", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign SizeofExpression(1 add (2 mul 3))) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Sizeof Bad Parens`() {
     val p = prepareCode("int a = sizeof(int;", source)
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
+
+  @Test
+  fun `Sizeof Bad Parens Expr`() {
+    val p = prepareCode("int a = sizeof(1;", source)
     p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
   }
 }

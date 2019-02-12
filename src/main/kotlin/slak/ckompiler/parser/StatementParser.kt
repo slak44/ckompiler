@@ -22,7 +22,7 @@ class StatementParser(declarationParser: DeclarationParser,
     ILexicalTokenHandler by declarationParser,
     IScopeHandler by declarationParser,
     IParenMatcher by declarationParser,
-    IExpressionParser by declarationParser,
+    IExpressionParser by controlKeywordParser,
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser {
   

@@ -43,6 +43,14 @@ interface IDeclarationParser {
    * @return the list of [StructMember]s
    */
   fun parseStructDeclaratorList(): List<StructMember>
+
+  /**
+   * Parse a `type-name`.
+   *
+   * C standard: 6.7.7
+   * @return null if no type name was found, the [TypeName] otherwise
+   */
+  fun parseTypeName(endIdx: Int): TypeName?
 }
 
 class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
@@ -417,6 +425,13 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
     nested as AbstractDeclarator
     return@tokenContext AbstractDeclarator(
         pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
+  }
+
+  override fun parseTypeName(endIdx: Int): TypeName? = tokenContext(endIdx) {
+    val declSpec = specParser.parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
+    if (declSpec.isEmpty()) return@tokenContext null
+    val declarator = parseAbstractDeclarator(it.size)
+    return@tokenContext typeNameOf(declSpec, declarator)
   }
 
   // FIXME: return type will change with the initializer list

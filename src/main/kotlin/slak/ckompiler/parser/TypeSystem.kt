@@ -63,7 +63,7 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
 }
 
 /**
- * Instances represent types. Not what the standard calls `type-name`.
+ * Instances represent types.
  *
  * C standard: 6.2.5, 6.2.5.0.20
  */

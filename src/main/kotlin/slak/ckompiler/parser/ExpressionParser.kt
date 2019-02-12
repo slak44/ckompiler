@@ -306,19 +306,34 @@ class ExpressionParser(declarationParser: DeclarationParser) :
 
   /** C standard: 6.5.3.4 */
   private fun parseSizeofExpression(): Expression {
+    val sizeOf = current()
     eat() // The 'sizeof'
     if (isEaten()) return error<ErrorExpression>()
-    if (current().asPunct() == Punctuators.LPAREN) {
-      val lParen = current()
-      val rParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-      if (rParenIdx == -1) {
-        eatToSemi()
-        return error<ErrorExpression>()
-      }
-      TODO("implement `sizeof ( type-name )` expressions")
+    if (current().asPunct() != Punctuators.LPAREN) {
+      val expr = parseUnaryExpression() ?: error<ErrorExpression>()
+      return SizeofExpression(expr).withRange(sizeOf..expr)
     }
-    val expr = parseUnaryExpression() ?: error<ErrorExpression>()
-    return SizeofExpression(expr).withRange(relative(-1)..expr)
+    val rParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+    if (rParenIdx == -1) {
+      eatToSemi()
+      return error<ErrorExpression>()
+    }
+    eat() // The '('
+    val typeName = parseTypeName(rParenIdx)
+    if (typeName == null) {
+      // Not a type name, so it's a parenthesized expression
+      val expr = parseExpr(rParenIdx)
+      val retExpr = if (expr == null) {
+        eatToSemi()
+        error<ErrorExpression>()
+      } else {
+        expr
+      }
+      eat() // The ')'
+      return SizeofExpression(retExpr).withRange(sizeOf..tokenAt(rParenIdx))
+    }
+    eat() // The ')'
+    return SizeofTypeName(typeName).withRange(sizeOf..tokenAt(rParenIdx))
   }
 
   /** C standard: 6.5.3 */
