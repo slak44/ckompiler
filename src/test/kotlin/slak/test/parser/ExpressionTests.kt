@@ -155,4 +155,17 @@ class ExpressionTests {
     ((123 add 124) comma (35 add 36)) comma (1 add 2) assertEquals
         p.root.decls[0].fn.block.items[0].st
   }
+
+  @Test
+  fun `Sizeof Type Name`() {
+    val p = prepareCode("int a = sizeof(int);", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign SizeofTypeName(SignedIntType)) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Sizeof Bad Parens`() {
+    val p = prepareCode("int a = sizeof(int;", source)
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
 }

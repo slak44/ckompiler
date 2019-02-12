@@ -214,9 +214,16 @@ data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Ex
   }
 }
 
-/**
- * C standard: A.2.1
- */
+/** C standard: A.2.1 */
+data class SizeofTypeName(val typeName: TypeName) : Expression() {
+  override val type = UnsignedIntType
+
+  init {
+    // FIXME: disallow function types/incomplete types/bitfield members
+  }
+}
+
+/** C standard: A.2.1 */
 data class SizeofExpression(val sizeExpr: Expression) : Expression() {
   override val type = UnsignedIntType
 

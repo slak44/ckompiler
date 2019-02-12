@@ -45,19 +45,20 @@ interface IDeclarationParser {
   fun parseStructDeclaratorList(): List<StructMember>
 }
 
-class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: ExpressionParser) :
+class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     IDeclarationParser,
     IDebugHandler by scopeHandler,
-    ILexicalTokenHandler by expressionParser,
+    ILexicalTokenHandler by parenMatcher,
     IScopeHandler by scopeHandler,
-    IParenMatcher by expressionParser,
-    IExpressionParser by expressionParser {
+    IParenMatcher by parenMatcher {
 
   /**
    * There is a cyclic dependency between [DeclarationParser] and [SpecParser]. We resolve it using
    * this property ([SpecParser] doesn't maintain its own state).
    */
   internal lateinit var specParser: SpecParser
+  /** @see specParser */
+  internal lateinit var expressionParser: ExpressionParser
 
   override fun preParseDeclarator(
       validationRules: SpecValidationRules): Pair<DeclarationSpecifier, Optional<Declarator>?> {
@@ -234,7 +235,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         }
         return FunctionParameterSize(quals, true, error<ErrorExpression>())
       }
-      return FunctionParameterSize(quals, true, parseExpr(it.size) ?: error<ErrorExpression>())
+      val expr = expressionParser.parseExpr(it.size) ?: error<ErrorExpression>()
+      return FunctionParameterSize(quals, true, expr)
     }
     if (current().asKeyword() == Keywords.STATIC) {
       val staticKw = current()
@@ -260,7 +262,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     if (isEaten()) {
       return@tokenContext FunctionParameterSize(quals, false, null)
     }
-    val expr = parseExpr(it.size) ?: error<ErrorExpression>()
+    val expr = expressionParser.parseExpr(it.size) ?: error<ErrorExpression>()
     if (quals.isEmpty()) {
       return@tokenContext ExpressionSize(expr)
     } else {
@@ -434,7 +436,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
-    return ExpressionInitializer.from(parseExpr(endIdx) ?: error<ErrorExpression>())
+    val expr = expressionParser.parseExpr(endIdx) ?: error<ErrorExpression>()
+    return ExpressionInitializer.from(expr)
   }
 
   /**
@@ -551,7 +554,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
         // Has bit width
         eat()
         val stopIdx = indexOfFirst(Punctuators.COMMA, Punctuators.SEMICOLON)
-        val bitWidthExpr = parseExpr(stopIdx)
+        val bitWidthExpr = expressionParser.parseExpr(stopIdx)
         // FIXME: bit field type must be _Bool, signed int, unsigned int (6.7.2.1.5)
         // FIXME: expr MUST be a constant expression
         StructMember(declarator, bitWidthExpr)

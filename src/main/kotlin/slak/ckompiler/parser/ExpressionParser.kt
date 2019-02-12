@@ -78,12 +78,13 @@ private fun Punctuators.asUnaryOperator() = UnaryOperators.values().find { it.op
 fun LexicalToken.asBinaryOperator(): BinaryOperators? = asPunct()?.asBinaryOperator()
 fun LexicalToken.asUnaryOperator(): UnaryOperators? = asPunct()?.asUnaryOperator()
 
-class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
+class ExpressionParser(declarationParser: DeclarationParser) :
     IExpressionParser,
-    IDebugHandler by parenMatcher,
-    ILexicalTokenHandler by parenMatcher,
-    IScopeHandler by scopeHandler,
-    IParenMatcher by parenMatcher {
+    IDebugHandler by declarationParser,
+    ILexicalTokenHandler by declarationParser,
+    IScopeHandler by declarationParser,
+    IParenMatcher by declarationParser,
+    IDeclarationParser by declarationParser {
 
   /**
    * Base case of precedence climbing method.
@@ -284,7 +285,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
   }
 
   /** C standard: 6.5.3.2, 6.5.3.3 */
-  private fun parseSimpleUnaryOps(): Expression {
+  private fun parseSimpleUnaryOps(): UnaryExpression {
     val c = current()
     val op = c.asUnaryOperator()!!
     eat() // The unary op
@@ -303,6 +304,23 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     return UnaryExpression(op, exprChecked).withRange(c..expr)
   }
 
+  /** C standard: 6.5.3.4 */
+  private fun parseSizeofExpression(): Expression {
+    eat() // The 'sizeof'
+    if (isEaten()) return error<ErrorExpression>()
+    if (current().asPunct() == Punctuators.LPAREN) {
+      val lParen = current()
+      val rParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+      if (rParenIdx == -1) {
+        eatToSemi()
+        return error<ErrorExpression>()
+      }
+      TODO("implement `sizeof ( type-name )` expressions")
+    }
+    val expr = parseUnaryExpression() ?: error<ErrorExpression>()
+    return SizeofExpression(expr).withRange(relative(-1)..expr)
+  }
+
   /** C standard: 6.5.3 */
   private fun parseUnaryExpression(): Expression? = when {
     current().asPunct() == Punctuators.INC ||
@@ -316,19 +334,7 @@ class ExpressionParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
         TODO("implement `_Alignof ( type-name )` expressions")
       }
     }
-    current().asKeyword() == Keywords.SIZEOF -> {
-      eat() // The SIZEOF
-      when {
-        isEaten() -> error<ErrorExpression>()
-        current().asPunct() == Punctuators.LPAREN -> {
-          TODO("implement `sizeof ( type-name )` expressions")
-        }
-        else -> {
-          val expr = parseUnaryExpression() ?: error<ErrorExpression>()
-          SizeofExpression(expr).withRange(relative(-1)..expr)
-        }
-      }
-    }
+    current().asKeyword() == Keywords.SIZEOF -> parseSizeofExpression()
     else -> parsePostfixExpression()
   }
 
