@@ -450,13 +450,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, expressionParser: Expression
       List<Pair<Declarator, Initializer?>> {
     fun addDeclaratorToScope(declarator: Declarator?) {
       if (declarator !is NamedDeclarator) return
-      if (ds.isTypedef()) {
-        // Add typedef to scope
-        newIdentifier(TypedefName(ds, declarator))
-      } else {
-        // Add ident to scope
-        newIdentifier(TypedIdentifier.from(ds, declarator))
-      }
+      val identifier =
+          if (ds.isTypedef()) TypedefName(ds, declarator)
+          else TypedIdentifier.from(ds, declarator)
+      newIdentifier(identifier)
     }
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
