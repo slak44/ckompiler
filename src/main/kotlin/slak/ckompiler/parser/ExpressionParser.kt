@@ -42,8 +42,9 @@ enum class UnaryOperators(val op: Punctuators) {
       if (!target.isScalar()) ErrorType else SignedIntType
     }
     UnaryOperators.REF -> {
+      if (target is ErrorType) ErrorType
       // FIXME: check ALL the constraints from 6.5.3.2.1
-      PointerType(target, emptyList())
+      else PointerType(target, emptyList())
     }
     UnaryOperators.DEREF -> {
       if (target !is PointerType) ErrorType else target.referencedType
