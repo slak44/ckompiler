@@ -1,5 +1,6 @@
 package slak.test.parser
 
+import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
@@ -342,5 +343,25 @@ class SpecTests {
     int func "main" body compoundOf(
         "special_int".typedefBy(typedefSpec) declare ("x" assign 213)
     ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  @Ignore("Type system dies on this test")
+  fun `Typedef With Suffixes On Declarator`() {
+    val p = prepareCode("""
+      typedef int my_func(double, double);
+      int my_func_implementation(double x, double y) {
+        return 9;
+      }
+      int main() {
+        my_func* fptr = &my_func_implementation;
+        int x = fptr(1.1, 7.4);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+//    val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
+//        typeQualifiers = listOf(Keywords.CONST.kw),
+//        typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
+//    "special_int".typedefBy(typedefSpec) declare ("x" assign 213) assertEquals p.root.decls[0]
   }
 }
