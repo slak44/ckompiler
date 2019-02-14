@@ -2,7 +2,9 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.DoubleType
+import slak.ckompiler.parser.FunctionType
+import slak.ckompiler.parser.SignedIntType
 import slak.test.*
 
 class FunctionCallTests {

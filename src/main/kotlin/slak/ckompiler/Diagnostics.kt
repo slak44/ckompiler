@@ -4,7 +4,6 @@ import com.github.ajalt.mordant.TermColors
 import mu.KLogger
 import mu.KotlinLogging
 import slak.ckompiler.DiagnosticKind.*
-import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.TokenObject
 import kotlin.math.max
 import kotlin.math.min

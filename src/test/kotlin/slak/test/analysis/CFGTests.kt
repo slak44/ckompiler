@@ -7,7 +7,6 @@ import slak.test.assertNoDiagnostics
 import slak.test.prepareCode
 import slak.test.resource
 import slak.test.source
-import java.io.File
 
 class CFGTests {
   @Test

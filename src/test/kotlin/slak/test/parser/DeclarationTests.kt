@@ -3,7 +3,8 @@ package slak.test.parser
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.ErrorExpression
+import slak.ckompiler.parser.ErrorType
 import slak.test.*
 import kotlin.test.assertEquals
 
