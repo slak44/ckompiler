@@ -19,7 +19,7 @@ private fun BasicBlock.graphDataOf(): Pair<List<CFGNode>, List<Edge>> {
 /** Implementation detail of [graphDataOf]. Recursive case. */
 private fun BasicBlock.graphDataImpl(nodes: MutableList<CFGNode>, edges: MutableList<Edge>) {
   // The graph can be cyclical, and we don't want to enter an infinite loop
-  if (nodes.contains(this)) return
+  if (this in nodes) return
   nodes += this
   if (terminator == null) return
   nodes += terminator!!
