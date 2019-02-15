@@ -155,13 +155,10 @@ class FunctionsTests {
       ft real();
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.INVALID_RET_TYPE)
-    val tdSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
-        typeSpec = IntType(Keywords.INT.kw))
     val ftDecl = "ft" withParams listOf(int.toParam())
-    tdSpec proto ftDecl assertEquals p.root.decls[0]
-    val ds = DeclarationSpecifier(
-        typeSpec = TypedefNameSpecifier(name("ft"), TypedefName(tdSpec, ftDecl)))
-    ds proto ("real" withParams emptyList()) assertEquals p.root.decls[1]
+    val (typedef, ft) = typedef(int, ftDecl)
+    typedef proto ftDecl assertEquals p.root.decls[0]
+    ft proto ("real" withParams emptyList()) assertEquals p.root.decls[1]
   }
 
   @Test

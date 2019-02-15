@@ -34,6 +34,7 @@ internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, F
 internal val Keywords.kw get() = Keyword(this)
 
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw))
+internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
 internal val double = DeclarationSpecifier(typeSpec = DoubleTypeSpec(Keywords.DOUBLE.kw))
 internal val longLong = DeclarationSpecifier(typeSpec = LongLong(Keywords.LONG.kw))
 internal val uLongLong =
@@ -45,6 +46,8 @@ internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).withRange(0..0)
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t)
+internal fun funRef(fd: FunctionDefinition) =
+    nameRef(fd.name.name, typeNameOf(fd.declSpec, fd.functionDeclarator))
 internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
 
 internal fun ptr(d: Declarator) =
@@ -220,10 +223,12 @@ internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this)
 internal infix fun String.bitSize(expr: Expression) = StructMember(nameDecl(this), expr)
 internal infix fun String.bitSize(it: Long) = this bitSize int(it)
 
-internal fun String.typedefBy(ds: DeclarationSpecifier): DeclarationSpecifier {
-  if (!ds.isTypedef()) throw IllegalArgumentException("Not typedef")
-  val td = TypedefName(ds, nameDecl(this))
-  return DeclarationSpecifier(typeSpec = TypedefNameSpecifier(name(this), td))
+internal fun typedef(ds: DeclarationSpecifier,
+                     decl: NamedDeclarator): Pair<DeclarationSpecifier, DeclarationSpecifier> {
+  val tdSpec = ds.copy(storageClass = Keywords.TYPEDEF.kw)
+  val ref = DeclarationSpecifier(
+      typeSpec = TypedefNameSpecifier(decl.name, TypedefName(tdSpec, decl)))
+  return tdSpec to ref
 }
 
 internal operator fun <T> IdentifierNode.get(arraySize: T) =

@@ -321,28 +321,27 @@ class SpecTests {
       special_int x = 213;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
-        typeQualifiers = listOf(Keywords.CONST.kw),
-        typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
-    typedefSpec declare "special_int" assertEquals p.root.decls[0]
-    "special_int".typedefBy(typedefSpec) declare ("x" assign 213) assertEquals p.root.decls[1]
+    val (typedef, specialIntType) = typedef(
+        DeclarationSpecifier(typeQualifiers = listOf(Keywords.CONST.kw), typeSpec = uInt.typeSpec),
+        nameDecl("special_int")
+    )
+    typedef declare "special_int" assertEquals p.root.decls[0]
+    specialIntType declare ("x" assign 213) assertEquals p.root.decls[1]
   }
 
   @Test
   fun `Typedef As Type Specifier For Declaration Statement In Inner Scope`() {
     val p = prepareCode("""
-      typedef const unsigned int special_int;
+      typedef unsigned int special_int;
       int main() {
         special_int x = 213;
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
-        typeQualifiers = listOf(Keywords.CONST.kw),
-        typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
-    typedefSpec declare "special_int" assertEquals p.root.decls[0]
+    val (typedef, specialIntType) = typedef(uInt, nameDecl("special_int"))
+    typedef declare "special_int" assertEquals p.root.decls[0]
     int func "main" body compoundOf(
-        "special_int".typedefBy(typedefSpec) declare ("x" assign 213)
+        specialIntType declare ("x" assign 213)
     ) assertEquals p.root.decls[1]
   }
 
@@ -350,18 +349,16 @@ class SpecTests {
   fun `Typedef On Function Prototype`() {
     val p = prepareCode("typedef int f();", source)
     p.assertNoDiagnostics()
-    val typedefSpec = DeclarationSpecifier(
-        storageClass = Keywords.TYPEDEF.kw, typeSpec = IntType(Keywords.INT.kw))
-    typedefSpec proto ("f" withParams emptyList()) assertEquals p.root.decls[0]
+    val (typedef, _) = typedef(int, "f" withParams emptyList())
+    typedef proto ("f" withParams emptyList()) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Typedef On Function Definition Is Not Allowed`() {
     val p = prepareCode("typedef int f() {}", source)
     p.assertDiags(DiagnosticId.FUNC_DEF_HAS_TYPEDEF)
-    val typedefSpec = DeclarationSpecifier(
-        storageClass = Keywords.TYPEDEF.kw, typeSpec = IntType(Keywords.INT.kw))
-    typedefSpec func ("f" withParams emptyList()) body emptyCompound() assertEquals p.root.decls[0]
+    val (typedef, _) = typedef(int, "f" withParams emptyList())
+    typedef func ("f" withParams emptyList()) body emptyCompound() assertEquals p.root.decls[0]
   }
 
   @Test
@@ -377,21 +374,17 @@ class SpecTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val tdSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
-        typeSpec = IntType(Keywords.INT.kw))
-    val myFuncDs = "my_func".typedefBy(tdSpec)
     val myFuncDecl = "my_func" withParams listOf(double.toParam(), double.toParam())
-    tdSpec proto myFuncDecl assertEquals p.root.decls[0]
+    val (tdef, myFun) = typedef(int, myFuncDecl)
+    tdef proto myFuncDecl assertEquals p.root.decls[0]
     val funcImpl = int func ("my_func_implementation" withParams
         listOf(double param "x", double param "y")) body compoundOf(
         returnSt(9)
     )
     funcImpl assertEquals p.root.decls[1]
-    val implRef = nameRef("my_func_implementation",
-        typeNameOf(funcImpl.declSpec, funcImpl.functionDeclarator))
-    val fptrRef = nameRef("fptr", PointerType(typeNameOf(myFuncDs, myFuncDecl), emptyList()))
+    val fptrRef = nameRef("fptr", PointerType(typeNameOf(myFun, myFuncDecl), emptyList()))
     int func ("main" withParams emptyList()) body compoundOf(
-        myFuncDs declare (ptr("fptr") assign UnaryOperators.REF[implRef]),
+        myFun declare (ptr("fptr") assign UnaryOperators.REF[funRef(funcImpl)]),
         int declare ("x" assign fptrRef(1.1, 7.4))
     )
   }
