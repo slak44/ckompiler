@@ -3,7 +3,8 @@ package slak.test.parser
 import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.ErrorStatement
+import slak.ckompiler.lexer.Keywords
+import slak.ckompiler.parser.*
 import slak.test.*
 
 class FunctionsTests {
@@ -145,6 +146,22 @@ class FunctionsTests {
     val p = prepareCode("int f(int)[123];", source)
     p.assertDiags(DiagnosticId.INVALID_RET_TYPE)
     int proto ("f" withParams listOf(int.toParam()))[123] assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Function Can't Return Typedef To Function Type`() {
+    val p = prepareCode("""
+      typedef int ft(int);
+      ft real();
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.INVALID_RET_TYPE)
+    val tdSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
+        typeSpec = IntType(Keywords.INT.kw))
+    val ftDecl = "ft" withParams listOf(int.toParam())
+    tdSpec proto ftDecl assertEquals p.root.decls[0]
+    val ds = DeclarationSpecifier(
+        typeSpec = TypedefNameSpecifier(name("ft"), TypedefName(tdSpec, ftDecl)))
+    ds proto ("real" withParams emptyList()) assertEquals p.root.decls[1]
   }
 
   @Test
