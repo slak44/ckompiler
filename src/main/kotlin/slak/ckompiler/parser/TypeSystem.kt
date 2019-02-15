@@ -105,7 +105,8 @@ data class FunctionType(val returnType: TypeName,
                         val params: List<TypeName>,
                         val variadic: Boolean = false) : TypeName() {
   override fun toString(): String {
-    // FIXME: this doesn't really work when the return type is a function/array
+    // This doesn't really work when the return type is a function/array, but that isn't valid
+    // anyway
     return "$returnType (${params.joinToString()})"
   }
 }

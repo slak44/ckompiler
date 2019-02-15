@@ -132,10 +132,19 @@ class FunctionsTests {
   }
 
   @Test
-  @Ignore("We can't parse that yet")
-  fun `Function Prototype Declaration Can't Return Function Type`() {
+  fun `Function Can't Return Function Type`() {
     val p = prepareCode("int f(int)(int);", source)
-    // FIXME: function cannot return function type 'int (int)'
+    p.assertDiags(DiagnosticId.INVALID_RET_TYPE)
+    int proto ("f" withParams listOf(int.toParam()) withParams listOf(int.toParam())) assertEquals
+        p.root.decls[0]
+  }
+
+  @Test
+  @Ignore("Type system dies on arrays for now")
+  fun `Function Can't Return Array Type`() {
+    val p = prepareCode("int f(int)[123];", source)
+    p.assertDiags(DiagnosticId.INVALID_RET_TYPE)
+    int proto ("f" withParams listOf(int.toParam()))[123] assertEquals p.root.decls[0]
   }
 
   @Test

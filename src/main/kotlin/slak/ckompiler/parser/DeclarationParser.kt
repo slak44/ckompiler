@@ -393,6 +393,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       return error()
     }
     if (it.isEmpty()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
+    val declStartTok = safeToken(0)
     val pointers = parsePointer(it.size)
     if (isEaten()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
     val nested = parseNestedDeclarator<NamedDeclarator>(false)
@@ -400,7 +401,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       val nameTok = current() as? Identifier ?: return@tokenContext emitDiagnostic(safeToken(0))
       eat() // The identifier token
       val name = IdentifierNode.from(nameTok)
-      return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size))
+      return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size)).also { d ->
+        val lastTok = d.suffixes.lastOrNull()?.tokenRange ?: nameTok.range
+        d.withRange(declStartTok.range..lastTok)
+      }
     }
     if (nested is ErrorNode) return@tokenContext error<ErrorDeclarator>()
     nested as NamedDeclarator

@@ -49,6 +49,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   CALL_OBJECT_TYPE(ERROR, "Called object type '%s' is not a function or function pointer"),
   INVALID_ARGUMENT_UNARY(ERROR, "Invalid argument type '%s' to unary operator '%s'"),
   INVALID_INC_DEC_ARGUMENT(ERROR, "Cannot %s value of type '%s'"),
+  INVALID_RET_TYPE(ERROR, "Function cannot return %s type '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

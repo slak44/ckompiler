@@ -123,6 +123,20 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     return FunctionDefinition(declSpec, funDecl, block).withRange(start..block.tokenRange)
   }
 
+  /**
+   * Check function/prototype return type.
+   * Disallow directly returning [FunctionType] or [ArrayType].
+   */
+  private fun checkFunctionReturnType(declSpec: DeclarationSpecifier, declarator: Declarator) {
+    if (!declarator.isFunction()) return
+    val returnType = (typeNameOf(declSpec, declarator) as? FunctionType)?.returnType ?: return
+    if (returnType is FunctionType || returnType is ArrayType) diagnostic {
+      id = DiagnosticId.INVALID_RET_TYPE
+      formatArgs(if (returnType is FunctionType) "function" else "array", returnType)
+      columns(declarator.tokenRange)
+    }
+  }
+
   /** C standard: A.2.4, 6.9 */
   private tailrec fun translationUnit() {
     if (isEaten()) return
@@ -140,6 +154,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     }
     if (!declaratorOpt!!.isPresent) return translationUnit()
     val declarator = declaratorOpt.get()
+    checkFunctionReturnType(declSpec, declarator)
     if (declarator.isFunction() && current().asPunct() != Punctuators.SEMICOLON) {
       if (declarator.name.name == "main") {
         SpecValidationRules.MAIN_FUNCTION_DECLARATION.validate(specParser, declSpec)

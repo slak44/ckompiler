@@ -99,7 +99,7 @@ internal fun DeclarationSpecifier.toParam() =
     this param AbstractDeclarator(emptyList(), emptyList())
 
 internal fun Declarator.withParams(params: List<ParameterDeclaration>,
-                                   variadic: Boolean): Declarator {
+                                   variadic: Boolean): NamedDeclarator {
   val idents = params.mapNotNullTo(mutableListOf()) {
     if (it.declarator !is NamedDeclarator) return@mapNotNullTo null
     @Suppress("USELESS_CAST") // Hint, it's not useless
