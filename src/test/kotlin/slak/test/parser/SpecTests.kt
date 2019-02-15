@@ -1,6 +1,5 @@
 package slak.test.parser
 
-import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
@@ -366,7 +365,6 @@ class SpecTests {
   }
 
   @Test
-  @Ignore("Type system dies on this test")
   fun `Typedef With Suffixes On Declarator`() {
     val p = prepareCode("""
       typedef int my_func(double, double);
@@ -379,9 +377,22 @@ class SpecTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-//    val typedefSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
-//        typeQualifiers = listOf(Keywords.CONST.kw),
-//        typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
-//    "special_int".typedefBy(typedefSpec) declare ("x" assign 213) assertEquals p.root.decls[0]
+    val tdSpec = DeclarationSpecifier(storageClass = Keywords.TYPEDEF.kw,
+        typeSpec = IntType(Keywords.INT.kw))
+    val myFuncDs = "my_func".typedefBy(tdSpec)
+    val myFuncDecl = "my_func" withParams listOf(double.toParam(), double.toParam())
+    tdSpec proto myFuncDecl assertEquals p.root.decls[0]
+    val funcImpl = int func ("my_func_implementation" withParams
+        listOf(double param "x", double param "y")) body compoundOf(
+        returnSt(9)
+    )
+    funcImpl assertEquals p.root.decls[1]
+    val implRef = nameRef("my_func_implementation",
+        typeNameOf(funcImpl.declSpec, funcImpl.functionDeclarator))
+    val fptrRef = nameRef("fptr", PointerType(typeNameOf(myFuncDs, myFuncDecl), emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        myFuncDs declare (ptr("fptr") assign UnaryOperators.REF[implRef]),
+        int declare ("x" assign fptrRef(1.1, 7.4))
+    )
   }
 }

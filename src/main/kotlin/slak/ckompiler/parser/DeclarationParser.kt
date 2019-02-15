@@ -157,6 +157,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       if (specs.isEmpty()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
+      val firstDeclaratorToken = safeToken(0)
       // The parameter can have parens with commas in them
       // We're interested in the comma that comes after the parameter
       // So balance the parens, and look for the first comma after them
@@ -168,8 +169,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       }
       val commaIdx = indexOfFirst(Punctuators.COMMA)
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
-      // FIXME: abstract declarator allowed here
-      val declarator = parseNamedDeclarator(paramEndIdx)
+      val declarator = parseAbstractDeclarator(paramEndIdx, true)
+      declarator.withRange(firstDeclaratorToken..tokenAt(paramEndIdx - 1))
       params += ParameterDeclaration(specs, declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope). Ignore unnamed parameters.
@@ -202,7 +203,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
    * C standard: 6.7.6.0.1
    * @return a [NamedDeclarator], [ErrorDeclarator] on error, null if there is no nesting
    */
-  private inline fun <reified T : Declarator> parseNestedDeclarator(): Declarator? {
+  private inline fun <reified T : Declarator> parseNestedDeclarator(
+      allowName: Boolean): Declarator? {
     if (current().asPunct() != Punctuators.LPAREN) return null
     val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     if (end == -1) return error<ErrorDeclarator>()
@@ -218,7 +220,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
     eat() // The '('
     val declarator = when (T::class) {
       NamedDeclarator::class -> parseNamedDeclarator(end)
-      AbstractDeclarator::class -> parseAbstractDeclarator(end)
+      AbstractDeclarator::class -> parseAbstractDeclarator(end, allowName)
       else -> logger.throwICE("Bad declarator type for nested declarators") { "T: ${T::class}" }
     }
     if (declarator is ErrorNode) eatToSemi()
@@ -393,7 +395,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
     if (it.isEmpty()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
     val pointers = parsePointer(it.size)
     if (isEaten()) return@tokenContext emitDiagnostic(colPastTheEnd(0))
-    val nested = parseNestedDeclarator<NamedDeclarator>()
+    val nested = parseNestedDeclarator<NamedDeclarator>(false)
     if (nested == null) {
       val nameTok = current() as? Identifier ?: return@tokenContext emitDiagnostic(safeToken(0))
       eat() // The identifier token
@@ -406,10 +408,17 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
         pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
   }
 
-  /** C standard: 6.7.7.0.1 */
-  private fun parseAbstractDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
-    // This function allows an "empty" abstract declarator, because `type-name` contains an
-    // optional `abstract-declarator`, and that is the primary (only?) use case for this function
+  /**
+   * This function allows an "empty" abstract declarator, because `type-name` contains an optional
+   * `abstract-declarator`, and that is the primary (only?) use case for this function.
+   *
+   * Pass true to [allowName] to permit parsing an identifier as well, if it appears (will behave
+   * like [parseNamedDeclarator], but with no errors if there is no such identifier).
+   *
+   * C standard: 6.7.7.0.1
+   */
+  private fun parseAbstractDeclarator(endIdx: Int,
+                                      allowName: Boolean): Declarator = tokenContext(endIdx) {
     if (it.isEmpty()) return@tokenContext AbstractDeclarator(emptyList(), emptyList())
     val pointers = parsePointer(it.size)
     // Some pointers and nothing else is a valid abstract declarator
@@ -417,12 +426,20 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
     if (current().asPunct() == Punctuators.LPAREN && relative(1).asPunct() == Punctuators.RPAREN) {
       return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
     }
-    val nested = parseNestedDeclarator<AbstractDeclarator>()
+    val nested = parseNestedDeclarator<AbstractDeclarator>(allowName)
     // If it isn't nested stuff, it's probably suffixes
     if (nested == null || nested is ErrorNode) {
+      if (allowName && isNotEaten() && current() is Identifier) {
+        val name = IdentifierNode.from(current())
+        eat() // The identifier token
+        return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size))
+      }
       return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
     }
-    nested as AbstractDeclarator
+    if (allowName && nested is NamedDeclarator) {
+      return@tokenContext NamedDeclarator(nested.name,
+          pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
+    }
     return@tokenContext AbstractDeclarator(
         pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
   }
@@ -430,7 +447,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
   override fun parseTypeName(endIdx: Int): TypeName? = tokenContext(endIdx) {
     val declSpec = specParser.parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
     if (declSpec.isEmpty()) return@tokenContext null
-    val declarator = parseAbstractDeclarator(it.size)
+    val declarator = parseAbstractDeclarator(it.size, false)
     return@tokenContext typeNameOf(declSpec, declarator)
   }
 

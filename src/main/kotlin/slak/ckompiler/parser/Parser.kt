@@ -110,6 +110,13 @@ private class TranslationUnitParser(private val specParser: SpecParser,
       errorOn(declSpec.storageClass)
       errorOn(safeToken(0))
     }
+    funDecl.getFunctionTypeList().params.forEach {
+      if (it.declarator !is NamedDeclarator) diagnostic {
+        id = DiagnosticId.PARAM_NAME_OMITTED
+        formatArgs(typeNameOf(it.declSpec, it.declarator))
+        columns(it.declSpec..it.declarator)
+      }
+    }
     val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope)
         ?: error<ErrorStatement>()
     val start = if (declSpec.isEmpty()) block.tokenRange else declSpec.tokenRange

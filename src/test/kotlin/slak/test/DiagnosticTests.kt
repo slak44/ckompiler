@@ -69,6 +69,14 @@ class DiagnosticTests {
   }
 
   @Test
+  fun `Parser Diagnostic Correct Range Length For Abstract Declarator Parameters`() {
+    val p = prepareCode("int f(double, int) {return 1;}", source)
+    // Error is on "double" and "int"
+    p.assertDiagCaret(diagNr = 0, line = 1, colCount = "double".length)
+    p.assertDiagCaret(diagNr = 1, line = 1, colCount = "int".length)
+  }
+
+  @Test
   fun `Parser Diagnostic Multi-line Range`() {
     val p = prepareCode("""
       typedef unsigned int X = 1 + 1 +

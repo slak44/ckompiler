@@ -58,6 +58,9 @@ internal fun String.withPtrs(vararg q: TypeQualifierList) =
 internal infix fun <T> String.assign(it: T) =
     nameDecl(this) to ExpressionInitializer(parseDSLElement(it))
 
+internal infix fun <T> Declarator.assign(it: T) =
+    this to ExpressionInitializer(parseDSLElement(it))
+
 internal typealias DeclInit = Pair<Declarator, Initializer?>
 
 internal infix fun DeclarationSpecifier.declare(decl: DeclInit) =
@@ -89,11 +92,16 @@ internal infix fun DeclarationSpecifier.declare(s: String) =
 internal infix fun DeclarationSpecifier.declare(sm: List<StructMember>) =
     StructDeclaration(this, sm)
 
+internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) = ParameterDeclaration(this, s)
 internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
+
+internal fun DeclarationSpecifier.toParam() =
+    this param AbstractDeclarator(emptyList(), emptyList())
 
 internal fun Declarator.withParams(params: List<ParameterDeclaration>,
                                    variadic: Boolean): Declarator {
-  val idents = params.mapTo(mutableListOf()) {
+  val idents = params.mapNotNullTo(mutableListOf()) {
+    if (it.declarator !is NamedDeclarator) return@mapNotNullTo null
     @Suppress("USELESS_CAST") // Hint, it's not useless
     nameRef(it.declarator.name.name, typeNameOf(it.declSpec, it.declarator)) as OrdinaryIdentifier
   }
@@ -130,7 +138,7 @@ internal infix fun IfStatement.elseSt(failure: () -> Statement) =
 internal infix fun IfStatement.elseSt(failure: CompoundStatement) =
     IfStatement(this.cond, this.success, failure)
 
-internal fun returnSt(e: Expression) = ReturnStatement(e)
+internal fun <T> returnSt(e: T) = ReturnStatement(parseDSLElement(e))
 
 internal fun <T> compoundOf(vararg elements: T, scope: LexicalScope? = null) =
     listOf(*elements).compound(scope)

@@ -145,4 +145,20 @@ class FunctionsTests {
     val f = int declare ptr("f" withParams listOf(int param "x") withParams listOf(int param "y"))
     f assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Function Proto Abstract Declarators As Parameters`() {
+    val p = prepareCode("int f(double, int);", source)
+    p.assertNoDiagnostics()
+    int proto ("f" withParams listOf(double.toParam(), int.toParam())) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Function Definition Only Named Declarators`() {
+    val p = prepareCode("int f(double) {return 1;}", source)
+    p.assertDiags(DiagnosticId.PARAM_NAME_OMITTED)
+    int func ("f" withParams listOf(double.toParam())) body compoundOf(
+        returnSt(1)
+    ) assertEquals p.root.decls[0]
+  }
 }
