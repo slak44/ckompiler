@@ -86,13 +86,10 @@ sealed class TypeName {
     else -> null
   }
 
-  fun isRealType(): Boolean = isArithmetic() // We don't implement complex types yet.
-
-  /** C standard: 6.2.5.0.18 */
-  fun isArithmetic(): Boolean = this is IntegralType || this is FloatingType
+  fun isRealType(): Boolean = this is ArithmeticType // We don't implement complex types yet.
 
   /** C standard: 6.2.5.0.21 */
-  fun isScalar(): Boolean = isArithmetic() || this is PointerType
+  fun isScalar(): Boolean = this is ArithmeticType || this is PointerType
 }
 
 object ErrorType : TypeName() {
@@ -141,7 +138,20 @@ data class UnionType(val name: String?, val optionTypes: List<TypeName>?) : Type
 
 sealed class BasicType : TypeName()
 
-sealed class IntegralType : BasicType(), Comparable<IntegralType> {
+/** C standard: 6.2.5.0.18 */
+sealed class ArithmeticType : BasicType() {
+  /**
+   * If integer promotions are applied to this type, [promotedType] is the resulting type.
+   *
+   * FIXME: bitfields are not handled
+   * FIXME: the results of these promotions can depend on the size of the types
+   *
+   * C standard: 6.3.1.1.0.2
+   */
+  abstract val promotedType: ArithmeticType
+}
+
+sealed class IntegralType : ArithmeticType(), Comparable<IntegralType> {
   /** C standard: 6.3.1.1.0.1 */
   abstract val conversionRank: Int
   /**
@@ -151,15 +161,6 @@ sealed class IntegralType : BasicType(), Comparable<IntegralType> {
    * [BooleanType] -> throws ICE
    */
   abstract val corespondingType: IntegralType
-  /**
-   * If integer promotions are applied to this type, [promotedType] is the resulting type.
-   *
-   * FIXME: bitfields are not handled
-   * FIXME: the results of these promotions can depend on the size of the types
-   *
-   * C standard: 6.3.1.1.0.2
-   */
-  abstract val promotedType: IntegralType
 
   /** @see conversionRank */
   override operator fun compareTo(other: IntegralType) = other.conversionRank - this.conversionRank
@@ -212,7 +213,7 @@ sealed class UnsignedIntegralType : IntegralType()
 
 object BooleanType : UnsignedIntegralType() {
   override val conversionRank = 0x00001
-  override val corespondingType = logger.throwICE("No signed corespondent for _Bool") {}
+  override val corespondingType get() = logger.throwICE("No signed corespondent for _Bool") {}
   override val promotedType = SignedIntType
   override fun toString() = "_Bool"
 }
@@ -253,17 +254,20 @@ object UnsignedLongLongType : UnsignedIntegralType() {
 }
 
 /** C standard: 6.2.5.0.10 */
-sealed class FloatingType : BasicType()
+sealed class FloatingType : ArithmeticType()
 
 object FloatType : FloatingType() {
+  override val promotedType = FloatType
   override fun toString() = "float"
 }
 
 object DoubleType : FloatingType() {
+  override val promotedType = DoubleType
   override fun toString() = "double"
 }
 
 object LongDoubleType : FloatingType() {
+  override val promotedType = LongDoubleType
   override fun toString() = "long double"
 }
 
@@ -281,7 +285,7 @@ object VoidType : BasicType() {
  */
 fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
   if (lhs is ErrorType || rhs is ErrorType) return ErrorType
-  if (!lhs.isArithmetic() || !rhs.isArithmetic()) {
+  if (lhs !is ArithmeticType || rhs !is ArithmeticType) {
     logger.throwICE("Applying arithmetic conversions on non-arithmetic operands") {
       "lhs: $lhs, rhs: $rhs"
     }
@@ -289,8 +293,8 @@ fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
   if (lhs is LongDoubleType || rhs is LongDoubleType) return LongDoubleType
   if (lhs is DoubleType || rhs is DoubleType) return DoubleType
   if (lhs is FloatType || rhs is FloatType) return FloatType
-  val lInt = (lhs as IntegralType).promotedType
-  val rInt = (rhs as IntegralType).promotedType
+  val lInt = lhs.promotedType as IntegralType
+  val rInt = rhs.promotedType as IntegralType
   if (lInt.javaClass == rInt.javaClass) return lhs
   val big = maxOf(lInt, rInt)
   val small = minOf(lInt, rInt)
@@ -309,13 +313,10 @@ fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
  * applied)
  */
 fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
-  PLUS, MINUS -> {
-    // FIXME: apply promotion rules
-    if (!target.isArithmetic()) ErrorType else SignedIntType
-  }
+  PLUS, MINUS -> if (target !is ArithmeticType) ErrorType else target.promotedType
   BIT_NOT -> {
-    // FIXME: apply promotion rules and do 6.5.3.3.4
-    if (target !is IntegralType) ErrorType else SignedIntType
+    // FIXME: do 6.5.3.3.4
+    if (target !is IntegralType) ErrorType else target.promotedType
   }
   NOT -> {
     // The result of this operator is always `int`, as per 6.5.3.3.5
@@ -335,11 +336,10 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
  * C standard: 6.5.5.0.2
  * @return the type of the expression after applying the binary operator on the operands
  * ([ErrorType] if it can't be applied)
- * FIXME: promotions and conversions
  */
 fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this) {
   MUL, DIV -> {
-    if (!lhs.isArithmetic() || !rhs.isArithmetic()) ErrorType
+    if (lhs !is ArithmeticType || rhs !is ArithmeticType) ErrorType
     else usualArithmeticConversions(lhs, rhs)
   }
   MOD -> {
