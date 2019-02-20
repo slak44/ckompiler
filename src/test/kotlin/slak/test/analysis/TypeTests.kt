@@ -52,4 +52,13 @@ class TypeTests {
         PrefixIncrement(ErrorExpression())
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Binary Add Bad Types`() {
+    val p = prepareCode("int main() {1 + main;}", source)
+    p.assertDiags(DiagnosticId.INVALID_ARGS_BINARY)
+    int func ("main" withParams emptyList()) body compoundOf(
+        1 add nameRef("main", FunctionType(SignedIntType, emptyList()))
+    ) assertEquals p.root.decls[0]
+  }
 }
