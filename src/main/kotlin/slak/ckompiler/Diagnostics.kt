@@ -131,20 +131,34 @@ data class Diagnostic(val id: DiagnosticId,
     val color = TermColors(if (useColors) TermColors.Level.TRUECOLOR else TermColors.Level.NONE)
     val (line, col, lineText) = errorOf(if (sourceColumns.isNotEmpty()) caret else null)
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
-    val spacesCount = max(col, 0)
-    val tildeCount = min(
-        max(caret.length() - 1, 0), // Size of provided range (caret eats one)
-        max(lineText.length - spacesCount + 1, 0) // Size of spaces + 1 for the caret
-    )
     val kindText = when (id.kind) {
       ERROR -> color.brightRed
       WARNING -> color.brightMagenta
       OTHER -> color.blue
     }("${id.kind.text}:")
     val firstLine = "$sourceFileName:$line:$col: $kindText $msg [$origin|${id.name}]"
-    val caretLine = color.green(" ".repeat(spacesCount) + '^' + "~".repeat(tildeCount))
-    // FIXME add tildes for the other sourceColumns
-    return@lazy "$firstLine\n$lineText\n$caretLine"
+    val spacesCount = max(col, 0)
+    val tildeCount = min(
+        max(caret.length() - 1, 0), // Size of provided range (caret eats one)
+        max(lineText.length - spacesCount + 1, 0) // Size of spaces + 1 for the caret
+    )
+    val spacesLeftAfterCaret = max(lineText.length - spacesCount - tildeCount - 1, 0)
+    val originalCaretLine =
+        " ".repeat(spacesCount) + '^' + "~".repeat(tildeCount) + " ".repeat(spacesLeftAfterCaret)
+    val caretLine = sourceColumns
+        .asSequence()
+        .drop(1)
+        .map { it to errorOf(it) }
+        // FIXME: add tildes for the sourceColumns on different lines
+        .filter { it.second.first == line }
+        .map {
+          val startIdx = max(it.second.second, 0)
+           startIdx..max(startIdx + it.first.length(), 0)
+        }
+        .fold(originalCaretLine) { caretLine, it ->
+          caretLine.replaceRange(it, "~".repeat(it.length()))
+        }
+    return@lazy "$firstLine\n$lineText\n${color.green(caretLine)}"
   }
 
   fun print() = println(printable)
