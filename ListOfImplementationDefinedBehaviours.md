@@ -10,3 +10,4 @@
 - (J.3.5): There are no extended integer types
 - (J.3.4/6.2.5.0.15): `char` behaves like `signed char`
 - (J.3.13): The value of the result of `sizeof` and `_Alignof` is of type `unsigned int`
+- (6.5.7.0.3) `<<` and `>>` pass all values as they are to the assembler

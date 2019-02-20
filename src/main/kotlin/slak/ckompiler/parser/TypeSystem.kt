@@ -336,46 +336,104 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
 }
 
 /**
- * C standard: 6.5.5.0.2
+ * Boilerplate that checks [lhs]/[rhs] to be [ArithmeticType], then applies
+ * [usualArithmeticConversions]. Returns [ErrorType] if a check fails.
+ */
+private fun arithmOp(lhs: TypeName, rhs: TypeName): TypeName {
+  return if (lhs !is ArithmeticType || rhs !is ArithmeticType) ErrorType
+  else usualArithmeticConversions(lhs, rhs)
+}
+
+/**
+ * Boilerplate that checks [lhs]/[rhs] to be [IntegralType], then applies
+ * [usualArithmeticConversions]. Returns [ErrorType] if a check fails.
+ */
+private fun intOp(lhs: TypeName, rhs: TypeName): TypeName {
+  return if (lhs !is IntegralType || rhs !is IntegralType) ErrorType
+  else usualArithmeticConversions(lhs, rhs)
+}
+
+/**
+ * C standard: 6.5.5.0.2, 6.5.5, 6.5.6, 6.5.7, 6.5.8, 6.5.8.0.6, 6.5.9, 6.5.10, 6.5.11, 6.5.12,
+ * 6.5.13, 6.5.14, 6.5.17
  * @return the type of the expression after applying the binary operator on the operands
  * ([ErrorType] if it can't be applied)
  */
 fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this) {
-  MUL, DIV -> {
-    if (lhs !is ArithmeticType || rhs !is ArithmeticType) ErrorType
-    else usualArithmeticConversions(lhs, rhs)
+  MUL, DIV -> arithmOp(lhs, rhs)
+  MOD -> intOp(lhs, rhs)
+  ADD -> {
+    val ptr = lhs as? PointerType ?: rhs as? PointerType
+    if (ptr == null) {
+      // Regular arithmetic
+      arithmOp(lhs, rhs)
+    } else {
+      // Pointer arithmetic
+      // FIXME: handle ArrayType (6.5.6.0.8)
+      // FIXME: the ptr.referencedType must be a complete object type (6.5.6.0.2)
+      val other = if (lhs is PointerType) rhs else lhs
+      if (other !is IntegralType) ErrorType else ptr
+    }
   }
-  MOD -> {
-    if (lhs !is IntegralType || rhs !is IntegralType) ErrorType
-    else usualArithmeticConversions(lhs, rhs)
+  SUB -> {
+    val ptr = lhs as? PointerType
+    // FIXME: the ptr.referencedType must be a complete object type (6.5.6.0.2)
+    if (ptr == null) {
+      // Regular arithmetic
+      arithmOp(lhs, rhs)
+    } else {
+      // Pointer arithmetic
+      val otherPtr = rhs as? PointerType
+      // FIXME: handle ArrayType (6.5.6.0.8)
+      // FIXME: the otherPtr.referencedType must be a complete object type (6.5.6.0.2)
+      if (otherPtr == null) {
+        // ptr minus integer case
+        if (rhs !is IntegralType) ErrorType else ptr
+      } else {
+        // ptr minus ptr case
+        // FIXME: this should actually return ptrdiff_t (6.5.6.0.9)
+        // FIXME: overly strict check, compatibles are allowed (6.5.6.0.3)
+        if (ptr.referencedType != otherPtr.referencedType) ErrorType else ptr
+      }
+    }
   }
-  ADD -> TODO()
-  SUB -> TODO()
-  LSH -> TODO()
-  RSH -> TODO()
-  LT -> TODO()
-  GT -> TODO()
-  LEQ -> TODO()
-  GEQ -> TODO()
-  EQ -> TODO()
-  NEQ -> TODO()
-  BIT_AND -> TODO()
-  BIT_XOR -> TODO()
-  BIT_OR -> TODO()
-  AND -> TODO()
-  OR -> TODO()
-  ASSIGN -> TODO()
+  LSH, RSH -> intOp(lhs, rhs)
+  LT, GT, LEQ, GEQ -> {
+    val lPtr = lhs as? PointerType
+    val rPtr = rhs as? PointerType
+    if (lPtr == null || rPtr == null) {
+      // FIXME: the arithmetic conversions get lost here
+      arithmOp(lhs, rhs)
+      if (lhs.isRealType() && rhs.isRealType()) SignedIntType else ErrorType
+    } else {
+      // FIXME: the referenced types must be compatible object types (6.5.8.0.2)
+      SignedIntType
+    }
+  }
+  EQ, NEQ -> {
+    if (lhs is ArithmeticType && rhs is ArithmeticType) {
+      usualArithmeticConversions(lhs, rhs)
+    } else {
+      TODO("lots of pointer arithmetic shit (6.5.9)")
+    }
+  }
+  BIT_AND, BIT_XOR, BIT_OR -> intOp(lhs, rhs)
+  AND, OR -> {
+    if (!lhs.isScalar() || !rhs.isScalar()) ErrorType else SignedIntType
+  }
+  // FIXME: assignment operator semantics are very complicated (6.5.16)
+  ASSIGN -> lhs
   MUL_ASSIGN -> TODO()
   DIV_ASSIGN -> TODO()
   MOD_ASSIGN -> TODO()
-  PLUS_ASSIGN -> TODO()
-  SUB_ASSIGN -> TODO()
+  PLUS_ASSIGN -> lhs
+  SUB_ASSIGN -> lhs
   LSH_ASSIGN -> TODO()
   RSH_ASSIGN -> TODO()
   AND_ASSIGN -> TODO()
   XOR_ASSIGN -> TODO()
   OR_ASSIGN -> TODO()
-  COMMA -> TODO()
+  COMMA -> rhs
 }
 
 /**
