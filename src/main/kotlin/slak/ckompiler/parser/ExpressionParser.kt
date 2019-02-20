@@ -103,7 +103,8 @@ class ExpressionParser(declarationParser: DeclarationParser) :
     var lhs = lhsInit
     outerLoop@ while (true) {
       if (isEaten()) break@outerLoop
-      val op = current().asBinaryOperator() ?: break@outerLoop
+      val opTok = current()
+      val op = opTok.asBinaryOperator() ?: break@outerLoop
       if (op.precedence < minPrecedence) break@outerLoop
       eat()
       var rhs: Expression = parsePrimaryExpr() ?: return error<ErrorExpression>()
@@ -117,6 +118,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
+      binaryDiags(opTok as Punctuator, lhs, rhs)
       lhs = BinaryExpression(op, lhs, rhs).withRange(lhs..rhs)
     }
     return lhs

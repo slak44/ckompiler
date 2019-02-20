@@ -50,6 +50,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   INVALID_ARGUMENT_UNARY(ERROR, "Invalid argument type '%s' to unary operator '%s'"),
   INVALID_INC_DEC_ARGUMENT(ERROR, "Cannot %s value of type '%s'"),
   INVALID_RET_TYPE(ERROR, "Function cannot return %s type '%s'"),
+  INVALID_ARGS_BINARY(ERROR, "Invalid operands to binary operator '%s': '%s' and '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

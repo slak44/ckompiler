@@ -1,6 +1,9 @@
 package slak.ckompiler.parser
 
 import mu.KotlinLogging
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.IDebugHandler
+import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.throwICE
 import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
@@ -375,3 +378,24 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this
   COMMA -> TODO()
 }
 
+/**
+ * Runs [BinaryOperators.applyTo]. Prints appropriate diagnostics if [ErrorType] is returned. Does
+ * not print anything if either [lhs] or [rhs] are [ErrorType].
+ * @throws [slak.ckompiler.InternalCompilerError] if [pct] does not represent a binary operator
+ */
+fun IDebugHandler.binaryDiags(pct: Punctuator, lhs: Expression, rhs: Expression): TypeName {
+  val op = pct.asBinaryOperator() ?: logger.throwICE("Not a binary operator") {
+    "lhs: $lhs, rhs: $rhs, pct: $pct"
+  }
+  if (lhs.type is ErrorType || rhs.type is ErrorType) return ErrorType
+  val res = op.applyTo(lhs.type, rhs.type)
+  if (res != ErrorType) return res
+  diagnostic {
+    id = DiagnosticId.INVALID_ARGS_BINARY
+    errorOn(pct)
+    columns(lhs.tokenRange)
+    columns(rhs.tokenRange)
+    formatArgs(op.op.s, lhs.type, rhs.type)
+  }
+  return ErrorType
+}

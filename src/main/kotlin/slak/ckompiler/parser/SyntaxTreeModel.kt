@@ -272,11 +272,9 @@ data class PostfixDecrement(val expr: Expression) : Expression() {
 /** Represents a binary operation in an expression. */
 data class BinaryExpression(val op: BinaryOperators, val lhs: Expression, val rhs: Expression) :
     Expression() {
-  // FIXME: this is temporary
-  override val type = lhs.type
+  override val type = op.applyTo(lhs.type, rhs.type)
 
   init {
-    // FIXME: check lhs/rhs types against what the op expects
     lhs.setParent(this)
     rhs.setParent(this)
   }
