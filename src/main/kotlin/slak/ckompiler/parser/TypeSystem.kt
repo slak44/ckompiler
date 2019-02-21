@@ -4,9 +4,9 @@ import mu.KotlinLogging
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.lexer.Punctuator
-import slak.ckompiler.throwICE
 import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
+import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("TypeSystem")
 
