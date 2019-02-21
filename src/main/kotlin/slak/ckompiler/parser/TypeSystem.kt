@@ -51,7 +51,12 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
     val retType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
     return FunctionType(retType, paramTypes, ptl.variadic)
   }
-  // FIXME: arrays
+  // Arrays
+  if (decl.isArray()) {
+    val size = decl.getArrayTypeSize()
+    val elemType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
+    return ArrayType(elemType, size)
+  }
   return when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
     is EnumSpecifier -> TODO()
@@ -456,4 +461,17 @@ fun IDebugHandler.binaryDiags(pct: Punctuator, lhs: Expression, rhs: Expression)
     formatArgs(op.op.s, lhs.type, rhs.type)
   }
   return ErrorType
+}
+
+/**
+ * Check that an array doesn't have an element type of [FunctionType]. Print diagnostic otherwise.
+ */
+fun IDebugHandler.checkArrayElementType(declSpec: DeclarationSpecifier, declarator: Declarator) {
+  if (!declarator.isArray()) return
+  val elemType = (typeNameOf(declSpec, declarator) as? ArrayType)?.elementType ?: return
+  if (elemType is FunctionType) diagnostic {
+    id = DiagnosticId.INVALID_ARR_TYPE
+    formatArgs(declarator.name, elemType)
+    columns(declarator.tokenRange)
+  }
 }

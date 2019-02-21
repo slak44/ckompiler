@@ -61,4 +61,19 @@ class TypeTests {
         1 add nameRef("main", FunctionType(SignedIntType, emptyList()))
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Array Of Functions Not Allowed`() {
+    val p = prepareCode("int a[123]();", source)
+    p.assertDiags(DiagnosticId.INVALID_ARR_TYPE)
+    int declare (name("a")[123] withParams emptyList()) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Array Of Functions Not Allowed As Declaration Statement`() {
+    val p = prepareCode("int main() {int a[123]();}", source)
+    p.assertDiags(DiagnosticId.INVALID_ARR_TYPE)
+    val badDecl = int declare (name("a")[123] withParams emptyList())
+    int func ("main" withParams emptyList()) body compoundOf(badDecl) assertEquals p.root.decls[0]
+  }
 }

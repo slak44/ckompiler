@@ -102,6 +102,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator?): Declaration {
     val d = Declaration(declSpec, parseInitDeclaratorList(declSpec, declarator))
+    d.declaratorList.forEach { checkArrayElementType(declSpec, it.first) }
     val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.tokenRange.start
     return d.withRange(start until safeToken(0).startIdx)
   }

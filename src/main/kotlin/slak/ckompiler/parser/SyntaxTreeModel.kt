@@ -436,8 +436,10 @@ sealed class Declarator : ASTNode() {
   abstract val suffixes: List<DeclaratorSuffix>
 
   fun isFunction() = suffixes.isNotEmpty() && suffixes[0] is ParameterTypeList
+  fun isArray() = suffixes.isNotEmpty() && suffixes[0] is ArrayTypeSize
 
   fun getFunctionTypeList(): ParameterTypeList = suffixes[0] as ParameterTypeList
+  fun getArrayTypeSize(): ArrayTypeSize = suffixes[0] as ArrayTypeSize
 }
 
 /** C standard: 6.7.6 */

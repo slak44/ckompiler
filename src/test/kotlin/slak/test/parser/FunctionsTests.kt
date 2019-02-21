@@ -141,7 +141,6 @@ class FunctionsTests {
   }
 
   @Test
-  @Ignore("Type system dies on arrays for now")
   fun `Function Can't Return Array Type`() {
     val p = prepareCode("int f(int)[123];", source)
     p.assertDiags(DiagnosticId.INVALID_RET_TYPE)
