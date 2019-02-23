@@ -2,10 +2,12 @@ package slak.ckompiler
 
 import slak.ckompiler.lexer.TokenObject
 import java.util.*
-import kotlin.math.min
 
 interface ITokenHandler<Token : TokenObject> {
-  /** Gets a token, or if all were eaten, the last one. Useful for diagnostics. */
+  /**
+   * Gets a token, or if all were eaten, the last one. Tries really hard to not fail.
+   * Useful for diagnostics.
+   */
   fun safeToken(offset: Int): Token
 
   /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
@@ -14,7 +16,9 @@ interface ITokenHandler<Token : TokenObject> {
     return tok.startIdx + tok.consumedChars
   }
 
-  /** Get a range of the current token. Useful for [ErrorNode]s or [Terminal]s. */
+  /** Get a range of the current token. Useful for [slak.ckompiler.parser.ErrorNode]s or
+   * [slak.ckompiler.parser.Terminal]s.
+   */
   fun rangeOne() = safeToken(0).range
 
   fun parentContext(): List<Token>
@@ -55,10 +59,16 @@ class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: Debug
     idxStack.push(0)
   }
 
+  private fun withOffset(offset: Int) = idxStack.peek() + offset
+
+  private fun isValidOffset(offset: Int): Boolean {
+    return withOffset(offset) in 0 until tokenCount
+  }
+
   override fun safeToken(offset: Int) = when {
-    isEaten() && tokStack.peek().isEmpty() -> parentContext().last()
-    isEaten() -> tokStack.peek().last()
-    else -> tokStack.peek()[min(idxStack.peek() + offset, tokStack.peek().size - 1)]
+    !isValidOffset(offset) && tokStack.peek().isEmpty() -> parentContext().last()
+    !isValidOffset(offset) -> tokStack.peek().last()
+    else -> tokStack.peek()[withOffset(offset).coerceIn(0 until tokenCount)]
   }
 
   override fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T {
@@ -81,13 +91,13 @@ class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: Debug
     return if (idx == -1) -1 else idx + idxStack.peek()
   }
 
-  override fun isEaten(): Boolean = idxStack.peek() >= tokStack.peek().size
+  override fun isEaten(): Boolean = idxStack.peek() >= tokenCount
 
   override val tokenCount: Int get() = tokStack.peek().size
 
   override fun current(): Token = tokStack.peek()[idxStack.peek()]
 
-  override fun relative(offset: Int): Token = tokStack.peek()[idxStack.peek() + offset]
+  override fun relative(offset: Int): Token = tokStack.peek()[withOffset(offset)]
 
   override fun tokenAt(contextIdx: Int) = tokStack.peek()[contextIdx]
 
