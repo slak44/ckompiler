@@ -41,8 +41,8 @@ private fun BasicBlock.graphDataImpl(nodes: MutableList<CFGNode>, edges: Mutable
     }
     is Return -> {
       (terminator as Return).deadCode?.also {
-        if (it.data.isNotEmpty() || it.isTerminated()) nodes += it
-        if (it.isTerminated()) edges += Edge(terminator, it, EdgeType.IMPOSSIBLE)
+        it.graphDataImpl(nodes, edges)
+        edges += Edge(terminator, it, EdgeType.IMPOSSIBLE)
       }
       edges += Edge(this, terminator)
     }
