@@ -158,7 +158,6 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       if (specs.isEmpty()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
-      val firstDeclaratorToken = safeToken(0)
       // The parameter can have parens with commas in them
       // We're interested in the comma that comes after the parameter
       // So balance the parens, and look for the first comma after them
@@ -171,8 +170,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       val commaIdx = indexOfFirst(Punctuators.COMMA)
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
       val declarator = parseAbstractDeclarator(paramEndIdx, true)
-      declarator.withRange(firstDeclaratorToken..tokenAt(paramEndIdx - 1))
-      params += ParameterDeclaration(specs, declarator)
+      declarator.withRange(specs..tokenAt(paramEndIdx - 1))
+      params += ParameterDeclaration(specs, declarator).withRange(declarator.tokenRange)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope). Ignore unnamed parameters.
       if (declarator is NamedDeclarator) scope.withScope {

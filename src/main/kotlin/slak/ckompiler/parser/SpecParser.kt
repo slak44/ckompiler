@@ -374,6 +374,8 @@ class SpecParser(declarationParser: DeclarationParser) :
       }
       eat()
     }
+    val endToken = safeToken(-1)
+
     // We found declaration specifiers, so this *is* a declarator, but there are no type specs
     if ((storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()) &&
         typeSpecifier == null) {
@@ -390,7 +392,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     val (threadLocal, storageClass) = validateStorageClass(storageSpecs)
 
     val ds = DeclarationSpecifier(storageClass, threadLocal, typeQuals, funSpecs, typeSpecifier)
-    if (!ds.isEmpty()) ds.withRange(startTok until safeToken(0))
+    if (!ds.isEmpty()) ds.withRange(startTok..endToken)
 
     validation.validate(this, ds)
     return ds

@@ -80,6 +80,9 @@ sealed class ASTNode(val isRoot: Boolean = false) {
 
   /** Sets this node's token range. */
   fun setRange(range: IntRange) {
+    if (range.first > range.last) {
+      logger.throwICE("Bad token range on ASTNode") { "this: $this, range: $range" }
+    }
     lateTokenRange = range
   }
 
