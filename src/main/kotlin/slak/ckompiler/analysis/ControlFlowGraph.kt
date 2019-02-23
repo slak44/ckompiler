@@ -52,7 +52,7 @@ class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator = Unterminate
 
   private fun collapseEmptyBlocks() {
     preds.filter { it.data.isEmpty() }.forEach emptyBlockLoop@{ emptyBlock ->
-      if (emptyBlock.terminator is CondJump) return@emptyBlockLoop
+      if (emptyBlock.terminator !is UncondJump) return@emptyBlockLoop
       emptyBlock.preds.forEach {
         when (it.terminator) {
           is UncondJump -> it.terminator = UncondJump(this)
