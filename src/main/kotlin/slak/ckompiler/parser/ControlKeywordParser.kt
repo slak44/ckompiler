@@ -33,6 +33,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     IExpressionParser by expressionParser {
   override fun parseGotoStatement(): Statement? {
     if (current().asKeyword() != Keywords.GOTO) return null
+    val gotoTok = current()
     eat()
     if (current() !is Identifier) {
       diagnostic {
@@ -56,38 +57,46 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
       } else {
         eat() // The ';'
       }
-      return GotoStatement(ident).withRange(safeToken(-3) until safeToken(0))
+      return GotoStatement(ident).withRange(gotoTok..safeToken(0))
     }
   }
 
   override fun parseContinue(): ContinueStatement? {
     if (current().asKeyword() != Keywords.CONTINUE) return null
+    val continueTok = current()
     eat()
+    val semiTok: LexicalToken?
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
       diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("continue statement")
         column(colPastTheEnd(0))
       }
+      semiTok = null
     } else {
+      semiTok = current()
       eat() // The ';'
     }
-    return ContinueStatement().withRange(safeToken(-2) until safeToken(0))
+    return ContinueStatement().withRange(continueTok..(semiTok ?: continueTok))
   }
 
   override fun parseBreak(): BreakStatement? {
     if (current().asKeyword() != Keywords.BREAK) return null
+    val breakTok = current()
     eat()
+    val semiTok: LexicalToken?
     if (isEaten() || current().asPunct() != Punctuators.SEMICOLON) {
       diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("break statement")
         column(colPastTheEnd(0))
       }
+      semiTok = null
     } else {
+      semiTok = current()
       eat() // The ';'
     }
-    return BreakStatement().withRange(safeToken(-2) until safeToken(0))
+    return BreakStatement().withRange(breakTok..(semiTok ?: breakTok))
   }
 
   override fun parseReturn(): ReturnStatement? {
