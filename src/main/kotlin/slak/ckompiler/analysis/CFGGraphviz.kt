@@ -4,7 +4,9 @@ import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.parser.ASTNode
 
 private enum class EdgeType {
-  NORMAL, COND_TRUE, COND_FALSE
+  NORMAL, COND_TRUE, COND_FALSE,
+  /** An edge that cannot ever be traversed. */
+  IMPOSSIBLE
 }
 
 private data class Edge(val from: CFGNode, val to: CFGNode, val type: EdgeType = EdgeType.NORMAL)
@@ -38,7 +40,10 @@ private fun BasicBlock.graphDataImpl(nodes: MutableList<CFGNode>, edges: Mutable
       t.other.graphDataImpl(nodes, edges)
     }
     is Return -> {
-      (terminator as Return).deadCode?.also { if (it.data.isNotEmpty()) nodes += it }
+      (terminator as Return).deadCode?.also {
+        if (it.data.isNotEmpty() || it.isTerminated()) nodes += it
+        if (it.isTerminated()) edges += Edge(terminator, it, EdgeType.IMPOSSIBLE)
+      }
       edges += Edge(this, terminator)
     }
   }
@@ -47,7 +52,8 @@ private fun BasicBlock.graphDataImpl(nodes: MutableList<CFGNode>, edges: Mutable
 private enum class GraphvizColors(val color: String) {
   BG("\"#3C3F41ff\""), BLOCK_DEFAULT("\"#ccccccff\""),
   BLOCK_START("powderblue"), BLOCK_RETURN("mediumpurple2"),
-  COND_TRUE("darkolivegreen3"), COND_FALSE("lightcoral");
+  COND_TRUE("darkolivegreen3"), COND_FALSE("lightcoral"),
+  IMPOSSIBLE("black");
 
   override fun toString() = color
 }
@@ -92,6 +98,7 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
       EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
       EdgeType.COND_TRUE -> "color=$COND_TRUE"
       EdgeType.COND_FALSE -> "color=$COND_FALSE"
+      EdgeType.IMPOSSIBLE -> "color=$IMPOSSIBLE"
     }
     "${it.from.id} -> ${it.to.id} [$data];"
   }
