@@ -382,8 +382,11 @@ class ExpressionParser(declarationParser: DeclarationParser) :
           formatArgs(existingIdent.name, existingIdent.typedefedToString())
           errorOn(safeToken(0))
         }
-        return existingIdent as? TypedIdentifier
-            ?: TypedIdentifier(ident, ErrorType).withRange(rangeOne())
+        if (existingIdent !is TypedIdentifier) {
+          return TypedIdentifier(ident, ErrorType).withRange(rangeOne())
+        }
+        // Change the token range from the original declaration's name to this particular occurrence
+        return existingIdent.copy().withRange(tok.range)
       }
       is IntegralConstant -> {
         // FIXME conversions might fail here?
