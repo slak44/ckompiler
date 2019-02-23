@@ -343,8 +343,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
     if (isEaten()) {
       diagnostic {
         id = DiagnosticId.EXPECTED_EXPR
-        if (tokenCount != 0) errorOn(safeToken(0))
-        else errorOn(parentContext()[parentIdx()])
+        errorOn(safeToken(0))
       }
       return error<ErrorExpression>()
     }

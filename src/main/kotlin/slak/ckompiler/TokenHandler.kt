@@ -22,7 +22,6 @@ interface ITokenHandler<Token : TokenObject> {
   fun rangeOne() = safeToken(0).range
 
   fun parentContext(): List<Token>
-  fun parentIdx(): Int
 
   /**
    * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
@@ -83,8 +82,6 @@ class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: Debug
   }
 
   override fun parentContext(): List<Token> = tokStack[tokStack.size - 2]
-
-  override fun parentIdx(): Int = idxStack[idxStack.size - 2]
 
   override fun indexOfFirst(block: (Token) -> Boolean): Int {
     val idx = tokStack.peek().drop(idxStack.peek()).indexOfFirst(block)
