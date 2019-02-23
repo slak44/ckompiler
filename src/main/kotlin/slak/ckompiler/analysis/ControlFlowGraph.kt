@@ -45,7 +45,9 @@ class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator = Unterminate
   fun isTerminated() = terminator !is Unterminated
 
   fun setTerminator(lazyTerminator: () -> CFGTerminator) {
-    if (isTerminated()) return
+    if (isTerminated()) {
+      logger.warn { "Setting terminator of block that is already terminated; old: $terminator" }
+    }
     terminator = lazyTerminator()
     collapseEmptyBlocks()
   }
