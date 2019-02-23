@@ -20,36 +20,49 @@ sealed class CFGNode {
 
 sealed class CFGTerminator : CFGNode()
 
-class CondJump(val cond: Expression?,
-               var target: BasicBlock,
-               var other: BasicBlock) : CFGTerminator()
+data class CondJump(val cond: Expression?,
+                    val target: BasicBlock,
+                    val other: BasicBlock) : CFGTerminator()
 
-class UncondJump(val target: BasicBlock) : CFGTerminator()
+data class UncondJump(val target: BasicBlock) : CFGTerminator()
 
-class Return(val value: Expression?) : CFGTerminator()
+data class Return(val value: Expression?, val deadCode: BasicBlock? = null) : CFGTerminator()
 
-class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CFGNode() {
-  private val preds: MutableList<BasicBlock> = initPreds.toMutableList()
-  val data: MutableList<ASTNode> = mutableListOf()
-  var terminator: CFGTerminator? = term
-    private set
+object Unterminated : CFGTerminator()
+
+class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator = Unterminated) : CFGNode() {
   private var isDead = false
+  private val preds: MutableSet<BasicBlock> = initPreds.toMutableSet()
+  val data: MutableList<ASTNode> = mutableListOf()
+  var terminator: CFGTerminator = term
+    private set
 
   override fun toString() =
       if (isDead) "DEAD@${hashCode()}" else "BasicBlock(${data.joinToString("\n")})"
 
   fun isStart() = preds.isEmpty()
 
+  fun isTerminated() = terminator !is Unterminated
+
+  fun setTerminator(lazyTerminator: () -> CFGTerminator) {
+    if (isTerminated()) return
+    terminator = lazyTerminator()
+    collapseEmptyBlocks()
+  }
+
   private fun collapseEmptyBlocks() {
     preds.filter { it.data.isEmpty() }.forEach emptyBlockLoop@{ emptyBlock ->
       if (emptyBlock.terminator is CondJump) return@emptyBlockLoop
       emptyBlock.preds.forEach {
-        val oldTerm = it.terminator!!
-        when (oldTerm) {
+        when (it.terminator) {
           is UncondJump -> it.terminator = UncondJump(this)
           is CondJump -> {
-            oldTerm.target = if (oldTerm.target == emptyBlock) this else oldTerm.target
-            oldTerm.other = if (oldTerm.other == emptyBlock) this else oldTerm.other
+            val t = it.terminator as CondJump
+            it.terminator = CondJump(
+                t.cond,
+                if (t.target == emptyBlock) this else t.target,
+                if (t.other == emptyBlock) this else t.other
+            )
           }
           else -> return@emptyBlockLoop
         }
@@ -59,18 +72,12 @@ class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator? = null) : CF
       emptyBlock.isDead = true
     }
   }
-
-  fun setTerminator(lazyTerminator: () -> CFGTerminator) {
-    if (terminator != null) return
-    terminator = lazyTerminator()
-    collapseEmptyBlocks()
-  }
 }
 
 fun createGraphFor(f: FunctionDefinition): BasicBlock {
-  val init = BasicBlock()
-  graphCompound(init, f.block)
-  return init
+  val startBlock = BasicBlock()
+  graphCompound(startBlock, f.block)
+  return startBlock
 }
 
 fun graphCompound(current: BasicBlock, compoundStatement: CompoundStatement): BasicBlock {
@@ -112,7 +119,7 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     val loopNext = graphStatement(loopBlock, s.loopable)
     val afterLoopBlock = BasicBlock(current, loopNext)
     current.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
-    loopNext.setTerminator { current.terminator!! }
+    loopNext.setTerminator { current.terminator }
     afterLoopBlock
   }
   is DoWhileStatement -> {
@@ -135,15 +142,15 @@ fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
     s.loopEnd?.let { graphStatement(loopNext, it) }
     val afterLoopBlock = BasicBlock(current, loopNext)
     current.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
-    loopNext.setTerminator { current.terminator!! }
+    loopNext.setTerminator { current.terminator }
     afterLoopBlock
   }
   is ContinueStatement -> TODO()
   is BreakStatement -> TODO()
   is GotoStatement -> TODO()
   is ReturnStatement -> {
-    current.setTerminator { Return(s.expr) }
-    // FIXME: create a new block to contain all the stuff after the return
-    current
+    val deadCodeBlock = BasicBlock(current)
+    current.setTerminator { Return(s.expr, deadCodeBlock) }
+    deadCodeBlock
   }
 }

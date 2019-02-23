@@ -21,24 +21,25 @@ private fun BasicBlock.graphDataImpl(nodes: MutableList<CFGNode>, edges: Mutable
   // The graph can be cyclical, and we don't want to enter an infinite loop
   if (this in nodes) return
   nodes += this
-  if (terminator == null) return
-  nodes += terminator!!
+  if (!isTerminated()) return
+  nodes += terminator
   when (terminator) {
     is UncondJump -> {
-      val target = (terminator!! as UncondJump).target
+      val target = (terminator as UncondJump).target
       edges += Edge(this, target)
       target.graphDataImpl(nodes, edges)
     }
     is CondJump -> {
-      edges += Edge(this, terminator!!)
       val t = terminator as CondJump
-      edges += Edge(t, t.target, EdgeType.COND_TRUE)
+      edges += Edge(this, terminator)
+      edges += Edge(terminator, t.target, EdgeType.COND_TRUE)
       t.target.graphDataImpl(nodes, edges)
-      edges += Edge(t, t.other, EdgeType.COND_FALSE)
+      edges += Edge(terminator, t.other, EdgeType.COND_FALSE)
       t.other.graphDataImpl(nodes, edges)
     }
     is Return -> {
-      edges += Edge(this, terminator!!)
+      (terminator as Return).deadCode?.also { if (it.data.isNotEmpty()) nodes += it }
+      edges += Edge(this, terminator)
     }
   }
 }
@@ -68,9 +69,10 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
   val content = nodes.joinToString(sep) {
     when (it) {
       is BasicBlock -> {
-        val style =
-            if (it.isStart()) "style=filled,color=$BLOCK_START"
-            else "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
+        val style = when {
+          it.isStart() -> "style=filled,color=$BLOCK_START"
+          else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
+        }
         val code = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
         "${it.id} [shape=box,$style,label=\"${if (code.isBlank()) "<EMPTY>" else code}\"];"
       }
@@ -83,6 +85,7 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
         val style = "shape=ellipse,style=filled,color=$BLOCK_RETURN"
         "${it.id} [$style,label=\"${it.value?.originalCode(sourceCode)}\"];"
       }
+      is Unterminated -> "// unterminated ${it.id}"
     }
   } + sep + edges.joinToString(sep) {
     val data = when (it.type) {
