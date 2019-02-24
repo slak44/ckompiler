@@ -167,7 +167,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
     val callEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     eat() // The '('
     if (callEnd == -1) {
-      TODO("error where function call has unmatched paren")
+      return Pair(emptyList(), current())
     }
     if (current().asPunct() == Punctuators.RPAREN) {
       val endParenTok = current()

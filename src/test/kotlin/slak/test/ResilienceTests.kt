@@ -6,6 +6,8 @@ import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.ErrorDeclarator
+import slak.ckompiler.parser.ErrorExpression
+import slak.ckompiler.parser.typeNameOf
 import kotlin.test.assertEquals
 
 /**
@@ -105,5 +107,28 @@ class ResilienceTests {
         DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET,
         DiagnosticId.EXPECTED_SEMI_AFTER
     )
+  }
+
+  @Test
+  fun `Parser Initializer Bad Parens Are Contained Until A Comma`() {
+    val p = prepareCode("int x = (5 + 1, y;", source)
+    int declare listOf("x" assign ErrorExpression(), "y") assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
+
+  @Test
+  fun `Parser Initializer Bad Parens In Function Call Don't Break Declarators Completely`() {
+    val p = prepareCode("""
+      int f(int, int);
+      int x = f(1, (2 + 2 ), y;
+    """.trimIndent(), source)
+    val funProto = int proto ("f" withParams listOf(int.toParam(), int.toParam()))
+    funProto assertEquals p.root.decls[0]
+    val f = nameRef("f", typeNameOf(funProto.declSpecs, funProto.declaratorList[0].first))
+    int declare listOf("x" assign f()) assertEquals p.root.decls[1]
+    // The parser gets incredibly confused by stuff like this
+    // It is impossible to know exactly what is valid and what isn't when parens aren't matched, so
+    // we only want to see if the root cause (unmatched paren) is reported
+    assert(DiagnosticId.UNMATCHED_PAREN in p.diags.ids)
   }
 }

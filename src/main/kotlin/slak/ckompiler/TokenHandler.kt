@@ -33,8 +33,14 @@ interface ITokenHandler<Token : TokenObject> {
    */
   fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T
 
-  /** @return the first (real) index matching the condition, or -1 if there is none */
-  fun indexOfFirst(block: (Token) -> Boolean): Int
+  /**
+   * @param startIdx the context idx to start from (or -1 for the current idx)
+   * @return the first context index matching the condition, or -1 if there is none
+   */
+  fun indexOfFirst(startIdx: Int, block: (Token) -> Boolean): Int
+
+  /** @see indexOfFirst */
+  fun indexOfFirst(block: (Token) -> Boolean): Int = indexOfFirst(-1, block)
 
   val tokenCount: Int
   fun current(): Token
@@ -83,9 +89,10 @@ class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: Debug
 
   override fun parentContext(): List<Token> = tokStack[tokStack.size - 2]
 
-  override fun indexOfFirst(block: (Token) -> Boolean): Int {
-    val idx = tokStack.peek().drop(idxStack.peek()).indexOfFirst(block)
-    return if (idx == -1) -1 else idx + idxStack.peek()
+  override fun indexOfFirst(startIdx: Int, block: (Token) -> Boolean): Int {
+    val toDrop = if (startIdx == -1) idxStack.peek() else startIdx
+    val idx = tokStack.peek().drop(toDrop).indexOfFirst(block)
+    return if (idx == -1) -1 else idx + toDrop
   }
 
   override fun isEaten(): Boolean = idxStack.peek() >= tokenCount

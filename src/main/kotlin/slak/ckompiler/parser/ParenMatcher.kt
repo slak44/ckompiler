@@ -12,18 +12,28 @@ interface IParenMatcher {
    * parens.
    * @param lparen the left paren: eg '(' or '[' or '{'
    * @param rparen the right paren: eg ')' or ']' or '}'
+   * @param startIdx see [slak.ckompiler.ITokenHandler.indexOfFirst]'s startIdx
+   * @param disableDiags don't generate diagnostics if true
    * @param stopAtSemi whether or not to return -1 when hitting a semicolon
    * @return -1 if the parens are unbalanced or a [Punctuators.SEMICOLON] was found before they can
    * get balanced (and [stopAtSemi] is true), the size of the token stack if there were no parens,
-   * or the (real) idx of the rightmost paren otherwise
+   * or the context idx of the rightmost paren otherwise
    */
-  fun findParenMatch(lparen: Punctuators, rparen: Punctuators, stopAtSemi: Boolean = true): Int
+  fun findParenMatch(lparen: Punctuators,
+                     rparen: Punctuators,
+                     startIdx: Int = -1,
+                     disableDiags: Boolean = false,
+                     stopAtSemi: Boolean = true): Int
 
   /**
    * [findParenMatch] for [Keywords].
    * @see findParenMatch
    */
-  fun findKeywordMatch(begin: Keywords, end: Keywords, stopAtSemi: Boolean = true): Int
+  fun findKeywordMatch(begin: Keywords,
+                       end: Keywords,
+                       startIdx: Int = -1,
+                       disableDiags: Boolean = false,
+                       stopAtSemi: Boolean = true): Int
 }
 
 class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler<LexicalToken>) :
@@ -36,11 +46,15 @@ class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler<Lexica
    * @see findParenMatch
    * @see findKeywordMatch
    */
-  private inline fun <reified T, E> findMatch(start: E, final: E, stopAtSemi: Boolean): Int
+  private inline fun <reified T, E> findMatch(start: E,
+                                              final: E,
+                                              startIdx: Int,
+                                              disableDiags: Boolean,
+                                              stopAtSemi: Boolean): Int
       where T : StaticToken, E : StaticTokenEnum {
     var hasParens = false
     var stack = 0
-    val end = indexOfFirst {
+    val end = indexOfFirst(startIdx) {
       if (it::class != T::class) return@indexOfFirst false
       it as StaticToken
       when (it.enum) {
@@ -67,7 +81,7 @@ class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler<Lexica
       return end
     }
     if (end == -1 || (tokenAt(end) as StaticToken).enum != final) {
-      diagnostic {
+      if (!disableDiags) diagnostic {
         id = DiagnosticId.UNMATCHED_PAREN
         formatArgs(final.realName)
         if (end == -1) {
@@ -76,19 +90,27 @@ class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler<Lexica
           errorOn(tokenAt(end))
         }
       }
-      diagnostic {
+      if (!disableDiags) diagnostic {
         id = DiagnosticId.MATCH_PAREN_TARGET
         formatArgs(start.realName)
-        errorOn(safeToken(0))
+        errorOn(tokenAt(if (startIdx == -1) 0 else startIdx))
       }
       return -1
     }
     return end
   }
 
-  override fun findParenMatch(lparen: Punctuators, rparen: Punctuators, stopAtSemi: Boolean) =
-      findMatch<Punctuator, Punctuators>(lparen, rparen, stopAtSemi)
+  override fun findParenMatch(lparen: Punctuators,
+                              rparen: Punctuators,
+                              startIdx: Int,
+                              disableDiags: Boolean,
+                              stopAtSemi: Boolean) =
+      findMatch<Punctuator, Punctuators>(lparen, rparen, startIdx, disableDiags, stopAtSemi)
 
-  override fun findKeywordMatch(begin: Keywords, end: Keywords, stopAtSemi: Boolean) =
-      findMatch<Keyword, Keywords>(begin, end, stopAtSemi)
+  override fun findKeywordMatch(begin: Keywords,
+                                end: Keywords,
+                                startIdx: Int,
+                                disableDiags: Boolean,
+                                stopAtSemi: Boolean) =
+      findMatch<Keyword, Keywords>(begin, end, startIdx, disableDiags, stopAtSemi)
 }

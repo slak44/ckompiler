@@ -494,29 +494,33 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
           else TypedIdentifier.from(ds, declarator)
       newIdentifier(identifier)
     }
+
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       eat()
       addDeclaratorToScope(firstDecl)
       return listOfNotNull(firstDecl).map { it to null }
     }
+
+    fun parseDeclarationInitializer(endIdx: Int): ExpressionInitializer? {
+      if (current().asPunct() != Punctuators.ASSIGN) return null
+      val assignTok = current()
+      val initializer = parseInitializer(endIdx)
+      if (!ds.isTypedef()) return initializer
+      diagnostic {
+        id = DiagnosticId.TYPEDEF_NO_INITIALIZER
+        columns(assignTok..initializer)
+      }
+      return ExpressionInitializer.from(error<ErrorExpression>())
+    }
+
     val declaratorList = mutableListOf<Pair<Declarator, Initializer?>>()
-    // If firstDecl is null, we act as if it was already processed
-    var firstDeclUsed = firstDecl == null
-    while (true) {
-      val declarator = (if (firstDeclUsed) {
-        parseNamedDeclarator(tokenCount)
-      } else {
-        firstDeclUsed = true
-        firstDecl!!
-      })
+
+    fun processDeclarator(declarator: Declarator, endIdx: Int): Boolean {
       if (declarator is ErrorDeclarator) {
-        val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-        if (parenEndIdx == -1) {
-          TODO("handle error case where there is an unmatched paren in the initializer")
-        }
         val stopIdx = indexOfFirst(Punctuators.COMMA, Punctuators.SEMICOLON)
-        if (stopIdx != -1) eatUntil(stopIdx)
+        if (stopIdx == -1) eatToSemi()
+        else eatUntil(stopIdx)
       }
       addDeclaratorToScope(declarator)
       if (isEaten()) {
@@ -526,31 +530,16 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
           column(colPastTheEnd(0))
         }
         declaratorList += declarator to null
-        break
+        return true
       }
-      declaratorList += if (current().asPunct() == Punctuators.ASSIGN) {
-        val assignTok = current()
-        val initializer = parseInitializer(tokenCount)
-        if (ds.isTypedef()) {
-          diagnostic {
-            id = DiagnosticId.TYPEDEF_NO_INITIALIZER
-            columns(assignTok..initializer)
-          }
-          declarator to null
-        } else {
-          declarator to initializer
-        }
-      } else {
-        declarator to null
-      }
+      declaratorList += declarator to parseDeclarationInitializer(endIdx)
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
         eat()
-        continue
       } else if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
         // Expected case; semi at the end of `declaration`
         eat()
-        break
+        return true
       } else {
         // Missing semicolon
         diagnostic {
@@ -558,8 +547,39 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
           formatArgs("declarator")
           column(colPastTheEnd(0))
         }
-        break
+        return true
       }
+      return false
+    }
+    // If firstDecl is null, we act as if it was already processed
+    var firstDeclUsed = firstDecl == null
+    while (true) {
+      // This is here to find the index of the comma that separates declarators (ignoring commas
+      // found in initializers). Is [tokenCount] if there is no comma.
+      val firstThingIdx = indexOfFirst(Punctuators.COMMA, Punctuators.LPAREN)
+      val parenEndIdx = findParenMatch(
+          Punctuators.LPAREN, Punctuators.RPAREN, startIdx = firstThingIdx, disableDiags = true)
+      val declEnd = when {
+        parenEndIdx == -1 -> {
+          val commaIdx = indexOfFirst(Punctuators.COMMA)
+          if (commaIdx == -1) tokenCount else commaIdx
+        }
+        firstThingIdx == -1 -> tokenCount
+        tokenAt(firstThingIdx).asPunct() == Punctuators.COMMA -> firstThingIdx
+        tokenAt(firstThingIdx).asPunct() == Punctuators.LPAREN -> {
+          val commaIdx = indexOfFirst(parenEndIdx) { it.asPunct() == Punctuators.COMMA }
+          if (commaIdx == -1) tokenCount else commaIdx
+        }
+        else -> tokenCount
+      }
+      val declarator = if (firstDeclUsed) {
+        parseNamedDeclarator(declEnd)
+      } else {
+        firstDeclUsed = true
+        firstDecl!!
+      }
+      val shouldBreak = processDeclarator(declarator, declEnd)
+      if (shouldBreak) break
     }
     return declaratorList
   }

@@ -89,6 +89,25 @@ internal infix fun DeclarationSpecifier.declare(decl: DeclInit) =
 internal infix fun DeclarationSpecifier.declare(decl: Declarator) =
     Declaration(this, listOf(decl to null))
 
+internal inline infix fun <reified T : Any>
+    DeclarationSpecifier.declare(list: List<T>): Declaration {
+  if (list.isEmpty()) return Declaration(this, emptyList())
+  val decls = list.map {
+    when (it) {
+      is String -> nameDecl(it) to null
+      is Declarator -> (it as Declarator) to null
+      is Pair<*, *> -> {
+        if (it.first !is Declarator) throw IllegalArgumentException("Bad decl type")
+        if (it.second !is Initializer) throw IllegalArgumentException("Bad init type")
+        @Suppress("UNCHECKED_CAST") // It is checked just above
+        it as DeclInit
+      }
+      else -> throw IllegalArgumentException("Bad type")
+    }
+  }
+  return Declaration(this, decls)
+}
+
 @JvmName("declareDeclarators")
 internal infix fun DeclarationSpecifier.declare(list: List<DeclInit>) =
     Declaration(this, list.map { it })
@@ -266,6 +285,7 @@ private fun <T> parseDSLElement(it: T): Expression {
     is Expression -> it
     is Int -> int(it.toLong())
     is Double -> double(it.toDouble())
+    is Declaration -> throw IllegalArgumentException("Bad types (did you mean to use a nameRef?)")
     else -> throw IllegalArgumentException("Bad types")
   }
 }

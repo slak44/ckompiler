@@ -39,6 +39,27 @@ class DeclarationTests {
   }
 
   @Test
+  fun `Initializer And Multiple Declarators Don't Confuse Comma Expression`() {
+    val p = prepareCode("int x = 5, y;", source)
+    p.assertNoDiagnostics()
+    int declare listOf("x" assign 5, "y") assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Initializer And Multiple Declarators Don't Confuse Comma Expression With Parens`() {
+    val p = prepareCode("int x = (5), y;", source)
+    p.assertNoDiagnostics()
+    int declare listOf("x" assign 5, "y") assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Initializer Comma Expression In Parens Does Not Separate Declarators`() {
+    val p = prepareCode("int x = (5, 6);", source)
+    p.assertNoDiagnostics()
+    int declare ("x" assign (5 comma 6)) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Identifier Initializer`() {
     val p = prepareCode("int a = someVariable;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)

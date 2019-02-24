@@ -30,7 +30,7 @@ class StatementParser(declarationParser: DeclarationParser,
   override fun parseCompoundStatement(functionScope: LexicalScope?): Statement? {
     val lbracket = current()
     if (current().asPunct() != Punctuators.LBRACKET) return null
-    val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, false)
+    val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
     eat() // Get rid of '{'
     if (rbracket == -1) {
       // Try to recover
