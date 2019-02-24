@@ -60,6 +60,14 @@ private fun BasicBlock.graphDataImpl(nodes: MutableList<Node>, edges: MutableLis
       edges += Edge(thisNode, t.other.graphDataImpl(nodes, edges), EdgeType.COND_FALSE)
       thisNode
     }
+    is ConstantJump -> {
+      val thisNode = Node(this)
+      nodes += thisNode
+      val t = terminator as ConstantJump
+      edges += Edge(thisNode, t.target.graphDataImpl(nodes, edges))
+      edges += Edge(thisNode, t.impossible.graphDataImpl(nodes, edges), EdgeType.IMPOSSIBLE)
+      thisNode
+    }
     MissingJump -> Node(BasicBlock())
   }
 }

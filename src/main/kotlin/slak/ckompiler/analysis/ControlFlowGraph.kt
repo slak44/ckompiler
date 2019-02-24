@@ -17,6 +17,12 @@ data class UncondJump(val target: BasicBlock) : Jump()
 /** A so-called "impossible edge" of the CFG. Like a [UncondJump], but will never be traversed. */
 data class ImpossibleJump(val target: BasicBlock) : Jump()
 
+/**
+ * Combination of [UncondJump] and [ImpossibleJump].
+ * Always jumps to [target], never to [impossible].
+ */
+data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Jump()
+
 /** Indicates an incomplete [BasicBlock]. */
 object MissingJump : Jump()
 
@@ -145,18 +151,18 @@ class BasicBlock(val isRoot: Boolean = false) {
       }
       is ContinueStatement -> {
         val afterContinue = BasicBlock()
-        current.terminator = UncondJump(currentLoopBlock!!)
+        current.terminator = ConstantJump(currentLoopBlock!!, afterContinue)
         afterContinue
       }
       is BreakStatement -> {
         val afterBreak = BasicBlock()
-        current.terminator = UncondJump(loopAfterBlock!!)
+        current.terminator = ConstantJump(loopAfterBlock!!, afterBreak)
         afterBreak
       }
       is GotoStatement -> {
         val labelBlock = labelBlockFor(s.identifier.name)
         val afterGoto = BasicBlock()
-        current.terminator = UncondJump(labelBlock)
+        current.terminator = ConstantJump(labelBlock, afterGoto)
         afterGoto
       }
       is ReturnStatement -> {
