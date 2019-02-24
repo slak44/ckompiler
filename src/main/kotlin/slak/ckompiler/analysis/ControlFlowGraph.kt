@@ -47,6 +47,10 @@ class BasicBlock(val isRoot: Boolean = false) {
           value.target.preds += this
           value.other.preds += this
         }
+        is ConstantJump -> {
+          value.target.preds += this
+          value.impossible.preds += this
+        }
         is UncondJump -> value.target.preds += this
         is ImpossibleJump -> value.target.preds += this
       }
@@ -54,16 +58,56 @@ class BasicBlock(val isRoot: Boolean = false) {
 
   override fun toString() = "BasicBlock(${data.joinToString("\n")})"
 
-  fun isEnd() = terminator is ImpossibleJump
-
   fun isTerminated() = terminator !is MissingJump
 
+  /**
+   * Collapses empty predecessor blocks to this one if possible, and does so recursively up the
+   * graph. Run on the exit block to collapse everything in the graph (the exit block should
+   * post-dominate all other blocks).
+   */
+  fun collapseIfEmptyRecusively() {
+    collapseImpl(mutableListOf())
+  }
+
+  private fun collapseImpl(nodes: MutableList<BasicBlock>) {
+    if (this in nodes) return
+    nodes += this
+    emptyBlockLoop@ for (emptyBlock in preds.filter { it.data.isEmpty() }) {
+      if (emptyBlock.terminator !is UncondJump) continue
+      for (emptyBlockPred in emptyBlock.preds) {
+        val oldTerm = emptyBlockPred.terminator
+        when (oldTerm) {
+          is UncondJump -> emptyBlockPred.terminator = UncondJump(this)
+          is ImpossibleJump -> emptyBlockPred.terminator = ImpossibleJump(this)
+          is CondJump -> {
+            emptyBlockPred.terminator = CondJump(
+                oldTerm.cond,
+                if (oldTerm.target == emptyBlock) this else oldTerm.target,
+                if (oldTerm.other == emptyBlock) this else oldTerm.other
+            )
+          }
+          is ConstantJump -> {
+            emptyBlockPred.terminator = ConstantJump(
+                if (oldTerm.target == emptyBlock) this else oldTerm.target,
+                if (oldTerm.impossible == emptyBlock) this else oldTerm.impossible
+            )
+          }
+          else -> continue@emptyBlockLoop
+        }
+        this.preds += emptyBlockPred
+      }
+      emptyBlock.preds.clear()
+      this.preds -= emptyBlock
+    }
+    preds.forEach { it.collapseImpl(nodes) }
+  }
+
   companion object {
-    fun createGraphFor(f: FunctionDefinition): BasicBlock {
+    fun createGraphFor(f: FunctionDefinition): Pair<BasicBlock, BasicBlock> {
       val startBlock = BasicBlock(isRoot = true)
       val labels = f.block.scope.labels.map { it.name to BasicBlock() }
-      GraphContext(labels = labels).graphCompound(startBlock, f.block)
-      return startBlock
+      val exitBlock = GraphContext(labels = labels).graphCompound(startBlock, f.block)
+      return startBlock to exitBlock
     }
 
     private fun GraphContext.graphCompound(current: BasicBlock,

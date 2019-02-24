@@ -98,7 +98,7 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
   val content = nodes.joinToString(sep) {
     val style = when {
       it.basicBlock.isRoot -> "style=filled,color=$BLOCK_START"
-      it.basicBlock.isEnd() -> "style=filled,color=$BLOCK_RETURN"
+      it.basicBlock.terminator is ImpossibleJump -> "style=filled,color=$BLOCK_RETURN"
       else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
     }
     val rawCode = it.basicBlock.data.joinToString("\n") { node -> node.originalCode(sourceCode) }

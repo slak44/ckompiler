@@ -5,6 +5,7 @@ import slak.ckompiler.IDebugHandler
 
 /**
  * Print diagnostics on unreachable code.
+ * It's recommended that [BasicBlock.collapseIfEmptyRecusively] be called on the graph beforehand.
  * @return [graphRoot]
  */
 fun IDebugHandler.warnDeadCode(graphRoot: BasicBlock): BasicBlock {
@@ -23,15 +24,19 @@ private fun IDebugHandler.warnDeadCodeImpl(block: BasicBlock, nodes: MutableList
   if (block in nodes) return
   nodes += block
   when {
-    block.terminator is ImpossibleJump -> warnAllNodes((block.terminator as ImpossibleJump).target)
-    block.terminator is UncondJump -> warnDeadCode((block.terminator as UncondJump).target)
+    block.terminator is UncondJump -> {
+      warnDeadCodeImpl((block.terminator as UncondJump).target, nodes)
+    }
+    block.terminator is ImpossibleJump -> {
+      warnAllNodes((block.terminator as ImpossibleJump).target)
+    }
     block.terminator is CondJump -> {
-      warnDeadCode((block.terminator as CondJump).target)
-      warnDeadCode((block.terminator as CondJump).target)
+      warnDeadCodeImpl((block.terminator as CondJump).target, nodes)
+      warnDeadCodeImpl((block.terminator as CondJump).target, nodes)
     }
     block.terminator is ConstantJump -> {
       warnAllNodes((block.terminator as ConstantJump).impossible)
-      warnDeadCode((block.terminator as ConstantJump).target)
+      warnDeadCodeImpl((block.terminator as ConstantJump).target, nodes)
     }
   }
 }

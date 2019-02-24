@@ -16,6 +16,8 @@ fun main(args: Array<String>) {
   val ppOnly by cli.flagArgument("-E", "Preprocess only")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
+  val collapseCFG by cli.flagArgument("--collapse-cfg",
+      "Collapse empty blocks in the control flow graph (requires --print-cfg-graphviz)")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
   val files by cli.positionalArgumentsList(
@@ -49,7 +51,9 @@ fun main(args: Array<String>) {
     }
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
-      val startBlock = createGraphFor(p.root.decls.mapNotNull { d -> d as? FunctionDefinition }[0])
+      val (startBlock, exitBlock) =
+          createGraphFor(p.root.decls.mapNotNull { d -> d as? FunctionDefinition }[0])
+      if (collapseCFG) exitBlock.collapseIfEmptyRecusively()
       println(createGraphviz(startBlock, text))
       return
     }
