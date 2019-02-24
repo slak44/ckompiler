@@ -6,153 +6,165 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger("ControlFlow")
 
-sealed class CFGNode {
-  val id: String get() = "${javaClass.simpleName}_$objNr"
-  private val objNr = objIndex++
+sealed class Jump
 
-  override fun equals(other: Any?) = objNr == (other as? CFGNode)?.objNr
-  override fun hashCode() = objNr
+/** If [cond] is true, jump to [target], otherwise jump to [other]. */
+data class CondJump(val cond: Expression, val target: BasicBlock, val other: BasicBlock) : Jump()
+
+/** Unconditionally jump to [target]. */
+data class UncondJump(val target: BasicBlock) : Jump()
+
+/** A so-called "impossible edge" of the CFG. Like a [UncondJump], but will never be traversed. */
+data class ImpossibleJump(val target: BasicBlock) : Jump()
+
+/** Indicates an incomplete [BasicBlock]. */
+object MissingJump : Jump()
+
+private data class GraphContext(val currentLoopBlock: BasicBlock? = null,
+                                val loopAfterBlock: BasicBlock? = null,
+                                val labels: List<Pair<String, BasicBlock>> = emptyList()) {
+  fun labelBlockFor(labelName: String): BasicBlock {
+    val blockOrNull = labels.firstOrNull { it.first == labelName }?.second
+    blockOrNull ?: logger.throwICE("Can't find label block in context") { "$this/$labelName" }
+    return blockOrNull
+  }
+}
+
+class BasicBlock(val isRoot: Boolean = false) {
+  private val preds: MutableSet<BasicBlock> = mutableSetOf()
+  val data: MutableList<ASTNode> = mutableListOf()
+  var terminator: Jump = MissingJump
+    private set(value) {
+      field = value
+      when (value) {
+        is CondJump -> {
+          value.target.preds += this
+          value.other.preds += this
+        }
+        is UncondJump -> value.target.preds += this
+        is ImpossibleJump -> value.target.preds += this
+      }
+    }
+
+  override fun toString() = "BasicBlock(${data.joinToString("\n")})"
+
+  fun isEnd() = terminator is ImpossibleJump
+
+  fun isTerminated() = terminator !is MissingJump
 
   companion object {
-    private var objIndex = 0
-  }
-}
-
-sealed class CFGTerminator : CFGNode()
-
-data class CondJump(val cond: Expression?,
-                    val target: BasicBlock,
-                    val other: BasicBlock) : CFGTerminator()
-
-data class UncondJump(val target: BasicBlock) : CFGTerminator()
-
-data class Return(val value: Expression?, val deadCode: BasicBlock? = null) : CFGTerminator()
-
-object Unterminated : CFGTerminator()
-
-class BasicBlock(vararg initPreds: BasicBlock, term: CFGTerminator = Unterminated) : CFGNode() {
-  private var isDead = false
-  private val preds: MutableSet<BasicBlock> = initPreds.toMutableSet()
-  val data: MutableList<ASTNode> = mutableListOf()
-  var terminator: CFGTerminator = term
-    private set
-
-  override fun toString() =
-      if (isDead) "DEAD@${hashCode()}" else "BasicBlock(${data.joinToString("\n")})"
-
-  fun isStart() = preds.isEmpty()
-
-  fun isTerminated() = terminator !is Unterminated
-
-  fun setTerminator(lazyTerminator: () -> CFGTerminator) {
-    if (isTerminated()) {
-      logger.warn { "Setting terminator of block that is already terminated; old: $terminator" }
+    fun createGraphFor(f: FunctionDefinition): BasicBlock {
+      val startBlock = BasicBlock(isRoot = true)
+      val labels = f.block.scope.labels.map { it.name to BasicBlock() }
+      GraphContext(labels = labels).graphCompound(startBlock, f.block)
+      return startBlock
     }
-    terminator = lazyTerminator()
-    collapseEmptyBlocks()
-  }
 
-  private fun collapseEmptyBlocks() {
-    preds.filter { it.data.isEmpty() }.forEach emptyBlockLoop@{ emptyBlock ->
-      if (emptyBlock.terminator !is UncondJump) return@emptyBlockLoop
-      emptyBlock.preds.forEach {
-        when (it.terminator) {
-          is UncondJump -> it.terminator = UncondJump(this)
-          is CondJump -> {
-            val t = it.terminator as CondJump
-            it.terminator = CondJump(
-                t.cond,
-                if (t.target == emptyBlock) this else t.target,
-                if (t.other == emptyBlock) this else t.other
-            )
-          }
-          else -> return@emptyBlockLoop
+    private fun GraphContext.graphCompound(current: BasicBlock,
+                                           compoundStatement: CompoundStatement): BasicBlock {
+      var block = current
+      val newLabels = compoundStatement.scope.labels.map { it.name to BasicBlock() }
+      val context = this.copy(labels = labels + newLabels)
+      for (item in compoundStatement.items) {
+        when (item) {
+          is StatementItem -> block = context.graphStatement(block, item.statement)
+          is DeclarationItem -> block.data += item.declaration
         }
-        this.preds += it
       }
-      this.preds -= emptyBlock
-      emptyBlock.isDead = true
+      return block
     }
-  }
-}
 
-fun createGraphFor(f: FunctionDefinition): BasicBlock {
-  val startBlock = BasicBlock()
-  graphCompound(startBlock, f.block)
-  return startBlock
-}
-
-fun graphCompound(current: BasicBlock, compoundStatement: CompoundStatement): BasicBlock {
-  var block = current
-  for (item in compoundStatement.items) {
-    when (item) {
-      is StatementItem -> block = graphStatement(block, item.statement)
-      is DeclarationItem -> block.data += item.declaration
+    private fun GraphContext.graphStatement(current: BasicBlock,
+                                            s: Statement): BasicBlock = when (s) {
+      is ErrorStatement,
+      is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
+      is Expression, is Noop -> {
+        current.data += s
+        current
+      }
+      is LabeledStatement -> {
+        val blockWithLabel = labelBlockFor(s.label.name)
+        blockWithLabel.data += s
+        current.terminator = UncondJump(blockWithLabel)
+        blockWithLabel
+      }
+      is CompoundStatement -> graphCompound(current, s)
+      is IfStatement -> {
+        val ifBlock = BasicBlock()
+        val elseBlock = BasicBlock()
+        val ifNext = graphStatement(ifBlock, s.success)
+        val elseNext = s.failure?.let { graphStatement(elseBlock, it) }
+        val afterIfBlock = BasicBlock()
+        current.terminator = run {
+          val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
+          CondJump(s.cond, ifBlock, falseBlock)
+        }
+        ifNext.terminator = UncondJump(afterIfBlock)
+        elseNext?.terminator = UncondJump(afterIfBlock)
+        afterIfBlock
+      }
+      is SwitchStatement -> TODO("implement switches")
+      is WhileStatement -> {
+        val loopBlock = BasicBlock()
+        val afterLoopBlock = BasicBlock()
+        val loopContext = GraphContext(loopBlock, afterLoopBlock, labels)
+        val loopNext = loopContext.graphStatement(loopBlock, s.loopable)
+        current.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
+        loopNext.terminator = UncondJump(current)
+        afterLoopBlock
+      }
+      is DoWhileStatement -> {
+        val loopBlock = BasicBlock()
+        val afterLoopBlock = BasicBlock()
+        val loopContext = GraphContext(loopBlock, afterLoopBlock, labels)
+        val loopNext = loopContext.graphStatement(loopBlock, s.loopable)
+        current.terminator = UncondJump(loopBlock)
+        loopNext.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
+        afterLoopBlock
+      }
+      is ForStatement -> {
+        when (s.init) {
+          is EmptyInitializer -> { /* Intentionally left empty */ }
+          is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
+          is ForExpressionInitializer -> current.data += s.init.value
+          is DeclarationInitializer -> current.data += s.init.value
+        }
+        val loopBlock = BasicBlock()
+        val afterLoopBlock = BasicBlock()
+        val loopContext = GraphContext(loopBlock, afterLoopBlock, labels)
+        val loopNext = loopContext.graphStatement(loopBlock, s.loopable)
+        s.loopEnd?.let { graphStatement(loopNext, it) }
+        if (s.cond == null) {
+          // No for condition means unconditional jump to loop block
+          current.terminator = UncondJump(loopBlock)
+        } else {
+          current.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
+        }
+        loopNext.terminator = current.terminator
+        afterLoopBlock
+      }
+      is ContinueStatement -> {
+        val afterContinue = BasicBlock()
+        current.terminator = UncondJump(currentLoopBlock!!)
+        afterContinue
+      }
+      is BreakStatement -> {
+        val afterBreak = BasicBlock()
+        current.terminator = UncondJump(loopAfterBlock!!)
+        afterBreak
+      }
+      is GotoStatement -> {
+        val labelBlock = labelBlockFor(s.identifier.name)
+        val afterGoto = BasicBlock()
+        current.terminator = UncondJump(labelBlock)
+        afterGoto
+      }
+      is ReturnStatement -> {
+        current.data += s
+        val deadCodeBlock = BasicBlock()
+        current.terminator = ImpossibleJump(deadCodeBlock)
+        deadCodeBlock
+      }
     }
-  }
-  return block
-}
-
-fun graphStatement(current: BasicBlock, s: Statement): BasicBlock = when (s) {
-  is ErrorStatement,
-  is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-  is Expression, is LabeledStatement, is Noop -> {
-    current.data += s
-    current
-  }
-  is CompoundStatement -> graphCompound(current, s)
-  is IfStatement -> {
-    val ifBlock = BasicBlock(current)
-    val elseBlock = BasicBlock(current)
-    val ifNext = graphStatement(ifBlock, s.success)
-    val elseNext = s.failure?.let { graphStatement(elseBlock, it) }
-    val afterIfBlock = BasicBlock(ifNext, elseNext ?: current)
-    current.setTerminator {
-      val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
-      CondJump(s.cond, ifBlock, falseBlock)
-    }
-    ifNext.setTerminator { UncondJump(afterIfBlock) }
-    elseNext?.setTerminator { UncondJump(afterIfBlock) }
-    afterIfBlock
-  }
-  is SwitchStatement -> TODO("implement switches")
-  is WhileStatement -> {
-    val loopBlock = BasicBlock(current)
-    val loopNext = graphStatement(loopBlock, s.loopable)
-    val afterLoopBlock = BasicBlock(current, loopNext)
-    current.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
-    loopNext.setTerminator { current.terminator }
-    afterLoopBlock
-  }
-  is DoWhileStatement -> {
-    val loopBlock = BasicBlock(current)
-    val loopNext = graphStatement(loopBlock, s.loopable)
-    val afterLoopBlock = BasicBlock(loopNext)
-    current.setTerminator { UncondJump(loopBlock) }
-    loopNext.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
-    afterLoopBlock
-  }
-  is ForStatement -> {
-    when (s.init) {
-      is EmptyInitializer -> { /* Intentionally left empty */ }
-      is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-      is ForExpressionInitializer -> current.data += s.init.value
-      is DeclarationInitializer -> current.data += s.init.value
-    }
-    val loopBlock = BasicBlock(current)
-    val loopNext = graphStatement(loopBlock, s.loopable)
-    s.loopEnd?.let { graphStatement(loopNext, it) }
-    val afterLoopBlock = BasicBlock(current, loopNext)
-    current.setTerminator { CondJump(s.cond, loopBlock, afterLoopBlock) }
-    loopNext.setTerminator { current.terminator }
-    afterLoopBlock
-  }
-  is ContinueStatement -> TODO()
-  is BreakStatement -> TODO()
-  is GotoStatement -> TODO()
-  is ReturnStatement -> {
-    val deadCodeBlock = BasicBlock(current)
-    current.setTerminator { Return(s.expr, deadCodeBlock) }
-    deadCodeBlock
   }
 }

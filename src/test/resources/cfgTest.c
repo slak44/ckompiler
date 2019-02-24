@@ -15,5 +15,10 @@ int main() {
     second = first + second / i;
   }
 
+  double d = 32.23;
+  do {
+    d += 2;
+  } while (d < 123.1234);
+
   return first * second;
 }

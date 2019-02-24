@@ -2,7 +2,7 @@ package slak.ckompiler
 
 import kotlinx.cli.*
 import mu.KotlinLogging
-import slak.ckompiler.analysis.createGraphFor
+import slak.ckompiler.analysis.BasicBlock.Companion.createGraphFor
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.FunctionDefinition

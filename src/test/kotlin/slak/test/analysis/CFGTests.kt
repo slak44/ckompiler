@@ -1,7 +1,11 @@
 package slak.test.analysis
 
 import org.junit.Test
-import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.BasicBlock
+import slak.ckompiler.analysis.BasicBlock.Companion.createGraphFor
+import slak.ckompiler.analysis.CondJump
+import slak.ckompiler.analysis.ImpossibleJump
+import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.parser.ExternalDeclaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.test.assertNoDiagnostics
@@ -12,14 +16,8 @@ import slak.test.source
 private fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =
     first { it is FunctionDefinition } as FunctionDefinition
 
-private val BasicBlock.ret: Return get() {
-  assert(terminator is Return)
-  return terminator as Return
-}
-
-private fun Return.assertHasDeadCode() {
-  assert(deadCode != null)
-  assert(deadCode!!.data.isNotEmpty() || deadCode!!.isTerminated())
+private fun BasicBlock.assertHasDeadCode() {
+  assert(terminator is ImpossibleJump)
 }
 
 class CFGTests {
@@ -55,7 +53,7 @@ class CFGTests {
     p.assertNoDiagnostics()
     val startBlock = createGraphFor(p.root.decls.firstFun())
     assert(startBlock.data.isNotEmpty())
-    startBlock.ret.assertHasDeadCode()
+    startBlock.assertHasDeadCode()
   }
 
   @Test
@@ -73,7 +71,23 @@ class CFGTests {
     assert(startBlock.data.isNotEmpty())
     assert(startBlock.terminator is CondJump)
     val ifJmp = startBlock.terminator as CondJump
-    ifJmp.target.ret.assertHasDeadCode()
-    ifJmp.other.ret.assertHasDeadCode()
+    ifJmp.target.assertHasDeadCode()
+    ifJmp.other.assertHasDeadCode()
+  }
+
+  @Test
+  fun `Labels And Goto`() {
+    val p = prepareCode(resource("gotoTest.c").readText(), source)
+    p.assertNoDiagnostics()
+    createGraphFor(p.root.decls.firstFun())
+  }
+
+  @Test
+  fun `Break And Continue`() {
+    val p = prepareCode(resource("controlKeywordsTest.c").readText(), source)
+    p.assertNoDiagnostics()
+    val startBlock = createGraphFor(p.root.decls.firstFun())
+    assert(startBlock.data.isNotEmpty())
+    assert(startBlock.isTerminated())
   }
 }
