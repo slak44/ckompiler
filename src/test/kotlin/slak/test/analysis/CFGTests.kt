@@ -1,24 +1,10 @@
 package slak.test.analysis
 
 import org.junit.Test
-import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.BasicBlock.Companion.createGraphFor
 import slak.ckompiler.analysis.CondJump
-import slak.ckompiler.analysis.ImpossibleJump
 import slak.ckompiler.analysis.createGraphviz
-import slak.ckompiler.parser.ExternalDeclaration
-import slak.ckompiler.parser.FunctionDefinition
-import slak.test.assertNoDiagnostics
-import slak.test.prepareCode
-import slak.test.resource
-import slak.test.source
-
-private fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =
-    first { it is FunctionDefinition } as FunctionDefinition
-
-private fun BasicBlock.assertHasDeadCode() {
-  assert(terminator is ImpossibleJump)
-}
+import slak.test.*
 
 class CFGTests {
   @Test

@@ -1,9 +1,8 @@
 package slak.test
 
-import slak.ckompiler.Diagnostic
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.Preprocessor
-import slak.ckompiler.SourceFileName
+import slak.ckompiler.*
+import slak.ckompiler.analysis.BasicBlock
+import slak.ckompiler.analysis.ImpossibleJump
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import java.io.File
@@ -12,6 +11,7 @@ import kotlin.test.assertEquals
 internal fun Preprocessor.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
 internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
+internal fun IDebugHandler.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s).file)
 
@@ -23,9 +23,26 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   return Parser(lexer.tokens, source, s)
 }
 
+internal fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =
+    first { it is FunctionDefinition } as FunctionDefinition
+
+internal fun BasicBlock.assertHasDeadCode() {
+  assert(terminator is ImpossibleJump)
+}
+
+private val dh: MutableMap<String, IDebugHandler?> = mutableMapOf()
+
+internal fun <T : Any> T.analysisDh(code: String): IDebugHandler {
+  val key = source + code
+  if (dh[key] == null) dh[key] = DebugHandler("AnalysisTests", source, code)
+  return dh[key]!!
+}
+
 internal val List<Diagnostic>.ids get() = map { it.id }
 
 internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toList(), diags.ids)
+internal fun IDebugHandler.assertDiags(vararg ids: DiagnosticId) =
+    assertEquals(ids.toList(), diags.ids)
 
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 

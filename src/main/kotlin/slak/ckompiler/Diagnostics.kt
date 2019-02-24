@@ -83,6 +83,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNEXPECTED_TYPEDEF_USE(ERROR, """
     Unexpected type name '%s' (aka '%s'); expected primary expression
   """.trimIndent()),
+
+  // Analysis
+  UNREACHABLE_CODE(WARNING, "Code will never be executed"),
 }
 
 enum class DiagnosticKind(val text: String) {
