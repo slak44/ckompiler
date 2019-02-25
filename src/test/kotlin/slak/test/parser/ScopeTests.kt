@@ -160,4 +160,18 @@ class ScopeTests {
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
   }
+
+  @Test
+  fun `Block Scope Inner`() {
+    val p = prepareCode("""
+      int main() {
+        {
+          int x = 1;
+          { x = 3; int x = 2; }
+          return x;
+        }
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
 }
