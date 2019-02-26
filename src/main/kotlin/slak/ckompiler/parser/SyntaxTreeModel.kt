@@ -623,6 +623,23 @@ data class FunctionDefinition(val declSpec: DeclarationSpecifier,
     compoundStatement.setParent(this)
   }
 
+  fun localsList(): List<Declaration> {
+    val declarations = mutableListOf<Declaration>()
+    fun localsListImpl(cs: CompoundStatement) {
+      cs.items.forEach {
+        if (it is DeclarationItem) declarations += it.declaration
+        if (it is StatementItem &&
+            it.statement is ForStatement &&
+            it.statement.init is DeclarationInitializer) {
+          declarations += it.statement.init.value
+        }
+        if (it is StatementItem && it.statement is CompoundStatement) localsListImpl(it.statement)
+      }
+    }
+    localsListImpl(block)
+    return declarations
+  }
+
   override fun toString(): String {
     return "FunctionDefinition($declSpec, $functionDeclarator, $compoundStatement)"
   }
