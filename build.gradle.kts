@@ -2,7 +2,7 @@ import java.net.URI
 
 plugins {
   application
-  kotlin("jvm") version "1.3.20"
+  kotlin("jvm") version "1.3.21"
 }
 
 group = "ckompiler"
@@ -21,7 +21,8 @@ repositories {
 dependencies {
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
-  implementation(group = "com.github.Kotlin", name = "kotlinx.cli", version = "-SNAPSHOT")
+  implementation(group = "com.github.Kotlin", name = "kotlinx.cli",
+      version = "fd284ee94256a57b600b543670f2a07fc2f53820")
   implementation(group = "org.slf4j", name = "slf4j-log4j12", version = "1.7.25")
   implementation(group = "io.github.microutils", name = "kotlin-logging", version = "1.6.10")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
