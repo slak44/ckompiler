@@ -4,7 +4,9 @@ import org.junit.Test
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CondJump
 import slak.ckompiler.analysis.createGraphviz
+import slak.ckompiler.parser.ReturnStatement
 import slak.test.*
+import kotlin.test.assertEquals
 
 class CFGTests {
   @Test
@@ -32,6 +34,20 @@ class CFGTests {
     val cfg = CFG(p.root.decls.firstFun(), true)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
+  }
+
+  @Test
+  fun `Dominance Frontier For A Simple If Statement`() {
+    val p = prepareCode(resource("dominanceFrontierTest.c").readText(), source)
+    p.assertNoDiagnostics()
+    val cfg = CFG(p.root.decls.firstFun(), true)
+    cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
+    assert(cfg.startBlock.dominanceFrontier.isEmpty())
+    val t = cfg.startBlock.terminator as CondJump
+    val ret = cfg.nodes.first { it.data.last() is ReturnStatement }
+    assertEquals(setOf(ret), t.target.dominanceFrontier)
+    assertEquals(setOf(ret), t.other.dominanceFrontier)
+    assert(cfg.exitBlock.dominanceFrontier.isEmpty())
   }
 
   @Test
