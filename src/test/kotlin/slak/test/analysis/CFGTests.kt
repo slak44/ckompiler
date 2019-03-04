@@ -1,7 +1,7 @@
 package slak.test.analysis
 
 import org.junit.Test
-import slak.ckompiler.analysis.BasicBlock.Companion.createGraphFor
+import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CondJump
 import slak.ckompiler.analysis.createGraphviz
 import slak.test.*
@@ -11,9 +11,27 @@ class CFGTests {
   fun `CFG Creation Doesn't Fail`() {
     val p = prepareCode(resource("cfgTest.c").readText(), source)
     p.assertNoDiagnostics()
-    val (startBlock, _) = createGraphFor(p.root.decls.firstFun())
-    assert(startBlock.data.isNotEmpty())
-    assert(startBlock.isTerminated())
+    val cfg = CFG(p.root.decls.firstFun(), true)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
+  }
+
+  @Test
+  fun `CFG Creation Doesn't Fail 2`() {
+    val p = prepareCode(resource("domsTest.c").readText(), source)
+    p.assertNoDiagnostics()
+    val cfg = CFG(p.root.decls.firstFun(), true)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
+  }
+
+  @Test
+  fun `CFG Creation Doesn't Fail 3`() {
+    val p = prepareCode(resource("domsTest2.c").readText(), source)
+    p.assertNoDiagnostics()
+    val cfg = CFG(p.root.decls.firstFun(), true)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
   }
 
   @Test
@@ -21,10 +39,10 @@ class CFGTests {
     val text = resource("cfgTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val (startBlock, _) = createGraphFor(p.root.decls.firstFun())
-    assert(startBlock.data.isNotEmpty())
-    assert(startBlock.isTerminated())
-    createGraphviz(startBlock, text)
+    val cfg = CFG(p.root.decls.firstFun(), true)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
+    createGraphviz(cfg, text, false)
   }
 
   @Test
@@ -37,9 +55,9 @@ class CFGTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val (startBlock, _) = createGraphFor(p.root.decls.firstFun())
-    assert(startBlock.data.isNotEmpty())
-    startBlock.assertHasDeadCode()
+    val cfg = CFG(p.root.decls.firstFun(), false)
+    assert(cfg.startBlock.data.isNotEmpty())
+    cfg.startBlock.assertHasDeadCode()
   }
 
   @Test
@@ -53,10 +71,10 @@ class CFGTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val (startBlock, _) = createGraphFor(p.root.decls.firstFun())
-    assert(startBlock.data.isNotEmpty())
-    assert(startBlock.terminator is CondJump)
-    val ifJmp = startBlock.terminator as CondJump
+    val cfg = CFG(p.root.decls.firstFun(), false)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.terminator is CondJump)
+    val ifJmp = cfg.startBlock.terminator as CondJump
     ifJmp.target.assertHasDeadCode()
     ifJmp.other.assertHasDeadCode()
   }
@@ -65,15 +83,15 @@ class CFGTests {
   fun `Labels And Goto`() {
     val p = prepareCode(resource("gotoTest.c").readText(), source)
     p.assertNoDiagnostics()
-    createGraphFor(p.root.decls.firstFun())
+    CFG(p.root.decls.firstFun(), false)
   }
 
   @Test
   fun `Break And Continue`() {
     val p = prepareCode(resource("controlKeywordsTest.c").readText(), source)
     p.assertNoDiagnostics()
-    val (startBlock, _) = createGraphFor(p.root.decls.firstFun())
-    assert(startBlock.data.isNotEmpty())
-    assert(startBlock.isTerminated())
+    val cfg = CFG(p.root.decls.firstFun(), false)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
   }
 }

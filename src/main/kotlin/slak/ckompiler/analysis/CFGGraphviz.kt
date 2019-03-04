@@ -2,7 +2,6 @@ package slak.ckompiler.analysis
 
 import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.parser.ASTNode
-import slak.ckompiler.parser.Expression
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,
@@ -10,66 +9,36 @@ private enum class EdgeType {
   IMPOSSIBLE
 }
 
-private data class Node(val basicBlock: BasicBlock, val cond: Expression? = null) {
-  val id: String get() = "${javaClass.simpleName}_$objNr"
-  private val objNr = objIndex++
+private data class Edge(val from: BasicBlock,
+                        val to: BasicBlock,
+                        val type: EdgeType = EdgeType.NORMAL)
 
-  override fun equals(other: Any?) = objNr == (other as? Node)?.objNr
-  override fun hashCode() = objNr
-
-  companion object {
-    private var objIndex = 0
-  }
-}
-
-private data class Edge(val from: Node, val to: Node, val type: EdgeType = EdgeType.NORMAL)
-
-private fun BasicBlock.graphDataOf(): Pair<List<Node>, List<Edge>> {
-  val nodes = mutableListOf<Node>()
+private fun CFG.graphEdges(): List<Edge> {
   val edges = mutableListOf<Edge>()
-  graphDataImpl(nodes, edges)
-  return Pair(nodes, edges.distinct())
-}
-
-/** Implementation detail of [graphDataOf]. Recursive case. */
-private fun BasicBlock.graphDataImpl(nodes: MutableList<Node>, edges: MutableList<Edge>): Node {
-  // The graph can be cyclical, and we don't want to enter an infinite loop
-  val alreadyProcessedNode = nodes.firstOrNull { it.basicBlock == this }
-  if (alreadyProcessedNode != null) return alreadyProcessedNode
-  if (!isTerminated()) {
-    val thisNode = Node(this)
-    nodes += thisNode
-    return thisNode
+  for (node in nodes) {
+    when (node.terminator) {
+      is UncondJump, is ImpossibleJump -> {
+        val target =
+            if (node.terminator is UncondJump) (node.terminator as UncondJump).target
+            else (node.terminator as ImpossibleJump).target
+        val edgeType =
+            if (node.terminator is ImpossibleJump) EdgeType.IMPOSSIBLE else EdgeType.NORMAL
+        edges += Edge(node, target, edgeType)
+      }
+      is CondJump -> {
+        val t = node.terminator as CondJump
+        edges += Edge(node, t.target, EdgeType.COND_TRUE)
+        edges += Edge(node, t.other, EdgeType.COND_FALSE)
+      }
+      is ConstantJump -> {
+        val t = node.terminator as ConstantJump
+        edges += Edge(node, t.target)
+        edges += Edge(node, t.impossible, EdgeType.IMPOSSIBLE)
+      }
+      MissingJump -> { /* Do nothing intentionally */ }
+    }
   }
-  return when (terminator) {
-    is UncondJump, is ImpossibleJump -> {
-      val thisNode = Node(this)
-      nodes += thisNode
-      val target =
-          if (terminator is UncondJump) (terminator as UncondJump).target
-          else (terminator as ImpossibleJump).target
-      val edgeType = if (terminator is ImpossibleJump) EdgeType.IMPOSSIBLE else EdgeType.NORMAL
-      edges += Edge(thisNode, target.graphDataImpl(nodes, edges), edgeType)
-      thisNode
-    }
-    is CondJump -> {
-      val t = terminator as CondJump
-      val thisNode = Node(this, t.cond)
-      nodes += thisNode
-      edges += Edge(thisNode, t.target.graphDataImpl(nodes, edges), EdgeType.COND_TRUE)
-      edges += Edge(thisNode, t.other.graphDataImpl(nodes, edges), EdgeType.COND_FALSE)
-      thisNode
-    }
-    is ConstantJump -> {
-      val thisNode = Node(this)
-      nodes += thisNode
-      val t = terminator as ConstantJump
-      edges += Edge(thisNode, t.target.graphDataImpl(nodes, edges))
-      edges += Edge(thisNode, t.impossible.graphDataImpl(nodes, edges), EdgeType.IMPOSSIBLE)
-      thisNode
-    }
-    MissingJump -> Node(BasicBlock())
-  }
+  return edges.distinct()
 }
 
 private enum class GraphvizColors(val color: String) {
@@ -92,21 +61,22 @@ private fun ASTNode.originalCode(sourceCode: String) = sourceCode.substring(toke
  * dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
  * ```
  */
-fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
-  val (nodes, edges) = graphRoot.graphDataOf()
+fun createGraphviz(graph: CFG, sourceCode: String, reachableOnly: Boolean): String {
+  val edges = graph.graphEdges()
   val sep = "\n  "
-  val content = nodes.joinToString(sep) {
+  val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
-      it.basicBlock.isRoot -> "style=filled,color=$BLOCK_START"
-      it.basicBlock.terminator is ImpossibleJump -> "style=filled,color=$BLOCK_RETURN"
+      it.isRoot -> "style=filled,color=$BLOCK_START"
+      it.terminator is ImpossibleJump -> "style=filled,color=$BLOCK_RETURN"
       else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
     }
-    val rawCode = it.basicBlock.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
+    val rawCode = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
+    val cond = (it.terminator as? CondJump)?.cond
     val code =
-        if (it.cond == null) rawCode
-        else "$rawCode${if (rawCode.isBlank()) "" else "\n"}${it.cond.originalCode(sourceCode)} ?"
+        if (cond == null) rawCode
+        else "$rawCode${if (rawCode.isBlank()) "" else "\n"}${cond.originalCode(sourceCode)} ?"
     val blockText = if (code.isBlank()) "<EMPTY>" else code
-    "${it.id} [shape=box,$style,label=\"$blockText\"];"
+    "node${it.nodeId} [shape=box,$style,label=\"$blockText\"];"
   } + sep + edges.joinToString(sep) {
     val color = when (it.type) {
       EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
@@ -114,7 +84,11 @@ fun createGraphviz(graphRoot: BasicBlock, sourceCode: String): String {
       EdgeType.COND_FALSE -> "color=$COND_FALSE"
       EdgeType.IMPOSSIBLE -> "color=$IMPOSSIBLE"
     }
-    "${it.from.id} -> ${it.to.id} [$color];"
+    if (reachableOnly && !graph.allNodes.first { n -> n.nodeId == it.to.nodeId }.isReachable) {
+      ""
+    } else {
+      "node${it.from.nodeId} -> node${it.to.nodeId} [$color];"
+    }
   }
   return "digraph CFG {${sep}bgcolor=$BG$sep$content\n}"
 }
