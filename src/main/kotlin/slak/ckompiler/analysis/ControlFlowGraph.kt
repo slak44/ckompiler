@@ -89,7 +89,7 @@ class CFG(val f: FunctionDefinition,
 
   init {
     exitBlock = GraphingContext(root = this).graphCompound(startBlock, f.block)
-    exitBlock.collapseIfEmptyRecusively()
+    if (!forceAllNodes) exitBlock.collapseIfEmptyRecusively()
     nodes = if (forceAllNodes) allNodes else filterReachable(allNodes)
     // Compute post order
     val visited = mutableSetOf<BasicBlock>()
@@ -243,6 +243,8 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
 
   fun isTerminated() = terminator !is MissingJump
 
+  fun isEmpty() = data.isEmpty() && terminator !is CondJump
+
   fun recomputeReachability() {
     if (isRoot) return
     isReachable = preds.any { pred ->
@@ -270,7 +272,7 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
   private fun collapseImpl(nodes: MutableSet<BasicBlock>) {
     if (this in nodes) return
     nodes += this
-    emptyBlockLoop@ for (emptyBlock in preds.filter { it.data.isEmpty() }) {
+    emptyBlockLoop@ for (emptyBlock in preds.filter { it.isEmpty() }) {
       if (emptyBlock.isRoot) continue@emptyBlockLoop
       for (emptyBlockPred in emptyBlock.preds) {
         val oldTerm = emptyBlockPred.terminator
