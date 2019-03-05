@@ -16,6 +16,8 @@ fun main(args: Array<String>) {
   val ppOnly by cli.flagArgument("-E", "Preprocess only")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
+  val forceAllNodes by cli.flagArgument("--force-all-nodes",
+      "Force displaying the entire control flow graph (requires --print-cfg-graphviz)")
   val reachableOnly by cli.flagArgument("--reachable-only",
       "Skip unreachable basic blocks and impossible edges (requires --print-cfg-graphviz)")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
@@ -52,7 +54,8 @@ fun main(args: Array<String>) {
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
       val dh = DebugHandler("CFG", it.absolutePath, text)
-      val cfg = CFG(p.root.decls.mapNotNull { d -> d as? FunctionDefinition }[0], dh, false)
+      val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
+      val cfg = CFG(firstFun, dh, false, forceAllNodes)
       println(createGraphviz(cfg, text, reachableOnly))
       return
     }

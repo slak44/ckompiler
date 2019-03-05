@@ -7,6 +7,8 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
 
+// FIXME: this file is a disaster.
+
 private val logger = KotlinLogging.logger("ControlFlow")
 
 sealed class Jump {
@@ -44,7 +46,10 @@ object MissingJump : Jump() {
 /**
  * An instance of a [FunctionDefinition]'s control flow graph.
  */
-class CFG(val f: FunctionDefinition, private val debug: IDebugHandler, computeFrontier: Boolean) {
+class CFG(val f: FunctionDefinition,
+          private val debug: IDebugHandler,
+          computeFrontier: Boolean,
+          forceAllNodes: Boolean = false) {
   private var nodeIdCounter = 0
   val startBlock = BasicBlock(true, nextNodeId())
   val exitBlock: BasicBlock
@@ -85,7 +90,7 @@ class CFG(val f: FunctionDefinition, private val debug: IDebugHandler, computeFr
   init {
     exitBlock = GraphingContext(root = this).graphCompound(startBlock, f.block)
     exitBlock.collapseIfEmptyRecusively()
-    nodes = filterReachable(allNodes)
+    nodes = if (forceAllNodes) allNodes else filterReachable(allNodes)
     // Compute post order
     val visited = mutableSetOf<BasicBlock>()
     val postOrder = mutableSetOf<BasicBlock>()
@@ -266,6 +271,7 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
     if (this in nodes) return
     nodes += this
     emptyBlockLoop@ for (emptyBlock in preds.filter { it.data.isEmpty() }) {
+      if (emptyBlock.isRoot) continue@emptyBlockLoop
       for (emptyBlockPred in emptyBlock.preds) {
         val oldTerm = emptyBlockPred.terminator
         when (oldTerm) {

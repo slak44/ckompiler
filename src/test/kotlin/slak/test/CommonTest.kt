@@ -1,8 +1,6 @@
 package slak.test
 
 import slak.ckompiler.*
-import slak.ckompiler.analysis.BasicBlock
-import slak.ckompiler.analysis.ImpossibleJump
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import java.io.File
@@ -25,10 +23,6 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
 
 internal fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =
     first { it is FunctionDefinition } as FunctionDefinition
-
-internal fun BasicBlock.assertHasDeadCode() {
-  assert(terminator is ImpossibleJump)
-}
 
 private val dh: MutableMap<String, IDebugHandler?> = mutableMapOf()
 
