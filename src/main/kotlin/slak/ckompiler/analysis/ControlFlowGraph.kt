@@ -1,6 +1,8 @@
 package slak.ckompiler.analysis
 
 import mu.KotlinLogging
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.IDebugHandler
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
@@ -42,7 +44,7 @@ object MissingJump : Jump() {
 /**
  * An instance of a [FunctionDefinition]'s control flow graph.
  */
-class CFG(val f: FunctionDefinition, computeFrontier: Boolean) {
+class CFG(val f: FunctionDefinition, private val debug: IDebugHandler, computeFrontier: Boolean) {
   private var nodeIdCounter = 0
   val startBlock = BasicBlock(true, nextNodeId())
   val exitBlock: BasicBlock
@@ -61,13 +63,19 @@ class CFG(val f: FunctionDefinition, computeFrontier: Boolean) {
         nodesImpl += node
         continue
       }
+      checkReachableQueue += node.successors
+      if (node.isDead) continue
+      node.isDead = true
       nodesImpl -= node
-      node.nodeId = 10000 + node.nodeId
+      node.nodeId = 1000000 + node.nodeId
       node.successors.forEach {
         it.preds -= node
         it.recomputeReachability()
       }
-      checkReachableQueue += node.successors
+      for (deadCode in node.data) debug.diagnostic {
+        id = DiagnosticId.UNREACHABLE_CODE
+        columns(deadCode.tokenRange)
+      }
     }
     nodeIdCounter = 0
     nodesImpl.forEach { it.nodeId = nextNodeId() }
@@ -141,7 +149,9 @@ class CFG(val f: FunctionDefinition, computeFrontier: Boolean) {
       for (b in postOrderRev) {
         if (b == startBlock) continue
         var newIdom = b.preds.first { doms[it] != null } // First _processed_ predecessor
-        for (p in b.preds - newIdom) { // Iterate the other predecessors
+        for (p in b.preds) {
+          // Iterate the other predecessors
+          if (p == newIdom) continue
           if (doms[p] != null) {
             newIdom = intersect(p, newIdom)
           }
@@ -208,6 +218,8 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
       }
     }
 
+  var isDead = false
+
   var postOrderId = -1
 
   var isReachable = false
@@ -247,10 +259,10 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
    * post-dominate all other blocks).
    */
   fun collapseIfEmptyRecusively() {
-    collapseImpl(mutableListOf())
+    collapseImpl(mutableSetOf())
   }
 
-  private fun collapseImpl(nodes: MutableList<BasicBlock>) {
+  private fun collapseImpl(nodes: MutableSet<BasicBlock>) {
     if (this in nodes) return
     nodes += this
     emptyBlockLoop@ for (emptyBlock in preds.filter { it.data.isEmpty() }) {
@@ -282,7 +294,10 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
       this.preds -= emptyBlock
       this.recomputeReachability()
     }
-    preds.forEach { it.collapseImpl(nodes) }
+    // Make copy of preds set, to prevent ConcurrentModificationException when preds get removed
+    for (pred in setOf(*preds.toTypedArray())) {
+      pred.collapseImpl(nodes)
+    }
   }
 }
 
@@ -412,4 +427,3 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
     deadCodeBlock
   }
 }
-

@@ -51,7 +51,8 @@ fun main(args: Array<String>) {
     }
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
-      val cfg = CFG(p.root.decls.mapNotNull { d -> d as? FunctionDefinition }[0], false)
+      val dh = DebugHandler("CFG", it.absolutePath, text)
+      val cfg = CFG(p.root.decls.mapNotNull { d -> d as? FunctionDefinition }[0], dh, false)
       println(createGraphviz(cfg, text, reachableOnly))
       return
     }
