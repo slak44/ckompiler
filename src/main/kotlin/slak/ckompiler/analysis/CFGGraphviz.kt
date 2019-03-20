@@ -84,7 +84,7 @@ fun createGraphviz(graph: CFG, sourceCode: String, reachableOnly: Boolean): Stri
       EdgeType.COND_FALSE -> "color=$COND_FALSE"
       EdgeType.IMPOSSIBLE -> "color=$IMPOSSIBLE"
     }
-    if (reachableOnly && !graph.allNodes.first { n -> n.nodeId == it.to.nodeId }.isReachable) {
+    if (reachableOnly && !it.to.isReachable()) {
       ""
     } else {
       "node${it.from.nodeId} -> node${it.to.nodeId} [$color];"

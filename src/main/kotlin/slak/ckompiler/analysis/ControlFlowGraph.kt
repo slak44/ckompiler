@@ -7,8 +7,6 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
 
-// FIXME: this file is a disaster.
-
 private val logger = KotlinLogging.logger("ControlFlow")
 
 sealed class Jump {
@@ -50,23 +48,21 @@ class CFG(val f: FunctionDefinition,
           private val debug: IDebugHandler,
           computeFrontier: Boolean,
           forceAllNodes: Boolean = false) {
-  private var nodeIdCounter = 0
-  val startBlock = BasicBlock(true, nextNodeId())
+  val startBlock = BasicBlock(true)
   val exitBlock: BasicBlock
+  /** Raw set of nodes as obtained from [GraphingContext.graphCompound]. */
   val allNodes = mutableSetOf(startBlock)
+  /** Filtered set of nodes that only contains reachable, non-empty nodes. */
   val nodes: Set<BasicBlock>
   private val postOrderNodes: Set<BasicBlock>
 
-  /**
-   * Recursively filter unreachable nodes.
-   */
+  /** Recursively filter unreachable nodes from the given [nodes] set. */
   private fun filterReachable(nodes: Set<BasicBlock>): MutableSet<BasicBlock> {
     val checkReachableQueue = LinkedList<BasicBlock>(nodes)
     val nodesImpl = mutableSetOf<BasicBlock>()
     while (checkReachableQueue.isNotEmpty()) {
       val node = checkReachableQueue.removeFirst()
-      node.recomputeReachability()
-      if (node.isReachable) {
+      if (node.isReachable()) {
         nodesImpl += node
         continue
       }
@@ -74,18 +70,12 @@ class CFG(val f: FunctionDefinition,
       if (node.isDead) continue
       node.isDead = true
       nodesImpl -= node
-      node.nodeId = 1000000 + node.nodeId
-      node.successors.forEach {
-        it.preds -= node
-        it.recomputeReachability()
-      }
+      for (succ in node.successors) succ.preds -= node
       for (deadCode in node.data) debug.diagnostic {
         id = DiagnosticId.UNREACHABLE_CODE
         columns(deadCode.tokenRange)
       }
     }
-    nodeIdCounter = 0
-    nodesImpl.forEach { it.nodeId = nextNodeId() }
     return nodesImpl
   }
 
@@ -124,11 +114,8 @@ class CFG(val f: FunctionDefinition,
   /** Stores the immediate dominator (IDom) of a particular node. */
   private val doms = DominatorList(nodes.size)
 
-  init {
-    if (computeFrontier) findDomFrontiers()
-  }
-
   /**
+   * Constructs the dominator set and the identifies the dominance frontiers of each node.
    * For the variable notations and the algorithm(s), see figure 3 at:
    * https://www.cs.rice.edu/~keith/EMBED/dom.pdf
    */
@@ -185,24 +172,30 @@ class CFG(val f: FunctionDefinition,
     }
   }
 
-  private fun nextNodeId() = nodeIdCounter++
+  init {
+    if (computeFrontier) findDomFrontiers()
+  }
 
   fun newBlock(): BasicBlock {
-    val block = BasicBlock(false, nextNodeId())
+    val block = BasicBlock(false)
     allNodes += block
     return block
   }
 }
 
 /**
- * Stores a node of the [CFG], a basic block of [ASTNode] who do not affect the control flow.
- * FIXME: this class has a garbage public interface and a garbage implementation
- * [preds], [data], [terminator], [nodeId], [postOrderId] are only mutable as implementation
- * details. Do not modify them outside this file.
+ * Stores a node of the [CFG], a basic block of [ASTNode]s who do not affect the control flow.
+ * [preds], [data], [terminator], [postOrderId], [isDead] and [dominanceFrontier] are only mutable
+ * as implementation details. They should not be modified outside this file.
  */
-class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
+class BasicBlock(val isRoot: Boolean = false) {
+  val nodeId = NodeIdCounter()
+  var postOrderId = -1
+  var isDead = false
   val preds: MutableSet<BasicBlock> = mutableSetOf()
+  val successors get() = terminator.successors
   val data: MutableList<ASTNode> = mutableListOf()
+  val dominanceFrontier: MutableSet<BasicBlock> = mutableSetOf()
   var terminator: Jump = MissingJump
     set(value) {
       field = value
@@ -210,47 +203,24 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
         is CondJump -> {
           value.target.preds += this
           value.other.preds += this
-          value.target.isReachable = true
-          value.other.isReachable = true
         }
         is ConstantJump -> {
           value.target.preds += this
           value.impossible.preds += this
-          value.target.isReachable = true
         }
-        is UncondJump -> {
-          value.target.preds += this
-          value.target.isReachable = true
-        }
+        is UncondJump -> value.target.preds += this
         is ImpossibleJump -> value.target.preds += this
       }
     }
-
-  var isDead = false
-
-  var postOrderId = -1
-
-  var isReachable = false
-    private set
-
-  val dominanceFrontier: MutableSet<BasicBlock> = mutableSetOf()
-
-  val successors get() = terminator.successors
-
-  init {
-    if (isRoot) isReachable = true
-  }
-
-  override fun toString() =
-      "BasicBlock(${data.joinToString(";")}, ${terminator.javaClass.simpleName})"
 
   fun isTerminated() = terminator !is MissingJump
 
   fun isEmpty() = data.isEmpty() && terminator !is CondJump
 
-  fun recomputeReachability() {
-    if (isRoot) return
-    isReachable = preds.any { pred ->
+  /** Returns whether or not this block is reachable from its [preds]. */
+  fun isReachable(): Boolean {
+    if (isRoot) return true
+    return preds.any { pred ->
       when (pred.terminator) {
         is UncondJump -> true
         is ConstantJump -> (pred.terminator as ConstantJump).target == this
@@ -265,8 +235,8 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
 
   /**
    * Collapses empty predecessor blocks to this one if possible, and does so recursively up the
-   * graph. Run on the exit block to collapse everything in the graph (the exit block should
-   * post-dominate all other blocks).
+   * graph. Run on the exit block to collapse everything that can be collapsed in the graph (the
+   * exit block should post-dominate all other blocks).
    */
   fun collapseIfEmptyRecusively() {
     collapseImpl(mutableSetOf())
@@ -298,16 +268,26 @@ class BasicBlock(val isRoot: Boolean = false, var nodeId: Int) {
           else -> continue@emptyBlockLoop
         }
         this.preds += emptyBlockPred
-        this.recomputeReachability()
       }
       emptyBlock.preds.clear()
-      emptyBlock.recomputeReachability()
       this.preds -= emptyBlock
-      this.recomputeReachability()
     }
     // Make copy of preds set, to prevent ConcurrentModificationException when preds get removed
     for (pred in setOf(*preds.toTypedArray())) {
       pred.collapseImpl(nodes)
+    }
+  }
+
+  override fun equals(other: Any?) = nodeId == (other as? BasicBlock)?.nodeId
+  override fun hashCode() = nodeId
+
+  override fun toString() =
+      "BasicBlock(${data.joinToString(";")}, ${terminator.javaClass.simpleName})"
+
+  companion object {
+    private object NodeIdCounter {
+      private var counter = 0
+      operator fun invoke() = counter++
     }
   }
 }

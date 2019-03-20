@@ -2,3 +2,4 @@ out/
 .gradle/
 .idea/workspace.xml
 .idea/uiDesigner.xml
+.idea/dictionaries
