@@ -57,8 +57,10 @@ class CFG(val f: FunctionDefinition,
   val nodes: Set<BasicBlock>
   private val postOrderNodes: Set<BasicBlock>
 
+  /**
+   * Recursively filter unreachable nodes.
+   */
   private fun filterReachable(nodes: Set<BasicBlock>): MutableSet<BasicBlock> {
-    // Recursively filter unreachable nodes
     val checkReachableQueue = LinkedList<BasicBlock>(nodes)
     val nodesImpl = mutableSetOf<BasicBlock>()
     while (checkReachableQueue.isNotEmpty()) {
@@ -95,12 +97,10 @@ class CFG(val f: FunctionDefinition,
     val visited = mutableSetOf<BasicBlock>()
     val postOrder = mutableSetOf<BasicBlock>()
     fun visit(block: BasicBlock) {
-      if (block in visited) {
-        postOrder += block
-        return
-      }
       visited += block
-      for (succ in block.successors) visit(succ)
+      for (succ in block.successors) {
+        if (succ !in visited) visit(succ)
+      }
       postOrder += block
     }
     visit(startBlock)
@@ -115,23 +115,25 @@ class CFG(val f: FunctionDefinition,
 
   private class DominatorList(size: Int) {
     private val domsImpl = MutableList<BasicBlock?>(size) { null }
-    operator fun get(b: BasicBlock) = domsImpl[b.nodeId]
+    operator fun get(b: BasicBlock) = domsImpl[b.postOrderId]
     operator fun set(b: BasicBlock, new: BasicBlock) {
-      domsImpl[b.nodeId] = new
+      domsImpl[b.postOrderId] = new
     }
   }
 
+  /** Stores the immediate dominator (IDom) of a particular node. */
   private val doms = DominatorList(nodes.size)
 
   init {
     if (computeFrontier) findDomFrontiers()
   }
 
-  /** https://www.cs.rice.edu/~keith/EMBED/dom.pdf */
+  /**
+   * For the variable notations and the algorithm(s), see figure 3 at:
+   * https://www.cs.rice.edu/~keith/EMBED/dom.pdf
+   */
   private fun findDomFrontiers() {
-    // Compute the dominator tree, storing it as a list (doms).
-    // For the variable notations and the algorithm(s), see figure 3 at:
-    // https://www.cs.rice.edu/~keith/EMBED/dom.pdf
+    // Compute the dominators, storing it as a list (doms).
     fun intersect(b1: BasicBlock, b2: BasicBlock): BasicBlock {
       var finger1 = b1
       var finger2 = b2
@@ -153,7 +155,8 @@ class CFG(val f: FunctionDefinition,
       changed = false
       for (b in postOrderRev) {
         if (b == startBlock) continue
-        var newIdom = b.preds.first { doms[it] != null } // First _processed_ predecessor
+        // First _processed_ predecessor
+        var newIdom = b.preds.first { doms[it] != null }
         for (p in b.preds) {
           // Iterate the other predecessors
           if (p == newIdom) continue
