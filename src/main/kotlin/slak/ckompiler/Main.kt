@@ -55,7 +55,7 @@ fun main(args: Array<String>) {
       // FIXME: this is incomplete
       val dh = DebugHandler("CFG", it.absolutePath, text)
       val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
-      val cfg = CFG(firstFun, dh, false, forceAllNodes)
+      val cfg = CFG(firstFun, dh, forceAllNodes)
       println(createGraphviz(cfg, text, reachableOnly))
       return
     }

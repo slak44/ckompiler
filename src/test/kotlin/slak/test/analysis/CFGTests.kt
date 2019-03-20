@@ -14,7 +14,7 @@ class CFGTests {
     val text = resource("cfgTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
@@ -24,7 +24,7 @@ class CFGTests {
     val text = resource("domsTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
@@ -34,7 +34,7 @@ class CFGTests {
     val text = resource("domsTest2.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
@@ -44,7 +44,7 @@ class CFGTests {
     val text = resource("domsTest3.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
@@ -55,7 +55,7 @@ class CFGTests {
     val text = resource("domsTest4.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
@@ -66,7 +66,7 @@ class CFGTests {
     val text = resource("cfgTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
     createGraphviz(cfg, text, false)
@@ -77,7 +77,7 @@ class CFGTests {
     val text = resource("trivialDiamondGraphTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     assert(cfg.startBlock.dominanceFrontier.isEmpty())
     val t = cfg.startBlock.terminator as CondJump
     val ret = cfg.nodes.first { it.data.last() is ReturnStatement }
@@ -91,7 +91,7 @@ class CFGTests {
     val text = resource("gotoTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    CFG(p.root.decls.firstFun(), analysisDh(text), false)
+    CFG(p.root.decls.firstFun(), analysisDh(text))
   }
 
   @Test
@@ -99,7 +99,7 @@ class CFGTests {
     val text = resource("controlKeywordsTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text), false)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
@@ -109,6 +109,6 @@ class CFGTests {
     val text = resource("forLoopTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
-    CFG(p.root.decls.firstFun(), analysisDh(text), true)
+    CFG(p.root.decls.firstFun(), analysisDh(text))
   }
 }

@@ -46,7 +46,6 @@ object MissingJump : Jump() {
  */
 class CFG(val f: FunctionDefinition,
           private val debug: IDebugHandler,
-          computeFrontier: Boolean,
           forceAllNodes: Boolean = false) {
   val startBlock = BasicBlock(true)
   val exitBlock: BasicBlock
@@ -173,7 +172,7 @@ class CFG(val f: FunctionDefinition,
   }
 
   init {
-    if (computeFrontier) findDomFrontiers()
+    findDomFrontiers()
   }
 
   fun newBlock(): BasicBlock {

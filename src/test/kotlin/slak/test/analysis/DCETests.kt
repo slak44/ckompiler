@@ -11,7 +11,7 @@ class DCETests {
   private fun testDeadCode(code: String): Pair<IDebugHandler, CFG> {
     val p = prepareCode(code, source)
     p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(code), false)
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(code))
     analysisDh(code).diags.forEach { it.print() }
     return analysisDh(code) to cfg
   }
