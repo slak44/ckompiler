@@ -80,7 +80,7 @@ class CFG(val f: FunctionDefinition,
 
   init {
     exitBlock = GraphingContext(root = this).graphCompound(startBlock, f.block)
-    if (!forceAllNodes) exitBlock.collapseIfEmptyRecusively()
+    if (!forceAllNodes) exitBlock.collapseIfEmptyRecursively()
     nodes = if (forceAllNodes) allNodes else filterReachable(allNodes)
     // Compute post order
     val visited = mutableSetOf<BasicBlock>()
@@ -237,7 +237,7 @@ class BasicBlock(val isRoot: Boolean = false) {
    * graph. Run on the exit block to collapse everything that can be collapsed in the graph (the
    * exit block should post-dominate all other blocks).
    */
-  fun collapseIfEmptyRecusively() {
+  fun collapseIfEmptyRecursively() {
     collapseImpl(mutableSetOf())
   }
 
