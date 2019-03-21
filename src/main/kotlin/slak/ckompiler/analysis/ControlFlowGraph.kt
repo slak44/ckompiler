@@ -111,7 +111,7 @@ class CFG(val f: FunctionDefinition,
   }
 
   /** Stores the immediate dominator (IDom) of a particular node. */
-  private val doms = DominatorList(nodes.size)
+  private val doms = DominatorList(postOrderNodes.size)
 
   /**
    * Constructs the dominator set and the identifies the dominance frontiers of each node.
@@ -158,7 +158,7 @@ class CFG(val f: FunctionDefinition,
     }
     // Compute dominance frontiers.
     // See figure 5.
-    for (b in nodes) {
+    for (b in postOrderNodes) {
       if (b.preds.size >= 2) {
         for (p in b.preds) {
           var runner = p
@@ -184,6 +184,9 @@ class CFG(val f: FunctionDefinition,
 
 /**
  * Stores a node of the [CFG], a basic block of [ASTNode]s who do not affect the control flow.
+ *
+ * Predecessors and successors do not track impossible edges.
+ *
  * [preds], [data], [terminator], [postOrderId], [isDead] and [dominanceFrontier] are only mutable
  * as implementation details. They should not be modified outside this file.
  */
@@ -203,12 +206,9 @@ class BasicBlock(val isRoot: Boolean = false) {
           value.target.preds += this
           value.other.preds += this
         }
-        is ConstantJump -> {
-          value.target.preds += this
-          value.impossible.preds += this
-        }
+        is ConstantJump -> value.target.preds += this
         is UncondJump -> value.target.preds += this
-        is ImpossibleJump -> value.target.preds += this
+        else -> {} // Intentionally left empty
       }
     }
 
@@ -249,7 +249,10 @@ class BasicBlock(val isRoot: Boolean = false) {
       for (emptyBlockPred in emptyBlock.preds) {
         val oldTerm = emptyBlockPred.terminator
         when (oldTerm) {
-          is UncondJump -> emptyBlockPred.terminator = UncondJump(this)
+          is UncondJump -> {
+            emptyBlockPred.terminator = UncondJump(this)
+            preds += emptyBlockPred
+          }
           is ImpossibleJump -> emptyBlockPred.terminator = ImpossibleJump(this)
           is CondJump -> {
             emptyBlockPred.terminator = CondJump(
@@ -257,19 +260,21 @@ class BasicBlock(val isRoot: Boolean = false) {
                 if (oldTerm.target == emptyBlock) this else oldTerm.target,
                 if (oldTerm.other == emptyBlock) this else oldTerm.other
             )
+            preds += emptyBlockPred
           }
           is ConstantJump -> {
             emptyBlockPred.terminator = ConstantJump(
                 if (oldTerm.target == emptyBlock) this else oldTerm.target,
                 if (oldTerm.impossible == emptyBlock) this else oldTerm.impossible
             )
+            // Only add this to preds if it was not the impossible jump
+            if (oldTerm.target == emptyBlock) preds += emptyBlockPred
           }
           else -> continue@emptyBlockLoop
         }
-        this.preds += emptyBlockPred
       }
       emptyBlock.preds.clear()
-      this.preds -= emptyBlock
+      preds -= emptyBlock
     }
     // Make copy of preds set, to prevent ConcurrentModificationException when preds get removed
     for (pred in setOf(*preds.toTypedArray())) {
@@ -375,7 +380,7 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
   }
   is ForStatement -> {
     when (s.init) {
-      is EmptyInitializer -> { /* Intentionally left empty */ }
+      is EmptyInitializer -> {} // Intentionally left empty
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
       is ForExpressionInitializer -> current.data += s.init.value
       is DeclarationInitializer -> current.data += s.init.value
