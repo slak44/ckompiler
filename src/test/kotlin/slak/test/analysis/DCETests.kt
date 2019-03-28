@@ -51,4 +51,10 @@ class DCETests {
     val (dh) = testDeadCode(resource("gotoTest.c").readText())
     dh.assertDiags(DiagnosticId.UNREACHABLE_CODE)
   }
+
+  @Test
+  fun `Live Code After Return`() {
+    val (dh) = testDeadCode(resource("liveCodeAfterReturnTest.c").readText())
+    dh.assertNoDiagnostics()
+  }
 }
