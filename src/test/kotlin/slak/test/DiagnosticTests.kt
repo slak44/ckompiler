@@ -93,4 +93,10 @@ class DiagnosticTests {
     p.assertDiagCaret(diagNr = 0, line = 1, col = 9)
     p.assertDiagCaret(diagNr = 1, line = 1, col = 9)
   }
+
+  @Test
+  fun `Empty Translation Unit Has Correct Diagnostic`() {
+    val p = prepareCode("\n", source)
+    p.assertDiagCaret(diagNr = 0, line = 1, col = 0)
+  }
 }

@@ -107,28 +107,29 @@ data class Diagnostic(val id: DiagnosticId,
   /**
    * @returns (line, col, lineText) of the [col] in the [sourceText]
    */
-  fun errorOf(
-      col: IntRange?): Triple<Int, Int, String> = if (sourceText.isNotEmpty() && col != null) {
-    var currLine = 1
-    var currLineStart = 0
-    var currLineText = ""
-    sourceText
-    for ((idx, it) in sourceText.withIndex()) {
-      if (it == '\n') {
-        currLineText = sourceText.slice(currLineStart until idx)
-        if (col.start in currLineStart..idx) {
-          break
+  fun errorOf(col: IntRange?): Triple<Int, Int, String> = when {
+    sourceText.isEmpty() -> Triple(1, 0, "")
+    col != null -> {
+      var currLine = 1
+      var currLineStart = 0
+      var currLineText = ""
+      sourceText
+      for ((idx, it) in sourceText.withIndex()) {
+        if (it == '\n') {
+          currLineText = sourceText.slice(currLineStart until idx)
+          if (col.start in currLineStart..idx) {
+            break
+          }
+          currLine++
+          currLineStart = idx + 1
         }
-        currLine++
-        currLineStart = idx + 1
+        if (idx == sourceText.length - 1) {
+          currLineText = sourceText.slice(currLineStart until sourceText.length)
+        }
       }
-      if (idx == sourceText.length - 1) {
-        currLineText = sourceText.slice(currLineStart until sourceText.length)
-      }
+      Triple(currLine, col.start - currLineStart, currLineText)
     }
-    Triple(currLine, col.start - currLineStart, currLineText)
-  } else {
-    Triple(-1, -1, "???")
+    else -> Triple(-1, -1, "???")
   }
 
   private val printable: String by lazy {
@@ -141,6 +142,8 @@ data class Diagnostic(val id: DiagnosticId,
       OTHER -> color.blue
     }("${id.kind.text}:")
     val firstLine = "$sourceFileName:$line:$col: $kindText $msg [$origin|${id.name}]"
+    // Special case where the file is empty
+    if (sourceText.isEmpty()) return@lazy firstLine
     val spacesCount = max(col, 0)
     val tildeCount = min(
         max(caret.length() - 1, 0), // Size of provided range (caret eats one)
