@@ -111,4 +111,12 @@ class CFGTests {
     p.assertNoDiagnostics()
     CFG(p.root.decls.firstFun(), analysisDh(text))
   }
+
+  @Test
+  fun `Early Return In Function`() {
+    val text = resource("earlyReturnTest.c").readText()
+    val p = prepareCode(text, source)
+    p.assertNoDiagnostics()
+    CFG(p.root.decls.firstFun(), analysisDh(text))
+  }
 }
