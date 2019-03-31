@@ -173,6 +173,16 @@ class CFG(val f: FunctionDefinition,
 
   init {
     findDomFrontiers()
+    // Ensure all node data is of correct types
+    fun isValidData(it: ASTNode) = it is Expression || it is Declaration || it is ReturnStatement
+    for (node in allNodes) {
+      if (node.data.any { !isValidData(it) }) {
+        // Some other kind of [ASTNode] snuck in here, so we have a problem
+        logger.throwICE("Bad ASTNode subclass(es) found in CFG node data") {
+          node.data.filterNot(::isValidData)
+        }
+      }
+    }
   }
 
   fun newBlock(): BasicBlock {
@@ -191,12 +201,21 @@ class CFG(val f: FunctionDefinition,
  * as implementation details. They should not be modified outside this file.
  */
 class BasicBlock(val isRoot: Boolean = false) {
+  /**
+   * Kinds of possible nodes:
+   * 1. [Declaration]
+   * 2. [Expression]
+   * 3. [ReturnStatement]
+   *
+   * All other [ASTNode]s should have been eliminated by the conversion to a graph.
+   */
+  val data: MutableList<ASTNode> = mutableListOf()
+
   val nodeId = NodeIdCounter()
   var postOrderId = -1
   var isDead = false
   val preds: MutableSet<BasicBlock> = mutableSetOf()
   val successors get() = terminator.successors
-  val data: MutableList<ASTNode> = mutableListOf()
   val dominanceFrontier: MutableSet<BasicBlock> = mutableSetOf()
   var terminator: Jump = MissingJump
     set(value) {
@@ -208,7 +227,9 @@ class BasicBlock(val isRoot: Boolean = false) {
         }
         is ConstantJump -> value.target.preds += this
         is UncondJump -> value.target.preds += this
-        else -> {} // Intentionally left empty
+        is ImpossibleJump, MissingJump -> {
+          // Intentionally left empty
+        }
       }
     }
 
@@ -334,8 +355,12 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
                                            s: Statement): BasicBlock = when (s) {
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-  is Expression, is Noop -> {
+  is Expression -> {
     current.data += s
+    current
+  }
+  is Noop -> {
+    // Intentionally left empty
     current
   }
   is LabeledStatement -> {
@@ -380,7 +405,9 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
   }
   is ForStatement -> {
     when (s.init) {
-      is EmptyInitializer -> {} // Intentionally left empty
+      is EmptyInitializer -> {
+        // Intentionally left empty
+      }
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
       is ForExpressionInitializer -> current.data += s.init.value
       is DeclarationInitializer -> current.data += s.init.value
