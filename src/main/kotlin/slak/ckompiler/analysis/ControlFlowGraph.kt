@@ -23,13 +23,16 @@ data class UncondJump(val target: BasicBlock) : Jump() {
   override val successors = listOf(target)
 }
 
-/** A so-called "impossible edge" of the CFG. Like a [UncondJump], but will never be traversed. */
-data class ImpossibleJump(val target: BasicBlock) : Jump() {
+/**
+ * A so-called "impossible edge" of the CFG. Similar to [UncondJump], but will never be traversed.
+ * It is created by [ReturnStatement].
+ */
+data class ImpossibleJump(val target: BasicBlock, val returned: Expression?) : Jump() {
   override val successors = emptyList<BasicBlock>()
 }
 
 /**
- * Combination of [UncondJump] and [ImpossibleJump].
+ * Similar to a combination of [UncondJump] and [ImpossibleJump].
  * Always jumps to [target], never to [impossible].
  */
 data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Jump() {
@@ -41,9 +44,7 @@ object MissingJump : Jump() {
   override val successors = emptyList<BasicBlock>()
 }
 
-/**
- * An instance of a [FunctionDefinition]'s control flow graph.
- */
+/** An instance of a [FunctionDefinition]'s control flow graph. */
 class CFG(val f: FunctionDefinition,
           private val debug: IDebugHandler,
           forceAllNodes: Boolean = false) {
@@ -174,7 +175,7 @@ class CFG(val f: FunctionDefinition,
   init {
     findDomFrontiers()
     // Ensure all node data is of correct types
-    fun isValidData(it: ASTNode) = it is Expression || it is Declaration || it is ReturnStatement
+    fun isValidData(it: ASTNode) = it is Expression || it is Declaration
     for (node in allNodes) {
       if (node.data.any { !isValidData(it) }) {
         // Some other kind of [ASTNode] snuck in here, so we have a problem
@@ -202,11 +203,7 @@ class CFG(val f: FunctionDefinition,
  */
 class BasicBlock(val isRoot: Boolean = false) {
   /**
-   * Kinds of possible nodes:
-   * 1. [Declaration]
-   * 2. [Expression]
-   * 3. [ReturnStatement]
-   *
+   * Contains [Declaration]s and [Expression]s.
    * All other [ASTNode]s should have been eliminated by the conversion to a graph.
    */
   val data: MutableList<ASTNode> = mutableListOf()
@@ -274,7 +271,7 @@ class BasicBlock(val isRoot: Boolean = false) {
             emptyBlockPred.terminator = UncondJump(this)
             preds += emptyBlockPred
           }
-          is ImpossibleJump -> emptyBlockPred.terminator = ImpossibleJump(this)
+          is ImpossibleJump -> emptyBlockPred.terminator = ImpossibleJump(this, oldTerm.returned)
           is CondJump -> {
             emptyBlockPred.terminator = CondJump(
                 oldTerm.cond,
@@ -443,9 +440,8 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
     afterGoto
   }
   is ReturnStatement -> {
-    current.data += s
     val deadCodeBlock = root.newBlock()
-    current.terminator = ImpossibleJump(deadCodeBlock)
+    current.terminator = ImpossibleJump(deadCodeBlock, s.expr)
     deadCodeBlock
   }
 }

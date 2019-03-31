@@ -3,8 +3,8 @@ package slak.test.analysis
 import org.junit.Test
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CondJump
+import slak.ckompiler.analysis.ImpossibleJump
 import slak.ckompiler.analysis.createGraphviz
-import slak.ckompiler.parser.ReturnStatement
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -80,7 +80,7 @@ class CFGTests {
     val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
     assert(cfg.startBlock.dominanceFrontier.isEmpty())
     val t = cfg.startBlock.terminator as CondJump
-    val ret = cfg.nodes.first { it.data.last() is ReturnStatement }
+    val ret = cfg.nodes.first { it.terminator is ImpossibleJump }
     assertEquals(setOf(ret), t.target.dominanceFrontier)
     assertEquals(setOf(ret), t.other.dominanceFrontier)
     assert(cfg.exitBlock.dominanceFrontier.isEmpty())
