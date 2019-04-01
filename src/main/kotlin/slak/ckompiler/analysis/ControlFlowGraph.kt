@@ -174,16 +174,6 @@ class CFG(val f: FunctionDefinition,
 
   init {
     findDomFrontiers()
-    // Ensure all node data is of correct types
-    fun isValidData(it: ASTNode) = it is Expression || it is Declaration
-    for (node in allNodes) {
-      if (node.data.any { !isValidData(it) }) {
-        // Some other kind of [ASTNode] snuck in here, so we have a problem
-        logger.throwICE("Bad ASTNode subclass(es) found in CFG node data") {
-          node.data.filterNot(::isValidData)
-        }
-      }
-    }
   }
 
   fun newBlock(): BasicBlock {
@@ -198,15 +188,21 @@ class CFG(val f: FunctionDefinition,
  *
  * Predecessors and successors do not track impossible edges.
  *
- * [preds], [data], [terminator], [postOrderId], [isDead] and [dominanceFrontier] are only mutable
- * as implementation details. They should not be modified outside this file.
+ * [preds], [definitions], [data], [terminator], [postOrderId], [isDead] and [dominanceFrontier] are
+ * only mutable as implementation details. They should not be modified outside this file.
  */
 class BasicBlock(val isRoot: Boolean = false) {
   /**
-   * Contains [Declaration]s and [Expression]s.
-   * All other [ASTNode]s should have been eliminated by the conversion to a graph.
+   * The variables that were defined in this block. We consider a definition to be a property of the
+   * block it's in; as a result, we ignore *where* in the block it was defined. The parser has
+   * already checked that a variable cannot be used until it is defined.
    */
-  val data: MutableList<ASTNode> = mutableListOf()
+  val definitions = mutableListOf<TypedIdentifier>()
+  /**
+   * Contains an ordered sequence of [Expression]s. All other [ASTNode] types should have been
+   * eliminated by the conversion to a graph.
+   */
+  val data: MutableList<Expression> = mutableListOf()
 
   val nodeId = NodeIdCounter()
   var postOrderId = -1
@@ -340,12 +336,38 @@ private fun GraphingContext.graphCompound(current: BasicBlock,
     labelBlockFor(name)
   }
   for (item in compoundStatement.items) {
-    when (item) {
-      is StatementItem -> block = graphStatement(block, item.statement)
-      is DeclarationItem -> block.data += item.declaration
+    if (item is StatementItem) {
+      block = graphStatement(block, item.statement)
+    } else {
+      item as DeclarationItem
+      block.addDeclaration(item.declaration)
     }
   }
   return block
+}
+
+private fun BasicBlock.addDeclaration(d: Declaration) {
+  val idents = d.identifiers()
+  val exprs = idents
+      .zip(d.declaratorList.map { it.second })
+      .flatMap { transformInitializer(it.first, it.second) }
+  definitions += idents
+  data += exprs
+}
+
+/** Reduce an [Initializer] to a series of synthetic [Expression]s. */
+private fun transformInitializer(ti: TypedIdentifier,
+                                 init: Initializer?): List<Expression> = when (init) {
+  null -> {
+    // No initializer, nothing to output
+    emptyList()
+  }
+  is ExpressionInitializer -> {
+    // Transform this into an assignment expression
+    listOf(BinaryExpression(BinaryOperators.ASSIGN, ti, init.expr)
+        .withRange(ti.tokenRange..init.expr.tokenRange))
+  }
+//  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
 
 private fun GraphingContext.graphStatement(current: BasicBlock,
@@ -407,7 +429,7 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
       }
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
       is ForExpressionInitializer -> current.data += s.init.value
-      is DeclarationInitializer -> current.data += s.init.value
+      is DeclarationInitializer -> current.addDeclaration(s.init.value)
     }
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
