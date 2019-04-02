@@ -183,6 +183,27 @@ class CFG(val f: FunctionDefinition,
   }
 }
 
+/** Returns a sequential integer on [invoke]. */
+private class IdCounter {
+  private var counter = 0
+  operator fun invoke() = counter++
+}
+
+/**
+ * Thin wrapper over [TypedIdentifier]. Since there can be multiple variables with the same name in
+ * the same function, they must be differentiated.
+ */
+data class Definition(val ident: TypedIdentifier) {
+  private val id = defCounter()
+
+  override fun hashCode() = id
+  override fun equals(other: Any?) = this === other
+
+  companion object {
+    private val defCounter = IdCounter()
+  }
+}
+
 /**
  * Stores a node of the [CFG], a basic block of [ASTNode]s who do not affect the control flow.
  *
@@ -197,14 +218,14 @@ class BasicBlock(val isRoot: Boolean = false) {
    * block it's in; as a result, we ignore *where* in the block it was defined. The parser has
    * already checked that a variable cannot be used until it is defined.
    */
-  val definitions = mutableListOf<TypedIdentifier>()
+  val definitions = mutableListOf<Definition>()
   /**
    * Contains an ordered sequence of [Expression]s. All other [ASTNode] types should have been
    * eliminated by the conversion to a graph.
    */
   val data: MutableList<Expression> = mutableListOf()
 
-  val nodeId = NodeIdCounter()
+  val nodeId = nodeCounter()
   var postOrderId = -1
   var isDead = false
   val preds: MutableSet<BasicBlock> = mutableSetOf()
@@ -303,10 +324,7 @@ class BasicBlock(val isRoot: Boolean = false) {
       "BasicBlock(${data.joinToString(";")}, ${terminator.javaClass.simpleName})"
 
   companion object {
-    private object NodeIdCounter {
-      private var counter = 0
-      operator fun invoke() = counter++
-    }
+    private val nodeCounter = IdCounter()
   }
 }
 
@@ -347,7 +365,7 @@ private fun GraphingContext.graphCompound(current: BasicBlock,
 }
 
 private fun BasicBlock.addDeclaration(d: Declaration) {
-  val idents = d.identifiers()
+  val idents = d.identifiers().map(::Definition)
   val exprs = idents
       .zip(d.declaratorList.map { it.second })
       .flatMap { transformInitializer(it.first, it.second) }
@@ -356,7 +374,7 @@ private fun BasicBlock.addDeclaration(d: Declaration) {
 }
 
 /** Reduce an [Initializer] to a series of synthetic [Expression]s. */
-private fun transformInitializer(ti: TypedIdentifier,
+private fun transformInitializer(def: Definition,
                                  init: Initializer?): List<Expression> = when (init) {
   null -> {
     // No initializer, nothing to output
@@ -364,8 +382,8 @@ private fun transformInitializer(ti: TypedIdentifier,
   }
   is ExpressionInitializer -> {
     // Transform this into an assignment expression
-    listOf(BinaryExpression(BinaryOperators.ASSIGN, ti, init.expr)
-        .withRange(ti.tokenRange..init.expr.tokenRange))
+    listOf(BinaryExpression(BinaryOperators.ASSIGN, def.ident, init.expr)
+        .withRange(def.ident.tokenRange..init.expr.tokenRange))
   }
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
