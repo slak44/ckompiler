@@ -83,7 +83,6 @@ class CFGTests {
     val ret = cfg.nodes.first { it.terminator is ImpossibleJump }
     assertEquals(setOf(ret), t.target.dominanceFrontier)
     assertEquals(setOf(ret), t.other.dominanceFrontier)
-    assert(cfg.exitBlock.dominanceFrontier.isEmpty())
   }
 
   @Test

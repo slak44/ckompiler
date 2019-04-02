@@ -45,154 +45,160 @@ object MissingJump : Jump() {
 }
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
-class CFG(val f: FunctionDefinition,
-          private val debug: IDebugHandler,
-          forceAllNodes: Boolean = false) {
+class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolean = false) {
   val startBlock = BasicBlock(true)
-  val exitBlock: BasicBlock
   /** Raw set of nodes as obtained from [GraphingContext.graphCompound]. */
   val allNodes = mutableSetOf(startBlock)
   /** Filtered set of nodes that only contains reachable, non-empty nodes. */
   val nodes: Set<BasicBlock>
+  /** [nodes], but in post order. */
   private val postOrderNodes: Set<BasicBlock>
-
-  /** Recursively filter unreachable nodes from the given [nodes] set. */
-  private fun filterReachable(nodes: Set<BasicBlock>): MutableSet<BasicBlock> {
-    val checkReachableQueue = LinkedList<BasicBlock>(nodes)
-    val nodesImpl = mutableSetOf<BasicBlock>()
-    while (checkReachableQueue.isNotEmpty()) {
-      val node = checkReachableQueue.removeFirst()
-      if (node.isReachable()) {
-        nodesImpl += node
-        continue
-      }
-      checkReachableQueue += node.successors
-      if (node.isDead) continue
-      node.isDead = true
-      nodesImpl -= node
-      for (succ in node.successors) succ.preds -= node
-      for (deadCode in node.data) debug.diagnostic {
-        id = DiagnosticId.UNREACHABLE_CODE
-        columns(deadCode.tokenRange)
-      }
-    }
-    return nodesImpl
-  }
-
-  /** Apply [BasicBlock.collapseEmptyPreds] on an entire graph ([nodes]). */
-  private fun collapseEmptyBlocks(nodes: Set<BasicBlock>) {
-    val collapseCandidates = LinkedList<BasicBlock>(nodes)
-    val visited = mutableSetOf<BasicBlock>()
-    while (collapseCandidates.isNotEmpty()) {
-      val node = collapseCandidates.removeFirst()
-      if (node in visited) continue
-      while (node.collapseEmptyPreds());
-      visited += node
-      collapseCandidates += node.preds
-    }
-  }
-
-  init {
-    exitBlock = GraphingContext(root = this).graphCompound(startBlock, f.block)
-    if (!forceAllNodes) collapseEmptyBlocks(allNodes)
-    nodes = if (forceAllNodes) allNodes else filterReachable(allNodes)
-    // Compute post order
-    val visited = mutableSetOf<BasicBlock>()
-    val postOrder = mutableSetOf<BasicBlock>()
-    fun visit(block: BasicBlock) {
-      visited += block
-      for (succ in block.successors) {
-        if (succ !in visited) visit(succ)
-      }
-      postOrder += block
-    }
-    visit(startBlock)
-    if (postOrder.size != nodes.size) {
-      // Our graph is not always completely connected
-      // So get the disconnected nodes and add them to postOrder
-      postOrder += nodes - postOrder
-    }
-    for ((idx, node) in postOrder.withIndex()) node.postOrderId = idx
-    postOrderNodes = postOrder
-  }
-
-  private class DominatorList(size: Int) {
-    private val domsImpl = MutableList<BasicBlock?>(size) { null }
-    operator fun get(b: BasicBlock) = domsImpl[b.postOrderId]
-    operator fun set(b: BasicBlock, new: BasicBlock) {
-      domsImpl[b.postOrderId] = new
-    }
-  }
-
   /** Stores the immediate dominator (IDom) of a particular node. */
-  private val doms = DominatorList(postOrderNodes.size)
-
-  /**
-   * Constructs the dominator set and the identifies the dominance frontiers of each node.
-   * For the variable notations and the algorithm(s), see figure 3 at:
-   * https://www.cs.rice.edu/~keith/EMBED/dom.pdf
-   */
-  private fun findDomFrontiers() {
-    // Compute the dominators, storing it as a list (doms).
-    fun intersect(b1: BasicBlock, b2: BasicBlock): BasicBlock {
-      var finger1 = b1
-      var finger2 = b2
-      while (finger1 != finger2) {
-        while (finger1.postOrderId < finger2.postOrderId) {
-          finger1 = doms[finger1]!!
-        }
-        while (finger2.postOrderId < finger1.postOrderId) {
-          finger2 = doms[finger2]!!
-        }
-      }
-      return finger1
-    }
-    doms[startBlock] = startBlock
-    var changed = true
-    // Loop invariant; help out the JIT compiler and get it out:
-    val postOrderRev = postOrderNodes.reversed()
-    while (changed) {
-      changed = false
-      for (b in postOrderRev) {
-        if (b == startBlock) continue
-        // First _processed_ predecessor
-        var newIdom = b.preds.first { doms[it] != null }
-        for (p in b.preds) {
-          // Iterate the other predecessors
-          if (p == newIdom) continue
-          if (doms[p] != null) {
-            newIdom = intersect(p, newIdom)
-          }
-        }
-        if (doms[b] != newIdom) {
-          doms[b] = newIdom
-          changed = true
-        }
-      }
-    }
-    // Compute dominance frontiers.
-    // See figure 5.
-    for (b in postOrderNodes) {
-      if (b.preds.size >= 2) {
-        for (p in b.preds) {
-          var runner = p
-          while (runner != doms[b]) {
-            runner.dominanceFrontier += b
-            runner = doms[runner]!!
-          }
-        }
-      }
-    }
-  }
+  private val doms: DominatorList
 
   init {
-    findDomFrontiers()
+    GraphingContext(root = this).graphCompound(startBlock, f.block)
+    if (!forceAllNodes) collapseEmptyBlocks(allNodes)
+    nodes = if (forceAllNodes) allNodes else debug.filterReachable(allNodes)
+    postOrderNodes = postOrderNodes(startBlock, nodes)
+    doms = DominatorList(postOrderNodes.size)
+    findDomFrontiers(doms, startBlock, postOrderNodes)
   }
 
   fun newBlock(): BasicBlock {
     val block = BasicBlock(false)
     allNodes += block
     return block
+  }
+}
+
+/** A [MutableList] of [BasicBlock]s, indexed by [BasicBlock]s. */
+private class DominatorList(size: Int) {
+  private val domsImpl = MutableList<BasicBlock?>(size) { null }
+  operator fun get(b: BasicBlock) = domsImpl[b.postOrderId]
+  operator fun set(b: BasicBlock, new: BasicBlock) {
+    domsImpl[b.postOrderId] = new
+  }
+}
+
+/**
+ * Constructs the dominator set and the identifies the dominance frontiers of each node.
+ * For the variable notations and the algorithm(s), see figure 3 at:
+ * https://www.cs.rice.edu/~keith/EMBED/dom.pdf
+ * @param doms uninitialized [DominatorList] to fill
+ */
+private fun findDomFrontiers(doms: DominatorList,
+                             startNode: BasicBlock,
+                             postOrder: Set<BasicBlock>) {
+  // Compute the dominators, storing it as a list (doms).
+  fun intersect(b1: BasicBlock, b2: BasicBlock): BasicBlock {
+    var finger1 = b1
+    var finger2 = b2
+    while (finger1 != finger2) {
+      while (finger1.postOrderId < finger2.postOrderId) {
+        finger1 = doms[finger1]!!
+      }
+      while (finger2.postOrderId < finger1.postOrderId) {
+        finger2 = doms[finger2]!!
+      }
+    }
+    return finger1
+  }
+  doms[startNode] = startNode
+  var changed = true
+  // Loop invariant; help out the JIT compiler and get it out:
+  val postOrderRev = postOrder.reversed()
+  while (changed) {
+    changed = false
+    for (b in postOrderRev) {
+      if (b == startNode) continue
+      // First _processed_ predecessor
+      var newIdom = b.preds.first { doms[it] != null }
+      for (p in b.preds) {
+        // Iterate the other predecessors
+        if (p == newIdom) continue
+        if (doms[p] != null) {
+          newIdom = intersect(p, newIdom)
+        }
+      }
+      if (doms[b] != newIdom) {
+        doms[b] = newIdom
+        changed = true
+      }
+    }
+  }
+  // Compute dominance frontiers.
+  // See figure 5.
+  for (b in postOrder) {
+    if (b.preds.size >= 2) {
+      for (p in b.preds) {
+        var runner = p
+        while (runner != doms[b]) {
+          runner.dominanceFrontier += b
+          runner = doms[runner]!!
+        }
+      }
+    }
+  }
+}
+
+/** Compute the post order for a set of nodes, and return it. */
+private fun postOrderNodes(startNode: BasicBlock, nodes: Set<BasicBlock>): Set<BasicBlock> {
+  if (startNode !in nodes) logger.throwICE("startNode not in nodes") { "$startNode/$nodes" }
+  val visited = mutableSetOf<BasicBlock>()
+  val postOrder = mutableSetOf<BasicBlock>()
+  // Recursively compute post order
+  fun visit(block: BasicBlock) {
+    visited += block
+    for (succ in block.successors) {
+      if (succ !in visited) visit(succ)
+    }
+    postOrder += block
+  }
+  visit(startNode)
+  if (postOrder.size != nodes.size) {
+    // Our graph may not always be completely connected
+    // So get the disconnected nodes and add them to postOrder
+    postOrder += nodes - postOrder
+  }
+  for ((idx, node) in postOrder.withIndex()) node.postOrderId = idx
+  return postOrder
+}
+
+/** Filter unreachable nodes from the given [nodes] set and return the ones that are reachable. */
+private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBlock> {
+  val checkReachableQueue = LinkedList<BasicBlock>(nodes)
+  val visited = mutableSetOf<BasicBlock>()
+  val nodesImpl = mutableSetOf<BasicBlock>()
+  while (checkReachableQueue.isNotEmpty()) {
+    val node = checkReachableQueue.removeFirst()
+    if (node.isReachable()) {
+      nodesImpl += node
+      continue
+    }
+    checkReachableQueue += node.successors
+    if (node in visited) continue
+    visited += node
+    nodesImpl -= node
+    for (succ in node.successors) succ.preds -= node
+    for (deadCode in node.data) diagnostic {
+      id = DiagnosticId.UNREACHABLE_CODE
+      columns(deadCode.tokenRange)
+    }
+  }
+  return nodesImpl
+}
+
+/** Apply [BasicBlock.collapseEmptyPreds] on an entire graph ([nodes]). */
+private fun collapseEmptyBlocks(nodes: Set<BasicBlock>) {
+  val collapseCandidates = LinkedList<BasicBlock>(nodes)
+  val visited = mutableSetOf<BasicBlock>()
+  while (collapseCandidates.isNotEmpty()) {
+    val node = collapseCandidates.removeFirst()
+    if (node in visited) continue
+    while (node.collapseEmptyPreds());
+    visited += node
+    collapseCandidates += node.preds
   }
 }
 
@@ -222,7 +228,7 @@ data class Definition(val ident: TypedIdentifier) {
  *
  * Predecessors and successors do not track impossible edges.
  *
- * [preds], [definitions], [data], [terminator], [postOrderId], [isDead] and [dominanceFrontier] are
+ * [preds], [definitions], [data], [terminator], [postOrderId] and [dominanceFrontier] are
  * only mutable as implementation details. They should not be modified outside this file.
  */
 class BasicBlock(val isRoot: Boolean = false) {
@@ -240,7 +246,6 @@ class BasicBlock(val isRoot: Boolean = false) {
 
   val nodeId = nodeCounter()
   var postOrderId = -1
-  var isDead = false
   val preds: MutableSet<BasicBlock> = mutableSetOf()
   val successors get() = terminator.successors
   val dominanceFrontier: MutableSet<BasicBlock> = mutableSetOf()
