@@ -18,8 +18,8 @@ fun main(args: Array<String>) {
       "Print the program's control flow graph to stdout instead of compiling")
   val forceAllNodes by cli.flagArgument("--force-all-nodes",
       "Force displaying the entire control flow graph (requires --print-cfg-graphviz)")
-  val reachableOnly by cli.flagArgument("--reachable-only",
-      "Skip unreachable basic blocks and impossible edges (requires --print-cfg-graphviz)")
+  val forceUnreachable by cli.flagArgument("--force-unreachable", "Force displaying of " +
+      "unreachable basic blocks and impossible edges (requires --print-cfg-graphviz)")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
   val files by cli.positionalArgumentsList(
@@ -56,7 +56,7 @@ fun main(args: Array<String>) {
       val dh = DebugHandler("CFG", it.absolutePath, text)
       val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
       val cfg = CFG(firstFun, dh, forceAllNodes)
-      println(createGraphviz(cfg, text, reachableOnly))
+      println(createGraphviz(cfg, text, !forceUnreachable))
       return
     }
   }

@@ -62,7 +62,7 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
     nodes = if (forceAllNodes) allNodes else debug.filterReachable(allNodes)
     postOrderNodes = postOrderNodes(startBlock, nodes)
     doms = DominatorList(postOrderNodes.size)
-    findDomFrontiers(doms, startBlock, postOrderNodes)
+    if (!forceAllNodes) findDomFrontiers(doms, startBlock, postOrderNodes)
   }
 
   fun newBlock(): BasicBlock {
