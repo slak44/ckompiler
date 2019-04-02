@@ -119,4 +119,13 @@ class CFGTests {
     p.assertNoDiagnostics()
     CFG(p.root.decls.firstFun(), analysisDh(text))
   }
+
+  @Test
+  fun `Phi Insertion Test`() {
+    val text = resource("phiTest.c").readText()
+    val p = prepareCode(text, source)
+    p.assertNoDiagnostics()
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
+  }
 }
