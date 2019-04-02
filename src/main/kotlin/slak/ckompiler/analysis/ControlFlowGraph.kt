@@ -79,9 +79,22 @@ class CFG(val f: FunctionDefinition,
     return nodesImpl
   }
 
+  /** Apply [BasicBlock.collapseEmptyPreds] on an entire graph ([nodes]). */
+  private fun collapseEmptyBlocks(nodes: Set<BasicBlock>) {
+    val collapseCandidates = LinkedList<BasicBlock>(nodes)
+    val visited = mutableSetOf<BasicBlock>()
+    while (collapseCandidates.isNotEmpty()) {
+      val node = collapseCandidates.removeFirst()
+      if (node in visited) continue
+      while (node.collapseEmptyPreds());
+      visited += node
+      collapseCandidates += node.preds
+    }
+  }
+
   init {
     exitBlock = GraphingContext(root = this).graphCompound(startBlock, f.block)
-    if (!forceAllNodes) exitBlock.collapseIfEmptyRecursively()
+    if (!forceAllNodes) collapseEmptyBlocks(allNodes)
     nodes = if (forceAllNodes) allNodes else filterReachable(allNodes)
     // Compute post order
     val visited = mutableSetOf<BasicBlock>()
@@ -268,17 +281,11 @@ class BasicBlock(val isRoot: Boolean = false) {
   }
 
   /**
-   * Collapses empty predecessor blocks to this one if possible, and does so recursively up the
-   * graph. Run on the exit block to collapse everything that can be collapsed in the graph (the
-   * exit block should post-dominate all other blocks).
+   * Collapses empty predecessor blocks to this one, if possible. Return true if a pred was
+   * collapsed.
    */
-  fun collapseIfEmptyRecursively() {
-    collapseImpl(mutableSetOf())
-  }
-
-  private fun collapseImpl(nodes: MutableSet<BasicBlock>) {
-    if (this in nodes) return
-    nodes += this
+  fun collapseEmptyPreds(): Boolean {
+    var wasCollapsed = false
     emptyBlockLoop@ for (emptyBlock in preds.filter { it.isEmpty() }) {
       if (emptyBlock.isRoot) continue@emptyBlockLoop
       for (emptyBlockPred in emptyBlock.preds) {
@@ -310,11 +317,9 @@ class BasicBlock(val isRoot: Boolean = false) {
       }
       emptyBlock.preds.clear()
       preds -= emptyBlock
+      wasCollapsed = true
     }
-    // Make copy of preds set, to prevent ConcurrentModificationException when preds get removed
-    for (pred in setOf(*preds.toTypedArray())) {
-      pred.collapseImpl(nodes)
-    }
+    return wasCollapsed
   }
 
   override fun equals(other: Any?) = nodeId == (other as? BasicBlock)?.nodeId
