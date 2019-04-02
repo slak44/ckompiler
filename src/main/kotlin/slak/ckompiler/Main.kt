@@ -12,6 +12,7 @@ import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
   val logger = KotlinLogging.logger("CLI")
+  val dh = DebugHandler("CLI", "ckompiler", "")
   val cli = CommandLineInterface("ckompiler")
   val ppOnly by cli.flagArgument("-E", "Preprocess only")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
@@ -33,7 +34,13 @@ fun main(args: Array<String>) {
     exitProcess(1)
   }
   Diagnostic.useColors = !disableColorDiags
-  files.map { File(it) }.forEach {
+  val badOptions = files.filter { it.startsWith("--") }
+  for (option in badOptions) dh.diagnostic {
+    id = DiagnosticId.BAD_CLI_OPTION
+    formatArgs(option)
+  }
+  for (diag in dh.diags) diag.print()
+  (files - badOptions).map { File(it) }.forEach {
     val text = it.readText()
     val pp = Preprocessor(text, it.absolutePath)
     if (pp.diags.isNotEmpty()) {
@@ -53,9 +60,9 @@ fun main(args: Array<String>) {
     }
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
-      val dh = DebugHandler("CFG", it.absolutePath, text)
+      val cfgDebug = DebugHandler("CFG", it.absolutePath, text)
       val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
-      val cfg = CFG(firstFun, dh, forceAllNodes)
+      val cfg = CFG(firstFun, cfgDebug, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable))
       return
     }
