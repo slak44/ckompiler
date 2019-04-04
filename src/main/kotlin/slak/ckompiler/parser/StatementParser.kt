@@ -45,9 +45,9 @@ class StatementParser(declarationParser: DeclarationParser,
         // [SpecParser] gets confused)
         // Parse expressions after declarations (we get fake diagnostics about expecting a primary
         // expression, when the construct was actually just part of a [DeclarationSpecifier])
-        val item = parseStatement(parseExpressionStatement = false)?.let { s -> StatementItem(s) }
-            ?: parseDeclaration(SpecValidationRules.NONE)?.let { d -> DeclarationItem(d) }
-            ?: parseExpressionStatement()?.let { s -> StatementItem(s) }
+        val item = parseStatement(parseExpressionStatement = false)?.let(::StatementItem)
+            ?: parseDeclaration(SpecValidationRules.NONE)?.let(::DeclarationItem)
+            ?: parseExpressionStatement()?.let(::StatementItem)
             ?: continue
         items += item
       }
@@ -300,8 +300,9 @@ class StatementParser(declarationParser: DeclarationParser,
     if (rparen == -1) return error<ErrorStatement>()
     // The 3 components of a for loop
     val (clause1, expr2, expr3) = tokenContext(rparen) {
-      val firstSemi = indexOfFirst(Punctuators.SEMICOLON)
-      if (firstSemi == -1) {
+      val firstSemi = firstOutsideParens(
+          Punctuators.SEMICOLON, Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
+      if (firstSemi == tokenCount) {
         diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_IN_FOR
           if (it.isNotEmpty()) errorOn(safeToken(it.size))
@@ -316,13 +317,15 @@ class StatementParser(declarationParser: DeclarationParser,
       } else {
         // parseDeclaration wants to see the semicolon as well, so +1
         tokenContext(firstSemi + 1) {
-          parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)
-              ?.let { d -> DeclarationInitializer.from(d) }
-        } ?: parseExpr(firstSemi)?.let { e -> ForExpressionInitializer.from(e) }
+          parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)?.let(::DeclarationInitializer)
+        } ?: parseExpr(firstSemi)?.let(::ForExpressionInitializer)
           ?: error<ErrorInitializer>()
       }
       // We only eat the first ';' if parseDeclaration didn't do that
-      if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
+      // And when parseDeclaration did eat the semi, ensure that we don't accidentally eat again
+      if (isNotEaten() &&
+          current().asPunct() == Punctuators.SEMICOLON &&
+          (firstSemi == 0 || safeToken(-1).asPunct() != Punctuators.SEMICOLON)) eat()
       val secondSemi = indexOfFirst(Punctuators.SEMICOLON)
       if (secondSemi == -1) {
         diagnostic {

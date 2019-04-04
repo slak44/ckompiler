@@ -25,6 +25,10 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
   /**
    * 6.8.5.3: Valid storage classes are auto and register
    *
+   * 6.8.5.3 is ambiguous (see https://stackoverflow.com/questions/11903232); we interpret it to
+   * also forbid `struct-or-union-specifier` because they create a new type (we act like gcc/clang,
+   * and unlike msvc).
+   *
    * C standard: 6.8.5.3
    */
   FOR_INIT_DECLARATION(lambda@ {
@@ -32,6 +36,10 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(it.threadLocal!!.value.keyword, "for loop initializer")
       errorOn(it.threadLocal)
+    }
+    if (it.typeSpec is StructDefinition || it.typeSpec is UnionDefinition) diagnostic {
+      id = DiagnosticId.FOR_INIT_NON_LOCAL
+      columns(it.tokenRange)
     }
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value
@@ -362,7 +370,7 @@ class SpecParser(declarationParser: DeclarationParser) :
         }
         Keywords.STRUCT, Keywords.UNION -> {
           if (typeSpecifier != null) diagIncompat(typeSpecifier.toString(), tok)
-          parseStructUnion()?.let { typeSpecifier = it }
+          parseStructUnion()?.also { typeSpecifier = it }
           // The function deals with eating, so the eat() below should be skipped
           continue@specLoop
         }

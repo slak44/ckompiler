@@ -11,7 +11,7 @@ fun graph(cfg: CFG) {
 }
 
 /**
- * The current context in which the CFG is being built. Tracks relevant loop blocks, and possible
+ * The current context in which the [CFG] is being built. Tracks relevant loop blocks, and possible
  * labels to jump to using goto.
  */
 private data class GraphingContext(val root: CFG,
@@ -35,37 +35,37 @@ private fun GraphingContext.graphCompound(current: BasicBlock,
   for ((name) in compoundStatement.scope.labels) {
     labelBlockFor(name)
   }
+  // FIXME: add function params to vars
+//  root.variables += root.f.params
   for (item in compoundStatement.items) {
     if (item is StatementItem) {
       block = graphStatement(block, item.statement)
     } else {
       item as DeclarationItem
-      block.addDeclaration(item.declaration)
+      root.addDeclaration(block, item.declaration)
     }
   }
   return block
 }
 
-private fun BasicBlock.addDeclaration(d: Declaration) {
-  val idents = d.identifiers().map(::Definition)
-  val exprs = idents
-      .zip(d.declaratorList.map { it.second })
-      .flatMap { transformInitializer(it.first, it.second) }
-  definitions += idents
-  data += exprs
+private fun CFG.addDeclaration(current: BasicBlock, d: Declaration) {
+  val vars = d.idents.map { Variable(it.first) }
+  for (v in vars) v.addDefinition(current)
+  variables += vars
+  current.data += d.idents.flatMap(::transformInitializer)
 }
 
 /** Reduce an [Initializer] to a series of synthetic [Expression]s. */
-private fun transformInitializer(def: Definition,
-                                 init: Initializer?): List<Expression> = when (init) {
+private fun transformInitializer(
+    decl: Pair<TypedIdentifier, Initializer?>): List<Expression> = when (val init = decl.second) {
   null -> {
     // No initializer, nothing to output
     emptyList()
   }
   is ExpressionInitializer -> {
     // Transform this into an assignment expression
-    listOf(BinaryExpression(BinaryOperators.ASSIGN, def.ident, init.expr)
-        .withRange(def.ident.tokenRange..init.expr.tokenRange))
+    listOf(BinaryExpression(BinaryOperators.ASSIGN, decl.first, init.expr)
+        .withRange(decl.first..init.expr))
   }
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
@@ -75,6 +75,8 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression -> {
+    // FIXME: fetch the [Variable]s used in the expression
+    // FIXME: if they're assigned to, add current to the variable's definitions
     current.data += s
     current
   }
@@ -129,7 +131,7 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
       }
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
       is ForExpressionInitializer -> current.data += s.init.value
-      is DeclarationInitializer -> current.addDeclaration(s.init.value)
+      is DeclarationInitializer -> root.addDeclaration(current, s.init.value)
     }
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()

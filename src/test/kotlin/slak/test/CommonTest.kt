@@ -57,8 +57,7 @@ internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).withRange(0..0)
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t)
-internal fun funRef(fd: FunctionDefinition) =
-    nameRef(fd.name.name, typeNameOf(fd.declSpec, fd.functionDeclarator))
+internal fun FunctionDefinition.toRef() = funcIdent
 internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
 
 internal fun ptr(d: Declarator) =
@@ -188,9 +187,9 @@ internal fun <T> List<T>.compound(scope: LexicalScope? = null) = CompoundStateme
 }, with(scope ?: LexicalScope()) {
   forEach {
     when (it) {
-      is Declaration -> idents += it.identifiers()
+      is Declaration -> idents += it.idents.map { (first) -> first }
       is ForStatement -> {
-        val names = (it.init as? DeclarationInitializer)?.value?.identifiers()
+        val names = (it.init as? DeclarationInitializer)?.value?.idents?.map { (first) -> first }
         if (names != null) idents += names
       }
       is LabeledStatement -> labels += it.label
@@ -217,14 +216,14 @@ internal fun forSt(e: Expression,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(ForExpressionInitializer(e), cond, cont, loopable)
+  return ForStatement(ForExpressionInitializer(e.withRange(0..0)), cond, cont, loopable)
 }
 
 internal fun forSt(e: Declaration,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(DeclarationInitializer(e), cond, cont, loopable)
+  return ForStatement(DeclarationInitializer(e.withRange(0..0)), cond, cont, loopable)
 }
 
 internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNode(this), s)

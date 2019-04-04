@@ -8,8 +8,6 @@ private val logger = KotlinLogging.logger("AST")
 
 val Declarator.name get() = (this as NamedDeclarator).name
 val ExternalDeclaration.fn get() = this as FunctionDefinition
-val FunctionDefinition.name get() = functionDeclarator.name
-val FunctionDefinition.block get() = compoundStatement as CompoundStatement
 val BlockItem.st get() = (this as StatementItem).statement
 
 infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx until other.startIdx
@@ -174,13 +172,14 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
 /** Like [IdentifierNode], but with an attached [TypeName]. */
 data class TypedIdentifier(override val name: String,
                            override val type: TypeName) : Expression(), OrdinaryIdentifier {
+  constructor(ds: DeclarationSpecifier,
+              decl: NamedDeclarator) : this(decl.name.name, typeNameOf(ds, decl)) {
+    withRange(decl.name.tokenRange)
+  }
+
   override val kindName = "variable"
 
-  companion object {
-    fun from(ds: DeclarationSpecifier, decl: NamedDeclarator): TypedIdentifier {
-      return TypedIdentifier(decl.name.name, typeNameOf(ds, decl)).withRange(decl.name.tokenRange)
-    }
-  }
+  override fun toString() = "$type $name"
 }
 
 /**
@@ -578,70 +577,46 @@ data class ExpressionSize(val expr: Expression) :
 sealed class ExternalDeclaration : ASTNode()
 
 /**
- * Represents a declaration.
- *
- * If the [declaratorList] is empty, the [declSpecs] define a struct/union.
+ * Represents a declaration that actually declares variables.
  *
  * C standard: A.2.2
  */
 data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<Pair<Declarator, Initializer?>>) :
-    ExternalDeclaration() {
-  init {
-    declSpecs.setParent(this)
-    declaratorList.forEach {
-      it.first.setParent(this)
-      it.second?.setParent(this)
-    }
-  }
+                       val declaratorList: List<Pair<Declarator, Initializer?>>
+) : ExternalDeclaration() {
 
-  /**
-   * @return a list of [TypedIdentifier]s of declarators in the declaration.
-   */
-  fun identifiers(): List<TypedIdentifier> {
-    return declaratorList.map {
-      TypedIdentifier.from(declSpecs, it.first as NamedDeclarator)
+  val idents by lazy {
+    declaratorList.map {
+      TypedIdentifier(declSpecs, it.first as NamedDeclarator) to it.second
     }
   }
 
   override fun toString(): String {
-    val declList = declaratorList.joinToString(", ") {
+    val nameAndInits = idents.joinToString(", ") {
       val initStr = if (it.second == null) "" else " = ${it.second}"
-      "${it.first}$initStr"
+      "${it.first.name}$initStr"
     }
-    return "Declaration($declSpecs $declList)"
+    return "Declaration(${idents.first().first.type} $nameAndInits)"
   }
 }
 
 /** C standard: A.2.4 */
-data class FunctionDefinition(val declSpec: DeclarationSpecifier,
-                              val functionDeclarator: Declarator,
+data class FunctionDefinition(val funcIdent: TypedIdentifier,
                               val compoundStatement: Statement) : ExternalDeclaration() {
+  constructor(declSpec: DeclarationSpecifier,
+              functionDeclarator: Declarator,
+              compoundStatement: Statement) :
+      this(TypedIdentifier(declSpec, functionDeclarator as NamedDeclarator), compoundStatement)
+
+  val name = funcIdent.name
+  val block get() = compoundStatement as CompoundStatement
+
   init {
-    declSpec.setParent(this)
-    functionDeclarator.setParent(this)
     compoundStatement.setParent(this)
   }
 
-  fun localsList(): List<Declaration> {
-    val declarations = mutableListOf<Declaration>()
-    fun localsListImpl(cs: CompoundStatement) {
-      cs.items.forEach {
-        if (it is DeclarationItem) declarations += it.declaration
-        if (it is StatementItem &&
-            it.statement is ForStatement &&
-            it.statement.init is DeclarationInitializer) {
-          declarations += it.statement.init.value
-        }
-        if (it is StatementItem && it.statement is CompoundStatement) localsListImpl(it.statement)
-      }
-    }
-    localsListImpl(block)
-    return declarations
-  }
-
   override fun toString(): String {
-    return "FunctionDefinition($declSpec, $functionDeclarator, $compoundStatement)"
+    return "FunctionDefinition($funcIdent, $compoundStatement)"
   }
 }
 
@@ -736,22 +711,16 @@ class ErrorInitializer : ForInitializer(), ErrorNode by ErrorNodeImpl
 data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   init {
     value.setParent(this)
+    withRange(value.tokenRange)
   }
 
   override fun toString() = value.toString()
-
-  companion object {
-    fun from(value: Declaration) = DeclarationInitializer(value).withRange(value.tokenRange)
-  }
 }
 
 data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
   init {
     value.setParent(this)
-  }
-
-  companion object {
-    fun from(expr: Expression) = ForExpressionInitializer(expr).withRange(expr.tokenRange)
+    withRange(value.tokenRange)
   }
 }
 

@@ -55,6 +55,7 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
   private val postOrderNodes: Set<BasicBlock>
   /** Stores the immediate dominator (IDom) of a particular node. */
   private val doms: DominatorList
+  val variables = mutableListOf<Variable>()
 
   init {
     graph(this)
@@ -209,35 +210,43 @@ private class IdCounter {
 }
 
 /**
- * Thin wrapper over [TypedIdentifier]. Since there can be multiple variables with the same name in
+ * Wrapper over [TypedIdentifier]. Since there can be multiple variables with the same name in
  * the same function, they must be differentiated.
+ *
+ * A "definition" of a variable is assignment to that variable. We consider a definition to be a
+ * property of the block it's in; as a result, we ignore *where* in the block it was defined. The
+ * parser has already checked that a variable cannot be used until it is declared.
  */
-data class Definition(val ident: TypedIdentifier) {
-  private val id = defCounter()
+class Variable(val ident: TypedIdentifier) {
+  private val id = varCounter()
+  /** Set of basic blocks that contain definitions of this variable. */
+  private val _definitions = mutableSetOf<BasicBlock>()
+  val definitions: Set<BasicBlock> get() = _definitions
+
+  fun addDefinition(node: BasicBlock) {
+    _definitions += node
+  }
 
   override fun hashCode() = id
   override fun equals(other: Any?) = this === other
 
   companion object {
-    private val defCounter = IdCounter()
+    private val varCounter = IdCounter()
   }
 }
+
+data class PhiFunction(val target: Variable, val pred1: BasicBlock, val pred2: BasicBlock)
 
 /**
  * Stores a node of the [CFG], a basic block of [ASTNode]s who do not affect the control flow.
  *
  * Predecessors and successors do not track impossible edges.
  *
- * [preds], [definitions], [data], [terminator], [postOrderId] and [dominanceFrontier] are
+ * [preds], [data], [terminator], [postOrderId] and [dominanceFrontier] are
  * only mutable as implementation details. They should not be modified outside this file.
  */
 class BasicBlock(val isRoot: Boolean = false) {
-  /**
-   * The variables that were defined in this block. We consider a definition to be a property of the
-   * block it's in; as a result, we ignore *where* in the block it was defined. The parser has
-   * already checked that a variable cannot be used until it is defined.
-   */
-  val definitions = mutableListOf<Definition>()
+  val phiFunctions = mutableListOf<PhiFunction>()
   /**
    * Contains an ordered sequence of [Expression]s. All other [ASTNode] types should have been
    * eliminated by the conversion to a graph.

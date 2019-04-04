@@ -47,6 +47,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ARRAY_STATIC_NO_SIZE(ERROR, "'static' may not be used without an array size"),
   UNSUPPORTED_VLA(ERROR, "Variable length arrays are not supported by this implementation"),
   PARAM_NAME_OMITTED(ERROR, "Parameter name omitted for type '%s'"),
+  FOR_INIT_NON_LOCAL(ERROR, "Declaration of non-local variable in 'for' loop"),
 
   // Type system
   CALL_OBJECT_TYPE(ERROR, "Called object type '%s' is not a function or function pointer"),

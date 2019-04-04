@@ -359,4 +359,24 @@ class IterationTests {
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.ILLEGAL_STORAGE_CLASS, DiagnosticId.ILLEGAL_STORAGE_CLASS)
   }
+
+  @Test
+  fun `For Declaration Initializer With Struct Type Specifier`() {
+    val p = prepareCode("""
+      int main() {
+        for (struct s {int x,y;} i;;);
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.FOR_INIT_NON_LOCAL)
+  }
+
+  @Test
+  fun `For Declaration And Empty Condition`() {
+    val p = prepareCode("""
+      int main() {
+        for (int i = 1; ; 1 + 1);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
 }

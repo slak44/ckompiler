@@ -10,7 +10,7 @@ interface IDeclarationParser {
   /**
    * Parses a declaration, including function declarations (prototypes).
    * @param validationRules extra checks to be performed on the [DeclarationSpecifier]
-   * @return null if there is no declaration, or a [Declaration] otherwise
+   * @return null if there is no declaration, a [Declaration] otherwise
    */
   fun parseDeclaration(validationRules: SpecValidationRules): Declaration? {
     val (declSpec, firstDecl) = preParseDeclarator(validationRules)
@@ -78,7 +78,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat() // The ';'
       when {
-        declSpec.isTag() -> { /* Do nothing intentionally */
+        declSpec.isTag() -> {
+          // Do nothing intentionally
         }
         declSpec.isTypedef() -> diagnostic {
           id = DiagnosticId.TYPEDEF_REQUIRES_NAME
@@ -101,10 +102,10 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator?): Declaration {
-    val d = Declaration(declSpec, parseInitDeclaratorList(declSpec, declarator))
-    d.declaratorList.forEach { checkArrayElementType(declSpec, it.first) }
+    val declList = parseInitDeclaratorList(declSpec, declarator)
+    declList.forEach { checkArrayElementType(declSpec, it.first) }
     val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.tokenRange.start
-    return d.withRange(start until safeToken(0).startIdx)
+    return Declaration(declSpec, declList).withRange(start until safeToken(0).startIdx)
   }
 
   /**
@@ -175,7 +176,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       // Add param name to current scope (which can be either block scope or
       // function prototype scope). Ignore unnamed parameters.
       if (declarator is NamedDeclarator) scope.withScope {
-        newIdentifier(TypedIdentifier.from(specs, declarator))
+        newIdentifier(TypedIdentifier(specs, declarator))
       }
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
@@ -491,7 +492,7 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
       if (declarator !is NamedDeclarator) return
       val identifier =
           if (ds.isTypedef()) TypedefName(ds, declarator)
-          else TypedIdentifier.from(ds, declarator)
+          else TypedIdentifier(ds, declarator)
       newIdentifier(identifier)
     }
 
@@ -554,24 +555,8 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
     // If firstDecl is null, we act as if it was already processed
     var firstDeclUsed = firstDecl == null
     while (true) {
-      // This is here to find the index of the comma that separates declarators (ignoring commas
-      // found in initializers). Is [tokenCount] if there is no comma.
-      val firstThingIdx = indexOfFirst(Punctuators.COMMA, Punctuators.LPAREN)
-      val parenEndIdx = findParenMatch(
-          Punctuators.LPAREN, Punctuators.RPAREN, startIdx = firstThingIdx, disableDiags = true)
-      val declEnd = when {
-        parenEndIdx == -1 -> {
-          val commaIdx = indexOfFirst(Punctuators.COMMA)
-          if (commaIdx == -1) tokenCount else commaIdx
-        }
-        firstThingIdx == -1 -> tokenCount
-        tokenAt(firstThingIdx).asPunct() == Punctuators.COMMA -> firstThingIdx
-        tokenAt(firstThingIdx).asPunct() == Punctuators.LPAREN -> {
-          val commaIdx = indexOfFirst(parenEndIdx) { it.asPunct() == Punctuators.COMMA }
-          if (commaIdx == -1) tokenCount else commaIdx
-        }
-        else -> tokenCount
-      }
+      val declEnd = firstOutsideParens(
+          Punctuators.COMMA, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = true)
       val declarator = if (firstDeclUsed) {
         parseNamedDeclarator(declEnd)
       } else {

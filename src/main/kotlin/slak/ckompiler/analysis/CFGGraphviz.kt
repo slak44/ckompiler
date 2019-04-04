@@ -71,7 +71,7 @@ fun createGraphviz(graph: CFG, sourceCode: String, reachableOnly: Boolean): Stri
       else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
     }
 
-    val defs = it.definitions.joinToString("\n") { (ident) -> "${ident.type} ${ident.name};" }
+    val phi = it.phiFunctions.joinToString("\n") { p -> p.toString() }
     val rawCode = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
 
     val cond = (it.terminator as? CondJump)?.cond?.let { cond ->
@@ -81,7 +81,7 @@ fun createGraphviz(graph: CFG, sourceCode: String, reachableOnly: Boolean): Stri
       "\nreturn ${ret.originalCode(sourceCode)};"
     } ?: ""
 
-    val code = defs + (if (defs.isNotBlank()) "\n" else "") + rawCode + cond + ret
+    val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret
     val blockText = if (code.isBlank()) "<EMPTY>" else code.trim()
     "node${it.nodeId} [shape=box,$style,label=\"$blockText\"];"
   } + sep + edges.joinToString(sep) {
