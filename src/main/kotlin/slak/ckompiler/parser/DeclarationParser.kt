@@ -124,15 +124,15 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
    */
   private fun parseParameterList(endIdx: Int): ParameterTypeList = tokenContext(endIdx) {
     // No parameters; this is not an error case
-    if (isEaten()) return@tokenContext ParameterTypeList(emptyList())
+    if (isEaten()) return@tokenContext ParameterTypeList(emptyList(), newScope())
     // The only thing between parens is "void" => no params
     if (it.size == 1 && it[0].asKeyword() == Keywords.VOID) {
       eat() // The 'void'
-      return@tokenContext ParameterTypeList(emptyList())
+      return@tokenContext ParameterTypeList(emptyList(), newScope())
     }
     var isVariadic = false
     val params = mutableListOf<ParameterDeclaration>()
-    val scope = LexicalScope()
+    val scope = newScope()
     while (isNotEaten()) {
       // Variadic functions
       if (current().asPunct() == Punctuators.DOTS) {

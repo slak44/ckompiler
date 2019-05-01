@@ -58,9 +58,10 @@ interface OrdinaryIdentifier {
  *
  * C standard: 6.2.1, 6.2.3.0.1
  */
-data class LexicalScope(val tagNames: MutableList<TagSpecifier> = mutableListOf(),
-                        val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
-                        val labels: MutableList<IdentifierNode> = mutableListOf()) {
+class LexicalScope(val parentScope: LexicalScope? = null,
+                   val tagNames: MutableList<TagSpecifier> = mutableListOf(),
+                   val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
+                   val labels: MutableList<IdentifierNode> = mutableListOf()) {
 
   override fun toString(): String {
     val identStr = idents.filter { it !is TypedefName }.joinToString(", ") { it.name }
@@ -72,9 +73,29 @@ data class LexicalScope(val tagNames: MutableList<TagSpecifier> = mutableListOf(
     return "LexicalScope(" +
         "idents=[$identStr], labels=[$labelStr], typedefs=[$typedefStr], tags=[$tags])"
   }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is LexicalScope) return false
+
+    if (tagNames != other.tagNames) return false
+    if (idents != other.idents) return false
+    if (labels != other.labels) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = tagNames.hashCode()
+    result = 31 * result + idents.hashCode()
+    result = 31 * result + labels.hashCode()
+    return result
+  }
 }
 
 interface IScopeHandler {
+  fun newScope(): LexicalScope
+
   /**
    * Run the given [block] within the receiver scope.
    * @param block called with its receiver parameter as the original scope
@@ -88,7 +109,7 @@ interface IScopeHandler {
    * @param block called with the receiver parameter as the created scope
    * @return the value returned by [block]
    */
-  fun <R> scoped(block: LexicalScope.() -> R): R = LexicalScope().withScope(block)
+  fun <R> scoped(block: LexicalScope.() -> R): R
 
   /**
    * Adds a new [OrdinaryIdentifier] to the current scope. If the identifier name already was in the
@@ -136,12 +157,17 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     scopeStack.push(LexicalScope())
   }
 
+  override fun newScope() = LexicalScope(scopeStack.peek())
+
   override fun <R> LexicalScope.withScope(block: LexicalScope.() -> R): R {
     scopeStack.push(this)
     val ret = this.block()
     scopeStack.pop()
     return ret
   }
+
+  override fun <R> scoped(block: LexicalScope.() -> R): R =
+      LexicalScope(scopeStack.peek()).withScope(block)
 
   override fun createTag(tag: TagSpecifier) {
     if (tag.isAnonymous) {
@@ -162,7 +188,9 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
           columns(foundTag.tagIdent.tokenRange)
         }
       }
-      !tag.isCompleteType -> { /* Do nothing intentionally */ }
+      !tag.isCompleteType -> {
+        // Do nothing intentionally
+      }
       !foundTag.isCompleteType && tag.isCompleteType -> {
         names -= foundTag
         names += tag

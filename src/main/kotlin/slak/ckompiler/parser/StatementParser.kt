@@ -54,7 +54,7 @@ class StatementParser(declarationParser: DeclarationParser,
       return CompoundStatement(items, scope)
     }
     // Parsing the items happens both inside a lexical scope and inside a token context
-    val compound = (functionScope ?: LexicalScope()).withScope {
+    val compound = (functionScope ?: newScope()).withScope {
       tokenContext(rbracket) { parseCompoundItems(this) }
     }
     eat() // Get rid of '}'
