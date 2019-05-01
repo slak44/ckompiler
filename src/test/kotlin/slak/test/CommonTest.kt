@@ -44,18 +44,25 @@ internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, F
 
 internal val Keywords.kw get() = Keyword(this)
 
-internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw))
-internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw))
-internal val double = DeclarationSpecifier(typeSpec = DoubleTypeSpec(Keywords.DOUBLE.kw))
-internal val longLong = DeclarationSpecifier(typeSpec = LongLong(Keywords.LONG.kw))
+fun <T : ASTNode> T.zeroRange(): T {
+  this.setRange(0..0)
+  return this
+}
+
+internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
+internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw)).zeroRange()
+internal val double =
+    DeclarationSpecifier(typeSpec = DoubleTypeSpec(Keywords.DOUBLE.kw)).zeroRange()
+internal val longLong = DeclarationSpecifier(typeSpec = LongLong(Keywords.LONG.kw)).zeroRange()
 internal val uLongLong =
-    DeclarationSpecifier(typeSpec = UnsignedLongLong(Keywords.UNSIGNED.kw))
-internal val longDouble = DeclarationSpecifier(typeSpec = LongDouble(Keywords.LONG.kw))
-internal val signedChar = DeclarationSpecifier(typeSpec = SignedChar(Keywords.SIGNED.kw))
+    DeclarationSpecifier(typeSpec = UnsignedLongLong(Keywords.UNSIGNED.kw)).zeroRange()
+internal val longDouble = DeclarationSpecifier(typeSpec = LongDouble(Keywords.LONG.kw)).zeroRange()
+internal val signedChar =
+    DeclarationSpecifier(typeSpec = SignedChar(Keywords.SIGNED.kw)).zeroRange()
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
-internal fun name(s: String): IdentifierNode = IdentifierNode(s).withRange(0..0)
+internal fun name(s: String): IdentifierNode = IdentifierNode(s).zeroRange()
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t)
 internal fun FunctionDefinition.toRef() = funcIdent
 internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
@@ -124,8 +131,10 @@ internal infix fun DeclarationSpecifier.declare(s: String) =
 internal infix fun DeclarationSpecifier.declare(sm: List<StructMember>) =
     StructDeclaration(this, sm)
 
-internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) = ParameterDeclaration(this, s)
-internal infix fun DeclarationSpecifier.param(s: String) = ParameterDeclaration(this, nameDecl(s))
+internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) =
+    ParameterDeclaration(this, s).zeroRange()
+internal infix fun DeclarationSpecifier.param(s: String) =
+    ParameterDeclaration(this, nameDecl(s)).zeroRange()
 
 internal fun DeclarationSpecifier.toParam() =
     this param AbstractDeclarator(emptyList(), emptyList())
@@ -216,14 +225,14 @@ internal fun forSt(e: Expression,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(ForExpressionInitializer(e.withRange(0..0)), cond, cont, loopable)
+  return ForStatement(ForExpressionInitializer(e.zeroRange()), cond, cont, loopable)
 }
 
 internal fun forSt(e: Declaration,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(DeclarationInitializer(e.withRange(0..0)), cond, cont, loopable)
+  return ForStatement(DeclarationInitializer(e.zeroRange()), cond, cont, loopable)
 }
 
 internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNode(this), s)

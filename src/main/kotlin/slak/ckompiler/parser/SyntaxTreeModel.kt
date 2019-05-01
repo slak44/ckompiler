@@ -602,12 +602,8 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val funcIdent: TypedIdentifier,
+                              val parameters: List<TypedIdentifier>,
                               val compoundStatement: Statement) : ExternalDeclaration() {
-  constructor(declSpec: DeclarationSpecifier,
-              functionDeclarator: Declarator,
-              compoundStatement: Statement) :
-      this(TypedIdentifier(declSpec, functionDeclarator as NamedDeclarator), compoundStatement)
-
   val name = funcIdent.name
   val block get() = compoundStatement as CompoundStatement
 
@@ -617,6 +613,24 @@ data class FunctionDefinition(val funcIdent: TypedIdentifier,
 
   override fun toString(): String {
     return "FunctionDefinition($funcIdent, $compoundStatement)"
+  }
+
+  companion object {
+    operator fun invoke(declSpec: DeclarationSpecifier,
+                        functionDeclarator: Declarator,
+                        compoundStatement: Statement): FunctionDefinition {
+      val funcIdent = TypedIdentifier(declSpec, functionDeclarator as NamedDeclarator)
+      val paramDecls = functionDeclarator.getFunctionTypeList().params
+      if (funcIdent.type !is FunctionType) {
+        logger.throwICE("Function identifier type is not FunctionType") { funcIdent.type }
+      }
+      val paramTypes = funcIdent.type.asCallable()!!.params
+      val params = paramDecls.zip(paramTypes).mapNotNull { (paramDecl, typeName) ->
+        if (paramDecl.declarator !is NamedDeclarator) return@mapNotNull null
+        TypedIdentifier(paramDecl.declarator.name.name, typeName).withRange(paramDecl.tokenRange)
+      }
+      return FunctionDefinition(funcIdent, params, compoundStatement)
+    }
   }
 }
 
