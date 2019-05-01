@@ -191,6 +191,10 @@ class TypedIdentifier(override val name: String,
 
   override val kindName = "variable"
 
+  /**
+   * Makes a copy of this [TypedIdentifier], that has the same [id].
+   * Useful for having a different [tokenRange].
+   */
   fun copy(): TypedIdentifier {
     val other = TypedIdentifier(name, type)
     other.id = id
