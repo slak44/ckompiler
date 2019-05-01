@@ -16,11 +16,13 @@ sealed class Jump {
 /** If [cond] is true, jump to [target], otherwise jump to [other]. */
 data class CondJump(val cond: Expression, val target: BasicBlock, val other: BasicBlock) : Jump() {
   override val successors = listOf(target, other)
+  override fun toString() = "CondJump<${target.nodeId}, ${other.nodeId}>$cond"
 }
 
 /** Unconditionally jump to [target]. */
 data class UncondJump(val target: BasicBlock) : Jump() {
   override val successors = listOf(target)
+  override fun toString() = "UncondJump<${target.nodeId}>"
 }
 
 /**
@@ -29,6 +31,7 @@ data class UncondJump(val target: BasicBlock) : Jump() {
  */
 data class ImpossibleJump(val target: BasicBlock, val returned: Expression?) : Jump() {
   override val successors = emptyList<BasicBlock>()
+  override fun toString() = "ImpossibleJump($returned)$"
 }
 
 /**
@@ -37,6 +40,7 @@ data class ImpossibleJump(val target: BasicBlock, val returned: Expression?) : J
  */
 data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Jump() {
   override val successors = listOf(target)
+  override fun toString() = "ConstantJump<${target.nodeId}>$"
 }
 
 /** Indicates an incomplete [BasicBlock]. */
@@ -248,7 +252,9 @@ class IdCounter {
   operator fun invoke() = counter++
 }
 
-data class PhiFunction(val target: TypedIdentifier, val pred1: BasicBlock, val pred2: BasicBlock)
+data class PhiFunction(val target: TypedIdentifier, val pred1: BasicBlock, val pred2: BasicBlock) {
+  override fun toString() = "$target = φ(<${pred1.nodeId}>, <${pred2.nodeId}>)"
+}
 
 /**
  * Stores a node of the [CFG], a basic block of [ASTNode]s who do not affect the control flow.
@@ -352,7 +358,7 @@ class BasicBlock(val isRoot: Boolean = false) {
   override fun hashCode() = nodeId
 
   override fun toString() =
-      "BasicBlock<$nodeId>(${data.joinToString(";")}, ${terminator.javaClass.simpleName})"
+      "BasicBlock<$nodeId>(${data.joinToString(";")}, $terminator)"
 
   companion object {
     private val nodeCounter = IdCounter()
