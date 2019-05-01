@@ -130,8 +130,9 @@ class CFGTests {
     }
     assertEquals(3, cfg.definitions.size)
     val e = cfg.definitions.entries.toList()
-    assertEquals(e[0].value.map { it.nodeId }, listOf(0, 3, 4, 9))
-    assertEquals(e[1].value.map { it.nodeId }, listOf(0, 3, 4))
-    assertEquals(e[2].value.map { it.nodeId }, listOf(0, 4))
+    val id = cfg.startBlock.nodeId
+    assertEquals(e[0].value.map { it.nodeId }, listOf(0, 3, 4, 9).map { it + id })
+    assertEquals(e[1].value.map { it.nodeId }, listOf(0, 3, 4).map { it + id })
+    assertEquals(e[2].value.map { it.nodeId }, listOf(0, 4).map { it + id })
   }
 }
