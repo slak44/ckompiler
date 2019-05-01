@@ -72,6 +72,11 @@ enum class BinaryOperators(val op: Punctuators, val precedence: Int, val assoc: 
   enum class Associativity { LEFT_TO_RIGHT, RIGHT_TO_LEFT }
 }
 
+val assignmentOps = listOf(BinaryOperators.ASSIGN, BinaryOperators.MUL_ASSIGN,
+    BinaryOperators.DIV_ASSIGN, BinaryOperators.MOD_ASSIGN, BinaryOperators.PLUS_ASSIGN,
+    BinaryOperators.SUB_ASSIGN, BinaryOperators.LSH_ASSIGN, BinaryOperators.RSH_ASSIGN,
+    BinaryOperators.AND_ASSIGN, BinaryOperators.XOR_ASSIGN, BinaryOperators.OR_ASSIGN)
+
 private fun Punctuators.asBinaryOperator() = BinaryOperators.values().find { it.op == this }
 private fun Punctuators.asUnaryOperator() = UnaryOperators.values().find { it.op == this }
 
