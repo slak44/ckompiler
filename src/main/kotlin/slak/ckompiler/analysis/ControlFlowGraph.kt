@@ -76,6 +76,33 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
     if (!forceAllNodes) findDomFrontiers(doms, startBlock, postOrderNodes)
     // Implicit definition in the root block
     for (v in definitions) v.value += startBlock
+    if (!forceAllNodes) insertPhiFunctions()
+  }
+
+  /**
+   * φ-function insertion.
+   *
+   * See Algorithm 3.1 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
+   */
+  private fun insertPhiFunctions() {
+    for ((pair, defsV) in definitions) {
+      val v = pair.first
+      val f = mutableSetOf<BasicBlock>()
+      // We already store the basic blocks as a set, so just make a copy
+      val w = mutableSetOf(*defsV.toTypedArray())
+      while (w.isNotEmpty()) {
+        val x = w.first()
+        w -= x
+        for (y in x.dominanceFrontier) {
+          if (y !in f) {
+            // FIXME: use correct preds
+            y.phiFunctions += PhiFunction(v, y.preds.first(), y.preds.drop(1).first())
+            f += y
+            if (y !in defsV) w += y
+          }
+        }
+      }
+    }
   }
 
   fun newBlock(): BasicBlock {
