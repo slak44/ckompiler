@@ -42,8 +42,6 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
     val referencedType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes))
     return decl.indirection.fold(referencedType) { type, curr -> PointerType(type, curr) }
   }
-  // Structure/Union
-  if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)
   // Functions
   if (decl.isFunction()) {
     val ptl = decl.getFunctionTypeList()
@@ -51,6 +49,8 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
     val retType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
     return FunctionType(retType, paramTypes, ptl.variadic)
   }
+  // Structure/Union
+  if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)
   // Arrays
   if (decl.isArray()) {
     val size = decl.getArrayTypeSize()
