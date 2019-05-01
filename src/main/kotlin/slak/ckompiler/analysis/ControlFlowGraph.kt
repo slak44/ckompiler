@@ -303,8 +303,7 @@ class BasicBlock(val isRoot: Boolean = false) {
     emptyBlockLoop@ for (emptyBlock in preds.filter { it.isEmpty() }) {
       if (emptyBlock.isRoot) continue@emptyBlockLoop
       for (emptyBlockPred in emptyBlock.preds) {
-        val oldTerm = emptyBlockPred.terminator
-        when (oldTerm) {
+        when (val oldTerm = emptyBlockPred.terminator) {
           is UncondJump -> {
             emptyBlockPred.terminator = UncondJump(this)
             preds += emptyBlockPred
