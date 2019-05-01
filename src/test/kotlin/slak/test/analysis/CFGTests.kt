@@ -1,12 +1,11 @@
 package slak.test.analysis
 
 import org.junit.Test
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.CondJump
-import slak.ckompiler.analysis.ImpossibleJump
-import slak.ckompiler.analysis.createGraphviz
+import slak.ckompiler.analysis.*
 import slak.test.*
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class CFGTests {
   @Test
@@ -134,5 +133,21 @@ class CFGTests {
     assertEquals(e[0].value.map { it.nodeId }, listOf(0, 3, 4, 9).map { it + id })
     assertEquals(e[1].value.map { it.nodeId }, listOf(0, 3, 4).map { it + id })
     assertEquals(e[2].value.map { it.nodeId }, listOf(0, 4).map { it + id })
+  }
+
+  @Test
+  fun `Phi Insertion`() {
+    val text = resource("phiTest.c").readText()
+    val p = prepareCode(text, source)
+    p.assertNoDiagnostics()
+    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    for (node in cfg.nodes) {
+      println("$node φ-functions: \n\t${node.phiFunctions.joinToString("\n\t")}")
+    }
+    val rootId = cfg.startBlock.nodeId
+    fun phis(id: Int) = cfg.nodes.first { it.nodeId == (rootId + id) }.phiFunctions
+    fun List<PhiFunction>.x() = firstOrNull { it.target.name == "x" }
+    for (i in listOf(1, 2, 9)) assertNotNull(phis(i).x())
+    for (i in listOf(0, 3, 4)) assertNull(phis(i).x())
   }
 }
