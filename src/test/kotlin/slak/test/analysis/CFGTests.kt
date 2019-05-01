@@ -120,11 +120,18 @@ class CFGTests {
   }
 
   @Test
-  fun `Phi Insertion Test`() {
+  fun `Correct Definition Tracking Test`() {
     val text = resource("phiTest.c").readText()
     val p = prepareCode(text, source)
     p.assertNoDiagnostics()
     val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
-    cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
+    for ((key, value) in cfg.definitions) {
+      println("${key.first} (${key.second}) defined in \n\t${value.joinToString("\n\t")}")
+    }
+    assertEquals(3, cfg.definitions.size)
+    val e = cfg.definitions.entries.toList()
+    assertEquals(e[0].value.map { it.nodeId }, listOf(0, 3, 4, 9))
+    assertEquals(e[1].value.map { it.nodeId }, listOf(0, 3, 4))
+    assertEquals(e[2].value.map { it.nodeId }, listOf(0, 4))
   }
 }

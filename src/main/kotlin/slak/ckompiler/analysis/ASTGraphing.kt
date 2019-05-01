@@ -7,6 +7,7 @@ import slak.ckompiler.throwICE
 private val logger = KotlinLogging.logger("ASTGraphing")
 
 fun graph(cfg: CFG) {
+  for (p in cfg.f.parameters) cfg.definitions[p to p.id] = mutableSetOf()
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
 }
 
@@ -35,48 +36,83 @@ private fun GraphingContext.graphCompound(current: BasicBlock,
   for ((name) in compoundStatement.scope.labels) {
     labelBlockFor(name)
   }
-  // FIXME: add function params to vars
-//  root.variables += root.f.params
   for (item in compoundStatement.items) {
     if (item is StatementItem) {
-      block = graphStatement(block, item.statement)
+      block = graphStatement(compoundStatement.scope, block, item.statement)
     } else {
       item as DeclarationItem
-      root.addDeclaration(block, item.declaration)
+      root.addDeclaration(compoundStatement.scope, block, item.declaration)
     }
   }
   return block
 }
 
-private fun CFG.addDeclaration(current: BasicBlock, d: Declaration) {
-  val vars = d.idents.map { Variable(it.first) }
-  for (v in vars) v.addDefinition(current)
-  variables += vars
-  current.data += d.idents.flatMap(::transformInitializer)
+private fun CFG.addDefinition(current: BasicBlock, ident: TypedIdentifier) {
+  val k = ident to ident.id
+  if (!definitions.containsKey(k)) definitions[k] = mutableSetOf(current)
+  else definitions[k]!! += current
+}
+
+private fun CFG.addDeclaration(parent: LexicalScope, current: BasicBlock, d: Declaration) {
+  for ((ident, init) in d.idents(parent).zip(d.declaratorList.map { it.second })) {
+    if (definitions.containsKey(ident to ident.id)) {
+      logger.throwICE("Redefinition of declaration") { ident }
+    }
+    definitions[ident to ident.id] = mutableSetOf(current)
+    transformInitializer(current, ident, init)
+  }
 }
 
 /** Reduce an [Initializer] to a series of synthetic [Expression]s. */
-private fun transformInitializer(
-    decl: Pair<TypedIdentifier, Initializer?>): List<Expression> = when (val init = decl.second) {
+private fun transformInitializer(current: BasicBlock,
+                                 ident: TypedIdentifier,
+                                 init: Initializer?): Unit = when (init) {
   null -> {
     // No initializer, nothing to output
-    emptyList()
   }
   is ExpressionInitializer -> {
     // Transform this into an assignment expression
-    listOf(BinaryExpression(BinaryOperators.ASSIGN, decl.first, init.expr)
-        .withRange(decl.first..init.expr))
+    current.data += BinaryExpression(BinaryOperators.ASSIGN, ident, init.expr)
+        .withRange(ident..init.expr)
   }
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
 
-private fun GraphingContext.graphStatement(current: BasicBlock,
+private fun CFG.findAssignmentTargets(current: BasicBlock, e: Expression): Unit = when (e) {
+  is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
+  is BinaryExpression -> {
+    if (e.op in assignmentOps) {
+      if (e.lhs is TypedIdentifier) {
+        addDefinition(current, e.lhs)
+      } else {
+        // FIXME: a bunch of other things can be on the left side of an =
+        logger.error { "Unimplemented branch" }
+      }
+    }
+    findAssignmentTargets(current, e.lhs)
+    findAssignmentTargets(current, e.rhs)
+  }
+  is FunctionCall -> {
+    findAssignmentTargets(current, e.calledExpr)
+    for (arg in e.args) findAssignmentTargets(current, arg)
+  }
+  is UnaryExpression -> findAssignmentTargets(current, e.operand)
+  is SizeofExpression -> findAssignmentTargets(current, e.sizeExpr)
+  is PrefixIncrement -> findAssignmentTargets(current, e.expr)
+  is PrefixDecrement -> findAssignmentTargets(current, e.expr)
+  is PostfixIncrement -> findAssignmentTargets(current, e.expr)
+  is PostfixDecrement -> findAssignmentTargets(current, e.expr)
+  is TypedIdentifier, is IntegerConstantNode, is FloatingConstantNode,
+  is CharacterConstantNode, is StringLiteralNode, is SizeofTypeName -> Unit
+}
+
+private fun GraphingContext.graphStatement(scope: LexicalScope,
+                                           current: BasicBlock,
                                            s: Statement): BasicBlock = when (s) {
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression -> {
-    // FIXME: fetch the [Variable]s used in the expression
-    // FIXME: if they're assigned to, add current to the variable's definitions
+    root.findAssignmentTargets(current, s)
     current.data += s
     current
   }
@@ -87,15 +123,15 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
   is LabeledStatement -> {
     val blockWithLabel = labelBlockFor(s.label.name)
     current.terminator = UncondJump(blockWithLabel)
-    val nextBlock = graphStatement(blockWithLabel, s.statement)
+    val nextBlock = graphStatement(scope, blockWithLabel, s.statement)
     nextBlock
   }
   is CompoundStatement -> graphCompound(current, s)
   is IfStatement -> {
     val ifBlock = root.newBlock()
     val elseBlock = root.newBlock()
-    val ifNext = graphStatement(ifBlock, s.success)
-    val elseNext = s.failure?.let { graphStatement(elseBlock, it) }
+    val ifNext = graphStatement(scope, ifBlock, s.success)
+    val elseNext = s.failure?.let { graphStatement(scope, elseBlock, it) }
     val afterIfBlock = root.newBlock()
     current.terminator = run {
       val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
@@ -110,7 +146,7 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
-    val loopNext = loopContext.graphStatement(loopBlock, s.loopable)
+    val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     current.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
     loopNext.terminator = UncondJump(current)
     afterLoopBlock
@@ -119,7 +155,7 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
-    val loopNext = loopContext.graphStatement(loopBlock, s.loopable)
+    val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     current.terminator = UncondJump(loopBlock)
     loopNext.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
     afterLoopBlock
@@ -130,14 +166,14 @@ private fun GraphingContext.graphStatement(current: BasicBlock,
         // Intentionally left empty
       }
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-      is ForExpressionInitializer -> current.data += s.init.value
-      is DeclarationInitializer -> root.addDeclaration(current, s.init.value)
+      is ForExpressionInitializer -> graphStatement(scope, current, s.init.value)
+      is DeclarationInitializer -> root.addDeclaration(scope, current, s.init.value)
     }
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
-    val loopNext = loopContext.graphStatement(loopBlock, s.loopable)
-    s.loopEnd?.let { graphStatement(loopNext, it) }
+    val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
+    s.loopEnd?.let { graphStatement(scope, loopNext, it) }
     if (s.cond == null) {
       // No for condition means unconditional jump to loop block
       current.terminator = UncondJump(loopBlock)

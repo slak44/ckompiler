@@ -181,6 +181,10 @@ internal infix fun IfStatement.elseSt(failure: CompoundStatement) =
 
 internal fun <T> returnSt(e: T) = ReturnStatement(parseDSLElement(e))
 
+private fun declsToTypeIdents(d: Declaration): List<TypedIdentifier> {
+  return d.declaratorList.map { (decl) -> TypedIdentifier(d.declSpecs, decl as NamedDeclarator) }
+}
+
 internal fun <T> compoundOf(vararg elements: T, scope: LexicalScope? = null) =
     listOf(*elements).compound(scope)
 
@@ -196,9 +200,9 @@ internal fun <T> List<T>.compound(scope: LexicalScope? = null) = CompoundStateme
 }, with(scope ?: LexicalScope()) {
   forEach {
     when (it) {
-      is Declaration -> idents += it.idents.map { (first) -> first }
+      is Declaration -> idents += declsToTypeIdents(it)
       is ForStatement -> {
-        val names = (it.init as? DeclarationInitializer)?.value?.idents?.map { (first) -> first }
+        val names = (it.init as? DeclarationInitializer)?.value?.let(::declsToTypeIdents)
         if (names != null) idents += names
       }
       is LabeledStatement -> labels += it.label

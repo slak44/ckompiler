@@ -1,5 +1,5 @@
 // http://ssabook.gforge.inria.fr/latest/book.pdf
-// This should produce the graph from figure 3.1
+// This should produce the graph from figure 3.1/3.2
 int main() {
   int x, y, tmp;
   A:

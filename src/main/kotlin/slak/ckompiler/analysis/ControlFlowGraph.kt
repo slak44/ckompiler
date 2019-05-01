@@ -55,7 +55,17 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
   private val postOrderNodes: Set<BasicBlock>
   /** Stores the immediate dominator (IDom) of a particular node. */
   private val doms: DominatorList
-  val variables = mutableListOf<Variable>()
+  /**
+   * List of [TypedIdentifier] used in this function, with definition locations.
+   *
+   * A "definition" of a variable is assignment to that variable. We consider a definition to be a
+   * property of the block it's in; as a result, we can ignore *where* in the block it was defined.
+   * The parser has already checked that a variable cannot be used until it is declared.
+   *
+   * The [TypedIdentifier.id] is not considered in [TypedIdentifier.equals], so we explicitly make
+   * it part of the key.
+   */
+  val definitions = mutableMapOf<Pair<TypedIdentifier, Int>, MutableSet<BasicBlock>>()
 
   init {
     graph(this)
@@ -64,6 +74,8 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
     postOrderNodes = postOrderNodes(startBlock, nodes)
     doms = DominatorList(postOrderNodes.size)
     if (!forceAllNodes) findDomFrontiers(doms, startBlock, postOrderNodes)
+    // Implicit definition in the root block
+    for (v in definitions) v.value += startBlock
   }
 
   fun newBlock(): BasicBlock {
@@ -204,38 +216,12 @@ private fun collapseEmptyBlocks(nodes: Set<BasicBlock>) {
 }
 
 /** Returns a sequential integer on [invoke]. */
-private class IdCounter {
+class IdCounter {
   private var counter = 0
   operator fun invoke() = counter++
 }
 
-/**
- * Wrapper over [TypedIdentifier]. Since there can be multiple variables with the same name in
- * the same function, they must be differentiated.
- *
- * A "definition" of a variable is assignment to that variable. We consider a definition to be a
- * property of the block it's in; as a result, we ignore *where* in the block it was defined. The
- * parser has already checked that a variable cannot be used until it is declared.
- */
-class Variable(val ident: TypedIdentifier) {
-  private val id = varCounter()
-  /** Set of basic blocks that contain definitions of this variable. */
-  private val _definitions = mutableSetOf<BasicBlock>()
-  val definitions: Set<BasicBlock> get() = _definitions
-
-  fun addDefinition(node: BasicBlock) {
-    _definitions += node
-  }
-
-  override fun hashCode() = id
-  override fun equals(other: Any?) = this === other
-
-  companion object {
-    private val varCounter = IdCounter()
-  }
-}
-
-data class PhiFunction(val target: Variable, val pred1: BasicBlock, val pred2: BasicBlock)
+data class PhiFunction(val target: TypedIdentifier, val pred1: BasicBlock, val pred2: BasicBlock)
 
 /**
  * Stores a node of the [CFG], a basic block of [ASTNode]s who do not affect the control flow.
@@ -339,7 +325,7 @@ class BasicBlock(val isRoot: Boolean = false) {
   override fun hashCode() = nodeId
 
   override fun toString() =
-      "BasicBlock(${data.joinToString(";")}, ${terminator.javaClass.simpleName})"
+      "BasicBlock<$nodeId>(${data.joinToString(";")}, ${terminator.javaClass.simpleName})"
 
   companion object {
     private val nodeCounter = IdCounter()

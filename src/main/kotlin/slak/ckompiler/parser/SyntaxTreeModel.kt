@@ -1,6 +1,7 @@
 package slak.ckompiler.parser
 
 import mu.KotlinLogging
+import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
 
@@ -169,17 +170,56 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
   override val type = ErrorType
 }
 
-/** Like [IdentifierNode], but with an attached [TypeName]. */
-data class TypedIdentifier(override val name: String,
+/**
+ * Like [IdentifierNode], but with an attached [TypeName].
+ *
+ * A [TypedIdentifier] should be "unique", in that for each variable in a function, all uses of it
+ * must use the same [TypedIdentifier] instance, with the same [TypedIdentifier.id]. Even though
+ * two instances with different ids can compare equal, they refer to different variables with the
+ * same name (name shadowing). Creating other instances is fine as long as they are not leaked in
+ * the rest of the AST.
+ */
+class TypedIdentifier(override val name: String,
                            override val type: TypeName) : Expression(), OrdinaryIdentifier {
   constructor(ds: DeclarationSpecifier,
               decl: NamedDeclarator) : this(decl.name.name, typeNameOf(ds, decl)) {
     withRange(decl.name.tokenRange)
   }
 
+  var id = varCounter()
+    private set
+
   override val kindName = "variable"
 
+  fun copy(): TypedIdentifier {
+    val other = TypedIdentifier(name, type)
+    other.id = id
+    return other
+  }
+
   override fun toString() = "$type $name"
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is TypedIdentifier) return false
+    if (!super.equals(other)) return false
+
+    if (name != other.name) return false
+    if (type != other.type) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = super.hashCode()
+    result = 31 * result + name.hashCode()
+    result = 31 * result + type.hashCode()
+    return result
+  }
+
+  companion object {
+    private val varCounter = IdCounter()
+  }
 }
 
 /**
@@ -223,6 +263,7 @@ data class SizeofTypeName(val typeName: TypeName) : Expression() {
 
 /** C standard: A.2.1 */
 data class SizeofExpression(val sizeExpr: Expression) : Expression() {
+  // FIXME: do we have to keep the expression? can we just take sizeExpr.type and forget the rest?
   override val type = UnsignedIntType
 
   init {
@@ -387,7 +428,7 @@ class ErrorSuffix : DeclaratorSuffix(), ErrorNode by ErrorNodeImpl
  * C standard: 6.7.6.0.1
  */
 data class ParameterTypeList(val params: List<ParameterDeclaration>,
-                             val scope: LexicalScope = LexicalScope(),
+                             val scope: LexicalScope,
                              val variadic: Boolean = false) : DeclaratorSuffix() {
   init {
     params.forEach { it.setParent(this) }
@@ -585,13 +626,33 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
                        val declaratorList: List<Pair<Declarator, Initializer?>>
 ) : ExternalDeclaration() {
 
-  val idents by lazy {
-    declaratorList.map {
-      TypedIdentifier(declSpecs, it.first as NamedDeclarator) to it.second
+  private var lateIdents: Set<TypedIdentifier>? = null
+
+  fun idents(parent: LexicalScope): Set<TypedIdentifier> {
+    if (lateIdents != null) return lateIdents!!
+    val dIdents = declaratorList.map { TypedIdentifier(declSpecs, it.first as NamedDeclarator) }
+    val idents = mutableSetOf<TypedIdentifier>()
+    identLoop@ for (ident in dIdents) {
+      var scope: LexicalScope? = parent
+      do {
+        val found = scope!!.idents.mapNotNull { it as? TypedIdentifier }.firstOrNull { it == ident }
+        if (found != null) {
+          idents += found
+          continue@identLoop
+        }
+        scope = scope.parentScope
+      } while (scope != null)
+      logger.throwICE("Cannot find ident in current scopes") { "$ident\n$parent" }
     }
+    lateIdents = idents
+    return idents
   }
 
   override fun toString(): String {
+    val tIdents = declaratorList.map {
+      TypedIdentifier(declSpecs, it.first as NamedDeclarator)
+    }
+    val idents = tIdents.zip(declaratorList.map { it.second })
     val nameAndInits = idents.joinToString(", ") {
       val initStr = if (it.second == null) "" else " = ${it.second}"
       "${it.first.name}$initStr"
@@ -627,7 +688,11 @@ data class FunctionDefinition(val funcIdent: TypedIdentifier,
       val paramTypes = funcIdent.type.asCallable()!!.params
       val params = paramDecls.zip(paramTypes).mapNotNull { (paramDecl, typeName) ->
         if (paramDecl.declarator !is NamedDeclarator) return@mapNotNull null
-        TypedIdentifier(paramDecl.declarator.name.name, typeName).withRange(paramDecl.tokenRange)
+        if (compoundStatement !is CompoundStatement) return@mapNotNull null
+        val blockIdents = compoundStatement.scope.idents.mapNotNull { it as? TypedIdentifier }
+        blockIdents.first {
+          it.name == paramDecl.declarator.name.name && it.type == typeName
+        }
       }
       return FunctionDefinition(funcIdent, params, compoundStatement)
     }

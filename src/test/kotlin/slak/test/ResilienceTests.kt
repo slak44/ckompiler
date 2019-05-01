@@ -7,6 +7,8 @@ import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.ErrorDeclarator
 import slak.ckompiler.parser.ErrorExpression
+import slak.ckompiler.parser.NamedDeclarator
+import slak.ckompiler.parser.TypedIdentifier
 import kotlin.test.assertEquals
 
 /**
@@ -123,7 +125,7 @@ class ResilienceTests {
     """.trimIndent(), source)
     val funProto = int proto ("f" withParams listOf(int.toParam(), int.toParam()))
     funProto assertEquals p.root.decls[0]
-    val f = funProto.idents[0].first
+    val f = TypedIdentifier(funProto.declSpecs, funProto.declaratorList[0].first as NamedDeclarator)
     int declare listOf("x" assign f()) assertEquals p.root.decls[1]
     // The parser gets incredibly confused by stuff like this
     // It is impossible to know exactly what is valid and what isn't when parens aren't matched, so
