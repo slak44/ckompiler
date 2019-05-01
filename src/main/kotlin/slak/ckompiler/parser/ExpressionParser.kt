@@ -364,8 +364,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
    * @return the [Terminal] node, or null if no terminal was found
    */
   private fun parseTerminal(): Expression? {
-    val tok = current()
-    when (tok) {
+    when (val tok = current()) {
       is Identifier -> {
         val ident = tok.name
         val existingIdent = searchIdent(ident)
