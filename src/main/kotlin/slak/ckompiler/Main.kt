@@ -4,6 +4,7 @@ import kotlinx.cli.*
 import mu.KotlinLogging
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.createGraphviz
+import slak.ckompiler.backend.CodeGenerator
 import slak.ckompiler.lexer.Lexer
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
@@ -23,6 +24,8 @@ fun main(args: Array<String>) {
       "unreachable basic blocks and impossible edges (requires --print-cfg-graphviz)")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
+  val output by cli.flagValueArgument("-o", "OUTFILE",
+      "Place output in the specified file", "a.out")
   val files by cli.positionalArgumentsList(
       "FILES...", "Translation units to be compiled", minArgs = 1)
   try {
@@ -40,30 +43,40 @@ fun main(args: Array<String>) {
     formatArgs(option)
   }
   for (diag in dh.diags) diag.print()
-  (files - badOptions).map { File(it) }.forEach {
-    val text = it.readText()
-    val pp = Preprocessor(text, it.absolutePath)
-    if (pp.diags.isNotEmpty()) {
-      return@forEach
-    }
+  val objFiles = mutableListOf<File>()
+  for (file in (files - badOptions).map(::File)) {
+    val text = file.readText()
+    val pp = Preprocessor(text, file.absolutePath)
+    if (pp.diags.isNotEmpty()) continue
     if (ppOnly) {
       println(pp.alteredSourceText)
-      return@forEach
+      continue
     }
-    val l = Lexer(pp.alteredSourceText, it.absolutePath)
-    if (l.diags.isNotEmpty()) {
-      return@forEach
-    }
-    val p = Parser(l.tokens, it.absolutePath, text)
-    if (p.diags.isNotEmpty()) {
-      return@forEach
-    }
+    val l = Lexer(pp.alteredSourceText, file.absolutePath)
+    if (l.diags.isNotEmpty()) continue
+    val p = Parser(l.tokens, file.absolutePath, text)
+    if (p.diags.isNotEmpty()) continue
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
       val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
-      val cfg = CFG(firstFun, it.absolutePath, text, forceAllNodes)
+      val cfg = CFG(firstFun, file.absolutePath, text, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable))
-      return
+      continue
     }
+    // FIXME: this is incomplete
+    val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
+    val cfg = CFG(firstFun, file.absolutePath, text, false)
+    val asmFile = createTempFile()
+    asmFile.writeText(CodeGenerator(cfg).getNasm())
+    val objFile = File(file.parent, file.nameWithoutExtension + ".o")
+    ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)
+        .inheritIO().start().waitFor()
+    objFiles += objFile
+    asmFile.delete()
   }
+  ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
+      "/lib/ld-linux-x86-64.so.2", "-e", "main",
+      *objFiles.map(File::getAbsolutePath).toTypedArray())
+      .inheritIO().start().waitFor()
+  File(output).setExecutable(true)
 }
