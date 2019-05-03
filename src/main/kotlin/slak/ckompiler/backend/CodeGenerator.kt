@@ -41,27 +41,10 @@ class CodeGenerator(private val cfg: CFG) {
       emit("push rbp")
       emit(genBlock(cfg.startBlock))
       emit("pop rbp")
+      emit("ret")
     }
     text += "${cfg.f.name}:"
     text += instr
-  }
-
-  private fun genExpr(e: Expression) = when (e) {
-    is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
-    is TypedIdentifier -> TODO()
-    is FunctionCall -> TODO()
-    is UnaryExpression -> TODO()
-    is SizeofTypeName -> TODO()
-    is SizeofExpression -> TODO()
-    is PrefixIncrement -> TODO()
-    is PrefixDecrement -> TODO()
-    is PostfixIncrement -> TODO()
-    is PostfixDecrement -> TODO()
-    is BinaryExpression -> genBinExpr(e)
-    is IntegerConstantNode -> TODO()
-    is FloatingConstantNode -> TODO()
-    is CharacterConstantNode -> TODO()
-    is StringLiteralNode -> TODO()
   }
 
   private val BasicBlock.fnLabel get() = ".block_${cfg.f.name}_$nodeId"
@@ -87,7 +70,7 @@ class CodeGenerator(private val cfg: CFG) {
    */
   private fun genReturn(retExpr: Expression?) = instrGen {
     if (retExpr == null) {
-      emit("ret")
+      // Nothing to return
       return@instrGen
     }
     emit(genExpr(retExpr))
@@ -118,10 +101,33 @@ class CodeGenerator(private val cfg: CFG) {
     TODO()
   }
 
+  /**
+   * Returns in rax. FIXME: temporary fix, we need a register allocator
+   */
+  private fun genExpr(e: Expression) = when (e) {
+    is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
+    is TypedIdentifier -> TODO()
+    is FunctionCall -> TODO()
+    is UnaryExpression -> TODO()
+    is SizeofTypeName -> TODO()
+    is SizeofExpression -> TODO()
+    is PrefixIncrement -> TODO()
+    is PrefixDecrement -> TODO()
+    is PostfixIncrement -> TODO()
+    is PostfixDecrement -> TODO()
+    is BinaryExpression -> genBinExpr(e)
+    is IntegerConstantNode -> genInt(e)
+    is FloatingConstantNode -> TODO()
+    is CharacterConstantNode -> TODO()
+    is StringLiteralNode -> TODO()
+  }
+
+  private fun genInt(int: IntegerConstantNode) = instrGen {
+    emit("mov rax, ${int.value}")
+  }
+
   private fun genBinExpr(e: BinaryExpression) = instrGen {
-    emit("push eax")
     // FIXME: implement
-    emit("pop eax")
   }
 
   fun getNasm(): String {
