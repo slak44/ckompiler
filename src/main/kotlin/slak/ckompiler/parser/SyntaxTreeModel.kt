@@ -186,6 +186,11 @@ class TypedIdentifier(override val name: String,
     withRange(decl.name.tokenRange)
   }
 
+  /**
+   * Enables SSA variable renaming.
+   */
+  var reachingDef: TypedIdentifier? = null
+
   var id = varCounter()
     private set
 

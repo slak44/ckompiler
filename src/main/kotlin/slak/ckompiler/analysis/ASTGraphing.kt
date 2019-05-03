@@ -78,17 +78,22 @@ private fun transformInitializer(current: BasicBlock,
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
 
+fun getAssignmentTarget(e: BinaryExpression): TypedIdentifier? {
+  if (e.op in assignmentOps) {
+    if (e.lhs is TypedIdentifier) {
+      return e.lhs
+    } else {
+      // FIXME: a bunch of other things can be on the left side of an =
+      logger.error { "Unimplemented branch" }
+    }
+  }
+  return null
+}
+
 private fun CFG.findAssignmentTargets(current: BasicBlock, e: Expression): Unit = when (e) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
   is BinaryExpression -> {
-    if (e.op in assignmentOps) {
-      if (e.lhs is TypedIdentifier) {
-        addDefinition(current, e.lhs)
-      } else {
-        // FIXME: a bunch of other things can be on the left side of an =
-        logger.error { "Unimplemented branch" }
-      }
-    }
+    getAssignmentTarget(e)?.let { addDefinition(current, it) }
     findAssignmentTargets(current, e.lhs)
     findAssignmentTargets(current, e.rhs)
   }

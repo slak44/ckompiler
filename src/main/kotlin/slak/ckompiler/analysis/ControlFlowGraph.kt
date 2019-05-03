@@ -109,6 +109,74 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
     }
   }
 
+  private val domTreePreorder = generateSequence(startBlock) {
+    TODO()
+  }
+
+  private fun findVariableUsage(e: Expression): Pair<Set<TypedIdentifier>, Set<TypedIdentifier>> {
+    val defs = mutableSetOf<TypedIdentifier>()
+    val uses = mutableSetOf<TypedIdentifier>()
+    fun findVarsRec(e: Expression): Unit = when (e) {
+      is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
+      is TypedIdentifier -> uses += e
+      is BinaryExpression -> {
+        getAssignmentTarget(e)?.let { defs += it }
+        findVarsRec(e.lhs)
+        findVarsRec(e.rhs)
+      }
+      is FunctionCall -> {
+        findVarsRec(e.calledExpr)
+        for (arg in e.args) findVarsRec(arg)
+      }
+      is UnaryExpression -> findVarsRec(e.operand)
+      is SizeofExpression -> findVarsRec(e.sizeExpr)
+      is PrefixIncrement -> findVarsRec(e.expr)
+      is PrefixDecrement -> findVarsRec(e.expr)
+      is PostfixIncrement -> findVarsRec(e.expr)
+      is PostfixDecrement -> findVarsRec(e.expr)
+      is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode, is CharacterConstantNode,
+      is StringLiteralNode -> Unit
+    }
+    findVarsRec(e)
+    return uses to defs
+  }
+
+  /**
+   * Utility function for variable renaming.
+   *
+   * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
+   */
+  private fun updateReachingDef(v: TypedIdentifier, i: Expression) {
+//    var r = v.reachingDef
+//    while (!(r == null || )) {
+//      r = r.reachingDef
+//    }
+//    v.reachingDef = r
+  }
+
+  /**
+   * Second phase of SSA construction.
+   *
+   * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
+   */
+  private fun variableRenaming() {
+    // All v.reachingDef are already initialized to null
+    for (BB in domTreePreorder) {
+      for (i in BB.data) {
+        val (uses, defs) = findVariableUsage(i)
+        for (v in uses) {
+          TODO()
+        }
+        for (v in defs + BB.phiFunctions.map(PhiFunction::target)) {
+          TODO()
+        }
+      }
+      for (phi in BB.successors.flatMap(BasicBlock::phiFunctions)) {
+        TODO()
+      }
+    }
+  }
+
   fun newBlock(): BasicBlock {
     val block = BasicBlock(false)
     allNodes += block
