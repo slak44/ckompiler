@@ -73,7 +73,7 @@ fun main(args: Array<String>) {
     val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
     val cfg = CFG(firstFun, file.absolutePath, text, false)
     val asmFile = File(file.parent, file.nameWithoutExtension + ".s")
-    asmFile.writeText(CodeGenerator(cfg).getNasm())
+    asmFile.writeText(CodeGenerator(cfg, true).getNasm())
     if (compileOnly) continue
     val objFile = File(file.parent, file.nameWithoutExtension + ".o")
     ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)

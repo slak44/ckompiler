@@ -11,7 +11,7 @@ class CodegenTests {
   fun `Main That Returns 0`() {
     val cfg = prepareCFG("int main() { return 0; }", source)
     cfg.assertNoDiagnostics()
-    val asm = CodeGenerator(cfg).getNasm()
+    val asm = CodeGenerator(cfg, true).getNasm()
     println(asm)
   }
 }

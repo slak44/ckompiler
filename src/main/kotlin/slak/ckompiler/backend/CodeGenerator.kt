@@ -30,18 +30,27 @@ private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
 /**
  * Generate [NASM](https://www.nasm.us/) code.
  */
-class CodeGenerator(private val cfg: CFG) {
+class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
 
+  /**
+   * C standard: 5.1.2.2.3
+   */
   init {
+    prelude += "extern exit"
     prelude += "global ${cfg.f.name}"
     val instr = instrGen {
       emit("push rbp")
       emit(genBlock(cfg.startBlock))
       emit("pop rbp")
-      emit("ret")
+      if (isMain) {
+        emit("mov rdi, rax")
+        emit("call exit")
+      } else {
+        emit("ret")
+      }
     }
     text += "${cfg.f.name}:"
     text += instr
