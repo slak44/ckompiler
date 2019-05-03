@@ -1,10 +1,8 @@
 package slak.ckompiler.analysis
 
 import mu.KotlinLogging
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
+import slak.ckompiler.*
 import slak.ckompiler.parser.*
-import slak.ckompiler.throwICE
 import java.util.*
 
 private val logger = KotlinLogging.logger("ControlFlow")
@@ -49,8 +47,11 @@ object MissingJump : Jump() {
 }
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
-class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolean = false) :
-  IDebugHandler by debug {
+class CFG(val f: FunctionDefinition,
+          srcFileName: SourceFileName,
+          srcText: String,
+          forceAllNodes: Boolean = false
+) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(true)
   /** Raw set of nodes as obtained from [GraphingContext.graphCompound]. */
   val allNodes = mutableSetOf(startBlock)
@@ -82,6 +83,7 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
     // Implicit definition in the root block
     for (v in definitions) v.value += startBlock
     if (!forceAllNodes) insertPhiFunctions()
+    diags.forEach(Diagnostic::print)
   }
 
   /**

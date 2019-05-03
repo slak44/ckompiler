@@ -60,9 +60,8 @@ fun main(args: Array<String>) {
     }
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
-      val cfgDebug = DebugHandler("CFG", it.absolutePath, text)
       val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
-      val cfg = CFG(firstFun, cfgDebug, forceAllNodes)
+      val cfg = CFG(firstFun, it.absolutePath, text, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable))
       return
     }

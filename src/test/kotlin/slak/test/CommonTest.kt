@@ -24,9 +24,7 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
 internal fun prepareCFG(s: String, source: SourceFileName): CFG {
   val p = prepareCode(s, source)
   p.assertNoDiagnostics()
-  val cfg = CFG(p.root.decls.firstFun(), DebugHandler("AnalysisTests", source, s))
-  cfg.diags.forEach(Diagnostic::print)
-  return cfg
+  return CFG(p.root.decls.firstFun(), source, s)
 }
 
 internal fun prepareCFG(file: File, source: SourceFileName): CFG {
