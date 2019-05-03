@@ -49,7 +49,8 @@ object MissingJump : Jump() {
 }
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
-class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolean = false) {
+class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolean = false) :
+  IDebugHandler by debug {
   val startBlock = BasicBlock(true)
   /** Raw set of nodes as obtained from [GraphingContext.graphCompound]. */
   val allNodes = mutableSetOf(startBlock)
@@ -74,7 +75,7 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
   init {
     graph(this)
     if (!forceAllNodes) collapseEmptyBlocks(allNodes)
-    nodes = if (forceAllNodes) allNodes else debug.filterReachable(allNodes)
+    nodes = if (forceAllNodes) allNodes else filterReachable(allNodes)
     postOrderNodes = postOrderNodes(startBlock, nodes)
     doms = DominatorList(postOrderNodes.size)
     if (!forceAllNodes) findDomFrontiers(doms, startBlock, postOrderNodes)

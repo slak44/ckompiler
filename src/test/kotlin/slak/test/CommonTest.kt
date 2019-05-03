@@ -1,13 +1,13 @@
 package slak.test
 
 import slak.ckompiler.*
+import slak.ckompiler.analysis.CFG
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import java.io.File
 import kotlin.test.assertEquals
 
 internal fun Preprocessor.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
-internal fun Lexer.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun IDebugHandler.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
@@ -21,16 +21,20 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   return Parser(lexer.tokens, source, s)
 }
 
+internal fun prepareCFG(s: String, source: SourceFileName): CFG {
+  val p = prepareCode(s, source)
+  p.assertNoDiagnostics()
+  val cfg = CFG(p.root.decls.firstFun(), DebugHandler("AnalysisTests", source, s))
+  cfg.diags.forEach(Diagnostic::print)
+  return cfg
+}
+
+internal fun prepareCFG(file: File, source: SourceFileName): CFG {
+  return prepareCFG(file.readText(), source)
+}
+
 internal fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =
     first { it is FunctionDefinition } as FunctionDefinition
-
-private val dh: MutableMap<String, IDebugHandler?> = mutableMapOf()
-
-internal fun <T : Any> T.analysisDh(code: String): IDebugHandler {
-  val key = source + code
-  if (dh[key] == null) dh[key] = DebugHandler("AnalysisTests", source, code)
-  return dh[key]!!
-}
 
 internal val List<Diagnostic>.ids get() = map { it.id }
 

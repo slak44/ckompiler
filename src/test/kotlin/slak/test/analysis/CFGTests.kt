@@ -10,40 +10,28 @@ import kotlin.test.assertNull
 class CFGTests {
   @Test
   fun `CFG Creation Doesn't Fail`() {
-    val text = resource("cfgTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("cfgTest.c"), source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `CFG Creation Doesn't Fail 2`() {
-    val text = resource("domsTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("domsTest.c"), source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `CFG Creation Doesn't Fail 3`() {
-    val text = resource("domsTest2.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("domsTest2.c"), source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `CFG Creation Doesn't Fail 4`() {
-    val text = resource("domsTest3.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("domsTest3.c"), source)
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
@@ -51,10 +39,7 @@ class CFGTests {
 
   @Test
   fun `CFG Creation Doesn't Fail 5`() {
-    val text = resource("domsTest4.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("domsTest4.c"), source)
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
@@ -63,9 +48,7 @@ class CFGTests {
   @Test
   fun `Graphviz CFG Creation Doesn't Fail`() {
     val text = resource("cfgTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(text, source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
     createGraphviz(cfg, text, false)
@@ -73,10 +56,7 @@ class CFGTests {
 
   @Test
   fun `Diamond Graph From If-Else Has Correct Dominance Frontier`() {
-    val text = resource("trivialDiamondGraphTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("trivialDiamondGraphTest.c"), source)
     assert(cfg.startBlock.dominanceFrontier.isEmpty())
     val t = cfg.startBlock.terminator as CondJump
     val ret = cfg.nodes.first { it.terminator is ImpossibleJump }
@@ -86,44 +66,34 @@ class CFGTests {
 
   @Test
   fun `Labels And Goto`() {
-    val text = resource("gotoTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("gotoTest.c"), source)
+    assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Break And Continue`() {
-    val text = resource("controlKeywordsTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("controlKeywordsTest.c"), source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `For Loop`() {
-    val text = resource("forLoopTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("forLoopTest.c"), source)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Early Return In Function`() {
-    val text = resource("earlyReturnTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("earlyReturnTest.c"), source)
+    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Correct Definition Tracking Test`() {
-    val text = resource("phiTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("phiTest.c"), source)
     for ((key, value) in cfg.definitions) {
       println("${key.first} (${key.second}) defined in \n\t${value.joinToString("\n\t")}")
     }
@@ -137,10 +107,7 @@ class CFGTests {
 
   @Test
   fun `Phi Insertion`() {
-    val text = resource("phiTest.c").readText()
-    val p = prepareCode(text, source)
-    p.assertNoDiagnostics()
-    val cfg = CFG(p.root.decls.firstFun(), analysisDh(text))
+    val cfg = prepareCFG(resource("phiTest.c"), source)
     for (node in cfg.nodes) {
       println("$node φ-functions: \n\t${node.phiFunctions.joinToString("\n\t")}")
     }
