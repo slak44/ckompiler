@@ -16,18 +16,23 @@ fun main(args: Array<String>) {
   val dh = DebugHandler("CLI", "ckompiler", "")
   val cli = CommandLineInterface("ckompiler")
   val ppOnly by cli.flagArgument("-E", "Preprocess only")
+  val compileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
+  val assembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
+  val output by cli.flagValueArgument("-o", "OUTFILE",
+      "Place output in the specified file", "a.out")
+  val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
+      "Disable colors in diagnostic messages")
+  val files by cli.positionalArgumentsList(
+      "FILES...", "Translation units to be compiled", minArgs = 1)
+
+  cli.helpEntriesGroup("Graphviz options")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
   val forceAllNodes by cli.flagArgument("--force-all-nodes",
       "Force displaying the entire control flow graph (requires --print-cfg-graphviz)")
   val forceUnreachable by cli.flagArgument("--force-unreachable", "Force displaying of " +
       "unreachable basic blocks and impossible edges (requires --print-cfg-graphviz)")
-  val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
-      "Disable colors in diagnostic messages")
-  val output by cli.flagValueArgument("-o", "OUTFILE",
-      "Place output in the specified file", "a.out")
-  val files by cli.positionalArgumentsList(
-      "FILES...", "Translation units to be compiled", minArgs = 1)
+
   try {
     cli.parse(args)
   } catch (err: Exception) {
@@ -36,6 +41,7 @@ fun main(args: Array<String>) {
     logger.error(err) { "Failed to parse CLI args" }
     exitProcess(1)
   }
+
   Diagnostic.useColors = !disableColorDiags
   val badOptions = files.filter { it.startsWith("--") }
   for (option in badOptions) dh.diagnostic {
@@ -66,14 +72,16 @@ fun main(args: Array<String>) {
     // FIXME: this is incomplete
     val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
     val cfg = CFG(firstFun, file.absolutePath, text, false)
-    val asmFile = createTempFile()
+    val asmFile = File(file.parent, file.nameWithoutExtension + ".s")
     asmFile.writeText(CodeGenerator(cfg).getNasm())
+    if (compileOnly) continue
     val objFile = File(file.parent, file.nameWithoutExtension + ".o")
     ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)
         .inheritIO().start().waitFor()
     objFiles += objFile
     asmFile.delete()
   }
+  if (assembleOnly || compileOnly) return
   ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
       "/lib/ld-linux-x86-64.so.2", "-e", "main",
       *objFiles.map(File::getAbsolutePath).toTypedArray())
