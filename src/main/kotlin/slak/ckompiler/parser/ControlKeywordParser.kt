@@ -99,6 +99,9 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     return BreakStatement().withRange(breakTok..(semiTok ?: breakTok))
   }
 
+  /* FIXME: make sure return type matches function
+      stuff like this too:
+      warning: void function 'g' should not return void expression */
   override fun parseReturn(): ReturnStatement? {
     val retKey = current()
     if (current().asKeyword() != Keywords.RETURN) return null
