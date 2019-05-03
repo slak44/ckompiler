@@ -162,7 +162,8 @@ class CFG(val f: FunctionDefinition, debug: IDebugHandler, forceAllNodes: Boolea
   private fun variableRenaming() {
     // All v.reachingDef are already initialized to null
     for (BB in domTreePreorder) {
-      for (i in BB.data) {
+      val cond = (BB.terminator as? CondJump)?.cond
+      for (i in BB.data.apply { if (cond != null) add(cond) }) {
         val (uses, defs) = findVariableUsage(i)
         for (v in uses) {
           TODO()

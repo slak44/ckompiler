@@ -140,6 +140,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val afterIfBlock = root.newBlock()
     current.terminator = run {
       val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
+      root.findAssignmentTargets(current, s.cond)
       CondJump(s.cond, ifBlock, falseBlock)
     }
     ifNext.terminator = UncondJump(afterIfBlock)
@@ -152,6 +153,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
+    root.findAssignmentTargets(current, s.cond)
     current.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
     loopNext.terminator = UncondJump(current)
     afterLoopBlock
@@ -162,6 +164,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     current.terminator = UncondJump(loopBlock)
+    root.findAssignmentTargets(current, s.cond)
     loopNext.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
     afterLoopBlock
   }
@@ -183,6 +186,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
       // No for condition means unconditional jump to loop block
       current.terminator = UncondJump(loopBlock)
     } else {
+      root.findAssignmentTargets(current, s.cond)
       current.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
     }
     loopNext.terminator = current.terminator
