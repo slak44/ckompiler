@@ -115,8 +115,18 @@ class CFG(val f: FunctionDefinition,
     }
   }
 
-  private val domTreePreorder = generateSequence(startBlock) {
-    TODO()
+  private val domTreePreorder = sequence<BasicBlock> {
+    val visited = mutableSetOf<BasicBlock>()
+    val stack = Stack<BasicBlock>()
+    while (stack.isNotEmpty()) {
+      val block = stack.pop()
+      if (block in visited) continue
+      yield(block)
+      visited += block
+      for (child in nodes.filter { doms[it] == block }) {
+        stack.push(child)
+      }
+    }
   }
 
   private fun findVariableUsage(e: Expression): Pair<Set<TypedIdentifier>, Set<TypedIdentifier>> {
