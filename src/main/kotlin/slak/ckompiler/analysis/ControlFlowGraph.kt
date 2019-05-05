@@ -102,8 +102,11 @@ class CFG(val f: FunctionDefinition,
         w -= x
         for (y in x.dominanceFrontier) {
           if (y !in f) {
-            // FIXME: use correct preds
-            y.phiFunctions += PhiFunction(v, y.preds.first(), y.preds.drop(1).first())
+            /* FIXME: should we actually include all the preds like this?
+                maybe we should leave this empty, or maybe check if the var was defined in that pred
+             */
+            y.phiFunctions += PhiFunction(v,
+                mutableListOf(*(y.preds.map { it to v }).toTypedArray()))
             f += y
             if (y !in defsV) w += y
           }
@@ -150,6 +153,7 @@ class CFG(val f: FunctionDefinition,
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
    */
   private fun updateReachingDef(v: TypedIdentifier, i: Expression) {
+    // FIXME: not done
 //    var r = v.reachingDef
 //    while (!(r == null || )) {
 //      r = r.reachingDef
@@ -169,14 +173,24 @@ class CFG(val f: FunctionDefinition,
       for (i in BB.data.apply { if (cond != null) add(cond) }) {
         val (uses, defs) = findVariableUsage(i)
         for (v in uses) {
-          TODO()
+          updateReachingDef(v, i)
+          // FIXME: this nullness coercion is potentially bad
+          v.replaceWith(v.reachingDef!!)
         }
         for (v in defs + BB.phiFunctions.map(PhiFunction::target)) {
-          TODO()
+          updateReachingDef(v, i)
+          val vPrime = v.nextVersion()
+          v.replaceWith(vPrime)
+          vPrime.reachingDef = v.reachingDef
+          v.reachingDef = vPrime
         }
       }
       for (phi in BB.successors.flatMap(BasicBlock::phiFunctions)) {
-        TODO()
+        for (v in phi.incoming.map { it.second }) {
+//          updateReachingDef(v, phi)
+          // FIXME: this nullness coercion is potentially bad
+          v.replaceWith(v.reachingDef!!)
+        }
       }
     }
   }
@@ -324,8 +338,15 @@ class IdCounter {
   operator fun invoke() = counter++
 }
 
-data class PhiFunction(val target: TypedIdentifier, val pred1: BasicBlock, val pred2: BasicBlock) {
-  override fun toString() = "$target = φ(<${pred1.nodeId}>, <${pred2.nodeId}>)"
+/**
+ * A φ-function that's part of a [BasicBlock]. [target] is the original pre-SSA variable, while
+ * [incoming] stores the blocks that [target] can come from (ie the list of versions that the φ has
+ * to choose from).
+ */
+data class PhiFunction(val target: TypedIdentifier,
+                       val incoming: MutableList<Pair<BasicBlock, TypedIdentifier>>) {
+  override fun toString() =
+      "$target = φ(${incoming.joinToString(", ") { "${it.first.nodeId}" }})"
 }
 
 /**
