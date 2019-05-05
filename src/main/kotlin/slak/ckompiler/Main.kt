@@ -15,9 +15,9 @@ fun main(args: Array<String>) {
   val logger = KotlinLogging.logger("CLI")
   val dh = DebugHandler("CLI", "ckompiler", "")
   val cli = CommandLineInterface("ckompiler")
-  val ppOnly by cli.flagArgument("-E", "Preprocess only")
-  val compileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
-  val assembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
+  val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
+  val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
+  val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
   val output by cli.flagValueArgument("-o", "OUTFILE",
       "Place output in the specified file", "a.out")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
@@ -54,7 +54,7 @@ fun main(args: Array<String>) {
     val text = file.readText()
     val pp = Preprocessor(text, file.absolutePath)
     if (pp.diags.isNotEmpty()) continue
-    if (ppOnly) {
+    if (isPreprocessOnly) {
       println(pp.alteredSourceText)
       continue
     }
@@ -74,14 +74,14 @@ fun main(args: Array<String>) {
     val cfg = CFG(firstFun, file.absolutePath, text, false)
     val asmFile = File(file.parent, file.nameWithoutExtension + ".s")
     asmFile.writeText(CodeGenerator(cfg, true).getNasm())
-    if (compileOnly) continue
+    if (isCompileOnly) continue
     val objFile = File(file.parent, file.nameWithoutExtension + ".o")
     ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)
         .inheritIO().start().waitFor()
     objFiles += objFile
     asmFile.delete()
   }
-  if (assembleOnly || compileOnly) return
+  if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return
   ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
       "/lib/ld-linux-x86-64.so.2", "-e", "main",
       *objFiles.map(File::getAbsolutePath).toTypedArray())
