@@ -72,17 +72,40 @@ class CFG(val f: FunctionDefinition,
    * it part of the key.
    */
   val definitions = mutableMapOf<Pair<TypedIdentifier, Int>, MutableSet<BasicBlock>>()
+  /** Returns [BasicBlock]s by doing a pre-order traversal of the dominator tree. */
+  private val domTreePreorder: Sequence<BasicBlock>
 
   init {
     graph(this)
-    if (!forceAllNodes) collapseEmptyBlocks(allNodes)
-    nodes = if (forceAllNodes) allNodes else filterReachable(allNodes)
+    if (forceAllNodes) {
+      nodes = allNodes
+    } else {
+      collapseEmptyBlocks(allNodes)
+      nodes = filterReachable(allNodes)
+    }
+
     postOrderNodes = postOrderNodes(startBlock, nodes)
     doms = DominatorList(postOrderNodes.size)
-    if (!forceAllNodes) findDomFrontiers(doms, startBlock, postOrderNodes)
+    findDomFrontiers(doms, startBlock, postOrderNodes)
+
+    domTreePreorder = sequence<BasicBlock> {
+      val visited = mutableSetOf<BasicBlock>()
+      val stack = Stack<BasicBlock>()
+      while (stack.isNotEmpty()) {
+        val block = stack.pop()
+        if (block in visited) continue
+        yield(block)
+        visited += block
+        for (child in nodes.filter { doms[it] == block }) {
+          stack.push(child)
+        }
+      }
+    }
+
     // Implicit definition in the root block
     for (v in definitions) v.value += startBlock
-    if (!forceAllNodes) insertPhiFunctions()
+    insertPhiFunctions()
+
     diags.forEach(Diagnostic::print)
   }
 
@@ -111,20 +134,6 @@ class CFG(val f: FunctionDefinition,
             if (y !in defsV) w += y
           }
         }
-      }
-    }
-  }
-
-  private val domTreePreorder = sequence<BasicBlock> {
-    val visited = mutableSetOf<BasicBlock>()
-    val stack = Stack<BasicBlock>()
-    while (stack.isNotEmpty()) {
-      val block = stack.pop()
-      if (block in visited) continue
-      yield(block)
-      visited += block
-      for (child in nodes.filter { doms[it] == block }) {
-        stack.push(child)
       }
     }
   }
