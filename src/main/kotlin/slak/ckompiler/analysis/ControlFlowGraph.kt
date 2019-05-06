@@ -53,11 +53,11 @@ class CFG(val f: FunctionDefinition,
           forceAllNodes: Boolean = false
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(true)
-  /** Raw set of nodes as obtained from [GraphingContext.graphCompound]. */
+  /** Raw set of nodes as obtained from [graph]. */
   val allNodes = mutableSetOf(startBlock)
   /** Filtered set of nodes that only contains reachable, non-empty nodes. */
   val nodes: Set<BasicBlock>
-  /** [nodes], but in post order. */
+  /** [nodes], but sorted in post-order. Not a [Sequence] because we will need it in reverse. */
   private val postOrderNodes: Set<BasicBlock>
   /** Stores the immediate dominator (IDom) of a particular node. */
   private val doms: DominatorList
