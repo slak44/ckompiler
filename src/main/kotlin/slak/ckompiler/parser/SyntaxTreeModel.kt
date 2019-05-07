@@ -230,7 +230,7 @@ class TypedIdentifier(override val name: String,
     version = newerVersion.version
   }
 
-  override fun toString() = "$type $name"
+  override fun toString() = "$type $name v$version"
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
