@@ -91,6 +91,7 @@ class CFG(val f: FunctionDefinition,
     domTreePreorder = sequence<BasicBlock> {
       val visited = mutableSetOf<BasicBlock>()
       val stack = Stack<BasicBlock>()
+      stack.push(startBlock)
       while (stack.isNotEmpty()) {
         val block = stack.pop()
         if (block in visited) continue
@@ -189,7 +190,7 @@ class CFG(val f: FunctionDefinition,
    */
   private fun variableRenaming() {
     // All v.reachingDef are already initialized to null
-    for (BB in domTreePreorder) {
+    domTreePreorder.forEach { BB ->
       val cond = (BB.terminator as? CondJump)?.cond
       for (i in BB.data.apply { if (cond != null) add(cond) }) {
         val (uses, defs) = findVariableUsage(i)
