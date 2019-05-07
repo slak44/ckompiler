@@ -51,7 +51,7 @@ class CFGTests {
     val cfg = prepareCFG(text, source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
-    createGraphviz(cfg, text, false)
+    createGraphviz(cfg, text, reachableOnly = false, useToString = false)
   }
 
   @Test

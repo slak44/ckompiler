@@ -18,6 +18,8 @@ fun main(args: Array<String>) {
   val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
   val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
+  val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
+      "Print the program's control flow graph to stdout instead of compiling")
   val output by cli.flagValueArgument("-o", "OUTFILE",
       "Place output in the specified file", "a.out")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
@@ -25,13 +27,13 @@ fun main(args: Array<String>) {
   val files by cli.positionalArgumentsList(
       "FILES...", "Translation units to be compiled", minArgs = 1)
 
-  cli.helpEntriesGroup("Graphviz options")
-  val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
-      "Print the program's control flow graph to stdout instead of compiling")
+  cli.helpEntriesGroup("Graphviz options (require --print-cfg-graphviz)")
+  val forceToString by cli.flagArgument("--force-to-string",
+      "Force using ASTNode.toString instead of printing the original expression source")
   val forceAllNodes by cli.flagArgument("--force-all-nodes",
-      "Force displaying the entire control flow graph (requires --print-cfg-graphviz)")
-  val forceUnreachable by cli.flagArgument("--force-unreachable", "Force displaying of " +
-      "unreachable basic blocks and impossible edges (requires --print-cfg-graphviz)")
+      "Force displaying the entire control flow graph")
+  val forceUnreachable by cli.flagArgument("--force-unreachable",
+      "Force displaying of unreachable basic blocks and impossible edges")
 
   try {
     cli.parse(args)
@@ -66,7 +68,7 @@ fun main(args: Array<String>) {
       // FIXME: this is incomplete
       val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
       val cfg = CFG(firstFun, file.absolutePath, text, forceAllNodes)
-      println(createGraphviz(cfg, text, !forceUnreachable))
+      println(createGraphviz(cfg, text, !forceUnreachable, forceToString))
       continue
     }
     // FIXME: this is incomplete

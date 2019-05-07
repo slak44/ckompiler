@@ -51,7 +51,9 @@ private enum class GraphvizColors(val color: String) {
 }
 
 /** Gets the piece of the source code that this node was created from. */
-private fun ASTNode.originalCode(sourceCode: String) = sourceCode.substring(tokenRange).trim()
+private fun ASTNode.stringify(sourceCode: String, useToString: Boolean): String {
+  return if (useToString) toString() else sourceCode.substring(tokenRange).trim()
+}
 
 /**
  * Pretty graph for debugging purposes.
@@ -61,7 +63,10 @@ private fun ASTNode.originalCode(sourceCode: String) = sourceCode.substring(toke
  * dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
  * ```
  */
-fun createGraphviz(graph: CFG, sourceCode: String, reachableOnly: Boolean): String {
+fun createGraphviz(graph: CFG,
+                   sourceCode: String,
+                   reachableOnly: Boolean,
+                   useToString: Boolean): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
   val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
@@ -72,13 +77,13 @@ fun createGraphviz(graph: CFG, sourceCode: String, reachableOnly: Boolean): Stri
     }
 
     val phi = it.phiFunctions.joinToString("\n") { p -> p.toString() }
-    val rawCode = it.data.joinToString("\n") { node -> node.originalCode(sourceCode) }
+    val rawCode = it.data.joinToString("\n") { node -> node.stringify(sourceCode, useToString) }
 
     val cond = (it.terminator as? CondJump)?.cond?.let { cond ->
-      "\n${cond.originalCode(sourceCode)} ?"
+      "\n${cond.stringify(sourceCode, useToString)} ?"
     } ?: ""
     val ret = (it.terminator as? ImpossibleJump)?.returned?.let { ret ->
-      "\nreturn ${ret.originalCode(sourceCode)};"
+      "\nreturn ${ret.stringify(sourceCode, useToString)};"
     } ?: ""
 
     val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret
