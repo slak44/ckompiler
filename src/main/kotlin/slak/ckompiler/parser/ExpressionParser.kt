@@ -74,7 +74,7 @@ enum class BinaryOperators(val op: Punctuators, val precedence: Int, val assoc: 
   override fun toString() = op.s
 }
 
-val assignmentOps = listOf(BinaryOperators.ASSIGN, BinaryOperators.MUL_ASSIGN,
+val assignmentOps = setOf(BinaryOperators.ASSIGN, BinaryOperators.MUL_ASSIGN,
     BinaryOperators.DIV_ASSIGN, BinaryOperators.MOD_ASSIGN, BinaryOperators.PLUS_ASSIGN,
     BinaryOperators.SUB_ASSIGN, BinaryOperators.LSH_ASSIGN, BinaryOperators.RSH_ASSIGN,
     BinaryOperators.AND_ASSIGN, BinaryOperators.XOR_ASSIGN, BinaryOperators.OR_ASSIGN)
