@@ -70,6 +70,8 @@ enum class BinaryOperators(val op: Punctuators, val precedence: Int, val assoc: 
   COMMA(Punctuators.COMMA, 10, Associativity.LEFT_TO_RIGHT);
 
   enum class Associativity { LEFT_TO_RIGHT, RIGHT_TO_LEFT }
+
+  override fun toString() = op.s
 }
 
 val assignmentOps = listOf(BinaryOperators.ASSIGN, BinaryOperators.MUL_ASSIGN,
