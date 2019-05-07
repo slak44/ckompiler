@@ -102,9 +102,11 @@ class CFG(val f: FunctionDefinition,
       }
     }
 
-    // Implicit definition in the root block
+    // SSA conversion
+    // Add implicit definitions in the root block
     for (v in definitions) v.value += startBlock
     insertPhiFunctions()
+    variableRenaming()
 
     diags.forEach(Diagnostic::print)
   }
