@@ -104,8 +104,6 @@ class CFG(val f: FunctionDefinition,
     }
 
     // SSA conversion
-    // Add implicit definitions in the root block
-    for (v in definitions) v.value += startBlock
     insertPhiFunctions()
     variableRenaming()
 
@@ -174,10 +172,10 @@ class CFG(val f: FunctionDefinition,
    *
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
    */
-  private fun updateReachingDef(v: TypedIdentifier, i: Expression) {
-    // FIXME: not done
+  private fun updateReachingDef(v: TypedIdentifier, block: BasicBlock, i: Expression) {
+//    definitions[v to v.id]
 //    var r = v.reachingDef
-//    while (!(r == null || )) {
+//    while (!(r.version == 0 || )) {
 //      r = r.reachingDef
 //    }
 //    v.reachingDef = r
@@ -189,18 +187,19 @@ class CFG(val f: FunctionDefinition,
    * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
    */
   private fun variableRenaming() {
-    // All v.reachingDef are already initialized to null
+    // Add implicit definitions in the root block
+    for (v in definitions) v.value += startBlock
+    // All v.reachingDef are already initialized to that first implicit definition
     domTreePreorder.forEach { BB ->
       val cond = (BB.terminator as? CondJump)?.cond
       for (i in BB.data.apply { if (cond != null) add(cond) }) {
         val (uses, defs) = findVariableUsage(i)
         for (v in uses) {
-          updateReachingDef(v, i)
-          // FIXME: this nullness coercion is potentially bad
-          v.replaceWith(v.reachingDef!!)
+          updateReachingDef(v, BB, i)
+          v.replaceWith(v.reachingDef)
         }
         for (v in defs + BB.phiFunctions.map(PhiFunction::target)) {
-          updateReachingDef(v, i)
+          updateReachingDef(v, BB, i)
           val vPrime = v.nextVersion()
           v.replaceWith(vPrime)
           vPrime.reachingDef = v.reachingDef
@@ -210,8 +209,7 @@ class CFG(val f: FunctionDefinition,
       for (phi in BB.successors.flatMap(BasicBlock::phiFunctions)) {
         for (v in phi.incoming.map { it.second }) {
 //          updateReachingDef(v, phi)
-          // FIXME: this nullness coercion is potentially bad
-          v.replaceWith(v.reachingDef!!)
+          v.replaceWith(v.reachingDef)
         }
       }
     }

@@ -192,7 +192,7 @@ class TypedIdentifier(override val name: String,
   /**
    * Enables SSA variable renaming.
    */
-  var reachingDef: TypedIdentifier? = null
+  var reachingDef: TypedIdentifier = this
 
   var id = varCounter()
     private set
@@ -220,8 +220,8 @@ class TypedIdentifier(override val name: String,
   }
 
   /**
-   * Changes this pre-SSA [TypedIdentifier] so that it uses the correct [version] from
-   * [newerVersion].
+   * Changes this pre-SSA [TypedIdentifier] so that it uses the correct [version] from the
+   * [newerVersion] parameter.
    */
   fun replaceWith(newerVersion: TypedIdentifier) {
     if (id != newerVersion.id || newerVersion.version < version) {
