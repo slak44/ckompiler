@@ -104,6 +104,14 @@ class CFG(val f: FunctionDefinition,
     }
 
     // SSA conversion
+
+    // Add implicit definitions in the root block
+    for (v in definitions) {
+      v.value += startBlock
+      v.key.first.reachingDef.variable = v.key.first
+      v.key.first.reachingDef.block = startBlock
+    }
+
     insertPhiFunctions()
     variableRenaming()
 
@@ -139,15 +147,22 @@ class CFG(val f: FunctionDefinition,
     }
   }
 
-  private fun findVariableUsage(e: Expression): Pair<Set<TypedIdentifier>, Set<TypedIdentifier>> {
-    val defs = mutableSetOf<TypedIdentifier>()
-    val uses = mutableSetOf<TypedIdentifier>()
+  /**
+   * Finds all uses/defs of all variables in the given expression.
+   * @return list of uses/defs, boolean is true for defs, false for uses
+   */
+  private fun findVariableUsage(e: Expression): List<Pair<Boolean, TypedIdentifier>> {
+    val defsAndUses = mutableListOf<Pair<Boolean, TypedIdentifier>>()
     fun findVarsRec(e: Expression): Unit = when (e) {
       is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
-      is TypedIdentifier -> uses += e
+      is TypedIdentifier -> defsAndUses += false to e
       is BinaryExpression -> {
-        getAssignmentTarget(e)?.let { defs += it }
-        findVarsRec(e.lhs)
+        val target = getAssignmentTarget(e)
+        if (target != null) {
+          defsAndUses += true to target
+        } else {
+          findVarsRec(e.lhs)
+        }
         findVarsRec(e.rhs)
       }
       is FunctionCall -> {
@@ -164,54 +179,125 @@ class CFG(val f: FunctionDefinition,
       is StringLiteralNode -> Unit
     }
     findVarsRec(e)
-    return uses to defs
+    return defsAndUses
   }
 
-  /**
-   * Utility function for variable renaming.
-   *
-   * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
-   */
-  private fun updateReachingDef(v: TypedIdentifier, block: BasicBlock, i: Expression) {
-//    definitions[v to v.id]
-//    var r = v.reachingDef
-//    while (!(r.version == 0 || )) {
-//      r = r.reachingDef
+  private infix fun BasicBlock.isDominatedBy(other: BasicBlock): Boolean {
+    var block = this
+    // Walk dominator tree path to root node
+    do {
+      block = doms[block]!!
+      // `other` was somewhere above `this` in the dominator tree
+      if (block == other) return true
+    } while (block != startBlock)
+    return false
+  }
+
+//  /**
+//   * Utility function for variable renaming.
+//   *
+//   * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for some variable notations.
+//   *
+//   * @param i index of target expression in [defsAndUses]
+//   */
+//  private fun findReachingDef(v: TypedIdentifier,
+//                              block: BasicBlock,
+//                              i: Int,
+//                              defsAndUses: List<Pair<Boolean, TypedIdentifier>>): TypedIdentifier {
+//    val possibleLastDefs = defsAndUses
+//        .subList(0, if (i == -1) 0 else i)
+//        .asReversed()
+//        .filter { it.first }
+//        .map { it.second }
+//        .plus(block.phiFunctions.map(PhiFunction::target))
+//
+//    var r = ReachingDef(v, block)
+//    defChainLoop@ while (r.variable != null && r.variable!!.version != 0) {
+//      if (r.block!! == block && i != -1) {
+//        for (candidate in possibleLastDefs) {
+//          if (candidate.id == r.variable!!.id && candidate.version == r.variable!!.version) {
+//            break@defChainLoop
+//          }
+//        }
+//      } else if (block isDominatedBy r.block!!) {
+//        // FIXME: can there be a definition that is closer?
+//        break@defChainLoop
+//      }
+//      r = r.variable!!.reachingDef
 //    }
-//    v.reachingDef = r
+//    return r.variable!!
+//  }
+
+  fun updateReachingDef(v: TypedIdentifier,
+                        i: Int,
+                        defsAndUses: List<Pair<Boolean, TypedIdentifier>>) {
+    var r = v.reachingDef
+    while (r.variable != null && true) {
+      r = r.variable!!.reachingDef
+    }
+    v.reachingDef = r
   }
 
   /**
    * Second phase of SSA construction.
    *
-   * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
+   * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for some variable
+   * notations.
    */
   private fun variableRenaming() {
-    // Add implicit definitions in the root block
-    for (v in definitions) v.value += startBlock
+    // FIXME: reachingDef must be same per actual variable, not per version (same for each "x")
     // All v.reachingDef are already initialized to that first implicit definition
     domTreePreorder.forEach { BB ->
+      //      for (phi in BB.phiFunctions) {
+////        var r = phi.target.reachingDef
+////        defChainLoop@ while (r.variable != null && r.variable!!.version != 0) {
+////          if (BB isDominatedBy r.block!!) {
+////            break@defChainLoop
+////          }
+////          r = r.variable!!.reachingDef
+////        }
+////        phi.target.reachingDef.block = r.block
+////        phi.target.reachingDef.variable = r.variable
+//
+////        phi.updateTargetVersion(BB)
+////          val vPrime = v.nextVersion(BB)
+//
+////          v.reachingDef = ReachingDef(vPrime, BB)
+//      }
       val cond = (BB.terminator as? CondJump)?.cond
-      for (i in BB.data.apply { if (cond != null) add(cond) }) {
-        val (uses, defs) = findVariableUsage(i)
-        for (v in uses) {
-          updateReachingDef(v, BB, i)
-          v.replaceWith(v.reachingDef)
+      val ret = (BB.terminator as? ImpossibleJump)?.returned
+      val data = BB.data.apply { if (cond != null) add(cond) }.apply { if (ret != null) add(ret) }
+      for (i in data) {
+        val defsAndUses = findVariableUsage(i)
+        var idx = -1
+        usesLoop@ for ((isDef, v) in defsAndUses) {
+          idx++
+          if (isDef) continue@usesLoop
+//          val reachingDef = findReachingDef(v, BB, idx, defsAndUses)
+//          v.replaceWith(reachingDef)
         }
-        for (v in defs + BB.phiFunctions.map(PhiFunction::target)) {
-          updateReachingDef(v, BB, i)
-          val vPrime = v.nextVersion()
-          v.replaceWith(vPrime)
-          vPrime.reachingDef = v.reachingDef
-          v.reachingDef = vPrime
+        idx = -1
+        defsLoop@ for ((isDef, v) in defsAndUses) {
+          idx++
+          if (!isDef) continue@defsLoop
+//          val reachingDef = findReachingDef(v, BB, idx, defsAndUses)
+//          val vPrime = v.nextVersion(reachingDef, BB)
+//          v.replaceWith(vPrime)
+
+//          v.reachingDef = ReachingDef(vPrime, BB)
+        }
+        for ((phiTarget) in BB.phiFunctions) {
+//          val reachingDef = findReachingDef(phiTarget, BB, idx, defsAndUses)
+//          val vPrime = phiTarget.nextVersion(reachingDef, BB)
+//          phiTarget.replaceWith(vPrime)
         }
       }
-      for (phi in BB.successors.flatMap(BasicBlock::phiFunctions)) {
-        for (v in phi.incoming.map { it.second }) {
-//          updateReachingDef(v, phi)
-          v.replaceWith(v.reachingDef)
-        }
-      }
+//      for (phi in BB.successors.flatMap(BasicBlock::phiFunctions)) {
+//        for (v in phi.incoming.map { it.second }) {
+//          findReachingDef(v, phi)
+//          v.replaceWith(v.reachingDef)
+//        }
+//      }
     }
   }
 
@@ -363,7 +449,7 @@ class IdCounter {
  * [incoming] stores the blocks that [target] can come from (ie the list of versions that the φ has
  * to choose from).
  */
-data class PhiFunction(val target: TypedIdentifier,
+data class PhiFunction(var target: TypedIdentifier,
                        val incoming: MutableList<Pair<BasicBlock, TypedIdentifier>>) {
   override fun toString() =
       "$target = φ(${incoming.joinToString(", ") { "${it.first.nodeId}" }})"

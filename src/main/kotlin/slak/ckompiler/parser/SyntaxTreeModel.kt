@@ -1,9 +1,11 @@
 package slak.ckompiler.parser
 
 import mu.KotlinLogging
+import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
+import kotlin.reflect.KProperty
 
 private val logger = KotlinLogging.logger("AST")
 
@@ -170,6 +172,8 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
   override val type = ErrorType
 }
 
+data class ReachingDef(var variable: TypedIdentifier?, var block: BasicBlock?)
+
 /**
  * Like [IdentifierNode], but with an attached [TypeName].
  *
@@ -191,8 +195,10 @@ class TypedIdentifier(override val name: String,
 
   /**
    * Enables SSA variable renaming.
+   *
+   * It is initialized very late, in the variable renaming process.
    */
-  var reachingDef: TypedIdentifier = this
+  var reachingDef = ReachingDef(null, null)
 
   var id = varCounter()
     private set
@@ -206,6 +212,7 @@ class TypedIdentifier(override val name: String,
   fun copy(): TypedIdentifier {
     val other = TypedIdentifier(name, type)
     other.version = version
+    other.reachingDef = reachingDef
     other.id = id
     return other
   }
@@ -227,6 +234,7 @@ class TypedIdentifier(override val name: String,
     if (id != newerVersion.id || newerVersion.version < version) {
       logger.throwICE("Illegal TypedIdentifier version replacement") { "$this -> $newerVersion" }
     }
+    reachingDef = newerVersion.reachingDef
     version = newerVersion.version
   }
 
