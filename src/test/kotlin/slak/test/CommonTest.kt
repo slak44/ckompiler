@@ -83,6 +83,9 @@ internal infix fun <T> String.assign(it: T) =
 internal infix fun <T> Declarator.assign(it: T) =
     this to ExpressionInitializer(parseDSLElement(it))
 
+internal infix fun <T> TypedIdentifier.assign(it: T) =
+    BinaryExpression(BinaryOperators.ASSIGN, this, parseDSLElement(it))
+
 internal typealias DeclInit = Pair<Declarator, Initializer?>
 
 internal infix fun DeclarationSpecifier.declare(decl: DeclInit) =
@@ -301,8 +304,10 @@ private fun <T> parseDSLElement(it: T): Expression {
 internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: BinaryOperators): BinaryExpression {
   val lhs = parseDSLElement(first)
   val rhs = parseDSLElement(second)
-  return BinaryExpression(op, lhs, rhs)
+  return BinaryExpression(op, lhs, rhs).zeroRange()
 }
+
+internal fun sizeOf(e: Expression) = SizeofExpression(e)
 
 internal operator fun <T> UnaryOperators.get(it: T) = UnaryExpression(this, parseDSLElement(it))
 
