@@ -4,6 +4,7 @@ import org.junit.Test
 import slak.ckompiler.analysis.*
 import slak.test.*
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -75,6 +76,21 @@ class CFGTests {
     val cfg = prepareCFG(resource("controlKeywordsTest.c"), source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
+  }
+
+  @Test
+  fun `While Loop`() {
+    val cfg = prepareCFG(resource("whileLoopTest.c"), source)
+    assert(cfg.startBlock.data.isNotEmpty())
+    // Start block jumps to loop header
+    assert(cfg.startBlock.terminator is UncondJump)
+    val loopHeader = cfg.startBlock.terminator.successors[0]
+    // Loop header conditionally goes in loop block or exits
+    assert(loopHeader.terminator is CondJump)
+    val condJump = loopHeader.terminator as CondJump
+    // Loop block unconditionally jumps back to header
+    assertEquals(loopHeader, (condJump.target.terminator as? UncondJump)?.target)
+    assertNotEquals(loopHeader, (condJump.other.terminator as? UncondJump)?.target)
   }
 
   @Test
