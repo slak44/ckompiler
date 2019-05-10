@@ -1,12 +1,9 @@
 package slak.test.analysis
 
 import org.junit.Test
-import slak.ckompiler.Diagnostic
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CondJump
 import slak.test.*
-import java.io.File
 
 class DCETests {
   @Test
@@ -39,13 +36,13 @@ class DCETests {
 
   @Test
   fun `Dead Code After Goto`() {
-    val cfg = prepareCFG(resource("gotoTest.c"), source)
+    val cfg = prepareCFG(resource("dce/gotoTest.c"), source)
     cfg.assertDiags(DiagnosticId.UNREACHABLE_CODE)
   }
 
   @Test
   fun `Live Code After Return`() {
-    val cfg = prepareCFG(resource("liveCodeAfterReturnTest.c"), source)
+    val cfg = prepareCFG(resource("dce/liveCodeAfterReturnTest.c"), source)
     cfg.assertNoDiagnostics()
   }
 }
