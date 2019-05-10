@@ -5,7 +5,6 @@ import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
-import kotlin.reflect.KProperty
 
 private val logger = KotlinLogging.logger("AST")
 
@@ -314,9 +313,16 @@ data class SizeofExpression(val sizeExpr: Expression) : Expression() {
 }
 
 /**
+ * Represents the argument of ++x, x++, --x and x--.
+ */
+interface IncDecOperation {
+  val expr: Expression
+}
+
+/**
  * @param expr expression to increment. Expected to be of correct type.
  */
-data class PrefixIncrement(val expr: Expression) : Expression() {
+data class PrefixIncrement(override val expr: Expression) : Expression(), IncDecOperation {
   override val type = expr.type
 
   init {
@@ -327,7 +333,7 @@ data class PrefixIncrement(val expr: Expression) : Expression() {
 /**
  * @param expr expression to increment. Expected to be of correct type.
  */
-data class PrefixDecrement(val expr: Expression) : Expression() {
+data class PrefixDecrement(override val expr: Expression) : Expression(), IncDecOperation {
   override val type = expr.type
 
   init {
@@ -335,7 +341,7 @@ data class PrefixDecrement(val expr: Expression) : Expression() {
   }
 }
 
-data class PostfixIncrement(val expr: Expression) : Expression() {
+data class PostfixIncrement(override val expr: Expression) : Expression(), IncDecOperation {
   override val type = expr.type
 
   init {
@@ -344,7 +350,7 @@ data class PostfixIncrement(val expr: Expression) : Expression() {
   }
 }
 
-data class PostfixDecrement(val expr: Expression) : Expression() {
+data class PostfixDecrement(override val expr: Expression) : Expression(), IncDecOperation {
   override val type = expr.type
 
   init {

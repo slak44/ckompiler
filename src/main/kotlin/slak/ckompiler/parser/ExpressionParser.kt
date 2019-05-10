@@ -262,8 +262,9 @@ class ExpressionParser(declarationParser: DeclarationParser) :
     } else {
       expr
     }
-    return (if (isInc) PrefixIncrement(exprChecked) else PrefixDecrement(exprChecked))
-        .withRange(c..expr)
+    val prefix: Expression =
+        if (isInc) PrefixIncrement(exprChecked) else PrefixDecrement(exprChecked)
+    return prefix.withRange(c..expr)
   }
 
   /** C standard: 6.5.3.2, 6.5.3.3 */
