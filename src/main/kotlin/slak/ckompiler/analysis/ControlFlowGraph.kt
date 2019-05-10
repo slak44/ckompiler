@@ -147,6 +147,18 @@ class CFG(val f: FunctionDefinition,
     }
   }
 
+  private fun getAssignmentTarget(e: BinaryExpression): TypedIdentifier? {
+    if (e.op in assignmentOps) {
+      if (e.lhs is TypedIdentifier) {
+        return e.lhs
+      } else {
+        // FIXME: a bunch of other things can be on the left side of an =
+        logger.error { "Unimplemented branch" }
+      }
+    }
+    return null
+  }
+
   /**
    * Finds all uses/defs of all variables in the given expression.
    * @return list of uses/defs, boolean is true for defs, false for uses

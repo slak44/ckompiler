@@ -78,37 +78,83 @@ private fun transformInitializer(current: BasicBlock,
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
 
-fun getAssignmentTarget(e: BinaryExpression): TypedIdentifier? {
-  if (e.op in assignmentOps) {
-    if (e.lhs is TypedIdentifier) {
-      return e.lhs
-    } else {
-      // FIXME: a bunch of other things can be on the left side of an =
-      logger.error { "Unimplemented branch" }
+/**
+ * Resolve sequencing issues within an expression.
+ *
+ * Assignment expressions have the value of the left operand after the assignment; we are allowed
+ * by note 111 to read the stored object to determine the value, which means we can put the
+ * assignment first, and replace it with a read of its target.
+ *
+ * According to 6.5.3.1.0.2, prefix ++ and -- are equivalent to `(E+=1)` and `(E-=1)`, so the same
+ * considerations for assignment expressions apply for them too.
+ *
+ * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2
+ *
+ * @return a non-empty list of expressions that should be equivalent to the original expression.
+ * What remains of the original expression after sequentialization will be the last element of the
+ * list.
+ */
+private fun sequentialize(expr: Expression): List<Expression> {
+  val sequenced = mutableListOf<Expression>()
+  val modifications = mutableMapOf<TypedIdentifier, MutableList<Expression>>()
+  fun Expression.seqImpl(): Expression = when (this) {
+    is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
+    is FunctionCall -> {
+      // FIXME: definitely has other sequencing issues that aren't handled
+      FunctionCall(calledExpr.seqImpl(), args.map(Expression::seqImpl)).withRange(tokenRange)
+    }
+    is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {
+      val incDec = (this as IncDecOperation).expr
+      if (incDec is TypedIdentifier) {
+        modifications.getOrPut(incDec, ::mutableListOf).add(this)
+      }
+      sequenced += this
+      incDec.seqImpl()
+    }
+    is BinaryExpression -> {
+      // FIXME: there are sequence points with && || (also short-circuiting)
+      if (op in assignmentOps) {
+        if (lhs is TypedIdentifier) {
+          modifications.getOrPut(lhs, ::mutableListOf).add(this)
+        }
+        // Hoist assignments out of expressions
+        sequenced += this
+        lhs.seqImpl()
+      } else {
+        BinaryExpression(op, lhs.seqImpl(), rhs.seqImpl()).withRange(tokenRange)
+      }
+    }
+    is UnaryExpression,
+    is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
+    is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
+      // Do nothing. These do not pose the problem of being sequenced before or after.
+      this
     }
   }
-  return null
+  sequenced += expr.seqImpl()
+  for ((variable, modList) in modifications) {
+    if (modList.size > 1) {
+      // FIXME: insert diagnostic about multiple unsequenced modifications to variable
+    }
+  }
+  return sequenced
 }
 
-private fun CFG.findAssignmentTargets(current: BasicBlock, e: Expression): Unit = when (e) {
-  is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
-  is BinaryExpression -> {
-    getAssignmentTarget(e)?.let { addDefinition(current, it) }
-    findAssignmentTargets(current, e.lhs)
-    findAssignmentTargets(current, e.rhs)
+private fun GraphingContext.processExpr(current: BasicBlock, e: Expression): List<Expression> {
+  val sequenced = sequentialize(e)
+  for (expr in sequenced) {
+    if (expr !is BinaryExpression || expr.op !in assignmentOps) continue
+    // FIXME: a bunch of other things can be on the left side of an =
+    if (expr.lhs !is TypedIdentifier) logger.throwICE("Unimplemented branch") { expr }
+    root.addDefinition(current, expr.lhs)
   }
-  is FunctionCall -> {
-    findAssignmentTargets(current, e.calledExpr)
-    for (arg in e.args) findAssignmentTargets(current, arg)
-  }
-  is UnaryExpression -> findAssignmentTargets(current, e.operand)
-  is SizeofExpression -> findAssignmentTargets(current, e.sizeExpr)
-  is PrefixIncrement -> findAssignmentTargets(current, e.expr)
-  is PrefixDecrement -> findAssignmentTargets(current, e.expr)
-  is PostfixIncrement -> findAssignmentTargets(current, e.expr)
-  is PostfixDecrement -> findAssignmentTargets(current, e.expr)
-  is TypedIdentifier, is IntegerConstantNode, is FloatingConstantNode,
-  is CharacterConstantNode, is StringLiteralNode, is SizeofTypeName -> Unit
+  return sequenced
+}
+
+private fun GraphingContext.processCondition(current: BasicBlock, cond: Expression): Expression {
+  val sequencedCond = processExpr(current, cond)
+  current.data += sequencedCond.dropLast(1)
+  return sequencedCond.last()
 }
 
 private fun GraphingContext.graphStatement(scope: LexicalScope,
@@ -117,8 +163,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression -> {
-    root.findAssignmentTargets(current, s)
-    current.data += s
+    current.data += processExpr(current, s)
     current
   }
   is Noop -> {
@@ -140,8 +185,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val afterIfBlock = root.newBlock()
     current.terminator = run {
       val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
-      root.findAssignmentTargets(current, s.cond)
-      CondJump(s.cond, ifBlock, falseBlock)
+      CondJump(processCondition(current, s.cond), ifBlock, falseBlock)
     }
     ifNext.terminator = UncondJump(afterIfBlock)
     elseNext?.terminator = UncondJump(afterIfBlock)
@@ -149,13 +193,15 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
   }
   is SwitchStatement -> TODO("implement switches")
   is WhileStatement -> {
+    val loopHeader = root.newBlock()
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
-    root.findAssignmentTargets(current, s.cond)
-    current.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
-    loopNext.terminator = UncondJump(current)
+    loopHeader.terminator =
+        CondJump(processCondition(loopHeader, s.cond), loopBlock, afterLoopBlock)
+    current.terminator = UncondJump(loopHeader)
+    loopNext.terminator = UncondJump(loopHeader)
     afterLoopBlock
   }
   is DoWhileStatement -> {
@@ -164,8 +210,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     current.terminator = UncondJump(loopBlock)
-    root.findAssignmentTargets(current, s.cond)
-    loopNext.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
+    loopNext.terminator = CondJump(processCondition(loopNext, s.cond), loopBlock, afterLoopBlock)
     afterLoopBlock
   }
   is ForStatement -> {
@@ -177,19 +222,21 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
       is ForExpressionInitializer -> graphStatement(scope, current, s.init.value)
       is DeclarationInitializer -> root.addDeclaration(scope, current, s.init.value)
     }
+    val loopHeader = root.newBlock()
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     s.loopEnd?.let { graphStatement(scope, loopNext, it) }
+    current.terminator = UncondJump(loopHeader)
     if (s.cond == null) {
       // No for condition means unconditional jump to loop block
-      current.terminator = UncondJump(loopBlock)
+      loopHeader.terminator = UncondJump(loopBlock)
     } else {
-      root.findAssignmentTargets(current, s.cond)
-      current.terminator = CondJump(s.cond, loopBlock, afterLoopBlock)
+      loopHeader.terminator =
+          CondJump(processCondition(loopHeader, s.cond), loopBlock, afterLoopBlock)
     }
-    loopNext.terminator = current.terminator
+    loopNext.terminator = UncondJump(loopHeader)
     afterLoopBlock
   }
   is ContinueStatement -> {
