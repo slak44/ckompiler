@@ -94,6 +94,20 @@ class CFGTests {
   }
 
   @Test
+  fun `Do While Loop`() {
+    val cfg = prepareCFG(resource("doWhileLoopTest.c"), source)
+    assert(cfg.startBlock.data.isNotEmpty())
+    // Start block jumps to loop block
+    assert(cfg.startBlock.terminator is UncondJump)
+    val loopBlock = cfg.startBlock.terminator.successors[0]
+    // Loop block conditionally goes back in itself or exits
+    assert(loopBlock.terminator is CondJump)
+    val condJump = loopBlock.terminator as CondJump
+    assertEquals(loopBlock, condJump.target)
+    assertNotEquals(loopBlock, condJump.other)
+  }
+
+  @Test
   fun `For Loop`() {
     val cfg = prepareCFG(resource("forLoopTest.c"), source)
     assert(cfg.startBlock.data.isNotEmpty())
