@@ -79,6 +79,17 @@ private fun transformInitializer(current: BasicBlock,
 }
 
 /**
+ * A bunch of expressions that should be equivalent to the original expression that was
+ * sequentialized.
+ *
+ * What remains of the original expression after sequentialization will be the middle element of the
+ * triple. The other lists can be empty.
+ *
+ * The middle element acts as a sequence point for the other 2 lists.
+ */
+typealias SequentialExpression = Triple<List<Expression>, Expression, List<Expression>>
+
+/**
  * Resolve sequencing issues within an expression.
  *
  * Assignment expressions have the value of the left operand after the assignment; we are allowed
@@ -88,14 +99,15 @@ private fun transformInitializer(current: BasicBlock,
  * According to 6.5.3.1.0.2, prefix ++ and -- are equivalent to `(E+=1)` and `(E-=1)`, so the same
  * considerations for assignment expressions apply for them too.
  *
- * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2
+ * According to 6.5.2.4.0.2, for postfix ++ and --, updating the value of the operand is sequenced
+ * after returning the result, so we are allowed to move the update after the expression.
  *
- * @return a non-empty list of expressions that should be equivalent to the original expression.
- * What remains of the original expression after sequentialization will be the last element of the
- * list.
+ * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2
+ * @see SequentialExpression
  */
-private fun sequentialize(expr: Expression): List<Expression> {
-  val sequenced = mutableListOf<Expression>()
+private fun sequentialize(expr: Expression): SequentialExpression {
+  val sequencedBefore = mutableListOf<Expression>()
+  val sequencedAfter = mutableListOf<Expression>()
   val modifications = mutableMapOf<TypedIdentifier, MutableList<Expression>>()
   fun Expression.seqImpl(): Expression = when (this) {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
@@ -108,17 +120,20 @@ private fun sequentialize(expr: Expression): List<Expression> {
       if (incDec is TypedIdentifier) {
         modifications.getOrPut(incDec, ::mutableListOf).add(this)
       }
-      sequenced += this
+      if (this is PrefixIncrement || this is PrefixDecrement) sequencedBefore += this
+      else sequencedAfter += this
       incDec.seqImpl()
     }
     is BinaryExpression -> {
-      // FIXME: there are sequence points with && || (also short-circuiting)
+      /* FIXME: there are sequence points with && || (also short-circuiting)
+          so we can't just pull out the assignment in something like a == null && a = 42
+       */
       if (op in assignmentOps) {
         if (lhs is TypedIdentifier) {
           modifications.getOrPut(lhs, ::mutableListOf).add(this)
         }
         // Hoist assignments out of expressions
-        sequenced += this
+        sequencedBefore += this
         lhs.seqImpl()
       } else {
         BinaryExpression(op, lhs.seqImpl(), rhs.seqImpl()).withRange(tokenRange)
@@ -131,30 +146,50 @@ private fun sequentialize(expr: Expression): List<Expression> {
       this
     }
   }
-  sequenced += expr.seqImpl()
+  val remaining = expr.seqImpl()
   for ((variable, modList) in modifications) {
     if (modList.size > 1) {
       // FIXME: insert diagnostic about multiple unsequenced modifications to variable
     }
   }
-  return sequenced
+  return SequentialExpression(sequencedBefore, remaining, sequencedAfter)
 }
 
-private fun GraphingContext.processExpr(current: BasicBlock, e: Expression): List<Expression> {
-  val sequenced = sequentialize(e)
-  for (expr in sequenced) {
+private operator fun SequentialExpression.iterator(): Iterator<Expression> = iterator {
+  yieldAll(first.iterator())
+  yield(second)
+  yieldAll(third.iterator())
+}
+
+private fun GraphingContext.processExpr(current: BasicBlock, e: Expression): SequentialExpression {
+  val seqExpr = sequentialize(e)
+  for (expr in seqExpr) {
     if (expr !is BinaryExpression || expr.op !in assignmentOps) continue
     // FIXME: a bunch of other things can be on the left side of an =
     if (expr.lhs !is TypedIdentifier) logger.throwICE("Unimplemented branch") { expr }
     root.addDefinition(current, expr.lhs)
   }
-  return sequenced
+  return seqExpr
 }
 
+/**
+ * Add sequenced code to proper locations, and return what's left of the [cond] expression.
+ */
 private fun GraphingContext.processCondition(current: BasicBlock, cond: Expression): Expression {
   val sequencedCond = processExpr(current, cond)
-  current.data += sequencedCond.dropLast(1)
-  return sequencedCond.last()
+  // Disgusting black magic ahead
+  val newCond = if (sequencedCond.third.isNotEmpty()) {
+    // All names starting with __ are reserved, so we should be safe doing this
+    // Variables are identified by id from here on anyway
+    val syntheticCondVar = TypedIdentifier("__synthetic_cond_${cond.hashCode()}", BooleanType)
+    current.data += BinaryExpression(BinaryOperators.ASSIGN, syntheticCondVar, sequencedCond.second)
+    current.data += sequencedCond.third
+    syntheticCondVar
+  } else {
+    sequencedCond.second
+  }
+  current.data += sequencedCond.first
+  return newCond
 }
 
 private fun GraphingContext.graphStatement(scope: LexicalScope,
@@ -163,7 +198,10 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression -> {
-    current.data += processExpr(current, s)
+    val sequenced = processExpr(current, s)
+    current.data += sequenced.first
+    current.data += sequenced.second
+    current.data += sequenced.third
     current
   }
   is Noop -> {
