@@ -43,6 +43,18 @@ class SSATests {
   }
 
   @Test
+  fun `Pre-order Traversal Of Dominator Tree Is Correct For Diamond Graph`() {
+    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
+    val correctOrder = listOf(
+        cfg.startBlock,
+        cfg.startBlock.successors[0],
+        cfg.startBlock.successors[1],
+        cfg.startBlock.successors[0].successors[0]
+    )
+    assertEquals(correctOrder, cfg.domTreePreorder.toList())
+  }
+
+  @Test
   fun `Diamond Graph From If-Else Has Correct Dominance Frontier`() {
     val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
     assert(cfg.startBlock.dominanceFrontier.isEmpty())
