@@ -58,11 +58,6 @@ class CFG(val f: FunctionDefinition,
     postOrderNodes = postOrderNodes(startBlock, nodes)
     doms = findDomFrontiers(startBlock, postOrderNodes)
 
-    // Add implicit definitions in the root block
-    for (entry in definitions) {
-      entry.value += startBlock
-    }
-
     // SSA conversion
     if (convertToSSA) {
       insertPhiFunctions(definitions)

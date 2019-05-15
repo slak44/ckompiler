@@ -1,14 +1,14 @@
 // http://ssabook.gforge.inria.fr/latest/book.pdf
 // This code should produce the graph from figure 3.1/3.2
 int main() {
-  int x, y, tmp;
+  int x, y;
   A:
   // x = φ(x, x)
   if (x < 0) {
     y = 0;
     x = 0;
   } else {
-    tmp = x;
+    int tmp = x;
     x = y;
     y = tmp;
     if (x == 42) goto exit;
