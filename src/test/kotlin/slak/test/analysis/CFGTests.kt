@@ -3,6 +3,7 @@ package slak.test.analysis
 import org.junit.Test
 import slak.ckompiler.analysis.CondJump
 import slak.ckompiler.analysis.UncondJump
+import slak.ckompiler.analysis.createDomTreePreOrderSequence
 import slak.ckompiler.analysis.createGraphviz
 import slak.test.prepareCFG
 import slak.test.resource
@@ -75,5 +76,33 @@ class CFGTests {
     val cfg = prepareCFG(resource("earlyReturnTest.c"), source)
     assert(cfg.startBlock.data.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
+  }
+
+  @Test
+  fun `Pre-order Traversal Of Dominator Tree Is Correct For Diamond Graph`() {
+    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source, convertToSSA = false)
+    val sequence = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
+    val correctOrder = listOf(
+        cfg.startBlock,
+        cfg.startBlock.successors[0],
+        cfg.startBlock.successors[1],
+        cfg.startBlock.successors[0].successors[0]
+    )
+    assertEquals(correctOrder, sequence.toList())
+  }
+
+  @Test
+  fun `Pre-order Traversal Of Dominator Tree Is Correct For Phi Test Graph`() {
+    val cfg = prepareCFG(resource("ssa/phiTest.c"), source, convertToSSA = false)
+    val sequence = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
+    val correctOrder = listOf(
+        cfg.startBlock,
+        cfg.startBlock.successors[0],
+        cfg.startBlock.successors[0].successors[0],
+        cfg.startBlock.successors[0].successors[1],
+        cfg.startBlock.successors[0].successors[0].successors[0],
+        cfg.startBlock.successors[0].successors[0].successors[0].successors[1]
+    )
+    assertEquals(correctOrder, sequence.toList())
   }
 }

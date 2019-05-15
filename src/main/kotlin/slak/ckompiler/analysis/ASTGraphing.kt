@@ -7,7 +7,7 @@ import slak.ckompiler.throwICE
 private val logger = KotlinLogging.logger("ASTGraphing")
 
 fun graph(cfg: CFG) {
-  for (p in cfg.f.parameters) cfg.definitions[p to p.id] = mutableSetOf()
+  for (p in cfg.f.parameters) cfg.definitions[p.toUniqueId()] = mutableSetOf()
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
 }
 
@@ -48,17 +48,17 @@ private fun GraphingContext.graphCompound(current: BasicBlock,
 }
 
 private fun CFG.addDefinition(current: BasicBlock, ident: TypedIdentifier) {
-  val k = ident to ident.id
+  val k = ident.toUniqueId()
   if (!definitions.containsKey(k)) definitions[k] = mutableSetOf(current)
   else definitions[k]!! += current
 }
 
 private fun CFG.addDeclaration(parent: LexicalScope, current: BasicBlock, d: Declaration) {
   for ((ident, init) in d.idents(parent).zip(d.declaratorList.map { it.second })) {
-    if (definitions.containsKey(ident to ident.id)) {
+    if (definitions.containsKey(ident.toUniqueId())) {
       logger.throwICE("Redefinition of declaration") { ident }
     }
-    definitions[ident to ident.id] = mutableSetOf(current)
+    definitions[ident.toUniqueId()] = mutableSetOf(current)
     transformInitializer(current, ident, init)
   }
 }
@@ -81,10 +81,16 @@ private fun transformInitializer(current: BasicBlock,
 private fun GraphingContext.processExpr(current: BasicBlock, e: Expression): SequentialExpression {
   val seqExpr = sequentialize(e)
   for (expr in seqExpr) {
-    if (expr !is BinaryExpression || expr.op !in assignmentOps) continue
-    // FIXME: a bunch of other things can be on the left side of an =
-    if (expr.lhs !is TypedIdentifier) logger.throwICE("Unimplemented branch") { expr }
-    root.addDefinition(current, expr.lhs)
+    if (expr is BinaryExpression && expr.op in assignmentOps) {
+      // FIXME: a bunch of other things can be on the left side of an =
+      if (expr.lhs !is TypedIdentifier) logger.throwICE("Unimplemented branch") { expr }
+      root.addDefinition(current, expr.lhs)
+    } else if (expr is IncDecOperation) {
+      // FIXME: a bunch of things can be ++'d
+      val assigned = expr.expr as? TypedIdentifier
+          ?: logger.throwICE("Unimplemented branch") { expr }
+      root.addDefinition(current, assigned)
+    }
   }
   return seqExpr
 }

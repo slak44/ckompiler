@@ -21,14 +21,14 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   return Parser(lexer.tokens, source, s)
 }
 
-internal fun prepareCFG(s: String, source: SourceFileName): CFG {
+internal fun prepareCFG(s: String, source: SourceFileName, convertToSSA: Boolean = true): CFG {
   val p = prepareCode(s, source)
   p.assertNoDiagnostics()
-  return CFG(p.root.decls.firstFun(), source, s)
+  return CFG(p.root.decls.firstFun(), source, s, convertToSSA = convertToSSA)
 }
 
-internal fun prepareCFG(file: File, source: SourceFileName): CFG {
-  return prepareCFG(file.readText(), source)
+internal fun prepareCFG(file: File, source: SourceFileName, convertToSSA: Boolean = true): CFG {
+  return prepareCFG(file.readText(), source, convertToSSA)
 }
 
 internal fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =

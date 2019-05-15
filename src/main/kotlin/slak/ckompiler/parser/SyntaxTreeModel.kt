@@ -1,8 +1,8 @@
 package slak.ckompiler.parser
 
 import mu.KotlinLogging
-import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.IdCounter
+import slak.ckompiler.analysis.ReachingDef
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
 
@@ -171,15 +171,13 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
   override val type = ErrorType
 }
 
-data class ReachingDef(var variable: TypedIdentifier?, var block: BasicBlock?)
-
 /**
  * Like [IdentifierNode], but with an attached [TypeName].
  *
  * A [TypedIdentifier] should be "unique", in that for each variable in a function, all uses of it
  * must use the same [TypedIdentifier] instance, with the same [TypedIdentifier.id]. Even though
  * two instances with different ids can compare equal, they refer to different variables with the
- * same name (name shadowing). Creating other instances is fine as long as they are not leaked in
+ * same name (name shadowing). Creating other instances is fine as long as they are not leaked to
  * the rest of the AST.
  */
 class TypedIdentifier(override val name: String,
@@ -189,15 +187,7 @@ class TypedIdentifier(override val name: String,
     withRange(decl.name.tokenRange)
   }
 
-  var version: Int = 0
-    private set
-
-  /**
-   * Enables SSA variable renaming.
-   *
-   * It is initialized very late, in the variable renaming process.
-   */
-  var reachingDef = ReachingDef(null, null)
+  var version = 0
 
   var id = varCounter()
     private set
@@ -205,36 +195,26 @@ class TypedIdentifier(override val name: String,
   override val kindName = "variable"
 
   /**
-   * Makes a copy of this [TypedIdentifier], that has the same [id] and [version].
+   * Makes a copy of this [TypedIdentifier], that has the same [id].
    * Useful for having a different [tokenRange].
    */
   fun copy(): TypedIdentifier {
     val other = TypedIdentifier(name, type)
     other.version = version
-    other.reachingDef = reachingDef
     other.id = id
     return other
   }
 
   /**
-   * Creates a [TypedIdentifier] that has the same [id], but a newer version.
-   */
-  fun nextVersion(): TypedIdentifier {
-    val other = copy()
-    other.version++
-    return other
-  }
-
-  /**
-   * Changes this pre-SSA [TypedIdentifier] so that it uses the correct [version] from the
+   * Changes this pre-SSA [TypedIdentifier] so that it uses the correct version from the
    * [newerVersion] parameter.
    */
-  fun replaceWith(newerVersion: TypedIdentifier) {
-    if (id != newerVersion.id || newerVersion.version < version) {
+  fun replaceWith(newerVersion: ReachingDef?) {
+    if (newerVersion == null) return
+    if (id != newerVersion.variable.id || newerVersion.variable.version < version) {
       logger.throwICE("Illegal TypedIdentifier version replacement") { "$this -> $newerVersion" }
     }
-    reachingDef = newerVersion.reachingDef
-    version = newerVersion.version
+    version = newerVersion.variable.version
   }
 
   override fun toString() = "$type $name v$version"
