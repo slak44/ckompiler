@@ -62,6 +62,8 @@ class CFG(val f: FunctionDefinition,
     if (convertToSSA) {
       insertPhiFunctions(definitions)
       val renamer = VariableRenamer(doms, startBlock, nodes)
+      slak.ckompiler.analysis.logger.trace { "BB| x mention  | x.reachingDef" }
+      slak.ckompiler.analysis.logger.trace { "------------------------------" }
       renamer.variableRenaming()
     }
 
@@ -150,8 +152,23 @@ private class VariableRenamer(val doms: DominatorList,
       is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
       is TypedIdentifier -> uses += e
       is BinaryExpression -> {
-        findVarsRec(e.lhs)
+        if (e.op in assignmentOps) {
+          // FIXME: a bunch of other things can be on the left side of an =
+          if (e.lhs !is TypedIdentifier) logger.throwICE("Unimplemented branch") { e }
+          // Assigment targets ar definitions, not uses, so skip the recursive call on lhs here
+        } else {
+          findVarsRec(e.lhs)
+        }
         findVarsRec(e.rhs)
+      }
+      is PrefixIncrement, is PrefixDecrement,
+      is PostfixIncrement, is PostfixDecrement -> {
+        val expr = (e as IncDecOperation).expr
+        if (expr is TypedIdentifier) {
+          // Inc/Dec targets are definitions, not uses; skip recursive call
+        } else {
+          findVarsRec(expr)
+        }
       }
       is FunctionCall -> {
         findVarsRec(e.calledExpr)
@@ -159,8 +176,6 @@ private class VariableRenamer(val doms: DominatorList,
       }
       is UnaryExpression -> findVarsRec(e.operand)
       is SizeofExpression -> findVarsRec(e.sizeExpr)
-      is PrefixIncrement, is PrefixDecrement,
-      is PostfixIncrement, is PostfixDecrement -> findVarsRec((e as IncDecOperation).expr)
       is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode, is CharacterConstantNode,
       is StringLiteralNode -> Unit
     }
@@ -210,18 +225,63 @@ private class VariableRenamer(val doms: DominatorList,
   }
 
   /**
+   * Debug trace for variable usage renames.
+   */
+  private fun traceVarUsageRename(BB: BasicBlock,
+                                  oldReachingVar: TypedIdentifier?,
+                                  v: TypedIdentifier) {
+    if (v.name == "x") logger.trace {
+      val oldReachingStr =
+          if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
+      val newReachingStr =
+          if (v.reachingDef == null) "⊥"
+          else "${v.reachingDef!!.variable.name}${v.reachingDef!!.variable.version}"
+      listOf(
+          "${BB.nodeId}",
+          "${v.name}${v.version} use".padStart(10, ' '),
+          "$oldReachingStr updated into $newReachingStr"
+      ).joinToString(" | ")
+    }
+  }
+
+  /**
+   * Debug trace for variable definition renames.
+   */
+  private fun traceVarDefinitionRename(BB: BasicBlock,
+                                       def: TypedIdentifier,
+                                       vPrime: TypedIdentifier) {
+    if (def.name == "x") logger.trace {
+      val oldReachingVar = def.reachingDef?.variable
+      val oldReachingStr =
+          if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
+      listOf(
+          "${BB.nodeId}",
+          "def ${def.name}${def.version}".padEnd(10, ' '),
+          "$oldReachingStr then ${vPrime.name}${vPrime.version}"
+      ).joinToString(" | ")
+    }
+  }
+
+  /**
+   * Does the renaming for a variable definition.
+   */
+  private fun handleDef(BB: BasicBlock, def: TypedIdentifier, instrIdx: Int) {
+    val oldReachingDef = def.reachingDef
+    updateReachingDef(def, BB, instrIdx)
+    val vPrime = def.newVersion()
+    val reachingToPrime = ReachingDef(vPrime, BB, instrIdx)
+    def.reachingDef = reachingToPrime
+    def.replaceWith(reachingToPrime)
+    vPrime.reachingDef = oldReachingDef
+    traceVarDefinitionRename(BB, def, vPrime)
+  }
+
+  /**
    * Perform second phase of SSA construction.
    * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
   fun variableRenaming() = domTreePreorder.forEach { BB ->
-    for ((def) in BB.phiFunctions) {
-      updateReachingDef(def, BB, -1)
-      val vPrime = def.newVersion()
-      val reachingToPrime = ReachingDef(vPrime, BB, -1)
-      def.replaceWith(reachingToPrime)
-      vPrime.reachingDef = def.reachingDef
-      def.reachingDef = reachingToPrime
-    }
+    for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
     for ((idx, i) in BB.instructions.withIndex()) {
       // Each expression can only have one definition, and it will be in the root expression
       val def: TypedIdentifier? = when {
@@ -231,18 +291,18 @@ private class VariableRenamer(val doms: DominatorList,
         else -> null
       }
       for (v in findVariableUsage(i)) {
+        val oldReachingVar = v.reachingDef?.variable
         updateReachingDef(v, BB, idx)
         v.replaceWith(v.reachingDef)
+        traceVarUsageRename(BB, oldReachingVar, v)
       }
       if (def == null) continue
-      updateReachingDef(def, BB, idx)
-      val vPrime = def.newVersion()
-      val reachingToPrime = ReachingDef(vPrime, BB, idx)
-      def.replaceWith(reachingToPrime)
-      vPrime.reachingDef = def.reachingDef
-      def.reachingDef = reachingToPrime
+      handleDef(BB, def, idx)
     }
-    // FIXME: foreach phi in successors
+//    for (succ in BB.successors) for ((def) in succ.phiFunctions) {
+//      updateReachingDef(def, succ, -1)
+//      def.replaceWith(def.reachingDef)
+//    }
   }
 }
 
