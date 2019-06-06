@@ -1,10 +1,10 @@
 package slak.ckompiler.analysis
 
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = KotlinLogging.logger("ASTGraphing")
+private val logger = LogManager.getLogger("ASTGraphing")
 
 fun graph(cfg: CFG) {
   for (p in cfg.f.parameters) cfg.definitions[p.toUniqueId()] = mutableSetOf()

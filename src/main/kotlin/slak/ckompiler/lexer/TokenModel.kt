@@ -1,9 +1,9 @@
 package slak.ckompiler.lexer
 
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.throwICE
 
-private val logger = KotlinLogging.logger("Tokens")
+private val logger = LogManager.getLogger("Tokens")
 
 /** Implementors are some kind of token from some grammar. */
 sealed class TokenObject(val consumedChars: Int) {
@@ -84,7 +84,7 @@ data class FloatingConstant(val f: String,
                             val exponent: Exponent? = null) :
     LexicalToken(radix.prefixLength + f.length + suffix.length + (exponent?.length ?: 0)) {
   init {
-    if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported") {}
+    if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported")
     if (!f.any { isDigit(it) || it == '.' }) {
       logger.throwICE("Float is not just digits") { "token: $this" }
     }

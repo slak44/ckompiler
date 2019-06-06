@@ -1,7 +1,7 @@
 package slak.ckompiler
 
 import kotlinx.cli.*
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.CodeGenerator
@@ -12,7 +12,7 @@ import java.io.File
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
-  val logger = KotlinLogging.logger("CLI")
+  val logger = LogManager.getLogger("CLI")
   val dh = DebugHandler("CLI", "ckompiler", "")
   val cli = CommandLineInterface("ckompiler")
   val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")

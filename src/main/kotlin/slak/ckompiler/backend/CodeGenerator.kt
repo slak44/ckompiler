@@ -1,6 +1,6 @@
 package slak.ckompiler.backend
 
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
@@ -69,7 +69,7 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
     is UncondJump -> TODO()
     is ImpossibleJump -> genReturn(jmp.returned)
     is ConstantJump -> TODO()
-    MissingJump -> logger.throwICE("Incomplete BasicBlock") {}
+    MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
 
   /**
@@ -114,7 +114,7 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
    * Returns in rax. FIXME: temporary fix, we need a register allocator
    */
   private fun genExpr(e: Expression) = when (e) {
-    is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
+    is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is TypedIdentifier -> TODO()
     is FunctionCall -> TODO()
     is UnaryExpression -> TODO()
@@ -135,7 +135,14 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
     emit("mov rax, ${int.value}")
   }
 
+  private fun genAssignment(target: Expression, value: Expression) = instrGen {
+    // FIXME: implement
+  }
+
   private fun genBinExpr(e: BinaryExpression) = instrGen {
+    if (e.op in assignmentOps) {
+      emit(genAssignment(e.lhs, e.rhs))
+    }
     // FIXME: implement
   }
 
@@ -145,6 +152,6 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
   }
 
   companion object {
-    private val logger = KotlinLogging.logger("CodeGenerator")
+    private val logger = LogManager.getLogger("CodeGenerator")
   }
 }

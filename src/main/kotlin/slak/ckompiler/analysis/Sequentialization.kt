@@ -1,10 +1,10 @@
 package slak.ckompiler.analysis
 
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = KotlinLogging.logger("Sequentialization")
+private val logger = LogManager.getLogger("Sequentialization")
 
 /**
  * A bunch of expressions that should be equivalent to the original expression that was
@@ -44,7 +44,7 @@ fun sequentialize(expr: Expression): SequentialExpression {
   val sequencedAfter = mutableListOf<Expression>()
   val modifications = mutableMapOf<TypedIdentifier, MutableList<Expression>>()
   fun Expression.seqImpl(): Expression = when (this) {
-    is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
+    is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is FunctionCall -> {
       // FIXME: definitely has other sequencing issues that aren't handled
       FunctionCall(calledExpr.seqImpl(), args.map(Expression::seqImpl)).withRange(tokenRange)

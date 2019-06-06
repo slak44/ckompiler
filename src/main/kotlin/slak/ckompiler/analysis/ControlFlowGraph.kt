@@ -1,11 +1,13 @@
 package slak.ckompiler.analysis
 
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
 import java.util.*
 
-private val logger = KotlinLogging.logger("ControlFlow")
+private val logger = LogManager.getLogger("ControlFlow")
+private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
 
 /**
  * [TypedIdentifier] and its id.
@@ -62,8 +64,8 @@ class CFG(val f: FunctionDefinition,
     if (convertToSSA) {
       insertPhiFunctions(definitions)
       val renamer = VariableRenamer(doms, startBlock, nodes)
-      slak.ckompiler.analysis.logger.trace { "BB| x mention  | x.reachingDef" }
-      slak.ckompiler.analysis.logger.trace { "------------------------------" }
+      slak.ckompiler.analysis.logger.trace(varRenamesTrace, "BB| x mention  | x.reachingDef")
+      slak.ckompiler.analysis.logger.trace(varRenamesTrace, "------------------------------")
       renamer.variableRenaming()
     }
 
@@ -149,7 +151,7 @@ private class VariableRenamer(val doms: DominatorList,
   private fun findVariableUsage(e: Expression): List<TypedIdentifier> {
     val uses = mutableListOf<TypedIdentifier>()
     fun findVarsRec(e: Expression): Unit = when (e) {
-      is ErrorExpression -> logger.throwICE("ErrorExpression was removed") {}
+      is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
       is TypedIdentifier -> uses += e
       is BinaryExpression -> {
         if (e.op in assignmentOps) {
@@ -230,7 +232,7 @@ private class VariableRenamer(val doms: DominatorList,
   private fun traceVarUsageRename(BB: BasicBlock,
                                   oldReachingVar: TypedIdentifier?,
                                   v: TypedIdentifier) {
-    if (v.name == "x") logger.trace {
+    if (v.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
       val newReachingStr =
@@ -240,7 +242,7 @@ private class VariableRenamer(val doms: DominatorList,
           "${BB.nodeId}",
           "${v.name}${v.version} use".padStart(10, ' '),
           "$oldReachingStr updated into $newReachingStr"
-      ).joinToString(" | ")
+      ).joinToString(" | ").toObjectMessage()
     }
   }
 
@@ -250,7 +252,7 @@ private class VariableRenamer(val doms: DominatorList,
   private fun traceVarDefinitionRename(BB: BasicBlock,
                                        def: TypedIdentifier,
                                        vPrime: TypedIdentifier) {
-    if (def.name == "x") logger.trace {
+    if (def.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingVar = def.reachingDef?.variable
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
@@ -258,7 +260,7 @@ private class VariableRenamer(val doms: DominatorList,
           "${BB.nodeId}",
           "def ${def.name}${def.version}".padEnd(10, ' '),
           "$oldReachingStr then ${vPrime.name}${vPrime.version}"
-      ).joinToString(" | ")
+      ).joinToString(" | ").toObjectMessage()
     }
   }
 

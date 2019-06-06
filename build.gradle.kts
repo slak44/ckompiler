@@ -23,8 +23,8 @@ dependencies {
   implementation(kotlin("reflect"))
   implementation(group = "com.github.Kotlin", name = "kotlinx.cli",
       version = "fd284ee94256a57b600b543670f2a07fc2f53820")
-  implementation(group = "org.slf4j", name = "slf4j-log4j12", version = "1.7.25")
-  implementation(group = "io.github.microutils", name = "kotlin-logging", version = "1.6.10")
+  implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
+  implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
   testImplementation(kotlin("test-junit"))
   testImplementation(group = "junit", name = "junit", version = "4.11")

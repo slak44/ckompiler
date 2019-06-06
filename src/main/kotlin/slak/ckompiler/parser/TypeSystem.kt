@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.lexer.Punctuator
@@ -8,7 +8,7 @@ import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
 import slak.ckompiler.throwICE
 
-private val logger = KotlinLogging.logger("TypeSystem")
+private val logger = LogManager.getLogger("TypeSystem")
 
 fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
   val tagName = if (tagSpecifier.isAnonymous) null else tagSpecifier.tagIdent.name
@@ -221,7 +221,7 @@ sealed class UnsignedIntegralType : IntegralType()
 
 object BooleanType : UnsignedIntegralType() {
   override val conversionRank = 0x00001
-  override val corespondingType get() = logger.throwICE("No signed corespondent for _Bool") {}
+  override val corespondingType get() = logger.throwICE("No signed corespondent for _Bool")
   override val promotedType = SignedIntType
   override fun toString() = "_Bool"
 }

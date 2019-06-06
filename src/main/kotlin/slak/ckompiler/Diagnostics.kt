@@ -1,8 +1,9 @@
 package slak.ckompiler
 
 import com.github.ajalt.mordant.TermColors
-import mu.KLogger
-import mu.KotlinLogging
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import org.apache.logging.log4j.message.ObjectMessage
 import slak.ckompiler.DiagnosticKind.*
 import slak.ckompiler.lexer.TokenObject
 import kotlin.math.max
@@ -164,7 +165,7 @@ data class Diagnostic(val id: DiagnosticId,
         .filter { it.second.first == line }
         .map {
           val startIdx = max(it.second.second, 0)
-           startIdx..max(startIdx + it.first.length(), 0)
+          startIdx..max(startIdx + it.first.length(), 0)
         }
         .fold(originalCaretLine) { caretLine, it ->
           caretLine.replaceRange(it, "~".repeat(it.length()))
@@ -227,7 +228,7 @@ fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
  * @see DebugHandler
  */
 interface IDebugHandler {
-  val logger: KLogger
+  val logger: Logger
   val diags: List<Diagnostic>
   fun diagnostic(build: DiagnosticBuilder.() -> Unit)
 }
@@ -239,7 +240,7 @@ interface IDebugHandler {
 class DebugHandler(private val diagSource: String,
                    private val srcFileName: SourceFileName,
                    private val srcText: String) : IDebugHandler {
-  override val logger: KLogger get() = KotlinLogging.logger(diagSource)
+  override val logger: Logger = LogManager.getLogger(diagSource)
   override val diags = mutableListOf<Diagnostic>()
 
   override fun diagnostic(build: DiagnosticBuilder.() -> Unit) {
@@ -261,17 +262,29 @@ class InternalCompilerError : RuntimeException {
   constructor(message: String) : super(message)
 }
 
-inline fun KLogger.throwICE(ice: InternalCompilerError, crossinline msg: () -> Any?): Nothing {
-  error(ice) { msg() }
+inline fun Logger.error(t: Throwable, crossinline msg: () -> Any?) {
+  error({ msg().toObjectMessage() }, t)
+}
+
+fun Any?.toObjectMessage() = ObjectMessage(this)
+
+fun Logger.throwICE(iceMessage: String): Nothing {
+  val ice = InternalCompilerError(iceMessage)
+  error(ice)
   throw ice
 }
 
-inline fun KLogger.throwICE(iceMessage: String,
-                            cause: Throwable, crossinline msg: () -> Any?): Nothing {
+inline fun Logger.throwICE(ice: InternalCompilerError, crossinline msg: () -> Any?): Nothing {
+  error(ice, msg)
+  throw ice
+}
+
+inline fun Logger.throwICE(iceMessage: String,
+                           cause: Throwable, crossinline msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage, cause), msg)
 }
 
-inline fun KLogger.throwICE(iceMessage: String, crossinline msg: () -> Any?): Nothing {
+inline fun Logger.throwICE(iceMessage: String, crossinline msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage), msg)
 }
 
