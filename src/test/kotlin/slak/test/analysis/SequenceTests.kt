@@ -5,12 +5,14 @@ import slak.ckompiler.analysis.sequentialize
 import slak.ckompiler.parser.PostfixIncrement
 import slak.ckompiler.parser.PrefixIncrement
 import slak.ckompiler.parser.SignedIntType
+import slak.ckompiler.parser.withRange
 import slak.test.*
 import slak.test.add
 import slak.test.mul
 import slak.test.nameRef
 import slak.test.sizeOf
 import kotlin.test.assertEquals
+import kotlin.test.assertNotSame
 
 class SequenceTests {
   @Test
@@ -35,6 +37,18 @@ class SequenceTests {
   }
 
   @Test
+  fun `Leftover TypedIdentifier Is Cloned After Assignment Hoisting`() {
+    val x = nameRef("x", SignedIntType)
+    val assignment = x assign (2 add 3)
+    val (sequencedBefore, remaining, sequencedAfter) = sequentialize(assignment)
+    assertEquals(listOf(assignment), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
+    // Equal, but not the same: a copy must have been made
+    assertEquals(x, remaining)
+    assertNotSame(x, remaining)
+  }
+
+  @Test
   fun `Prefix Increment Is Hoisted`() {
     val x = nameRef("x", SignedIntType)
     val expr = 5 mul PrefixIncrement(x)
@@ -43,6 +57,18 @@ class SequenceTests {
     assertEquals(PrefixIncrement(x), sequencedBefore[0])
     assert(sequencedAfter.isEmpty())
     assertEquals(5 mul x, remaining)
+  }
+
+  @Test
+  fun `Leftover TypedIdentifier Is Cloned After Increment Hoisting`() {
+    val x = nameRef("x", SignedIntType)
+    val expr = PrefixIncrement(x)
+    val (sequencedBefore, remaining, sequencedAfter) = sequentialize(expr)
+    assertEquals(listOf(expr), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
+    // Equal, but not the same: a copy must have been made
+    assertEquals(x, remaining)
+    assertNotSame(x, remaining)
   }
 
   @Test

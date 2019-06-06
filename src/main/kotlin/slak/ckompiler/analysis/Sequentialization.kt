@@ -51,24 +51,31 @@ fun sequentialize(expr: Expression): SequentialExpression {
     }
     is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {
       val incDec = (this as IncDecOperation).expr
-      if (incDec is TypedIdentifier) {
-        modifications.getOrPut(incDec, ::mutableListOf).add(this)
-      }
       if (this is PrefixIncrement || this is PrefixDecrement) sequencedBefore += this
       else sequencedAfter += this
-      incDec.seqImpl()
+      if (incDec is TypedIdentifier) {
+        modifications.getOrPut(incDec, ::mutableListOf).add(this)
+        incDec.copy().withRange(incDec.tokenRange)
+      } else {
+        // FIXME: we might need to make a copy of lhs, like we do for the other case
+        //  let's just see if this is a problem first
+        incDec.seqImpl()
+      }
     }
     is BinaryExpression -> {
-      /* FIXME: there are sequence points with && || (also short-circuiting)
-          so we can't just pull out the assignment in something like a == null && a = 42
-       */
+      // FIXME: there are sequence points with && || (also short-circuiting)
+      //  so we can't just pull out the assignment in something like a == null && a = 42
       if (op in assignmentOps) {
-        if (lhs is TypedIdentifier) {
-          modifications.getOrPut(lhs, ::mutableListOf).add(this)
-        }
         // Hoist assignments out of expressions
         sequencedBefore += this
-        lhs.seqImpl()
+        if (lhs is TypedIdentifier) {
+          modifications.getOrPut(lhs, ::mutableListOf).add(this)
+          lhs.copy().withRange(lhs.tokenRange)
+        } else {
+          // FIXME: we might need to make a copy of lhs, like we do for the other case
+          //  let's just see if this is a problem first
+          lhs.seqImpl()
+        }
       } else {
         BinaryExpression(op, lhs.seqImpl(), rhs.seqImpl()).withRange(tokenRange)
       }

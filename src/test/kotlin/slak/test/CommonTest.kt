@@ -65,7 +65,7 @@ internal val signedChar =
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).zeroRange()
-internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t)
+internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
 internal fun FunctionDefinition.toRef() = funcIdent
 internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
 
