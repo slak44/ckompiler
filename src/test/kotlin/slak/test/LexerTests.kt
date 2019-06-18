@@ -348,4 +348,19 @@ class LexerTests {
     val l = Lexer("//", source)
     l.assertNoDiagnostics()
   }
+
+  @Test
+  fun `Comments In Strings`() {
+    val l = Lexer("\"//\" \"/* */\"", source)
+    l.assertNoDiagnostics()
+    assertEquals(listOf<LexicalToken>(StringLiteral("//", StringEncoding.CHAR),
+        StringLiteral("/* */", StringEncoding.CHAR)), l.tokens)
+  }
+
+  @Test
+  fun `Multi-line Comment End In Regular Comment`() {
+    val l = Lexer("// */", source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
+  }
 }
