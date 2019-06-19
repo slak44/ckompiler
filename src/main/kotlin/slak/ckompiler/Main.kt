@@ -15,7 +15,10 @@ import kotlin.system.exitProcess
 fun main(args: Array<String>) {
   val logger = LogManager.getLogger("CLI")
   val dh = DebugHandler("CLI", "ckompiler", "")
-  val cli = CommandLineInterface("ckompiler")
+  val cli = CommandLineInterface("ckompiler", "ckompiler", """
+    A C compiler written in Kotlin.
+    This command line interface tries to stay consistent with gcc and clang as much as possible.
+    """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler")
   val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
   val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
@@ -57,7 +60,7 @@ fun main(args: Array<String>) {
   try {
     cli.parse(args)
   } catch (err: Exception) {
-    if (err is HelpPrintedException) exitProcess(3)
+    if (err is HelpPrintedException) exitProcess(0)
     if (err is CommandLineException) exitProcess(4)
     logger.error(err) { "Failed to parse CLI args" }
     exitProcess(1)
