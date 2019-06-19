@@ -80,10 +80,6 @@ enum class Punctuators(val s: String) : StaticTokenEnum {
   override val realName get() = s
 }
 
-fun keyword(s: String) = Keywords.values()
-    .find { s.slice(0 until nextWhitespaceOrPunct(s)) == it.keyword }
-    ?.let { Keyword(it) }
-
 fun punct(s: String) =
     Punctuators.values().find { s.startsWith(it.s) }?.let { Punctuator(it) }
 
