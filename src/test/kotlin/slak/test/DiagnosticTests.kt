@@ -3,7 +3,7 @@ package slak.test
 import org.junit.Test
 import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
-import slak.ckompiler.lexer.Lexer
+import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Parser
 import kotlin.test.assertEquals
 
@@ -12,12 +12,12 @@ import kotlin.test.assertEquals
  */
 class DiagnosticTests {
   @Test
-  fun `Lexer Correct Diagnostic Column`() {
+  fun `PP Correct Diagnostic Column`() {
     val text = "ident     123.23A"
-    val l = Lexer(text, source)
-    assert(l.tokens[1] is ErrorToken)
+    val pp = Preprocessor(text, source)
+    assert(pp.tokens[1] is ErrorToken)
     // Test if error is on the last column
-    assertEquals(text.length - 1, l.diags[0].sourceColumns[0].start)
+    assertEquals(text.length - 1, pp.diags[0].sourceColumns[0].start)
   }
 
   private fun Parser.assertDiagCaret(diagNr: Int,

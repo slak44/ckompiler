@@ -7,14 +7,14 @@ import kotlin.test.assertEquals
 
 /**
  * These are something like "pseudo" unit tests, because technically, while most of them test a
- * single code path within the lexer, an entire [Lexer] class is instantiated for each test; from
+ * single code path within the lexer, an entire class is instantiated for each test; from
  * that point of view, they more closely resemble integration tests.
  */
-class LexerTests {
+class LexingTests {
   @Test
   fun `Identifiers Various`() {
     val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2", "struct1")
-    val l = Lexer(idents.joinToString(" "), source)
+    val l = Preprocessor(idents.joinToString(" "), source)
     l.assertNoDiagnostics()
     val res: List<LexicalToken> = idents.map { Identifier(it) }
     assertEquals(res, l.tokens)
@@ -22,7 +22,7 @@ class LexerTests {
 
   @Test
   fun `Keywords All`() {
-    val l = Lexer(Keywords.values().joinToString(" ") { it.keyword }, source)
+    val l = Preprocessor(Keywords.values().joinToString(" ") { it.keyword }, source)
     l.assertNoDiagnostics()
     val res: List<LexicalToken> = Keywords.values().map { Keyword(it) }
     assertEquals(res, l.tokens)
@@ -30,7 +30,7 @@ class LexerTests {
 
   @Test
   fun `Punctuators All`() {
-    val l = Lexer(Punctuators.values().joinToString(" ") { it.s }, source)
+    val l = Preprocessor(Punctuators.values().joinToString(" ") { it.s }, source)
     l.assertNoDiagnostics()
     val res: List<LexicalToken> = Punctuators.values().map { Punctuator(it) }
     assertEquals(res, l.tokens)
@@ -38,7 +38,7 @@ class LexerTests {
 
   @Test
   fun `Integers Basic`() {
-    val l = Lexer("1234 07 0xF 0", source)
+    val l = Preprocessor("1234 07 0xF 0", source)
     l.assertNoDiagnostics()
     val res: List<LexicalToken> = listOf(
         IntegralConstant("1234", IntegralSuffix.NONE, Radix.DECIMAL),
@@ -51,7 +51,7 @@ class LexerTests {
 
   @Test
   fun `Integer Suffixes`() {
-    val l = Lexer("1U 1L 1UL 1LU 1ULL 1LLU 1LL 1lLu", source)
+    val l = Preprocessor("1U 1L 1UL 1LU 1ULL 1LLU 1LL 1lLu", source)
     l.assertNoDiagnostics()
     val res: List<LexicalToken> = listOf(
         IntegralConstant("1", IntegralSuffix.UNSIGNED, Radix.DECIMAL),
@@ -67,7 +67,7 @@ class LexerTests {
   }
 
   private fun assertDiagnostic(s: String, vararg ids: DiagnosticId) {
-    val diagnostics = Lexer(s, source).diags
+    val diagnostics = Preprocessor(s, source).diags
     assertEquals(ids.toList(), diagnostics.ids)
   }
 
@@ -80,7 +80,7 @@ class LexerTests {
 
   @Test
   fun `Floats Various`() {
-    val l = Lexer("""
+    val l = Preprocessor("""
       123.123 123. .123
       1.1E2 1.E2 .1E2
       1.1e2 1.e2 .1e2
@@ -109,7 +109,7 @@ class LexerTests {
 
   @Test
   fun `Float Suffixes`() {
-    val l = Lexer("""
+    val l = Preprocessor("""
       12.1L 12.L .12L
       12.1E+10F 12.E+10F .12E+10F
     """.trimIndent(), source)
@@ -149,7 +149,7 @@ class LexerTests {
   @Test
   fun `Char Constants`() {
     val chars = listOf("a", "*", "asdf", "\"")
-    val l = Lexer(chars.joinToString(" ") { "'$it'" }, source)
+    val l = Preprocessor(chars.joinToString(" ") { "'$it'" }, source)
     l.assertNoDiagnostics()
     val res: List<LexicalToken> = chars.map { CharLiteral(it, CharEncoding.UNSIGNED_CHAR) }
     assertEquals(res, l.tokens)
@@ -157,7 +157,7 @@ class LexerTests {
 
   @Test
   fun `Char Prefixes`() {
-    val l = Lexer("L'a' u'a' U'a'", source)
+    val l = Preprocessor("L'a' u'a' U'a'", source)
     l.assertNoDiagnostics()
     val res = listOf<LexicalToken>(
         CharLiteral("a", CharEncoding.WCHAR_T),
@@ -174,9 +174,14 @@ class LexerTests {
   }
 
   @Test
+  fun `Empty Char Literal`() {
+    assertDiagnostic("char a = '';", DiagnosticId.EMPTY_CHAR_CONSTANT)
+  }
+
+  @Test
   fun `String Literals`() {
     val strings = listOf("a", "*", "asdf", "'")
-    val l = Lexer(strings.joinToString(" ") { "\"$it\"" }, source)
+    val l = Preprocessor(strings.joinToString(" ") { "\"$it\"" }, source)
     l.assertNoDiagnostics()
     val res: List<LexicalToken> = strings.map { StringLiteral(it, StringEncoding.CHAR) }
     assertEquals(res, l.tokens)
@@ -184,7 +189,7 @@ class LexerTests {
 
   @Test
   fun `String Prefixes`() {
-    val l = Lexer("""
+    val l = Preprocessor("""
       u8"string"
       L"string"
       u"string"
@@ -208,7 +213,7 @@ class LexerTests {
 
   @Test
   fun `Numbers One After Another`() {
-    val l = Lexer("""
+    val l = Preprocessor("""
       123. 456 .123
       123.f 456ULL .123
       123.E-12 456
@@ -230,7 +235,7 @@ class LexerTests {
 
   @Test
   fun `Dot Punctuator Vs Dot In Float`() {
-    val l = Lexer("""
+    val l = Preprocessor("""
       ident.someOther
       ident. someOther
       ident .someOther
@@ -272,7 +277,7 @@ class LexerTests {
 
   @Test
   fun `Declaration Basic`() {
-    val l = Lexer("int a = 1;\n", source)
+    val l = Preprocessor("int a = 1;\n", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
         Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
@@ -283,7 +288,7 @@ class LexerTests {
 
   @Test
   fun `Function Call`() {
-    val l = Lexer("int a = f(123, 5.5);", source)
+    val l = Preprocessor("int a = f(123, 5.5);", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(
         Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
@@ -296,7 +301,7 @@ class LexerTests {
 
   @Test
   fun `Comment Single Line`() {
-    val l = Lexer("""
+    val l = Preprocessor("""
       // lalalalla int = dgdgd 1 .34/ // /////
       int a = 1;
     """.trimIndent(), source)
@@ -309,7 +314,7 @@ class LexerTests {
 
   @Test
   fun `Comment Multi-line`() {
-    val l = Lexer("""
+    val l = Preprocessor("""
       /* lalalalla int = dgdgd 1 .34/ // ////* /*
       asf
       fg` ȀȁȂȃȄȅȆȇȈȉ ȊȋȌȍȎȏ02 10ȐȑȒȓȔȕȖȗ ȘșȚțȜȝȞ
@@ -326,7 +331,7 @@ class LexerTests {
 
   @Test
   fun `Comment Multi-line Empty`() {
-    val l = Lexer("/**/", source)
+    val l = Preprocessor("/**/", source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }
@@ -345,13 +350,13 @@ class LexerTests {
 
   @Test
   fun `Comment At End Of File`() {
-    val l = Lexer("//", source)
+    val l = Preprocessor("//", source)
     l.assertNoDiagnostics()
   }
 
   @Test
   fun `Comments In Strings`() {
-    val l = Lexer("\"//\" \"/* */\"", source)
+    val l = Preprocessor("\"//\" \"/* */\"", source)
     l.assertNoDiagnostics()
     assertEquals(listOf<LexicalToken>(StringLiteral("//", StringEncoding.CHAR),
         StringLiteral("/* */", StringEncoding.CHAR)), l.tokens)
@@ -359,7 +364,7 @@ class LexerTests {
 
   @Test
   fun `Multi-line Comment End In Regular Comment`() {
-    val l = Lexer("// */", source)
+    val l = Preprocessor("// */", source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }

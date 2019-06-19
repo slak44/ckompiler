@@ -5,7 +5,7 @@ import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.CodeGenerator
-import slak.ckompiler.lexer.Lexer
+import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File
@@ -57,12 +57,11 @@ fun main(args: Array<String>) {
     val pp = Preprocessor(text, file.absolutePath)
     if (pp.diags.isNotEmpty()) continue
     if (isPreprocessOnly) {
-      println(pp.alteredSourceText)
+      // FIXME
+//      println(pp.alteredSourceText)
       continue
     }
-    val l = Lexer(pp.alteredSourceText, file.absolutePath)
-    if (l.diags.isNotEmpty()) continue
-    val p = Parser(l.tokens, file.absolutePath, text)
+    val p = Parser(pp.tokens, file.absolutePath, text)
     if (p.diags.isNotEmpty()) continue
     if (isPrintCFGMode) {
       // FIXME: this is incomplete

@@ -5,12 +5,7 @@ import slak.ckompiler.analysis.sequentialize
 import slak.ckompiler.parser.PostfixIncrement
 import slak.ckompiler.parser.PrefixIncrement
 import slak.ckompiler.parser.SignedIntType
-import slak.ckompiler.parser.withRange
 import slak.test.*
-import slak.test.add
-import slak.test.mul
-import slak.test.nameRef
-import slak.test.sizeOf
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 

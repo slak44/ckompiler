@@ -8,7 +8,7 @@ import slak.ckompiler.parser.ErrorType
 import slak.test.*
 import kotlin.test.assertEquals
 
-/** Similarly to [LexerTests], these are not strictly unit tests. */
+/** Similarly to [LexingTests], these are not strictly unit tests. */
 class DeclarationTests {
   @Test
   fun `Basic Declaration`() {

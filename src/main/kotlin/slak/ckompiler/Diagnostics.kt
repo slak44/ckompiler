@@ -16,11 +16,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // CLI
   BAD_CLI_OPTION(ERROR, "Unrecognized command line option '%s'"),
 
-  // Preprocessor
+  // Preprocessor/Lexer
   EXPECTED_H_Q_CHAR_SEQUENCE(ERROR, "Expected %cFILENAME%c"),
   EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),
-
-  // Lexer
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
   MISSING_QUOTE(ERROR, "Missing terminating %c character"),
   NO_EXP_DIGITS(ERROR, "Exponent has no digits"),

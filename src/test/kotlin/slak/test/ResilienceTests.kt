@@ -4,7 +4,7 @@ import org.junit.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Identifier
-import slak.ckompiler.lexer.Lexer
+import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.ErrorDeclarator
 import slak.ckompiler.parser.ErrorExpression
 import slak.ckompiler.parser.NamedDeclarator
@@ -19,17 +19,17 @@ import kotlin.test.assertEquals
  */
 class ResilienceTests {
   @Test
-  fun `Lexer Keeps Going After Bad Suffix`() {
-    val l = Lexer("123.23A ident", source)
-    assert(l.tokens[0] is ErrorToken)
-    assertEquals(Identifier("ident"), l.tokens[1])
+  fun `PP Keeps Going After Bad Suffix`() {
+    val pp = Preprocessor("123.23A ident", source)
+    assert(pp.tokens[0] is ErrorToken)
+    assertEquals(Identifier("ident"), pp.tokens[1])
   }
 
   @Test
-  fun `Lexer Keeps Going After Bad Exponent`() {
-    val l = Lexer("1.EF ident", source)
-    assert(l.tokens[0] is ErrorToken)
-    assertEquals(Identifier("ident"), l.tokens[1])
+  fun `PP Keeps Going After Bad Exponent`() {
+    val pp = Preprocessor("1.EF ident", source)
+    assert(pp.tokens[0] is ErrorToken)
+    assertEquals(Identifier("ident"), pp.tokens[1])
   }
 
   @Test

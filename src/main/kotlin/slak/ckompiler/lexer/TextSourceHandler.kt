@@ -1,4 +1,6 @@
-package slak.ckompiler
+package slak.ckompiler.lexer
+
+import slak.ckompiler.SourceFileName
 
 /**
  * Useful for delegation.

@@ -1,6 +1,8 @@
-package slak.ckompiler
+package slak.ckompiler.lexer
 
-import slak.ckompiler.lexer.TokenObject
+import slak.ckompiler.DebugHandler
+import slak.ckompiler.IDebugHandler
+import slak.ckompiler.throwICE
 import java.util.*
 
 interface ITokenHandler<Token : TokenObject> {

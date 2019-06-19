@@ -1,10 +1,8 @@
 package slak.test.parser
 
-import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Keywords
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.ErrorStatement
 import slak.test.*
 
 class FunctionsTests {
