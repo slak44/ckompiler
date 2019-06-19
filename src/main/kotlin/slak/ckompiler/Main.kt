@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.CodeGenerator
+import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
@@ -26,6 +27,24 @@ fun main(args: Array<String>) {
       "Disable colors in diagnostic messages")
   val files by cli.positionalArgumentsList(
       "FILES...", "Translation units to be compiled", minArgs = 1)
+
+  cli.helpEntriesGroup("Include path management")
+  val includeBarrier by cli.flagArgument(listOf("-I-", "--include-barrier"),
+      "Remove current directory from include list", false, flagValue = false)
+
+  val generalIncludes = mutableListOf<File>()
+  cli.flagValueAction(listOf("-I", "--include-directory"), "DIR",
+      "Directory to add to include search path") { generalIncludes += File(it) }
+
+  val userIncludes = mutableListOf<File>()
+  cli.flagValueAction("-iquote", "DIR",
+      "Directory to add to \"...\" include search path") { userIncludes += File(it) }
+
+  val systemIncludes = mutableListOf<File>()
+  cli.flagValueAction("-isystem", "DIR",
+      "Directory to add to <...> search path") { systemIncludes.add(0, File(it)) }
+  cli.flagValueAction("-isystem-after", "DIR",
+      "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
 
   cli.helpEntriesGroup("Graphviz options (require --print-cfg-graphviz)")
   val forceToString by cli.flagArgument("--force-to-string",
@@ -54,7 +73,9 @@ fun main(args: Array<String>) {
   val objFiles = mutableListOf<File>()
   for (file in (files - badOptions).map(::File)) {
     val text = file.readText()
-    val pp = Preprocessor(text, file.absolutePath)
+    val includePaths = IncludePaths(generalIncludes, systemIncludes, userIncludes)
+    includePaths.includeBarrier = includeBarrier
+    val pp = Preprocessor(text, file.absolutePath, includePaths + IncludePaths.defaultPaths)
     if (pp.diags.isNotEmpty()) continue
     if (isPreprocessOnly) {
       // FIXME

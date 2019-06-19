@@ -1,15 +1,37 @@
 package slak.ckompiler.lexer
 
 import slak.ckompiler.*
+import java.io.File
 
-class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
+data class IncludePaths(val general: List<File>, val system: List<File>, val users: List<File>) {
+
+  /**
+   * Don't consider the current directory for includes.
+   */
+  var includeBarrier = false
+
+  operator fun plus(other: IncludePaths): IncludePaths {
+    val inc = IncludePaths(general + other.general, system + other.system, users + other.users)
+    inc.includeBarrier = includeBarrier || other.includeBarrier
+    return inc
+  }
+
+  companion object {
+    val defaultPaths = IncludePaths(emptyList(), listOf(File("/usr/bin/include")), emptyList())
+  }
+}
+
+class Preprocessor(sourceText: String,
+                   srcFileName: SourceFileName,
+                   includePaths: IncludePaths = IncludePaths.defaultPaths) {
+
   private val debugHandler = DebugHandler("Preprocessor", srcFileName, sourceText)
   val diags = debugHandler.diags
   val tokens: List<LexicalToken>
 
   init {
     val l = Lexer(debugHandler, sourceText, srcFileName)
-    val p = PPParser(l.ppTokens, debugHandler)
+    val p = PPParser(l.ppTokens, includePaths, debugHandler)
     tokens = p.outTokens.map(::convert)
     diags.forEach { it.print() }
   }
@@ -32,7 +54,8 @@ class Preprocessor(sourceText: String, srcFileName: SourceFileName) {
  *
  * Translation phase 4.
  */
-private class PPParser(private val ppTokens: List<LexicalToken>,
+private class PPParser(ppTokens: List<LexicalToken>,
+                       includePaths: IncludePaths,
                        debugHandler: DebugHandler) : IDebugHandler by debugHandler {
 
   val outTokens = mutableListOf<LexicalToken>()

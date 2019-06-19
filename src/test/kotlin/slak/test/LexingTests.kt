@@ -368,4 +368,29 @@ class LexingTests {
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }
+
+  @Test
+  fun `Header Name Recognized`() {
+    val test1 = Preprocessor(resource("headers/system/test.h").readText(), source)
+    val test2 = Preprocessor(resource("headers/users/test.h").readText(), source)
+    val l = Preprocessor("#include <test.h>\n#include \"test.h\"", source)
+    test1.assertNoDiagnostics()
+    test2.assertNoDiagnostics()
+    l.assertNoDiagnostics()
+    assertEquals(test1.tokens + test2.tokens, l.tokens)
+  }
+
+  @Test
+  fun `Header Name Is Only Recognized In Include And Pragma Directives`() {
+    val l = Preprocessor("#define <test.h>", source)
+    l.assertNoDiagnostics()
+    assertEquals(Punctuator(Punctuators.LT), l.tokens[2])
+  }
+
+  @Test
+  fun `Header Name Unfinished Sequence`() {
+    assertDiagnostic("#include <test.h", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
+    assertDiagnostic("#include \"test.h", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
+    assertDiagnostic("#include <test.h\n>", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
+  }
 }

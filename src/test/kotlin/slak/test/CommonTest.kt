@@ -1,9 +1,6 @@
 package slak.test
 
-import slak.ckompiler.Diagnostic
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.SourceFileName
+import slak.ckompiler.*
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
@@ -17,7 +14,10 @@ internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s).file)
 
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
-  val pp = Preprocessor(s, source)
+  val incs = IncludePaths(emptyList(),
+      listOf(IncludePaths.resource("headers/system")),
+      listOf(IncludePaths.resource("headers/users")))
+  val pp = Preprocessor(s, source, incs + IncludePaths.defaultPaths)
   pp.assertNoDiagnostics()
   return Parser(pp.tokens, source, s)
 }
