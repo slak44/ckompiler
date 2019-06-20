@@ -113,6 +113,10 @@ class TokenHandler(tokens: List<LexicalToken>, debugHandler: DebugHandler) :
     if (contextIdx < old) {
       logger.throwICE("Trying to eat tokens backwards") { "old=$old, contextIdx=$contextIdx" }
     }
-    idxStack.push(contextIdx)
+    if (contextIdx > tokenCount) {
+      idxStack.push(tokenCount)
+    } else {
+      idxStack.push(contextIdx)
+    }
   }
 }
