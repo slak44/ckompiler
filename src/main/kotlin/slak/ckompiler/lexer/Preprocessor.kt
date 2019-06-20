@@ -191,6 +191,8 @@ private class PPParser(
   }
 
   private tailrec fun parseLine() {
+    // We aren't interested in leading newlines
+    while (isNotEaten() && current() == NewLine) eat()
     if (isEaten()) return
     val newlineIdx = indexOfFirst { it == NewLine }
     val lineEndIdx = if (newlineIdx == -1) tokenCount else newlineIdx
