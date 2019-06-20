@@ -37,15 +37,16 @@ class Preprocessor(sourceText: String,
     debugHandler.diags += phase1Diags
     val l = Lexer(debugHandler, phase3Src, srcFileName)
     val p = PPParser(l.ppTokens, includePaths, debugHandler)
-    tokens = p.outTokens.map(::convert)
+    tokens = p.outTokens.mapNotNull(::convert)
     diags.forEach { it.print() }
   }
 
   /**
    * First part of translation phase 7.
    */
-  private fun convert(tok: LexicalToken): LexicalToken = when (tok) {
+  private fun convert(tok: LexicalToken): LexicalToken? = when (tok) {
     is HeaderName -> debugHandler.logger.throwICE("HeaderName didn't disappear in phase 4") { tok }
+    is NewLine -> null
     is Identifier -> {
       Keywords.values().firstOrNull { tok.name == it.keyword }
           ?.let(::Keyword)?.withStartIdx(tok.startIdx) ?: tok
@@ -64,9 +65,16 @@ private class PPParser(ppTokens: List<LexicalToken>,
                        debugHandler: DebugHandler) : IDebugHandler by debugHandler {
 
   val outTokens = mutableListOf<LexicalToken>()
+  private var currentOffset = 0
 
   init {
     outTokens += ppTokens // FIXME
+//    parse()
+  }
+
+  private tailrec fun parse() {
+
+    return parse()
   }
 }
 
@@ -170,7 +178,10 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
    * C standard: A.1.1, 6.4.0.3, 6.4.8, A.1.9
    */
   private tailrec fun tokenize() {
-    dropCharsWhile(Char::isWhitespace)
+    dropCharsWhile {
+      if (it == '\n') ppTokens += NewLine
+      return@dropCharsWhile it.isWhitespace()
+    }
     if (currentSrc.isEmpty()) return
 
     // Comments
@@ -211,7 +222,6 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
     token.startIdx = currentOffset
     ppTokens += token
     dropChars(token.consumedChars)
-    dropCharsWhile(Char::isWhitespace)
     return tokenize()
   }
 }
