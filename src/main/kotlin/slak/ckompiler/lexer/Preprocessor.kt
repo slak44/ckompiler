@@ -67,9 +67,9 @@ private class PPParser(
 ) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens, debugHandler) {
 
   val outTokens = mutableListOf<LexicalToken>()
+  private val defines = mutableMapOf<Identifier, List<LexicalToken>>()
 
   init {
-//    outTokens += ppTokens // FIXME
     parseLine()
   }
 
@@ -84,14 +84,64 @@ private class PPParser(
     return false
   }
 
+  /**
+   * Macro definitions.
+   *
+   * FIXME: implement function macros
+   *
+   * FIXME: to even detect function macros, we need to know if the lparen was preceded by whitespace
+   *
+   * C standard: 6.10.3
+   */
   private fun define(): Boolean {
-    return false
+    val tok = current()
+    if (tok !is Identifier || tok.name != "define") return false
+    eat() // Eat "define"
+    if (isEaten()) {
+      diagnostic {
+        id = DiagnosticId.MACRO_NAME_MISSING
+        column(colPastTheEnd(0))
+      }
+      return true
+    }
+    val definedIdent = current() as? Identifier
+    if (definedIdent == null) {
+      diagnostic {
+        id = DiagnosticId.MACRO_NAME_NOT_IDENT
+        columns(safeToken(0).range)
+      }
+      return true
+    }
+    if (current().asPunct() == Punctuators.LPAREN) {
+      TODO("function-y macros aren't implemented yet")
+    }
+    // Everything else until the newline is part of the `replacement-list`
+    // If there is nothing left, the macro has no replacement list (valid case)
+    tokenContext(tokenCount) {
+      if (definedIdent in defines && it != defines[definedIdent]) {
+        diagnostic {
+          id = DiagnosticId.MACRO_REDEFINITION
+          formatArgs(definedIdent.name)
+          columns(definedIdent.range)
+        }
+        diagnostic {
+          id = DiagnosticId.REDEFINITION_PREVIOUS
+          columns(defines.keys.first { (name) -> name == definedIdent.name }.range)
+        }
+      }
+      defines[definedIdent] = it
+      eatUntil(tokenCount)
+    }
+    return true
   }
 
   private fun undef(): Boolean {
     return false
   }
 
+  /**
+   * FIXME: line directive
+   */
   private fun line(): Boolean {
     return false
   }
@@ -120,6 +170,9 @@ private class PPParser(
     return true
   }
 
+  /**
+   * FIXME: pragma directives
+   */
   private fun pragma(): Boolean {
     return false
   }

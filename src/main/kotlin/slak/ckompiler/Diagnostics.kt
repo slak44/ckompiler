@@ -28,6 +28,10 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNFINISHED_COMMENT(ERROR, "Unterminated /* comment"),
   INVALID_PP_DIRECTIVE(ERROR, "Invalid preprocessing directive '%s'"),
   PP_ERROR_DIRECTIVE(ERROR, "%s"),
+  MACRO_NAME_MISSING(ERROR, "Macro name missing"),
+  MACRO_NAME_NOT_IDENT(ERROR, "Macro name must be an identifier"),
+  // clang puts up a warning; the standard says we error
+  MACRO_REDEFINITION(WARNING, "'%s' macro redefined"),
 
   // Parser
   EXPECTED_EXPR(ERROR, "Expected expression"),
