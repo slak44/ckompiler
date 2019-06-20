@@ -393,4 +393,9 @@ class LexingTests {
     assertDiagnostic("#include \"test.h", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
     assertDiagnostic("#include <test.h\n>", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
   }
+
+  @Test
+  fun `Trigraphs Recognized`() {
+    assertDiagnostic("??< ??>", DiagnosticId.TRIGRAPH_PROCESSED, DiagnosticId.TRIGRAPH_PROCESSED)
+  }
 }

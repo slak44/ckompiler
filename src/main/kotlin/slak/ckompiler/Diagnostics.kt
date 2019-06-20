@@ -17,6 +17,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   BAD_CLI_OPTION(ERROR, "Unrecognized command line option '%s'"),
 
   // Preprocessor/Lexer
+  TRIGRAPH_IGNORED(WARNING, "Trigraph ignored"),
+  TRIGRAPH_PROCESSED(WARNING, "Trigraph converted to '%s' character"),
   EXPECTED_H_Q_CHAR_SEQUENCE(ERROR, "Expected %cFILENAME%c"),
   EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),

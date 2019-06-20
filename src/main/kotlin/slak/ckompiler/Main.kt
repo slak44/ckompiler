@@ -26,6 +26,7 @@ fun main(args: Array<String>) {
       "Print the program's control flow graph to stdout instead of compiling")
   val output by cli.flagValueArgument("-o", "OUTFILE",
       "Place output in the specified file", "a.out")
+  val disableTrigraphs by cli.flagArgument("-fno-trigraphs", "Ignore trigraphs in source files")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
   val files by cli.positionalArgumentsList(
@@ -76,9 +77,10 @@ fun main(args: Array<String>) {
   val objFiles = mutableListOf<File>()
   for (file in (files - badOptions).map(::File)) {
     val text = file.readText()
-    val includePaths = IncludePaths(generalIncludes, systemIncludes, userIncludes)
+    val includePaths =
+        IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
     includePaths.includeBarrier = includeBarrier
-    val pp = Preprocessor(text, file.absolutePath, includePaths + IncludePaths.defaultPaths)
+    val pp = Preprocessor(text, file.absolutePath, includePaths, disableTrigraphs)
     if (pp.diags.isNotEmpty()) continue
     if (isPreprocessOnly) {
       // FIXME

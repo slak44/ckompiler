@@ -2,6 +2,7 @@ package slak.ckompiler.lexer
 
 import slak.ckompiler.*
 import java.io.File
+import java.util.regex.Pattern
 
 data class IncludePaths(val general: List<File>, val system: List<File>, val users: List<File>) {
 
@@ -23,14 +24,18 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
 
 class Preprocessor(sourceText: String,
                    srcFileName: SourceFileName,
-                   includePaths: IncludePaths = IncludePaths.defaultPaths) {
+                   includePaths: IncludePaths = IncludePaths.defaultPaths,
+                   ignoreTrigraphs: Boolean = false) {
 
-  private val debugHandler = DebugHandler("Preprocessor", srcFileName, sourceText)
-  val diags = debugHandler.diags
+  private val debugHandler: DebugHandler
+  val diags get() = debugHandler.diags
   val tokens: List<LexicalToken>
 
   init {
-    val l = Lexer(debugHandler, sourceText, srcFileName)
+    val (phase2Source, phase1Diags) = translationPhase1(ignoreTrigraphs, sourceText, srcFileName)
+    debugHandler = DebugHandler("Preprocessor", srcFileName, phase2Source)
+    debugHandler.diags += phase1Diags
+    val l = Lexer(debugHandler, phase2Source, srcFileName)
     val p = PPParser(l.ppTokens, includePaths, debugHandler)
     tokens = p.outTokens.map(::convert)
     diags.forEach { it.print() }
@@ -63,6 +68,48 @@ private class PPParser(ppTokens: List<LexicalToken>,
   init {
     outTokens += ppTokens // FIXME
   }
+}
+
+/** @see translationPhase1 */
+private val trigraphs = mapOf("??=" to "#", "??(" to "[", "??/" to "", "??)" to "]", "??'" to "^",
+    "??<" to "}", "??!" to "|", "??>" to "}", "??-" to "~")
+
+/** @see translationPhase1 */
+private fun escapeTrigraph(t: String) = "\\${t[0]}\\${t[1]}\\${t[2]}"
+
+/** @see translationPhase1 */
+private val trigraphPattern =
+    Pattern.compile("(" + trigraphs.keys.joinToString("|") { escapeTrigraph(it) } + ")")
+
+/**
+ * The character set mapping is implicit via use of [String].
+ *
+ * Trigraph sequences are recognized and replaced; clang and gcc error on them in "gnu11/gnu17"
+ * mode, but not in "c11"/"c17", so we will follow the standard here. However, we are still going to
+ * produce warnings, and allow disabling via CLI option.
+ *
+ * Usage of trigraphs will influence column indices in diagnostics.
+ *
+ * C standard: 5.1.1.2.0.1.1, 5.2.1.1
+ */
+private fun translationPhase1(ignoreTrigraphs: Boolean,
+                              source: String,
+                              srcFileName: SourceFileName): Pair<String, List<Diagnostic>> {
+  val dh = DebugHandler("Trigraphs", srcFileName, source)
+  val matcher = trigraphPattern.matcher(source)
+  val sb = StringBuilder()
+  while (matcher.find()) {
+    val replacement = trigraphs[matcher.group(1)]
+    val matchResult = matcher.toMatchResult()
+    matcher.appendReplacement(sb, replacement)
+    dh.diagnostic {
+      id = if (ignoreTrigraphs) DiagnosticId.TRIGRAPH_IGNORED else DiagnosticId.TRIGRAPH_PROCESSED
+      if (!ignoreTrigraphs) formatArgs(replacement!!)
+      columns(matchResult.start() until matchResult.end())
+    }
+  }
+  matcher.appendTail(sb)
+  return sb.toString() to dh.diags
 }
 
 /**
