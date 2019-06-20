@@ -115,6 +115,10 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
    * have a type or value until translation phase 7. We don't relax the grammar, and the numbers are
    * concrete from the beginning.
    *
+   * FIXME: we shouldn't print all the diagnostics encountered before translation phase 4; maybe the
+   *  error was in code excluded by conditional compilation, and we aren't allowed to complain about
+   *  it
+   *
    * C standard: A.1.1, 6.4.0.3, 6.4.8, A.1.9
    */
   private tailrec fun tokenize() {
