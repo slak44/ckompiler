@@ -2,6 +2,7 @@ package slak.ckompiler.parser
 
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
+import slak.ckompiler.ITokenHandler
 import slak.ckompiler.lexer.*
 
 interface IExpressionParser {

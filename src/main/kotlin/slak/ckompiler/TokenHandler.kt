@@ -1,9 +1,6 @@
-package slak.ckompiler.parser
+package slak.ckompiler
 
-import slak.ckompiler.DebugHandler
-import slak.ckompiler.IDebugHandler
 import slak.ckompiler.lexer.LexicalToken
-import slak.ckompiler.throwICE
 import java.util.*
 
 interface ITokenHandler {
