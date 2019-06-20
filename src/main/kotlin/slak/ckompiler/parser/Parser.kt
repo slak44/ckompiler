@@ -3,13 +3,11 @@ package slak.ckompiler.parser
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 
-typealias ILexicalTokenHandler = ITokenHandler<LexicalToken>
-
 /**
  * Eats tokens unconditionally until a semicolon or the end of the token list.
  * Does not eat the semicolon.
  */
-fun ILexicalTokenHandler.eatToSemi() {
+fun ITokenHandler.eatToSemi() {
   while (isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) eat()
 }
 
@@ -18,7 +16,7 @@ fun ILexicalTokenHandler.eatToSemi() {
  * [StaticToken.enum] matches one of the [t] arguments.
  * @see TokenHandler.indexOfFirst
  */
-fun ILexicalTokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
+fun ITokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
   return indexOfFirst { tok ->
     t.any { tok.asKeyword() == it || tok.asPunct() == it }
   }
@@ -27,7 +25,7 @@ fun ILexicalTokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
 /**
  * Generic way to construct [ErrorNode] instances, like [ErrorExpression] or [ErrorStatement].
  */
-inline fun <reified T> ILexicalTokenHandler.error(): T where T : ASTNode, T : ErrorNode {
+inline fun <reified T> ITokenHandler.error(): T where T : ASTNode, T : ErrorNode {
   return T::class.constructors.first { it.parameters.isEmpty() }.call().withRange(rangeOne())
 }
 
@@ -63,7 +61,7 @@ class Parser(tokens: List<LexicalToken>, srcFileName: SourceFileName, srcText: S
 private class TranslationUnitParser(private val specParser: SpecParser,
                                     statementParser: StatementParser) :
     IDebugHandler by statementParser,
-    ILexicalTokenHandler by statementParser,
+    ITokenHandler by statementParser,
     IScopeHandler by statementParser,
     ISpecParser by specParser,
     IDeclarationParser by statementParser,

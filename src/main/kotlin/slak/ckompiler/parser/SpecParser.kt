@@ -124,7 +124,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
 class SpecParser(declarationParser: DeclarationParser) :
     ISpecParser,
     IDebugHandler by declarationParser,
-    ILexicalTokenHandler by declarationParser,
+    ITokenHandler by declarationParser,
     IParenMatcher by declarationParser,
     IScopeHandler by declarationParser,
     IDeclarationParser by declarationParser {

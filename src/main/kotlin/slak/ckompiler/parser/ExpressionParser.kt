@@ -88,7 +88,7 @@ fun LexicalToken.asUnaryOperator(): UnaryOperators? = asPunct()?.asUnaryOperator
 class ExpressionParser(declarationParser: DeclarationParser) :
     IExpressionParser,
     IDebugHandler by declarationParser,
-    ILexicalTokenHandler by declarationParser,
+    ITokenHandler by declarationParser,
     IScopeHandler by declarationParser,
     IParenMatcher by declarationParser,
     IDeclarationParser by declarationParser {

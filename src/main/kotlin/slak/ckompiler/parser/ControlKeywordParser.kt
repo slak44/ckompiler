@@ -29,7 +29,7 @@ interface IControlKeywordParser {
 class ControlKeywordParser(expressionParser: ExpressionParser) :
     IControlKeywordParser,
     IDebugHandler by expressionParser,
-    ILexicalTokenHandler by expressionParser,
+    ITokenHandler by expressionParser,
     IExpressionParser by expressionParser {
   override fun parseGotoStatement(): Statement? {
     if (current().asKeyword() != Keywords.GOTO) return null

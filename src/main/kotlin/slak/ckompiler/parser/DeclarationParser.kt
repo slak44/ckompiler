@@ -56,7 +56,7 @@ interface IDeclarationParser {
 class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) :
     IDeclarationParser,
     IDebugHandler by scopeHandler,
-    ILexicalTokenHandler by parenMatcher,
+    ITokenHandler by parenMatcher,
     IScopeHandler by scopeHandler,
     IParenMatcher by parenMatcher {
 

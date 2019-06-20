@@ -2,16 +2,16 @@ package slak.ckompiler.parser
 
 import slak.ckompiler.DebugHandler
 import slak.ckompiler.IDebugHandler
-import slak.ckompiler.lexer.TokenObject
+import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.throwICE
 import java.util.*
 
-interface ITokenHandler<Token : TokenObject> {
+interface ITokenHandler {
   /**
    * Gets a token, or if all were eaten, the last one. Tries really hard to not fail.
    * Useful for diagnostics.
    */
-  fun safeToken(offset: Int): Token
+  fun safeToken(offset: Int): LexicalToken
 
   /** Get the column just after the end of the token at [offset]. Useful for diagnostics. */
   fun colPastTheEnd(offset: Int): Int {
@@ -24,7 +24,7 @@ interface ITokenHandler<Token : TokenObject> {
    */
   fun rangeOne() = safeToken(0).range
 
-  fun parentContext(): List<Token>
+  fun parentContext(): List<LexicalToken>
 
   /**
    * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
@@ -34,21 +34,21 @@ interface ITokenHandler<Token : TokenObject> {
    * The list of tokens starts at the current index (inclusive), and ends at the
    * given [endIdx] (exclusive).
    */
-  fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T
+  fun <T> tokenContext(endIdx: Int, block: (List<LexicalToken>) -> T): T
 
   /**
    * @param startIdx the context idx to start from (or -1 for the current idx)
    * @return the first context index matching the condition, or -1 if there is none
    */
-  fun indexOfFirst(startIdx: Int, block: (Token) -> Boolean): Int
+  fun indexOfFirst(startIdx: Int, block: (LexicalToken) -> Boolean): Int
 
   /** @see indexOfFirst */
-  fun indexOfFirst(block: (Token) -> Boolean): Int = indexOfFirst(-1, block)
+  fun indexOfFirst(block: (LexicalToken) -> Boolean): Int = indexOfFirst(-1, block)
 
   val tokenCount: Int
-  fun current(): Token
-  fun relative(offset: Int): Token
-  fun tokenAt(contextIdx: Int): Token
+  fun current(): LexicalToken
+  fun relative(offset: Int): LexicalToken
+  fun tokenAt(contextIdx: Int): LexicalToken
 
   fun isEaten(): Boolean
   fun isNotEaten() = !isEaten()
@@ -56,10 +56,9 @@ interface ITokenHandler<Token : TokenObject> {
   fun eatUntil(contextIdx: Int)
 }
 
-class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: DebugHandler) :
-    ITokenHandler<Token>,
-    IDebugHandler by debugHandler {
-  private val tokStack = Stack<List<Token>>()
+class TokenHandler(tokens: List<LexicalToken>, debugHandler: DebugHandler) :
+    ITokenHandler, IDebugHandler by debugHandler {
+  private val tokStack = Stack<List<LexicalToken>>()
   private val idxStack = Stack<Int>()
 
   init {
@@ -79,7 +78,7 @@ class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: Debug
     else -> tokStack.peek()[withOffset(offset).coerceIn(0 until tokenCount)]
   }
 
-  override fun <T> tokenContext(endIdx: Int, block: (List<Token>) -> T): T {
+  override fun <T> tokenContext(endIdx: Int, block: (List<LexicalToken>) -> T): T {
     val tokens = tokStack.peek().subList(idxStack.peek(), endIdx)
     tokStack.push(tokens)
     idxStack.push(0)
@@ -90,9 +89,9 @@ class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: Debug
     return result
   }
 
-  override fun parentContext(): List<Token> = tokStack[tokStack.size - 2]
+  override fun parentContext(): List<LexicalToken> = tokStack[tokStack.size - 2]
 
-  override fun indexOfFirst(startIdx: Int, block: (Token) -> Boolean): Int {
+  override fun indexOfFirst(startIdx: Int, block: (LexicalToken) -> Boolean): Int {
     val toDrop = if (startIdx == -1) idxStack.peek() else startIdx
     val idx = tokStack.peek().drop(toDrop).indexOfFirst(block)
     return if (idx == -1) -1 else idx + toDrop
@@ -102,9 +101,9 @@ class TokenHandler<Token : TokenObject>(tokens: List<Token>, debugHandler: Debug
 
   override val tokenCount: Int get() = tokStack.peek().size
 
-  override fun current(): Token = tokStack.peek()[idxStack.peek()]
+  override fun current(): LexicalToken = tokStack.peek()[idxStack.peek()]
 
-  override fun relative(offset: Int): Token = tokStack.peek()[withOffset(offset)]
+  override fun relative(offset: Int): LexicalToken = tokStack.peek()[withOffset(offset)]
 
   override fun tokenAt(contextIdx: Int) = tokStack.peek()[contextIdx]
 

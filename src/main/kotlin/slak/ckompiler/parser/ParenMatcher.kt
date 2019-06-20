@@ -47,8 +47,8 @@ interface IParenMatcher {
                          stopAtSemi: Boolean): Int
 }
 
-class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler<LexicalToken>) :
-    IParenMatcher, IDebugHandler by debugHandler, ILexicalTokenHandler by tokenHandler {
+class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler) :
+    IParenMatcher, IDebugHandler by debugHandler, ITokenHandler by tokenHandler {
 
   /**
    * Generalization of [findParenMatch]. Even though that function calls through to this
