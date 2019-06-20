@@ -113,6 +113,7 @@ private class PPParser(
         id = DiagnosticId.MACRO_NAME_NOT_IDENT
         columns(safeToken(0).range)
       }
+      eatUntil(tokenCount)
       return true
     }
     if (current().asPunct() == Punctuators.LPAREN) {

@@ -90,8 +90,8 @@ class PreprocessingTests  {
   @Test
   fun `Header Name Is Only Recognized In Include And Pragma Directives`() {
     val l = Preprocessor("#define <test.h>", source)
-    l.assertNoDiagnostics()
-    assertEquals(Punctuator(Punctuators.LT), l.tokens[2])
+    assertEquals(listOf(DiagnosticId.MACRO_NAME_NOT_IDENT), l.diags.ids)
+    assert(l.tokens.isEmpty())
   }
 
   @Test
@@ -132,6 +132,13 @@ class PreprocessingTests  {
         DiagnosticId.MACRO_REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
     assertPPDiagnostic("#define ASD\n#define ASD", source)
     assertPPDiagnostic("#define ASD 123\n#define ASD 123", source)
+  }
+
+  @Test
+  fun `Define Directive Eats Line After Error`() {
+    val l = Preprocessor("#define ; asdf 123", source)
+    assertEquals(listOf(DiagnosticId.MACRO_NAME_NOT_IDENT), l.diags.ids)
+    assert(l.tokens.isEmpty())
   }
 
   @Test
