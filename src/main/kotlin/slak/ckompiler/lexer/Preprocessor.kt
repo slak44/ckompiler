@@ -60,21 +60,90 @@ class Preprocessor(sourceText: String,
  *
  * Translation phase 4.
  */
-private class PPParser(ppTokens: List<LexicalToken>,
-                       includePaths: IncludePaths,
-                       debugHandler: DebugHandler) : IDebugHandler by debugHandler {
+private class PPParser(
+    ppTokens: List<LexicalToken>,
+    includePaths: IncludePaths,
+    debugHandler: DebugHandler
+) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens, debugHandler) {
 
   val outTokens = mutableListOf<LexicalToken>()
-  private var currentOffset = 0
 
   init {
-    outTokens += ppTokens // FIXME
-//    parse()
+//    outTokens += ppTokens // FIXME
+    parseLine()
   }
 
-  private tailrec fun parse() {
+  /**
+   * FIXME: conditional compilation
+   */
+  private fun ifSection(): Boolean {
+    return false
+  }
 
-    return parse()
+  private fun include(): Boolean {
+    return false
+  }
+
+  private fun define(): Boolean {
+    return false
+  }
+
+  private fun undef(): Boolean {
+    return false
+  }
+
+  private fun line(): Boolean {
+    return false
+  }
+
+  private fun error(): Boolean {
+    return false
+  }
+
+  private fun pragma(): Boolean {
+    return false
+  }
+
+  private fun nonDirective(): Boolean {
+    diagnostic {
+      id = DiagnosticId.INVALID_PP_DIRECTIVE
+      val tok = safeToken(0)
+      val directiveText = when (tok) {
+        NewLine -> logger.throwICE("Cannot have a newline in a line when parsing line-by-line")
+        is ErrorToken -> "<ERROR>"
+        is Keyword -> tok.value.keyword
+        is Punctuator -> tok.pct.s
+        is Identifier -> tok.name
+        is IntegralConstant -> tok.n
+        is FloatingConstant -> tok.f
+        is StringLiteral -> "\"${tok.data}\""
+        is CharLiteral -> "'${tok.data}'"
+        is HeaderName -> "${tok.kind}${tok.data}${if (tok.kind == '<') '>' else '"'}"
+      }
+      formatArgs(directiveText)
+      columns(tok.range)
+    }
+    return true
+  }
+
+  private tailrec fun parseLine() {
+    val newlineIdx = indexOfFirst { it == NewLine }
+    val lineEndIdx = if (newlineIdx == -1) tokenCount else newlineIdx
+    tokenContext(lineEndIdx) {
+      // `text-line` in the standard
+      if (current().asPunct() != Punctuators.HASH) {
+        outTokens += it
+        eatUntil(lineEndIdx)
+        return@tokenContext
+      }
+      eat() // The #
+      if (isEaten()) return@tokenContext // Null directive case
+      // Try each one in sequence
+      ifSection() || include() || define() || undef() ||
+          line() || error() || pragma() || nonDirective()
+    }
+    eat() // Get rid of the newline too
+    return parseLine()
   }
 }
 

@@ -26,6 +26,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   NO_EXP_DIGITS(ERROR, "Exponent has no digits"),
   INVALID_DIGIT(ERROR, "Invalid digit '%s' in constant"),
   UNFINISHED_COMMENT(ERROR, "Unterminated /* comment"),
+  INVALID_PP_DIRECTIVE(ERROR, "Invalid preprocessing directive '%s'"),
 
   // Parser
   EXPECTED_EXPR(ERROR, "Expected expression"),
