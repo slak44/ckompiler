@@ -21,7 +21,10 @@ repositories {
 dependencies {
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
-  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-cli-jvm", version = "0.1.0-dev-5")
+  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-cli-jvm",
+      version = "0.1.0-dev-5") {
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
+  }
   implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
