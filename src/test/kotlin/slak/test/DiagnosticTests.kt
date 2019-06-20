@@ -17,7 +17,7 @@ class DiagnosticTests {
     val pp = Preprocessor(text, source)
     assert(pp.tokens[1] is ErrorToken)
     // Test if error is on the last column
-    assertEquals(text.length - 1, pp.diags[0].sourceColumns[0].start)
+    assertEquals(text.length - 1, pp.diags[0].sourceColumns[0].first)
   }
 
   private fun Parser.assertDiagCaret(diagNr: Int,
