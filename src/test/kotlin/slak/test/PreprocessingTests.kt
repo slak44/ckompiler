@@ -122,4 +122,22 @@ class PreprocessingTests  {
     assertPPDiagnostic("#error This is an error.->23&&\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
     assertPPDiagnostic("#error 123sdadg\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
   }
+
+  @Test
+  fun `Define Directive Errors`() {
+    assertPPDiagnostic("#define", source, DiagnosticId.MACRO_NAME_MISSING)
+    assertPPDiagnostic("#define ;", source, DiagnosticId.MACRO_NAME_NOT_IDENT)
+    assertPPDiagnostic("#define ()", source, DiagnosticId.MACRO_NAME_NOT_IDENT)
+    assertPPDiagnostic("#define ASD\n#define ASD 123", source,
+        DiagnosticId.MACRO_REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
+    assertPPDiagnostic("#define ASD\n#define ASD", source)
+    assertPPDiagnostic("#define ASD 123\n#define ASD 123", source)
+  }
+
+  @Test
+  fun `Define Directive With No Replacement List Parsing`() {
+    val l = Preprocessor("#define FOO bar", source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
+  }
 }
