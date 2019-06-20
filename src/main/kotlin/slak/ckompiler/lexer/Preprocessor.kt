@@ -24,6 +24,7 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
 
 class Preprocessor(sourceText: String,
                    srcFileName: SourceFileName,
+                   cliDefines: Map<String, String> = emptyMap(),
                    includePaths: IncludePaths = IncludePaths.defaultPaths,
                    ignoreTrigraphs: Boolean = false) {
 
@@ -36,7 +37,7 @@ class Preprocessor(sourceText: String,
     debugHandler = DebugHandler("Preprocessor", srcFileName, phase3Src)
     debugHandler.diags += phase1Diags
     val l = Lexer(debugHandler, phase3Src, srcFileName)
-    val p = PPParser(l.ppTokens, includePaths, debugHandler)
+    val p = PPParser(l.ppTokens, cliDefines, includePaths, debugHandler)
     tokens = p.outTokens.mapNotNull(::convert)
     diags.forEach { it.print() }
   }
@@ -62,6 +63,7 @@ class Preprocessor(sourceText: String,
  */
 private class PPParser(
     ppTokens: List<LexicalToken>,
+    cliDefines: Map<String, String>,
     includePaths: IncludePaths,
     debugHandler: DebugHandler
 ) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens, debugHandler) {
@@ -70,6 +72,7 @@ private class PPParser(
   private val defines = mutableMapOf<Identifier, List<LexicalToken>>()
 
   init {
+    // FIXME: parse and add CLI defines
     parseLine()
   }
 

@@ -11,13 +11,13 @@ internal fun Preprocessor.assertNoDiagnostics() = assertEquals(emptyList<Diagnos
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun IDebugHandler.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
-internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s).file)
+internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s)!!.file)
 
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
   val incs = IncludePaths(emptyList(),
       listOf(IncludePaths.resource("headers/system")),
       listOf(IncludePaths.resource("headers/users")))
-  val pp = Preprocessor(s, source, incs + IncludePaths.defaultPaths)
+  val pp = Preprocessor(s, source, emptyMap(),incs + IncludePaths.defaultPaths)
   pp.assertNoDiagnostics()
   return Parser(pp.tokens, source, s)
 }

@@ -19,18 +19,36 @@ fun main(args: Array<String>) {
     A C compiler written in Kotlin.
     This command line interface tries to stay consistent with gcc and clang as much as possible.
     """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler")
+
+  val output by cli.flagValueArgument("-o", "OUTFILE",
+      "Place output in the specified file", "a.out")
+  val files by cli.positionalArgumentsList(
+      "FILES...", "Translation units to be compiled", minArgs = 1)
+
+  cli.helpSeparator()
+
+  // FIXME: defines are broken
+  val defines = mutableMapOf<String, String>()
+  cli.flagValueAction("-D", "<macro>=<value>",
+      "Define <macro> with <value>, or 1 if value is ommited") {
+    val (name, value) = it.split("=")
+    val notEmptyValue = if (value.isBlank()) "1" else value
+    defines += name to notEmptyValue
+  }
+
+  // FIXME: get rid of space after, and put one before
+  cli.helpEntriesGroup("Operation modes")
   val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
   val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
-  val output by cli.flagValueArgument("-o", "OUTFILE",
-      "Place output in the specified file", "a.out")
+
+  cli.helpEntriesGroup("Feature toggles")
+  // FIXME: maybe add versions without no- that override each other
   val disableTrigraphs by cli.flagArgument("-fno-trigraphs", "Ignore trigraphs in source files")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
-  val files by cli.positionalArgumentsList(
-      "FILES...", "Translation units to be compiled", minArgs = 1)
 
   cli.helpEntriesGroup("Include path management")
   val includeBarrier by cli.flagArgument(listOf("-I-", "--include-barrier"),
@@ -80,7 +98,7 @@ fun main(args: Array<String>) {
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
     includePaths.includeBarrier = includeBarrier
-    val pp = Preprocessor(text, file.absolutePath, includePaths, disableTrigraphs)
+    val pp = Preprocessor(text, file.absolutePath, defines, includePaths, disableTrigraphs)
     if (pp.diags.isNotEmpty()) continue
     if (isPreprocessOnly) {
       // FIXME
