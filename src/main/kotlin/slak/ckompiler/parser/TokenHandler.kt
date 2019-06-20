@@ -1,7 +1,8 @@
-package slak.ckompiler.lexer
+package slak.ckompiler.parser
 
 import slak.ckompiler.DebugHandler
 import slak.ckompiler.IDebugHandler
+import slak.ckompiler.lexer.TokenObject
 import slak.ckompiler.throwICE
 import java.util.*
 
