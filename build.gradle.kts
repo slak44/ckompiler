@@ -2,7 +2,7 @@ import java.net.URI
 
 plugins {
   application
-  kotlin("jvm") version "1.3.30"
+  kotlin("jvm") version "1.3.40"
 }
 
 group = "ckompiler"
@@ -15,14 +15,13 @@ application {
 
 repositories {
   mavenCentral()
-  maven { url = URI("https://jitpack.io") }
+  maven { url = URI("https://dl.bintray.com/orangy/maven") }
 }
 
 dependencies {
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
-  implementation(group = "com.github.Kotlin", name = "kotlinx.cli",
-      version = "fd284ee94256a57b600b543670f2a07fc2f53820")
+  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-cli-jvm", version = "0.1.0-dev-5")
   implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
