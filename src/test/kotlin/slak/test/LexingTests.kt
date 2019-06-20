@@ -66,16 +66,11 @@ class LexingTests {
     assertEquals(res, l.tokens)
   }
 
-  private fun assertDiagnostic(s: String, vararg ids: DiagnosticId) {
-    val diagnostics = Preprocessor(s, source).diags
-    assertEquals(ids.toList(), diagnostics.ids)
-  }
-
   @Test
   fun `Invalid Int Suffix Error`() {
-    assertDiagnostic("123A", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("123UA", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("123U2", DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123A", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123UA", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123U2", source, DiagnosticId.INVALID_SUFFIX)
   }
 
   @Test
@@ -128,22 +123,22 @@ class LexingTests {
 
   @Test
   fun `Invalid Float Suffix Error`() {
-    assertDiagnostic("123.12A", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("123.12FA", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("123.12AF", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("123.A", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("123.12A1", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic(".1A", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("1.1E1A", DiagnosticId.INVALID_SUFFIX)
-    assertDiagnostic("1.FE", DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123.12A", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123.12FA", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123.12AF", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123.A", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("123.12A1", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic(".1A", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("1.1E1A", source, DiagnosticId.INVALID_SUFFIX)
+    assertPPDiagnostic("1.FE", source, DiagnosticId.INVALID_SUFFIX)
   }
 
   @Test
   fun `No Exp Digits Error`() {
-    assertDiagnostic("1.1EA", DiagnosticId.NO_EXP_DIGITS)
-    assertDiagnostic("1.EA", DiagnosticId.NO_EXP_DIGITS)
-    assertDiagnostic("1.EF", DiagnosticId.NO_EXP_DIGITS)
-    assertDiagnostic("1.E+F", DiagnosticId.NO_EXP_DIGITS)
+    assertPPDiagnostic("1.1EA", source, DiagnosticId.NO_EXP_DIGITS)
+    assertPPDiagnostic("1.EA", source, DiagnosticId.NO_EXP_DIGITS)
+    assertPPDiagnostic("1.EF", source, DiagnosticId.NO_EXP_DIGITS)
+    assertPPDiagnostic("1.E+F", source, DiagnosticId.NO_EXP_DIGITS)
   }
 
   @Test
@@ -169,13 +164,13 @@ class LexingTests {
 
   @Test
   fun `Unmatched Quote Error`() {
-    assertDiagnostic("'asfadgs", DiagnosticId.MISSING_QUOTE)
-    assertDiagnostic("'123\nasd'", DiagnosticId.MISSING_QUOTE, DiagnosticId.MISSING_QUOTE)
+    assertPPDiagnostic("'asfadgs", source, DiagnosticId.MISSING_QUOTE)
+    assertPPDiagnostic("'123\nasd'", source, DiagnosticId.MISSING_QUOTE, DiagnosticId.MISSING_QUOTE)
   }
 
   @Test
   fun `Empty Char Literal`() {
-    assertDiagnostic("char a = '';", DiagnosticId.EMPTY_CHAR_CONSTANT)
+    assertPPDiagnostic("char a = '';", source, DiagnosticId.EMPTY_CHAR_CONSTANT)
   }
 
   @Test
@@ -207,8 +202,8 @@ class LexingTests {
 
   @Test
   fun `Unmatched Double Quote Error`() {
-    assertDiagnostic("\"asfadgs", DiagnosticId.MISSING_QUOTE)
-    assertDiagnostic("\"123\nasd\"", DiagnosticId.MISSING_QUOTE, DiagnosticId.MISSING_QUOTE)
+    assertPPDiagnostic("\"asfadgs", source, DiagnosticId.MISSING_QUOTE)
+    assertPPDiagnostic("\"123\nasd\"", source, DiagnosticId.MISSING_QUOTE, DiagnosticId.MISSING_QUOTE)
   }
 
   @Test
@@ -297,112 +292,5 @@ class LexingTests {
         FloatingConstant("5.5", FloatingSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.RPAREN),
         Punctuator(Punctuators.SEMICOLON)
     ), l.tokens)
-  }
-
-  @Test
-  fun `Comment Single Line`() {
-    val l = Preprocessor("""
-      // lalalalla int = dgdgd 1 .34/ // /////
-      int a = 1;
-    """.trimIndent(), source)
-    l.assertNoDiagnostics()
-    assertEquals(listOf(
-        Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
-        IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.SEMICOLON)
-    ), l.tokens)
-  }
-
-  @Test
-  fun `Comment Multi-line`() {
-    val l = Preprocessor("""
-      /* lalalalla int = dgdgd 1 .34/ // ////* /*
-      asf
-      fg` ȀȁȂȃȄȅȆȇȈȉ ȊȋȌȍȎȏ02 10ȐȑȒȓȔȕȖȗ ȘșȚțȜȝȞ
-      32ng
-      g */
-      int a = 1;
-    """.trimIndent(), source)
-    l.assertNoDiagnostics()
-    assertEquals(listOf(
-        Keywords.INT.kw, Identifier("a"), Punctuator(Punctuators.ASSIGN),
-        IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL), Punctuator(Punctuators.SEMICOLON)
-    ), l.tokens)
-  }
-
-  @Test
-  fun `Comment Multi-line Empty`() {
-    val l = Preprocessor("/**/", source)
-    l.assertNoDiagnostics()
-    assert(l.tokens.isEmpty())
-  }
-
-  @Test
-  fun `Comment Multi-line Unfinished`() {
-    assertDiagnostic("""
-      /* lalalalla int = dgdgd 1 .34/ // ////* /*
-      asf
-      fg` ȀȁȂȃȄȅȆȇȈȉ ȊȋȌȍȎȏ02 10ȐȑȒȓȔȕȖȗ ȘșȚțȜȝȞ
-      32ng
-      g
-      int a = 1;
-    """.trimIndent(), DiagnosticId.UNFINISHED_COMMENT)
-  }
-
-  @Test
-  fun `Comment At End Of File`() {
-    val l = Preprocessor("//", source)
-    l.assertNoDiagnostics()
-  }
-
-  @Test
-  fun `Comments In Strings`() {
-    val l = Preprocessor("\"//\" \"/* */\"", source)
-    l.assertNoDiagnostics()
-    assertEquals(listOf<LexicalToken>(StringLiteral("//", StringEncoding.CHAR),
-        StringLiteral("/* */", StringEncoding.CHAR)), l.tokens)
-  }
-
-  @Test
-  fun `Multi-line Comment End In Regular Comment`() {
-    val l = Preprocessor("// */", source)
-    l.assertNoDiagnostics()
-    assert(l.tokens.isEmpty())
-  }
-
-  @Test
-  fun `Header Name Recognized`() {
-    val test1 = Preprocessor(resource("headers/system/test.h").readText(), source)
-    val test2 = Preprocessor(resource("headers/users/test.h").readText(), source)
-    val l = Preprocessor("#include <test.h>\n#include \"test.h\"", source)
-    test1.assertNoDiagnostics()
-    test2.assertNoDiagnostics()
-    l.assertNoDiagnostics()
-    assertEquals(test1.tokens + test2.tokens, l.tokens)
-  }
-
-  @Test
-  fun `Header Name Is Only Recognized In Include And Pragma Directives`() {
-    val l = Preprocessor("#define <test.h>", source)
-    l.assertNoDiagnostics()
-    assertEquals(Punctuator(Punctuators.LT), l.tokens[2])
-  }
-
-  @Test
-  fun `Header Name Unfinished Sequence`() {
-    assertDiagnostic("#include <test.h", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
-    assertDiagnostic("#include \"test.h", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
-    assertDiagnostic("#include <test.h\n>", DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
-  }
-
-  @Test
-  fun `Trigraphs Recognized`() {
-    assertDiagnostic("??< ??>", DiagnosticId.TRIGRAPH_PROCESSED, DiagnosticId.TRIGRAPH_PROCESSED)
-  }
-
-  @Test
-  fun `Line Splicing`() {
-    val l = Preprocessor("tab\\\nle", source)
-    l.assertNoDiagnostics()
-    assertEquals(listOf(Identifier("table")), l.tokens)
   }
 }

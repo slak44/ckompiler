@@ -41,6 +41,11 @@ internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toL
 internal fun IDebugHandler.assertDiags(vararg ids: DiagnosticId) =
     assertEquals(ids.toList(), diags.ids)
 
+fun assertPPDiagnostic(s: String, source: SourceFileName, vararg ids: DiagnosticId) {
+  val diagnostics = Preprocessor(s, source).diags
+  assertEquals(ids.toList(), diagnostics.ids)
+}
+
 internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
