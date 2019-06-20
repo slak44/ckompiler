@@ -398,4 +398,11 @@ class LexingTests {
   fun `Trigraphs Recognized`() {
     assertDiagnostic("??< ??>", DiagnosticId.TRIGRAPH_PROCESSED, DiagnosticId.TRIGRAPH_PROCESSED)
   }
+
+  @Test
+  fun `Line Splicing`() {
+    val l = Preprocessor("tab\\\nle", source)
+    l.assertNoDiagnostics()
+    assertEquals(listOf(Identifier("table")), l.tokens)
+  }
 }

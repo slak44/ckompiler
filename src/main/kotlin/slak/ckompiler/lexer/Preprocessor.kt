@@ -32,10 +32,10 @@ class Preprocessor(sourceText: String,
   val tokens: List<LexicalToken>
 
   init {
-    val (phase2Source, phase1Diags) = translationPhase1(ignoreTrigraphs, sourceText, srcFileName)
-    debugHandler = DebugHandler("Preprocessor", srcFileName, phase2Source)
+    val (phase3Src, phase1Diags) = translationPhase1And2(ignoreTrigraphs, sourceText, srcFileName)
+    debugHandler = DebugHandler("Preprocessor", srcFileName, phase3Src)
     debugHandler.diags += phase1Diags
-    val l = Lexer(debugHandler, phase2Source, srcFileName)
+    val l = Lexer(debugHandler, phase3Src, srcFileName)
     val p = PPParser(l.ppTokens, includePaths, debugHandler)
     tokens = p.outTokens.map(::convert)
     diags.forEach { it.print() }
@@ -70,41 +70,44 @@ private class PPParser(ppTokens: List<LexicalToken>,
   }
 }
 
-/** @see translationPhase1 */
+/** @see translationPhase1And2 */
 private val trigraphs = mapOf("??=" to "#", "??(" to "[", "??/" to "", "??)" to "]", "??'" to "^",
-    "??<" to "}", "??!" to "|", "??>" to "}", "??-" to "~")
+    "??<" to "}", "??!" to "|", "??>" to "}", "??-" to "~", "\\\n" to "")
 
-/** @see translationPhase1 */
+/** @see translationPhase1And2 */
 private fun escapeTrigraph(t: String) = "\\${t[0]}\\${t[1]}\\${t[2]}"
 
-/** @see translationPhase1 */
-private val trigraphPattern =
-    Pattern.compile("(" + trigraphs.keys.joinToString("|") { escapeTrigraph(it) } + ")")
+/** @see translationPhase1And2 */
+private val trigraphPattern = Pattern.compile("(" +
+    (trigraphs.keys - "\\\n").joinToString("|") { escapeTrigraph(it) } + "|\\\\\n)")
 
 /**
  * The character set mapping is implicit via use of [String].
  *
- * Trigraph sequences are recognized and replaced; clang and gcc error on them in "gnu11/gnu17"
+ * Trigraph sequences are recognized and replaced; clang and gcc error on them in "gnu11"/"gnu17"
  * mode, but not in "c11"/"c17", so we will follow the standard here. However, we are still going to
  * produce warnings, and allow disabling via CLI option.
  *
- * Usage of trigraphs will influence column indices in diagnostics.
+ * The same regex replacement mechanism used for trigraphs is also used for joining newlines for
+ * phase 2. A slash followed by a newline is erased.
  *
- * C standard: 5.1.1.2.0.1.1, 5.2.1.1
+ * Usage of trigraphs and joined newlines will influence line/column indices in diagnostics.
+ *
+ * C standard: 5.1.1.2.0.1.1, 5.1.1.2.0.1.2, 5.2.1.1
  */
-private fun translationPhase1(ignoreTrigraphs: Boolean,
-                              source: String,
-                              srcFileName: SourceFileName): Pair<String, List<Diagnostic>> {
+private fun translationPhase1And2(ignoreTrigraphs: Boolean,
+                                  source: String,
+                                  srcFileName: SourceFileName): Pair<String, List<Diagnostic>> {
   val dh = DebugHandler("Trigraphs", srcFileName, source)
   val matcher = trigraphPattern.matcher(source)
   val sb = StringBuilder()
   while (matcher.find()) {
-    val replacement = trigraphs[matcher.group(1)]
+    val replacement = trigraphs.getValue(matcher.group(1))
     val matchResult = matcher.toMatchResult()
     matcher.appendReplacement(sb, replacement)
-    dh.diagnostic {
+    if (replacement.isNotEmpty()) dh.diagnostic {
       id = if (ignoreTrigraphs) DiagnosticId.TRIGRAPH_IGNORED else DiagnosticId.TRIGRAPH_PROCESSED
-      if (!ignoreTrigraphs) formatArgs(replacement!!)
+      if (!ignoreTrigraphs) formatArgs(replacement)
       columns(matchResult.start() until matchResult.end())
     }
   }
@@ -113,8 +116,6 @@ private fun translationPhase1(ignoreTrigraphs: Boolean,
 }
 
 /**
- * FIXME: translation phases 1 and 2 should happen around here
- *
  * Translation phase 3.
  *
  * C standard: 5.1.1.2.0.1.3
@@ -198,14 +199,10 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
     // floatingConstant before punct
 
     val token =
-        headerName(currentSrc) ?:
-        characterConstant(currentSrc, currentOffset) ?:
-        stringLiteral(currentSrc, currentOffset) ?:
-        floatingConstant(currentSrc, currentOffset) ?:
-        integerConstant(currentSrc, currentOffset) ?:
-        identifier(currentSrc) ?:
-        punct(currentSrc) ?:
-        logger.throwICE("Extraneous character")
+        headerName(currentSrc) ?: characterConstant(currentSrc, currentOffset)
+        ?: stringLiteral(currentSrc, currentOffset) ?: floatingConstant(currentSrc, currentOffset)
+        ?: integerConstant(currentSrc, currentOffset) ?: identifier(currentSrc) ?: punct(currentSrc)
+        ?: logger.throwICE("Extraneous character")
 
     if (token is CharLiteral && token.data.isEmpty()) diagnostic {
       id = DiagnosticId.EMPTY_CHAR_CONSTANT
