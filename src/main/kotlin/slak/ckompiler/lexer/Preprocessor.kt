@@ -96,8 +96,28 @@ private class PPParser(
     return false
   }
 
+  /**
+   * Error directives. Technically the things in it have to be valid pp-tokens, but like clang and
+   * gcc we accept any text between "error" and the newline.
+   *
+   * FIXME: swallow diagnostics from the tokens in this directive
+   */
   private fun error(): Boolean {
-    return false
+    val tok = current()
+    if (tok !is Identifier || tok.name != "error") return false
+    eat() // Eat "error"
+    diagnostic {
+      id = DiagnosticId.PP_ERROR_DIRECTIVE
+      if (isNotEaten()) {
+        val range = safeToken(0).startIdx..safeToken(tokenCount).range.last
+        formatArgs(sourceText.substring(range))
+        columns(tok.startIdx..range.last)
+      } else {
+        formatArgs("")
+        columns(tok.range)
+      }
+    }
+    return true
   }
 
   private fun pragma(): Boolean {
@@ -108,25 +128,14 @@ private class PPParser(
     diagnostic {
       id = DiagnosticId.INVALID_PP_DIRECTIVE
       val tok = safeToken(0)
-      val directiveText = when (tok) {
-        NewLine -> logger.throwICE("Cannot have a newline in a line when parsing line-by-line")
-        is ErrorToken -> "<ERROR>"
-        is Keyword -> tok.value.keyword
-        is Punctuator -> tok.pct.s
-        is Identifier -> tok.name
-        is IntegralConstant -> tok.n
-        is FloatingConstant -> tok.f
-        is StringLiteral -> "\"${tok.data}\""
-        is CharLiteral -> "'${tok.data}'"
-        is HeaderName -> "${tok.kind}${tok.data}${if (tok.kind == '<') '>' else '"'}"
-      }
-      formatArgs(directiveText)
+      formatArgs(sourceText.substring(tok.range))
       columns(tok.range)
     }
     return true
   }
 
   private tailrec fun parseLine() {
+    if (isEaten()) return
     val newlineIdx = indexOfFirst { it == NewLine }
     val lineEndIdx = if (newlineIdx == -1) tokenCount else newlineIdx
     tokenContext(lineEndIdx) {
