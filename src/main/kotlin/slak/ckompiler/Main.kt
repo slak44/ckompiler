@@ -36,13 +36,15 @@ fun main(args: Array<String>) {
 
   cli.helpSeparator()
 
-  // FIXME: defines are broken
   val defines = mutableMapOf<String, String>()
   cli.flagValueAction("-D", "<macro>=<value>",
       "Define <macro> with <value>, or 1 if value is ommited") {
-    val (name, value) = it.split("=")
-    val notEmptyValue = if (value.isBlank()) "1" else value
-    defines += name to notEmptyValue
+    defines += if ('=' in it) {
+      val (name, value) = it.split("=")
+      name to value
+    } else {
+      it to "1"
+    }
   }
 
   cli.helpGroup("Operation modes")
