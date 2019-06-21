@@ -1,7 +1,6 @@
 package slak.ckompiler
 
 import kotlinx.cli.*
-import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.CodeGenerator
@@ -12,18 +11,16 @@ import slak.ckompiler.parser.Parser
 import java.io.File
 import kotlin.system.exitProcess
 
-fun CommandLineInterface.helpGroup(description: String) {
-  addHelpEntry(object : HelpEntry {
-    override fun printHelp(helpPrinter: HelpPrinter) {
-      helpPrinter.printSeparator()
-      helpPrinter.printText(description)
-    }
-  })
-}
+class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
+  private fun CommandLineInterface.helpGroup(description: String) {
+    addHelpEntry(object : HelpEntry {
+      override fun printHelp(helpPrinter: HelpPrinter) {
+        helpPrinter.printSeparator()
+        helpPrinter.printText(description)
+      }
+    })
+  }
 
-fun main(args: Array<String>) {
-  val logger = LogManager.getLogger("CLI")
-  val dh = DebugHandler("CLI", "ckompiler", "")
   val cli = CommandLineInterface("ckompiler", "ckompiler", """
     A C compiler written in Kotlin.
     This command line interface tries to stay consistent with gcc and clang as much as possible.
@@ -34,51 +31,72 @@ fun main(args: Array<String>) {
   val files by cli.positionalArgumentsList(
       "FILES...", "Translation units to be compiled", minArgs = 1)
 
-  cli.helpSeparator()
-
-  val defines = mutableMapOf<String, String>()
-  cli.flagValueAction("-D", "<macro>=<value>",
-      "Define <macro> with <value>, or 1 if value is ommited") {
-    defines += if ('=' in it) {
-      val (name, value) = it.split("=")
-      name to value
-    } else {
-      it to "1"
-    }
+  init {
+    cli.helpSeparator()
   }
 
-  cli.helpGroup("Operation modes")
+  val defines = mutableMapOf<String, String>()
+
+  init {
+    cli.flagValueAction("-D", "<macro>=<value>",
+        "Define <macro> with <value>, or 1 if value is ommited") {
+      defines += if ('=' in it) {
+        val (name, value) = it.split("=")
+        name to value
+      } else {
+        it to "1"
+      }
+    }
+    cli.helpGroup("Operation modes")
+  }
+
   val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
   val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
 
-  cli.helpGroup("Feature toggles")
+  init {
+    cli.helpGroup("Feature toggles")
+  }
+
   // FIXME: maybe add versions without no- that override each other
   val disableTrigraphs by cli.flagArgument("-fno-trigraphs", "Ignore trigraphs in source files")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
 
-  cli.helpGroup("Include path management")
+  init {
+    cli.helpGroup("Include path management")
+  }
+
   val includeBarrier by cli.flagArgument(listOf("-I-", "--include-barrier"),
       "Remove current directory from include list", false, flagValue = false)
 
   val generalIncludes = mutableListOf<File>()
-  cli.flagValueAction(listOf("-I", "--include-directory"), "DIR",
-      "Directory to add to include search path") { generalIncludes += File(it) }
+
+  init {
+    cli.flagValueAction(listOf("-I", "--include-directory"), "DIR",
+        "Directory to add to include search path") { generalIncludes += File(it) }
+  }
 
   val userIncludes = mutableListOf<File>()
-  cli.flagValueAction("-iquote", "DIR",
-      "Directory to add to \"...\" include search path") { userIncludes += File(it) }
+
+  init {
+    cli.flagValueAction("-iquote", "DIR",
+        "Directory to add to \"...\" include search path") { userIncludes += File(it) }
+  }
 
   val systemIncludes = mutableListOf<File>()
-  cli.flagValueAction("-isystem", "DIR",
-      "Directory to add to <...> search path") { systemIncludes.add(0, File(it)) }
-  cli.flagValueAction("-isystem-after", "DIR",
-      "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
 
-  cli.helpGroup("Graphviz options (require --print-cfg-graphviz)")
+  init {
+    cli.flagValueAction("-isystem", "DIR",
+        "Directory to add to <...> search path") { systemIncludes.add(0, File(it)) }
+    cli.flagValueAction("-isystem-after", "DIR",
+        "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
+
+    cli.helpGroup("Graphviz options (require --print-cfg-graphviz)")
+  }
+
   val forceToString by cli.flagArgument("--force-to-string",
       "Force using ASTNode.toString instead of printing the original expression source")
   val forceAllNodes by cli.flagArgument("--force-all-nodes",
@@ -86,42 +104,33 @@ fun main(args: Array<String>) {
   val forceUnreachable by cli.flagArgument("--force-unreachable",
       "Force displaying of unreachable basic blocks and impossible edges")
 
-  try {
-    cli.parse(args)
-  } catch (err: Exception) {
-    if (err is HelpPrintedException) exitProcess(0)
-    if (err is CommandLineException) exitProcess(4)
-    logger.error(err) { "Failed to parse CLI args" }
-    exitProcess(1)
+  private fun srcFiles(): List<File> {
+    val badOptions = files.filter { it.startsWith("--") }
+    for (option in badOptions) diagnostic {
+      id = DiagnosticId.BAD_CLI_OPTION
+      formatArgs(option)
+    }
+    return (files - badOptions).mapNotNull {
+      val file = File(it)
+      if (!file.exists()) {
+        diagnostic {
+          id = DiagnosticId.FILE_NOT_FOUND
+          formatArgs(it)
+        }
+        return@mapNotNull null
+      }
+      if (file.isDirectory) {
+        diagnostic {
+          id = DiagnosticId.FILE_IS_DIRECTORY
+          formatArgs(it)
+        }
+        return@mapNotNull null
+      }
+      return@mapNotNull file
+    }
   }
 
-  Diagnostic.useColors = !disableColorDiags
-  val badOptions = files.filter { it.startsWith("--") }
-  for (option in badOptions) dh.diagnostic {
-    id = DiagnosticId.BAD_CLI_OPTION
-    formatArgs(option)
-  }
-  val objFiles = mutableListOf<File>()
-  val srcFiles = (files - badOptions).mapNotNull {
-    val file = File(it)
-    if (!file.exists()) {
-      dh.diagnostic {
-        id = DiagnosticId.FILE_NOT_FOUND
-        formatArgs(it)
-      }
-      return@mapNotNull null
-    }
-    if (file.isDirectory) {
-      dh.diagnostic {
-        id = DiagnosticId.FILE_IS_DIRECTORY
-        formatArgs(it)
-      }
-      return@mapNotNull null
-    }
-    return@mapNotNull file
-  }
-  for (diag in dh.diags) diag.print()
-  for (file in srcFiles) {
+  private fun compileFile(file: File): File? {
     val text = file.readText()
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
@@ -134,37 +143,62 @@ fun main(args: Array<String>) {
         includePaths = includePaths,
         ignoreTrigraphs = disableTrigraphs
     )
-    if (pp.diags.isNotEmpty()) continue
+    if (pp.diags.isNotEmpty()) return null
     if (isPreprocessOnly) {
       // FIXME
 //      println(pp.alteredSourceText)
-      continue
+      return null
     }
+
     val p = Parser(pp.tokens, file.absolutePath, text)
-    if (p.diags.isNotEmpty()) continue
+    if (p.diags.isNotEmpty()) return null
+
     if (isPrintCFGMode) {
       // FIXME: this is incomplete
       val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
       val cfg = CFG(firstFun, file.absolutePath, text, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable, forceToString))
-      continue
+      return null
     }
+
     // FIXME: this is incomplete
     val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
     val cfg = CFG(firstFun, file.absolutePath, text, false)
     val asmFile = File(file.parent, file.nameWithoutExtension + ".s")
     asmFile.writeText(CodeGenerator(cfg, true).getNasm())
-    if (isCompileOnly) continue
+    if (isCompileOnly) return null
+
     val objFile = File(file.parent, file.nameWithoutExtension + ".o")
     ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)
         .inheritIO().start().waitFor()
-    objFiles += objFile
     asmFile.delete()
+    return objFile
   }
-  if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return
-  ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
-      "/lib/ld-linux-x86-64.so.2", "-e", "main",
-      *objFiles.map(File::getAbsolutePath).toTypedArray())
-      .inheritIO().start().waitFor()
-  File(output).setExecutable(true)
+
+  fun parse(args: Array<String>): Int {
+    try {
+      cli.parse(args)
+    } catch (err: Exception) {
+      if (err is HelpPrintedException) return 0
+      if (err is CommandLineException) return 4
+      logger.error(err) { "Failed to parse CLI args" }
+      return 1
+    }
+    Diagnostic.useColors = !disableColorDiags
+    val objFiles = srcFiles().mapNotNull(this::compileFile)
+    if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return 0
+    ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
+        "/lib/ld-linux-x86-64.so.2", "-e", "main",
+        *objFiles.map(File::getAbsolutePath).toTypedArray())
+        .inheritIO().start().waitFor()
+    File(output).setExecutable(true)
+    return 0
+  }
+}
+
+fun main(args: Array<String>) {
+  val cli = CLI()
+  val exitCode = cli.parse(args)
+  cli.diags.forEach(Diagnostic::print)
+  exitProcess(exitCode)
 }
