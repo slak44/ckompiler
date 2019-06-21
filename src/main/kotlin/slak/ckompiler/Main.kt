@@ -130,6 +130,18 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
   }
 
+  private fun invokeNasm(objFile: File, asmFile: File) {
+    ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)
+        .inheritIO().start().waitFor()
+  }
+
+  private fun invokeLd(objFiles: List<File>) {
+    ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
+        "/lib/ld-linux-x86-64.so.2", "-e", "main",
+        *objFiles.map(File::getAbsolutePath).toTypedArray())
+        .inheritIO().start().waitFor()
+  }
+
   private fun compileFile(file: File): File? {
     val text = file.readText()
     val includePaths =
@@ -153,24 +165,22 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val p = Parser(pp.tokens, file.absolutePath, text)
     if (p.diags.isNotEmpty()) return null
 
+    // FIXME: this is incomplete
+    val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
+
     if (isPrintCFGMode) {
-      // FIXME: this is incomplete
-      val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
       val cfg = CFG(firstFun, file.absolutePath, text, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable, forceToString))
       return null
     }
 
-    // FIXME: this is incomplete
-    val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
     val cfg = CFG(firstFun, file.absolutePath, text, false)
     val asmFile = File(file.parent, file.nameWithoutExtension + ".s")
     asmFile.writeText(CodeGenerator(cfg, true).getNasm())
     if (isCompileOnly) return null
 
     val objFile = File(file.parent, file.nameWithoutExtension + ".o")
-    ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)
-        .inheritIO().start().waitFor()
+    invokeNasm(objFile, asmFile)
     asmFile.delete()
     return objFile
   }
@@ -187,10 +197,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     Diagnostic.useColors = !disableColorDiags
     val objFiles = srcFiles().mapNotNull(this::compileFile)
     if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return 0
-    ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
-        "/lib/ld-linux-x86-64.so.2", "-e", "main",
-        *objFiles.map(File::getAbsolutePath).toTypedArray())
-        .inheritIO().start().waitFor()
+    invokeLd(objFiles)
     File(output).setExecutable(true)
     return 0
   }
