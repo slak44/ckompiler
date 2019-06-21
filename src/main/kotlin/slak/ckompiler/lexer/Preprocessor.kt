@@ -64,9 +64,20 @@ class Preprocessor(sourceText: String,
     debugHandler = DebugHandler("Preprocessor", srcFileName, phase3Src)
     debugHandler.diags += phase1Diags
     val l = Lexer(debugHandler, phase3Src, srcFileName)
-    // FIXME: parse and add CLI defines to initials
+    val parsedCliDefines = cliDefines.map {
+      val cliDh = DebugHandler("Preprocessor", "<command line>", it.value)
+      val cliLexer = Lexer(cliDh, it.value, "<command line>")
+      debugHandler.diags += cliDh.diags
+      Identifier(it.key) to cliLexer.ppTokens
+    }.toMap()
     val p = PPParser(
-        l.ppTokens, initialDefines, includePaths, currentDir, ignoreTrigraphs, debugHandler)
+        ppTokens = l.ppTokens,
+        initialDefines = initialDefines + parsedCliDefines,
+        includePaths = includePaths,
+        currentDir = currentDir,
+        ignoreTrigraphs = ignoreTrigraphs,
+        debugHandler = debugHandler
+    )
     tokens = p.outTokens.mapNotNull(::convert)
     diags.forEach { it.print() }
   }
