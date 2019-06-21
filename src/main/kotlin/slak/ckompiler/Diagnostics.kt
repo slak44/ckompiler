@@ -16,6 +16,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // CLI
   BAD_CLI_OPTION(ERROR, "Unrecognized command line option '%s'"),
   FILE_IS_DIRECTORY(ERROR, "File is a directory: '%s'"),
+  NO_INPUT_FILES(ERROR, "No input files"),
 
   // Preprocessor/Lexer
   TRIGRAPH_IGNORED(WARNING, "Trigraph ignored"),

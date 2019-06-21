@@ -11,6 +11,10 @@ import slak.ckompiler.parser.Parser
 import java.io.File
 import kotlin.system.exitProcess
 
+enum class ExitCodes(val int: Int) {
+  NORMAL(0), ERROR(1), EXECUTION_FAILED(2), BAD_COMMAND(4)
+}
+
 class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   private fun CommandLineInterface.helpGroup(description: String) {
     addHelpEntry(object : HelpEntry {
@@ -21,14 +25,14 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     })
   }
 
-  val cli = CommandLineInterface("ckompiler", "ckompiler", """
+  private val cli = CommandLineInterface("ckompiler", "ckompiler", """
     A C compiler written in Kotlin.
     This command line interface tries to stay consistent with gcc and clang as much as possible.
     """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler")
 
-  val output by cli.flagValueArgument("-o", "OUTFILE",
+  private val output by cli.flagValueArgument("-o", "OUTFILE",
       "Place output in the specified file", "a.out")
-  val files by cli.positionalArgumentsList(
+  private val files by cli.positionalArgumentsList(
       "FILES...", "Translation units to be compiled", minArgs = 1)
 
   init {
@@ -50,10 +54,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     cli.helpGroup("Operation modes")
   }
 
-  val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
-  val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
-  val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
-  val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
+  private val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
+  private val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
+  private val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
+  private val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
 
   init {
@@ -61,32 +65,33 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   // FIXME: maybe add versions without no- that override each other
-  val disableTrigraphs by cli.flagArgument("-fno-trigraphs", "Ignore trigraphs in source files")
-  val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
+  private val disableTrigraphs by cli.flagArgument("-fno-trigraphs",
+      "Ignore trigraphs in source files")
+  private val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
 
   init {
     cli.helpGroup("Include path management")
   }
 
-  val includeBarrier by cli.flagArgument(listOf("-I-", "--include-barrier"),
+  private val includeBarrier by cli.flagArgument(listOf("-I-", "--include-barrier"),
       "Remove current directory from include list", false, flagValue = false)
 
-  val generalIncludes = mutableListOf<File>()
+  private val generalIncludes = mutableListOf<File>()
 
   init {
     cli.flagValueAction(listOf("-I", "--include-directory"), "DIR",
         "Directory to add to include search path") { generalIncludes += File(it) }
   }
 
-  val userIncludes = mutableListOf<File>()
+  private val userIncludes = mutableListOf<File>()
 
   init {
     cli.flagValueAction("-iquote", "DIR",
         "Directory to add to \"...\" include search path") { userIncludes += File(it) }
   }
 
-  val systemIncludes = mutableListOf<File>()
+  private val systemIncludes = mutableListOf<File>()
 
   init {
     cli.flagValueAction("-isystem", "DIR",
@@ -97,20 +102,20 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     cli.helpGroup("Graphviz options (require --print-cfg-graphviz)")
   }
 
-  val forceToString by cli.flagArgument("--force-to-string",
+  private val forceToString by cli.flagArgument("--force-to-string",
       "Force using ASTNode.toString instead of printing the original expression source")
-  val forceAllNodes by cli.flagArgument("--force-all-nodes",
+  private val forceAllNodes by cli.flagArgument("--force-all-nodes",
       "Force displaying the entire control flow graph")
-  val forceUnreachable by cli.flagArgument("--force-unreachable",
+  private val forceUnreachable by cli.flagArgument("--force-unreachable",
       "Force displaying of unreachable basic blocks and impossible edges")
 
-  private fun srcFiles(): List<File> {
+  private val srcFiles: List<File> by lazy {
     val badOptions = files.filter { it.startsWith("--") }
     for (option in badOptions) diagnostic {
       id = DiagnosticId.BAD_CLI_OPTION
       formatArgs(option)
     }
-    return (files - badOptions).mapNotNull {
+    (files - badOptions).mapNotNull {
       val file = File(it)
       if (!file.exists()) {
         diagnostic {
@@ -142,6 +147,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         .inheritIO().start().waitFor()
   }
 
+  private var executionFailed = false
+
   private fun compileFile(file: File): File? {
     val text = file.readText()
     val includePaths =
@@ -155,7 +162,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         includePaths = includePaths,
         ignoreTrigraphs = disableTrigraphs
     )
-    if (pp.diags.isNotEmpty()) return null
+    if (pp.diags.isNotEmpty()) {
+      executionFailed = true
+      return null
+    }
     if (isPreprocessOnly) {
       // FIXME
 //      println(pp.alteredSourceText)
@@ -163,7 +173,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
 
     val p = Parser(pp.tokens, file.absolutePath, text)
-    if (p.diags.isNotEmpty()) return null
+    if (p.diags.isNotEmpty()) {
+      executionFailed = true
+      return null
+    }
 
     // FIXME: this is incomplete
     val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
@@ -185,21 +198,26 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     return objFile
   }
 
-  fun parse(args: Array<String>): Int {
+  fun parse(args: Array<String>): ExitCodes {
     try {
       cli.parse(args)
     } catch (err: Exception) {
-      if (err is HelpPrintedException) return 0
-      if (err is CommandLineException) return 4
+      if (err is HelpPrintedException) return ExitCodes.NORMAL
+      if (err is CommandLineException) return ExitCodes.BAD_COMMAND
       logger.error(err) { "Failed to parse CLI args" }
-      return 1
+      return ExitCodes.ERROR
     }
     Diagnostic.useColors = !disableColorDiags
-    val objFiles = srcFiles().mapNotNull(this::compileFile)
-    if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return 0
+    val objFiles = srcFiles.mapNotNull(this::compileFile)
+    if (srcFiles.isEmpty()) diagnostic {
+      id = DiagnosticId.NO_INPUT_FILES
+      executionFailed = true
+    }
+    if (executionFailed) return ExitCodes.EXECUTION_FAILED
+    if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return ExitCodes.NORMAL
     invokeLd(objFiles)
     File(output).setExecutable(true)
-    return 0
+    return if (diags.isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
   }
 }
 
@@ -207,5 +225,5 @@ fun main(args: Array<String>) {
   val cli = CLI()
   val exitCode = cli.parse(args)
   cli.diags.forEach(Diagnostic::print)
-  exitProcess(exitCode)
+  exitProcess(exitCode.int)
 }
