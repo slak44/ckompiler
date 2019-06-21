@@ -12,6 +12,15 @@ import slak.ckompiler.parser.Parser
 import java.io.File
 import kotlin.system.exitProcess
 
+fun CommandLineInterface.helpGroup(description: String) {
+  addHelpEntry(object : HelpEntry {
+    override fun printHelp(helpPrinter: HelpPrinter) {
+      helpPrinter.printSeparator()
+      helpPrinter.printText(description)
+    }
+  })
+}
+
 fun main(args: Array<String>) {
   val logger = LogManager.getLogger("CLI")
   val dh = DebugHandler("CLI", "ckompiler", "")
@@ -36,21 +45,20 @@ fun main(args: Array<String>) {
     defines += name to notEmptyValue
   }
 
-  // FIXME: get rid of space after, and put one before
-  cli.helpEntriesGroup("Operation modes")
+  cli.helpGroup("Operation modes")
   val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
   val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
   val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
       "Print the program's control flow graph to stdout instead of compiling")
 
-  cli.helpEntriesGroup("Feature toggles")
+  cli.helpGroup("Feature toggles")
   // FIXME: maybe add versions without no- that override each other
   val disableTrigraphs by cli.flagArgument("-fno-trigraphs", "Ignore trigraphs in source files")
   val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
 
-  cli.helpEntriesGroup("Include path management")
+  cli.helpGroup("Include path management")
   val includeBarrier by cli.flagArgument(listOf("-I-", "--include-barrier"),
       "Remove current directory from include list", false, flagValue = false)
 
@@ -68,7 +76,7 @@ fun main(args: Array<String>) {
   cli.flagValueAction("-isystem-after", "DIR",
       "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
 
-  cli.helpEntriesGroup("Graphviz options (require --print-cfg-graphviz)")
+  cli.helpGroup("Graphviz options (require --print-cfg-graphviz)")
   val forceToString by cli.flagArgument("--force-to-string",
       "Force using ASTNode.toString instead of printing the original expression source")
   val forceAllNodes by cli.flagArgument("--force-all-nodes",
