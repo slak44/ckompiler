@@ -38,7 +38,8 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
   }
 
   companion object {
-    val defaultPaths = IncludePaths(emptyList(), listOf(File("/usr/include")), emptyList())
+    val defaultPaths = IncludePaths(emptyList(),
+        listOf(File("/usr/include"), File("/usr/local/include")), emptyList())
   }
 }
 
