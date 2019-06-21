@@ -32,6 +32,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   MACRO_NAME_NOT_IDENT(ERROR, "Macro name must be an identifier"),
   // clang puts up a warning; the standard says we error
   MACRO_REDEFINITION(WARNING, "'%s' macro redefined"),
+  EXTRA_TOKENS_INCLUDE(WARNING, "Extra tokens at end of #include directive"),
+  FILE_NOT_FOUND(ERROR, "File not found: '%s'"),
 
   // Parser
   EXPECTED_EXPR(ERROR, "Expected expression"),

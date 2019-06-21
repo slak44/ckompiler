@@ -108,7 +108,14 @@ fun main(args: Array<String>) {
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
     includePaths.includeBarrier = includeBarrier
-    val pp = Preprocessor(text, file.absolutePath, defines, includePaths, disableTrigraphs)
+    val pp = Preprocessor(
+        sourceText = text,
+        srcFileName = file.absolutePath,
+        currentDir = file.parentFile,
+        cliDefines = defines,
+        includePaths = includePaths,
+        ignoreTrigraphs = disableTrigraphs
+    )
     if (pp.diags.isNotEmpty()) continue
     if (isPreprocessOnly) {
       // FIXME

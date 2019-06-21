@@ -1,6 +1,7 @@
 package slak.ckompiler.lexer
 
 import slak.ckompiler.*
+import slak.ckompiler.parser.rangeTo
 import java.io.File
 import java.util.regex.Pattern
 
@@ -10,6 +11,25 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
    * Don't consider the current directory for includes.
    */
   var includeBarrier = false
+
+  /**
+   * Look for the given header name in the inclusion paths.
+   *
+   * C standard: 6.10.2
+   *
+   * @param parent the source file that included the [headerName]'s parent directory
+   */
+  fun search(headerName: String, parent: File, isSystem: Boolean): File? {
+    if (!includeBarrier) {
+      val candidate = File(parent, headerName)
+      if (candidate.exists()) return candidate
+    }
+    for (searchPath in if (isSystem) system + general else users + general + system) {
+      val candidate = File(searchPath, headerName)
+      if (candidate.exists()) return candidate
+    }
+    return null
+  }
 
   operator fun plus(other: IncludePaths): IncludePaths {
     val inc = IncludePaths(general + other.general, system + other.system, users + other.users)
@@ -22,9 +42,16 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
   }
 }
 
+/**
+ * Handles translation phases 1 through 6, inclusive.
+ *
+ * C standard: 5.1.1.2
+ */
 class Preprocessor(sourceText: String,
                    srcFileName: SourceFileName,
+                   currentDir: File = File("/usr/bin/include"),
                    cliDefines: Map<String, String> = emptyMap(),
+                   initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
                    includePaths: IncludePaths = IncludePaths.defaultPaths,
                    ignoreTrigraphs: Boolean = false) {
 
@@ -37,13 +64,16 @@ class Preprocessor(sourceText: String,
     debugHandler = DebugHandler("Preprocessor", srcFileName, phase3Src)
     debugHandler.diags += phase1Diags
     val l = Lexer(debugHandler, phase3Src, srcFileName)
-    val p = PPParser(l.ppTokens, cliDefines, includePaths, debugHandler)
+    // FIXME: parse and add CLI defines to initials
+    val p = PPParser(
+        l.ppTokens, initialDefines, includePaths, currentDir, ignoreTrigraphs, debugHandler)
     tokens = p.outTokens.mapNotNull(::convert)
     diags.forEach { it.print() }
   }
 
   /**
-   * First part of translation phase 7.
+   * First part of translation phase 7. It belongs in [slak.ckompiler.parser.Parser], but it's very
+   * convenient to do it here.
    */
   private fun convert(tok: LexicalToken): LexicalToken? = when (tok) {
     is HeaderName -> debugHandler.logger.throwICE("HeaderName didn't disappear in phase 4") { tok }
@@ -63,16 +93,18 @@ class Preprocessor(sourceText: String,
  */
 private class PPParser(
     ppTokens: List<LexicalToken>,
-    cliDefines: Map<String, String>,
-    includePaths: IncludePaths,
-    debugHandler: DebugHandler
+    initialDefines: Map<Identifier, List<LexicalToken>>,
+    private val includePaths: IncludePaths,
+    private val currentDir: File,
+    private val ignoreTrigraphs: Boolean,
+    private val debugHandler: DebugHandler
 ) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens, debugHandler) {
 
   val outTokens = mutableListOf<LexicalToken>()
   private val defines = mutableMapOf<Identifier, List<LexicalToken>>()
 
   init {
-    // FIXME: parse and add CLI defines
+    defines += initialDefines
     parseLine()
   }
 
@@ -83,8 +115,69 @@ private class PPParser(
     return false
   }
 
+  private fun addDefineMacro(definedIdent: Identifier, replacementList: List<LexicalToken>) {
+    if (definedIdent in defines && replacementList != defines[definedIdent]) {
+      diagnostic {
+        id = DiagnosticId.MACRO_REDEFINITION
+        formatArgs(definedIdent.name)
+        columns(definedIdent.range)
+      }
+      diagnostic {
+        id = DiagnosticId.REDEFINITION_PREVIOUS
+        columns(defines.keys.first { (name) -> name == definedIdent.name }.range)
+      }
+    }
+    defines[definedIdent] = replacementList
+  }
+
+  private fun processInclude(header: HeaderName) {
+    val includedFile = includePaths.search(header.data, currentDir, header.kind == '<')
+    if (includedFile == null) {
+      diagnostic {
+        id = DiagnosticId.FILE_NOT_FOUND
+        formatArgs(header.data)
+        columns(header.range)
+      }
+      return
+    }
+    // Pass it through phases 1-4
+    val (phase3Src, phase1Diags) =
+        translationPhase1And2(ignoreTrigraphs, includedFile.readText(), includedFile.absolutePath)
+    val recursiveDH = DebugHandler("Preprocessor", includedFile.absolutePath, phase3Src)
+    recursiveDH.diags += phase1Diags
+    val l = Lexer(recursiveDH, phase3Src, includedFile.absolutePath)
+    val p = PPParser(
+        l.ppTokens, defines, includePaths, includedFile.parentFile, ignoreTrigraphs, recursiveDH)
+    debugHandler.diags += recursiveDH.diags
+    // FIXME: there are going to be problems here when implementing macro replacements
+    outTokens += p.outTokens
+  }
+
+  /**
+   * Parsing #include directives.
+   *
+   * C standard: 6.10.2
+   */
   private fun include(): Boolean {
-    return false
+    val tok = current()
+    if (tok !is Identifier || tok.name != "include") return false
+    eat() // Eat "include"
+    if (current() is HeaderName) {
+      val header = current() as HeaderName
+      eat()
+      if (isNotEaten()) {
+        diagnostic {
+          id = DiagnosticId.EXTRA_TOKENS_INCLUDE
+          val range = safeToken(0)..safeToken(tokenCount)
+          columns(range)
+        }
+        eatUntil(tokenCount)
+      }
+      processInclude(header)
+    } else {
+      TODO("we must do macro replacements on this line, and try to find a header name again")
+    }
+    return true
   }
 
   /**
@@ -122,23 +215,17 @@ private class PPParser(
     // Everything else until the newline is part of the `replacement-list`
     // If there is nothing left, the macro has no replacement list (valid case)
     tokenContext(tokenCount) {
-      if (definedIdent in defines && it != defines[definedIdent]) {
-        diagnostic {
-          id = DiagnosticId.MACRO_REDEFINITION
-          formatArgs(definedIdent.name)
-          columns(definedIdent.range)
-        }
-        diagnostic {
-          id = DiagnosticId.REDEFINITION_PREVIOUS
-          columns(defines.keys.first { (name) -> name == definedIdent.name }.range)
-        }
-      }
-      defines[definedIdent] = it
+      addDefineMacro(definedIdent, it)
       eatUntil(tokenCount)
     }
     return true
   }
 
+  /**
+   * FIXME: undef directive
+   *
+   * FIXME: handle scope of macro defines
+   */
   private fun undef(): Boolean {
     return false
   }
@@ -163,7 +250,7 @@ private class PPParser(
     diagnostic {
       id = DiagnosticId.PP_ERROR_DIRECTIVE
       if (isNotEaten()) {
-        val range = safeToken(0).startIdx..safeToken(tokenCount).range.last
+        val range = safeToken(0)..safeToken(tokenCount)
         formatArgs(sourceText.substring(range))
         columns(tok.startIdx..range.last)
       } else {
@@ -296,7 +383,7 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
       }
       return ErrorToken(if (endIdx == -1) s.length else 1 + endIdx)
     }
-    return HeaderName(s.slice(1 until endIdx), quote)
+    return HeaderName(s.slice(1..endIdx), quote)
   }
 
   /**

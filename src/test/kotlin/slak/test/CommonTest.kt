@@ -17,7 +17,7 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   val incs = IncludePaths(emptyList(),
       listOf(IncludePaths.resource("headers/system")),
       listOf(IncludePaths.resource("headers/users")))
-  val pp = Preprocessor(s, source, emptyMap(),incs + IncludePaths.defaultPaths)
+  val pp = Preprocessor(s, source, includePaths = incs + IncludePaths.defaultPaths)
   pp.assertNoDiagnostics()
   return Parser(pp.tokens, source, s)
 }

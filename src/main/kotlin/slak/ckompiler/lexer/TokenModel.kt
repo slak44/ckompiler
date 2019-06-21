@@ -106,7 +106,7 @@ data class CharLiteral(val data: String, val encoding: CharEncoding) :
     CharSequence(data.length, encoding.prefixLength)
 
 /** C standard: A.1.8 */
-data class HeaderName(val data: String, val kind: Char) : LexicalToken(data.length + 1)
+data class HeaderName(val data: String, val kind: Char) : LexicalToken(data.length + 2)
 
 /** This exists because newlines are significant for preprocessing. */
 object NewLine : LexicalToken(1)
