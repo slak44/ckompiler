@@ -101,9 +101,27 @@ fun main(args: Array<String>) {
     id = DiagnosticId.BAD_CLI_OPTION
     formatArgs(option)
   }
-  for (diag in dh.diags) diag.print()
   val objFiles = mutableListOf<File>()
-  for (file in (files - badOptions).map(::File)) {
+  val srcFiles = (files - badOptions).mapNotNull {
+    val file = File(it)
+    if (!file.exists()) {
+      dh.diagnostic {
+        id = DiagnosticId.FILE_NOT_FOUND
+        formatArgs(it)
+      }
+      return@mapNotNull null
+    }
+    if (file.isDirectory) {
+      dh.diagnostic {
+        id = DiagnosticId.FILE_IS_DIRECTORY
+        formatArgs(it)
+      }
+      return@mapNotNull null
+    }
+    return@mapNotNull file
+  }
+  for (diag in dh.diags) diag.print()
+  for (file in srcFiles) {
     val text = file.readText()
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
