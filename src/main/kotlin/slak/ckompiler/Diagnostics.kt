@@ -187,6 +187,7 @@ data class Diagnostic(val id: DiagnosticId,
   override fun toString(): String = "${javaClass.simpleName}[$printable]"
 
   companion object {
+    // FIXME: this really should not be global
     var useColors: Boolean = true
   }
 }
