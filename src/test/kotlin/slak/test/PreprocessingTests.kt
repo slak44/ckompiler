@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
 class PreprocessingTests  {
   @Test
   fun `Comment Single Line`() {
-    val l = Preprocessor("""
+    val l = preparePP("""
       // lalalalla int = dgdgd 1 .34/ // /////
       int a = 1;
     """.trimIndent(), source)
@@ -22,7 +22,7 @@ class PreprocessingTests  {
 
   @Test
   fun `Comment Multi-line`() {
-    val l = Preprocessor("""
+    val l = preparePP("""
       /* lalalalla int = dgdgd 1 .34/ // ////* /*
       asf
       fg` ȀȁȂȃȄȅȆȇȈȉ ȊȋȌȍȎȏ02 10ȐȑȒȓȔȕȖȗ ȘșȚțȜȝȞ
@@ -39,7 +39,7 @@ class PreprocessingTests  {
 
   @Test
   fun `Comment Multi-line Empty`() {
-    val l = Preprocessor("/**/", source)
+    val l = preparePP("/**/", source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }
@@ -58,13 +58,14 @@ class PreprocessingTests  {
 
   @Test
   fun `Comment At End Of File`() {
-    val l = Preprocessor("//", source)
+    val l = preparePP("//", source)
     l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
   }
 
   @Test
   fun `Comments In Strings`() {
-    val l = Preprocessor("\"//\" \"/* */\"", source)
+    val l = preparePP("\"//\" \"/* */\"", source)
     l.assertNoDiagnostics()
     assertEquals(listOf<LexicalToken>(StringLiteral("//", StringEncoding.CHAR),
         StringLiteral("/* */", StringEncoding.CHAR)), l.tokens)
@@ -72,16 +73,16 @@ class PreprocessingTests  {
 
   @Test
   fun `Multi-line Comment End In Regular Comment`() {
-    val l = Preprocessor("// */", source)
+    val l = preparePP("// */", source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }
 
   @Test
   fun `Header Name Recognized`() {
-    val test1 = Preprocessor(resource("headers/system/test.h").readText(), source)
-    val test2 = Preprocessor(resource("headers/users/test.h").readText(), source)
-    val l = Preprocessor("#include <test.h>\n#include \"test.h\"", source)// FIXME paths
+    val test1 = preparePP(resource("headers/system/test.h").readText(), source)
+    val test2 = preparePP(resource("headers/users/test.h").readText(), source)
+    val l = preparePP("#include <test.h>\n#include \"test.h\"", source)
     test1.assertNoDiagnostics()
     test2.assertNoDiagnostics()
     l.assertNoDiagnostics()
@@ -90,8 +91,8 @@ class PreprocessingTests  {
 
   @Test
   fun `Header Name Is Only Recognized In Include And Pragma Directives`() {
-    val l = Preprocessor("#define <test.h>", source)
-    assertEquals(listOf(DiagnosticId.MACRO_NAME_NOT_IDENT), l.diags.ids)
+    val l = preparePP("#define <test.h>", source)
+    l.assertDiags(DiagnosticId.MACRO_NAME_NOT_IDENT)
     assert(l.tokens.isEmpty())
   }
 
@@ -111,7 +112,7 @@ class PreprocessingTests  {
 
   @Test
   fun `Line Splicing`() {
-    val l = Preprocessor("tab\\\nle", source)
+    val l = preparePP("tab\\\nle", source)
     l.assertNoDiagnostics()
     assertEquals(listOf(Identifier("table")), l.tokens)
   }
@@ -138,14 +139,14 @@ class PreprocessingTests  {
 
   @Test
   fun `Define Directive Eats Line After Error`() {
-    val l = Preprocessor("#define ; asdf 123", source)
-    assertEquals(listOf(DiagnosticId.MACRO_NAME_NOT_IDENT), l.diags.ids)
+    val l = preparePP("#define ; asdf 123", source)
+    l.assertDiags(DiagnosticId.MACRO_NAME_NOT_IDENT)
     assert(l.tokens.isEmpty())
   }
 
   @Test
   fun `Define Directive With No Replacement List Parsing`() {
-    val l = Preprocessor("#define FOO bar", source)
+    val l = preparePP("#define FOO bar", source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }

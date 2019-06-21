@@ -13,11 +13,15 @@ internal fun IDebugHandler.assertNoDiagnostics() = assertEquals(emptyList(), dia
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s)!!.file)
 
-internal fun prepareCode(s: String, source: SourceFileName): Parser {
+internal fun preparePP(s: String, source: SourceFileName): Preprocessor {
   val incs = IncludePaths(emptyList(),
       listOf(IncludePaths.resource("headers/system")),
       listOf(IncludePaths.resource("headers/users")))
-  val pp = Preprocessor(s, source, includePaths = incs + IncludePaths.defaultPaths)
+  return Preprocessor(s, source, includePaths = incs + IncludePaths.defaultPaths)
+}
+
+internal fun prepareCode(s: String, source: SourceFileName): Parser {
+  val pp = preparePP(s, source)
   pp.assertNoDiagnostics()
   return Parser(pp.tokens, source, s)
 }
@@ -37,6 +41,8 @@ internal fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =
 
 internal val List<Diagnostic>.ids get() = map { it.id }
 
+internal fun Preprocessor.assertDiags(vararg ids: DiagnosticId) =
+    assertEquals(ids.toList(), diags.ids)
 internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toList(), diags.ids)
 internal fun IDebugHandler.assertDiags(vararg ids: DiagnosticId) =
     assertEquals(ids.toList(), diags.ids)
