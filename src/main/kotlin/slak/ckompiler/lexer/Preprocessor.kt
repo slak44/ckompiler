@@ -38,7 +38,7 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
   }
 
   companion object {
-    val defaultPaths = IncludePaths(emptyList(), listOf(File("/usr/bin/include")), emptyList())
+    val defaultPaths = IncludePaths(emptyList(), listOf(File("/usr/include")), emptyList())
   }
 }
 
@@ -49,7 +49,7 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
  */
 class Preprocessor(sourceText: String,
                    srcFileName: SourceFileName,
-                   currentDir: File = File("/usr/bin/include"),
+                   currentDir: File = File("/usr/include"),
                    cliDefines: Map<String, String> = emptyMap(),
                    initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
                    includePaths: IncludePaths = IncludePaths.defaultPaths,
