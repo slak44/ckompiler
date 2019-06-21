@@ -47,21 +47,39 @@ internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toL
 internal fun IDebugHandler.assertDiags(vararg ids: DiagnosticId) =
     assertEquals(ids.toList(), diags.ids)
 
-fun assertPPDiagnostic(s: String, source: SourceFileName, vararg ids: DiagnosticId) {
+internal fun assertPPDiagnostic(s: String, source: SourceFileName, vararg ids: DiagnosticId) {
   val diagnostics = Preprocessor(s, source).diags
   assertEquals(ids.toList(), diagnostics.ids)
 }
 
-internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
+internal fun <T : Any> parseSimpleTokens(it: T): LexicalToken = when (it) {
+  is LexicalToken -> it
+  is Punctuators -> Punctuator(it)
+  is Keywords -> Keyword(it)
+  is Int -> IntegralConstant(it.toString(), IntegralSuffix.NONE, Radix.DECIMAL)
+  is Double -> FloatingConstant(it.toString(), FloatingSuffix.NONE, Radix.DECIMAL, null)
+  is String -> StringLiteral(it, StringEncoding.CHAR)
+  else -> throw IllegalArgumentException("Bad type for simple token")
+}
 
-internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
+internal fun <T : Any> Preprocessor.assertTokens(vararg tokens: T) =
+    assertEquals(tokens.map(::parseSimpleTokens).toList(), this.tokens)
 
-internal val Keywords.kw get() = Keyword(this)
+internal fun <T : LexicalToken> Preprocessor.assertTokens(tokens: List<T>) =
+    assertEquals(tokens, this.tokens)
 
 fun <T : ASTNode> T.zeroRange(): T {
   this.setRange(0..0)
   return this
 }
+
+internal val Keywords.kw get() = Keyword(this)
+
+// The rest of this file is the ASTNode DSL
+
+internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
+
+internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
 internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw)).zeroRange()

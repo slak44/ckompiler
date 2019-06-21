@@ -4,7 +4,6 @@ import org.junit.Test
 import slak.ckompiler.Diagnostic
 import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
-import slak.ckompiler.lexer.Preprocessor
 import kotlin.test.assertEquals
 
 /**
@@ -25,7 +24,7 @@ class DiagnosticTests {
   @Test
   fun `PP Correct Diagnostic Column`() {
     val text = "ident     123.23A"
-    val pp = Preprocessor(text, source)
+    val pp = preparePP(text, source)
     assert(pp.tokens[1] is ErrorToken)
     // Test if error is on the last column
     assertEquals(text.length - 1, pp.diags[0].sourceColumns[0].first)
@@ -33,7 +32,7 @@ class DiagnosticTests {
 
   @Test
   fun `PP Define Past-The-End Column`() {
-    val pp = Preprocessor("#define\n", source)
+    val pp = preparePP("#define\n", source)
     pp.diags.assertDiagCaret(diagNr = 0, col = 7, colCount = 1)
   }
 
