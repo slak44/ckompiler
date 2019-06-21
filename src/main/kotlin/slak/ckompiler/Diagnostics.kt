@@ -128,7 +128,7 @@ data class Diagnostic(val id: DiagnosticId,
       for ((idx, it) in sourceText.withIndex()) {
         if (it == '\n') {
           currLineText = sourceText.slice(currLineStart until idx)
-          if (col.start in currLineStart..idx) {
+          if (col.first in currLineStart..idx) {
             break
           }
           currLine++
@@ -138,7 +138,7 @@ data class Diagnostic(val id: DiagnosticId,
           currLineText = sourceText.slice(currLineStart until sourceText.length)
         }
       }
-      Triple(currLine, col.start - currLineStart, currLineText)
+      Triple(currLine, col.first - currLineStart, currLineText)
     }
     else -> Triple(-1, -1, "???")
   }
