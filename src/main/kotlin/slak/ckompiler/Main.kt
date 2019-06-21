@@ -147,6 +147,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         .inheritIO().start().waitFor()
   }
 
+  private fun List<Diagnostic>.errors() = filter { it.id.kind == DiagnosticKind.ERROR }
+
   private var executionFailed = false
 
   private fun compileFile(file: File): File? {
@@ -162,7 +164,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         includePaths = includePaths,
         ignoreTrigraphs = disableTrigraphs
     )
-    if (pp.diags.isNotEmpty()) {
+    if (pp.diags.errors().isNotEmpty()) {
       executionFailed = true
       return null
     }
@@ -173,7 +175,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
 
     val p = Parser(pp.tokens, file.absolutePath, text)
-    if (p.diags.isNotEmpty()) {
+    if (p.diags.errors().isNotEmpty()) {
       executionFailed = true
       return null
     }
@@ -217,7 +219,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return ExitCodes.NORMAL
     invokeLd(objFiles)
     File(output).setExecutable(true)
-    return if (diags.isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
+    return if (diags.errors().isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
   }
 }
 

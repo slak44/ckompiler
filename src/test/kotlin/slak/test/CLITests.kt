@@ -1,11 +1,14 @@
 package slak.test
 
+import org.junit.After
 import org.junit.Test
 import slak.ckompiler.CLI
 import slak.ckompiler.Diagnostic
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.ExitCodes
+import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class CLITests {
   private fun cli(commandLine: String?): Pair<CLI, ExitCodes> {
@@ -13,6 +16,11 @@ class CLITests {
     val exitCode = cli.parse(commandLine?.split(" ")?.toTypedArray() ?: emptyArray())
     cli.diags.forEach(Diagnostic::print)
     return cli to exitCode
+  }
+
+  @After
+  fun removeCompilerOutput() {
+    File("a.out").delete()
   }
 
   @Test
@@ -49,5 +57,12 @@ class CLITests {
     val (cli, exitCode) = cli("/")
     cli.assertDiags(DiagnosticId.FILE_IS_DIRECTORY, DiagnosticId.NO_INPUT_FILES)
     assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
+  }
+
+  @Test
+  fun `Allow Compilation With Warnings`() {
+    val (_, exitCode) = cli(resource("codeWithWarning.c").absolutePath)
+    assertEquals(ExitCodes.NORMAL, exitCode)
+    assertTrue(File("a.out").exists())
   }
 }
