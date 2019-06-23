@@ -8,18 +8,22 @@ import slak.ckompiler.throwICE
 typealias Instructions = List<String>
 
 private class InstructionBuilder {
+  private var indentLevel = 0
   private val instr = mutableListOf<String>()
 
+  private val currentIndent get() = "  ".repeat(indentLevel)
+
   fun label(s: String) {
-    instr += "$s:"
+    instr += "$currentIndent$s:"
+    indentLevel++
   }
 
   fun emit(s: String) {
-    instr += s
+    instr += "$currentIndent$s"
   }
 
   fun emit(s: Instructions) {
-    instr += s
+    for (i in s) emit(i)
   }
 
   fun toInstructions(): Instructions = instr
@@ -158,7 +162,7 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
 
   fun getNasm(): String {
     val nasm = prelude + "section .data" + data + "section .text" + text
-    return nasm.joinToString("\n")
+    return nasm.joinToString("\n") + '\n'
   }
 
   companion object {
