@@ -35,6 +35,9 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
 
+  private val retLabel = "return_${cfg.f.name}"
+  private val BasicBlock.fnLabel get() = "block_${cfg.f.name}_$nodeId"
+
   /**
    * C standard: 5.1.2.2.3
    */
@@ -44,6 +47,7 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
     val instr = instrGen {
       emit("push rbp")
       for (node in cfg.nodes) emit(genBlock(node))
+      emit("$retLabel:")
       emit("pop rbp")
       if (isMain) {
         emit("mov rdi, rax")
@@ -55,8 +59,6 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
     text += "${cfg.f.name}:"
     text += instr
   }
-
-  private val BasicBlock.fnLabel get() = "block_${cfg.f.name}_$nodeId"
 
   private fun genBlock(b: BasicBlock) = instrGen {
     emit("${b.fnLabel}:")
@@ -112,6 +114,7 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
       is UnionType -> TODO()
       LongDoubleType -> TODO("this type has a complicated ABI")
     }
+    emit("jmp $retLabel")
   }
 
   /**
