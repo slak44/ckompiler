@@ -61,6 +61,12 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       "Print the program's control flow graph to stdout instead of compiling")
 
   init {
+    cli.helpGroup("Debug options")
+  }
+
+  private val debug by cli.flagArgument("-g", "Add debug data")
+
+  init {
     cli.helpGroup("Feature toggles")
   }
 
@@ -136,8 +142,11 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   private fun invokeNasm(objFile: File, asmFile: File) {
-    ProcessBuilder("nasm", "-f", "elf64", "-o", objFile.absolutePath, asmFile.absolutePath)
-        .inheritIO().start().waitFor()
+    val args = mutableListOf("nasm")
+    args += listOf("-f", "elf64")
+    if (debug) args += listOf("-g", "-F", "dwarf")
+    args += listOf("-o", objFile.absolutePath, asmFile.absolutePath)
+    ProcessBuilder(args).inheritIO().start().waitFor()
   }
 
   private fun invokeLd(objFiles: List<File>) {
