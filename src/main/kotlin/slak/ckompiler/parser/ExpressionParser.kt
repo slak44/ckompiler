@@ -228,7 +228,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
           }
           return error<ErrorExpression>()
         }
-        return FunctionCall(expr, args).withRange(expr.tokenRange.start until endParenTok.startIdx)
+        return FunctionCall(expr, args).withRange(expr.tokenRange.first until endParenTok.startIdx)
       }
       current().asPunct() == Punctuators.DOT -> {
         TODO("implement direct struct/union access operator")
