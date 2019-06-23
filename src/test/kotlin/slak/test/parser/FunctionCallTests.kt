@@ -98,4 +98,12 @@ class FunctionCallTests {
     """.trimIndent(), source)
     p.assertDiags(*Array(4) { DiagnosticId.CALL_OBJECT_TYPE })
   }
+
+  @Test
+  fun `No Misleading Error For ErrorType`() {
+    val p = prepareCode("""
+      int b = a();
+    """.trimIndent(), source)
+    assert(DiagnosticId.CALL_OBJECT_TYPE !in p.diags.ids)
+  }
 }

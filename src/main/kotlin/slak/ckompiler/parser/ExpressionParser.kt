@@ -220,7 +220,8 @@ class ExpressionParser(declarationParser: DeclarationParser) :
       current().asPunct() == Punctuators.LPAREN -> {
         val (args, endParenTok) = parseArgumentExprList()
         if (expr.type.asCallable() == null) {
-          diagnostic {
+          // Don't report bogus error when the type is bullshit; a diagnostic was printed somewhere
+          if (expr.type != ErrorType) diagnostic {
             id = DiagnosticId.CALL_OBJECT_TYPE
             formatArgs(expr.type)
             columns(expr.tokenRange)
