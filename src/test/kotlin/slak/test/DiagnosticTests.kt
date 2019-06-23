@@ -2,9 +2,13 @@ package slak.test
 
 import org.junit.Test
 import slak.ckompiler.Diagnostic
+import slak.ckompiler.createDiagnostic
 import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
+import slak.ckompiler.parser.Declaration
+import slak.ckompiler.parser.ExpressionInitializer
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 /**
  * Tests that diagnostics report the correct position of the error in the source code.
@@ -15,10 +19,16 @@ class DiagnosticTests {
                                                col: Int? = null,
                                                colCount: Int? = null) {
     assert(diagNr in 0 until size)
-    val (errLine, errCol, _) = this[diagNr].errorOf(this[diagNr].caret)
+    this[diagNr].assertDiagCaret(line, col, colCount)
+  }
+
+  private fun Diagnostic.assertDiagCaret(line: Int? = null,
+                                         col: Int? = null,
+                                         colCount: Int? = null) {
+    val (errLine, errCol, _) = errorOf(caret)
     line?.let { assertEquals(line, errLine) }
     col?.let { assertEquals(col, errCol) }
-    colCount?.let { assertEquals(it, this[diagNr].caret.length()) }
+    colCount?.let { assertEquals(it, caret.length()) }
   }
 
   @Test
@@ -103,5 +113,22 @@ class DiagnosticTests {
   fun `Empty Translation Unit Has Correct Diagnostic`() {
     val p = prepareCode("\n", source)
     p.diags.assertDiagCaret(diagNr = 0, line = 1, col = 0)
+  }
+
+  @Test
+  fun `Parser Correct Columns For Function Calls`() {
+    val src = """
+      int f(int);
+      int result = f(123);
+    """.trimIndent()
+    val p = prepareCode(src, source)
+    val declarator = assertNotNull(p.root.decls[1] as? Declaration).declaratorList[0]
+    val callRange = assertNotNull(declarator.second).tokenRange
+    val diag = createDiagnostic {
+      sourceText = src
+      columns(callRange)
+    }
+    diag.assertDiagCaret(line = 2, col = 13, colCount = 6)
+    diag.print()
   }
 }
