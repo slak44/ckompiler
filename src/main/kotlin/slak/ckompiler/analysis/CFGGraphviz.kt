@@ -88,7 +88,8 @@ fun createGraphviz(graph: CFG,
 
     val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret
     val blockText = if (code.isBlank()) "<EMPTY>" else code.trim()
-    "node${it.nodeId} [shape=box,$style,label=\"$blockText\"];"
+    val escapedQuotes = blockText.replace("\"", "\\\"")
+    "node${it.nodeId} [shape=box,$style,label=\"$escapedQuotes\"];"
   } + sep + edges.joinToString(sep) {
     val color = when (it.type) {
       EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
