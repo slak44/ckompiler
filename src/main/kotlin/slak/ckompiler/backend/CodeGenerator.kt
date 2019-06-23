@@ -10,6 +10,10 @@ typealias Instructions = List<String>
 private class InstructionBuilder {
   private val instr = mutableListOf<String>()
 
+  fun label(s: String) {
+    instr += "$s:"
+  }
+
   fun emit(s: String) {
     instr += s
   }
@@ -44,10 +48,11 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
   init {
     prelude += "extern exit"
     prelude += "global ${cfg.f.name}"
-    val instr = instrGen {
+    text += instrGen {
+      label(cfg.f.name)
       emit("push rbp")
       for (node in cfg.nodes) emit(genBlock(node))
-      emit("$retLabel:")
+      label(retLabel)
       emit("pop rbp")
       if (isMain) {
         emit("mov rdi, rax")
@@ -56,12 +61,10 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
         emit("ret")
       }
     }
-    text += "${cfg.f.name}:"
-    text += instr
   }
 
   private fun genBlock(b: BasicBlock) = instrGen {
-    emit("${b.fnLabel}:")
+    label(b.fnLabel)
     for (e in b.data) emit(genExpr(e))
     emit(genJump(b.terminator))
   }
