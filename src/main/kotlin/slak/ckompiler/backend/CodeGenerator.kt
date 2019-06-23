@@ -43,7 +43,7 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
     prelude += "global ${cfg.f.name}"
     val instr = instrGen {
       emit("push rbp")
-      emit(genBlock(cfg.startBlock))
+      for (node in cfg.nodes) emit(genBlock(node))
       emit("pop rbp")
       if (isMain) {
         emit("mov rdi, rax")
@@ -56,20 +56,28 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
     text += instr
   }
 
-  private val BasicBlock.fnLabel get() = ".block_${cfg.f.name}_$nodeId"
+  private val BasicBlock.fnLabel get() = "block_${cfg.f.name}_$nodeId"
 
   private fun genBlock(b: BasicBlock) = instrGen {
-    emit(b.fnLabel)
+    emit("${b.fnLabel}:")
     for (e in b.data) emit(genExpr(e))
     emit(genJump(b.terminator))
   }
 
   private fun genJump(jmp: Jump) = when (jmp) {
     is CondJump -> genCondJump(jmp)
-    is UncondJump -> TODO()
+    is UncondJump -> genUncondJump(jmp.target)
     is ImpossibleJump -> genReturn(jmp.returned)
-    is ConstantJump -> TODO()
+    is ConstantJump -> genUncondJump(jmp.target)
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
+  }
+
+  private fun genCondJump(jmp: CondJump) = instrGen {
+    TODO()
+  }
+
+  private fun genUncondJump(target: BasicBlock) = instrGen {
+    emit("jmp ${target.fnLabel}")
   }
 
   /**
@@ -104,10 +112,6 @@ class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
       is UnionType -> TODO()
       LongDoubleType -> TODO("this type has a complicated ABI")
     }
-  }
-
-  private fun genCondJump(jmp: CondJump) = instrGen {
-    TODO()
   }
 
   /**
