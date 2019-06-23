@@ -153,13 +153,15 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private fun compileFile(file: File): File? {
     val text = file.readText()
+    val srcFileName = file.path
+    val currentDir = file.absoluteFile.parentFile
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
     includePaths.includeBarrier = includeBarrier
     val pp = Preprocessor(
         sourceText = text,
-        srcFileName = file.absolutePath,
-        currentDir = file.parentFile,
+        srcFileName = srcFileName,
+        currentDir = currentDir,
         cliDefines = defines,
         includePaths = includePaths,
         ignoreTrigraphs = disableTrigraphs
@@ -174,7 +176,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
-    val p = Parser(pp.tokens, file.absolutePath, text)
+    val p = Parser(pp.tokens, srcFileName, text)
     if (p.diags.errors().isNotEmpty()) {
       executionFailed = true
       return null
@@ -184,17 +186,17 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
 
     if (isPrintCFGMode) {
-      val cfg = CFG(firstFun, file.absolutePath, text, forceAllNodes)
+      val cfg = CFG(firstFun, srcFileName, text, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable, forceToString))
       return null
     }
 
-    val cfg = CFG(firstFun, file.absolutePath, text, false)
-    val asmFile = File(file.parent, file.nameWithoutExtension + ".s")
+    val cfg = CFG(firstFun, srcFileName, text, false)
+    val asmFile = File(currentDir, file.nameWithoutExtension + ".s")
     asmFile.writeText(CodeGenerator(cfg, true).getNasm())
     if (isCompileOnly) return null
 
-    val objFile = File(file.parent, file.nameWithoutExtension + ".o")
+    val objFile = File(currentDir, file.nameWithoutExtension + ".o")
     invokeNasm(objFile, asmFile)
     asmFile.delete()
     return objFile
