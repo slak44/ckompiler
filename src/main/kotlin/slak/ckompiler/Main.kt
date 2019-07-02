@@ -3,7 +3,7 @@ package slak.ckompiler
 import kotlinx.cli.*
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.createGraphviz
-import slak.ckompiler.backend.CodeGenerator
+import slak.ckompiler.backend.nasm_x86_64.NasmGenerator
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
@@ -202,7 +202,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
     val cfg = CFG(firstFun, srcFileName, text, false)
     val asmFile = File(currentDir, file.nameWithoutExtension + ".s")
-    asmFile.writeText(CodeGenerator(cfg, true).getNasm())
+    asmFile.writeText(NasmGenerator(cfg, true).getNasm())
     if (isCompileOnly) return null
 
     val objFile = File(currentDir, file.nameWithoutExtension + ".o")

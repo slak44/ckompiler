@@ -1,4 +1,4 @@
-package slak.ckompiler.backend
+package slak.ckompiler.backend.nasm_x86_64
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
@@ -36,9 +36,9 @@ private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
 }
 
 /**
- * Generate [NASM](https://www.nasm.us/) code.
+ * Generate [NASM](https://www.nasm.us/) code, on x86_64.
  */
-class CodeGenerator(private val cfg: CFG, isMain: Boolean) {
+class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
