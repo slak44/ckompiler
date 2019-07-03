@@ -22,6 +22,8 @@ operator fun SequentialExpression.iterator(): Iterator<Expression> = iterator {
   yieldAll(third.iterator())
 }
 
+fun SequentialExpression.toList(): List<Expression> = first + second + third
+
 /**
  * Resolve sequencing issues within an expression.
  *
@@ -35,7 +37,11 @@ operator fun SequentialExpression.iterator(): Iterator<Expression> = iterator {
  * According to 6.5.2.4.0.2, for postfix ++ and --, updating the value of the operand is sequenced
  * after returning the result, so we are allowed to move the update after the expression.
  *
- * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2
+ * The comma operator is a sequence point (6.5.17), so the lhs expression is sequenced before the
+ * rhs. We can simply separate them because lhs is evaluated as a void expression, and can't be used
+ * as an operand to anything.
+ *
+ * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2, 6.5.17
  * @see SequentialExpression
  */
 fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
@@ -75,6 +81,9 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
           //  let's just see if this is a problem first
           lhs.seqImpl()
         }
+      } else if (op == BinaryOperators.COMMA) {
+        sequencedBefore += sequentialize(lhs).toList()
+        rhs.seqImpl()
       } else {
         BinaryExpression(op, lhs.seqImpl(), rhs.seqImpl()).withRange(tokenRange)
       }

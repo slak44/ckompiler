@@ -106,4 +106,15 @@ class SequenceTests {
     assertEquals(listOf(postfixInc(x), postfixInc(x)), sequencedAfter)
     assertEquals(x mul x, remaining)
   }
+
+  @Test
+  fun `Comma LHS Is Entirely Before`() {
+    val x = nameRef("x", SignedIntType)
+    val expr = postfixInc(x) comma 123
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assertEquals(listOf(x, postfixInc(x)), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
+    assertEquals(int(123), remaining)
+  }
 }
