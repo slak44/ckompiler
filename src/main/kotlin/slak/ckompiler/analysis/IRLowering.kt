@@ -117,137 +117,143 @@ data class Store(val target: ComputeReference,
   override fun toString() = "${if (isSynthetic) "[SYNTHETIC] " else ""}$target = $data"
 }
 
-/**
- * Transforms a list of expressions passed through [sequentialize] to a list of [IRExpression]s.
- */
-class ExpressionTransformer(val block: List<Expression>) {
+data class IRLoweringContext(val ir: MutableList<IRExpression> = mutableListOf()) {
   private val tempIds = IdCounter()
 
-  private val ir = mutableListOf<IRExpression>()
-
-  private fun makeTemporary(type: TypeName): ComputeReference {
+  fun makeTemporary(type: TypeName): ComputeReference {
     return ComputeReference(TypedIdentifier("__synthetic_block_temp_${tempIds()}", type))
   }
+}
 
-  private fun getAssignable(target: Expression): ComputeReference {
-    return if (target is TypedIdentifier) {
-      ComputeReference(target)
-    } else {
-      TODO("no idea how to handle this case for now")
-    }
+private fun getAssignable(target: Expression): ComputeReference {
+  return if (target is TypedIdentifier) {
+    ComputeReference(target)
+  } else {
+    TODO("no idea how to handle this case for now")
   }
+}
 
-  /**
-   * @return assigned variable
-   */
-  private fun transformAssign(target: Expression, data: Expression): ComputeReference {
-    val irTarget = getAssignable(target)
-    ir += Store(irTarget, transformExpr(data), isSynthetic = false)
-    return irTarget
-  }
+/**
+ * @return assigned variable
+ */
+private fun IRLoweringContext.transformAssign(target: Expression,
+                                              data: Expression): ComputeReference {
+  val irTarget = getAssignable(target)
+  ir += Store(irTarget, transformExpr(data), isSynthetic = false)
+  return irTarget
+}
 
-  private val compoundAssignOps = mapOf(
-      BinaryOperators.MUL_ASSIGN to BinaryComputations.MULTIPLY,
-      BinaryOperators.DIV_ASSIGN to BinaryComputations.DIVIDE,
-      BinaryOperators.MOD_ASSIGN to BinaryComputations.REMAINDER,
-      BinaryOperators.PLUS_ASSIGN to BinaryComputations.ADD,
-      BinaryOperators.SUB_ASSIGN to BinaryComputations.SUBSTRACT,
-      BinaryOperators.LSH_ASSIGN to BinaryComputations.LEFT_SHIFT,
-      BinaryOperators.RSH_ASSIGN to BinaryComputations.RIGHT_SHIFT,
-      BinaryOperators.AND_ASSIGN to BinaryComputations.BITWISE_AND,
-      BinaryOperators.XOR_ASSIGN to BinaryComputations.BITWISE_XOR,
-      BinaryOperators.OR_ASSIGN to BinaryComputations.BITWISE_OR
-  )
+private val compoundAssignOps = mapOf(
+    BinaryOperators.MUL_ASSIGN to BinaryComputations.MULTIPLY,
+    BinaryOperators.DIV_ASSIGN to BinaryComputations.DIVIDE,
+    BinaryOperators.MOD_ASSIGN to BinaryComputations.REMAINDER,
+    BinaryOperators.PLUS_ASSIGN to BinaryComputations.ADD,
+    BinaryOperators.SUB_ASSIGN to BinaryComputations.SUBSTRACT,
+    BinaryOperators.LSH_ASSIGN to BinaryComputations.LEFT_SHIFT,
+    BinaryOperators.RSH_ASSIGN to BinaryComputations.RIGHT_SHIFT,
+    BinaryOperators.AND_ASSIGN to BinaryComputations.BITWISE_AND,
+    BinaryOperators.XOR_ASSIGN to BinaryComputations.BITWISE_XOR,
+    BinaryOperators.OR_ASSIGN to BinaryComputations.BITWISE_OR
+)
 
-  /**
-   * @return assigned variable
-   */
-  private fun transformCompoundAssigns(expr: BinaryExpression): ComputeReference {
-    if (expr.op == BinaryOperators.ASSIGN) return transformAssign(expr.lhs, expr.rhs)
-    val additionalOperation = compoundAssignOps[expr.op]
-        ?: logger.throwICE("Only assignments must get here") { expr }
-    val assignTarget = getAssignable(expr.lhs)
-    val additionalComputation = BinaryComputation(
-        additionalOperation, assignTarget, transformExpr(expr.rhs))
-    val assignableResult = makeTemporary(expr.lhs.type)
-    ir += Store(assignableResult, additionalComputation, isSynthetic = true)
-    ir += Store(assignTarget, assignableResult, isSynthetic = false)
-    return assignTarget
-  }
+/**
+ * @return assigned variable
+ */
+private fun IRLoweringContext.transformCompoundAssigns(expr: BinaryExpression): ComputeReference {
+  if (expr.op == BinaryOperators.ASSIGN) return transformAssign(expr.lhs, expr.rhs)
+  val additionalOperation = compoundAssignOps[expr.op]
+      ?: logger.throwICE("Only assignments must get here") { expr }
+  val assignTarget = getAssignable(expr.lhs)
+  val additionalComputation = BinaryComputation(
+      additionalOperation, assignTarget, transformExpr(expr.rhs))
+  val assignableResult = makeTemporary(expr.lhs.type)
+  ir += Store(assignableResult, additionalComputation, isSynthetic = true)
+  ir += Store(assignTarget, assignableResult, isSynthetic = false)
+  return assignTarget
+}
 
-  /**
-   * FIXME: we could do constant folding around here maybe
-   *
-   * @return a variable containing the result of the expression
-   */
-  private fun transformBinary(expr: BinaryExpression): ComputeReference {
-    if (expr.op in assignmentOps) return transformCompoundAssigns(expr)
-    val operation = expr.op.asBinaryOperation()
-    val binary = BinaryComputation(operation, transformExpr(expr.lhs), transformExpr(expr.rhs))
-    val target = makeTemporary(expr.type)
-    ir += Store(target, binary, isSynthetic = true)
-    return target
-  }
+/**
+ * FIXME: we could do constant folding around here maybe
+ *
+ * @return a variable containing the result of the expression
+ */
+private fun IRLoweringContext.transformBinary(expr: BinaryExpression): ComputeReference {
+  if (expr.op in assignmentOps) return transformCompoundAssigns(expr)
+  val operation = expr.op.asBinaryOperation()
+  val binary = BinaryComputation(operation, transformExpr(expr.lhs), transformExpr(expr.rhs))
+  val target = makeTemporary(expr.type)
+  ir += Store(target, binary, isSynthetic = true)
+  return target
+}
 
-  /**
-   * Because of [sequentialize], [IncDecOperation]s can only be found by themselves, not as part of
-   * other expressions, so we can just treat both prefix/postfix as being `+= 1` or `-= 1`.
-   */
-  private fun transformIncDec(expr: IncDecOperation, isDec: Boolean): ComputeReference {
-    val op = if (isDec) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
-    val one = IntegerConstantNode(1, IntegralSuffix.NONE)
-    val incremented = BinaryExpression(op, expr.expr, one)
-    return transformCompoundAssigns(incremented)
-  }
+/**
+ * Because of [sequentialize], [IncDecOperation]s can only be found by themselves, not as part of
+ * other expressions, so we can just treat both prefix/postfix as being `+= 1` or `-= 1`.
+ */
+private fun IRLoweringContext.transformIncDec(expr: IncDecOperation, isDec: Boolean): ComputeReference {
+  val op = if (isDec) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
+  val one = IntegerConstantNode(1, IntegralSuffix.NONE)
+  val incremented = BinaryExpression(op, expr.expr, one)
+  return transformCompoundAssigns(incremented)
+}
 
-  /**
-   * @return a variable containing the result of the expression
-   */
-  private fun transformUnary(expr: UnaryExpression): ComputeReference {
-    val target = makeTemporary(expr.type)
-    ir += Store(target, UnaryComputation(expr.op, transformExpr(expr.operand)), isSynthetic = true)
-    return target
-  }
+/**
+ * @return a variable containing the result of the expression
+ */
+private fun IRLoweringContext.transformUnary(expr: UnaryExpression): ComputeReference {
+  val target = makeTemporary(expr.type)
+  ir += Store(target, UnaryComputation(expr.op, transformExpr(expr.operand)), isSynthetic = true)
+  return target
+}
 
-  private fun transformExpr(expr: Expression): ComputeConstant = when (expr) {
+private fun IRLoweringContext.transformExpr(expr: Expression): ComputeConstant = when (expr) {
+  is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
+  is TypedIdentifier -> ComputeReference(expr)
+  is FunctionCall -> TODO("can't implement this before dealing with them in sequentialize")
+  is UnaryExpression -> transformUnary(expr)
+  is PrefixIncrement, is PostfixIncrement ->
+    transformIncDec(expr as IncDecOperation, isDec = false)
+  is PrefixDecrement, is PostfixDecrement ->
+    transformIncDec(expr as IncDecOperation, isDec = true)
+  is BinaryExpression -> transformBinary(expr)
+  is SizeofExpression, is SizeofTypeName ->
+    TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
+  is IntegerConstantNode -> ComputeInteger(expr)
+  is FloatingConstantNode -> ComputeFloat(expr)
+  is CharacterConstantNode -> ComputeChar(expr)
+  is StringLiteralNode -> ComputeString(expr)
+}
+
+/**
+ * Transforms a top-level expression passed through [sequentialize] to a list of [IRExpression]s.
+ */
+private fun IRLoweringContext.transform(topLevelExpr: Expression) {
+  when (topLevelExpr) {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
-    is TypedIdentifier -> ComputeReference(expr)
-    is FunctionCall -> TODO("can't implement this before dealing with them in sequentialize")
-    is UnaryExpression -> transformUnary(expr)
+    is FunctionCall -> TODO()
+    is UnaryExpression -> transformUnary(topLevelExpr)
     is PrefixIncrement, is PostfixIncrement ->
-      transformIncDec(expr as IncDecOperation, isDec = false)
+      transformIncDec(topLevelExpr as IncDecOperation, isDec = false)
     is PrefixDecrement, is PostfixDecrement ->
-      transformIncDec(expr as IncDecOperation, isDec = true)
-    is BinaryExpression -> transformBinary(expr)
-    is SizeofExpression, is SizeofTypeName ->
-      TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
-    is IntegerConstantNode -> ComputeInteger(expr)
-    is FloatingConstantNode -> ComputeFloat(expr)
-    is CharacterConstantNode -> ComputeChar(expr)
-    is StringLiteralNode -> ComputeString(expr)
-  }
-
-  fun transform(): List<IRExpression> {
-    ir.clear()
-    for (expr in block) when (expr) {
-      is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
-      is FunctionCall -> TODO()
-      is UnaryExpression -> transformUnary(expr)
-      is PrefixIncrement, is PostfixIncrement ->
-        transformIncDec(expr as IncDecOperation, isDec = false)
-      is PrefixDecrement, is PostfixDecrement ->
-        transformIncDec(expr as IncDecOperation, isDec = true)
-      is BinaryExpression -> transformBinary(expr)
-      is SizeofExpression, is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,
-      is StringLiteralNode, is CharacterConstantNode, is TypedIdentifier -> {
-        // Do nothing.
-        // If any of these are found "floating" by themselves, they come from the program source, or
-        // they are a result of [sequentialize]
-        // Either way, they do nothing by themselves, so they can be discarded
-        // FIXME: someone (probably the Parser) needs to warn about unused expression results
-        // FIXME: a read to a TypedIdentifier might not be discarded if it is volatile
-      }
+      transformIncDec(topLevelExpr as IncDecOperation, isDec = true)
+    is BinaryExpression -> transformBinary(topLevelExpr)
+    is SizeofExpression, is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,
+    is StringLiteralNode, is CharacterConstantNode, is TypedIdentifier -> {
+      // Do nothing.
+      // If any of these are found "floating" by themselves, they come from the program source, or
+      // they are a result of [sequentialize]
+      // Either way, they do nothing by themselves, so they can be discarded
+      // FIXME: someone (probably the Parser) needs to warn about unused expression results
+      // FIXME: a read to a TypedIdentifier might not be discarded if it is volatile
     }
-    return ir
   }
+}
+
+/**
+ * Transforms a block of expressions to the equivalent IR version.
+ */
+fun List<Expression>.toIRList(): List<IRExpression> {
+  val context = IRLoweringContext()
+  forEach(context::transform)
+  return context.ir
 }

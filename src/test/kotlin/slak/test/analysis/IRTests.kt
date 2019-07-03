@@ -36,7 +36,7 @@ class IRTests {
   @Test
   fun `Basic Expression`() {
     val expr = 1 add (23 mul 70)
-    val ir = ExpressionTransformer(listOf(expr)).transform()
+    val ir = listOf(expr).toIRList()
     ir.print()
     ir.assertSSAForTemporaries()
     // This is separated into 2 operations, and stored in 2 temporaries
@@ -49,7 +49,7 @@ class IRTests {
   fun `Simple Assignment`() {
     val x = nameRef("x", SignedIntType)
     val expr = x assign 1
-    val ir = ExpressionTransformer(listOf(expr)).transform()
+    val ir = listOf(expr).toIRList()
     ir.print()
     ir.assertSSAForTemporaries()
     // This should not do much
@@ -61,7 +61,7 @@ class IRTests {
   fun `Simple Compound Assignment`() {
     val x = nameRef("x", SignedIntType)
     val expr = x plusAssign 1
-    val ir = ExpressionTransformer(listOf(expr)).transform()
+    val ir = listOf(expr).toIRList()
     ir.print()
     ir.assertSSAForTemporaries()
     // FIXME: incomplete
@@ -77,7 +77,7 @@ class IRTests {
         prefixInc(y)
     )
     val seq = exprs.map(debugHandler::sequentialize).flatMap(SequentialExpression::toList)
-    val ir = ExpressionTransformer(seq).transform()
+    val ir = seq.toIRList()
     ir.print()
     ir.assertSSAForTemporaries()
     // FIXME: incomplete
