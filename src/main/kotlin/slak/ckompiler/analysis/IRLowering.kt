@@ -109,9 +109,12 @@ data class Call(val functionPointer: ComputeConstant,
 
 /**
  * The instruction to store a [ComputeExpression]'s result to a target [ComputeReference] variable.
+ * @param isSynthetic if this store was generated when converting to the IR
  */
-data class Store(val target: ComputeReference, val data: ComputeExpression) : IRExpression {
-  override fun toString() = "$target = $data"
+data class Store(val target: ComputeReference,
+                 val data: ComputeExpression,
+                 val isSynthetic: Boolean) : IRExpression {
+  override fun toString() = "${if (isSynthetic) "[SYNTHETIC] " else ""}$target = $data"
 }
 
 /**
@@ -139,7 +142,7 @@ class ExpressionTransformer(val block: List<Expression>) {
    */
   private fun transformAssign(target: Expression, data: Expression): ComputeReference {
     val irTarget = getAssignable(target)
-    ir += Store(irTarget, transformExpr(data))
+    ir += Store(irTarget, transformExpr(data), isSynthetic = false)
     return irTarget
   }
 
@@ -167,8 +170,8 @@ class ExpressionTransformer(val block: List<Expression>) {
     val additionalComputation = BinaryComputation(
         additionalOperation, assignTarget, transformExpr(expr.rhs))
     val assignableResult = makeTemporary(expr.lhs.type)
-    ir += Store(assignableResult, additionalComputation)
-    ir += Store(assignTarget, assignableResult)
+    ir += Store(assignableResult, additionalComputation, isSynthetic = true)
+    ir += Store(assignTarget, assignableResult, isSynthetic = false)
     return assignTarget
   }
 
@@ -182,7 +185,7 @@ class ExpressionTransformer(val block: List<Expression>) {
     val operation = expr.op.asBinaryOperation()
     val binary = BinaryComputation(operation, transformExpr(expr.lhs), transformExpr(expr.rhs))
     val target = makeTemporary(expr.type)
-    ir += Store(target, binary)
+    ir += Store(target, binary, isSynthetic = true)
     return target
   }
 
@@ -202,7 +205,7 @@ class ExpressionTransformer(val block: List<Expression>) {
    */
   private fun transformUnary(expr: UnaryExpression): ComputeReference {
     val target = makeTemporary(expr.type)
-    ir += Store(target, UnaryComputation(expr.op, transformExpr(expr.operand)))
+    ir += Store(target, UnaryComputation(expr.op, transformExpr(expr.operand)), isSynthetic = true)
     return target
   }
 
