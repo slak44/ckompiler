@@ -181,7 +181,7 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
  * the rest of the AST.
  */
 class TypedIdentifier(override val name: String,
-                      override val type: TypeName) : Expression(), OrdinaryIdentifier {
+                      override val type: TypeName) : Expression(), OrdinaryIdentifier, Terminal {
   constructor(ds: DeclarationSpecifier,
               decl: NamedDeclarator) : this(decl.name.name, typeNameOf(ds, decl)) {
     withRange(decl.name.tokenRange)
