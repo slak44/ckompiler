@@ -101,6 +101,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
 
   // Analysis
   UNREACHABLE_CODE(WARNING, "Code will never be executed"),
+  UNSEQUENCED_MODS(WARNING, "Multiple unsequenced modifications to '%s'"),
 }
 
 enum class DiagnosticKind(val text: String) {

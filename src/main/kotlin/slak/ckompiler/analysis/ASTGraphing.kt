@@ -79,7 +79,7 @@ private fun transformInitializer(current: BasicBlock,
 }
 
 private fun GraphingContext.processExpr(current: BasicBlock, e: Expression): SequentialExpression {
-  val seqExpr = sequentialize(e)
+  val seqExpr = root.sequentialize(e)
   for (expr in seqExpr) {
     if (expr is BinaryExpression && expr.op in assignmentOps) {
       // FIXME: a bunch of other things can be on the left side of an =

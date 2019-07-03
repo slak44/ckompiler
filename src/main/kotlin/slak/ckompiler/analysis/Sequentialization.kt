@@ -1,10 +1,9 @@
 package slak.ckompiler.analysis
 
-import org.apache.logging.log4j.LogManager
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.IDebugHandler
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
-
-private val logger = LogManager.getLogger("Sequentialization")
 
 /**
  * A bunch of expressions that should be equivalent to the original expression that was
@@ -39,7 +38,7 @@ operator fun SequentialExpression.iterator(): Iterator<Expression> = iterator {
  * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2
  * @see SequentialExpression
  */
-fun sequentialize(expr: Expression): SequentialExpression {
+fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
   val sequencedBefore = mutableListOf<Expression>()
   val sequencedAfter = mutableListOf<Expression>()
   val modifications = mutableMapOf<TypedIdentifier, MutableList<Expression>>()
@@ -88,9 +87,14 @@ fun sequentialize(expr: Expression): SequentialExpression {
     }
   }
   val remaining = expr.seqImpl()
-  for ((variable, modList) in modifications) {
-    if (modList.size > 1) {
-      // FIXME: insert diagnostic about multiple unsequenced modifications to variable
+  // Take every variable with more than 1 modification and print diagnostics
+  for ((variable, modList) in modifications.filter { it.value.size > 1 }) diagnostic {
+    id = DiagnosticId.UNSEQUENCED_MODS
+    formatArgs(variable.name)
+    for (mod in modList) when (mod) {
+      is BinaryExpression -> columns(mod.lhs.tokenRange)
+      is IncDecOperation -> columns(mod.tokenRange)
+      else -> logger.throwICE("Modification doesn't modify anything") { mod }
     }
   }
   return SequentialExpression(sequencedBefore, remaining, sequencedAfter)

@@ -315,6 +315,9 @@ internal operator fun <T> NamedDeclarator.get(arraySize: T): NamedDeclarator {
   return NamedDeclarator(name, indirection, suffixes + ExpressionSize(parseDSLElement(arraySize)))
 }
 
+internal fun prefixInc(e: Expression) = PrefixIncrement(e).zeroRange()
+internal fun postfixInc(e: Expression) = PostfixIncrement(e).zeroRange()
+
 internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with BinaryOperators.ADD
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with BinaryOperators.SUB
 internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with BinaryOperators.MUL
