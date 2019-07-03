@@ -457,7 +457,7 @@ private fun postOrderNodes(startNode: BasicBlock, nodes: Set<BasicBlock>): Set<B
 
 /** Filter unreachable nodes from the given [nodes] set and return the ones that are reachable. */
 private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBlock> {
-  val checkReachableQueue = LinkedList<BasicBlock>(nodes)
+  val checkReachableQueue = LinkedList(nodes)
   val visited = mutableSetOf<BasicBlock>()
   val nodesImpl = mutableSetOf<BasicBlock>()
   while (checkReachableQueue.isNotEmpty()) {
@@ -481,7 +481,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
 
 /** Apply [BasicBlock.collapseEmptyPreds] on an entire graph ([nodes]). */
 private fun collapseEmptyBlocks(nodes: Set<BasicBlock>) {
-  val collapseCandidates = LinkedList<BasicBlock>(nodes)
+  val collapseCandidates = LinkedList(nodes)
   val visited = mutableSetOf<BasicBlock>()
   while (collapseCandidates.isNotEmpty()) {
     val node = collapseCandidates.removeFirst()

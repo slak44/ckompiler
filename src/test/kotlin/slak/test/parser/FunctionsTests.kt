@@ -31,7 +31,8 @@ class FunctionsTests {
   fun `Function Declaration Two Parameters`() {
     val p = prepareCode("int f(double dbl, int x);", source)
     p.assertNoDiagnostics()
-    int proto ("f" withParams listOf(double param "dbl", int param "x")) assertEquals p.root.decls[0]
+    int proto ("f" withParams listOf(double param "dbl", int param "x")) assertEquals
+        p.root.decls[0]
   }
 
   @Test

@@ -6,7 +6,6 @@ import slak.ckompiler.createDiagnostic
 import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.parser.Declaration
-import slak.ckompiler.parser.ExpressionInitializer
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
