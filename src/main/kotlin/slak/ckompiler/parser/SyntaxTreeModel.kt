@@ -17,12 +17,12 @@ infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx unti
 operator fun LexicalToken.rangeTo(other: LexicalToken) =
     startIdx until (other.startIdx + other.consumedChars)
 
-operator fun IntRange.rangeTo(other: IntRange) = this.start..other.endInclusive
+operator fun IntRange.rangeTo(other: IntRange) = this.first..other.last
 
-operator fun LexicalToken.rangeTo(other: ASTNode) = this.startIdx..other.tokenRange.endInclusive
+operator fun LexicalToken.rangeTo(other: ASTNode) = this.startIdx..other.tokenRange.last
 
 operator fun ASTNode.rangeTo(other: LexicalToken) =
-    tokenRange.start until (other.startIdx + other.consumedChars)
+    tokenRange.first until (other.startIdx + other.consumedChars)
 
 operator fun ASTNode.rangeTo(other: ASTNode) = tokenRange..other.tokenRange
 
