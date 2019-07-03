@@ -116,6 +116,9 @@ internal infix fun <T> Declarator.assign(it: T) =
 internal infix fun <T> TypedIdentifier.assign(it: T) =
     BinaryExpression(BinaryOperators.ASSIGN, this, parseDSLElement(it))
 
+internal infix fun <T> TypedIdentifier.plusAssign(it: T) =
+    BinaryExpression(BinaryOperators.PLUS_ASSIGN, this, parseDSLElement(it))
+
 internal typealias DeclInit = Pair<Declarator, Initializer?>
 
 internal infix fun DeclarationSpecifier.declare(decl: DeclInit) =
