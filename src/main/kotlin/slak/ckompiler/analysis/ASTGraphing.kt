@@ -101,17 +101,18 @@ private fun GraphingContext.processExpr(current: BasicBlock, e: Expression): Seq
 private fun GraphingContext.processCondition(current: BasicBlock, cond: Expression): Expression {
   val sequencedCond = processExpr(current, cond)
   // Disgusting black magic ahead
-  val newCond = if (sequencedCond.third.isNotEmpty()) {
+  val newCond = if (sequencedCond.after.isNotEmpty()) {
     // All names starting with __ are reserved, so we should be safe doing this
     // Variables are identified by id from here on anyway
     val syntheticCondVar = TypedIdentifier("__synthetic_cond_${cond.hashCode()}", BooleanType)
-    current.data += BinaryExpression(BinaryOperators.ASSIGN, syntheticCondVar, sequencedCond.second)
-    current.data += sequencedCond.third
+    current.data +=
+        BinaryExpression(BinaryOperators.ASSIGN, syntheticCondVar, sequencedCond.remaining)
+    current.data += sequencedCond.after
     syntheticCondVar
   } else {
-    sequencedCond.second
+    sequencedCond.remaining
   }
-  current.data += sequencedCond.first
+  current.data += sequencedCond.before
   return newCond
 }
 
@@ -121,10 +122,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression -> {
-    val sequenced = processExpr(current, s)
-    current.data += sequenced.first
-    current.data += sequenced.second
-    current.data += sequenced.third
+    current.data += processExpr(current, s).toList()
     current
   }
   is Noop -> {

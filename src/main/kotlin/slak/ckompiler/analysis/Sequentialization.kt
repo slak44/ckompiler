@@ -9,20 +9,22 @@ import slak.ckompiler.throwICE
  * A bunch of expressions that should be equivalent to the original expression that was
  * sequentialized.
  *
- * What remains of the original expression after sequentialization will be the middle element of the
- * triple. The other lists can be empty.
+ * What remains of the original expression after sequentialization will be the [remaining]
+ * expression. The other lists can be empty.
  *
- * The middle element acts as a sequence point for the other 2 lists.
+ * [remaining] acts as a sequence point for the other 2 lists.
  */
-typealias SequentialExpression = Triple<List<Expression>, Expression, List<Expression>>
+data class SequentialExpression(val before: List<Expression>,
+                                val remaining: Expression,
+                                val after: List<Expression>) {
+  operator fun iterator(): Iterator<Expression> = iterator {
+    yieldAll(before.iterator())
+    yield(remaining)
+    yieldAll(after.iterator())
+  }
 
-operator fun SequentialExpression.iterator(): Iterator<Expression> = iterator {
-  yieldAll(first.iterator())
-  yield(second)
-  yieldAll(third.iterator())
+  fun toList(): List<Expression> = before + remaining + after
 }
-
-fun SequentialExpression.toList(): List<Expression> = first + second + third
 
 /**
  * Resolve sequencing issues within an expression.
