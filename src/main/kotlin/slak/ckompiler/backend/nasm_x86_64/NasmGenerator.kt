@@ -69,14 +69,14 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
 
   private fun genBlock(b: BasicBlock) = instrGen {
     label(b.fnLabel)
-    for (e in b.data) emit(genExpr(e))
+//    for (e in b.data) emit(genExpr(e))
     emit(genJump(b.terminator))
   }
 
   private fun genJump(jmp: Jump) = when (jmp) {
     is CondJump -> genCondJump(jmp)
     is UncondJump -> genUncondJump(jmp.target)
-    is ImpossibleJump -> genReturn(jmp.returned)
+    is ImpossibleJump -> TODO("genReturn(jmp.returned)")
     is ConstantJump -> genUncondJump(jmp.target)
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }

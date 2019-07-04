@@ -1,10 +1,7 @@
 package slak.test.analysis
 
 import org.junit.Test
-import slak.ckompiler.analysis.CondJump
-import slak.ckompiler.analysis.UncondJump
-import slak.ckompiler.analysis.createDomTreePreOrderSequence
-import slak.ckompiler.analysis.createGraphviz
+import slak.ckompiler.analysis.*
 import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
@@ -15,7 +12,7 @@ class CFGTests {
   @Test
   fun `CFG Creation Doesn't Fail`() {
     val cfg = prepareCFG(resource("cfgTest.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
@@ -23,22 +20,22 @@ class CFGTests {
   fun `Graphviz CFG Creation Doesn't Fail`() {
     val text = resource("cfgTest.c").readText()
     val cfg = prepareCFG(text, source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
-    createGraphviz(cfg, text, reachableOnly = false, useToString = false)
+    createGraphviz(cfg, text, reachableOnly = false, print = CodePrintingMethods.SOURCE_SUBSTRING)
   }
 
   @Test
   fun `Break And Continue`() {
     val cfg = prepareCFG(resource("loops/controlKeywordsTest.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `While Loop`() {
     val cfg = prepareCFG(resource("loops/whileLoopTest.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     // Start block jumps to loop header
     assert(cfg.startBlock.terminator is UncondJump)
     val loopHeader = cfg.startBlock.terminator.successors[0]
@@ -53,7 +50,7 @@ class CFGTests {
   @Test
   fun `Do While Loop`() {
     val cfg = prepareCFG(resource("loops/doWhileLoopTest.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     // Start block jumps to loop block
     assert(cfg.startBlock.terminator is UncondJump)
     val loopBlock = cfg.startBlock.terminator.successors[0]
@@ -67,14 +64,14 @@ class CFGTests {
   @Test
   fun `For Loop`() {
     val cfg = prepareCFG(resource("loops/forLoopTest.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Early Return In Function`() {
     val cfg = prepareCFG(resource("earlyReturnTest.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 

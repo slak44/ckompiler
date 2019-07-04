@@ -9,6 +9,11 @@ private val logger = LogManager.getLogger("ASTGraphing")
 fun graph(cfg: CFG) {
   for (p in cfg.f.parameters) cfg.definitions[p.toUniqueId()] = mutableSetOf()
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
+  for (block in cfg.allNodes) {
+    val definitions = block.irContext.ir.mapNotNull { it as? Store }.filterNot { it.isSynthetic }
+    // FIXME: replace TypedIdentifier everywhere
+    for (def in definitions) cfg.addDefinition(block, def.target.id)
+  }
 }
 
 /**
@@ -72,48 +77,20 @@ private fun transformInitializer(current: BasicBlock,
   }
   is ExpressionInitializer -> {
     // Transform this into an assignment expression
-    current.data += BinaryExpression(BinaryOperators.ASSIGN, ident, init.expr)
-        .withRange(ident..init.expr)
+    current.irContext.buildIR(BinaryExpression(BinaryOperators.ASSIGN, ident, init.expr)
+        .withRange(ident..init.expr))
   }
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
 
-private fun GraphingContext.processExpr(current: BasicBlock, e: Expression): SequentialExpression {
-  val seqExpr = root.sequentialize(e)
-  for (expr in seqExpr) {
-    if (expr is BinaryExpression && expr.op in assignmentOps) {
-      // FIXME: a bunch of other things can be on the left side of an =
-      if (expr.lhs !is TypedIdentifier) logger.throwICE("Unimplemented branch") { expr }
-      root.addDefinition(current, expr.lhs)
-    } else if (expr is IncDecOperation) {
-      // FIXME: a bunch of things can be ++'d
-      val assigned = expr.expr as? TypedIdentifier
-          ?: logger.throwICE("Unimplemented branch") { expr }
-      root.addDefinition(current, assigned)
-    }
-  }
-  return seqExpr
-}
-
 /**
- * Add sequenced code to proper locations, and return what's left of the [cond] expression.
+ * Create separate lowering context for conditions/returns in the same block.
  */
-private fun GraphingContext.processCondition(current: BasicBlock, cond: Expression): Expression {
-  val sequencedCond = processExpr(current, cond)
-  // Disgusting black magic ahead
-  val newCond = if (sequencedCond.after.isNotEmpty()) {
-    // All names starting with __ are reserved, so we should be safe doing this
-    // Variables are identified by id from here on anyway
-    val syntheticCondVar = TypedIdentifier("__synthetic_cond_${cond.hashCode()}", BooleanType)
-    current.data +=
-        BinaryExpression(BinaryOperators.ASSIGN, syntheticCondVar, sequencedCond.remaining)
-    current.data += sequencedCond.after
-    syntheticCondVar
-  } else {
-    sequencedCond.remaining
-  }
-  current.data += sequencedCond.before
-  return newCond
+private fun GraphingContext.processExtraExpressions(current: BasicBlock,
+                                                    extra: Expression): IRLoweringContext {
+  val extraCtx = IRLoweringContext(current.irContext)
+  extraCtx.buildIR(root.sequentialize(extra).toList())
+  return extraCtx
 }
 
 private fun GraphingContext.graphStatement(scope: LexicalScope,
@@ -122,7 +99,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression -> {
-    current.data += processExpr(current, s).toList()
+    current.irContext.buildIR(root.sequentialize(s).toList())
     current
   }
   is Noop -> {
@@ -144,7 +121,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val afterIfBlock = root.newBlock()
     current.terminator = run {
       val falseBlock = if (elseNext != null) elseBlock else afterIfBlock
-      CondJump(processCondition(current, s.cond), ifBlock, falseBlock)
+      CondJump(processExtraExpressions(current, s.cond), ifBlock, falseBlock)
     }
     ifNext.terminator = UncondJump(afterIfBlock)
     elseNext?.terminator = UncondJump(afterIfBlock)
@@ -158,7 +135,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     loopHeader.terminator =
-        CondJump(processCondition(loopHeader, s.cond), loopBlock, afterLoopBlock)
+        CondJump(processExtraExpressions(loopHeader, s.cond), loopBlock, afterLoopBlock)
     current.terminator = UncondJump(loopHeader)
     loopNext.terminator = UncondJump(loopHeader)
     afterLoopBlock
@@ -169,7 +146,8 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     current.terminator = UncondJump(loopBlock)
-    loopNext.terminator = CondJump(processCondition(loopNext, s.cond), loopBlock, afterLoopBlock)
+    loopNext.terminator =
+        CondJump(processExtraExpressions(loopNext, s.cond), loopBlock, afterLoopBlock)
     afterLoopBlock
   }
   is ForStatement -> {
@@ -193,7 +171,7 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
       loopHeader.terminator = UncondJump(loopBlock)
     } else {
       loopHeader.terminator =
-          CondJump(processCondition(loopHeader, s.cond), loopBlock, afterLoopBlock)
+          CondJump(processExtraExpressions(loopHeader, s.cond), loopBlock, afterLoopBlock)
     }
     loopNext.terminator = UncondJump(loopHeader)
     afterLoopBlock
@@ -216,7 +194,8 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
   }
   is ReturnStatement -> {
     val deadCodeBlock = root.newBlock()
-    current.terminator = ImpossibleJump(deadCodeBlock, s.expr)
+    val returnContext = s.expr?.let { processExtraExpressions(current, it) }
+    current.terminator = ImpossibleJump(deadCodeBlock, returnContext)
     deadCodeBlock
   }
 }

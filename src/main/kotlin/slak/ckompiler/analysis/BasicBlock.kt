@@ -26,7 +26,9 @@ sealed class Jump {
 }
 
 /** If [cond] is true, jump to [target], otherwise jump to [other]. */
-data class CondJump(val cond: Expression, val target: BasicBlock, val other: BasicBlock) : Jump() {
+data class CondJump(val cond: IRLoweringContext,
+                    val target: BasicBlock,
+                    val other: BasicBlock) : Jump() {
   override val successors = listOf(target, other)
   override fun toString() = "CondJump<${target.nodeId}, ${other.nodeId}>$cond"
 }
@@ -41,7 +43,7 @@ data class UncondJump(val target: BasicBlock) : Jump() {
  * A so-called "impossible edge" of the CFG. Similar to [UncondJump], but will never be traversed.
  * It is created by [ReturnStatement].
  */
-data class ImpossibleJump(val target: BasicBlock, val returned: Expression?) : Jump() {
+data class ImpossibleJump(val target: BasicBlock, val returned: IRLoweringContext?) : Jump() {
   override val successors = emptyList<BasicBlock>()
   override fun toString() = "ImpossibleJump($returned)"
 }
@@ -71,10 +73,9 @@ class BasicBlock(val isRoot: Boolean = false) {
    */
   val phiFunctions = mutableListOf<PhiFunction>()
   /**
-   * Contains an ordered sequence of [Expression]s. All the other [slak.ckompiler.parser.ASTNode]
-   * subtypes have been eliminated by the conversion to a graph.
+   * Contains this block's IR expression list.
    */
-  val data: MutableList<Expression> = mutableListOf()
+  val irContext = IRLoweringContext()
 
   val nodeId = nodeCounter()
   var postOrderId = -1
@@ -98,14 +99,14 @@ class BasicBlock(val isRoot: Boolean = false) {
       }
     }
   val instructions get() = iterator {
-    yieldAll(data)
-    (terminator as? CondJump)?.cond?.let { yield(it) }
-    (terminator as? ImpossibleJump)?.returned?.let { yield(it) }
+    yieldAll(irContext.ir)
+    (terminator as? CondJump)?.cond?.let { yieldAll(it.ir) }
+    (terminator as? ImpossibleJump)?.returned?.let { yieldAll(it.ir) }
   }
 
   fun isTerminated() = terminator !is MissingJump
 
-  fun isEmpty() = data.isEmpty() && terminator !is CondJump
+  fun isEmpty() = irContext.ir.isEmpty() && terminator !is CondJump
 
   /** Returns whether or not this block is reachable from its [preds]. */
   fun isReachable(): Boolean {
@@ -168,7 +169,7 @@ class BasicBlock(val isRoot: Boolean = false) {
   override fun hashCode() = nodeId
 
   override fun toString() =
-      "BasicBlock<$nodeId>(${data.joinToString(";")}, $terminator)"
+      "BasicBlock<$nodeId>(${irContext.ir.joinToString(";")}, $terminator)"
 
   companion object {
     private val nodeCounter = IdCounter()

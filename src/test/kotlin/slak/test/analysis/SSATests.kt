@@ -1,5 +1,6 @@
 package slak.test.analysis
 
+import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.CondJump
@@ -18,14 +19,14 @@ class SSATests {
   @Test
   fun `SSA Conversion Doesn't Fail 1`() {
     val cfg = prepareCFG(resource("ssa/domsTest.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `SSA Conversion Doesn't Fail 2`() {
     val cfg = prepareCFG(resource("ssa/domsTest2.c"), source)
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
@@ -33,7 +34,7 @@ class SSATests {
   fun `SSA Conversion Doesn't Fail 3`() {
     val cfg = prepareCFG(resource("ssa/domsTest3.c"), source)
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
@@ -41,7 +42,7 @@ class SSATests {
   fun `SSA Conversion Doesn't Fail 4`() {
     val cfg = prepareCFG(resource("ssa/domsTest4.c"), source)
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
-    assert(cfg.startBlock.data.isNotEmpty())
+    assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
@@ -61,8 +62,9 @@ class SSATests {
     for ((key, value) in cfg.definitions) {
       println("${key.variable} (${key.id}) defined in \n\t${value.joinToString("\n\t")}")
     }
-    assertEquals(3, cfg.definitions.size)
-    val e = cfg.definitions.entries.toList()
+    val realDefs = cfg.definitions.filterNot { it.key.variable.name.startsWith("__synthetic") }
+    assertEquals(3, realDefs.size)
+    val e = realDefs.entries.toList()
     val rootId = cfg.startBlock.nodeId
     fun blockIds(vararg id: Int) = id.map { rootId + it }.toList()
     assertEquals(e[0].value.map { it.nodeId }, blockIds(0, 3, 4, 9))
@@ -86,10 +88,9 @@ class SSATests {
   @Test
   fun `Variable Renaming`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
-
-    fun condVarOf(b: BasicBlock) =
-        ((b.terminator as? CondJump)?.cond as? BinaryExpression)?.lhs as? TypedIdentifier
-    fun rhsOf(b: BasicBlock, idx: Int) = (b.data[idx] as? BinaryExpression)?.rhs
+    fun condVarOf(b: BasicBlock) = ((b.terminator as? CondJump)?.cond?.src?.get(0)
+        as? BinaryExpression)?.lhs as? TypedIdentifier
+    fun rhsOf(b: BasicBlock, idx: Int) = (b.irContext.src[idx] as? BinaryExpression)?.rhs
     fun rhsVarOf(b: BasicBlock, idx: Int) = rhsOf(b, idx) as? TypedIdentifier
     infix fun String.ver(version: Int) = this to version
     fun assertVarState(expected: Pair<String, Int>, actual: TypedIdentifier?) {
@@ -114,7 +115,8 @@ class SSATests {
     assertVarState("x" ver 5, condVarOf(blockFail2))
 
     val returnBlock = blockFail2.successors[1]
-    val retVal = (returnBlock.terminator as? ImpossibleJump)?.returned as? TypedIdentifier
+    val retVal =
+        (returnBlock.terminator as? ImpossibleJump)?.returned?.src?.get(0) as? TypedIdentifier
     assertVarState("x" ver 6, retVal)
   }
 }

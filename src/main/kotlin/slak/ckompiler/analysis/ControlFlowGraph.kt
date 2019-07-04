@@ -3,7 +3,8 @@ package slak.ckompiler.analysis
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.FunctionDefinition
+import slak.ckompiler.parser.TypedIdentifier
 import java.util.*
 
 private val logger = LogManager.getLogger("ControlFlow")
@@ -146,42 +147,27 @@ private class VariableRenamer(val doms: DominatorList,
   }
 
   /**
+   * Finds all uses of all variables in the given compute expression.
+   */
+  private fun findVariableUsage(e: ComputeExpression): List<TypedIdentifier> = when (e) {
+    is ComputeInteger, is ComputeFloat, is ComputeChar, is ComputeString -> emptyList()
+    is ComputeReference -> listOf(e.id)
+    is BinaryComputation -> findVariableUsage(e.lhs) + findVariableUsage(e.rhs)
+    is UnaryComputation -> findVariableUsage(e.operand)
+    is Call -> TODO("unimplemented for now")
+  }
+
+  /**
    * Finds all uses of all variables in the given expression.
    */
-  private fun findVariableUsage(e: Expression): List<TypedIdentifier> {
+  private fun findVariableUsage(e: IRExpression): List<TypedIdentifier> {
     val uses = mutableListOf<TypedIdentifier>()
-    fun findVarsRec(e: Expression): Unit = when (e) {
-      is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
-      is TypedIdentifier -> uses += e
-      is BinaryExpression -> {
-        if (e.op in assignmentOps) {
-          // FIXME: a bunch of other things can be on the left side of an =
-          if (e.lhs !is TypedIdentifier) logger.throwICE("Unimplemented branch") { e }
-          // Assigment targets ar definitions, not uses, so skip the recursive call on lhs here
-        } else {
-          findVarsRec(e.lhs)
-        }
-        findVarsRec(e.rhs)
-      }
-      is PrefixIncrement, is PrefixDecrement,
-      is PostfixIncrement, is PostfixDecrement -> {
-        val expr = (e as IncDecOperation).expr
-        if (expr is TypedIdentifier) {
-          // Inc/Dec targets are definitions, not uses; skip recursive call
-        } else {
-          findVarsRec(expr)
-        }
-      }
-      is FunctionCall -> {
-        findVarsRec(e.calledExpr)
-        for (arg in e.args) findVarsRec(arg)
-      }
-      is UnaryExpression -> findVarsRec(e.operand)
-      is SizeofExpression -> findVarsRec(e.sizeExpr)
-      is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode, is CharacterConstantNode,
-      is StringLiteralNode -> Unit
+    when (e) {
+      is Store -> uses += findVariableUsage(e.data)
+      is ComputeReference -> uses += e.id
+      is Call -> TODO("unimplemented for now")
+      else -> logger.throwICE("Illegal IRExpression implementor")
     }
-    findVarsRec(e)
     return uses
   }
 
@@ -285,13 +271,7 @@ private class VariableRenamer(val doms: DominatorList,
   fun variableRenaming() = domTreePreorder.forEach { BB ->
     for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
     for ((idx, i) in BB.instructions.withIndex()) {
-      // Each expression can only have one definition, and it will be in the root expression
-      val def: TypedIdentifier? = when {
-        // FIXME: a bunch of other things can be on the left side of an =
-        i is BinaryExpression && i.op in assignmentOps -> i.lhs as TypedIdentifier
-        i is IncDecOperation -> i.expr as TypedIdentifier
-        else -> null
-      }
+      val def = if (i is Store && !i.isSynthetic) i.target.id else null
       for (v in findVariableUsage(i)) {
         val oldReachingVar = v.reachingDef?.variable
         updateReachingDef(v, BB, idx)
@@ -471,7 +451,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
     visited += node
     nodesImpl -= node
     for (succ in node.successors) succ.preds -= node
-    for (deadCode in node.data) diagnostic {
+    for (deadCode in node.irContext.src) diagnostic {
       id = DiagnosticId.UNREACHABLE_CODE
       columns(deadCode.tokenRange)
     }

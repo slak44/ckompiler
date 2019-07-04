@@ -2,6 +2,7 @@ package slak.ckompiler
 
 import kotlinx.cli.*
 import slak.ckompiler.analysis.CFG
+import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.nasm_x86_64.NasmGenerator
 import slak.ckompiler.lexer.IncludePaths
@@ -108,8 +109,11 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     cli.helpGroup("Graphviz options (require --print-cfg-graphviz)")
   }
 
-  private val forceToString by cli.flagArgument("--force-to-string",
-      "Force using ASTNode.toString instead of printing the original expression source")
+  private val printingMethod by cli.flagValueArgument("--printing-type", "TYPE",
+      "TYPE can be: SOURCE_SUBSTRING (default), print the original source in blocks" +
+          "; EXPRESSION_TO_STRING, use Expression.toString" +
+          "; IR_EXPRESSION_TO_STRING, use IRExpression.toString",
+      CodePrintingMethods.SOURCE_SUBSTRING, CodePrintingMethods::valueOf)
   private val forceAllNodes by cli.flagArgument("--force-all-nodes",
       "Force displaying the entire control flow graph")
   private val forceUnreachable by cli.flagArgument("--force-unreachable",
@@ -196,7 +200,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
     if (isPrintCFGMode) {
       val cfg = CFG(firstFun, srcFileName, text, forceAllNodes)
-      println(createGraphviz(cfg, text, !forceUnreachable, forceToString))
+      println(createGraphviz(cfg, text, !forceUnreachable, printingMethod))
       return null
     }
 

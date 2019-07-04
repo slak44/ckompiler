@@ -65,7 +65,6 @@ class IRTests {
     ir.print()
     ir.assertSSAForTemporaries()
     // FIXME: incomplete
-    for (it in ir) assert(it is Store)
   }
 
   @Test
@@ -81,6 +80,5 @@ class IRTests {
     ir.print()
     ir.assertSSAForTemporaries()
     // FIXME: incomplete
-    for (it in ir) assert(it is Store)
   }
 }

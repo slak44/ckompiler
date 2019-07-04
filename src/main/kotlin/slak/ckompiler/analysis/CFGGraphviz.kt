@@ -1,7 +1,6 @@
 package slak.ckompiler.analysis
 
 import slak.ckompiler.analysis.GraphvizColors.*
-import slak.ckompiler.parser.ASTNode
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,
@@ -50,9 +49,22 @@ private enum class GraphvizColors(val color: String) {
   override fun toString() = color
 }
 
-/** Gets the piece of the source code that this node was created from. */
-private fun ASTNode.stringify(sourceCode: String, useToString: Boolean): String {
-  return if (useToString) toString() else sourceCode.substring(tokenRange).trim()
+enum class CodePrintingMethods {
+  SOURCE_SUBSTRING, EXPRESSION_TO_STRING, IR_EXPRESSION_TO_STRING
+}
+
+private fun IRLoweringContext.joinToString(sourceCode: String, print: CodePrintingMethods): String {
+  return if (print == CodePrintingMethods.IR_EXPRESSION_TO_STRING) {
+    ir.joinToString("\n")
+  } else {
+    src.joinToString("\n") {
+      when (print) {
+        CodePrintingMethods.SOURCE_SUBSTRING -> sourceCode.substring(it.tokenRange).trim()
+        CodePrintingMethods.EXPRESSION_TO_STRING -> it.toString()
+        else -> throw IllegalStateException("The other case is checked above")
+      }
+    }
+  }
 }
 
 /**
@@ -66,7 +78,7 @@ private fun ASTNode.stringify(sourceCode: String, useToString: Boolean): String 
 fun createGraphviz(graph: CFG,
                    sourceCode: String,
                    reachableOnly: Boolean,
-                   useToString: Boolean): String {
+                   print: CodePrintingMethods): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
   val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
@@ -77,13 +89,13 @@ fun createGraphviz(graph: CFG,
     }
 
     val phi = it.phiFunctions.joinToString("\n") { p -> p.toString() }
-    val rawCode = it.data.joinToString("\n") { node -> node.stringify(sourceCode, useToString) }
+    val rawCode = it.irContext.joinToString(sourceCode, print)
 
-    val cond = (it.terminator as? CondJump)?.cond?.let { cond ->
-      "\n${cond.stringify(sourceCode, useToString)} ?"
+    val cond = (it.terminator as? CondJump)?.cond?.let { context ->
+      "\n${context.joinToString(sourceCode, print)} ?"
     } ?: ""
-    val ret = (it.terminator as? ImpossibleJump)?.returned?.let { ret ->
-      "\nreturn ${ret.stringify(sourceCode, useToString)};"
+    val ret = (it.terminator as? ImpossibleJump)?.returned?.let { context ->
+      "\nreturn ${context.joinToString(sourceCode, print)};"
     } ?: ""
 
     val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret
