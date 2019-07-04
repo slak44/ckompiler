@@ -185,8 +185,7 @@ class IRLoweringContext {
   /**
    * @return assigned variable
    */
-  private fun transformAssign(target: Expression,
-                                                data: Expression): ComputeReference {
+  private fun transformAssign(target: Expression, data: Expression): ComputeReference {
     val irTarget = getAssignable(target)
     _ir += Store(irTarget, transformExpr(data), isSynthetic = false)
     return irTarget
@@ -239,8 +238,7 @@ class IRLoweringContext {
    * Because of [sequentialize], [IncDecOperation]s can only be found by themselves, not as part of
    * other expressions, so we can just treat both prefix/postfix as being `+= 1` or `-= 1`.
    */
-  private fun transformIncDec(expr: IncDecOperation,
-                                                isDec: Boolean): ComputeReference {
+  private fun transformIncDec(expr: IncDecOperation, isDec: Boolean): ComputeReference {
     val op = if (isDec) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
     val one = IntegerConstantNode(1, IntegralSuffix.NONE)
     val incremented = BinaryExpression(op, expr.expr, one)

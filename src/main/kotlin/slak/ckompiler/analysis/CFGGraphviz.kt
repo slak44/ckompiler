@@ -34,7 +34,9 @@ private fun CFG.graphEdges(): List<Edge> {
         edges += Edge(node, t.target)
         edges += Edge(node, t.impossible, EdgeType.IMPOSSIBLE)
       }
-      MissingJump -> { /* Do nothing intentionally */ }
+      MissingJump -> {
+        // Do nothing intentionally
+      }
     }
   }
   return edges.distinct()

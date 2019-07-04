@@ -13,7 +13,7 @@ interface ISpecParser {
 
 enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationSpecifier) -> Unit) {
   NONE({}),
-  FILE_SCOPED_VARIABLE(lambda@ {
+  FILE_SCOPED_VARIABLE(lambda@{
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value
     if (storage != Keywords.REGISTER && storage != Keywords.AUTO) return@lambda
@@ -32,7 +32,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
    *
    * C standard: 6.8.5.3
    */
-  FOR_INIT_DECLARATION(lambda@ {
+  FOR_INIT_DECLARATION(lambda@{
     if (it.isThreadLocal()) diagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(it.threadLocal!!.value.keyword, "for loop initializer")
@@ -59,7 +59,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
    *
    * C standard: 6.7.1.4, 6.9.1.4
    */
-  FUNCTION_DECLARATION(lambda@ {
+  FUNCTION_DECLARATION(lambda@{
     if (it.isThreadLocal()) diagnostic {
       id = DiagnosticId.ILLEGAL_STORAGE_CLASS
       formatArgs(it.threadLocal!!.value.keyword, "function")

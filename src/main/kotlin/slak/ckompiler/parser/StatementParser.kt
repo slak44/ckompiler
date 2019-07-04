@@ -26,7 +26,7 @@ class StatementParser(declarationParser: DeclarationParser,
     IExpressionParser by controlKeywordParser,
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser {
-  
+
   /** @see [IStatementParser.parseCompoundStatement] */
   override fun parseCompoundStatement(functionScope: LexicalScope?): Statement? {
     val lbracket = current()
@@ -319,8 +319,7 @@ class StatementParser(declarationParser: DeclarationParser,
         // parseDeclaration wants to see the semicolon as well, so +1
         tokenContext(firstSemi + 1) {
           parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)?.let(::DeclarationInitializer)
-        } ?: parseExpr(firstSemi)?.let(::ForExpressionInitializer)
-          ?: error<ErrorInitializer>()
+        } ?: parseExpr(firstSemi)?.let(::ForExpressionInitializer) ?: error<ErrorInitializer>()
       }
       // We only eat the first ';' if parseDeclaration didn't do that
       // And when parseDeclaration did eat the semi, ensure that we don't accidentally eat again

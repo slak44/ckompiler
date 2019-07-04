@@ -97,11 +97,12 @@ class BasicBlock(val isRoot: Boolean = false) {
         }
       }
     }
-  val instructions get() = iterator {
-    yieldAll(irContext.ir)
-    (terminator as? CondJump)?.cond?.let { yieldAll(it.ir) }
-    (terminator as? ImpossibleJump)?.returned?.let { yieldAll(it.ir) }
-  }
+  val instructions
+    get() = iterator {
+      yieldAll(irContext.ir)
+      (terminator as? CondJump)?.cond?.let { yieldAll(it.ir) }
+      (terminator as? ImpossibleJump)?.returned?.let { yieldAll(it.ir) }
+    }
 
   fun isTerminated() = terminator !is MissingJump
 

@@ -6,7 +6,7 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.*
 import kotlin.test.assertEquals
 
-class PreprocessingTests  {
+class PreprocessingTests {
   @Test
   fun `Comment Single Line`() {
     val l = preparePP("""

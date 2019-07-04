@@ -5,7 +5,7 @@
     </Filters>
     <Appenders>
         <Console name="stderr" target="SYSTEM_ERR">
-            <PatternLayout pattern="%d{ISO8601} [%-5p] in %c: %m%n" />
+            <PatternLayout pattern="%d{ISO8601} [%-5p] in %c: %m%n"/>
         </Console>
     </Appenders>
     <Loggers>

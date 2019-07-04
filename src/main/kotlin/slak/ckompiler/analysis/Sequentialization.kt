@@ -97,6 +97,7 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
       this
     }
   }
+
   val remaining = expr.seqImpl()
   // Take every variable with more than 1 modification and print diagnostics
   for ((variable, modList) in modifications.filter { it.value.size > 1 }) diagnostic {

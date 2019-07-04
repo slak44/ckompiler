@@ -43,6 +43,7 @@ internal val List<Diagnostic>.ids get() = map { it.id }
 
 internal fun Preprocessor.assertDiags(vararg ids: DiagnosticId) =
     assertEquals(ids.toList(), diags.ids)
+
 internal fun Parser.assertDiags(vararg ids: DiagnosticId) = assertEquals(ids.toList(), diags.ids)
 internal fun IDebugHandler.assertDiags(vararg ids: DiagnosticId) =
     assertEquals(ids.toList(), diags.ids)
@@ -171,6 +172,7 @@ internal infix fun DeclarationSpecifier.declare(sm: List<StructMember>) =
 
 internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) =
     ParameterDeclaration(this, s).zeroRange()
+
 internal infix fun DeclarationSpecifier.param(s: String) =
     ParameterDeclaration(this, nameDecl(s)).zeroRange()
 
@@ -244,7 +246,9 @@ internal fun <T> List<T>.compound(scope: LexicalScope? = null) = CompoundStateme
         if (names != null) idents += names
       }
       is LabeledStatement -> labels += it.label
-      is Statement -> { /* Do nothing intentionally */ }
+      is Statement -> {
+        // Do nothing intentionally
+      }
       is TagSpecifier -> tagNames += it
       else -> throw IllegalArgumentException("Bad type")
     }

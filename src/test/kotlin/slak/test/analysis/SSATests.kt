@@ -84,6 +84,7 @@ class SSATests {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
     fun condVarOf(b: BasicBlock) = (((b.terminator as? CondJump)?.cond?.ir?.get(0) as? Store)
         ?.data as? BinaryComputation)?.lhs as? ComputeReference
+
     fun rhsOf(b: BasicBlock, idx: Int) = (b.irContext.ir[idx] as? Store)?.data
     fun rhsVarOf(b: BasicBlock, idx: Int) = rhsOf(b, idx) as? ComputeReference
     infix fun String.ver(version: Int) = this to version
