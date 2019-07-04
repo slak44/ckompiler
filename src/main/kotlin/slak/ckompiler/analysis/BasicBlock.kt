@@ -2,7 +2,6 @@ package slak.ckompiler.analysis
 
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
-import slak.ckompiler.parser.TypedIdentifier
 
 /** Returns a sequential integer on [invoke]. */
 class IdCounter {
@@ -15,8 +14,8 @@ class IdCounter {
  * [incoming] stores the blocks that [target] can come from (ie the list of versions that the φ has
  * to choose from).
  */
-data class PhiFunction(val target: TypedIdentifier,
-                       val incoming: MutableList<Pair<BasicBlock, TypedIdentifier>>) {
+data class PhiFunction(val target: ComputeReference,
+                       val incoming: MutableList<Pair<BasicBlock, ComputeReference>>) {
   override fun toString() =
       "$target = φ(${incoming.joinToString(", ") { "${it.first.nodeId}" }})"
 }

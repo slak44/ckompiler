@@ -77,9 +77,43 @@ data class ComputeString(val str: StringLiteralNode) : ComputeConstant() {
   override fun toString() = str.toString()
 }
 
-/** @see TypedIdentifier */
-data class ComputeReference(val id: TypedIdentifier) : ComputeConstant(), IRExpression {
-  override fun toString() = id.toString()
+/**
+ * Wraps [tid], adds [version] for variable renaming.
+ * @see TypedIdentifier
+ */
+data class ComputeReference(val tid: TypedIdentifier) : ComputeConstant(), IRExpression {
+  var version = 0
+
+  /**
+   * Sets the version from the [newerVersion] parameter.
+   */
+  fun replaceWith(newerVersion: ReachingDef?) {
+    if (newerVersion == null) return
+    if (tid.id != newerVersion.variable.tid.id || newerVersion.variable.version < version) {
+      logger.throwICE("Illegal ComputeReference version replacement") { "$this -> $newerVersion" }
+    }
+    version = newerVersion.variable.version
+  }
+
+  override fun toString() = "$tid v$version"
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is ComputeReference) return false
+
+    if (tid != other.tid) return false
+    if (tid.id != other.tid.id) return false
+    if (version != other.version) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = tid.hashCode()
+    result = 31 * result + version
+    result = 31 * result + tid.id
+    return result
+  }
 }
 
 /**

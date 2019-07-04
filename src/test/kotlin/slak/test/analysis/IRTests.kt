@@ -28,7 +28,7 @@ class IRTests {
 
   private fun List<IRExpression>.assertSSAForTemporaries() {
     val syntheticStores = filter { it is Store && it.isSynthetic }
-    val temporaries = syntheticStores.map { (it as Store).target.id.toUniqueId() }
+    val temporaries = syntheticStores.map { (it as Store).target }
     // All synthetic assignment targets should be different variables
     assertEquals(temporaries, temporaries.distinct())
   }

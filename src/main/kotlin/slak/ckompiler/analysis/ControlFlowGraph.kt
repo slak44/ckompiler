@@ -4,20 +4,10 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
 import slak.ckompiler.parser.FunctionDefinition
-import slak.ckompiler.parser.TypedIdentifier
 import java.util.*
 
 private val logger = LogManager.getLogger("ControlFlow")
 private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
-
-/**
- * [TypedIdentifier] and its id.
- *
- * The [TypedIdentifier.id] is not considered in [TypedIdentifier.equals], so we explicitly make
- * it count by using this class.
- */
-data class UniqueIdent(val variable: TypedIdentifier, val id: Int)
-fun TypedIdentifier.toUniqueId() = UniqueIdent(this, id)
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
 class CFG(val f: FunctionDefinition,
@@ -39,7 +29,7 @@ class CFG(val f: FunctionDefinition,
    */
   val doms: DominatorList
   /**
-   * List of [TypedIdentifier] used in this function, with definition locations.
+   * List of [ComputeReference] used in this function, with definition locations.
    *
    * A "definition" of a variable is assignment to that variable. We consider a definition to be a
    * property of the block it's in; as a result, we can ignore *where* in the block it was defined.
@@ -47,7 +37,7 @@ class CFG(val f: FunctionDefinition,
    *
    * @see insertPhiFunctions
    */
-  val definitions = mutableMapOf<UniqueIdent, MutableSet<BasicBlock>>()
+  val definitions = mutableMapOf<ComputeReference, MutableSet<BasicBlock>>()
 
   init {
     graph(this)
@@ -86,7 +76,7 @@ class CFG(val f: FunctionDefinition,
  *
  * @see VariableRenamer.reachingDefs
  */
-data class ReachingDef(val variable: TypedIdentifier,
+data class ReachingDef(val variable: ComputeReference,
                        val definedIn: BasicBlock,
                        val definitionIdx: Int)
 
@@ -106,17 +96,17 @@ private class VariableRenamer(val doms: DominatorList,
    */
   private val latestVersions = mutableMapOf<Int, Int>().withDefault { 0 }
   /** @see latestVersions */
-  private var TypedIdentifier.latestVersion: Int
-    get() = latestVersions.getValue(id)
+  private var ComputeReference.latestVersion: Int
+    get() = latestVersions.getValue(tid.id)
     set(value) {
-      latestVersions[id] = value
+      latestVersions[tid.id] = value
     }
   /**
    * Maps each variable to a [ReachingDef] (maps a variable's id/version pair to [ReachingDef]).
    *
    * See section 3.1.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    * @see ReachingDef
-   * @see TypedIdentifier.reachingDef
+   * @see ComputeReference.reachingDef
    * @see variableRenaming
    */
   private val reachingDefs = mutableMapOf<Pair<Int, Int>, ReachingDef?>()
@@ -125,22 +115,22 @@ private class VariableRenamer(val doms: DominatorList,
    * algorithm).
    * @see variableRenaming
    */
-  private var TypedIdentifier.reachingDef: ReachingDef?
-    get() = reachingDefs[id to version]
+  private var ComputeReference.reachingDef: ReachingDef?
+    get() = reachingDefs[tid.id to version]
     set(value) {
-      reachingDefs[id to version] = value
+      reachingDefs[tid.id to version] = value
     }
-  /** @see TypedIdentifier.reachingDef */
+  /** @see ComputeReference.reachingDef */
   private var ReachingDef.reachingDef: ReachingDef?
-    get() = reachingDefs[variable.id to variable.version]
+    get() = reachingDefs[variable.tid.id to variable.version]
     set(value) {
-      reachingDefs[variable.id to variable.version] = value
+      reachingDefs[variable.tid.id to variable.version] = value
     }
 
   /**
    * Creates a new version of a variable. Updates [latestVersions].
    */
-  private fun TypedIdentifier.newVersion(): TypedIdentifier {
+  private fun ComputeReference.newVersion(): ComputeReference {
     val new = copy()
     new.version = ++new.latestVersion
     return new
@@ -149,9 +139,9 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Finds all uses of all variables in the given compute expression.
    */
-  private fun findVariableUsage(e: ComputeExpression): List<TypedIdentifier> = when (e) {
+  private fun findVariableUsage(e: ComputeExpression): List<ComputeReference> = when (e) {
     is ComputeInteger, is ComputeFloat, is ComputeChar, is ComputeString -> emptyList()
-    is ComputeReference -> listOf(e.id)
+    is ComputeReference -> listOf(e)
     is BinaryComputation -> findVariableUsage(e.lhs) + findVariableUsage(e.rhs)
     is UnaryComputation -> findVariableUsage(e.operand)
     is Call -> TODO("unimplemented for now")
@@ -160,11 +150,11 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Finds all uses of all variables in the given expression.
    */
-  private fun findVariableUsage(e: IRExpression): List<TypedIdentifier> {
-    val uses = mutableListOf<TypedIdentifier>()
+  private fun findVariableUsage(e: IRExpression): List<ComputeReference> {
+    val uses = mutableListOf<ComputeReference>()
     when (e) {
       is Store -> uses += findVariableUsage(e.data)
-      is ComputeReference -> uses += e.id
+      is ComputeReference -> uses += e
       is Call -> TODO("unimplemented for now")
       else -> logger.throwICE("Illegal IRExpression implementor")
     }
@@ -204,7 +194,7 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
-  private fun updateReachingDef(v: TypedIdentifier, block: BasicBlock, instrIdx: Int) {
+  private fun updateReachingDef(v: ComputeReference, block: BasicBlock, instrIdx: Int) {
     var r = v.reachingDef
     while (!(r == null || r.dominates(block, instrIdx))) {
       r = r.reachingDef
@@ -216,17 +206,17 @@ private class VariableRenamer(val doms: DominatorList,
    * Debug trace for variable usage renames.
    */
   private fun traceVarUsageRename(BB: BasicBlock,
-                                  oldReachingVar: TypedIdentifier?,
-                                  v: TypedIdentifier) {
-    if (v.name == "x") logger.trace(varRenamesTrace) {
+                                  oldReachingVar: ComputeReference?,
+                                  v: ComputeReference) {
+    if (v.tid.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingStr =
-          if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
+          if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
       val newReachingStr =
           if (v.reachingDef == null) "⊥"
-          else "${v.reachingDef!!.variable.name}${v.reachingDef!!.variable.version}"
+          else "${v.reachingDef!!.variable.tid.name}${v.reachingDef!!.variable.version}"
       listOf(
           "${BB.nodeId}",
-          "${v.name}${v.version} use".padStart(10, ' '),
+          "${v.tid.name}${v.version} use".padStart(10, ' '),
           "$oldReachingStr updated into $newReachingStr"
       ).joinToString(" | ").toObjectMessage()
     }
@@ -236,16 +226,16 @@ private class VariableRenamer(val doms: DominatorList,
    * Debug trace for variable definition renames.
    */
   private fun traceVarDefinitionRename(BB: BasicBlock,
-                                       def: TypedIdentifier,
-                                       vPrime: TypedIdentifier) {
-    if (def.name == "x") logger.trace(varRenamesTrace) {
+                                       def: ComputeReference,
+                                       vPrime: ComputeReference) {
+    if (def.tid.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingVar = def.reachingDef?.variable
       val oldReachingStr =
-          if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
+          if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
       listOf(
           "${BB.nodeId}",
-          "def ${def.name}${def.version}".padEnd(10, ' '),
-          "$oldReachingStr then ${vPrime.name}${vPrime.version}"
+          "def ${def.tid.name}${def.version}".padEnd(10, ' '),
+          "$oldReachingStr then ${vPrime.tid.name}${vPrime.version}"
       ).joinToString(" | ").toObjectMessage()
     }
   }
@@ -253,7 +243,7 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Does the renaming for a variable definition.
    */
-  private fun handleDef(BB: BasicBlock, def: TypedIdentifier, instrIdx: Int) {
+  private fun handleDef(BB: BasicBlock, def: ComputeReference, instrIdx: Int) {
     val oldReachingDef = def.reachingDef
     updateReachingDef(def, BB, instrIdx)
     val vPrime = def.newVersion()
@@ -271,7 +261,7 @@ private class VariableRenamer(val doms: DominatorList,
   fun variableRenaming() = domTreePreorder.forEach { BB ->
     for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
     for ((idx, i) in BB.instructions.withIndex()) {
-      val def = if (i is Store && !i.isSynthetic) i.target.id else null
+      val def = if (i is Store && !i.isSynthetic) i.target else null
       for (v in findVariableUsage(i)) {
         val oldReachingVar = v.reachingDef?.variable
         updateReachingDef(v, BB, idx)
@@ -293,9 +283,8 @@ private class VariableRenamer(val doms: DominatorList,
  *
  * See Algorithm 3.1 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
  */
-private fun insertPhiFunctions(definitions: Map<UniqueIdent, MutableSet<BasicBlock>>) {
-  for ((uniqueId, defsV) in definitions) {
-    val v = uniqueId.variable
+private fun insertPhiFunctions(definitions: Map<ComputeReference, MutableSet<BasicBlock>>) {
+  for ((v, defsV) in definitions) {
     val f = mutableSetOf<BasicBlock>()
     // We already store the basic blocks as a set, so just make a copy
     val w = mutableSetOf(*defsV.toTypedArray())

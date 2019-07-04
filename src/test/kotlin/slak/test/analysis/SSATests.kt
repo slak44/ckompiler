@@ -1,13 +1,7 @@
 package slak.test.analysis
 
-import org.junit.Ignore
 import org.junit.Test
-import slak.ckompiler.analysis.BasicBlock
-import slak.ckompiler.analysis.CondJump
-import slak.ckompiler.analysis.ImpossibleJump
-import slak.ckompiler.analysis.PhiFunction
-import slak.ckompiler.parser.BinaryExpression
-import slak.ckompiler.parser.TypedIdentifier
+import slak.ckompiler.analysis.*
 import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
@@ -60,9 +54,9 @@ class SSATests {
   fun `Correct Definition Tracking Test`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
     for ((key, value) in cfg.definitions) {
-      println("${key.variable} (${key.id}) defined in \n\t${value.joinToString("\n\t")}")
+      println("$key (${key.tid.id}) defined in \n\t${value.joinToString("\n\t")}")
     }
-    val realDefs = cfg.definitions.filterNot { it.key.variable.name.startsWith("__synthetic") }
+    val realDefs = cfg.definitions.filterNot { it.key.tid.name.startsWith("__synthetic") }
     assertEquals(3, realDefs.size)
     val e = realDefs.entries.toList()
     val rootId = cfg.startBlock.nodeId
@@ -80,7 +74,7 @@ class SSATests {
     }
     val rootId = cfg.startBlock.nodeId
     fun phis(id: Int) = cfg.nodes.first { it.nodeId == (rootId + id) }.phiFunctions
-    fun List<PhiFunction>.x() = firstOrNull { it.target.name == "x" }
+    fun List<PhiFunction>.x() = firstOrNull { it.target.tid.name == "x" }
     for (i in listOf(1, 2, 9)) assertNotNull(phis(i).x())
     for (i in listOf(0, 3, 4)) assertNull(phis(i).x())
   }
@@ -88,14 +82,14 @@ class SSATests {
   @Test
   fun `Variable Renaming`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
-    fun condVarOf(b: BasicBlock) = ((b.terminator as? CondJump)?.cond?.src?.get(0)
-        as? BinaryExpression)?.lhs as? TypedIdentifier
-    fun rhsOf(b: BasicBlock, idx: Int) = (b.irContext.src[idx] as? BinaryExpression)?.rhs
-    fun rhsVarOf(b: BasicBlock, idx: Int) = rhsOf(b, idx) as? TypedIdentifier
+    fun condVarOf(b: BasicBlock) = (((b.terminator as? CondJump)?.cond?.ir?.get(0) as? Store)
+        ?.data as? BinaryComputation)?.lhs as? ComputeReference
+    fun rhsOf(b: BasicBlock, idx: Int) = (b.irContext.ir[idx] as? Store)?.data
+    fun rhsVarOf(b: BasicBlock, idx: Int) = rhsOf(b, idx) as? ComputeReference
     infix fun String.ver(version: Int) = this to version
-    fun assertVarState(expected: Pair<String, Int>, actual: TypedIdentifier?) {
+    fun assertVarState(expected: Pair<String, Int>, actual: ComputeReference?) {
       assertNotNull(actual)
-      assertEquals(expected.first, actual.name)
+      assertEquals(expected.first, actual.tid.name)
       assertEquals(expected.second, actual.version)
     }
 
@@ -109,14 +103,14 @@ class SSATests {
     assertVarState("x" ver 3, condVarOf(blockFail1))
 
     val blockFail2 = blockFail1.successors[1]
-    val sumAssigned = assertNotNull(rhsOf(blockFail2, 0) as? BinaryExpression)
-    assertVarState("x" ver 4, sumAssigned.lhs as? TypedIdentifier)
-    assertVarState("y" ver 4, sumAssigned.rhs as? TypedIdentifier)
+    val sumAssigned = assertNotNull(rhsOf(blockFail2, 0) as? BinaryComputation)
+    assertVarState("x" ver 4, sumAssigned.lhs as? ComputeReference)
+    assertVarState("y" ver 4, sumAssigned.rhs as? ComputeReference)
     assertVarState("x" ver 5, condVarOf(blockFail2))
 
     val returnBlock = blockFail2.successors[1]
     val retVal =
-        (returnBlock.terminator as? ImpossibleJump)?.returned?.src?.get(0) as? TypedIdentifier
+        (returnBlock.terminator as? ImpossibleJump)?.returned?.ir?.get(0) as? ComputeReference
     assertVarState("x" ver 6, retVal)
   }
 }

@@ -2,7 +2,6 @@ package slak.ckompiler.parser
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.IdCounter
-import slak.ckompiler.analysis.ReachingDef
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
 
@@ -181,14 +180,13 @@ class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
  * same name (name shadowing). Creating other instances is fine as long as they are not leaked to
  * the rest of the AST.
  */
-class TypedIdentifier(override val name: String,
-                      override val type: TypeName) : Expression(), OrdinaryIdentifier, Terminal {
+data class TypedIdentifier(override val name: String,
+                           override val type: TypeName
+) : Expression(), OrdinaryIdentifier, Terminal {
   constructor(ds: DeclarationSpecifier,
               decl: NamedDeclarator) : this(decl.name.name, typeNameOf(ds, decl)) {
     withRange(decl.name.tokenRange)
   }
-
-  var version = 0
 
   var id = varCounter()
     private set
@@ -201,42 +199,11 @@ class TypedIdentifier(override val name: String,
    */
   fun copy(): TypedIdentifier {
     val other = TypedIdentifier(name, type)
-    other.version = version
     other.id = id
     return other
   }
 
-  /**
-   * Changes this pre-SSA [TypedIdentifier] so that it uses the correct version from the
-   * [newerVersion] parameter.
-   */
-  fun replaceWith(newerVersion: ReachingDef?) {
-    if (newerVersion == null) return
-    if (id != newerVersion.variable.id || newerVersion.variable.version < version) {
-      logger.throwICE("Illegal TypedIdentifier version replacement") { "$this -> $newerVersion" }
-    }
-    version = newerVersion.variable.version
-  }
-
-  override fun toString() = "$type $name v$version"
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other !is TypedIdentifier) return false
-    if (!super.equals(other)) return false
-
-    if (name != other.name) return false
-    if (type != other.type) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = super.hashCode()
-    result = 31 * result + name.hashCode()
-    result = 31 * result + type.hashCode()
-    return result
-  }
+  override fun toString() = "$type $name"
 
   companion object {
     private val varCounter = IdCounter()

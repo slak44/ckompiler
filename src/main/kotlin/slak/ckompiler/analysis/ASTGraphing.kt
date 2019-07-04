@@ -7,12 +7,11 @@ import slak.ckompiler.throwICE
 private val logger = LogManager.getLogger("ASTGraphing")
 
 fun graph(cfg: CFG) {
-  for (p in cfg.f.parameters) cfg.definitions[p.toUniqueId()] = mutableSetOf()
+  for (p in cfg.f.parameters) cfg.definitions[ComputeReference(p)] = mutableSetOf()
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
   for (block in cfg.allNodes) {
     val definitions = block.irContext.ir.mapNotNull { it as? Store }.filterNot { it.isSynthetic }
-    // FIXME: replace TypedIdentifier everywhere
-    for (def in definitions) cfg.addDefinition(block, def.target.id)
+    for ((target) in definitions) cfg.addDefinition(block, target)
   }
 }
 
@@ -52,33 +51,34 @@ private fun GraphingContext.graphCompound(current: BasicBlock,
   return block
 }
 
-private fun CFG.addDefinition(current: BasicBlock, ident: TypedIdentifier) {
-  val k = ident.toUniqueId()
-  if (!definitions.containsKey(k)) definitions[k] = mutableSetOf(current)
-  else definitions[k]!! += current
+private fun CFG.addDefinition(current: BasicBlock, ident: ComputeReference) {
+  if (!definitions.containsKey(ident)) definitions[ident] = mutableSetOf(current)
+  else definitions[ident]!! += current
 }
 
 private fun CFG.addDeclaration(parent: LexicalScope, current: BasicBlock, d: Declaration) {
-  for ((ident, init) in d.idents(parent).zip(d.declaratorList.map { it.second })) {
-    if (definitions.containsKey(ident.toUniqueId())) {
+  val refs = d.idents(parent).map(::ComputeReference)
+  val inits = d.declaratorList.map { it.second }
+  for ((ident, init) in refs.zip(inits)) {
+    if (definitions.containsKey(ident)) {
       logger.throwICE("Redefinition of declaration") { ident }
     }
-    definitions[ident.toUniqueId()] = mutableSetOf(current)
+    definitions[ident] = mutableSetOf(current)
     transformInitializer(current, ident, init)
   }
 }
 
 /** Reduce an [Initializer] to a series of synthetic [Expression]s. */
 private fun transformInitializer(current: BasicBlock,
-                                 ident: TypedIdentifier,
+                                 ident: ComputeReference,
                                  init: Initializer?): Unit = when (init) {
   null -> {
     // No initializer, nothing to output
   }
   is ExpressionInitializer -> {
     // Transform this into an assignment expression
-    current.irContext.buildIR(BinaryExpression(BinaryOperators.ASSIGN, ident, init.expr)
-        .withRange(ident..init.expr))
+    current.irContext.buildIR(BinaryExpression(BinaryOperators.ASSIGN, ident.tid, init.expr)
+        .withRange(ident.tid..init.expr))
   }
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
