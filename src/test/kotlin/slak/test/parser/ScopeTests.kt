@@ -2,8 +2,10 @@ package slak.test.parser
 
 import org.junit.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 /**
  * Various normal cases of scoping are indirectly tested by all the other test cases. Here are only
@@ -38,6 +40,27 @@ class ScopeTests {
   fun `Shadowing Shadowed Name`() {
     val p = prepareCode("int x; int main() { int x; { int x; } }", source)
     p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Shadowing Doesn't Break TypedIdentifier IDs`() {
+    val p = prepareCode("int main() { int x; { int x; } }", source)
+    p.assertNoDiagnostics()
+    val funBlock = p.root.decls.firstFun().block
+    val innerBlock = funBlock.items[1].st as CompoundStatement
+    val innerIdents = innerBlock.items[0].decl.idents(innerBlock.scope)
+    val outerIdents = funBlock.items[0].decl.idents(funBlock.scope)
+    assertNotEquals(innerIdents.map { it.id }, outerIdents.map { it.id })
+  }
+
+  @Test
+  fun `Reusing TypedIdentifier Maintains ID`() {
+    val p = prepareCode("int main() { int x; +x; }", source)
+    p.assertNoDiagnostics()
+    val funBlock = p.root.decls.firstFun().block
+    val decl = funBlock.items[0].decl
+    val expr = funBlock.items[1].st as UnaryExpression
+    assertEquals(decl.idents(funBlock.scope).first().id, (expr.operand as TypedIdentifier).id)
   }
 
   @Test

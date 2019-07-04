@@ -11,6 +11,7 @@ private val logger = LogManager.getLogger("AST")
 val Declarator.name get() = (this as NamedDeclarator).name
 val ExternalDeclaration.fn get() = this as FunctionDefinition
 val BlockItem.st get() = (this as StatementItem).statement
+val BlockItem.decl get() = (this as DeclarationItem).declaration
 
 infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx until other.startIdx
 
