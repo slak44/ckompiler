@@ -60,7 +60,7 @@ class CLITests {
     assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
   }
 
-  @Ignore("fix the TODO in genReturn and this passes")
+  @Ignore("This uses local variables, which codegen doesn't support yet")
   @Test
   fun `Allow Compilation With Warnings`() {
     val (_, exitCode) = cli(resource("codeWithWarning.c").absolutePath)

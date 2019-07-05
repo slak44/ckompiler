@@ -137,11 +137,22 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
 
   private fun genStore(store: Store) = instrGen {
     emit(genComputeExpr(store.data))
-    emit("pop rax")
+    if (store.isSynthetic) {
+      return@instrGen
+    } else {
+      TODO()
+    }
   }
 
-  private fun genComputeExpr(compute: ComputeExpression) = instrGen {
-    TODO()
+  private fun genComputeExpr(compute: ComputeExpression) = when (compute) {
+    is ComputeInteger -> genInt(compute.int)
+    is ComputeFloat -> TODO()
+    is ComputeChar -> TODO()
+    is ComputeString -> TODO()
+    is ComputeReference -> TODO()
+    is BinaryComputation -> TODO()
+    is UnaryComputation -> TODO()
+    is Call -> TODO()
   }
 
   private fun genInt(int: IntegerConstantNode) = instrGen {
