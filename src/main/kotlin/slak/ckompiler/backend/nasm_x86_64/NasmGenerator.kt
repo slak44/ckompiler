@@ -56,11 +56,15 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     prelude += "global ${cfg.f.name}"
     text += instrGen {
       label(cfg.f.name)
+      // Callee-saved registers
       emit("push rbp")
+      emit("push rbx")
       for (node in cfg.nodes) emit(genBlock(node))
       label(retLabel)
+      emit("pop rbx")
       emit("pop rbp")
       if (isMain) {
+        // FIXME: random use of rax
         emit("mov rdi, rax")
         emit("call exit")
       } else {
@@ -110,6 +114,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
       is FunctionType -> logger.throwICE("FunctionType is an illegal return type") { retExpr }
       // INTEGER classification
       is PointerType, is IntegralType -> {
+        // FIXME: random use of rax
         // FIXME: we currently put integer expression results in rax anyway
         emit("mov rax, rax")
       }
@@ -149,18 +154,63 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     }
   }
 
+  /**
+   * Assume returns in rax.
+   *
+   * FIXME: random use of rax
+   */
   private fun genComputeExpr(compute: ComputeExpression) = when (compute) {
-    is ComputeInteger -> genInt(compute.int)
+    is BinaryComputation -> genBinary(compute)
+    is UnaryComputation -> TODO()
+    is Call -> TODO()
+    is ComputeConstant -> genComputeConstant(compute)
+  }
+
+  private fun genBinary(bin: BinaryComputation) = instrGen {
+    emit(genComputeConstant(bin.lhs))
+    // FIXME: random use of rax
+    emit("mov rbx, rax")
+    emit(genComputeConstant(bin.rhs))
+    emit(genBinaryOperation(bin.op))
+  }
+
+  /**
+   * Assume operands are rax/rbx.
+   *
+   * FIXME: random use of rax
+   * Assume returns in rax.
+   */
+  private fun genBinaryOperation(op: BinaryComputations) = when (op) {
+    BinaryComputations.ADD -> "add rax, rbx"
+    BinaryComputations.SUBSTRACT -> TODO()
+    BinaryComputations.MULTIPLY -> TODO()
+    BinaryComputations.DIVIDE -> TODO()
+    BinaryComputations.REMAINDER -> TODO()
+    BinaryComputations.LEFT_SHIFT -> TODO()
+    BinaryComputations.RIGHT_SHIFT -> TODO()
+    BinaryComputations.LESS_THAN -> TODO()
+    BinaryComputations.GREATER_THAN -> TODO()
+    BinaryComputations.LESS_EQUAL_THAN -> TODO()
+    BinaryComputations.GREATER_EQUAL_THAN -> TODO()
+    BinaryComputations.EQUAL -> TODO()
+    BinaryComputations.NOT_EQUAL -> TODO()
+    BinaryComputations.BITWISE_AND -> TODO()
+    BinaryComputations.BITWISE_OR -> TODO()
+    BinaryComputations.BITWISE_XOR -> TODO()
+    BinaryComputations.LOGICAL_AND -> TODO()
+    BinaryComputations.LOGICAL_OR -> TODO()
+  }
+
+  private fun genComputeConstant(ct: ComputeConstant) = when (ct) {
+    is ComputeInteger -> genInt(ct.int)
     is ComputeFloat -> TODO()
     is ComputeChar -> TODO()
     is ComputeString -> TODO()
     is ComputeReference -> TODO()
-    is BinaryComputation -> TODO()
-    is UnaryComputation -> TODO()
-    is Call -> TODO()
   }
 
   private fun genInt(int: IntegerConstantNode) = instrGen {
+    // FIXME: random use of rax
     emit("mov rax, ${int.value}")
   }
 
