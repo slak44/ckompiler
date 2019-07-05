@@ -69,14 +69,14 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
 
   private fun genBlock(b: BasicBlock) = instrGen {
     label(b.fnLabel)
-//    for (e in b.data) emit(genExpr(e))
+    emit(genExpressions(b.irContext))
     emit(genJump(b.terminator))
   }
 
   private fun genJump(jmp: Jump) = when (jmp) {
     is CondJump -> genCondJump(jmp)
     is UncondJump -> genUncondJump(jmp.target)
-    is ImpossibleJump -> TODO("genReturn(jmp.returned)")
+    is ImpossibleJump -> genReturn(jmp.returned)
     is ConstantJump -> genUncondJump(jmp.target)
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
@@ -94,13 +94,13 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
    *
    * System V ABI: 3.2.3
    */
-  private fun genReturn(retExpr: Expression?) = instrGen {
+  private fun genReturn(retExpr: IRLoweringContext?) = instrGen {
     if (retExpr == null) {
       // Nothing to return
       return@instrGen
     }
-    emit(genExpr(retExpr))
-    when (retExpr.type) {
+    emit(genExpressions(retExpr))
+    when (retExpr.src.last().type) {
       ErrorType -> logger.throwICE("ErrorType cannot propagate to codegen stage") { retExpr }
       is FunctionType -> logger.throwICE("FunctionType is an illegal return type") { retExpr }
       // INTEGER classification
@@ -124,40 +124,28 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     emit("jmp $retLabel")
   }
 
-  /**
-   * Returns in rax. FIXME: temporary fix, we need a register allocator
-   */
-  private fun genExpr(e: Expression) = when (e) {
-    is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
-    is TypedIdentifier -> TODO()
-    is FunctionCall -> TODO()
-    is UnaryExpression -> TODO()
-    is SizeofTypeName -> TODO()
-    is SizeofExpression -> TODO()
-    is PrefixIncrement -> TODO()
-    is PrefixDecrement -> TODO()
-    is PostfixIncrement -> TODO()
-    is PostfixDecrement -> TODO()
-    is BinaryExpression -> genBinExpr(e)
-    is IntegerConstantNode -> genInt(e)
-    is FloatingConstantNode -> TODO()
-    is CharacterConstantNode -> TODO()
-    is StringLiteralNode -> TODO()
+  private fun genExpressions(ctx: IRLoweringContext) = instrGen {
+    for (e in ctx.ir) emit(genExpr(e))
+  }
+
+  private fun genExpr(e: IRExpression) = when (e) {
+    is Store -> genStore(e)
+    is ComputeReference -> TODO()
+    is Call -> TODO()
+    else -> logger.throwICE("Illegal IRExpression implementor")
+  }
+
+  private fun genStore(store: Store) = instrGen {
+    emit(genComputeExpr(store.data))
+    emit("pop rax")
+  }
+
+  private fun genComputeExpr(compute: ComputeExpression) = instrGen {
+    TODO()
   }
 
   private fun genInt(int: IntegerConstantNode) = instrGen {
     emit("mov rax, ${int.value}")
-  }
-
-  private fun genAssignment(target: Expression, value: Expression) = instrGen {
-    // FIXME: implement
-  }
-
-  private fun genBinExpr(e: BinaryExpression) = instrGen {
-    if (e.op in assignmentOps) {
-      emit(genAssignment(e.lhs, e.rhs))
-    }
-    // FIXME: implement
   }
 
   fun getNasm(): String {
