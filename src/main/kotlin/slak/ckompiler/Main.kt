@@ -206,7 +206,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
     val cfg = CFG(firstFun, srcFileName, text, false)
     val asmFile = File(currentDir, file.nameWithoutExtension + ".s")
-    asmFile.writeText(NasmGenerator(cfg, true).getNasm())
+    asmFile.writeText(NasmGenerator(cfg, true).nasm)
     if (isCompileOnly) return null
 
     val objFile = File(currentDir, file.nameWithoutExtension + ".o")

@@ -43,6 +43,8 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
 
+  val nasm: String
+
   private val retLabel = "return_${cfg.f.name}"
   private val BasicBlock.fnLabel get() = "block_${cfg.f.name}_$nodeId"
 
@@ -65,6 +67,9 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
         emit("ret")
       }
     }
+
+    val code = prelude + "section .data" + data + "section .text" + text
+    nasm = code.joinToString("\n") + '\n'
   }
 
   private fun genBlock(b: BasicBlock) = instrGen {
@@ -157,11 +162,6 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
 
   private fun genInt(int: IntegerConstantNode) = instrGen {
     emit("mov rax, ${int.value}")
-  }
-
-  fun getNasm(): String {
-    val nasm = prelude + "section .data" + data + "section .text" + text
-    return nasm.joinToString("\n") + '\n'
   }
 
   companion object {

@@ -11,7 +11,7 @@ class NasmTests {
   fun `Main That Returns 0`() {
     val cfg = prepareCFG("int main() { return 0; }", source)
     cfg.assertNoDiagnostics()
-    val asm = NasmGenerator(cfg, true).getNasm()
+    val asm = NasmGenerator(cfg, true).nasm
     println(asm)
   }
 }
