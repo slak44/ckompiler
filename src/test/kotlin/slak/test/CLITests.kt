@@ -1,7 +1,6 @@
 package slak.test
 
 import org.junit.After
-import org.junit.Ignore
 import org.junit.Test
 import slak.ckompiler.CLI
 import slak.ckompiler.Diagnostic
@@ -60,7 +59,6 @@ class CLITests {
     assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
   }
 
-  @Ignore("This uses local variables, which codegen doesn't support yet")
   @Test
   fun `Allow Compilation With Warnings`() {
     val (_, exitCode) = cli(resource("codeWithWarning.c").absolutePath)

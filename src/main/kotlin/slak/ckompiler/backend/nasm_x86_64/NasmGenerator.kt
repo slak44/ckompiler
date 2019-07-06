@@ -43,15 +43,19 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
 
+  private val variableRefs: Map<ComputeReference, Int>
+
   val nasm: String
 
   private val retLabel = "return_${cfg.f.name}"
   private val BasicBlock.fnLabel get() = "block_${cfg.f.name}_$nodeId"
+  private val ComputeReference.pos get() = "[rbp${variableRefs[copy()]}]"
 
   /**
    * C standard: 5.1.2.2.3
    */
   init {
+    variableRefs = mutableMapOf()
     prelude += "extern exit"
     prelude += "global ${cfg.f.name}"
     text += instrGen {
@@ -59,8 +63,23 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
       // Callee-saved registers
       emit("push rbp")
       emit("push rbx")
+      // New stack frame
+      emit("mov rbp, rsp")
+      // Local variables
+      var rbpOffset = -4
+      for ((ref) in cfg.definitions) {
+        emit("; ${ref.tid.name}")
+        // FIXME: they're not all required to go on the stack
+        // FIXME: initial value shouldn't always be 0
+        // FIXME: this only handles integral types
+        emit("push 0")
+        variableRefs[ref] = rbpOffset
+        rbpOffset -= 4
+      }
       for (node in cfg.nodes) emit(genBlock(node))
+      // Epilogue
       label(retLabel)
+      emit("mov rsp, rbp")
       emit("pop rbx")
       emit("pop rbp")
       if (isMain) {
@@ -140,7 +159,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
 
   private fun genExpr(e: IRExpression) = when (e) {
     is Store -> genStore(e)
-    is ComputeReference -> TODO()
+    is ComputeReference -> genRefUse(e) // FIXME: this makes sense?
     is Call -> TODO()
     else -> logger.throwICE("Illegal IRExpression implementor")
   }
@@ -150,7 +169,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     if (store.isSynthetic) {
       return@instrGen
     } else {
-      TODO()
+      emit("mov ${store.target.pos}, rax")
     }
   }
 
@@ -206,12 +225,17 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     is ComputeFloat -> TODO()
     is ComputeChar -> TODO()
     is ComputeString -> TODO()
-    is ComputeReference -> TODO()
+    is ComputeReference -> genRefUse(ct)
   }
 
   private fun genInt(int: IntegerConstantNode) = instrGen {
     // FIXME: random use of rax
     emit("mov rax, ${int.value}")
+  }
+
+  private fun genRefUse(ref: ComputeReference) = instrGen {
+    // FIXME: random use of rax
+    emit("mov rax, ${ref.pos}")
   }
 
   companion object {
