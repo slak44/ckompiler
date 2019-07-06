@@ -36,6 +36,13 @@ internal fun prepareCFG(file: File, source: SourceFileName, convertToSSA: Boolea
   return prepareCFG(file.readText(), source, convertToSSA)
 }
 
+internal fun cli(commandLine: String?): Pair<CLI, ExitCodes> {
+  val cli = CLI()
+  val exitCode = cli.parse(commandLine?.split(" ")?.toTypedArray() ?: emptyArray())
+  cli.diags.forEach(Diagnostic::print)
+  return cli to exitCode
+}
+
 internal fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =
     first { it is FunctionDefinition } as FunctionDefinition
 
