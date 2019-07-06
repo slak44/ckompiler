@@ -199,25 +199,29 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
    * FIXME: random use of rax
    * Assume returns in rax.
    */
-  private fun genBinaryOperation(op: BinaryComputations) = when (op) {
-    BinaryComputations.ADD -> "add rax, rbx"
-    BinaryComputations.SUBSTRACT -> TODO()
-    BinaryComputations.MULTIPLY -> TODO()
-    BinaryComputations.DIVIDE -> TODO()
-    BinaryComputations.REMAINDER -> TODO()
-    BinaryComputations.LEFT_SHIFT -> TODO()
-    BinaryComputations.RIGHT_SHIFT -> TODO()
-    BinaryComputations.LESS_THAN -> TODO()
-    BinaryComputations.GREATER_THAN -> TODO()
-    BinaryComputations.LESS_EQUAL_THAN -> TODO()
-    BinaryComputations.GREATER_EQUAL_THAN -> TODO()
-    BinaryComputations.EQUAL -> TODO()
-    BinaryComputations.NOT_EQUAL -> TODO()
-    BinaryComputations.BITWISE_AND -> TODO()
-    BinaryComputations.BITWISE_OR -> TODO()
-    BinaryComputations.BITWISE_XOR -> TODO()
-    BinaryComputations.LOGICAL_AND -> TODO()
-    BinaryComputations.LOGICAL_OR -> TODO()
+  private fun genBinaryOperation(op: BinaryComputations) = instrGen {
+    when (op) {
+      BinaryComputations.ADD -> emit("add rax, rbx")
+      BinaryComputations.SUBSTRACT -> emit("sub rax, rbx")
+      BinaryComputations.MULTIPLY -> emit("mul rax, rbx")
+      // FIXME: this is signed division
+      // It so happens idiv takes the dividend from rax
+      // idiv clobbers rdx with the remainder
+      BinaryComputations.DIVIDE -> emit("idiv rbx")
+      BinaryComputations.REMAINDER -> {
+        emit("idiv rbx")
+        emit("mov rax, rdx")
+      }
+      BinaryComputations.LEFT_SHIFT -> emit("shl rax, rbx")
+      BinaryComputations.RIGHT_SHIFT -> emit("shr rax, rbx")
+      // FIXME: this doesn't really work for anything other than jumps
+      BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
+      BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
+      BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("cmp rax, rbx")
+      BinaryComputations.BITWISE_AND, BinaryComputations.LOGICAL_AND -> emit("and rax, rbx")
+      BinaryComputations.BITWISE_OR, BinaryComputations.LOGICAL_OR -> emit("or rax, rbx")
+      BinaryComputations.BITWISE_XOR -> emit("xor rax, rbx")
+    }
   }
 
   private fun genComputeConstant(ct: ComputeConstant) = when (ct) {
