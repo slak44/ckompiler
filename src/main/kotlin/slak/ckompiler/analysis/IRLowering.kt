@@ -286,13 +286,13 @@ class IRLoweringContext {
       is PrefixDecrement, is PostfixDecrement ->
         transformIncDec(topLevelExpr as IncDecOperation, isDec = true)
       is BinaryExpression -> transformBinary(topLevelExpr)
+      // FIXME: except for volatile reads, this can go below, probably
       is TypedIdentifier -> _ir += ComputeReference(topLevelExpr)
       is SizeofExpression, is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,
       is StringLiteralNode, is CharacterConstantNode -> {
-        // Do nothing.
-        // If any of these are found "floating" by themselves, they come from the program source, or
-        // they are a result of [sequentialize]
-        // Either way, they do nothing by themselves, so they can be discarded
+        // We don't discard those because they might be jump conditions/return values
+        val target = makeTemporary(topLevelExpr.type)
+        _ir += Store(target, transformExpr(topLevelExpr), isSynthetic = true)
         // FIXME: someone (probably the Parser) needs to warn about unused expression results
       }
     }
