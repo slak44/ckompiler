@@ -4,3 +4,4 @@ build/
 .idea/workspace.xml
 .idea/uiDesigner.xml
 .idea/dictionaries
+.idea/markdown-navigator*

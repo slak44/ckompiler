@@ -48,7 +48,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   val nasm: String
 
   private val retLabel = "return_${cfg.f.name}"
-  private val BasicBlock.fnLabel get() = "block_${cfg.f.name}_$nodeId"
+  private val BasicBlock.label get() = "block_${cfg.f.name}_$nodeId"
   private val ComputeReference.pos get() = "[rbp${variableRefs[copy()]}]"
 
   /**
@@ -96,7 +96,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   }
 
   private fun genBlock(b: BasicBlock) = instrGen {
-    label(b.fnLabel)
+    label(b.label)
     emit(genExpressions(b.irContext))
     emit(genJump(b.terminator))
   }
@@ -110,11 +110,28 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   }
 
   private fun genCondJump(jmp: CondJump) = instrGen {
-    TODO()
+    emit(genExpressions(jmp.cond))
+    // FIXME: missed optimization, we might be able to generate better code for stuff like
+    //   `a < 1 && b > 2` if we look further than the last IR expression
+    val condExpr = jmp.cond.ir.last()
+    if (condExpr is Call) TODO("implement function calls")
+    else if (condExpr is ComputeReference) TODO("compare with zero")
+    else if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
+      // FIXME: where do we jump if the condition is false?
+      BinaryComputations.LESS_THAN -> emit("jl ${jmp.target.label}")
+      BinaryComputations.GREATER_THAN -> emit("jg ${jmp.target.label}")
+      BinaryComputations.LESS_EQUAL_THAN -> emit("jle ${jmp.target.label}")
+      BinaryComputations.GREATER_EQUAL_THAN -> emit("jge ${jmp.target.label}")
+      BinaryComputations.EQUAL -> emit("je ${jmp.target.label}")
+      BinaryComputations.NOT_EQUAL -> emit("jne ${jmp.target.label}")
+      else -> TODO("compare with zero")
+    } else {
+      TODO("compare with zero")
+    }
   }
 
   private fun genUncondJump(target: BasicBlock) = instrGen {
-    emit("jmp ${target.fnLabel}")
+    emit("jmp ${target.label}")
   }
 
   /**

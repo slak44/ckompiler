@@ -55,6 +55,19 @@ class NasmTests {
   }
 
   @Test
+  fun `Simple If With Compare`() {
+    prepareNasm("""
+      int main() {
+        int a = 1;
+        if (a < 55) {
+          return 1;
+        }
+        return 0;
+      }
+    """.trimIndent(), source)
+  }
+
+  @Test
   fun `Exit Code 10`() {
     assertEquals(10, compileAndRun(resource("e2e/returns10.c")))
   }
