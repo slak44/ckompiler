@@ -76,4 +76,9 @@ class NasmTests {
   fun `Exit Code Sum`() {
     assertEquals(2, compileAndRun(resource("e2e/returns1+1.c")))
   }
+
+  @Test
+  fun `Simple If With False Condition`() {
+    assertEquals(0, compileAndRun(resource("e2e/simpleIf.c")))
+  }
 }

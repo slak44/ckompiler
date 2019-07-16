@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
+import java.util.*
 
 typealias Instructions = List<String>
 
@@ -44,6 +45,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   private val data = mutableListOf<String>()
 
   private val variableRefs: Map<ComputeReference, Int>
+  private val wasBlockGenerated: BitSet
 
   val nasm: String
 
@@ -56,6 +58,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
    */
   init {
     variableRefs = mutableMapOf()
+    wasBlockGenerated = BitSet(cfg.nodes.size)
     prelude += "extern exit"
     prelude += "global ${cfg.f.name}"
     text += instrGen {
@@ -76,7 +79,14 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
         variableRefs[ref] = rbpOffset
         rbpOffset -= 4
       }
-      for (node in cfg.nodes) emit(genBlock(node))
+      // Start actual codegen
+      emit(genBlock(cfg.startBlock))
+      // Generate leftover blocks not touched by travelling through the code
+      for (block in cfg.nodes) {
+        if (!wasBlockGenerated[block.nodeId]) {
+          emit(genBlock(block))
+        }
+      }
       // Epilogue
       label(retLabel)
       emit("mov rsp, rbp")
@@ -96,12 +106,14 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   }
 
   private fun genBlock(b: BasicBlock) = instrGen {
+    if (wasBlockGenerated[b.nodeId]) return@instrGen
+    wasBlockGenerated[b.nodeId] = true
     label(b.label)
     emit(genExpressions(b.irContext))
     emit(genJump(b.terminator))
   }
 
-  private fun genJump(jmp: Jump) = when (jmp) {
+  private fun genJump(jmp: Jump): Instructions = when (jmp) {
     is CondJump -> genCondJump(jmp)
     is UncondJump -> genUncondJump(jmp.target)
     is ImpossibleJump -> genReturn(jmp.returned)
@@ -128,10 +140,18 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     } else {
       TODO("compare with zero")
     }
+    // Try to generate the "else" block right after the cmp, so that if the cond is false, we just
+    // keep executing without having to do another jump
+    if (!wasBlockGenerated[jmp.other.nodeId]) {
+      emit(genBlock(jmp.other))
+    } else {
+      emit("jmp ${jmp.other.label}")
+    }
   }
 
   private fun genUncondJump(target: BasicBlock) = instrGen {
     emit("jmp ${target.label}")
+    emit(genBlock(target))
   }
 
   /**
@@ -203,10 +223,10 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   }
 
   private fun genBinary(bin: BinaryComputation) = instrGen {
-    emit(genComputeConstant(bin.lhs))
-    // FIXME: random use of rax
-    emit("mov rbx, rax")
+    // FIXME: random use of rax/rbx
     emit(genComputeConstant(bin.rhs))
+    emit("mov rbx, rax")
+    emit(genComputeConstant(bin.lhs))
     emit(genBinaryOperation(bin.op))
   }
 
@@ -222,6 +242,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
       BinaryComputations.SUBSTRACT -> emit("sub rax, rbx")
       BinaryComputations.MULTIPLY -> emit("mul rax, rbx")
       // FIXME: this is signed division
+      // FIXME: idiv is slooooow
       // It so happens idiv takes the dividend from rax
       // idiv clobbers rdx with the remainder
       BinaryComputations.DIVIDE -> emit("idiv rbx")
