@@ -126,6 +126,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       formatArgs(option)
     }
     (files - badOptions).mapNotNull {
+      // FIXME: handle - for stdin
       val file = File(it)
       if (!file.exists()) {
         diagnostic {
