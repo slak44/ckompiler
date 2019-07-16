@@ -208,6 +208,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
 
     val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
+    // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
     val funcsCfgs = (allFuncs - main).map { CFG(it!!, srcFileName, text, false) }
     val mainCfg = main?.let { CFG(it, srcFileName, text, false) }
