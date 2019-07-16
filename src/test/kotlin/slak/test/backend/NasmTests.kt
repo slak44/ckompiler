@@ -13,15 +13,21 @@ class NasmTests {
   private fun prepareNasm(src: String, source: SourceFileName): String {
     val cfg = prepareCFG(src, source)
     cfg.assertNoDiagnostics()
-    val asm = NasmGenerator(emptyList(), cfg).nasm
+    val asm = NasmGenerator(emptyList(), emptyList(), cfg).nasm
     println(asm)
     return asm
   }
 
-  private fun compileAndRun(resource: File): Int {
+  /**
+   * Compiles and executes code. Returns exit code and stdout of executed code.
+   */
+  private fun compileAndRun(resource: File): Pair<Int, String> {
     val (_, compilerExitCode) = cli(resource.absolutePath)
     assertEquals(ExitCodes.NORMAL, compilerExitCode)
-    return ProcessBuilder("./a.out").inheritIO().start().waitFor()
+    val process = ProcessBuilder("./a.out")
+        .inheritIO().redirectOutput(ProcessBuilder.Redirect.PIPE).start()
+    val stdout = process.inputStream.bufferedReader().readText()
+    return process.waitFor() to stdout
   }
 
   @After
@@ -84,21 +90,26 @@ class NasmTests {
 
   @Test
   fun `Exit Code 10`() {
-    assertEquals(10, compileAndRun(resource("e2e/returns10.c")))
+    assertEquals(10 to "", compileAndRun(resource("e2e/returns10.c")))
   }
 
   @Test
   fun `Exit Code Sum`() {
-    assertEquals(2, compileAndRun(resource("e2e/returns1+1.c")))
+    assertEquals(2 to "", compileAndRun(resource("e2e/returns1+1.c")))
   }
 
   @Test
   fun `Simple If With False Condition`() {
-    assertEquals(0, compileAndRun(resource("e2e/simpleIf.c")))
+    assertEquals(0 to "", compileAndRun(resource("e2e/simpleIf.c")))
   }
 
   @Test
   fun `If With Variable As Condition`() {
-    assertEquals(1, compileAndRun(resource("e2e/cmpVariable.c")))
+    assertEquals(1 to "", compileAndRun(resource("e2e/cmpVariable.c")))
+  }
+
+  @Test
+  fun `Hello World!`() {
+    assertEquals(0 to "Hello World!", compileAndRun(resource("e2e/helloWorld.c")))
   }
 }

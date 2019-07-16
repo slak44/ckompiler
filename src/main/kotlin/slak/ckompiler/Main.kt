@@ -7,6 +7,7 @@ import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.nasm_x86_64.NasmGenerator
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
+import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File
@@ -206,11 +207,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
+    val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
+    val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
     val funcsCfgs = (allFuncs - main).map { CFG(it!!, srcFileName, text, false) }
     val mainCfg = main?.let { CFG(it, srcFileName, text, false) }
 
     val asmFile = File(currentDir, file.nameWithoutExtension + ".s")
-    asmFile.writeText(NasmGenerator(funcsCfgs, mainCfg).nasm)
+    asmFile.writeText(NasmGenerator(declNames, funcsCfgs, mainCfg).nasm)
     if (isCompileOnly) return null
 
     val objFile = File(currentDir, file.nameWithoutExtension + ".o")

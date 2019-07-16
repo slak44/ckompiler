@@ -254,10 +254,28 @@ class IRLoweringContext {
     return target
   }
 
+  /**
+   * FIXME: how are void expressions handled? eg return f(); What ComputeReference do we return?
+   */
+  private fun transformCall(funCall: FunctionCall): Call {
+    val funDesignator = transformExpr(funCall.calledExpr)
+    val args = funCall.args.map(::transformExpr)
+    return Call(funDesignator, args)
+  }
+
+  /**
+   * @return a variable containing the function call result
+   */
+  private fun storeCall(call: Call, type: TypeName): ComputeReference {
+    val target = makeTemporary(type)
+    _ir += Store(target, call, isSynthetic = true)
+    return target
+  }
+
   private fun transformExpr(expr: Expression): ComputeConstant = when (expr) {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is TypedIdentifier -> ComputeReference(expr)
-    is FunctionCall -> TODO("can't implement this before dealing with them in sequentialize")
+    is FunctionCall -> storeCall(transformCall(expr), expr.type)
     is UnaryExpression -> transformUnary(expr)
     is PrefixIncrement, is PostfixIncrement ->
       transformIncDec(expr as IncDecOperation, isDec = false)
@@ -279,7 +297,8 @@ class IRLoweringContext {
     _src += topLevelExpr
     when (topLevelExpr) {
       is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
-      is FunctionCall -> TODO()
+      // For top-level function calls, the return value is discarded, so don't bother storing it
+      is FunctionCall -> _ir += transformCall(topLevelExpr)
       is UnaryExpression -> transformUnary(topLevelExpr)
       is PrefixIncrement, is PostfixIncrement ->
         transformIncDec(topLevelExpr as IncDecOperation, isDec = false)

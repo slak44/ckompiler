@@ -137,6 +137,16 @@ private class VariableRenamer(val doms: DominatorList,
   }
 
   /**
+   * Finds all uses of all variables in the given [Call].
+   */
+  private fun findCallUsage(call: Call): List<ComputeReference> {
+    val list = mutableListOf<ComputeReference>()
+    list += findVariableUsage(call.functionPointer)
+    for (arg in call.args) list += findVariableUsage(arg)
+    return list
+  }
+
+  /**
    * Finds all uses of all variables in the given compute expression.
    */
   private fun findVariableUsage(e: ComputeExpression): List<ComputeReference> = when (e) {
@@ -144,7 +154,7 @@ private class VariableRenamer(val doms: DominatorList,
     is ComputeReference -> listOf(e)
     is BinaryComputation -> findVariableUsage(e.lhs) + findVariableUsage(e.rhs)
     is UnaryComputation -> findVariableUsage(e.operand)
-    is Call -> TODO("unimplemented for now")
+    is Call -> findCallUsage(e)
   }
 
   /**
@@ -155,7 +165,7 @@ private class VariableRenamer(val doms: DominatorList,
     when (e) {
       is Store -> uses += findVariableUsage(e.data)
       is ComputeReference -> uses += e
-      is Call -> TODO("unimplemented for now")
+      is Call -> uses += findCallUsage(e)
       else -> logger.throwICE("Illegal IRExpression implementor")
     }
     return uses

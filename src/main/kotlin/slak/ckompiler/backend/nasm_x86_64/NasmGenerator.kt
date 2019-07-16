@@ -51,7 +51,7 @@ private data class FunctionGenContext(val variableRefs: MutableMap<ComputeRefere
 }
 
 /** Generate x86_64 NASM code. */
-class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
+class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?) {
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
@@ -67,7 +67,13 @@ class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
   private val stringRefs = mutableMapOf<StringLiteralNode, String>()
   private val stringRefIds = IdCounter()
 
+  /**
+   * System V ABI: 3.2.3, page 20
+   */
+  private val intArgRegisters = listOf("rdi", "rsi", "rdx", "rcx", "r8", "r9")
+
   init {
+    for (external in externals) prelude += "extern $external"
     for (function in functions) generateFunctionFromCFG(function, isMain = false)
     mainCfg?.let { generateFunctionFromCFG(it, isMain = true) }
 
@@ -84,12 +90,18 @@ class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
 
   /**
    * C standard: 5.1.2.2.3
+   * System V ABI: 3.2.1, figure 3.3
    */
   private fun FunctionGenContext.genFun(cfg: CFG, isMain: Boolean) = instrGen {
     label(cfg.f.name)
     // Callee-saved registers
+    // FIXME: if the registers are not used in the function, saving them wastes 2 instructions
+    // FIXME: using rbp as frame pointer wastes a general-purpose register
     emit("push rbp")
     emit("push rbx")
+    emit("push r8")
+    emit("push r9")
+    // FIXME: r12-r15 are also callee-saved
     // New stack frame
     emit("mov rbp, rsp")
     // Local variables
@@ -114,6 +126,8 @@ class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
     // Epilogue
     label(retLabel)
     emit("mov rsp, rbp")
+    emit("pop r9")
+    emit("pop r8")
     emit("pop rbx")
     emit("pop rbp")
     if (isMain) {
@@ -138,6 +152,7 @@ class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
     is UncondJump -> genUncondJump(jmp.target)
     is ImpossibleJump -> genReturn(jmp.returned)
     is ConstantJump -> genUncondJump(jmp.target)
+    // FIXME: handle the case where the function is main, and the final block is allowed to be this
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
 
@@ -151,8 +166,7 @@ class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
     // FIXME: missed optimization, we might be able to generate better code for stuff like
     //   `a < 1 && b > 2` if we look further than the last IR expression
     val condExpr = jmp.cond.ir.last()
-    if (condExpr is Call) TODO("implement function calls")
-    else if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
+    if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
       BinaryComputations.LESS_THAN -> emit("jl ${jmp.target.label}")
       BinaryComputations.GREATER_THAN -> emit("jg ${jmp.target.label}")
       BinaryComputations.LESS_EQUAL_THAN -> emit("jle ${jmp.target.label}")
@@ -180,7 +194,7 @@ class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
   /**
    * We classify return types using the same conventions as the ABI.
    *
-   * System V ABI: 3.2.3
+   * System V ABI: 3.2.3, page 22
    */
   private fun FunctionGenContext.genReturn(retExpr: IRLoweringContext?) = instrGen {
     if (retExpr == null) {
@@ -220,8 +234,34 @@ class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
   private fun FunctionGenContext.genExpr(e: IRExpression) = when (e) {
     is Store -> genStore(e)
     is ComputeReference -> genRefUse(e) // FIXME: this makes sense?
-    is Call -> TODO()
+    is Call -> genCall(e)
     else -> logger.throwICE("Illegal IRExpression implementor")
+  }
+
+  /**
+   * System V ABI: 3.2.3
+   */
+  private fun FunctionGenContext.genCall(call: Call) = instrGen {
+    // FIXME: pretends only integral arguments exist
+    for ((idx, arg) in call.args.withIndex()) {
+      emit(genComputeConstant(arg))
+      // FIXME: random use of rax
+      emit("mov ${intArgRegisters[idx]}, rax")
+      if (idx >= intArgRegisters.size) {
+        emit("push rax")
+        break
+      }
+    }
+    if (call.functionPointer is ComputeReference) {
+      emit("call ${call.functionPointer.tid.name}")
+    } else {
+      // This is the case where we call some random function pointer
+      // We expect the address in rax (expr result will be there)
+      // FIXME: this probably doesn't work
+      emit(genComputeConstant(call.functionPointer))
+      // FIXME: random use of rax
+      emit("call rax")
+    }
   }
 
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
