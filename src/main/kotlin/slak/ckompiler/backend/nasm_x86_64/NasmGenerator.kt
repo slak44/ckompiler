@@ -44,10 +44,12 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
 
+  val nasm: String
+
   private val variableRefs: Map<ComputeReference, Int>
   private val wasBlockGenerated: BitSet
-
-  val nasm: String
+  private val stringRefs = mutableMapOf<StringLiteralNode, String>()
+  private val stringRefIds = IdCounter()
 
   private val retLabel = "return_${cfg.f.name}"
   private val BasicBlock.label get() = "block_${cfg.f.name}_$nodeId"
@@ -269,8 +271,21 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     is ComputeInteger -> genInt(ct.int)
     is ComputeFloat -> TODO()
     is ComputeChar -> TODO()
-    is ComputeString -> TODO()
+    is ComputeString -> genString(ct.str)
     is ComputeReference -> genRefUse(ct)
+  }
+
+  private fun genString(str: StringLiteralNode) = instrGen {
+    // Make sure the entry in stringRefs exists
+    if (str !in stringRefs) {
+      stringRefs[str] = "str_${stringRefIds()}_${str.string.take(5)}"
+      // FIXME: handle different encodings
+      // FIXME: is this escaping correct?
+      val escapedStr = str.string.replace("'", "\\'")
+      data += "${stringRefs[str]}: db '$escapedStr', 0"
+    }
+    // FIXME: random use of rax
+    emit("mov rax, ${stringRefs[str]}")
   }
 
   private fun genInt(int: IntegerConstantNode) = instrGen {

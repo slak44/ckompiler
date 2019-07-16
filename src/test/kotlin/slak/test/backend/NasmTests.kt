@@ -55,6 +55,16 @@ class NasmTests {
   }
 
   @Test
+  fun `String Data`() {
+    prepareNasm("int main() { \"asdfg\"; return 1; }", source)
+  }
+
+  @Test
+  fun `String Data Not Duplicated`() {
+    prepareNasm("int main() { \"asdfg\"; \"asdfg\"; return 1; }", source)
+  }
+
+  @Test
   fun `Simple If With Compare`() {
     prepareNasm("""
       int main() {
