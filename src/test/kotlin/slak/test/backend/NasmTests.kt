@@ -13,7 +13,7 @@ class NasmTests {
   private fun prepareNasm(src: String, source: SourceFileName): String {
     val cfg = prepareCFG(src, source)
     cfg.assertNoDiagnostics()
-    val asm = NasmGenerator(cfg, true).nasm
+    val asm = NasmGenerator(emptyList(), cfg).nasm
     println(asm)
     return asm
   }
@@ -32,6 +32,11 @@ class NasmTests {
   @Test
   fun `Main That Returns 0`() {
     prepareNasm("int main() { return 0; }", source)
+  }
+
+  @Test
+  fun `Multiple Functions`() {
+    prepareNasm("int f() { return 0; } int main() { return 0; }", source)
   }
 
   @Test

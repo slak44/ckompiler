@@ -6,6 +6,8 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
 
+private val logger = LogManager.getLogger("CodeGenerator")
+
 typealias Instructions = List<String>
 
 private class InstructionBuilder {
@@ -37,77 +39,93 @@ private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
 }
 
 /**
- * Generate [NASM](https://www.nasm.us/) code, on x86_64.
+ * Data used while generating a function from a [cfg].
  */
-class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
+private data class FunctionGenContext(val variableRefs: MutableMap<ComputeReference, Int>,
+                                      val wasBlockGenerated: BitSet,
+                                      val cfg: CFG,
+                                      val isMain: Boolean) {
+  val retLabel = "return_${cfg.f.name}"
+  val BasicBlock.label get() = "block_${cfg.f.name}_$nodeId"
+  val ComputeReference.pos get() = "[rbp${variableRefs[copy()]}]"
+}
+
+/** Generate x86_64 NASM code. */
+class NasmGenerator(functions: List<CFG>, mainCfg: CFG?) {
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
 
   val nasm: String
 
-  private val variableRefs: Map<ComputeReference, Int>
-  private val wasBlockGenerated: BitSet
+  /**
+   * This maps literals to a label in .data with their value. It also enables deduplication, because
+   * it is undefined behaviour to modify string literals.
+   *
+   * C standard: 6.4.5.0.7
+   */
   private val stringRefs = mutableMapOf<StringLiteralNode, String>()
   private val stringRefIds = IdCounter()
 
-  private val retLabel = "return_${cfg.f.name}"
-  private val BasicBlock.label get() = "block_${cfg.f.name}_$nodeId"
-  private val ComputeReference.pos get() = "[rbp${variableRefs[copy()]}]"
-
-  /**
-   * C standard: 5.1.2.2.3
-   */
   init {
-    variableRefs = mutableMapOf()
-    wasBlockGenerated = BitSet(cfg.nodes.size)
-    prelude += "extern exit"
-    prelude += "global ${cfg.f.name}"
-    text += instrGen {
-      label(cfg.f.name)
-      // Callee-saved registers
-      emit("push rbp")
-      emit("push rbx")
-      // New stack frame
-      emit("mov rbp, rsp")
-      // Local variables
-      var rbpOffset = -4
-      for ((ref) in cfg.definitions) {
-        emit("; ${ref.tid.name}")
-        // FIXME: they're not all required to go on the stack
-        // FIXME: initial value shouldn't always be 0
-        // FIXME: this only handles integral types
-        emit("push 0")
-        variableRefs[ref] = rbpOffset
-        rbpOffset -= 4
-      }
-      // Start actual codegen
-      emit(genBlock(cfg.startBlock))
-      // Generate leftover blocks not touched by travelling through the code
-      for (block in cfg.nodes) {
-        if (!wasBlockGenerated[block.nodeId]) {
-          emit(genBlock(block))
-        }
-      }
-      // Epilogue
-      label(retLabel)
-      emit("mov rsp, rbp")
-      emit("pop rbx")
-      emit("pop rbp")
-      if (isMain) {
-        // FIXME: random use of rax
-        emit("mov rdi, rax")
-        emit("call exit")
-      } else {
-        emit("ret")
-      }
-    }
+    for (function in functions) generateFunctionFromCFG(function, isMain = false)
+    mainCfg?.let { generateFunctionFromCFG(it, isMain = true) }
 
     val code = prelude + "section .data" + data + "section .text" + text
     nasm = code.joinToString("\n") + '\n'
   }
 
-  private fun genBlock(b: BasicBlock) = instrGen {
+  private fun generateFunctionFromCFG(cfg: CFG, isMain: Boolean) {
+    val ctx = FunctionGenContext(mutableMapOf(), BitSet(cfg.nodes.size), cfg, isMain)
+    prelude += "extern exit"
+    prelude += "global ${cfg.f.name}"
+    text += ctx.genFun(cfg, isMain)
+  }
+
+  /**
+   * C standard: 5.1.2.2.3
+   */
+  private fun FunctionGenContext.genFun(cfg: CFG, isMain: Boolean) = instrGen {
+    label(cfg.f.name)
+    // Callee-saved registers
+    emit("push rbp")
+    emit("push rbx")
+    // New stack frame
+    emit("mov rbp, rsp")
+    // Local variables
+    var rbpOffset = -4
+    for ((ref) in cfg.definitions) {
+      emit("; ${ref.tid.name}")
+      // FIXME: they're not all required to go on the stack
+      // FIXME: initial value shouldn't always be 0
+      // FIXME: this only handles integral types
+      emit("push 0")
+      variableRefs[ref] = rbpOffset
+      rbpOffset -= 4
+    }
+    // Start actual codegen
+    emit(genBlock(cfg.startBlock))
+    // Generate leftover blocks not touched by travelling through the code
+    for (block in cfg.nodes) {
+      if (!wasBlockGenerated[block.nodeId]) {
+        emit(genBlock(block))
+      }
+    }
+    // Epilogue
+    label(retLabel)
+    emit("mov rsp, rbp")
+    emit("pop rbx")
+    emit("pop rbp")
+    if (isMain) {
+      // FIXME: random use of rax
+      emit("mov rdi, rax")
+      emit("call exit")
+    } else {
+      emit("ret")
+    }
+  }
+
+  private fun FunctionGenContext.genBlock(b: BasicBlock) = instrGen {
     if (wasBlockGenerated[b.nodeId]) return@instrGen
     wasBlockGenerated[b.nodeId] = true
     label(b.label)
@@ -115,7 +133,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     emit(genJump(b.terminator))
   }
 
-  private fun genJump(jmp: Jump): Instructions = when (jmp) {
+  private fun FunctionGenContext.genJump(jmp: Jump): Instructions = when (jmp) {
     is CondJump -> genCondJump(jmp)
     is UncondJump -> genUncondJump(jmp.target)
     is ImpossibleJump -> genReturn(jmp.returned)
@@ -123,12 +141,12 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
 
-  private fun genZeroJump(target: BasicBlock) = instrGen {
+  private fun FunctionGenContext.genZeroJump(target: BasicBlock) = instrGen {
     emit("cmp rax, 0") // FIXME: random use of rax
     emit("jnz ${target.label}")
   }
 
-  private fun genCondJump(jmp: CondJump) = instrGen {
+  private fun FunctionGenContext.genCondJump(jmp: CondJump) = instrGen {
     emit(genExpressions(jmp.cond))
     // FIXME: missed optimization, we might be able to generate better code for stuff like
     //   `a < 1 && b > 2` if we look further than the last IR expression
@@ -154,7 +172,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     }
   }
 
-  private fun genUncondJump(target: BasicBlock) = instrGen {
+  private fun FunctionGenContext.genUncondJump(target: BasicBlock) = instrGen {
     emit("jmp ${target.label}")
     emit(genBlock(target))
   }
@@ -164,7 +182,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
    *
    * System V ABI: 3.2.3
    */
-  private fun genReturn(retExpr: IRLoweringContext?) = instrGen {
+  private fun FunctionGenContext.genReturn(retExpr: IRLoweringContext?) = instrGen {
     if (retExpr == null) {
       // Nothing to return
       return@instrGen
@@ -195,18 +213,18 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     emit("jmp $retLabel")
   }
 
-  private fun genExpressions(ctx: IRLoweringContext) = instrGen {
+  private fun FunctionGenContext.genExpressions(ctx: IRLoweringContext) = instrGen {
     for (e in ctx.ir) emit(genExpr(e))
   }
 
-  private fun genExpr(e: IRExpression) = when (e) {
+  private fun FunctionGenContext.genExpr(e: IRExpression) = when (e) {
     is Store -> genStore(e)
     is ComputeReference -> genRefUse(e) // FIXME: this makes sense?
     is Call -> TODO()
     else -> logger.throwICE("Illegal IRExpression implementor")
   }
 
-  private fun genStore(store: Store) = instrGen {
+  private fun FunctionGenContext.genStore(store: Store) = instrGen {
     emit(genComputeExpr(store.data))
     if (store.isSynthetic) {
       return@instrGen
@@ -220,14 +238,14 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
    *
    * FIXME: random use of rax
    */
-  private fun genComputeExpr(compute: ComputeExpression) = when (compute) {
+  private fun FunctionGenContext.genComputeExpr(compute: ComputeExpression) = when (compute) {
     is BinaryComputation -> genBinary(compute)
     is UnaryComputation -> TODO()
     is Call -> TODO()
     is ComputeConstant -> genComputeConstant(compute)
   }
 
-  private fun genBinary(bin: BinaryComputation) = instrGen {
+  private fun FunctionGenContext.genBinary(bin: BinaryComputation) = instrGen {
     // FIXME: random use of rax/rbx
     emit(genComputeConstant(bin.rhs))
     emit("mov rbx, rax")
@@ -267,7 +285,7 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     }
   }
 
-  private fun genComputeConstant(ct: ComputeConstant) = when (ct) {
+  private fun FunctionGenContext.genComputeConstant(ct: ComputeConstant) = when (ct) {
     is ComputeInteger -> genInt(ct.int)
     is ComputeFloat -> TODO()
     is ComputeChar -> TODO()
@@ -293,12 +311,8 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     emit("mov rax, ${int.value}")
   }
 
-  private fun genRefUse(ref: ComputeReference) = instrGen {
+  private fun FunctionGenContext.genRefUse(ref: ComputeReference) = instrGen {
     // FIXME: random use of rax
     emit("mov rax, ${ref.pos}")
-  }
-
-  companion object {
-    private val logger = LogManager.getLogger("CodeGenerator")
   }
 }

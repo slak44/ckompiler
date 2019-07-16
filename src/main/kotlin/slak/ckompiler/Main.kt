@@ -195,18 +195,21 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
-    // FIXME: this is incomplete
-    val firstFun = p.root.decls.first { d -> d is FunctionDefinition } as FunctionDefinition
+    val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
+    val main = allFuncs.firstOrNull { it.name == "main" }
 
     if (isPrintCFGMode) {
-      val cfg = CFG(firstFun, srcFileName, text, forceAllNodes)
+      // FIXME: support picking the function name
+      val cfg = CFG(main!!, srcFileName, text, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable, printingMethod))
       return null
     }
 
-    val cfg = CFG(firstFun, srcFileName, text, false)
+    val funcsCfgs = (allFuncs - main).map { CFG(it!!, srcFileName, text, false) }
+    val mainCfg = main?.let { CFG(it, srcFileName, text, false) }
+
     val asmFile = File(currentDir, file.nameWithoutExtension + ".s")
-    asmFile.writeText(NasmGenerator(cfg, true).nasm)
+    asmFile.writeText(NasmGenerator(funcsCfgs, mainCfg).nasm)
     if (isCompileOnly) return null
 
     val objFile = File(currentDir, file.nameWithoutExtension + ".o")
