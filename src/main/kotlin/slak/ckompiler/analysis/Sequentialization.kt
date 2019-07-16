@@ -43,7 +43,11 @@ data class SequentialExpression(val before: List<Expression>,
  * rhs. We can simply separate them because lhs is evaluated as a void expression, and can't be used
  * as an operand to anything.
  *
- * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2, 6.5.17
+ * For function calls, there is a sequence point after the evaluation of the function designator and
+ * the arguments, and before the actual call. This means two function calls cannot interleave (see
+ * note 94).
+ *
+ * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2, 6.5.17, 6.5.2.2.0.10
  * @see SequentialExpression
  */
 fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
@@ -53,7 +57,6 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
   fun Expression.seqImpl(): Expression = when (this) {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is FunctionCall -> {
-      // FIXME: definitely has other sequencing issues that aren't handled
       FunctionCall(calledExpr.seqImpl(), args.map(Expression::seqImpl)).withRange(tokenRange)
     }
     is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {

@@ -19,6 +19,9 @@ translation phase 3
 - Empty character constants `''` have the value `0`
 - (6.4.5.0.7) String literals are stored in the .data section, so what
 happens is up to the assembler/linker/etc
+- (6.5.2.2) The evaluation order of function call arguments is the
+reverse order of declaration (by default, certain things are able to
+influence it)
 
 # List of Unspecified Behaviours
 
