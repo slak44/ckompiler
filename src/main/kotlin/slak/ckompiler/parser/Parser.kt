@@ -124,6 +124,8 @@ private class TranslationUnitParser(private val specParser: SpecParser,
   /**
    * Check function/prototype return type.
    * Disallow directly returning [FunctionType] or [ArrayType].
+   *
+   * C standard: 6.5.2.2
    */
   private fun checkFunctionReturnType(declSpec: DeclarationSpecifier, declarator: Declarator) {
     if (!declarator.isFunction()) return
