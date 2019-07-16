@@ -121,24 +121,27 @@ class NasmGenerator(private val cfg: CFG, isMain: Boolean) {
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
 
+  private fun genZeroJump(target: BasicBlock) = instrGen {
+    emit("cmp rax, 0") // FIXME: random use of rax
+    emit("jnz ${target.label}")
+  }
+
   private fun genCondJump(jmp: CondJump) = instrGen {
     emit(genExpressions(jmp.cond))
     // FIXME: missed optimization, we might be able to generate better code for stuff like
     //   `a < 1 && b > 2` if we look further than the last IR expression
     val condExpr = jmp.cond.ir.last()
     if (condExpr is Call) TODO("implement function calls")
-    else if (condExpr is ComputeReference) TODO("compare with zero")
     else if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
-      // FIXME: where do we jump if the condition is false?
       BinaryComputations.LESS_THAN -> emit("jl ${jmp.target.label}")
       BinaryComputations.GREATER_THAN -> emit("jg ${jmp.target.label}")
       BinaryComputations.LESS_EQUAL_THAN -> emit("jle ${jmp.target.label}")
       BinaryComputations.GREATER_EQUAL_THAN -> emit("jge ${jmp.target.label}")
       BinaryComputations.EQUAL -> emit("je ${jmp.target.label}")
       BinaryComputations.NOT_EQUAL -> emit("jne ${jmp.target.label}")
-      else -> TODO("compare with zero")
+      else -> emit(genZeroJump(jmp.target))
     } else {
-      TODO("compare with zero")
+      emit(genZeroJump(jmp.target))
     }
     // Try to generate the "else" block right after the cmp, so that if the cond is false, we just
     // keep executing without having to do another jump

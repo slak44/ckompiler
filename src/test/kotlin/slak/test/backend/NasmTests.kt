@@ -81,4 +81,9 @@ class NasmTests {
   fun `Simple If With False Condition`() {
     assertEquals(0, compileAndRun(resource("e2e/simpleIf.c")))
   }
+
+  @Test
+  fun `If With Variable As Condition`() {
+    assertEquals(1, compileAndRun(resource("e2e/cmpVariable.c")))
+  }
 }
