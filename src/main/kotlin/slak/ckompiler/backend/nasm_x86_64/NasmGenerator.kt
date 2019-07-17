@@ -336,7 +336,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun genString(str: StringLiteralNode) = instrGen {
     // Make sure the entry in stringRefs exists
     if (str !in stringRefs) {
-      stringRefs[str] = "str_${stringRefIds()}_${str.string.take(5)}"
+      stringRefs[str] = "str_${stringRefIds()}_${str.string.filter(Char::isLetterOrDigit).take(5)}"
       // FIXME: handle different encodings
       // FIXME: is this escaping correct?
       val escapedStr = str.string.replace("'", "\\'")

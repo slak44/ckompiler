@@ -65,16 +65,25 @@ class NasmTests {
     prepareNasm("int main() { int a = 123; return a; }", source)
   }
 
+  // FIXME: doesn't check if it worked
   @Test
   fun `String Data`() {
     prepareNasm("int main() { \"asdfg\"; return 1; }", source)
   }
 
+  // FIXME: doesn't check if it worked
   @Test
   fun `String Data Not Duplicated`() {
     prepareNasm("int main() { \"asdfg\"; \"asdfg\"; return 1; }", source)
   }
 
+  // FIXME: doesn't check if it worked
+  @Test
+  fun `String Names Are Alphanumeric`() {
+    prepareNasm("int main() { \"a:.><\"; return 1; }", source)
+  }
+
+  // FIXME: doesn't check if it worked
   @Test
   fun `Simple If With Compare`() {
     prepareNasm("""
