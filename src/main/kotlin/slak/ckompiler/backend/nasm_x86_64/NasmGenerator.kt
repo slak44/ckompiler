@@ -43,8 +43,7 @@ private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
  */
 private data class FunctionGenContext(val variableRefs: MutableMap<ComputeReference, Int>,
                                       val wasBlockGenerated: BitSet,
-                                      val cfg: CFG,
-                                      val isMain: Boolean) {
+                                      val cfg: CFG) {
   val retLabel = "return_${cfg.f.name}"
   val BasicBlock.label get() = "block_${cfg.f.name}_$nodeId"
   val ComputeReference.pos get() = "[rbp${variableRefs[copy()]}]"
@@ -74,25 +73,48 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
 
   init {
     for (external in externals) prelude += "extern $external"
-    for (function in functions) generateFunctionFromCFG(function, isMain = false)
-    mainCfg?.let { generateFunctionFromCFG(it, isMain = true) }
+    for (function in functions) generateFunctionFromCFG(function)
+    mainCfg?.let {
+      text += genStartRoutine()
+      generateFunctionFromCFG(it)
+    }
 
     val code = prelude + "section .data" + data + "section .text" + text
     nasm = code.joinToString("\n") + '\n'
   }
 
-  private fun generateFunctionFromCFG(cfg: CFG, isMain: Boolean) {
-    val ctx = FunctionGenContext(mutableMapOf(), BitSet(cfg.nodes.size), cfg, isMain)
+  private fun generateFunctionFromCFG(cfg: CFG) {
+    val ctx = FunctionGenContext(mutableMapOf(), BitSet(cfg.nodes.size), cfg)
     prelude += "extern exit"
     prelude += "global ${cfg.f.name}"
-    text += ctx.genFun(cfg, isMain)
+    text += ctx.genFun(cfg)
+  }
+
+  /**
+   * System V ABI: 3.4.1, page 28, figure 3.9
+   */
+  private fun genStartRoutine() = instrGen {
+    prelude += "global _start"
+    label("_start")
+    // argc:
+    emit("mov rdi, [rsp]")
+    // argv:
+    emit("mov rsi, [rsp+8]")
+    // envp:
+    emit("lea rax, [8*rdi+rsp+16]")
+    emit("mov rdx, [rax]")
+    // Call main
+    emit("call main")
+    // Integral return value is in rax
+    emit("mov rdi, rax")
+    emit("call exit")
   }
 
   /**
    * C standard: 5.1.2.2.3
    * System V ABI: 3.2.1, figure 3.3
    */
-  private fun FunctionGenContext.genFun(cfg: CFG, isMain: Boolean) = instrGen {
+  private fun FunctionGenContext.genFun(cfg: CFG) = instrGen {
     label(cfg.f.name)
     // Callee-saved registers
     // FIXME: if the registers are not used in the function, saving them wastes 2 instructions
@@ -115,6 +137,14 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       variableRefs[ref] = rbpOffset
       rbpOffset -= 4
     }
+    // Regular function arguments
+    for ((idx, arg) in cfg.f.parameters.withIndex()) {
+      // FIXME: pretends only integral arguments exist
+      emit("mov ${ComputeReference(arg).pos}, ${intArgRegisters[idx]}")
+      if (idx >= intArgRegisters.size) {
+        TODO("too many parameters, not implemented yet")
+      }
+    }
     // Start actual codegen
     emit(genBlock(cfg.startBlock))
     // Generate leftover blocks not touched by travelling through the code
@@ -130,13 +160,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     emit("pop r8")
     emit("pop rbx")
     emit("pop rbp")
-    if (isMain) {
-      // FIXME: random use of rax
-      emit("mov rdi, rax")
-      emit("call exit")
-    } else {
-      emit("ret")
-    }
+    emit("ret")
   }
 
   private fun FunctionGenContext.genBlock(b: BasicBlock) = instrGen {
@@ -253,6 +277,9 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       }
     }
     if (call.functionPointer is ComputeReference) {
+      // FIXME: random use of rax
+      //  (for printf)
+      emit("xor rax, rax")
       emit("call ${call.functionPointer.tid.name}")
     } else {
       // This is the case where we call some random function pointer

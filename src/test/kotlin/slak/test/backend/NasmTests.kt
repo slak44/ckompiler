@@ -97,6 +97,12 @@ class NasmTests {
     """.trimIndent(), source)
   }
 
+  // FIXME: stdin in CLI
+//  @Test
+//  fun `Returns Argc`() {
+//    assertEquals(0 to "", compileAndRun("int main(int argc) { return argc; }"))
+//  }
+
   @Test
   fun `Exit Code 10`() {
     assertEquals(10 to "", compileAndRun(resource("e2e/returns10.c")))

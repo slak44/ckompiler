@@ -157,7 +157,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private fun invokeLd(objFiles: List<File>) {
     ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
-        "/lib/ld-linux-x86-64.so.2", "-e", "main",
+        "/lib/ld-linux-x86-64.so.2", "-e", "_start",
         *objFiles.map(File::getAbsolutePath).toTypedArray())
         .inheritIO().start().waitFor()
   }
