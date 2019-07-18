@@ -124,4 +124,14 @@ class CLITests {
     assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
     assertFalse(File("a.out").exists())
   }
+
+  @Test
+  fun `Compile No Artifacts`() {
+    System.setIn("int main() {return 0;}".byteInputStream())
+    val (cli, exitCode) = cli("-")
+    cli.assertNoDiagnostics()
+    assertEquals(ExitCodes.NORMAL, exitCode)
+    assertTrue(File("a.out").exists())
+    assertFalse(File("-.o").exists())
+  }
 }

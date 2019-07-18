@@ -310,9 +310,11 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       null
     }
     val objFiles = srcFiles.mapNotNull(this::compileFile)
+    val allObjFiles = stdinObjFile?.let { objFiles + it } ?: objFiles
     if (executionFailed) return ExitCodes.EXECUTION_FAILED
     if (!(isPreprocessOnly || isAssembleOnly || isCompileOnly || isCFGOnly)) {
-      invokeLd(stdinObjFile?.let { objFiles + it } ?: objFiles)
+      invokeLd(allObjFiles)
+      for (objFile in allObjFiles) objFile.delete()
       File(output.orElse("a.out")).setExecutable(true)
     }
     return if (diags.errors().isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
