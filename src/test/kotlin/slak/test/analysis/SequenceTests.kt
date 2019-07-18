@@ -9,6 +9,13 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.analysis.sequentialize
 import slak.ckompiler.parser.SignedIntType
 import slak.test.*
+import slak.test.assertDiags
+import slak.test.assertNoDiagnostics
+import slak.test.int
+import slak.test.nameRef
+import slak.test.postfixInc
+import slak.test.prefixInc
+import slak.test.sizeOf
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 

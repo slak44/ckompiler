@@ -70,7 +70,7 @@ class ExpressionTests {
   fun `Size Of Primary Expression`() {
     val p = prepareCode("int a = sizeof 1;", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign SizeofExpression(int(1))) assertEquals p.root.decls[0]
+    int declare ("a" assign sizeOf(1)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -167,7 +167,7 @@ class ExpressionTests {
   fun `Sizeof Parenthesized Expression`() {
     val p = prepareCode("int a = sizeof(1 + 2 * 3);", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign SizeofExpression(1 add (2 mul 3))) assertEquals p.root.decls[0]
+    int declare ("a" assign sizeOf(1 add (2 mul 3))) assertEquals p.root.decls[0]
   }
 
   @Test
