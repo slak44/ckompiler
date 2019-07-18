@@ -17,6 +17,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   BAD_CLI_OPTION(ERROR, "Unrecognized command line option '%s'"),
   FILE_IS_DIRECTORY(ERROR, "File is a directory: '%s'"),
   NO_INPUT_FILES(ERROR, "No input files"),
+  MULTIPLE_FILES_PARTIAL(ERROR,
+      "Cannot specify explicit output file when generating multiple outputs"),
 
   // Preprocessor/Lexer
   TRIGRAPH_IGNORED(WARNING, "Trigraph ignored"),
@@ -52,9 +54,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
   EXPECTED_RPAREN_AFTER_VARIADIC(ERROR, "Expected ')' after variadic '...'"),
-  TRANSLATION_UNIT_NEEDS_DECL(WARNING, """
-    ISO C requires a translation unit to contain at least one declaration
-  """.trimIndent()),
+  TRANSLATION_UNIT_NEEDS_DECL(WARNING,
+      "ISO C requires a translation unit to contain at least one declaration"),
   ARRAY_STATIC_NO_SIZE(ERROR, "'static' may not be used without an array size"),
   UNSUPPORTED_VLA(ERROR, "Variable length arrays are not supported by this implementation"),
   PARAM_NAME_OMITTED(ERROR, "Parameter name omitted for type '%s'"),
@@ -95,9 +96,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   TAG_MISMATCH(ERROR, "Use of '%s' with tag type that does not match previous declaration"),
   TAG_MISMATCH_PREVIOUS(OTHER, "Previous use is here"),
   USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
-  UNEXPECTED_TYPEDEF_USE(ERROR, """
-    Unexpected type name '%s' (aka '%s'); expected primary expression
-  """.trimIndent()),
+  UNEXPECTED_TYPEDEF_USE(ERROR,
+      "Unexpected type name '%s' (aka '%s'); expected primary expression"),
 
   // Analysis
   UNREACHABLE_CODE(WARNING, "Code will never be executed"),

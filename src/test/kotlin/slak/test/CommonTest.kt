@@ -36,11 +36,21 @@ internal fun prepareCFG(file: File, source: SourceFileName, convertToSSA: Boolea
   return prepareCFG(file.readText(), source, convertToSSA)
 }
 
-internal fun cli(commandLine: String?): Pair<CLI, ExitCodes> {
+@JvmName("cli_array")
+internal fun cli(args: Array<String>): Pair<CLI, ExitCodes> {
   val cli = CLI()
-  val exitCode = cli.parse(commandLine?.split(" ")?.toTypedArray() ?: emptyArray())
+  val exitCode = cli.parse(args)
   cli.diags.forEach(Diagnostic::print)
   return cli to exitCode
+}
+
+@JvmName("cli_varag")
+internal fun cli(vararg args: String): Pair<CLI, ExitCodes> {
+  return cli(args.toList().toTypedArray())
+}
+
+internal fun cliCmd(commandLine: String?): Pair<CLI, ExitCodes> {
+  return cli(commandLine?.split(" ")?.toTypedArray() ?: emptyArray())
 }
 
 internal fun List<ExternalDeclaration>.firstFun(): FunctionDefinition =

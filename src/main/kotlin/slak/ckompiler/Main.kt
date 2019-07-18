@@ -11,6 +11,7 @@ import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File
+import java.util.*
 import kotlin.system.exitProcess
 
 enum class ExitCodes(val int: Int) {
@@ -32,10 +33,16 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     This command line interface tries to stay consistent with gcc and clang as much as possible.
     """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler")
 
-  private val output by cli.flagValueArgument("-o", "OUTFILE",
-      "Place output in the specified file", "a.out")
-  private val files by cli.positionalArgumentsList(
-      "FILES...", "Translation units to be compiled", minArgs = 1)
+  private var output: Optional<String> = Optional.empty()
+
+  init {
+    cli.flagValueAction("-o", "OUTFILE", "Place output in the specified file") {
+      output = Optional.of(it)
+    }
+  }
+
+  private val stdin by cli.flagArgument("-", "Read translation unit from standard input")
+  private val files by cli.positionalArgumentsList("FILES...", "Translation units to be compiled")
 
   init {
     cli.helpSeparator()
@@ -127,7 +134,6 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       formatArgs(option)
     }
     (files - badOptions).mapNotNull {
-      // FIXME: handle - for stdin
       val file = File(it)
       if (!file.exists()) {
         diagnostic {
@@ -156,26 +162,26 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   private fun invokeLd(objFiles: List<File>) {
-    ProcessBuilder("ld", "-o", File(output).absolutePath, "-L/lib", "-lc", "-dynamic-linker",
-        "/lib/ld-linux-x86-64.so.2", "-e", "_start",
-        *objFiles.map(File::getAbsolutePath).toTypedArray())
-        .inheritIO().start().waitFor()
+    val args = mutableListOf("ld")
+    args += listOf("-o", File(output.orElse("a.out")).absolutePath)
+    args += listOf("-L/lib", "-lc")
+    args += listOf("-dynamic-linker", "/lib/ld-linux-x86-64.so.2")
+    args += listOf("-e", "_start")
+    args += objFiles.map(File::getAbsolutePath)
+    ProcessBuilder(args).inheritIO().start().waitFor()
   }
 
   private fun List<Diagnostic>.errors() = filter { it.id.kind == DiagnosticKind.ERROR }
 
   private var executionFailed = false
 
-  private fun compileFile(file: File): File? {
-    val text = file.readText()
-    val srcFileName = file.path
-    val currentDir = file.absoluteFile.parentFile
+  private fun compile(text: String, relPath: String, baseName: String, currentDir: File): File? {
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
     includePaths.includeBarrier = includeBarrier
     val pp = Preprocessor(
         sourceText = text,
-        srcFileName = srcFileName,
+        srcFileName = relPath,
         currentDir = currentDir,
         cliDefines = defines,
         includePaths = includePaths,
@@ -191,7 +197,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
-    val p = Parser(pp.tokens, srcFileName, text)
+    val p = Parser(pp.tokens, relPath, text)
     if (p.diags.errors().isNotEmpty()) {
       executionFailed = true
       return null
@@ -202,7 +208,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
     if (isPrintCFGMode) {
       // FIXME: support picking the function name
-      val cfg = CFG(main!!, srcFileName, text, forceAllNodes)
+      val cfg = CFG(main!!, relPath, text, forceAllNodes)
       println(createGraphviz(cfg, text, !forceUnreachable, printingMethod))
       return null
     }
@@ -210,18 +216,34 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
     // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
-    val funcsCfgs = (allFuncs - main).map { CFG(it!!, srcFileName, text, false) }
-    val mainCfg = main?.let { CFG(it, srcFileName, text, false) }
+    val funcsCfgs = (allFuncs - main).map { CFG(it!!, relPath, text, false) }
+    val mainCfg = main?.let { CFG(it, relPath, text, false) }
 
-    val asmFile = File(currentDir, file.nameWithoutExtension + ".s")
-    asmFile.writeText(NasmGenerator(declNames, funcsCfgs, mainCfg).nasm)
-    if (isCompileOnly) return null
+    val nasm = NasmGenerator(declNames, funcsCfgs, mainCfg).nasm
 
-    val objFile = File(currentDir, file.nameWithoutExtension + ".o")
+    if (isCompileOnly) {
+      val asmFile = File(currentDir, output.orElse("$baseName.s"))
+      asmFile.writeText(nasm)
+      return null
+    }
+
+    val asmFile = File.createTempFile("asm_temp", ".s", File(System.getProperty("java.io.tmpdir")))
+    asmFile.writeText(nasm)
+
+    if (isAssembleOnly) {
+      val objFile = File(currentDir, output.orElse("$baseName.o"))
+      invokeNasm(objFile, asmFile)
+      return null
+    }
+
+    val objFile = File(currentDir, "$baseName.o")
     invokeNasm(objFile, asmFile)
     asmFile.delete()
     return objFile
   }
+
+  private fun compileFile(file: File) =
+      compile(file.readText(), file.path, file.nameWithoutExtension, file.absoluteFile.parentFile)
 
   fun parse(args: Array<String>): ExitCodes {
     try {
@@ -233,15 +255,30 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return ExitCodes.ERROR
     }
     Diagnostic.useColors = !disableColorDiags
-    val objFiles = srcFiles.mapNotNull(this::compileFile)
-    if (srcFiles.isEmpty()) diagnostic {
+    val sourceCount = srcFiles.size + if (stdin) 1 else 0
+    if (sourceCount == 0) diagnostic {
       id = DiagnosticId.NO_INPUT_FILES
       executionFailed = true
     }
+    if (output.isPresent &&
+        (isPrintCFGMode || isPreprocessOnly || isCompileOnly || isAssembleOnly) &&
+        sourceCount > 1) {
+      diagnostic { id = DiagnosticId.MULTIPLE_FILES_PARTIAL }
+      return ExitCodes.EXECUTION_FAILED
+    }
+    val stdinObjFile = if (stdin) {
+      val inText = System.`in`.bufferedReader().readText()
+      compile(inText, "-", "-", File(".").absoluteFile)
+    } else {
+      null
+    }
+    val objFiles = srcFiles.mapNotNull(this::compileFile)
     if (executionFailed) return ExitCodes.EXECUTION_FAILED
-    if (isAssembleOnly || isCompileOnly || isPrintCFGMode) return ExitCodes.NORMAL
-    invokeLd(objFiles)
-    File(output).setExecutable(true)
+    if (isPreprocessOnly || isAssembleOnly || isCompileOnly || isPrintCFGMode) {
+      return ExitCodes.NORMAL
+    }
+    invokeLd(stdinObjFile?.let { objFiles + it } ?: objFiles)
+    File(output.orElse("a.out")).setExecutable(true)
     return if (diags.errors().isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
   }
 }
