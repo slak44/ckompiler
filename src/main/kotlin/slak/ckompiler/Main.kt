@@ -265,6 +265,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
 
     val asmFile = createTemp("asm_temp", ".s")
+    asmFile.deleteOnExit()
     asmFile.writeText(nasm)
 
     if (isAssembleOnly) {
