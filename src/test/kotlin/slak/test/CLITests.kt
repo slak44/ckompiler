@@ -112,4 +112,13 @@ class CLITests {
     assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
     assertFalse(File("a.out").exists())
   }
+
+  @Test
+  fun `CFG No Such Function`() {
+    val (cli, exitCode) =
+        cli("--cfg-mode", "--target-function", "foo", resource("e2e/returns10.c").absolutePath)
+    cli.assertDiags(DiagnosticId.CFG_NO_SUCH_FUNCTION)
+    assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
+    assertFalse(File("a.out").exists())
+  }
 }

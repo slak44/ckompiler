@@ -19,6 +19,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   NO_INPUT_FILES(ERROR, "No input files"),
   MULTIPLE_FILES_PARTIAL(ERROR,
       "Cannot specify explicit output file when generating multiple outputs"),
+  CFG_NO_SUCH_FUNCTION(ERROR, "Function '%s' not found"),
 
   // Preprocessor/Lexer
   TRIGRAPH_IGNORED(WARNING, "Trigraph ignored"),

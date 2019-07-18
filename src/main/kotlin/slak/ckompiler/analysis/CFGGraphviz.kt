@@ -71,10 +71,10 @@ private fun IRLoweringContext.joinToString(sourceCode: String, print: CodePrinti
 
 /**
  * Pretty graph for debugging purposes.
- * Recommended usage:
+ * Possible usages:
  * ```
- * ckompiler --print-cfg-graphviz /tmp/file.c 2> /dev/null |
- * dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
+ * ckompiler --cfg-mode --display-graph
+ * ckompiler --cfg-mode /tmp/file.c 2> /dev/null | dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
  * ```
  */
 fun createGraphviz(graph: CFG,

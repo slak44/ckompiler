@@ -64,10 +64,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   private val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
+  private val isCFGOnly by cli.flagArgument("--cfg-mode",
+      "Create the program's control flow graph only, don't compile")
   private val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   private val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
-  private val isPrintCFGMode by cli.flagArgument("--print-cfg-graphviz",
-      "Print the program's control flow graph to stdout instead of compiling")
 
   init {
     cli.helpGroup("Debug options")
@@ -114,9 +114,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     cli.flagValueAction("-isystem-after", "DIR",
         "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
 
-    cli.helpGroup("Graphviz options (require --print-cfg-graphviz)")
+    cli.helpGroup("Graphviz options (require --cfg-mode)")
   }
 
+  private val displayGraph by cli.flagArgument("--display-graph",
+      "Run dot and display the created graph")
+  private val targetFunction by cli.flagValueArgument("--target-function", "FUNC_NAME",
+      "Choose which function to create a graph of", initialValue = "main")
   private val printingMethod by cli.flagValueArgument("--printing-type", "TYPE",
       "TYPE can be: SOURCE_SUBSTRING (default), print the original source in blocks" +
           "; EXPRESSION_TO_STRING, use Expression.toString" +
@@ -171,6 +175,19 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     ProcessBuilder(args).inheritIO().start().waitFor()
   }
 
+  private fun invokeDot(source: File, target: File) {
+    ProcessBuilder("dot", "-Tpng")
+        .redirectInput(source)
+        .redirectError(ProcessBuilder.Redirect.PIPE)
+        .redirectOutput(target)
+        .start()
+        .waitFor()
+  }
+
+  private fun createTemp(prefix: String, suffix: String): File {
+    return File.createTempFile(prefix, suffix, File(System.getProperty("java.io.tmpdir")))
+  }
+
   private fun List<Diagnostic>.errors() = filter { it.id.kind == DiagnosticKind.ERROR }
 
   private var executionFailed = false
@@ -204,15 +221,35 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
 
     val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
-    val main = allFuncs.firstOrNull { it.name == "main" }
 
-    if (isPrintCFGMode) {
-      // FIXME: support picking the function name
-      val cfg = CFG(main!!, relPath, text, forceAllNodes)
-      println(createGraphviz(cfg, text, !forceUnreachable, printingMethod))
+    if (isCFGOnly) {
+      val function = allFuncs.firstOrNull { it.name == targetFunction }
+      if (function == null) {
+        diagnostic {
+          id = DiagnosticId.CFG_NO_SUCH_FUNCTION
+          formatArgs(targetFunction)
+        }
+        return null
+      }
+      val cfg = CFG(function, relPath, text, forceAllNodes)
+      val graphviz = createGraphviz(cfg, text, !forceUnreachable, printingMethod)
+      when {
+        displayGraph -> {
+          val src = createTemp("dot_temp", ".tmp")
+          val dest = createTemp("dot_out", ".png")
+          invokeDot(src, dest)
+          if (System.getProperty("os.name") == "Linux") {
+            ProcessBuilder("xdg-open", dest.absolutePath).inheritIO().start().waitFor()
+          }
+        }
+        output.isEmpty -> println(graphviz)
+        else -> File(output.get()).writeText(graphviz)
+      }
+
       return null
     }
 
+    val main = allFuncs.firstOrNull { it.name == "main" }
     val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
     // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
@@ -227,7 +264,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
-    val asmFile = File.createTempFile("asm_temp", ".s", File(System.getProperty("java.io.tmpdir")))
+    val asmFile = createTemp("asm_temp", ".s")
     asmFile.writeText(nasm)
 
     if (isAssembleOnly) {
@@ -261,7 +298,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       executionFailed = true
     }
     if (output.isPresent &&
-        (isPrintCFGMode || isPreprocessOnly || isCompileOnly || isAssembleOnly) &&
+        (isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly) &&
         sourceCount > 1) {
       diagnostic { id = DiagnosticId.MULTIPLE_FILES_PARTIAL }
       return ExitCodes.EXECUTION_FAILED
@@ -274,11 +311,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
     val objFiles = srcFiles.mapNotNull(this::compileFile)
     if (executionFailed) return ExitCodes.EXECUTION_FAILED
-    if (isPreprocessOnly || isAssembleOnly || isCompileOnly || isPrintCFGMode) {
-      return ExitCodes.NORMAL
+    if (!(isPreprocessOnly || isAssembleOnly || isCompileOnly || isCFGOnly)) {
+      invokeLd(stdinObjFile?.let { objFiles + it } ?: objFiles)
+      File(output.orElse("a.out")).setExecutable(true)
     }
-    invokeLd(stdinObjFile?.let { objFiles + it } ?: objFiles)
-    File(output.orElse("a.out")).setExecutable(true)
     return if (diags.errors().isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
   }
 }
