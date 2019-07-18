@@ -2,12 +2,15 @@ package slak.test.backend
 
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.ExitCodes
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.backend.nasm_x86_64.NasmGenerator
 import slak.test.*
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class NasmTests {
   private fun prepareNasm(src: String, source: SourceFileName): String {
@@ -24,8 +27,34 @@ class NasmTests {
   private fun compileAndRun(resource: File): Pair<Int, String> {
     val (_, compilerExitCode) = cli(resource.absolutePath)
     assertEquals(ExitCodes.NORMAL, compilerExitCode)
+    assertTrue(File("a.out").exists())
     val process = ProcessBuilder("./a.out")
-        .inheritIO().redirectOutput(ProcessBuilder.Redirect.PIPE).start()
+        .inheritIO()
+        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+        .start()
+    val stdout = process.inputStream.bufferedReader().readText()
+    return process.waitFor() to stdout
+  }
+
+  private val stdin = System.`in`
+
+  @AfterEach
+  fun restoreStdin() {
+    System.setIn(stdin)
+  }
+
+  /**
+   * Compiles and executes code. Returns exit code and stdout of executed code.
+   */
+  private fun compileAndRun(code: String, args: List<String> = emptyList()): Pair<Int, String> {
+    System.setIn(code.byteInputStream())
+    val (_, compilerExitCode) = cli("-")
+    assertEquals(ExitCodes.NORMAL, compilerExitCode)
+    assertTrue(File("a.out").exists())
+    val process = ProcessBuilder("./a.out", *args.toTypedArray())
+        .inheritIO()
+        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+        .start()
     val stdout = process.inputStream.bufferedReader().readText()
     return process.waitFor() to stdout
   }
@@ -97,11 +126,12 @@ class NasmTests {
     """.trimIndent(), source)
   }
 
-  // FIXME: stdin in CLI
-//  @Test
-//  fun `Returns Argc`() {
-//    assertEquals(0 to "", compileAndRun("int main(int argc) { return argc; }"))
-//  }
+  @ParameterizedTest
+  @ValueSource(strings = ["1", "1 2", "1 2 3", "1 2 3 4"])
+  fun `Returns Argc`(cmdLine: String) {
+    val args = cmdLine.split(" ")
+    assertEquals(args.size + 1 to "", compileAndRun("int main(int argc) { return argc; }", args))
+  }
 
   @Test
   fun `Exit Code 10`() {
