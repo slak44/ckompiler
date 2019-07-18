@@ -1,6 +1,6 @@
 package slak.test.analysis
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import slak.ckompiler.analysis.*
 import slak.test.prepareCFG
 import slak.test.resource

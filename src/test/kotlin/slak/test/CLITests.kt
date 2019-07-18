@@ -1,7 +1,9 @@
 package slak.test
 
-import org.junit.After
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.ExitCodes
 import java.io.File
@@ -12,12 +14,12 @@ import kotlin.test.assertTrue
 class CLITests {
   private val stdin = System.`in`
 
-  @After
+  @AfterEach
   fun restoreStdin() {
     System.setIn(stdin)
   }
 
-  @After
+  @AfterEach
   fun removeCompilerOutput() {
     File("a.out").delete()
     File(".").listFiles()!!.filter { it.extension == "o" }.forEach { it.delete() }
@@ -74,10 +76,11 @@ class CLITests {
     assertTrue(File("a.out").exists())
   }
 
-  @Test
-  fun `Explicit Output With Multiple Outputs Should Fail`() {
+  @ParameterizedTest
+  @ValueSource(strings = ["-S", "-c", "-E", "--cfg-mode"])
+  fun `Explicit Output With Multiple Outputs Should Fail`(option: String) {
     val (cli, exitCode) = cli(
-        "-S", "-o", "/tmp/bla",
+        option, "-o", "/tmp/bla",
         resource("e2e/returns10.c").absolutePath,
         resource("e2e/returns1+1.c").absolutePath
     )

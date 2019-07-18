@@ -1,6 +1,6 @@
 package slak.test.analysis
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.analysis.CondJump
 import slak.test.*

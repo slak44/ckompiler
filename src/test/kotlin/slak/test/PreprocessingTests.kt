@@ -1,7 +1,7 @@
 package slak.test
 
-import org.junit.Ignore
-import org.junit.Test
+import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.*
 import kotlin.test.assertEquals
@@ -89,7 +89,7 @@ class PreprocessingTests {
     assert(l.tokens.isEmpty())
   }
 
-  @Ignore("We don't implement #including macro'd things yet, and the PP takes that path here")
+  @Disabled("We don't implement #including macro'd things yet, and the PP takes that path here")
   @Test
   fun `Header Name Unfinished Sequence`() {
     assertPPDiagnostic("#include <test.h", source, DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
@@ -110,7 +110,7 @@ class PreprocessingTests {
     assertEquals(listOf(Identifier("table")), l.tokens)
   }
 
-  @Ignore("FIXME: deal with the diagnostics in Preprocessors and this will pass")
+  @Disabled("FIXME: deal with the diagnostics in Preprocessors and this will pass")
   @Test
   fun `Error Directive`() {
     assertPPDiagnostic("#error", source, DiagnosticId.PP_ERROR_DIRECTIVE)

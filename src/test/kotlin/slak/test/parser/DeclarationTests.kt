@@ -1,6 +1,6 @@
 package slak.test.parser
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.ErrorExpression

@@ -1,8 +1,8 @@
 package slak.test.analysis
 
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import slak.ckompiler.DebugHandler
 import slak.ckompiler.Diagnostic
 import slak.ckompiler.analysis.*
@@ -13,12 +13,12 @@ import kotlin.test.assertEquals
 class IRTests {
   private lateinit var debugHandler: DebugHandler
 
-  @Before
+  @BeforeEach
   fun prepareHandler() {
     debugHandler = DebugHandler("IRTests", "<none>", "")
   }
 
-  @After
+  @AfterEach
   fun printDiags() {
     debugHandler.diags.forEach(Diagnostic::print)
     println()

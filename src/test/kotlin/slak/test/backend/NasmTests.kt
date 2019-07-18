@@ -1,7 +1,7 @@
 package slak.test.backend
 
-import org.junit.After
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Test
 import slak.ckompiler.ExitCodes
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.backend.nasm_x86_64.NasmGenerator
@@ -30,7 +30,7 @@ class NasmTests {
     return process.waitFor() to stdout
   }
 
-  @After
+  @AfterEach
   fun removeCompilerOutput() {
     File("a.out").delete()
   }

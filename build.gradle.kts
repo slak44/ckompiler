@@ -28,6 +28,6 @@ dependencies {
   implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
+  testImplementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.5.0")
   testImplementation(kotlin("test-junit"))
-  testImplementation(group = "junit", name = "junit", version = "4.11")
 }
