@@ -308,7 +308,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun FunctionGenContext.genComputeExpr(compute: ComputeExpression) = when (compute) {
     is BinaryComputation -> genBinary(compute)
     is UnaryComputation -> TODO()
-    is Call -> TODO()
+    is Call -> genCall(compute)
     is ComputeConstant -> genComputeConstant(compute)
   }
 
