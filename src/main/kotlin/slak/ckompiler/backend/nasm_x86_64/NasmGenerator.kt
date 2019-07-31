@@ -177,6 +177,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     is ImpossibleJump -> genReturn(jmp.returned)
     is ConstantJump -> genUncondJump(jmp.target)
     // FIXME: handle the case where the function is main, and the final block is allowed to be this
+    //   alternatively, fix this in the parser by handling main separately
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
 
