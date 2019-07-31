@@ -44,8 +44,8 @@ private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
 private data class FunctionGenContext(val variableRefs: MutableMap<ComputeReference, Int>,
                                       val wasBlockGenerated: BitSet,
                                       val cfg: CFG) {
-  val retLabel = "return_${cfg.f.name}"
-  val BasicBlock.label get() = "block_${cfg.f.name}_$nodeId"
+  val retLabel = ".return_${cfg.f.name}"
+  val BasicBlock.label get() = ".block_${cfg.f.name}_$nodeId"
   val ComputeReference.pos get() = "[rbp${variableRefs[copy()]}]"
 }
 
