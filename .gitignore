@@ -5,3 +5,4 @@ build/
 .idea/uiDesigner.xml
 .idea/dictionaries
 .idea/markdown-navigator*
+.idea/markdown-exported-files.xml
