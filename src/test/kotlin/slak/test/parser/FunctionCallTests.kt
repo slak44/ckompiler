@@ -1,6 +1,8 @@
 package slak.test.parser
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.DoubleType
 import slak.ckompiler.parser.FunctionType
@@ -85,18 +87,20 @@ class FunctionCallTests {
     int declare ("a" assign f(1, (2 add 2) mul 4, 3)) assertEquals p.root.decls[1]
   }
 
-  @Test
-  fun `Can't Call Object Type`() {
-    val p = prepareCode("""
-      int a = 1();
-      int b = (2+2)();
-      int st = 45;
-      int c = st();
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "int a = 1();",
+    "int b = (2+2)();",
+    "int st = 45; int c = st();",
+    """
       struct some_type {int x, y;};
       struct some_type value;
       int d = value();
-    """.trimIndent(), source)
-    p.assertDiags(*Array(4) { DiagnosticId.CALL_OBJECT_TYPE })
+    """
+  ])
+  fun `Can't Call Object Type`(functionCallStr: String) {
+    val p = prepareCode(functionCallStr, source)
+    p.assertDiags(DiagnosticId.CALL_OBJECT_TYPE)
   }
 
   @Test

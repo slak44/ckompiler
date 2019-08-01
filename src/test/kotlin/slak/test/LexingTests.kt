@@ -1,6 +1,8 @@
 package slak.test
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.*
 
@@ -10,12 +12,12 @@ import slak.ckompiler.lexer.*
  * that point of view, they more closely resemble integration tests.
  */
 class LexingTests {
-  @Test
-  fun `Identifiers Various`() {
-    val idents = listOf("abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2", "struct1")
-    val l = preparePP(idents.joinToString(" "), source)
+  @ParameterizedTest
+  @ValueSource(strings = ["abc", "_abc", "a", "a123b", "a1_bc", "a1_", "b2", "struct1"])
+  fun `Identifiers Various`(ident: String) {
+    val l = preparePP(ident, source)
     l.assertNoDiagnostics()
-    l.assertTokens(idents.map(::Identifier))
+    l.assertTokens(Identifier(ident))
   }
 
   @Test

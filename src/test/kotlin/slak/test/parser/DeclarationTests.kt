@@ -1,6 +1,8 @@
 package slak.test.parser
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.ErrorExpression
@@ -200,13 +202,14 @@ class DeclarationTests {
     int declare nameDecl("array6d")[73][23][2][78 add 1][3 div 1][1] assertEquals p.root.decls[0]
   }
 
-  @Test
-  fun `Array Static Without Size`() {
-    val p = prepareCode("""
-      int f(int a[static]);
-      int g(int a[static const]);
-      int h(int a[const static]);
-    """.trimIndent(), source)
-    p.assertDiags(*Array(3) { DiagnosticId.ARRAY_STATIC_NO_SIZE })
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "int f(int a[static]);",
+    "int g(int a[static const]);",
+    "int h(int a[const static]);"
+  ])
+  fun `Array Static Without Size`(funProto: String) {
+    val p = prepareCode(funProto, source)
+    p.assertDiags(DiagnosticId.ARRAY_STATIC_NO_SIZE)
   }
 }
