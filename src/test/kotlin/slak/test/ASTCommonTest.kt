@@ -282,7 +282,9 @@ internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: BinaryOperators): BinaryEx
   return BinaryExpression(op, lhs, rhs).zeroRange()
 }
 
-internal fun <T> sizeOf(it: T) = SizeofExpression(parseDSLElement(it))
+internal fun <T> sizeOf(it: T) = SizeofExpression(parseDSLElement(it)).zeroRange()
+
+internal fun <T> TypeName.cast(it: T) = CastExpression(parseDSLElement(it), this).zeroRange()
 
 internal operator fun <T> UnaryOperators.get(it: T) = UnaryExpression(this, parseDSLElement(it))
 

@@ -326,6 +326,10 @@ data class ArraySubscript(val subscripted: Expression,
   override fun toString() = "$subscripted[$subscript]"
 }
 
+data class CastExpression(val target: Expression, override val type: TypeName) : Expression() {
+  override fun toString() = "($type) $target"
+}
+
 data class IntegerConstantNode(val value: Long,
                                val suffix: IntegralSuffix) : Expression(), Terminal {
   override val type = when (suffix) {

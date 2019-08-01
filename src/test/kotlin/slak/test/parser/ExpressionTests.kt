@@ -7,6 +7,7 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 class ExpressionTests {
   @Test
@@ -224,5 +225,37 @@ class ExpressionTests {
   fun `Not Subscriptable`(subscriptToTest: String) {
     val p = prepareCode("int main() {$subscriptToTest;}", source)
     p.assertDiags(DiagnosticId.INVALID_SUBSCRIPTED)
+  }
+
+  @Test
+  fun `Simple Cast Expression`() {
+    val p = prepareCode("int a = 1; unsigned int b = (unsigned) a;", source)
+    p.assertNoDiagnostics()
+    uInt declare ("b" assign UnsignedIntType.cast(nameRef("a", SignedIntType))) assertEquals
+        p.root.decls[1]
+  }
+
+  @Test
+  fun `Void Cast Expression`() {
+    val p = prepareCode("int main() {(void) (1 + 1);}", source)
+    p.assertNoDiagnostics()
+    val cast = assertNotNull(p.root.decls[0].fn.block.items[0].st as? CastExpression)
+    assert(cast.type is VoidType)
+  }
+
+  @Test
+  fun `Can't Cast To Non-Scalar`() {
+    val p = prepareCode("struct vec2 {int x,y;}; int main() {(struct vec2) (1 + 1);}", source)
+    p.assertDiags(DiagnosticId.INVALID_CAST_TYPE)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "float f = 2.0; (int*) f",
+    "int a = 1; (float) (&a)"
+  ])
+  fun `Can't Cast Between Pointers And Floats`(cast: String) {
+    val p = prepareCode("int main() {$cast;}", source)
+    p.assertDiags(DiagnosticId.POINTER_FLOAT_CAST)
   }
 }

@@ -374,13 +374,16 @@ class DeclarationParser(scopeHandler: ScopeHandler, parenMatcher: ParenMatcher) 
     while (isNotEaten() && current().asPunct() == Punctuators.STAR) {
       eat() // The '*'
       val qualsEnd = indexOfFirst { k -> k.asKeyword() !in SpecParser.typeQualifiers }
-      // No type qualifiers
-      if (qualsEnd == -1) continue
+      val currentIndirectionEnd = if (qualsEnd == -1) tokenCount else qualsEnd
       // Get the quals as a list and add them to the big list
       // The first thing is the *, so drop that
-      indirectionList += it.slice(currentIdx until qualsEnd).drop(1).map { k -> k as Keyword }
-      eatUntil(qualsEnd)
-      currentIdx = qualsEnd
+      indirectionList += it
+          .slice(currentIdx until currentIndirectionEnd)
+          .drop(1)
+          .map { k -> k as Keyword }
+      eatUntil(currentIndirectionEnd)
+      currentIdx = currentIndirectionEnd
+      if (qualsEnd == -1) break
     }
     return@tokenContext indirectionList
   }

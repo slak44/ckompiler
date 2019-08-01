@@ -94,6 +94,7 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
       }
     }
     is ArraySubscript -> TODO("sequentialize ArraySubscript")
+    is CastExpression -> TODO("sequentialize CastExpression")
     is UnaryExpression,
     is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
     is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {

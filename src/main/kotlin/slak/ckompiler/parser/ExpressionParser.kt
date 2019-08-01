@@ -255,28 +255,25 @@ class ExpressionParser(declarationParser: DeclarationParser) :
     return ArraySubscript(subscripted, subscript, resultingType)
   }
 
-  private fun parsePostfixExpression(): Expression? {
-    // FIXME: implement initializer-lists (6.5.2)
-    val expr = parseBaseExpr()
-    return when {
-      isEaten() || expr == null -> expr
-      current().asPunct() == Punctuators.LSQPAREN -> parseSubscript(expr)
-      current().asPunct() == Punctuators.LPAREN -> parseFunctionCall(expr)
-      current().asPunct() == Punctuators.DOT -> {
-        TODO("implement direct struct/union access operator")
-      }
-      current().asPunct() == Punctuators.ARROW -> {
-        TODO("implement indirect struct/union access operator")
-      }
-      current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
-        val c = current().asPunct()
-        val r = expr..safeToken(0)
-        eat() // The postfix op
-        if (c == Punctuators.INC) PostfixIncrement(expr).withRange(r)
-        else PostfixDecrement(expr).withRange(r)
-      }
-      else -> expr
+  // FIXME: implement initializer-lists (6.5.2)
+  private fun parsePostfixExpression(baseExpr: Expression?): Expression? = when {
+    isEaten() || baseExpr == null -> baseExpr
+    current().asPunct() == Punctuators.LSQPAREN -> parseSubscript(baseExpr)
+    current().asPunct() == Punctuators.LPAREN -> parseFunctionCall(baseExpr)
+    current().asPunct() == Punctuators.DOT -> {
+      TODO("implement direct struct/union access operator")
     }
+    current().asPunct() == Punctuators.ARROW -> {
+      TODO("implement indirect struct/union access operator")
+    }
+    current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
+      val c = current().asPunct()
+      val r = baseExpr..safeToken(0)
+      eat() // The postfix op
+      if (c == Punctuators.INC) PostfixIncrement(baseExpr).withRange(r)
+      else PostfixDecrement(baseExpr).withRange(r)
+    }
+    else -> baseExpr
   }
 
   /** C standard: 6.5.3.1 */
@@ -367,7 +364,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
       }
     }
     current().asKeyword() == Keywords.SIZEOF -> parseSizeofExpression()
-    else -> parsePostfixExpression()
+    else -> parsePostfixExpression(parseBaseExpr())
   }
 
   /**
@@ -389,7 +386,32 @@ class ExpressionParser(declarationParser: DeclarationParser) :
       }
       return error<ErrorExpression>()
     }
-    // FIXME: here we can also have a cast, that needs to be differentiated from `( expression )`
+    // Either cast or parenthesised expression
+    if (current().asPunct() == Punctuators.LPAREN) {
+      val lparen = current()
+      val endParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
+      if (endParenIdx == -1) {
+        eatToSemi()
+        return error<ErrorExpression>()
+      }
+      eat() // Eat the (
+      val possibleName = tokenContext(endParenIdx) {
+        if (isEaten()) return@tokenContext null
+        return@tokenContext parseTypeName(it.size)
+      }
+      return if (possibleName != null) {
+        eat() // Eat the )
+        // This is a cast
+        val exprToCast = parsePrimaryExpr() ?: error<ErrorExpression>()
+        val range = lparen..tokenAt(endParenIdx)
+        validateCast(exprToCast.type, possibleName, range)
+        CastExpression(exprToCast, possibleName).withRange(range)
+      } else {
+        val parenExpr = parseExpr(endParenIdx)
+        eat() // Eat the )
+        parsePostfixExpression(parenExpr)
+      }
+    }
     val expr = parseUnaryExpression()
     if (expr == null) diagnostic {
       id = DiagnosticId.EXPECTED_PRIMARY

@@ -328,6 +328,36 @@ fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
 }
 
 /**
+ * Validates the [TypeName]s used in a cast. No-op if [targetType] is [ErrorType].
+ *
+ * C standard: 6.5.4
+ * @param castParenRange diagnostic range for the parenthesised cast type name
+ */
+fun IDebugHandler.validateCast(originalType: TypeName,
+                               targetType: TypeName,
+                               castParenRange: IntRange) = when {
+  targetType is ErrorType -> {
+    // Don't report bogus diags for ErrorType
+  }
+  targetType !is VoidType && !targetType.isScalar() -> diagnostic {
+    id = DiagnosticId.INVALID_CAST_TYPE
+    formatArgs(targetType.toString())
+    columns(castParenRange)
+  }
+  (originalType is FloatingType && targetType is PointerType) ||
+      (originalType is PointerType && targetType is FloatingType) -> diagnostic {
+    id = DiagnosticId.POINTER_FLOAT_CAST
+    val floating = originalType as? FloatingType ?: targetType
+    val pointer = originalType as? PointerType ?: targetType
+    formatArgs(floating.toString(), pointer.toString())
+    columns(castParenRange)
+  }
+  else -> {
+    // Nothing to say about other types
+  }
+}
+
+/**
  * One of the expressions must be a pointer to a complete object type (or an array, which is
  * technically the same thing). The other must be an integral type.
  *

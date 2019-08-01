@@ -73,6 +73,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
       "Subscripted value is not a pointer to a complete object type (array or pointer)"),
   SUBSCRIPT_OF_FUNCTION(ERROR, "Subscript of (pointer to) function type '%s'"),
   SUBSCRIPT_NOT_INTEGRAL(ERROR, "Array subscript is not an integral type"),
+  INVALID_CAST_TYPE(ERROR, "Conversion to non-scalar type '%s' requested"),
+  POINTER_FLOAT_CAST(ERROR,
+      "Cannot convert between floating point type '%s' and pointer type '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

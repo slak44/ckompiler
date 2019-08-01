@@ -104,7 +104,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     // (rest of standard section)
   }),
   /**
-   * Checks that the [DeclarationSpecifier] is a `specifier-qualifer-list`.
+   * Checks that the [DeclarationSpecifier] is a `specifier-qualifier-list`.
    *
    * C standard: 6.7.2.1
    */
@@ -250,7 +250,7 @@ class SpecParser(declarationParser: DeclarationParser) :
     eat() // struct or union
     val name = if (current() is Identifier) IdentifierNode.from(current()) else null
     if (name != null) eat() // The identifier
-    if (current().asPunct() != Punctuators.LBRACKET) {
+    if (isEaten() || current().asPunct() != Punctuators.LBRACKET) {
       // This is the case where it's just a type specifier
       // Like "struct person p;"
       // This means `name` can't be null, because the declaration of an anonymous struct must
