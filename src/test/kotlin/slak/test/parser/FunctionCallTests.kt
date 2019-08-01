@@ -110,4 +110,14 @@ class FunctionCallTests {
     """.trimIndent(), source)
     assert(DiagnosticId.CALL_OBJECT_TYPE !in p.diags.ids)
   }
+
+  @Test
+  fun `Unmatched Paren In Call Argument`() {
+    val p = prepareCode("""
+      int f(int a, int b);
+      int a = f(1, (((2+2;
+    """.trimIndent(), source)
+    assert(DiagnosticId.UNMATCHED_PAREN in p.diags.ids)
+    assert(DiagnosticId.MATCH_PAREN_TARGET in p.diags.ids)
+  }
 }

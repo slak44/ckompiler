@@ -4,6 +4,7 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.ITokenHandler
 import slak.ckompiler.lexer.*
+import slak.ckompiler.throwICE
 
 interface IExpressionParser {
   /**
@@ -192,8 +193,9 @@ class ExpressionParser(declarationParser: DeclarationParser) :
         // Once found, parseExpr handles parsing the arg and eating it
         val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
         if (parenEndIdx == -1) {
-          TODO("handle error case where there is an unmatched" +
-              "paren in the argument-expression-list")
+          logger.throwICE("Impossible case; the function call itself checks for an end paren, and" +
+              " if there are unmatched parens in the arguments, they'll find the call end paren," +
+              " which means that this findParenMatch call can never return -1 and get here")
         }
         val commaIdx = indexOfFirst(Punctuators.COMMA)
         val arg = parseExpr(if (commaIdx == -1) it.size else commaIdx)
