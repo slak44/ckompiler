@@ -1,6 +1,8 @@
 package slak.test.parser
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -180,5 +182,47 @@ class ExpressionTests {
   fun `Sizeof Bad Parens Expr`() {
     val p = prepareCode("int a = sizeof(1;", source)
     p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
+
+  @Test
+  fun `Subscript Unmatched Parens`() {
+    val p = prepareCode("int main() {int a[12]; a[2;}", source)
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
+
+  @Test
+  fun `Subscript Empty`() {
+    val p = prepareCode("int main() {int a[12]; a[];}", source)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["main[1]", "1[main]", "main[main]", "(*&main)[1]"])
+  fun `Subscripts Of Function Must Fail`(subscriptToTest: String) {
+    val p = prepareCode("int main() {$subscriptToTest;}", source)
+    p.assertDiags(DiagnosticId.SUBSCRIPT_OF_FUNCTION)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "v[1]", "v[-12]", "v['a']", "v[0]", "v[12L]", "v[1U]", "v[23ULL]", "v[35LL]"])
+  fun `Valid Subscripts`(subscriptToTest: String) {
+    val p = prepareCode("int main() {int v[123];$subscriptToTest;}", source)
+    p.assertNoDiagnostics()
+    assert(p.root.decls[0].fn.block.items[1].st is ArraySubscript)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["v[v]", "v[main]", "v[\"sdfghsr\"]", "v[&main]"])
+  fun `Subscripts That Are Not Integers`(subscriptToTest: String) {
+    val p = prepareCode("int main() {int v[123];$subscriptToTest;}", source)
+    p.assertDiags(DiagnosticId.SUBSCRIPT_NOT_INTEGRAL)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["123[123]", "1.2[123]", "123[1.2]", "'a'[123]"])
+  fun `Not Subscriptable`(subscriptToTest: String) {
+    val p = prepareCode("int main() {$subscriptToTest;}", source)
+    p.assertDiags(DiagnosticId.INVALID_SUBSCRIPTED)
   }
 }

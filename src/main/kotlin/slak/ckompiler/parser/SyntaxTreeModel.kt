@@ -320,6 +320,12 @@ data class BinaryExpression(val op: BinaryOperators, val lhs: Expression, val rh
   override fun toString() = "($lhs $op $rhs)"
 }
 
+data class ArraySubscript(val subscripted: Expression,
+                          val subscript: Expression,
+                          override val type: TypeName) : Expression() {
+  override fun toString() = "$subscripted[$subscript]"
+}
+
 data class IntegerConstantNode(val value: Long,
                                val suffix: IntegralSuffix) : Expression(), Terminal {
   override val type = when (suffix) {

@@ -93,6 +93,7 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
         BinaryExpression(op, lhs.seqImpl(), rhs.seqImpl()).withRange(tokenRange)
       }
     }
+    is ArraySubscript -> TODO("sequentialize ArraySubscript")
     is UnaryExpression,
     is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
     is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {

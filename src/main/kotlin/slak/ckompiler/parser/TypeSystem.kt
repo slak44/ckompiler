@@ -3,6 +3,7 @@ package slak.ckompiler.parser
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
+import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
@@ -13,6 +14,7 @@ private val logger = LogManager.getLogger("TypeSystem")
 fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
   val tagName = if (tagSpecifier.isAnonymous) null else tagSpecifier.tagIdent.name
 //  val tagDef = if (tagSpecifier.isAnonymous) null else searchTag(tagSpecifier.tagIdent)
+  // FIXME: How do we deal with incomplete struct/union types?
   val tagDef: TagSpecifier? = null // FIXME: ???
   // The tag type differs, so error
   if (tagDef != null && tagDef.tagKindKeyword != tagSpecifier.tagKindKeyword) return ErrorType
@@ -59,7 +61,7 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   }
   return when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
-    is EnumSpecifier -> TODO()
+    is EnumSpecifier -> TODO("enums not implemented yet")
     is TypedefNameSpecifier -> specQuals.typeSpec.typedefName.type
     is VoidTypeSpec -> VoidType
     is Bool -> BooleanType
@@ -94,10 +96,20 @@ sealed class TypeName {
     else -> null
   }
 
+  fun isCallable() = asCallable() != null
+
   fun isRealType(): Boolean = this is ArithmeticType // We don't implement complex types yet.
 
   /** C standard: 6.2.5.0.21 */
   fun isScalar(): Boolean = this is ArithmeticType || this is PointerType
+
+  /**
+   * FIXME: check for incomplete struct/union types; they are currently not even represented
+   *
+   * C standard: 6.2.5.0.1
+   */
+  fun isCompleteObjectType() = this !is FunctionType && this !is VoidType &&
+      (this as? ArrayType)?.size !is NoSize
 }
 
 object ErrorType : TypeName() {
@@ -313,6 +325,67 @@ fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
   // Check if big is *strictly* bigger
   if (big > small) return big
   return big.corespondingType
+}
+
+/**
+ * One of the expressions must be a pointer to a complete object type (or an array, which is
+ * technically the same thing). The other must be an integral type.
+ *
+ * C standard: 6.5.2.1.0.1
+ */
+fun IDebugHandler.typeOfSubscript(subscripted: Expression,
+                                  subscript: Expression,
+                                  endSqBracket: LexicalToken): TypeName {
+  val fullRange = subscripted..endSqBracket
+
+  fun TypeName.isSubscriptable() =
+      (this is PointerType && this.referencedType.isCompleteObjectType()) || this is ArrayType
+
+  fun processSubscript(subscripted: Expression, subscript: Expression): TypeName {
+    if (subscripted.type.isCallable()) {
+      diagnostic {
+        id = DiagnosticId.SUBSCRIPT_OF_FUNCTION
+        formatArgs(subscripted.type.toString())
+        columns(subscripted.tokenRange)
+      }
+      return ErrorType
+    }
+    if (!subscripted.type.isSubscriptable()) {
+      diagnostic {
+        id = DiagnosticId.INVALID_SUBSCRIPTED
+        columns(fullRange)
+      }
+      return ErrorType
+    }
+    // Don't report bogus diagnostics
+    if (subscript.type is ErrorType) return ErrorType
+    if (subscript.type !is IntegralType) {
+      diagnostic {
+        id = DiagnosticId.SUBSCRIPT_NOT_INTEGRAL
+        columns(subscript.tokenRange)
+      }
+      return ErrorType
+    }
+    return (subscripted.type as? ArrayType)?.elementType
+        ?: (subscripted.type as? PointerType)?.referencedType
+        ?: logger.throwICE("Subscripted type is either array or pointer") { subscripted.type }
+  }
+
+  if (subscripted.type.isCallable()) {
+    diagnostic {
+      id = DiagnosticId.SUBSCRIPT_OF_FUNCTION
+      formatArgs(subscripted.type.toString())
+      columns(subscripted.tokenRange)
+    }
+    return ErrorType
+  }
+  return if (!subscripted.type.isSubscriptable()) {
+    // Try swapping the subscripted/subscript, and fail if it doesn't work
+    // This is the `123[vec]` case
+    processSubscript(subscript, subscripted)
+  } else {
+    processSubscript(subscripted, subscript)
+  }
 }
 
 /**

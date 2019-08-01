@@ -282,6 +282,7 @@ class IRLoweringContext {
     is PrefixDecrement, is PostfixDecrement ->
       transformIncDec(expr as IncDecOperation, isDec = true)
     is BinaryExpression -> transformBinary(expr)
+    is ArraySubscript -> TODO("deal with subscripts in IR")
     is SizeofExpression, is SizeofTypeName ->
       TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
     is IntegerConstantNode -> ComputeInteger(expr)

@@ -69,6 +69,10 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   INVALID_RET_TYPE(ERROR, "Function cannot return %s type '%s'"),
   INVALID_ARR_TYPE(ERROR, "'%s' declared as array of functions of type '%s'"),
   INVALID_ARGS_BINARY(ERROR, "Invalid operands to binary operator '%s': '%s' and '%s'"),
+  INVALID_SUBSCRIPTED(ERROR,
+      "Subscripted value is not a pointer to a complete object type (array or pointer)"),
+  SUBSCRIPT_OF_FUNCTION(ERROR, "Subscript of (pointer to) function type '%s'"),
+  SUBSCRIPT_NOT_INTEGRAL(ERROR, "Array subscript is not an integral type"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

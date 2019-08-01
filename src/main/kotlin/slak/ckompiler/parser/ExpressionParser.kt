@@ -209,27 +209,41 @@ class ExpressionParser(declarationParser: DeclarationParser) :
     return Pair(funcArgs, tokenAt(callEnd))
   }
 
+  private fun parseFunctionCall(called: Expression): Expression {
+    val (args, endParenTok) = parseArgumentExprList()
+    if (called.type.asCallable() == null) {
+      // Don't report bogus error when the type is bullshit; a diagnostic was printed somewhere
+      if (called.type != ErrorType) diagnostic {
+        id = DiagnosticId.CALL_OBJECT_TYPE
+        formatArgs(called.type)
+        columns(called.tokenRange)
+      }
+      return error<ErrorExpression>()
+    }
+    return FunctionCall(called, args).withRange(called..endParenTok)
+  }
+
+  private fun parseSubscript(subscripted: Expression): Expression {
+    val endParenTok = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+    if (endParenTok == -1) {
+      eatToSemi()
+      return error<ErrorExpression>()
+    }
+    eat() // The [
+    val subscript = parseExpr(endParenTok)
+    eat() // The ]
+    if (subscript == null) return error<ErrorExpression>()
+    val resultingType = typeOfSubscript(subscripted, subscript, tokenAt(endParenTok))
+    return ArraySubscript(subscripted, subscript, resultingType)
+  }
+
   private fun parsePostfixExpression(): Expression? {
     // FIXME: implement initializer-lists (6.5.2)
     val expr = parseBaseExpr()
     return when {
-      isEaten() || expr == null -> return expr
-      current().asPunct() == Punctuators.LSQPAREN -> {
-        TODO("implement subscript operator")
-      }
-      current().asPunct() == Punctuators.LPAREN -> {
-        val (args, endParenTok) = parseArgumentExprList()
-        if (expr.type.asCallable() == null) {
-          // Don't report bogus error when the type is bullshit; a diagnostic was printed somewhere
-          if (expr.type != ErrorType) diagnostic {
-            id = DiagnosticId.CALL_OBJECT_TYPE
-            formatArgs(expr.type)
-            columns(expr.tokenRange)
-          }
-          return error<ErrorExpression>()
-        }
-        return FunctionCall(expr, args).withRange(expr..endParenTok)
-      }
+      isEaten() || expr == null -> expr
+      current().asPunct() == Punctuators.LSQPAREN -> parseSubscript(expr)
+      current().asPunct() == Punctuators.LPAREN -> parseFunctionCall(expr)
       current().asPunct() == Punctuators.DOT -> {
         TODO("implement direct struct/union access operator")
       }
@@ -243,7 +257,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
         if (c == Punctuators.INC) PostfixIncrement(expr).withRange(r)
         else PostfixDecrement(expr).withRange(r)
       }
-      else -> return expr
+      else -> expr
     }
   }
 
