@@ -31,41 +31,7 @@ operator fun ASTNode.rangeTo(other: ASTNode) = tokenRange..other.tokenRange
  * @param isRoot set to true if this [ASTNode] is the root node for the tree
  */
 sealed class ASTNode(val isRoot: Boolean = false) {
-  private var lateParent: ASTNode? = null
   private var lateTokenRange: IntRange? = null
-
-  /**
-   * A reference to this node's parent.
-   * @throws slak.ckompiler.InternalCompilerError if accessed on a tree without a parent set or on
-   * a node with [isRoot] set
-   */
-  val parent: ASTNode by lazy {
-    if (lateParent == null) {
-      logger.throwICE("Trying to access parent of detached node") { this }
-    }
-    return@lazy lateParent!!
-  }
-
-  /**
-   * Allows late initialization of [ASTNode.parent], for when the tree is built bottom-up.
-   *
-   * Calls to this function that occur after accessing [ASTNode.parent] are no-ops.
-   *
-   * @param parent the new parent
-   * @throws slak.ckompiler.InternalCompilerError if the [parent] is an instance of [Terminal], or
-   * this node is a root node
-   */
-  fun setParent(parent: ASTNode) {
-    if (parent is Terminal) {
-      logger.throwICE("Trying to turn a terminal node into a parent") {
-        "parent: $parent, this: $this"
-      }
-    }
-    if (isRoot) {
-      logger.throwICE("Trying to add a parent to a root node") { "parent: $parent, this: $this" }
-    }
-    lateParent = parent
-  }
 
   /**
    * The range of 'stuff' in this node. Usually created from [TokenObject]'s range data.
@@ -220,11 +186,6 @@ data class TypedIdentifier(override val name: String,
 data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : Expression() {
   override val type = calledExpr.type.asCallable()?.returnType
       ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }
-
-  init {
-    calledExpr.setParent(this)
-    args.forEach { it.setParent(this) }
-  }
 }
 
 /**
@@ -234,10 +195,6 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
  */
 data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Expression() {
   override val type = op.applyTo(operand.type)
-
-  init {
-    operand.setParent(this)
-  }
 }
 
 /** C standard: A.2.1 */
@@ -256,7 +213,6 @@ data class SizeofExpression(val sizeExpr: Expression) : Expression() {
 
   init {
     // FIXME: disallow function types/incomplete types/bitfield members
-    sizeExpr.setParent(this)
   }
 }
 
@@ -272,10 +228,6 @@ interface IncDecOperation {
  */
 data class PrefixIncrement(override val expr: Expression) : Expression(), IncDecOperation {
   override val type = expr.type
-
-  init {
-    expr.setParent(this)
-  }
 }
 
 /**
@@ -283,10 +235,6 @@ data class PrefixIncrement(override val expr: Expression) : Expression(), IncDec
  */
 data class PrefixDecrement(override val expr: Expression) : Expression(), IncDecOperation {
   override val type = expr.type
-
-  init {
-    expr.setParent(this)
-  }
 }
 
 data class PostfixIncrement(override val expr: Expression) : Expression(), IncDecOperation {
@@ -294,7 +242,6 @@ data class PostfixIncrement(override val expr: Expression) : Expression(), IncDe
 
   init {
     // FIXME: filter on expr.type (6.5.3.1)
-    expr.setParent(this)
   }
 }
 
@@ -303,7 +250,6 @@ data class PostfixDecrement(override val expr: Expression) : Expression(), IncDe
 
   init {
     // FIXME: filter on expr.type (6.5.3.1)
-    expr.setParent(this)
   }
 }
 
@@ -311,12 +257,6 @@ data class PostfixDecrement(override val expr: Expression) : Expression(), IncDe
 data class BinaryExpression(val op: BinaryOperators, val lhs: Expression, val rhs: Expression) :
     Expression() {
   override val type = op.applyTo(lhs.type, rhs.type)
-
-  init {
-    lhs.setParent(this)
-    rhs.setParent(this)
-  }
-
   override fun toString() = "($lhs $op $rhs)"
 }
 
@@ -435,10 +375,6 @@ class ErrorSuffix : DeclaratorSuffix(), ErrorNode by ErrorNodeImpl
 data class ParameterTypeList(val params: List<ParameterDeclaration>,
                              val scope: LexicalScope,
                              val variadic: Boolean = false) : DeclaratorSuffix() {
-  init {
-    params.forEach { it.setParent(this) }
-  }
-
   override fun toString(): String {
     val paramStr = params.joinToString(", ")
     val variadicStr = if (!variadic) "" else ", ..."
@@ -448,11 +384,6 @@ data class ParameterTypeList(val params: List<ParameterDeclaration>,
 
 data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
                                 val declarator: Declarator) : ASTNode() {
-  init {
-    declSpec.setParent(this)
-    declarator.setParent(this)
-  }
-
   override fun toString() = "$declSpec $declarator"
 }
 
@@ -494,11 +425,6 @@ sealed class Declarator : ASTNode() {
 data class NamedDeclarator(val name: IdentifierNode,
                            override val indirection: List<TypeQualifierList>,
                            override val suffixes: List<DeclaratorSuffix>) : Declarator() {
-  init {
-    name.setParent(this)
-    suffixes.forEach { it.setParent(this) }
-  }
-
   override fun toString(): String {
     val suffixesStr = suffixes.joinToString("")
     return "${indirection.stringify()}$name$suffixesStr"
@@ -508,10 +434,6 @@ data class NamedDeclarator(val name: IdentifierNode,
 /** C standard: 6.7.7.0.1 */
 data class AbstractDeclarator(override val indirection: List<TypeQualifierList>,
                               override val suffixes: List<DeclaratorSuffix>) : Declarator() {
-  init {
-    suffixes.forEach { it.setParent(this) }
-  }
-
   override fun toString() = "(${indirection.stringify()}) $suffixes"
 }
 
@@ -525,10 +447,6 @@ class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl {
 sealed class Initializer : ASTNode()
 
 data class ExpressionInitializer(val expr: Expression) : Initializer() {
-  init {
-    expr.setParent(this)
-  }
-
   override fun toString() = expr.toString()
 
   companion object {
@@ -536,20 +454,10 @@ data class ExpressionInitializer(val expr: Expression) : Initializer() {
   }
 }
 
-data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode() {
-  init {
-    declarator.setParent(this)
-    constExpr?.setParent(this)
-  }
-}
+data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode()
 
 data class StructDeclaration(val declSpecs: DeclarationSpecifier,
-                             val declaratorList: List<StructMember>) : ASTNode() {
-  init {
-    declSpecs.setParent(this)
-    declaratorList.forEach { it.setParent(this) }
-  }
-}
+                             val declaratorList: List<StructMember>) : ASTNode()
 
 /**
  * Contains the size of an array type.
@@ -596,7 +504,6 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
     if (expr == null && typeQuals.isEmpty()) {
       logger.throwICE("Array size, no type quals and no expr") { this }
     }
-    expr?.setParent(this)
   }
 
   override fun toString(): String {
@@ -612,10 +519,6 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
  */
 data class ExpressionSize(val expr: Expression) :
     ArrayTypeSize(false /* FIXME: not always false */) {
-  init {
-    expr.setParent(this)
-  }
-
   override fun toString() = "$expr"
 }
 
@@ -673,10 +576,6 @@ data class FunctionDefinition(val funcIdent: TypedIdentifier,
   val name = funcIdent.name
   val block get() = compoundStatement as CompoundStatement
 
-  init {
-    compoundStatement.setParent(this)
-  }
-
   override fun toString(): String {
     return "FunctionDefinition($funcIdent, $compoundStatement)"
   }
@@ -708,18 +607,10 @@ data class FunctionDefinition(val funcIdent: TypedIdentifier,
 sealed class BlockItem : ASTNode()
 
 data class DeclarationItem(val declaration: Declaration) : BlockItem() {
-  init {
-    declaration.setParent(this)
-  }
-
   override fun toString() = declaration.toString()
 }
 
 data class StatementItem(val statement: Statement) : BlockItem() {
-  init {
-    statement.setParent(this)
-  }
-
   override fun toString() = statement.toString()
 }
 
@@ -732,10 +623,6 @@ data class StatementItem(val statement: Statement) : BlockItem() {
  * this is a reference to the function's scope, that is pre-filled with the function arguments.
  */
 data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope) : Statement() {
-  init {
-    items.forEach { it.setParent(this) }
-  }
-
   override fun toString(): String {
     val stuff = items.joinToString(",") { "\n\t$it" }
     return "{\n$scope$stuff\n}"
@@ -743,47 +630,21 @@ data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope
 }
 
 /** C standard: 6.8.1 */
-data class LabeledStatement(val label: IdentifierNode, val statement: Statement) : Statement() {
-  init {
-    label.setParent(this)
-    statement.setParent(this)
-  }
-}
+data class LabeledStatement(val label: IdentifierNode, val statement: Statement) : Statement()
 
 /** C standard: 6.8.4.1 */
 data class IfStatement(val cond: Expression,
                        val success: Statement,
-                       val failure: Statement?) : Statement() {
-  init {
-    cond.setParent(this)
-    success.setParent(this)
-    failure?.setParent(this)
-  }
-}
+                       val failure: Statement?) : Statement()
 
 /** C standard: 6.8.4.2 */
-data class SwitchStatement(val switch: Expression, val body: Statement) : Statement() {
-  init {
-    switch.setParent(this)
-    body.setParent(this)
-  }
-}
+data class SwitchStatement(val switch: Expression, val body: Statement) : Statement()
 
 /** C standard: 6.8.5.1 */
-data class WhileStatement(val cond: Expression, val loopable: Statement) : Statement() {
-  init {
-    cond.setParent(this)
-    loopable.setParent(this)
-  }
-}
+data class WhileStatement(val cond: Expression, val loopable: Statement) : Statement()
 
 /** C standard: 6.8.5.2 */
-data class DoWhileStatement(val cond: Expression, val loopable: Statement) : Statement() {
-  init {
-    cond.setParent(this)
-    loopable.setParent(this)
-  }
-}
+data class DoWhileStatement(val cond: Expression, val loopable: Statement) : Statement()
 
 sealed class ForInitializer : ASTNode()
 
@@ -794,7 +655,6 @@ class ErrorInitializer : ForInitializer(), ErrorNode by ErrorNodeImpl
 
 data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   init {
-    value.setParent(this)
     withRange(value.tokenRange)
   }
 
@@ -803,7 +663,6 @@ data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
 
 data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
   init {
-    value.setParent(this)
     withRange(value.tokenRange)
   }
 }
@@ -812,14 +671,7 @@ data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
 data class ForStatement(val init: ForInitializer,
                         val cond: Expression?,
                         val loopEnd: Expression?,
-                        val loopable: Statement) : Statement() {
-  init {
-    init.setParent(this)
-    cond?.setParent(this)
-    loopEnd?.setParent(this)
-    loopable.setParent(this)
-  }
-}
+                        val loopable: Statement) : Statement()
 
 /** C standard: 6.8.6.2 */
 class ContinueStatement : Statement(), Terminal, StringClassName by StringClassNameImpl
@@ -828,15 +680,7 @@ class ContinueStatement : Statement(), Terminal, StringClassName by StringClassN
 class BreakStatement : Statement(), Terminal, StringClassName by StringClassNameImpl
 
 /** C standard: 6.8.6.1 */
-data class GotoStatement(val identifier: IdentifierNode) : Statement() {
-  init {
-    identifier.setParent(this)
-  }
-}
+data class GotoStatement(val identifier: IdentifierNode) : Statement()
 
 /** C standard: 6.8.6.4 */
-data class ReturnStatement(val expr: Expression?) : Statement() {
-  init {
-    expr?.setParent(this)
-  }
-}
+data class ReturnStatement(val expr: Expression?) : Statement()
