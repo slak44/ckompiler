@@ -7,8 +7,7 @@ and are assumed to exist in the environment (eg `nasm` and `ld`).
 
 Run `./gradlew build` for the compiler's CLI.
 
-The ~300 JUnit tests can be found in the `slak.test` package, in
-`src/test/kotlin`.
+JUnit tests can be found in the `slak.test` package, in `src/test/kotlin`.
 
 Also see what was chosen for some
 [implementation defined/undefined behaviours][impl_defs].
