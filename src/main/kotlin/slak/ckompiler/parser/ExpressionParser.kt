@@ -209,7 +209,7 @@ class ExpressionParser(declarationParser: DeclarationParser) :
             error<ErrorExpression>()
           } else {
             parseExpr(argToks.size)
-                ?: TODO("handle error case with a null (error'd) expr")
+                ?: logger.throwICE("Empty expressions are handled above, can't get here")
           }
         }
         if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
