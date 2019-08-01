@@ -120,4 +120,18 @@ class FunctionCallTests {
     assert(DiagnosticId.UNMATCHED_PAREN in p.diags.ids)
     assert(DiagnosticId.MATCH_PAREN_TARGET in p.diags.ids)
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "f(, 1, 1)",
+    "f(1, , 1)",
+    "f(1, 1, )"
+  ])
+  fun `Call Argument Is Empty Expression`(funCallStr: String) {
+    val p = prepareCode("""
+      int f(int, int, int);
+      int a = $funCallStr;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
+  }
 }

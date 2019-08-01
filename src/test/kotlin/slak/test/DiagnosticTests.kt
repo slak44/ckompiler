@@ -130,4 +130,13 @@ class DiagnosticTests {
     diag.assertDiagCaret(line = 2, col = 13, colCount = 6)
     diag.print()
   }
+
+  @Test
+  fun `Function Call's Missing Arg Diagnostic Points To The End Paren Of The Call`() {
+    val p = prepareCode("""
+      int f(int a, int b);
+      int a = f(1, );
+    """.trimIndent(), source)
+    p.diags.assertDiagCaret(diagNr = 0, line = 2, col = 13, colCount = 1)
+  }
 }

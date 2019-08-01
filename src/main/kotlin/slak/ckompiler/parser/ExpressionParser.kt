@@ -178,8 +178,8 @@ class ExpressionParser(declarationParser: DeclarationParser) :
     if (callEnd == -1) {
       return Pair(emptyList(), current())
     }
+    val endParenTok = tokenAt(callEnd)
     if (current().asPunct() == Punctuators.RPAREN) {
-      val endParenTok = current()
       eat() // The ')'
       // No parameters; this is not an error case
       return Pair(emptyList(), endParenTok)
@@ -198,12 +198,28 @@ class ExpressionParser(declarationParser: DeclarationParser) :
               " which means that this findParenMatch call can never return -1 and get here")
         }
         val commaIdx = indexOfFirst(Punctuators.COMMA)
-        val arg = parseExpr(if (commaIdx == -1) it.size else commaIdx)
-            ?: TODO("handle error case with a null (error'd) expr")
-        funcArgs += arg
+        val exprEndIdx = if (commaIdx == -1) it.size else commaIdx
+        funcArgs += tokenContext(exprEndIdx) { argToks ->
+          if (argToks.isEmpty()) {
+            // Missing argument in the middle of the argument list
+            diagnostic {
+              id = DiagnosticId.EXPECTED_EXPR
+              column(endParenTok.startIdx)
+            }
+            error<ErrorExpression>()
+          } else {
+            parseExpr(argToks.size)
+                ?: TODO("handle error case with a null (error'd) expr")
+          }
+        }
         if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
           // Expected case; found comma that separates args
           eat()
+          // If the last thing is a comma, we're missing an expression
+          if (isEaten()) diagnostic {
+            id = DiagnosticId.EXPECTED_EXPR
+            column(endParenTok.startIdx)
+          }
         }
       }
     }
