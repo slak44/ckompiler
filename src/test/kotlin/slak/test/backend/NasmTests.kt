@@ -2,6 +2,8 @@ package slak.test.backend
 
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.ExitCodes
@@ -12,6 +14,7 @@ import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+@Execution(ExecutionMode.SAME_THREAD)
 class NasmTests {
   private fun prepareNasm(src: String, source: SourceFileName): String {
     val cfg = prepareCFG(src, source)
