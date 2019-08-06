@@ -133,7 +133,7 @@ sealed class Expression : Statement() {
 }
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
-class ErrorExpression : Expression(), ErrorNode by ErrorNodeImpl {
+class ErrorExpression : ExprConstantNode(), ErrorNode by ErrorNodeImpl {
   override val type = ErrorType
 }
 
@@ -270,8 +270,10 @@ data class CastExpression(val target: Expression, override val type: TypeName) :
   override fun toString() = "($type) $target"
 }
 
+sealed class ExprConstantNode : Expression(), Terminal
+
 data class IntegerConstantNode(val value: Long,
-                               val suffix: IntegralSuffix) : Expression(), Terminal {
+                               val suffix: IntegralSuffix) : ExprConstantNode() {
   override val type = when (suffix) {
     IntegralSuffix.UNSIGNED -> UnsignedIntType
     IntegralSuffix.UNSIGNED_LONG -> UnsignedLongType
@@ -285,7 +287,7 @@ data class IntegerConstantNode(val value: Long,
 }
 
 data class FloatingConstantNode(val value: Double,
-                                val suffix: FloatingSuffix) : Expression(), Terminal {
+                                val suffix: FloatingSuffix) : ExprConstantNode() {
   override val type = when (suffix) {
     FloatingSuffix.FLOAT -> FloatType
     FloatingSuffix.LONG_DOUBLE -> LongDoubleType
@@ -306,7 +308,7 @@ data class FloatingConstantNode(val value: Double,
  * C standard: 6.4.4.4.0.10
  */
 data class CharacterConstantNode(val char: Int,
-                                 val encoding: CharEncoding) : Expression(), Terminal {
+                                 val encoding: CharEncoding) : ExprConstantNode() {
   override val type = UnsignedIntType
 }
 
@@ -315,7 +317,7 @@ data class CharacterConstantNode(val char: Int,
  * FIXME: wchar_t & friends should have more specific element type
  */
 data class StringLiteralNode(val string: String,
-                             val encoding: StringEncoding) : Expression(), Terminal {
+                             val encoding: StringEncoding) : ExprConstantNode() {
   override val type = ArrayType(when (encoding) {
     StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
     else -> UnsignedLongLongType

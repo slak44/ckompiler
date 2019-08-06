@@ -87,9 +87,9 @@ private fun Punctuators.asUnaryOperator() = UnaryOperators.values().find { it.op
 fun LexicalToken.asBinaryOperator(): BinaryOperators? = asPunct()?.asBinaryOperator()
 fun LexicalToken.asUnaryOperator(): UnaryOperators? = asPunct()?.asUnaryOperator()
 
-class ExpressionParser(parenMatcher: ParenMatcher,
-                       identSearchable: IdentSearchable,
-                       typeNameParser: TypeNameParser) :
+open class ExpressionParser(parenMatcher: ParenMatcher,
+                            identSearchable: IdentSearchable,
+                            typeNameParser: TypeNameParser) :
     IExpressionParser,
     IDebugHandler by parenMatcher,
     ITokenHandler by parenMatcher,

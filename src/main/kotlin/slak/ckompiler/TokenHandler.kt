@@ -53,7 +53,7 @@ interface ITokenHandler {
   fun eatUntil(contextIdx: Int)
 }
 
-class TokenHandler(tokens: List<LexicalToken>, debugHandler: DebugHandler) :
+class TokenHandler(tokens: List<LexicalToken>, debugHandler: IDebugHandler) :
     ITokenHandler, IDebugHandler by debugHandler {
   private val tokStack = Stack<List<LexicalToken>>()
   private val idxStack = Stack<Int>()

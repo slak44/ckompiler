@@ -45,7 +45,7 @@ interface IParenMatcher {
                          stopAtSemi: Boolean): Int
 }
 
-class ParenMatcher(debugHandler: DebugHandler, tokenHandler: TokenHandler) :
+class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
     IParenMatcher, IDebugHandler by debugHandler, ITokenHandler by tokenHandler {
 
   /**
