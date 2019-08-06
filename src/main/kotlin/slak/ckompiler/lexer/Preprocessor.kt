@@ -121,10 +121,189 @@ private class PPParser(
   }
 
   /**
-   * FIXME: conditional compilation
+   * Returns null if this is not an `if-group`, or the condition tokens if it is.
    */
-  private fun ifSection(): Boolean {
-    return false
+  private fun ifGroup(): List<LexicalToken>? {
+    // FIXME: might crash here
+    val groupKind = relative(1) as? Identifier ?: return null
+    if (groupKind.name !in listOf("ifdef", "ifndef", "if")) return null
+    eat() // The #
+    eat() // The group kind
+    if (isEaten()) {
+      diagnostic {
+        id = DiagnosticId.MACRO_NAME_MISSING
+        column(colPastTheEnd(0))
+      }
+      return emptyList()
+    }
+    val newlineIdx = indexOfFirst { it == NewLine }
+    val lineEndIdx = if (newlineIdx == -1) tokenCount else newlineIdx
+    return tokenContext(lineEndIdx) {
+      // Constant expression condition, return everything
+      if (groupKind.name == "if") {
+        eatUntil(it.size)
+        return@tokenContext it
+      }
+      // Identifier condition
+      val ident = current()
+      eat()
+      if (isNotEaten()) {
+        diagnostic {
+          id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
+          formatArgs("#${groupKind.name}")
+          columns(safeToken(0)..it.last())
+        }
+        eatUntil(it.size)
+      }
+      if (ident !is Identifier) {
+        diagnostic {
+          id = DiagnosticId.MACRO_NAME_NOT_IDENT
+          columns(ident.range)
+        }
+        return@tokenContext emptyList()
+      } else {
+        val defd = Identifier(if (groupKind.name == "ifdef") "defined" else "!defined")
+        return@tokenContext listOf(defd, ident)
+      }
+    }
+  }
+
+  // FIXME: implement
+  private fun evaluateConstExpr(e: List<LexicalToken>): Boolean = true
+
+  /**
+   * Returns the elif's condition tokens.
+   */
+  private fun elifGroup(elif: Identifier): List<LexicalToken> {
+    if (isNotEaten() && current() == NewLine) {
+      diagnostic {
+        id = DiagnosticId.ELIF_NO_CONDITION
+        columns(elif.range)
+      }
+      return emptyList()
+    }
+    val firstNewLine = indexOfFirst { it == NewLine }
+    val lineEnd = if (firstNewLine == -1) tokenCount else firstNewLine
+    return tokenContext(lineEnd) {
+      eatUntil(it.size)
+      it
+    }
+  }
+
+  /**
+   * Parses `if-section`. Returns null if there is something other than that. Unlike other
+   * directives below, this also parses the "#" and is not limited to one line.
+   */
+  private fun ifSection(): List<LexicalToken>? {
+    if (current().asPunct() != Punctuators.HASH) return null
+    if (isEaten()) return null
+    val groupStart = safeToken(0)
+    val ifGroupCond = ifGroup() ?: return null
+    eat() // if-group's newline
+    var ifSectionStack = 1 // Counts how many if-groups were found
+    var lastCondResult = evaluateConstExpr(ifGroupCond)
+    var pickedGroup: List<LexicalToken>? = null
+    var wasElseFound = false
+    var toks = mutableListOf<LexicalToken>()
+    while (true) {
+      while (isNotEaten() && current() == NewLine) {
+        toks.add(current())
+        eat()
+      }
+      if (isEaten()) break
+      val possibleHash = current()
+      if (possibleHash.asPunct() == Punctuators.HASH) {
+        // FIXME: might crash here
+        val ident = relative(1) as? Identifier
+        if (ident != null && ident.name in listOf("if", "ifdef", "ifndef")) {
+          ifSectionStack++
+        }
+        if (ident != null && ident.name == "endif") {
+          ifSectionStack--
+          if (ifSectionStack < 1) {
+            // This technically means there are extra #endifs
+            // If this group is passed to the recursive parser, it will notice them and emit diags
+            // We just pretend they weren't here
+            ifSectionStack = 1
+          }
+        }
+        if (ifSectionStack == 1 && ident != null && ident.name in listOf("elif", "else", "endif")) {
+          eat() // #
+          eat() // ident
+          if (lastCondResult && pickedGroup == null) {
+            pickedGroup = toks
+          }
+          if ((ident.name == "elif" || ident.name == "else") && wasElseFound) {
+            diagnostic {
+              id = DiagnosticId.ELSE_NOT_LAST
+              formatArgs("#${ident.name}")
+              columns(ident.range)
+            }
+          }
+          if (ident.name == "elif") {
+            lastCondResult = evaluateConstExpr(elifGroup(ident))
+          }
+          if (ident.name == "else" || ident.name == "endif") {
+            if (isNotEaten() && current() != NewLine) {
+              val firstNewLine = indexOfFirst { it == NewLine }
+              val lineEnd = if (firstNewLine == -1) tokenCount - 1 else firstNewLine
+              diagnostic {
+                id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
+                formatArgs("#${ident.name}")
+                columns(safeToken(0)..tokenAt(lineEnd))
+              }
+              if (firstNewLine == -1) eatUntil(tokenCount)
+              else eatUntil(firstNewLine)
+            }
+          }
+          if (ident.name == "else") {
+            // This ensures that the else group will be picked if nothing else was
+            lastCondResult = true
+            wasElseFound = true
+          }
+          if (ident.name == "endif") {
+            // End of if-section; exit function with correct tokens, or with nothing (if the
+            // condition was false and there are no elif/else groups)
+            if (pickedGroup == null) return emptyList()
+            val recursiveParser = PPParser(
+                ppTokens = pickedGroup,
+                initialDefines = defines,
+                includePaths = includePaths,
+                currentDir = currentDir,
+                ignoreTrigraphs = ignoreTrigraphs,
+                debugHandler = debugHandler
+            )
+            // FIXME: deal with nested defines
+            return recursiveParser.outTokens
+          }
+          toks = mutableListOf()
+        }
+      }
+      if (isEaten()) break
+      toks.add(current())
+      eat()
+    }
+    if (ifSectionStack > 0) diagnostic {
+      id = DiagnosticId.UNTERMINATED_CONDITIONAL
+      columns(groupStart.range)
+    } else {
+      logger.throwICE("Impossible case; should have returned out of this function") {
+        "ifSectionStack: $ifSectionStack"
+      }
+    }
+    return emptyList()
+  }
+
+  private fun extraTokensOnLineDiag(directiveName: String) {
+    if (isNotEaten()) {
+      diagnostic {
+        id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
+        val range = safeToken(0)..safeToken(tokenCount)
+        columns(range)
+        formatArgs("#$directiveName")
+      }
+      eatUntil(tokenCount)
+    }
   }
 
   private fun addDefineMacro(definedIdent: Identifier, replacementList: List<LexicalToken>) {
@@ -177,14 +356,7 @@ private class PPParser(
     if (current() is HeaderName) {
       val header = current() as HeaderName
       eat()
-      if (isNotEaten()) {
-        diagnostic {
-          id = DiagnosticId.EXTRA_TOKENS_INCLUDE
-          val range = safeToken(0)..safeToken(tokenCount)
-          columns(range)
-        }
-        eatUntil(tokenCount)
-      }
+      extraTokensOnLineDiag("include")
       processInclude(header)
     } else {
       TODO("we must do macro replacements on this line, and try to find a header name again")
@@ -280,6 +452,21 @@ private class PPParser(
     return false
   }
 
+  private fun invalidIfSectionDirectives(): Boolean {
+    val ident = current() as? Identifier
+    if (ident != null && ident.name in listOf("elif", "else", "endif")) {
+      diagnostic {
+        id = DiagnosticId.DIRECTIVE_WITHOUT_IF
+        formatArgs("#${ident.name}")
+        columns(ident.range)
+      }
+      eat() // The ident
+      extraTokensOnLineDiag(ident.name)
+      return true
+    }
+    return false
+  }
+
   private fun nonDirective(): Boolean {
     diagnostic {
       id = DiagnosticId.INVALID_PP_DIRECTIVE
@@ -294,6 +481,11 @@ private class PPParser(
     // We aren't interested in leading newlines
     while (isNotEaten() && current() == NewLine) eat()
     if (isEaten()) return
+    val condCode = ifSection()
+    if (condCode != null) {
+      outTokens += condCode
+      return parseLine()
+    }
     val newlineIdx = indexOfFirst { it == NewLine }
     val lineEndIdx = if (newlineIdx == -1) tokenCount else newlineIdx
     tokenContext(lineEndIdx) {
@@ -306,8 +498,8 @@ private class PPParser(
       eat() // The #
       if (isEaten()) return@tokenContext // Null directive case
       // Try each one in sequence
-      ifSection() || include() || define() || undef() ||
-          line() || error() || pragma() || nonDirective()
+      include() || define() || undef() || line() || error() || pragma() ||
+          invalidIfSectionDirectives() || nonDirective()
     }
     eat() // Get rid of the newline too
     return parseLine()
