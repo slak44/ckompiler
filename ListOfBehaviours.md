@@ -17,11 +17,12 @@ translation phase 3
 
 - (6.5.7.0.3) `<<` and `>>` pass all values as they are to the assembler
 - Empty character constants `''` have the value `0`
-- (6.4.5.0.7) String literals are stored in the .data section, so what
-happens is up to the assembler/linker/etc
-- (6.5.2.2) The evaluation order of function call arguments is the
-reverse order of declaration (by default, certain things are able to
-influence it)
+- (6.4.5.0.7) String literals are stored in the .data section, so what happens
+  is up to the assembler/linker/etc
+- (6.5.2.2) The evaluation order of function call arguments is the reverse order
+  of declaration (by default, certain things are able to influence it)
+- (6.10.1.0.4) When the `defined` unary operator is used incorrectly, we print
+  an error diagnostic, and the entire expression has value `0`
 
 # List of Unspecified Behaviours
 

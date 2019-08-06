@@ -43,6 +43,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ELSE_NOT_LAST(ERROR, "%s after #else"),
   DIRECTIVE_WITHOUT_IF(ERROR, "%s without #if"),
   ELIF_NO_CONDITION(ERROR, "#elif condition missing"),
+  INVALID_LITERAL_IN_PP(ERROR, "Invalid %s literal in preprocessor expression"),
+  NOT_DEFINED_IS_0(ERROR, "'%s' is not defined, evaluates to 0"),
 
   // Parser
   EXPECTED_EXPR(ERROR, "Expected expression"),
@@ -65,6 +67,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNSUPPORTED_VLA(ERROR, "Variable length arrays are not supported by this implementation"),
   PARAM_NAME_OMITTED(ERROR, "Parameter name omitted for type '%s'"),
   FOR_INIT_NON_LOCAL(ERROR, "Declaration of non-local variable in 'for' loop"),
+  EXPR_NOT_CONSTANT(ERROR, "Expression is not a constant expression"),
 
   // Type system
   CALL_OBJECT_TYPE(ERROR, "Called object type '%s' is not a function or function pointer"),

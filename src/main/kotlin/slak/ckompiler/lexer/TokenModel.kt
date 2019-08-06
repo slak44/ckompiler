@@ -67,6 +67,11 @@ data class Identifier(val name: String) : LexicalToken(name.length)
 data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix: Radix) :
     LexicalToken(radix.prefixLength + n.length + suffix.length) {
   override fun toString(): String = "${javaClass.simpleName}[$radix $n $suffix]"
+
+  companion object {
+    fun zero() = IntegralConstant("0", IntegralSuffix.NONE, Radix.DECIMAL)
+    fun one() = IntegralConstant("1", IntegralSuffix.NONE, Radix.DECIMAL)
+  }
 }
 
 data class Exponent(val exponent: String, val exponentSign: Char? = null) {

@@ -1,7 +1,7 @@
 package slak.ckompiler.lexer
 
 import slak.ckompiler.*
-import slak.ckompiler.parser.rangeTo
+import slak.ckompiler.parser.*
 import java.io.File
 import java.util.regex.Pattern
 
@@ -168,8 +168,109 @@ private class PPParser(
     }
   }
 
-  // FIXME: implement
-  private fun evaluateConstExpr(e: List<LexicalToken>): Boolean = true
+  /**
+   * Deals with the unary `defined` operator in preprocessing expressions. Returns null if it was
+   * used incorrectly, or a token representing whether the target identifier was defined or not.
+   * The second item of the return pair counts how many tokens should be eaten from the source.
+   */
+  private fun handleDefinedOperator(idx: Int, e: List<LexicalToken>): Pair<LexicalToken?, Int> {
+    fun definedIdent(ident: Identifier): LexicalToken {
+      val isDefined = defines[ident] != null
+      val ct = if (isDefined) IntegralConstant.one() else IntegralConstant.zero()
+      return ct.withStartIdx(ident.startIdx)
+    }
+
+    if (idx + 1 >= e.size) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_IDENT
+        column(e.last().range.last)
+      }
+      return null to 1
+    }
+    val firstTok = e[idx + 1]
+    when {
+      firstTok.asPunct() == Punctuators.LPAREN -> {
+        if (idx + 2 >= e.size) {
+          diagnostic {
+            id = DiagnosticId.EXPECTED_IDENT
+            column(e.last().range.last)
+          }
+          return null to 2
+        }
+        val ident = e[idx + 2] as? Identifier
+        if (ident == null) {
+          diagnostic {
+            id = DiagnosticId.EXPECTED_IDENT
+            columns(e[idx + 2].range)
+          }
+          return null to 3
+        }
+        if (idx + 3 >= e.size || e[idx + 3].asPunct() != Punctuators.RPAREN) {
+          diagnostic {
+            id = DiagnosticId.UNMATCHED_PAREN
+            formatArgs(")")
+            columns(e[idx + 3].range)
+          }
+          diagnostic {
+            id = DiagnosticId.MATCH_PAREN_TARGET
+            formatArgs("(")
+            columns(firstTok.range)
+          }
+          return null to 4
+        }
+        return definedIdent(ident) to 4
+      }
+      firstTok is Identifier -> return definedIdent(firstTok) to 2
+      else -> {
+        diagnostic {
+          id = DiagnosticId.EXPECTED_IDENT
+          column(e.last().range.last)
+        }
+        return null to 2
+      }
+    }
+  }
+
+  private fun evaluateConstExpr(e: List<LexicalToken>): Boolean {
+    // FIXME: do macro replacement on the given list here
+    val processedToks = mutableListOf<LexicalToken>()
+    var idx = 0
+    while (idx < e.size) {
+      val it = e[idx]
+      if (it !is Identifier) {
+        processedToks += it
+        idx++
+        continue
+      }
+      if (it.name == "defined") {
+        val (tok, count) = handleDefinedOperator(idx, e)
+        tok ?: return false
+        idx += count
+        processedToks += tok
+      }
+      diagnostic {
+        id = DiagnosticId.NOT_DEFINED_IS_0
+        formatArgs(it.name)
+        columns(it.range)
+      }
+      processedToks += IntegralConstant.zero().withStartIdx(it.startIdx)
+      idx++
+    }
+    val pm = ParenMatcher(this, TokenHandler(processedToks, this))
+    val p = ConstantExprParser(pm, ConstantExprType.PREPROCESSOR)
+    return when (val it = p.parseExpr(processedToks.size)) {
+      // If the condition is missing, we simply return false
+      null -> false
+      // If the condition has an error, a diag was generated for sure, so we can presume anything
+      is ErrorExpression -> false
+      is IntegerConstantNode -> it.value != 0L
+      is CharacterConstantNode -> it.char != 0
+      is FloatingConstantNode -> {
+        logger.throwICE("Not a valid constant from ConstantExprParser with PREPROCESSOR type")
+      }
+      is StringLiteralNode -> logger.throwICE("Not a valid constant from ConstantExprParser")
+    }
+  }
 
   /**
    * Returns the elif's condition tokens.

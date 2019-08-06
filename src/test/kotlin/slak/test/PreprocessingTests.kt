@@ -2,8 +2,8 @@ package slak.test
 
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EmptySource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Identifier
@@ -436,5 +436,40 @@ class PreprocessingTests {
       #elif
       #endif
     """.trimIndent(), source, DiagnosticId.ELIF_NO_CONDITION)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["test", "int", "(int) 1", "bla", "zero", "float", "_Alignas"])
+  fun `IfSection Condition Identifiers Are Zero`(code: String) {
+    assertPPDiagnostic("""
+      #ifdef $code
+      #endif
+    """.trimIndent(), source, DiagnosticId.NOT_DEFINED_IS_0)
+  }
+
+  @ParameterizedTest
+  @EmptySource
+  @ValueSource(strings = [
+    "123", "2.2", "defined", ",", "!", "-1", "%", ")", "(", "[", "=", "#",
+    "( 123 )", "( gjhf )"
+  ])
+  fun `Defined Operator Expected Identifier`(code: String) {
+    assertPPDiagnostic("""
+      #ifdef defined $code
+      #endif
+    """.trimIndent(), source, DiagnosticId.EXPECTED_IDENT)
+  }
+
+  @Test
+  fun `Defined Operator Unmatched Paren`() {
+    assertPPDiagnostic("""
+      #ifdef defined ( TEST
+      #endif
+    """.trimIndent(), source, DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
+
+  @Test
+  fun `Defined Operator At End Of File`() {
+    assertPPDiagnostic("#ifdef defined", source, DiagnosticId.EXPECTED_IDENT)
   }
 }
