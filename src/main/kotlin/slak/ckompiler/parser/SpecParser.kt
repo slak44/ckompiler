@@ -122,13 +122,13 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
   });
 }
 
-class SpecParser(declarationParser: DeclarationParser) :
+class SpecParser(declaratorParser: DeclaratorParser) :
     ISpecParser,
-    IDebugHandler by declarationParser,
-    ITokenHandler by declarationParser,
-    IParenMatcher by declarationParser,
-    IScopeHandler by declarationParser,
-    IDeclarationParser by declarationParser {
+    IDebugHandler by declaratorParser,
+    ITokenHandler by declaratorParser,
+    IParenMatcher by declaratorParser,
+    IScopeHandler by declaratorParser,
+    IDeclaratorParser by declaratorParser {
 
   private fun diagDuplicate(last: Keyword) = diagnostic {
     id = DiagnosticId.DUPLICATE_DECL_SPEC

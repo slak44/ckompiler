@@ -87,13 +87,15 @@ private fun Punctuators.asUnaryOperator() = UnaryOperators.values().find { it.op
 fun LexicalToken.asBinaryOperator(): BinaryOperators? = asPunct()?.asBinaryOperator()
 fun LexicalToken.asUnaryOperator(): UnaryOperators? = asPunct()?.asUnaryOperator()
 
-class ExpressionParser(declarationParser: DeclarationParser) :
+class ExpressionParser(parenMatcher: ParenMatcher,
+                       identSearchable: IdentSearchable,
+                       typeNameParser: TypeNameParser) :
     IExpressionParser,
-    IDebugHandler by declarationParser,
-    ITokenHandler by declarationParser,
-    IScopeHandler by declarationParser,
-    IParenMatcher by declarationParser,
-    IDeclarationParser by declarationParser {
+    IDebugHandler by parenMatcher,
+    ITokenHandler by parenMatcher,
+    IParenMatcher by parenMatcher,
+    IdentSearchable by identSearchable,
+    TypeNameParser by typeNameParser {
 
   /**
    * Base case of precedence climbing method.

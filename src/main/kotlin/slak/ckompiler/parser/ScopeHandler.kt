@@ -93,7 +93,18 @@ class LexicalScope(val parentScope: LexicalScope? = null,
   }
 }
 
-interface IScopeHandler {
+/**
+ * Implementors must have a way to search for [OrdinaryIdentifier]s.
+ */
+interface IdentSearchable {
+  /**
+   * Searches all the scopes for a given identifier.
+   * @return null if no such identifier exists, or the previous [OrdinaryIdentifier] otherwise
+   */
+  fun searchIdent(target: String): OrdinaryIdentifier?
+}
+
+interface IScopeHandler : IdentSearchable {
   fun newScope(): LexicalScope
 
   /**
@@ -132,12 +143,6 @@ interface IScopeHandler {
    * @param tag an error is thrown if [TagSpecifier.isAnonymous] is true
    */
   fun createTag(tag: TagSpecifier)
-
-  /**
-   * Searches all the scopes for a given identifier.
-   * @return null if no such identifier exists, or the previous [OrdinaryIdentifier] otherwise
-   */
-  fun searchIdent(target: String): OrdinaryIdentifier?
 
   /**
    * Searches all the scopes for the tag with the given name.
