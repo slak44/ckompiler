@@ -147,6 +147,15 @@ private class PPParser(
       // Identifier condition
       val ident = current()
       eat()
+      if (ident !is Identifier) {
+        diagnostic {
+          id = DiagnosticId.MACRO_NAME_NOT_IDENT
+          columns(ident.range)
+        }
+        // Eat the rest of the directive and return, so we don't print the warning below after this
+        eatUntil(it.size)
+        return@tokenContext emptyList()
+      }
       if (isNotEaten()) {
         diagnostic {
           id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
@@ -155,21 +164,13 @@ private class PPParser(
         }
         eatUntil(it.size)
       }
-      if (ident !is Identifier) {
-        diagnostic {
-          id = DiagnosticId.MACRO_NAME_NOT_IDENT
-          columns(ident.range)
-        }
-        return@tokenContext emptyList()
-      } else {
-        // If these synthetic idents are used in a diagnostic, the startIdx must be valid
-        // Also, if a diagnostic does something like defd..otherToken, it will work correctly, even
-        // though "defined" may be longer than the otherToken
-        val defd = Identifier("defined").withStartIdx(ident.startIdx)
-        val unaryNot = Punctuator(Punctuators.NOT).withStartIdx(ident.startIdx)
-        return@tokenContext listOfNotNull(
-            if (groupKind.name == "ifndef") unaryNot else null, defd, ident)
-      }
+      // If these synthetic idents are used in a diagnostic, the startIdx must be valid
+      // Also, if a diagnostic does something like defd..otherToken, it will work correctly, even
+      // though "defined" may be longer than the otherToken
+      val defd = Identifier("defined").withStartIdx(ident.startIdx)
+      val unaryNot = Punctuator(Punctuators.NOT).withStartIdx(ident.startIdx)
+      return@tokenContext listOfNotNull(
+          if (groupKind.name == "ifndef") unaryNot else null, defd, ident)
     }
   }
 

@@ -176,7 +176,8 @@ class PreprocessingTests {
     "#",
     "<",
     "\"\"",
-    "0xDEAD"
+    "0xDEAD",
+    "(int) 1"
   ])
   fun `Ifdef Not Identifiers`(thing: String) {
     assertPPDiagnostic("""
@@ -439,7 +440,7 @@ class PreprocessingTests {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = ["test", "int", "(int) 1", "bla", "zero", "float", "_Alignas"])
+  @ValueSource(strings = ["test", "int", "bla", "zero", "float", "_Alignas"])
   fun `IfSection Condition Identifiers Are Zero`(code: String) {
     assertPPDiagnostic("""
       #ifdef $code

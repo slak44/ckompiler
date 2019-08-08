@@ -33,6 +33,7 @@ class ConstantExprParser(parenMatcher: ParenMatcher, val type: ConstantExprType)
    * Generates diagnostics and calculates the final value of the constant.
    */
   override fun parseExpr(endIdx: Int): ExprConstantNode? {
+    if (endIdx == 0) return null
     val expr = super.parseExpr(endIdx) ?: return null
     return traverseExpr(expr)
   }
