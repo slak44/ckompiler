@@ -450,12 +450,11 @@ class PreprocessingTests {
   @ParameterizedTest
   @EmptySource
   @ValueSource(strings = [
-    "123", "2.2", "defined", ",", "!", "-1", "%", ")", "(", "[", "=", "#",
-    "( 123 )", "( gjhf )"
+    "123", "2.2", "defined", ",", "!", "-1", "%", ")", "(", "[", "=", "#", "( 123 )", "( - )"
   ])
   fun `Defined Operator Expected Identifier`(code: String) {
     assertPPDiagnostic("""
-      #ifdef defined $code
+      #if defined $code
       #endif
     """.trimIndent(), source, DiagnosticId.EXPECTED_IDENT)
   }
@@ -463,13 +462,13 @@ class PreprocessingTests {
   @Test
   fun `Defined Operator Unmatched Paren`() {
     assertPPDiagnostic("""
-      #ifdef defined ( TEST
+      #if defined ( TEST
       #endif
     """.trimIndent(), source, DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
   }
 
   @Test
   fun `Defined Operator At End Of File`() {
-    assertPPDiagnostic("#ifdef defined", source, DiagnosticId.EXPECTED_IDENT)
+    assertPPDiagnostic("#if defined", source, DiagnosticId.EXPECTED_IDENT)
   }
 }
