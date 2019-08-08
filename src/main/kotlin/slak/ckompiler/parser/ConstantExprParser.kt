@@ -257,7 +257,7 @@ class ConstantExprParser(parenMatcher: ParenMatcher, val type: ConstantExprType)
         UnaryOperators.PLUS -> +toApply
         UnaryOperators.MINUS -> -toApply
         UnaryOperators.BIT_NOT -> toApply.inv()
-        UnaryOperators.NOT -> if (toApply != 0L) 1L else 0L
+        UnaryOperators.NOT -> if (toApply != 0L) 0L else 1L
       }
       IntegerConstantNode(result, IntegralSuffix.NONE)
     }
