@@ -460,6 +460,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
       }
       is FloatingConstant -> {
         // FIXME conversions might fail here?
+        // FIXME: this conversion is retarded and ignores exponent, and radix
         return FloatingConstantNode(tok.f.toDouble(), tok.suffix)
       }
       // FIXME handle enum constants
