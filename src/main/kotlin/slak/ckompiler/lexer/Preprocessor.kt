@@ -124,7 +124,8 @@ private class PPParser(
    * Returns null if this is not an `if-group`, or the condition tokens if it is.
    */
   private fun ifGroup(): List<LexicalToken>? {
-    // FIXME: might crash here
+    // This check ensures we can call relative(1) below
+    if (tokensLeft < 2) return null
     val groupKind = relative(1) as? Identifier ?: return null
     if (groupKind.name !in listOf("ifdef", "ifndef", "if")) return null
     eat() // The #
@@ -326,7 +327,12 @@ private class PPParser(
       if (isEaten()) break
       val possibleHash = current()
       if (possibleHash.asPunct() == Punctuators.HASH) {
-        // FIXME: might crash here
+        // Make sure relative(1) below doesn't crash
+        if (tokensLeft < 2) {
+          toks.add(possibleHash)
+          eat()
+          break
+        }
         val ident = relative(1) as? Identifier
         if (ident != null && ident.name in listOf("if", "ifdef", "ifndef")) {
           ifSectionStack++

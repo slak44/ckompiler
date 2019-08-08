@@ -47,6 +47,7 @@ interface ITokenHandler {
   fun relative(offset: Int): LexicalToken
   fun tokenAt(contextIdx: Int): LexicalToken
 
+  val tokensLeft: Int
   fun isEaten(): Boolean
   fun isNotEaten() = !isEaten()
   fun eat()
@@ -97,6 +98,8 @@ class TokenHandler(tokens: List<LexicalToken>, debugHandler: IDebugHandler) :
   override fun isEaten(): Boolean = idxStack.peek() >= tokenCount
 
   override val tokenCount: Int get() = tokStack.peek().size
+
+  override val tokensLeft: Int get() = (tokStack.peek().size - idxStack.peek()).coerceAtLeast(0)
 
   override fun current(): LexicalToken = tokStack.peek()[idxStack.peek()]
 

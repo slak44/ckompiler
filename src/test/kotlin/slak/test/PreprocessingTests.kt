@@ -239,6 +239,13 @@ class PreprocessingTests {
   }
 
   @Test
+  fun `Empty Directive At End Of Source Inside IfSection`() {
+    val l = preparePP("#if 1\n#", source)
+    l.assertDiags(DiagnosticId.UNTERMINATED_CONDITIONAL)
+    assert(l.tokens.isEmpty())
+  }
+
+  @Test
   fun `Empty Directive At End Of IfSection`() {
     val l = preparePP("""
       #if 0
