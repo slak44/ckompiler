@@ -262,7 +262,7 @@ class PreprocessingTests {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = ["#if 0", "#ifdef TEST", "#ifndef TEST"])
+  @ValueSource(strings = ["#if 0", "#if 1", "#ifdef TEST", "#ifndef TEST"])
   fun `Nested IfSection`(code: String) {
     val l = preparePP("""
       $code

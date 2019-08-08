@@ -346,15 +346,6 @@ private class PPParser(
         if (ident != null && ident.name in listOf("if", "ifdef", "ifndef")) {
           ifSectionStack++
         }
-        if (ident != null && ident.name == "endif") {
-          ifSectionStack--
-          if (ifSectionStack < 1) {
-            // This technically means there are extra #endifs
-            // If this group is passed to the recursive parser, it will notice them and emit diags
-            // We just pretend they weren't here
-            ifSectionStack = 1
-          }
-        }
         if (ifSectionStack == 1 && ident != null && ident.name in listOf("elif", "else", "endif")) {
           eat() // #
           eat() // ident
@@ -405,6 +396,15 @@ private class PPParser(
             return recursiveParser.outTokens
           }
           toks = mutableListOf()
+        }
+        if (ident != null && ident.name == "endif") {
+          ifSectionStack--
+          if (ifSectionStack < 1) {
+            // This technically means there are extra #endifs
+            // If this group is passed to the recursive parser, it will notice them and emit diags
+            // We just pretend they weren't here
+            ifSectionStack = 1
+          }
         }
       }
       if (isEaten()) break
