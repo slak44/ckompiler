@@ -160,4 +160,9 @@ class NasmTests {
   fun `Hello World!`() {
     assertEquals(0 to "Hello World!\n", compileAndRun(resource("e2e/helloWorld.c")))
   }
+
+  @Test
+  fun `Float Ops Test`() {
+    assertEquals(0 to "", compileAndRun(resource("e2e/floatOps.c")))
+  }
 }
