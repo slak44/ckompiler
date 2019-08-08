@@ -69,13 +69,6 @@ class LexingTests {
   }
 
   @Test
-  fun `Invalid Int Suffix Error`() {
-    assertPPDiagnostic("123A", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("123UA", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("123U2", source, DiagnosticId.INVALID_SUFFIX)
-  }
-
-  @Test
   fun `Floats Various`() {
     val l = preparePP("""
       123.123 123. .123
@@ -121,24 +114,24 @@ class LexingTests {
     )
   }
 
-  @Test
-  fun `Invalid Float Suffix Error`() {
-    assertPPDiagnostic("123.12A", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("123.12FA", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("123.12AF", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("123.A", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("123.12A1", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic(".1A", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("1.1E1A", source, DiagnosticId.INVALID_SUFFIX)
-    assertPPDiagnostic("1.FE", source, DiagnosticId.INVALID_SUFFIX)
+  @ParameterizedTest
+  @ValueSource(strings = ["123A", "123UA", "123U2"])
+  fun `Invalid Int Suffix Error`(int: String) {
+    assertPPDiagnostic(int, source, DiagnosticId.INVALID_SUFFIX)
   }
 
-  @Test
-  fun `No Exp Digits Error`() {
-    assertPPDiagnostic("1.1EA", source, DiagnosticId.NO_EXP_DIGITS)
-    assertPPDiagnostic("1.EA", source, DiagnosticId.NO_EXP_DIGITS)
-    assertPPDiagnostic("1.EF", source, DiagnosticId.NO_EXP_DIGITS)
-    assertPPDiagnostic("1.E+F", source, DiagnosticId.NO_EXP_DIGITS)
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "123.12A", "123.12FA", "123.12AF", "123.A", "123.12A1", ".1A", "1.1E1A", "1.FE"
+  ])
+  fun `Invalid Float Suffix Error`(float: String) {
+    assertPPDiagnostic(float, source, DiagnosticId.INVALID_SUFFIX)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["1.1EA", "1.EA", "1.EF", "1.E+F"])
+  fun `No Exp Digits Error`(float: String) {
+    assertPPDiagnostic(float, source, DiagnosticId.NO_EXP_DIGITS)
   }
 
   @ParameterizedTest
