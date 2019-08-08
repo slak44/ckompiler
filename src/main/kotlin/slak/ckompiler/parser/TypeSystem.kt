@@ -110,6 +110,16 @@ sealed class TypeName {
    */
   fun isCompleteObjectType() = this !is FunctionType && this !is VoidType &&
       (this as? ArrayType)?.size !is NoSize
+
+  /**
+   * System V ABI: 3.2.3, page 17
+   */
+  fun isSSEType() = this is FloatType || this is DoubleType
+
+  /**
+   * System V ABI: 3.2.3, page 17
+   */
+  fun isABIIntegerType() = this is IntegralType || this is PointerType
 }
 
 object ErrorType : TypeName() {

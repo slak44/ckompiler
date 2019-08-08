@@ -52,28 +52,28 @@ fun BinaryOperators.asBinaryOperation() = when (this) {
 }
 
 /** An expression between 2 known operands; not a tree. */
-sealed class ComputeExpression
+sealed class ComputeExpression(open val kind: OperationTarget)
 
 /** Basic pieces of data for [ComputeExpression]s. */
-sealed class ComputeConstant : ComputeExpression()
+sealed class ComputeConstant(override val kind: OperationTarget) : ComputeExpression(kind)
 
 /** @see IntegerConstantNode */
-data class ComputeInteger(val int: IntegerConstantNode) : ComputeConstant() {
+data class ComputeInteger(val int: IntegerConstantNode) : ComputeConstant(OperationTarget.INTEGER) {
   override fun toString() = int.toString()
 }
 
 /** @see FloatingConstantNode */
-data class ComputeFloat(val float: FloatingConstantNode) : ComputeConstant() {
+data class ComputeFloat(val float: FloatingConstantNode) : ComputeConstant(OperationTarget.SSE) {
   override fun toString() = float.toString()
 }
 
 /** @see CharacterConstantNode */
-data class ComputeChar(val char: CharacterConstantNode) : ComputeConstant() {
+data class ComputeChar(val char: CharacterConstantNode) : ComputeConstant(OperationTarget.INTEGER) {
   override fun toString() = char.toString()
 }
 
 /** @see StringLiteralNode */
-data class ComputeString(val str: StringLiteralNode) : ComputeConstant() {
+data class ComputeString(val str: StringLiteralNode) : ComputeConstant(OperationTarget.INTEGER) {
   override fun toString() = str.toString()
 }
 
@@ -81,7 +81,9 @@ data class ComputeString(val str: StringLiteralNode) : ComputeConstant() {
  * Wraps [tid], adds [version] for variable renaming.
  * @see TypedIdentifier
  */
-data class ComputeReference(val tid: TypedIdentifier) : ComputeConstant(), IRExpression {
+data class ComputeReference(
+    val tid: TypedIdentifier
+) : ComputeConstant(tid.type.operationTarget()), IRExpression {
   var version = 0
 
   /**
@@ -116,19 +118,32 @@ data class ComputeReference(val tid: TypedIdentifier) : ComputeConstant(), IRExp
   }
 }
 
+// FIXME: incomplete
+enum class OperationTarget {
+  INTEGER, SSE
+}
+
+private fun TypeName.operationTarget(): OperationTarget {
+  return if (isSSEType()) OperationTarget.SSE else OperationTarget.INTEGER
+}
+
+private fun Expression.operationTarget() = type.operationTarget()
+
 /**
  * Similar to [BinaryExpression], but doesn't support commas and assignments, and has
  * [ComputeConstant] arguments.
  */
 data class BinaryComputation(val op: BinaryComputations,
                              val lhs: ComputeConstant,
-                             val rhs: ComputeConstant) : ComputeExpression() {
+                             val rhs: ComputeConstant,
+                             override val kind: OperationTarget) : ComputeExpression(kind) {
   override fun toString() = "$lhs $op $rhs"
 }
 
 /** @see UnaryExpression */
 data class UnaryComputation(val op: UnaryOperators,
-                            val operand: ComputeConstant) : ComputeExpression() {
+                            val operand: ComputeConstant,
+                            override val kind: OperationTarget) : ComputeExpression(kind) {
   override fun toString() = "$op$operand"
 }
 
@@ -136,8 +151,10 @@ data class UnaryComputation(val op: UnaryOperators,
 interface IRExpression
 
 /** The instruction for a function call in IR. */
-data class Call(val functionPointer: ComputeConstant,
-                val args: List<ComputeConstant>) : ComputeExpression(), IRExpression {
+data class Call(
+    val functionPointer: ComputeConstant,
+    val args: List<ComputeConstant>
+) : ComputeExpression(OperationTarget.INTEGER), IRExpression {
   override fun toString() = "$functionPointer(${args.joinToString(", ")})"
 }
 
@@ -213,7 +230,11 @@ class IRLoweringContext {
         ?: logger.throwICE("Only assignments must get here") { expr }
     val assignTarget = getAssignable(expr.lhs)
     val additionalComputation = BinaryComputation(
-        additionalOperation, assignTarget, transformExpr(expr.rhs))
+        additionalOperation,
+        assignTarget,
+        transformExpr(expr.rhs),
+        expr.operationTarget()
+    )
     val assignableResult = makeTemporary(expr.lhs.type)
     _ir += Store(assignableResult, additionalComputation, isSynthetic = true)
     _ir += Store(assignTarget, assignableResult, isSynthetic = false)
@@ -228,7 +249,12 @@ class IRLoweringContext {
   private fun transformBinary(expr: BinaryExpression): ComputeReference {
     if (expr.op in assignmentOps) return transformCompoundAssigns(expr)
     val operation = expr.op.asBinaryOperation()
-    val binary = BinaryComputation(operation, transformExpr(expr.lhs), transformExpr(expr.rhs))
+    val binary = BinaryComputation(
+        operation,
+        transformExpr(expr.lhs),
+        transformExpr(expr.rhs),
+        expr.operationTarget()
+    )
     val target = makeTemporary(expr.type)
     _ir += Store(target, binary, isSynthetic = true)
     return target
@@ -250,7 +276,11 @@ class IRLoweringContext {
    */
   private fun transformUnary(expr: UnaryExpression): ComputeReference {
     val target = makeTemporary(expr.type)
-    _ir += Store(target, UnaryComputation(expr.op, transformExpr(expr.operand)), isSynthetic = true)
+    _ir += Store(target, UnaryComputation(
+        expr.op,
+        transformExpr(expr.operand),
+        expr.operationTarget()
+    ), isSynthetic = true)
     return target
   }
 

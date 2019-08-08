@@ -2,6 +2,7 @@ package slak.ckompiler.backend.nasm_x86_64
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
+import slak.ckompiler.lexer.FloatingSuffix
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
@@ -67,9 +68,22 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private val stringRefIds = IdCounter()
 
   /**
+   * Maps a float to a label with the value.
+   * @see stringRefs
+   */
+  private val floatRefs = mutableMapOf<FloatingConstantNode, String>()
+  private val floatRefIds = IdCounter()
+
+  /**
    * System V ABI: 3.2.3, page 20
    */
   private val intArgRegisters = listOf("rdi", "rsi", "rdx", "rcx", "r8", "r9")
+
+  /**
+   * System V ABI: 3.2.3, page 20
+   */
+  private val fltArgRegisters =
+      listOf("xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
 
   init {
     for (external in externals) prelude += "extern $external"
@@ -127,22 +141,34 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     // New stack frame
     emit("mov rbp, rsp")
     // Local variables
-    var rbpOffset = -4
+    // FIXME: local variable size is not always 8 bytes
+    var rbpOffset = -8
     for ((ref) in cfg.definitions) {
       emit("; ${ref.tid.name}")
       // FIXME: they're not all required to go on the stack
       // FIXME: initial value shouldn't always be 0
-      // FIXME: this only handles integral types
       emit("push 0")
       variableRefs[ref] = rbpOffset
-      rbpOffset -= 4
+      rbpOffset -= 8
     }
     // Regular function arguments
-    for ((idx, arg) in cfg.f.parameters.withIndex()) {
-      // FIXME: pretends only integral arguments exist
-      emit("mov ${ComputeReference(arg).pos}, ${intArgRegisters[idx]}")
-      if (idx >= intArgRegisters.size) {
-        TODO("too many parameters, not implemented yet")
+    var intArgCounter = 0
+    var fltArgCounter = 0
+    for (arg in cfg.f.parameters) {
+      if (arg.type.isABIIntegerType()) {
+        emit("mov ${ComputeReference(arg).pos}, ${intArgRegisters[intArgCounter]}")
+        intArgCounter++
+        if (intArgCounter >= intArgRegisters.size) {
+          TODO("too many int parameters, not implemented yet")
+        }
+      } else if (arg.type.isSSEType()) {
+        emit("movaps ${ComputeReference(arg).pos}, ${fltArgRegisters[fltArgCounter]}")
+        fltArgCounter++
+        if (fltArgCounter >= fltArgRegisters.size) {
+          TODO("too many float parameters, not implemented yet")
+        }
+      } else {
+        TODO("other types")
       }
     }
     // Start actual codegen
@@ -176,7 +202,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     is UncondJump -> genUncondJump(jmp.target)
     is ImpossibleJump -> genReturn(jmp.returned)
     is ConstantJump -> genUncondJump(jmp.target)
-    // FIXME: handle the case where the function is main, and the final block is allowed to be this
+    // FIXME: handle the case where the function is main, and the final block is allowed to be this;
     //   alternatively, fix this in the parser by handling main separately
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
@@ -242,7 +268,12 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
         // Do nothing; as far as we're concerned, the expression can do whatever it wants, but the
         // function still returns nothing
       }
-      FloatType, DoubleType -> TODO("SSE class")
+      // SSE classification
+      FloatType, DoubleType -> {
+        // FIXME: random use of xmm8
+        // FIXME: there are two SSE return registers, xmm0 and xmm1
+        emit("movaps xmm0, xmm8")
+      }
       is ArrayType -> TODO()
       is BitfieldType -> TODO()
       is StructureType -> TODO()
@@ -264,23 +295,36 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   /**
-   * System V ABI: 3.2.3
+   * System V ABI: 3.2.3, page 20
    */
   private fun FunctionGenContext.genCall(call: Call) = instrGen {
-    // FIXME: pretends only integral arguments exist
-    for ((idx, arg) in call.args.withIndex()) {
+    var intArgCounter = 0
+    var fltArgCounter = 0
+    for (arg in call.args) {
       emit(genComputeConstant(arg))
+      if (arg is ComputeFloat) {
+        // FIXME: random use of xmm8
+        if (fltArgCounter < fltArgRegisters.size) {
+          emit("movaps ${fltArgRegisters[fltArgCounter]}, xmm8")
+          fltArgCounter++
+        } else {
+          emit("push xmm8")
+        }
+        continue
+      }
       // FIXME: random use of rax
-      emit("mov ${intArgRegisters[idx]}, rax")
-      if (idx >= intArgRegisters.size) {
+      if (intArgCounter < intArgRegisters.size) {
+        emit("mov ${intArgRegisters[intArgCounter]}, rax")
+        intArgCounter++
+      } else {
         emit("push rax")
-        break
       }
     }
     if (call.functionPointer is ComputeReference) {
-      // FIXME: random use of rax
-      //  (for printf)
-      emit("xor rax, rax")
+      if (call.functionPointer.tid.type.asCallable()!!.variadic) {
+        // The ABI says al must contain the number of vector arguments
+        emit("mov al, $fltArgCounter")
+      }
       emit("call ${call.functionPointer.tid.name}")
     } else {
       // This is the case where we call some random function pointer
@@ -294,17 +338,23 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
 
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
     emit(genComputeExpr(store.data))
-    if (store.isSynthetic) {
-      return@instrGen
-    } else {
-      emit("mov ${store.target.pos}, rax")
+    if (store.isSynthetic) return@instrGen
+    when (store.data.kind) {
+      OperationTarget.INTEGER -> {
+        // FIXME: random use of rax
+        emit("mov ${store.target.pos}, rax")
+      }
+      OperationTarget.SSE -> {
+        // FIXME: random use of xmm8
+        emit("movaps ${store.target.pos}, xmm8")
+      }
     }
   }
 
   /**
-   * Assume returns in rax.
+   * Assume returns in rax/xmm8.
    *
-   * FIXME: random use of rax
+   * FIXME: random use of rax/xmm8
    */
   private fun FunctionGenContext.genComputeExpr(compute: ComputeExpression) = when (compute) {
     is BinaryComputation -> genBinary(compute)
@@ -313,12 +363,17 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     is ComputeConstant -> genComputeConstant(compute)
   }
 
-  private fun FunctionGenContext.genBinary(bin: BinaryComputation) = instrGen {
-    // FIXME: random use of rax/rbx
+  private fun FunctionGenContext.genBinary(bin: BinaryComputation) = when (bin.kind) {
+    OperationTarget.INTEGER -> genIntBinary(bin)
+    OperationTarget.SSE -> genFltBinary(bin)
+  }
+
+  private fun FunctionGenContext.genIntBinary(bin: BinaryComputation) = instrGen {
     emit(genComputeConstant(bin.rhs))
+    // FIXME: random use of rax/rbx
     emit("mov rbx, rax")
     emit(genComputeConstant(bin.lhs))
-    emit(genBinaryOperation(bin.op))
+    emit(genIntBinaryOperation(bin.op))
   }
 
   /**
@@ -327,7 +382,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
    * FIXME: random use of rax
    * Assume returns in rax.
    */
-  private fun genBinaryOperation(op: BinaryComputations) = instrGen {
+  private fun genIntBinaryOperation(op: BinaryComputations) = instrGen {
     when (op) {
       BinaryComputations.ADD -> emit("add rax, rbx")
       BinaryComputations.SUBSTRACT -> emit("sub rax, rbx")
@@ -353,9 +408,45 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     }
   }
 
+  private fun FunctionGenContext.genFltBinary(bin: BinaryComputation) = instrGen {
+    emit(genComputeConstant(bin.rhs))
+    // FIXME: random use of xmm8/xmm9
+    emit("movaps xmm9, xmm8")
+    emit(genComputeConstant(bin.lhs))
+    emit(genFltBinaryOperation(bin.op))
+  }
+
+  /**
+   * Assume operands are xmm8/xmm9.
+   *
+   * FIXME: random use of xmm8/xmm9
+   * Assume returns in xmm8.
+   */
+  private fun genFltBinaryOperation(op: BinaryComputations) = instrGen {
+    when (op) {
+      BinaryComputations.ADD -> emit("addss xmm8, xmm9")
+      BinaryComputations.SUBSTRACT -> emit("subss xmm8, xmm9")
+      BinaryComputations.MULTIPLY -> emit("mulss xmm8, xmm9")
+      BinaryComputations.DIVIDE -> {
+        emit("divss xmm8, xmm9")
+        emit("movaps xmm8, xmm9")
+      }
+      BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
+      BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
+      BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> TODO("???")
+      BinaryComputations.LOGICAL_AND -> TODO("???")
+      BinaryComputations.LOGICAL_OR -> TODO("???")
+      BinaryComputations.BITWISE_AND, BinaryComputations.BITWISE_OR, BinaryComputations.BITWISE_XOR,
+      BinaryComputations.REMAINDER, BinaryComputations.LEFT_SHIFT,
+      BinaryComputations.RIGHT_SHIFT -> {
+        logger.throwICE("Illegal operation between floats made it to codegen") { op }
+      }
+    }
+  }
+
   private fun FunctionGenContext.genComputeConstant(ct: ComputeConstant) = when (ct) {
     is ComputeInteger -> genInt(ct.int)
-    is ComputeFloat -> TODO()
+    is ComputeFloat -> genFloat(ct.float)
     is ComputeChar -> TODO()
     is ComputeString -> genString(ct.str)
     is ComputeReference -> genRefUse(ct)
@@ -373,13 +464,34 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     emit("mov rax, ${stringRefs[str]}")
   }
 
+  private fun genFloat(flt: FloatingConstantNode) = instrGen {
+    if (flt.suffix == FloatingSuffix.LONG_DOUBLE) TODO("x87 stuff")
+    // Make sure the entry in floatRefs exists
+    if (flt !in floatRefs) {
+      val prettyName = flt.value.toString().filter(Char::isLetterOrDigit).take(10)
+      floatRefs[flt] = "flt_${floatRefIds()}_$prettyName"
+      val kind = if (flt.suffix == FloatingSuffix.FLOAT) "dd" else "dq"
+      data += "${floatRefs[flt]}: $kind ${flt.value}"
+    }
+    // FIXME: random use of xmm8
+    emit("movaps xmm8, [${floatRefs[flt]}]")
+  }
+
   private fun genInt(int: IntegerConstantNode) = instrGen {
     // FIXME: random use of rax
     emit("mov rax, ${int.value}")
   }
 
   private fun FunctionGenContext.genRefUse(ref: ComputeReference) = instrGen {
-    // FIXME: random use of rax
-    emit("mov rax, ${ref.pos}")
+    when (ref.kind) {
+      OperationTarget.INTEGER -> {
+        // FIXME: random use of rax
+        emit("mov rax, ${ref.pos}")
+      }
+      OperationTarget.SSE -> {
+        // FIXME: random use of xmm8
+        emit("movaps xmm8, ${ref.pos}")
+      }
+    }
   }
 }
