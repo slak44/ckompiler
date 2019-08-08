@@ -131,16 +131,17 @@ private class PPParser(
     if (groupKind.name !in listOf("ifdef", "ifndef", "if")) return null
     eat() // The #
     eat() // The group kind
-    if (isEaten()) {
-      diagnostic {
-        id = DiagnosticId.MACRO_NAME_MISSING
-        column(colPastTheEnd(0))
-      }
-      return emptyList<LexicalToken>() to groupKind.name
-    }
+    val tentativeMissingNameIdx = colPastTheEnd(-1)
     val newlineIdx = indexOfFirst { it == NewLine }
     val lineEndIdx = if (newlineIdx == -1) tokenCount else newlineIdx
     return tokenContext(lineEndIdx) {
+      if (isEaten()) {
+        diagnostic {
+          id = DiagnosticId.MACRO_NAME_MISSING
+          column(tentativeMissingNameIdx)
+        }
+        return@tokenContext emptyList<LexicalToken>()
+      }
       // Constant expression condition, return everything
       if (groupKind.name == "if") {
         eatUntil(it.size)
