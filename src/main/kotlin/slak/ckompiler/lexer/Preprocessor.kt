@@ -328,83 +328,98 @@ private class PPParser(
     var pickedGroup: List<LexicalToken>? = null
     var wasElseFound = false
     var toks = mutableListOf<LexicalToken>()
-    while (true) {
+
+    // This is here to reduce indent level inside
+    fun ifDirectives(ident: Identifier): List<LexicalToken>? {
+      eat() // #
+      eat() // ident
+      if (lastCondResult && pickedGroup == null) {
+        pickedGroup = toks
+      }
+      if ((ident.name == "elif" || ident.name == "else") && wasElseFound) {
+        diagnostic {
+          id = DiagnosticId.ELSE_NOT_LAST
+          formatArgs("#${ident.name}")
+          columns(ident.range)
+        }
+      }
+      if (ident.name == "elif") {
+        lastCondResult = evaluateConstExpr(elifGroup(ident), "elif")
+      }
+      if ((ident.name == "else" || ident.name == "endif") && isNotEaten() && current() != NewLine) {
+        val firstNewLine = indexOfFirst { it == NewLine }
+        diagnostic {
+          id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
+          formatArgs("#${ident.name}")
+          val lastLineTokIdx = if (firstNewLine == -1) tokenCount - 1 else firstNewLine - 1
+          columns(safeToken(0)..tokenAt(lastLineTokIdx))
+        }
+        if (firstNewLine == -1) eatUntil(tokenCount)
+        else eatUntil(firstNewLine)
+      }
+      if (ident.name == "else") {
+        // This ensures that the else group will be picked if nothing else was
+        lastCondResult = true
+        wasElseFound = true
+      }
+      if (ident.name == "endif") {
+        // End of if-section; exit function with correct tokens, or with nothing (if the
+        // condition was false and there are no elif/else groups)
+        val recursiveParser = PPParser(
+            ppTokens = pickedGroup ?: return emptyList(),
+            initialDefines = defines,
+            includePaths = includePaths,
+            currentDir = currentDir,
+            ignoreTrigraphs = ignoreTrigraphs,
+            debugHandler = debugHandler
+        )
+        // FIXME: deal with nested defines
+        return recursiveParser.outTokens
+      }
+      toks = mutableListOf()
+      return null
+    }
+
+    outerLoop@ while (true) {
       while (isNotEaten() && current() == NewLine) {
         toks.add(current())
         eat()
       }
       if (isEaten()) break
       val possibleHash = current()
-      if (possibleHash.asPunct() == Punctuators.HASH) {
-        // Make sure relative(1) below doesn't crash
-        if (tokensLeft < 2) {
-          toks.add(possibleHash)
-          eat()
-          break
-        }
-        val ident = relative(1) as? Identifier
-        if (ident != null && ident.name in listOf("if", "ifdef", "ifndef")) {
-          ifSectionStack++
-        }
-        if (ifSectionStack == 1 && ident != null && ident.name in listOf("elif", "else", "endif")) {
-          eat() // #
-          eat() // ident
-          if (lastCondResult && pickedGroup == null) {
-            pickedGroup = toks
-          }
-          if ((ident.name == "elif" || ident.name == "else") && wasElseFound) {
-            diagnostic {
-              id = DiagnosticId.ELSE_NOT_LAST
-              formatArgs("#${ident.name}")
-              columns(ident.range)
-            }
-          }
-          if (ident.name == "elif") {
-            lastCondResult = evaluateConstExpr(elifGroup(ident), "elif")
-          }
-          if (ident.name == "else" || ident.name == "endif") {
-            if (isNotEaten() && current() != NewLine) {
-              val firstNewLine = indexOfFirst { it == NewLine }
-              diagnostic {
-                id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
-                formatArgs("#${ident.name}")
-                val lastLineTokIdx = if (firstNewLine == -1) tokenCount - 1 else firstNewLine - 1
-                columns(safeToken(0)..tokenAt(lastLineTokIdx))
-              }
-              if (firstNewLine == -1) eatUntil(tokenCount)
-              else eatUntil(firstNewLine)
-            }
-          }
-          if (ident.name == "else") {
-            // This ensures that the else group will be picked if nothing else was
-            lastCondResult = true
-            wasElseFound = true
-          }
-          if (ident.name == "endif") {
-            // End of if-section; exit function with correct tokens, or with nothing (if the
-            // condition was false and there are no elif/else groups)
-            if (pickedGroup == null) return emptyList()
-            val recursiveParser = PPParser(
-                ppTokens = pickedGroup,
-                initialDefines = defines,
-                includePaths = includePaths,
-                currentDir = currentDir,
-                ignoreTrigraphs = ignoreTrigraphs,
-                debugHandler = debugHandler
-            )
-            // FIXME: deal with nested defines
-            return recursiveParser.outTokens
-          }
-          toks = mutableListOf()
-        }
-        if (ident != null && ident.name == "endif") {
-          ifSectionStack--
-          if (ifSectionStack < 1) {
-            // This technically means there are extra #endifs
-            // If this group is passed to the recursive parser, it will notice them and emit diags
-            // We just pretend they weren't here
-            ifSectionStack = 1
-          }
+      if (possibleHash.asPunct() != Punctuators.HASH) {
+        toks.add(possibleHash)
+        eat()
+        continue
+      }
+      // Make sure relative(1) below doesn't crash
+      if (tokensLeft < 2) {
+        toks.add(possibleHash)
+        eat()
+        break
+      }
+      val ident = relative(1) as? Identifier
+      if (ident == null) {
+        toks.add(possibleHash)
+        toks.add(relative(1))
+        eat()
+        eat()
+        continue
+      }
+      if (ident.name in listOf("if", "ifdef", "ifndef")) {
+        ifSectionStack++
+      }
+      if (ifSectionStack == 1 && ident.name in listOf("elif", "else", "endif")) {
+        val maybeReturn = ifDirectives(ident)
+        if (maybeReturn != null) return maybeReturn
+      }
+      if (ident.name == "endif") {
+        ifSectionStack--
+        if (ifSectionStack < 1) {
+          // This technically means there are extra #endifs
+          // If this group is passed to the recursive parser, it will notice them and emit diags
+          // We just pretend they weren't here
+          ifSectionStack = 1
         }
       }
       if (isEaten()) break
