@@ -162,8 +162,13 @@ private class PPParser(
         }
         return@tokenContext emptyList()
       } else {
-        val defd = Identifier(if (groupKind.name == "ifdef") "defined" else "!defined")
-        return@tokenContext listOf(defd, ident)
+        // If these synthetic idents are used in a diagnostic, the startIdx must be valid
+        // Also, if a diagnostic does something like defd..otherToken, it will work correctly, even
+        // though "defined" may be longer than the otherToken
+        val defd = Identifier("defined").withStartIdx(ident.startIdx)
+        val unaryNot = Punctuator(Punctuators.NOT).withStartIdx(ident.startIdx)
+        return@tokenContext listOfNotNull(
+            if (groupKind.name == "ifndef") unaryNot else null, defd, ident)
       }
     }
   }
