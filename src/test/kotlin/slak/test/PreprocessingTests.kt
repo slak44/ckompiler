@@ -195,8 +195,7 @@ class PreprocessingTests {
     assertPPDiagnostic("""
       #ifdef 123 foo bar baz
       #endif
-    """.trimIndent(), source,
-        DiagnosticId.EXTRA_TOKENS_DIRECTIVE, DiagnosticId.MACRO_NAME_NOT_IDENT)
+    """.trimIndent(), source, DiagnosticId.MACRO_NAME_NOT_IDENT)
   }
 
   @Test
@@ -450,7 +449,7 @@ class PreprocessingTests {
   @ValueSource(strings = ["test", "int", "bla", "zero", "float", "_Alignas"])
   fun `IfSection Condition Identifiers Are Zero`(code: String) {
     assertPPDiagnostic("""
-      #ifdef $code
+      #if $code
       #endif
     """.trimIndent(), source, DiagnosticId.NOT_DEFINED_IS_0)
   }
@@ -469,10 +468,12 @@ class PreprocessingTests {
 
   @Test
   fun `Defined Operator On Defined Identifier`() {
-    assertPPDiagnostic("""
+    val l = preparePP("""
       #if defined defined
       #endif
-    """.trimIndent(), source, DiagnosticId.NOT_DEFINED_IS_0)
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
   }
 
   @Test
@@ -485,6 +486,7 @@ class PreprocessingTests {
 
   @Test
   fun `Defined Operator At End Of File`() {
-    assertPPDiagnostic("#if defined", source, DiagnosticId.EXPECTED_IDENT)
+    assertPPDiagnostic("#if defined", source,
+        DiagnosticId.EXPECTED_IDENT, DiagnosticId.UNTERMINATED_CONDITIONAL)
   }
 }
