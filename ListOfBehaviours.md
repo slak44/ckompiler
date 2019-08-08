@@ -12,6 +12,7 @@ is unlimited
 type `unsigned int`
 - (J.3.1/5.1.1.2.0.1.3): Sequences of whitespace are retained in
 translation phase 3
+- (J.3.4/5.2.2.0.3): Escape sequences produce the relevant ASCII codes
 
 # List of Undefined Behaviours
 

@@ -2,6 +2,7 @@ package slak.test.lexer
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.*
@@ -172,10 +173,37 @@ class LexingTests {
 
   @ParameterizedTest
   @ValueSource(strings = ["a", "*", "asdf", "'"])
-  fun `String Literals`(strContent: String) {
+  fun `String Literals Basic`(strContent: String) {
     val l = preparePP("\"$strContent\"", source)
     l.assertNoDiagnostics()
     l.assertTokens(StringLiteral(strContent, StringEncoding.CHAR))
+  }
+
+  @Test
+  fun `Char Literal As Subscripted Target`() {
+    val l = preparePP("'a'[123]", source)
+    l.assertNoDiagnostics()
+    l.assertTokens(CharLiteral("a", CharEncoding.UNSIGNED_CHAR),
+        Punctuators.LSQPAREN, 123, Punctuators.RSQPAREN)
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = [
+    "\\t,        '" + 0x9.toChar(),
+    "\\n,        '" + 0xA.toChar(),
+    "foo\\bbar,  foo" + 0x8.toChar() + "bar",
+    "\\?,        ?",
+    "\\\",       \""
+  ])
+  fun `String Literals With Simple Escape Sequences`(original: String, escaped: String) {
+    val l = preparePP("\"$original\"", source)
+    l.assertNoDiagnostics()
+    println("original: " + original.toByteArray().toList())
+    println("escaped : " + escaped.toByteArray().toList())
+    println("lexer   : " + (l.tokens[0] as StringLiteral).data.toByteArray().toList())
+    // Fix artifact from CSV parser:
+    val realEscaped = if (escaped.last() == '\n') escaped.dropLast(1) else escaped
+    l.assertTokens(StringLiteral(realEscaped, StringEncoding.CHAR))
   }
 
   @Test

@@ -101,14 +101,60 @@ data class FloatingConstant(val f: String,
   override fun toString() = "${javaClass.simpleName}[$radix $f ${exponent ?: '_'} $suffix]"
 }
 
-sealed class CharSequence(dataLength: Int, prefixLength: Int) :
-    LexicalToken(prefixLength + dataLength + 2)
+/**
+ * @param realLength used for [LexicalToken.consumedChars], may be higher than data length
+ */
+sealed class CharSequence(realLength: Int, prefixLength: Int) :
+    LexicalToken(prefixLength + realLength + 2)
 
-data class StringLiteral(val data: String, val encoding: StringEncoding) :
-    CharSequence(data.length, encoding.prefixLength)
+/**
+ * [realLength] is not included in [equals] because it is only relevant to the lexer, and it would
+ * break tests that create literals synthetically.
+ */
+data class StringLiteral(
+    val data: String,
+    val encoding: StringEncoding,
+    val realLength: Int = data.length
+) : CharSequence(realLength, encoding.prefixLength) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is StringLiteral) return false
 
-data class CharLiteral(val data: String, val encoding: CharEncoding) :
-    CharSequence(data.length, encoding.prefixLength)
+    if (data != other.data) return false
+    if (encoding != other.encoding) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = data.hashCode()
+    result = 31 * result + encoding.hashCode()
+    return result
+  }
+}
+
+/** @see StringLiteral */
+data class CharLiteral(
+    val data: String,
+    val encoding: CharEncoding,
+    val realLength: Int = data.length
+) : CharSequence(realLength, encoding.prefixLength) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is CharLiteral) return false
+
+    if (data != other.data) return false
+    if (encoding != other.encoding) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = data.hashCode()
+    result = 31 * result + encoding.hashCode()
+    return result
+  }
+}
 
 /** C standard: A.1.8 */
 data class HeaderName(val data: String, val kind: Char) : LexicalToken(data.length + 2)

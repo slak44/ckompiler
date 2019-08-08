@@ -154,24 +154,77 @@ fun identifier(s: String): Identifier? {
   return Identifier(ident)
 }
 
-/** C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5 */
+/**
+ * Maps the character after an escape sequence (eg the a in \a) to the actual char value it should
+ * have.
+ *
+ * C standard: A.1.5, 6.4.4.4, 5.2.2.0.2, note 77
+ */
+private val simpleEscapeSequences = mapOf(
+    '\'' to '\'',
+    '"' to '"',
+    '?' to '?',
+    '\\' to '\\',
+    'a' to 0x7.toChar(),
+    'b' to 0x8.toChar(),
+    'f' to 0xC.toChar(),
+    'n' to 0xA.toChar(),
+    'r' to 0xD.toChar(),
+    't' to 0x9.toChar(),
+    'v' to 0xB.toChar()
+)
+
+/**
+ * Parses `c-char-sequence` or `s-char-sequence`, depending on [quoteChar]. Returns string contents,
+ * and how many characters in the given string [s] were consumed to create the sequence; this
+ * number can be greater than the returned string's length due to escape sequences.
+ *
+ * C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5
+ */
 fun IDebugHandler.charSequence(s: String,
                                currentOffset: Int,
                                quoteChar: Char,
-                               prefixLength: Int): String {
+                               prefixLength: Int): Pair<String, Int> {
   val noPrefix = s.drop(1 + prefixLength)
-  // FIXME implement escape sequences
-  val stopIdx = noPrefix.indexOfFirst { it == '\n' || it == quoteChar }
-  if (stopIdx == -1 || noPrefix[stopIdx] == '\n') diagnostic {
+  var idx = 0
+  var charSeq = ""
+  while (idx < noPrefix.length) {
+    val c = noPrefix[idx]
+    if (c == quoteChar) break
+    if (c == '\n') break
+    // Regular characters
+    if (c != '\\') {
+      charSeq += c
+      idx++
+      continue
+    }
+    // Last char of string is backslash, will print missing quote diagnostic below
+    if (idx == noPrefix.length - 1) {
+      idx = -1
+      break
+    }
+    // Deal with escape sequences here
+    val nextChar = noPrefix[idx + 1]
+    if (simpleEscapeSequences.containsKey(nextChar)) {
+      idx += 2
+      charSeq += simpleEscapeSequences[nextChar]
+    } else {
+      TODO("other kinds of escape sequences")
+    }
+  }
+  // No quote was found to break out of the loop, so missing quote it is
+  if (idx >= noPrefix.length) idx = -1
+  if (idx == -1 || noPrefix[idx] == '\n') diagnostic {
     id = DiagnosticId.MISSING_QUOTE
     formatArgs(quoteChar)
     column(currentOffset)
-    if (stopIdx != -1) column(currentOffset - 1 + stopIdx - 1)
+    if (idx != -1) column(currentOffset - 1 + idx - 1)
   }
-  val seq = noPrefix.slice(0 until if (stopIdx == -1) s.length - 1 else stopIdx)
   // If we printed MISSING_QUOTE, but the sequence is empty, we need to make sure we don't also
   // print EMPTY_CHAR_CONSTANT later
-  return if (stopIdx == -1 && seq.isEmpty()) byteArrayOf(0).toString() else seq
+  val contents = if (idx == -1 && charSeq.isEmpty()) byteArrayOf(0).toString() else charSeq
+  val originalLength = if (idx == -1) noPrefix.length else idx
+  return contents to originalLength
 }
 
 enum class StringEncoding(val prefixLength: Int) {
@@ -193,7 +246,7 @@ fun IDebugHandler.stringLiteral(s: String, currentOffset: Int): StringLiteral? {
     else -> return null
   }
   val data = charSequence(s, currentOffset, '"', encoding.prefixLength)
-  return StringLiteral(data, encoding)
+  return StringLiteral(data.first, encoding, data.second)
 }
 
 /** C standard: A.1.5 */
@@ -206,7 +259,7 @@ fun IDebugHandler.characterConstant(s: String, currentOffset: Int): CharLiteral?
     else -> return null
   }
   val data = charSequence(s, currentOffset, '\'', encoding.prefixLength)
-  return CharLiteral(data, encoding)
+  return CharLiteral(data.first, encoding, data.second)
 }
 
 /**
