@@ -31,3 +31,13 @@ dependencies {
   testImplementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.5.0")
   testImplementation(kotlin("test-junit"))
 }
+
+tasks.test {
+  useJUnitPlatform()
+  systemProperties(
+      "junit.jupiter.execution.parallel.enabled" to "true",
+      "junit.jupiter.execution.parallel.mode.default" to "concurrent",
+      "junit.jupiter.execution.parallel.mode.classes.default" to "concurrent",
+      "junit.jupiter.execution.timeout.default" to "5s"
+  )
+}
