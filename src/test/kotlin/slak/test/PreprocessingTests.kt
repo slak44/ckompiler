@@ -315,9 +315,9 @@ class PreprocessingTests {
   fun `IfSection Inner Directives Extra Tokens`() {
     assertPPDiagnostic("""
       #ifdef TEST
-      #elif 1 asdg
-      #else asdhg
-      #endif bleh
+      #elif 1 12345
+      #else asdhg 1.1
+      #endif bleh 34
     """.trimIndent(), source, *Array(3) { DiagnosticId.EXTRA_TOKENS_DIRECTIVE })
   }
 

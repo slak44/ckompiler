@@ -121,9 +121,10 @@ private class PPParser(
   }
 
   /**
-   * Returns null if this is not an `if-group`, or the condition tokens if it is.
+   * Returns null if this is not an `if-group`, or the condition tokens + the directive name if it
+   * is.
    */
-  private fun ifGroup(): List<LexicalToken>? {
+  private fun ifGroup(): Pair<List<LexicalToken>, String>? {
     // This check ensures we can call relative(1) below
     if (tokensLeft < 2) return null
     val groupKind = relative(1) as? Identifier ?: return null
@@ -135,7 +136,7 @@ private class PPParser(
         id = DiagnosticId.MACRO_NAME_MISSING
         column(colPastTheEnd(0))
       }
-      return emptyList()
+      return emptyList<LexicalToken>() to groupKind.name
     }
     val newlineIdx = indexOfFirst { it == NewLine }
     val lineEndIdx = if (newlineIdx == -1) tokenCount else newlineIdx
@@ -155,7 +156,7 @@ private class PPParser(
         }
         // Eat the rest of the directive and return, so we don't print the warning below after this
         eatUntil(it.size)
-        return@tokenContext emptyList()
+        return@tokenContext emptyList<LexicalToken>()
       }
       if (isNotEaten()) {
         diagnostic {
@@ -172,7 +173,7 @@ private class PPParser(
       val unaryNot = Punctuator(Punctuators.NOT).withStartIdx(ident.startIdx)
       return@tokenContext listOfNotNull(
           if (groupKind.name == "ifndef") unaryNot else null, defd, ident)
-    }
+    } to groupKind.name
   }
 
   /**
@@ -244,7 +245,7 @@ private class PPParser(
     }
   }
 
-  private fun evaluateConstExpr(e: List<LexicalToken>): Boolean {
+  private fun evaluateConstExpr(e: List<LexicalToken>, directiveName: String): Boolean {
     // FIXME: do macro replacement on the given list here
     val processedToks = mutableListOf<LexicalToken>()
     var idx = 0
@@ -272,7 +273,13 @@ private class PPParser(
     }
     val pm = ParenMatcher(this, TokenHandler(processedToks, this))
     val p = ConstantExprParser(pm, ConstantExprType.PREPROCESSOR)
-    return when (val it = p.parseExpr(processedToks.size)) {
+    val it = p.parseExpr(processedToks.size)
+    if (p.isNotEaten()) diagnostic {
+      id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
+      formatArgs("#$directiveName")
+      columns(p.current()..p.tokenAt(p.tokenCount - 1))
+    }
+    return when (it) {
       // If the condition is missing, we simply return false
       null -> false
       // If the condition has an error, a diag was generated for sure, so we can presume anything
@@ -313,10 +320,10 @@ private class PPParser(
     if (current().asPunct() != Punctuators.HASH) return null
     if (isEaten()) return null
     val groupStart = safeToken(0)
-    val ifGroupCond = ifGroup() ?: return null
+    val (ifGroupCond, directiveName) = ifGroup() ?: return null
     eat() // if-group's newline
     var ifSectionStack = 1 // Counts how many if-groups were found
-    var lastCondResult = evaluateConstExpr(ifGroupCond)
+    var lastCondResult = evaluateConstExpr(ifGroupCond, directiveName)
     var pickedGroup: List<LexicalToken>? = null
     var wasElseFound = false
     var toks = mutableListOf<LexicalToken>()
@@ -361,7 +368,7 @@ private class PPParser(
             }
           }
           if (ident.name == "elif") {
-            lastCondResult = evaluateConstExpr(elifGroup(ident))
+            lastCondResult = evaluateConstExpr(elifGroup(ident), "elif")
           }
           if (ident.name == "else" || ident.name == "endif") {
             if (isNotEaten() && current() != NewLine) {
