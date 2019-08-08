@@ -450,13 +450,21 @@ class PreprocessingTests {
   @ParameterizedTest
   @EmptySource
   @ValueSource(strings = [
-    "123", "2.2", "defined", ",", "!", "-1", "%", ")", "(", "[", "=", "#", "( 123 )", "( - )"
+    "123", "2.2", ",", "!", "-1", "%", ")", "(", "[", "=", "#", "( 123 )", "( - )"
   ])
   fun `Defined Operator Expected Identifier`(code: String) {
     assertPPDiagnostic("""
       #if defined $code
       #endif
     """.trimIndent(), source, DiagnosticId.EXPECTED_IDENT)
+  }
+
+  @Test
+  fun `Defined Operator On Defined Identifier`() {
+    assertPPDiagnostic("""
+      #if defined defined
+      #endif
+    """.trimIndent(), source, DiagnosticId.NOT_DEFINED_IS_0)
   }
 
   @Test
