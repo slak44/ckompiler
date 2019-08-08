@@ -337,7 +337,11 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
-    emit(genComputeExpr(store.data))
+    // If the right hand side of the assignment isn't a synthetic reference (version 0), then gen
+    // code for it
+    if (!(store.data is ComputeReference && store.data.version == 0)) {
+      emit(genComputeExpr(store.data))
+    }
     if (store.isSynthetic) return@instrGen
     when (store.data.kind) {
       OperationTarget.INTEGER -> {
