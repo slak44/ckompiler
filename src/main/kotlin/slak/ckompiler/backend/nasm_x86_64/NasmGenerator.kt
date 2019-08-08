@@ -364,11 +364,10 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun genString(str: StringLiteralNode) = instrGen {
     // Make sure the entry in stringRefs exists
     if (str !in stringRefs) {
-      stringRefs[str] = "str_${stringRefIds()}_${str.string.filter(Char::isLetterOrDigit).take(5)}"
+      stringRefs[str] = "str_${stringRefIds()}_${str.string.filter(Char::isLetterOrDigit).take(10)}"
       // FIXME: handle different encodings
-      // FIXME: is this escaping correct?
-      val escapedStr = str.string.replace("'", "\\'")
-      data += "${stringRefs[str]}: db '$escapedStr', 0"
+      val asBytes = str.string.toByteArray().joinToString(", ")
+      data += "${stringRefs[str]}: db $asBytes, 0"
     }
     // FIXME: random use of rax
     emit("mov rax, ${stringRefs[str]}")

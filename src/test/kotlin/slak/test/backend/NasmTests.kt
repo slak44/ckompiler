@@ -158,6 +158,6 @@ class NasmTests {
 
   @Test
   fun `Hello World!`() {
-    assertEquals(0 to "Hello World!", compileAndRun(resource("e2e/helloWorld.c")))
+    assertEquals(0 to "Hello World!\n", compileAndRun(resource("e2e/helloWorld.c")))
   }
 }
