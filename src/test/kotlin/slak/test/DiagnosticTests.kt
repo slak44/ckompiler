@@ -46,6 +46,12 @@ class DiagnosticTests {
   }
 
   @Test
+  fun `PP IfSection Defined Paren Past-The-End Column`() {
+    val pp = preparePP("#if defined ( TEST\n#endif", source)
+    pp.diags.assertDiagCaret(diagNr = 0, line = 1, col = 18, colCount = 1)
+  }
+
+  @Test
   fun `Parser Diagnostic Correct Line`() {
     val p = prepareCode("""
       int a = ;

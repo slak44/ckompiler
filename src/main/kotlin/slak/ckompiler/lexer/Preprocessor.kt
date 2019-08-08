@@ -214,7 +214,13 @@ private class PPParser(
           diagnostic {
             id = DiagnosticId.UNMATCHED_PAREN
             formatArgs(")")
-            columns(e[idx + 3].range)
+            if (idx + 3 >= e.size) {
+              // No token for paren
+              column(e.last().range.last + 1)
+            } else {
+              // Wrong token as paren
+              columns(e[idx + 3].range)
+            }
           }
           diagnostic {
             id = DiagnosticId.MATCH_PAREN_TARGET
