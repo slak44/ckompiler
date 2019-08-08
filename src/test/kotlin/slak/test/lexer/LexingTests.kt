@@ -140,12 +140,12 @@ class LexingTests {
     assertPPDiagnostic("1.E+F", source, DiagnosticId.NO_EXP_DIGITS)
   }
 
-  @Test
-  fun `Char Constants`() {
-    val chars = listOf("a", "*", "asdf", "\"")
-    val l = preparePP(chars.joinToString(" ") { "'$it'" }, source)
+  @ParameterizedTest
+  @ValueSource(strings = ["a", "*", "asdf", "\""])
+  fun `Char Constants`(charContent: String) {
+    val l = preparePP("'$charContent'", source)
     l.assertNoDiagnostics()
-    l.assertTokens(chars.map { CharLiteral(it, CharEncoding.UNSIGNED_CHAR) })
+    l.assertTokens(CharLiteral(charContent, CharEncoding.UNSIGNED_CHAR))
   }
 
   @Test
@@ -170,12 +170,12 @@ class LexingTests {
     assertPPDiagnostic("char a = '';", source, DiagnosticId.EMPTY_CHAR_CONSTANT)
   }
 
-  @Test
-  fun `String Literals`() {
-    val strings = listOf("a", "*", "asdf", "'")
-    val l = preparePP(strings.joinToString(" ") { "\"$it\"" }, source)
+  @ParameterizedTest
+  @ValueSource(strings = ["a", "*", "asdf", "'"])
+  fun `String Literals`(strContent: String) {
+    val l = preparePP("\"$strContent\"", source)
     l.assertNoDiagnostics()
-    l.assertTokens(*strings.toTypedArray())
+    l.assertTokens(StringLiteral(strContent, StringEncoding.CHAR))
   }
 
   @Test
