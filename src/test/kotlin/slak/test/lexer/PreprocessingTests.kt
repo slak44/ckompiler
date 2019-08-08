@@ -1,4 +1,4 @@
-package slak.test
+package slak.test.lexer
 
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -6,6 +6,11 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.Punctuators
+import slak.test.*
+import slak.test.assertNoDiagnostics
+import slak.test.assertPPDiagnostic
+import slak.test.preparePP
+import slak.test.source
 import kotlin.test.assertEquals
 
 class PreprocessingTests {
