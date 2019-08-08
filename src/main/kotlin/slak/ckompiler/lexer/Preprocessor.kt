@@ -260,6 +260,7 @@ private class PPParser(
         tok ?: return false
         idx += count
         processedToks += tok
+        continue
       }
       diagnostic {
         id = DiagnosticId.NOT_DEFINED_IS_0
