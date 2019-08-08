@@ -366,11 +366,11 @@ private class PPParser(
           if (ident.name == "else" || ident.name == "endif") {
             if (isNotEaten() && current() != NewLine) {
               val firstNewLine = indexOfFirst { it == NewLine }
-              val lineEnd = if (firstNewLine == -1) tokenCount - 1 else firstNewLine
               diagnostic {
                 id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
                 formatArgs("#${ident.name}")
-                columns(safeToken(0)..tokenAt(lineEnd))
+                val lastLineTokIdx = if (firstNewLine == -1) tokenCount - 1 else firstNewLine - 1
+                columns(safeToken(0)..tokenAt(lastLineTokIdx))
               }
               if (firstNewLine == -1) eatUntil(tokenCount)
               else eatUntil(firstNewLine)
