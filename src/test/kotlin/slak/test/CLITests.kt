@@ -98,8 +98,8 @@ class CLITests {
     cli.assertNoDiagnostics()
     assertEquals(ExitCodes.NORMAL, exitCode)
     assertFalse(File("a.out").exists())
-    assertTrue(resource("e2e/returns10.o").exists())
-    resource("e2e/returns10.o").delete()
+    assertTrue(File("returns10.o").exists())
+    File("returns10.o").delete()
   }
 
   @Test
@@ -136,5 +136,18 @@ class CLITests {
     assertEquals(ExitCodes.NORMAL, exitCode)
     assertTrue(File("a.out").exists())
     assertFalse(File("-.o").exists())
+  }
+
+  @Test
+  fun `Output Is Relative To Current Directory`() {
+    File("/tmp/bla.s").delete()
+    File("/tmp/testing.c").writeText(resource("e2e/returns10.c").readText())
+    val (cli, exitCode) = cli("-S", "-o", "bla.s", "/tmp/testing.c")
+    cli.assertNoDiagnostics()
+    assertEquals(ExitCodes.NORMAL, exitCode)
+    assertFalse(File("a.out").exists())
+    assertFalse(File("/tmp/bla.s").exists())
+    assertTrue(File("./bla.s").exists())
+    File("./bla.s").deleteOnExit()
   }
 }

@@ -192,14 +192,20 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private var executionFailed = false
 
-  private fun compile(text: String, relPath: String, baseName: String, currentDir: File): File? {
+  private fun compile(
+      text: String,
+      relPath: String,
+      baseName: String,
+      parentDir: File,
+      currentDir: File
+  ): File? {
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
     includePaths.includeBarrier = includeBarrier
     val pp = Preprocessor(
         sourceText = text,
         srcFileName = relPath,
-        currentDir = currentDir,
+        currentDir = parentDir,
         cliDefines = defines,
         includePaths = includePaths,
         ignoreTrigraphs = disableTrigraphs
@@ -280,8 +286,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     return objFile
   }
 
-  private fun compileFile(file: File) =
-      compile(file.readText(), file.path, file.nameWithoutExtension, file.absoluteFile.parentFile)
+  private fun compileFile(file: File) = compile(
+      file.readText(),
+      file.path,
+      file.nameWithoutExtension,
+      file.absoluteFile.parentFile,
+      File(".").absoluteFile
+  )
 
   fun parse(args: Array<String>): ExitCodes {
     try {
@@ -306,7 +317,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
     val stdinObjFile = if (stdin) {
       val inText = System.`in`.bufferedReader().readText()
-      compile(inText, "-", "-", File(".").absoluteFile)
+      compile(inText, "-", "-", File(".").absoluteFile, File(".").absoluteFile)
     } else {
       null
     }
