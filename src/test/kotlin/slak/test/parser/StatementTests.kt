@@ -298,6 +298,17 @@ class StatementTests {
   }
 
   @Test
+  fun `Goto Missing Label`() {
+    val p = prepareCode("""
+      int main() {
+        goto;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT)
+    int func "main" body compoundOf(ErrorStatement()) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Goto No Semi`() {
     val p = prepareCode("""
       int main() {
