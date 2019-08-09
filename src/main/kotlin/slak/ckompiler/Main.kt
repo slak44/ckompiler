@@ -157,11 +157,47 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
   }
 
+  private data class OSOption(val linux: String, val windows: String, val mac: String)
+
+  private val osOptions = mapOf(
+      "file-opener" to OSOption("xdg-open", "start", "open"),
+      "obj-format" to OSOption("elf64", "win64", "elf64"),
+      "linker" to OSOption("ld", "link.exe", "ld")
+  )
+
+  private fun pickOsOption(optionName: String): String {
+    val name = System.getProperty("os.name")
+    val osOpts = osOptions[optionName] ?: logger.throwICE("No such OS option found") { optionName }
+    return when {
+      name == "Linux" -> osOpts.linux
+      name.startsWith("Windows") -> osOpts.windows
+      name.startsWith("Mac OS") -> osOpts.mac
+      else -> {
+        logger.warn("Unrecognized OS, assuming linux")
+        osOpts.linux
+      }
+    }
+  }
+
   private fun invokeNasm(objFile: File, asmFile: File) {
     val args = mutableListOf("nasm")
-    args += listOf("-f", "elf64")
+    args += listOf("-f", pickOsOption("obj-format"))
     if (debug) args += listOf("-g", "-F", "dwarf")
     args += listOf("-o", objFile.absolutePath, asmFile.absolutePath)
+    ProcessBuilder(args).inheritIO().start().waitFor()
+  }
+
+  private fun link(objFiles: List<File>) {
+    if (pickOsOption("linker") == "link.exe") invokeLink(objFiles)
+    else invokeLd(objFiles)
+  }
+
+  private fun invokeLink(objFiles: List<File>) {
+    val args = mutableListOf("link.exe")
+    args += listOf("/opt", File(output.orElse("a.out")).absolutePath)
+    args += listOf("msvcrt.dll")
+    args += listOf("/entry", "_start")
+    args += objFiles.map(File::getAbsolutePath)
     ProcessBuilder(args).inheritIO().start().waitFor()
   }
 
@@ -182,6 +218,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         .redirectOutput(target)
         .start()
         .waitFor()
+  }
+
+  private fun openFileDefault(target: File) {
+    ProcessBuilder(pickOsOption("file-opener"), target.absolutePath).inheritIO().start().waitFor()
   }
 
   private fun createTemp(prefix: String, suffix: String): File {
@@ -244,9 +284,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           val src = createTemp("dot_temp", ".tmp")
           val dest = createTemp("dot_out", ".png")
           invokeDot(src, dest)
-          if (System.getProperty("os.name") == "Linux") {
-            ProcessBuilder("xdg-open", dest.absolutePath).inheritIO().start().waitFor()
-          }
+          openFileDefault(dest)
         }
         output.isEmpty -> println(graphviz)
         else -> File(output.get()).writeText(graphviz)
@@ -325,7 +363,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val allObjFiles = stdinObjFile?.let { objFiles + it } ?: objFiles
     if (executionFailed) return ExitCodes.EXECUTION_FAILED
     if (!(isPreprocessOnly || isAssembleOnly || isCompileOnly || isCFGOnly)) {
-      invokeLd(allObjFiles)
+      link(allObjFiles)
       for (objFile in allObjFiles) objFile.delete()
       File(output.orElse("a.out")).setExecutable(true)
     }
