@@ -196,6 +196,12 @@ class SpecTests {
   }
 
   @Test
+  fun `Struct No Semi In Struct Declaration With More Stuff After`() {
+    val p = prepareCode("struct vec2 {int x, y int z;};", source)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+  }
+
+  @Test
   fun `Struct Definition With Declarators After`() {
     val p = prepareCode("struct vec2 {int x, y;} v1, v2, v3;", source)
     p.assertNoDiagnostics()

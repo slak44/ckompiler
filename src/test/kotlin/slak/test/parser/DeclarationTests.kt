@@ -212,4 +212,16 @@ class DeclarationTests {
     val p = prepareCode(funProto, source)
     p.assertDiags(DiagnosticId.ARRAY_STATIC_NO_SIZE)
   }
+
+  @Test
+  fun `Array With Extraneous Stuff In Suffix`() {
+    val p = prepareCode("int array_of_stuff[734 123];", source)
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
+
+  @Test
+  fun `Unsupported VLA`() {
+    val p = prepareCode("int array_of_stuff[*];", source)
+    p.assertDiags(DiagnosticId.UNSUPPORTED_VLA)
+  }
 }
