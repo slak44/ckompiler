@@ -208,20 +208,6 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         error<ErrorSuffix>()
       } else scoped {
         val ptl = parseParameterList(rParenIdx)
-        // Bad params, usually happens if there are other args after '...'
-        if (current().asPunct() != Punctuators.RPAREN) {
-          diagnostic {
-            id = DiagnosticId.UNMATCHED_PAREN
-            formatArgs(Punctuators.RPAREN.s)
-            errorOn(tokenAt(rParenIdx))
-          }
-          diagnostic {
-            id = DiagnosticId.MATCH_PAREN_TARGET
-            formatArgs(Punctuators.LPAREN.s)
-            errorOn(lParen)
-          }
-          eatUntil(rParenIdx)
-        }
         eat() // Get rid of ")"
         ptl.withRange(lParen..tokenAt(rParenIdx))
       }
