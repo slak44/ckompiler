@@ -111,18 +111,26 @@ internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) =
 internal infix fun DeclarationSpecifier.param(s: String) =
     ParameterDeclaration(this, nameDecl(s)).zeroRange()
 
+internal infix fun DeclarationSpecifier.withParams(params: List<ParameterDeclaration>) =
+    this param
+        (AbstractDeclarator(emptyList(), emptyList()).withParams(params) as AbstractDeclarator)
+
 internal fun DeclarationSpecifier.toParam() =
     this param AbstractDeclarator(emptyList(), emptyList())
 
 internal fun Declarator.withParams(params: List<ParameterDeclaration>,
-                                   variadic: Boolean): NamedDeclarator {
+                                   variadic: Boolean): Declarator {
   val idents = params.mapNotNullTo(mutableListOf()) {
     if (it.declarator !is NamedDeclarator) return@mapNotNullTo null
     @Suppress("USELESS_CAST") // Hint, it's not useless
     nameRef(it.declarator.name.name, typeNameOf(it.declSpec, it.declarator)) as OrdinaryIdentifier
   }
   val scope = LexicalScope(idents = idents)
-  return NamedDeclarator(name, indirection, suffixes + ParameterTypeList(params, scope, variadic))
+  return if (this is NamedDeclarator) {
+    NamedDeclarator(name, indirection, suffixes + ParameterTypeList(params, scope, variadic))
+  } else {
+    AbstractDeclarator(indirection, suffixes + ParameterTypeList(params, scope, variadic))
+  }
 }
 
 internal infix fun Declarator.withParams(params: List<ParameterDeclaration>) =
@@ -131,8 +139,10 @@ internal infix fun Declarator.withParams(params: List<ParameterDeclaration>) =
 private fun String.withParams(params: List<ParameterDeclaration>, variadic: Boolean) =
     nameDecl(this).withParams(params, variadic)
 
-internal infix fun String.withParams(params: List<ParameterDeclaration>) = withParams(params, false)
-internal infix fun String.withParamsV(params: List<ParameterDeclaration>) = withParams(params, true)
+internal infix fun String.withParams(params: List<ParameterDeclaration>) =
+    withParams(params, false) as NamedDeclarator
+internal infix fun String.withParamsV(params: List<ParameterDeclaration>) =
+    withParams(params, true) as NamedDeclarator
 
 internal infix fun Pair<DeclarationSpecifier, Declarator>.body(s: Statement): FunctionDefinition {
   if (s is ErrorStatement) return FunctionDefinition(first, second, s)

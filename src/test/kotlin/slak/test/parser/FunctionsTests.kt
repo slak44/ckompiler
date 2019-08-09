@@ -160,6 +160,14 @@ class FunctionsTests {
   }
 
   @Test
+  fun `Function Prototype Take Function As Parameter`() {
+    val p = prepareCode("int f(int ());", source)
+    p.assertNoDiagnostics()
+    val f = int declare ("f" withParams listOf(int withParams emptyList()))
+    f assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Function Prototype Return Pointer To Function`() {
     val p = prepareCode("int (*f(int x))(int y);", source)
     p.assertNoDiagnostics()
