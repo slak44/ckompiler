@@ -8,7 +8,9 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.ExitCodes
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.PrintStream
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -16,10 +18,12 @@ import kotlin.test.assertTrue
 @Execution(ExecutionMode.SAME_THREAD)
 class CLITests {
   private val stdin = System.`in`
+  private val stdout = System.out
 
   @AfterEach
-  fun restoreStdin() {
+  fun restorePipes() {
     System.setIn(stdin)
+    System.setOut(stdout)
   }
 
   @AfterEach
@@ -126,6 +130,17 @@ class CLITests {
     cli.assertDiags(DiagnosticId.CFG_NO_SUCH_FUNCTION)
     assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
     assertFalse(File("a.out").exists())
+  }
+
+  @Test
+  fun `CFG Prints To Stdout By Default`() {
+    val outStream = ByteArrayOutputStream()
+    System.setOut(PrintStream(outStream))
+    val (cli, exitCode) = cli("--cfg-mode", resource("e2e/returns10.c").absolutePath)
+    cli.assertNoDiagnostics()
+    assertEquals(ExitCodes.NORMAL, exitCode)
+    assertFalse(File("a.out").exists())
+    assert("return 10;" in outStream.toString())
   }
 
   @Test

@@ -282,6 +282,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       when {
         displayGraph -> {
           val src = createTemp("dot_temp", ".tmp")
+          src.writeText(graphviz)
           val dest = createTemp("dot_out", ".png")
           invokeDot(src, dest)
           openFileDefault(dest)
