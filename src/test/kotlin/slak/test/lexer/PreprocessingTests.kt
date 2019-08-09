@@ -90,6 +90,13 @@ class PreprocessingTests {
   }
 
   @Test
+  fun `Missing Header Errors`() {
+    val l = preparePP("#include </not/a/real/path/lol/thisHeaderDoesNotExist.h>", source)
+    l.assertDiags(DiagnosticId.FILE_NOT_FOUND)
+    assert(l.tokens.isEmpty())
+  }
+
+  @Test
   fun `Header Name Is Only Recognized In Include And Pragma Directives`() {
     val l = preparePP("#define <test.h>", source)
     l.assertDiags(DiagnosticId.MACRO_NAME_NOT_IDENT)
