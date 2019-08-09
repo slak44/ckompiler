@@ -29,7 +29,6 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
   MISSING_QUOTE(ERROR, "Missing terminating %c character"),
   NO_EXP_DIGITS(ERROR, "Exponent has no digits"),
-  INVALID_DIGIT(ERROR, "Invalid digit '%s' in constant"),
   UNFINISHED_COMMENT(ERROR, "Unterminated /* comment"),
   INVALID_PP_DIRECTIVE(ERROR, "Invalid preprocessing directive '%s'"),
   PP_ERROR_DIRECTIVE(ERROR, "%s"),

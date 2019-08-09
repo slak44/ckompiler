@@ -307,12 +307,8 @@ fun IDebugHandler.floatingConstant(s: String, currentOffset: Int): LexicalToken?
   // Not a float: found non-digit(s) before dot
   if (s.slice(0 until dotIdx).any { !isDigit(it) }) return null
   val integerPartEnd = s.slice(0..dotIdx).indexOfFirst { !isDigit(it) }
-  if (integerPartEnd < dotIdx) diagnostic {
-    id = DiagnosticId.INVALID_DIGIT
-    formatArgs(s[integerPartEnd + 1])
-    column(currentOffset + integerPartEnd + 1)
-  } else if (integerPartEnd > dotIdx) {
-    logger.throwICE("Integer part of float contains whitespace or dot") {
+  if (integerPartEnd != dotIdx) {
+    logger.throwICE("Integer part of float contains non-digits") {
       "integerPartEnd: $integerPartEnd, whitespaceOrDot: $dotIdx, lexer: $this"
     }
   }

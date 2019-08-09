@@ -122,7 +122,8 @@ class LexingTests {
 
   @ParameterizedTest
   @ValueSource(strings = [
-    "123.12A", "123.12FA", "123.12AF", "123.A", "123.12A1", ".1A", "1.1E1A", "1.FE"
+    "123.12A", "123.12FA", "123.12AF", "123.A", "123.12A1", ".1A", "1.1E1A", "1.FE",
+    "12A.23", "1A2.34"
   ])
   fun `Invalid Float Suffix Error`(float: String) {
     assertPPDiagnostic(float, source, DiagnosticId.INVALID_SUFFIX)
@@ -156,6 +157,7 @@ class LexingTests {
   @Test
   fun `Unmatched Quote Error`() {
     assertPPDiagnostic("'asfadgs", source, DiagnosticId.MISSING_QUOTE)
+    assertPPDiagnostic("\"asfadgs\\", source, DiagnosticId.MISSING_QUOTE)
     assertPPDiagnostic("'123\nasd'", source, DiagnosticId.MISSING_QUOTE, DiagnosticId.MISSING_QUOTE)
   }
 
