@@ -167,4 +167,11 @@ class PreprocessingTests {
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }
+
+  @Test
+  fun `Non Directive`() {
+    val l = preparePP("#foobar", source)
+    l.assertDiags(DiagnosticId.INVALID_PP_DIRECTIVE)
+    assert(l.tokens.isEmpty())
+  }
 }
