@@ -211,8 +211,13 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
             }
             error<ErrorExpression>()
           } else {
-            parseExpr(argToks.size)
-                ?: logger.throwICE("Empty expressions are handled above, can't get here")
+            val expr = parseExpr(argToks.size)
+            if (expr == null) {
+              eatToSemi()
+              error<ErrorExpression>()
+            } else {
+              expr
+            }
           }
         }
         if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
