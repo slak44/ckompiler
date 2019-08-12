@@ -245,21 +245,23 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
   }
 
   private fun parseSubscript(subscripted: Expression): Expression {
-    val endParenTok = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
-    if (endParenTok == -1) {
+    val endParenIdx = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+    if (endParenIdx == -1) {
       eatToSemi()
       return error<ErrorExpression>()
     }
     eat() // The [
-    val subscript = parseExpr(endParenTok)
+    val subscript = parseExpr(endParenIdx)
     eat() // The ]
     if (subscript == null) return error<ErrorExpression>()
-    val (resultingType, areSwapped) = typeOfSubscript(subscripted, subscript, tokenAt(endParenTok))
+    val endParenTok = tokenAt(endParenIdx)
+    val (resultingType, areSwapped) = typeOfSubscript(subscripted, subscript, endParenTok)
+    val realSubscripted = if (!areSwapped) subscripted else subscript
     return ArraySubscript(
-        if (!areSwapped) subscripted else subscript,
+        realSubscripted,
         if (!areSwapped) subscript else subscripted,
         resultingType
-    )
+    ).withRange(realSubscripted..endParenTok)
   }
 
   // FIXME: implement initializer-lists (6.5.2)
