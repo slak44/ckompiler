@@ -254,8 +254,12 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
     val subscript = parseExpr(endParenTok)
     eat() // The ]
     if (subscript == null) return error<ErrorExpression>()
-    val resultingType = typeOfSubscript(subscripted, subscript, tokenAt(endParenTok))
-    return ArraySubscript(subscripted, subscript, resultingType)
+    val (resultingType, areSwapped) = typeOfSubscript(subscripted, subscript, tokenAt(endParenTok))
+    return ArraySubscript(
+        if (!areSwapped) subscripted else subscript,
+        if (!areSwapped) subscript else subscripted,
+        resultingType
+    )
   }
 
   // FIXME: implement initializer-lists (6.5.2)

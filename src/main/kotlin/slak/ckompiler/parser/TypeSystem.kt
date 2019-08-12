@@ -369,13 +369,14 @@ fun IDebugHandler.validateCast(originalType: TypeName,
 
 /**
  * One of the expressions must be a pointer to a complete object type (or an array, which is
- * technically the same thing). The other must be an integral type.
+ * technically the same thing). The other must be an integral type. Return what type does the
+ * subscript will have, and whether or not [subscripted] and [subscript] are swapped.
  *
  * C standard: 6.5.2.1.0.1
  */
 fun IDebugHandler.typeOfSubscript(subscripted: Expression,
                                   subscript: Expression,
-                                  endSqBracket: LexicalToken): TypeName {
+                                  endSqBracket: LexicalToken): Pair<TypeName, Boolean> {
   val fullRange = subscripted..endSqBracket
 
   fun TypeName.isSubscriptable() =
@@ -417,14 +418,14 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
       formatArgs(subscripted.type.toString())
       columns(subscripted.tokenRange)
     }
-    return ErrorType
+    return ErrorType to false
   }
   return if (!subscripted.type.isSubscriptable()) {
     // Try swapping the subscripted/subscript, and fail if it doesn't work
     // This is the `123[vec]` case
-    processSubscript(subscript, subscripted)
+    processSubscript(subscript, subscripted) to true
   } else {
-    processSubscript(subscripted, subscript)
+    processSubscript(subscripted, subscript) to false
   }
 }
 
