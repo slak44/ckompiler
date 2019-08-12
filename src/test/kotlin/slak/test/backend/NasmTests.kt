@@ -171,4 +171,16 @@ class NasmTests {
   fun `Unary Not`(code: String) {
     assertEquals(1 to "", compileAndRun("int main() { return $code; }"))
   }
+
+  @Test
+  fun `Int Pointers Referencing And Dereferencing`() {
+    assertEquals(12 to "", compileAndRun("""
+      int main() {
+        int a = 12;
+        int* b = &a;
+        int c = *b;
+        return c;
+      }
+    """.trimIndent()))
+  }
 }

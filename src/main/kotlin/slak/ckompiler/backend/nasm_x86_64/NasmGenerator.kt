@@ -377,8 +377,20 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     emit(genComputeConstant(unary.operand))
     // FIXME: random use of rax
     when (unary.op) {
-      UnaryComputations.REF -> TODO()
-      UnaryComputations.DEREF -> TODO()
+      UnaryComputations.REF -> {
+        if (unary.operand !is ComputeReference) {
+          logger.throwICE("Cannot take address of non-var") { unary }
+        }
+        emit("lea rax, ${unary.operand.pos}")
+      }
+      UnaryComputations.DEREF -> {
+        if (unary.operand !is ComputeReference) {
+          logger.throwICE("Cannot dereference non-pointer") { unary }
+        }
+        // FIXME: random use of rcx
+        emit("mov rcx, ${unary.operand.pos}")
+        emit("mov rax, [rcx]")
+      }
       UnaryComputations.MINUS -> emit("neg rax")
       UnaryComputations.BIT_NOT -> emit("not rax")
       UnaryComputations.NOT -> {
