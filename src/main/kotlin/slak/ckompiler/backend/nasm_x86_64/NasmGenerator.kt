@@ -155,14 +155,15 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     var intArgCounter = 0
     var fltArgCounter = 0
     for (arg in cfg.f.parameters) {
+      val refArg = ComputeReference(arg, isSynthetic = true)
       if (arg.type.isABIIntegerType()) {
-        emit("mov ${ComputeReference(arg).pos}, ${intArgRegisters[intArgCounter]}")
+        emit("mov ${refArg.pos}, ${intArgRegisters[intArgCounter]}")
         intArgCounter++
         if (intArgCounter >= intArgRegisters.size) {
           TODO("too many int parameters, not implemented yet")
         }
       } else if (arg.type.isSSEType()) {
-        emit("movups ${ComputeReference(arg).pos}, ${fltArgRegisters[fltArgCounter]}")
+        emit("movups ${refArg.pos}, ${fltArgRegisters[fltArgCounter]}")
         fltArgCounter++
         if (fltArgCounter >= fltArgRegisters.size) {
           TODO("too many float parameters, not implemented yet")
@@ -339,7 +340,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
     // If the right hand side of the assignment isn't a synthetic reference (version 0), then gen
     // code for it
-    if (!(store.data is ComputeReference && store.data.version == 0)) {
+    if (store.data !is ComputeReference || store.data.isSynthetic) {
       emit(genComputeExpr(store.data))
     }
     if (store.isSynthetic) return@instrGen
@@ -362,9 +363,29 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
    */
   private fun FunctionGenContext.genComputeExpr(compute: ComputeExpression) = when (compute) {
     is BinaryComputation -> genBinary(compute)
-    is UnaryComputation -> TODO()
+    is UnaryComputation -> genUnary(compute)
     is Call -> genCall(compute)
     is ComputeConstant -> genComputeConstant(compute)
+  }
+
+  private fun FunctionGenContext.genUnary(unary: UnaryComputation) = when (unary.kind) {
+    OperationTarget.INTEGER -> getIntUnary(unary)
+    OperationTarget.SSE -> TODO()
+  }
+
+  private fun FunctionGenContext.getIntUnary(unary: UnaryComputation) = instrGen {
+    emit(genComputeConstant(unary.operand))
+    // FIXME: random use of rax
+    when (unary.op) {
+      UnaryComputations.REF -> TODO()
+      UnaryComputations.DEREF -> TODO()
+      UnaryComputations.MINUS -> emit("neg rax")
+      UnaryComputations.BIT_NOT -> emit("not rax")
+      UnaryComputations.NOT -> {
+        emit("test rax, rax")
+        emit("sete al")
+      }
+    }
   }
 
   private fun FunctionGenContext.genBinary(bin: BinaryComputation) = when (bin.kind) {
@@ -489,6 +510,8 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   private fun FunctionGenContext.genRefUse(ref: ComputeReference) = instrGen {
+    // Same considerations as the ones in [genStore]
+    if (ref.isSynthetic) return@instrGen
     when (ref.kind) {
       OperationTarget.INTEGER -> {
         // FIXME: random use of rax

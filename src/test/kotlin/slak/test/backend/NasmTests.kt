@@ -165,4 +165,10 @@ class NasmTests {
   fun `Float Ops Test`() {
     assertEquals(0 to "", compileAndRun(resource("e2e/floatOps.c")))
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["!0", "!(1-1)"])
+  fun `Unary Not`(code: String) {
+    assertEquals(1 to "", compileAndRun("int main() { return $code; }"))
+  }
 }

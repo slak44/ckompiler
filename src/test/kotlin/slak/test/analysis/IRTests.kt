@@ -53,8 +53,11 @@ class IRTests {
     ir.print()
     ir.assertSSAForTemporaries()
     // This should not do much
-    assertEquals(
-        listOf(Store(ComputeReference(x), ComputeInteger(int(1)), isSynthetic = false)), ir)
+    assertEquals(listOf(Store(
+        ComputeReference(x, isSynthetic = false),
+        ComputeInteger(int(1)),
+        isSynthetic = false
+    )), ir)
   }
 
   @Test

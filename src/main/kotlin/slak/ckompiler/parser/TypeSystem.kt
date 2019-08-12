@@ -430,6 +430,8 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
 }
 
 /**
+ * FIXME: where do the these promotions actually happen?
+ *
  * C standard: 6.5.3.3.1, 6.5.3.3.5
  * @return the type of the expression after applying a unary operator ([ErrorType] if it can't be
  * applied)

@@ -2,6 +2,7 @@ package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.lexer.IntegralSuffix
+import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
@@ -51,6 +52,23 @@ fun BinaryOperators.asBinaryOperation() = when (this) {
   else -> logger.throwICE("Impossible branch (kotlin compiler can't see this)")
 }
 
+/** @see BinaryComputations */
+enum class UnaryComputations(val op: String) {
+  REF(Punctuators.AMP.s), DEREF(Punctuators.STAR.s),
+  MINUS(Punctuators.MINUS.s), BIT_NOT(Punctuators.TILDE.s), NOT(Punctuators.NOT.s);
+
+  override fun toString() = op
+}
+
+fun UnaryOperators.asUnaryOperations(): UnaryComputations = when (this) {
+  UnaryOperators.REF -> UnaryComputations.REF
+  UnaryOperators.DEREF -> UnaryComputations.DEREF
+  UnaryOperators.PLUS -> logger.throwICE("Must be removed by IRLowering") { this }
+  UnaryOperators.MINUS -> UnaryComputations.MINUS
+  UnaryOperators.BIT_NOT -> UnaryComputations.BIT_NOT
+  UnaryOperators.NOT -> UnaryComputations.NOT
+}
+
 /** An expression between 2 known operands; not a tree. */
 sealed class ComputeExpression(open val kind: OperationTarget)
 
@@ -60,16 +78,22 @@ sealed class ComputeConstant(override val kind: OperationTarget) : ComputeExpres
 /** @see IntegerConstantNode */
 data class ComputeInteger(val int: IntegerConstantNode) : ComputeConstant(OperationTarget.INTEGER) {
   override fun toString() = int.toString()
+
+  fun negate() = ComputeInteger(int.copy(value = -int.value))
 }
 
 /** @see FloatingConstantNode */
 data class ComputeFloat(val float: FloatingConstantNode) : ComputeConstant(OperationTarget.SSE) {
   override fun toString() = float.toString()
+
+  fun negate() = ComputeFloat(float.copy(value = -float.value))
 }
 
 /** @see CharacterConstantNode */
 data class ComputeChar(val char: CharacterConstantNode) : ComputeConstant(OperationTarget.INTEGER) {
   override fun toString() = char.toString()
+
+  fun negate() = ComputeChar(char.copy(char = -char.char))
 }
 
 /** @see StringLiteralNode */
@@ -82,7 +106,8 @@ data class ComputeString(val str: StringLiteralNode) : ComputeConstant(Operation
  * @see TypedIdentifier
  */
 data class ComputeReference(
-    val tid: TypedIdentifier
+    val tid: TypedIdentifier,
+    val isSynthetic: Boolean
 ) : ComputeConstant(tid.type.operationTarget()), IRExpression {
   var version = 0
 
@@ -141,7 +166,7 @@ data class BinaryComputation(val op: BinaryComputations,
 }
 
 /** @see UnaryExpression */
-data class UnaryComputation(val op: UnaryOperators,
+data class UnaryComputation(val op: UnaryComputations,
                             val operand: ComputeConstant,
                             override val kind: OperationTarget) : ComputeExpression(kind) {
   override fun toString() = "$op$operand"
@@ -188,12 +213,13 @@ class IRLoweringContext {
   }
 
   private fun makeTemporary(type: TypeName): ComputeReference {
-    return ComputeReference(TypedIdentifier("__synthetic_block_temp_${tempIds()}", type))
+    val fakeTid = TypedIdentifier("__synthetic_block_temp_${tempIds()}", type)
+    return ComputeReference(fakeTid, isSynthetic = true)
   }
 
   private fun getAssignable(target: Expression): ComputeReference {
     return if (target is TypedIdentifier) {
-      ComputeReference(target)
+      ComputeReference(target, isSynthetic = false)
     } else {
       TODO("no idea how to handle this case for now")
     }
@@ -272,15 +298,23 @@ class IRLoweringContext {
   }
 
   /**
-   * @return a variable containing the result of the expression
+   * @return a variable containing the result of the expression, or any other kind of constant if
+   * the operation was abstracted away
    */
-  private fun transformUnary(expr: UnaryExpression): ComputeReference {
+  private fun transformUnary(expr: UnaryExpression): ComputeConstant {
+    val irOperand = transformExpr(expr.operand)
+    // This does absolutely nothing to the operand except that it performs integer promotions
+    if (expr.op == UnaryOperators.PLUS) return irOperand
+    // Same for minus, except it also negates the argument, so we might have to keep it
+    if (expr.op == UnaryOperators.MINUS && irOperand !is ComputeReference) when (irOperand) {
+      is ComputeInteger -> return irOperand.negate()
+      is ComputeFloat -> return irOperand.negate()
+      is ComputeChar -> return irOperand.negate()
+      else -> logger.throwICE("Illegal type for unary minus") { expr }
+    }
     val target = makeTemporary(expr.type)
-    _ir += Store(target, UnaryComputation(
-        expr.op,
-        transformExpr(expr.operand),
-        expr.operationTarget()
-    ), isSynthetic = true)
+    val unary = UnaryComputation(expr.op.asUnaryOperations(), irOperand, expr.operationTarget())
+    _ir += Store(target, unary, isSynthetic = true)
     return target
   }
 
@@ -304,7 +338,7 @@ class IRLoweringContext {
 
   private fun transformExpr(expr: Expression): ComputeConstant = when (expr) {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
-    is TypedIdentifier -> ComputeReference(expr)
+    is TypedIdentifier -> ComputeReference(expr, isSynthetic = false)
     is FunctionCall -> storeCall(transformCall(expr), expr.type)
     is UnaryExpression -> transformUnary(expr)
     is PrefixIncrement, is PostfixIncrement ->
@@ -338,7 +372,7 @@ class IRLoweringContext {
         transformIncDec(topLevelExpr as IncDecOperation, isDec = true)
       is BinaryExpression -> transformBinary(topLevelExpr)
       // FIXME: except for volatile reads, this can go below, probably
-      is TypedIdentifier -> _ir += ComputeReference(topLevelExpr)
+      is TypedIdentifier -> _ir += ComputeReference(topLevelExpr, isSynthetic = false)
       is SizeofExpression, is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,
       is StringLiteralNode, is CharacterConstantNode -> {
         // We don't discard those because they might be jump conditions/return values

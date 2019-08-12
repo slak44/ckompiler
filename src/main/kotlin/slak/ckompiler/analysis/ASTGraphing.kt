@@ -7,7 +7,9 @@ import slak.ckompiler.throwICE
 private val logger = LogManager.getLogger("ASTGraphing")
 
 fun graph(cfg: CFG) {
-  for (p in cfg.f.parameters) cfg.definitions[ComputeReference(p)] = mutableSetOf()
+  for (p in cfg.f.parameters) {
+    cfg.definitions[ComputeReference(p, isSynthetic = false)] = mutableSetOf()
+  }
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
   for (block in cfg.allNodes) {
     val definitions = block.irContext.ir.mapNotNull { it as? Store }.filterNot { it.isSynthetic }
@@ -57,7 +59,7 @@ private fun CFG.addDefinition(current: BasicBlock, ident: ComputeReference) {
 }
 
 private fun CFG.addDeclaration(parent: LexicalScope, current: BasicBlock, d: Declaration) {
-  val refs = d.idents(parent).map(::ComputeReference)
+  val refs = d.idents(parent).map { ComputeReference(it, isSynthetic = false) }
   val inits = d.declaratorList.map { it.second }
   for ((ident, init) in refs.zip(inits)) {
     if (definitions.containsKey(ident)) {
