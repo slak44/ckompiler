@@ -343,6 +343,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     if (store.data !is ComputeReference || store.data.isSynthetic) {
       emit(genComputeExpr(store.data))
     }
+    // FIXME: this is broken when the store isn't synthetic, but the store target *is*
     if (store.isSynthetic) return@instrGen
     when (store.data.kind) {
       OperationTarget.INTEGER -> {
@@ -442,6 +443,11 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       BinaryComputations.BITWISE_AND, BinaryComputations.LOGICAL_AND -> emit("and rax, rbx")
       BinaryComputations.BITWISE_OR, BinaryComputations.LOGICAL_OR -> emit("or rax, rbx")
       BinaryComputations.BITWISE_XOR -> emit("xor rax, rbx")
+      BinaryComputations.SUBSCRIPT -> {
+        // FIXME: random use of rcx
+        emit("lea rcx, [rax + rbx]")
+        emit("mov rax, [rcx]")
+      }
     }
   }
 
@@ -478,6 +484,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       BinaryComputations.RIGHT_SHIFT -> {
         logger.throwICE("Illegal operation between floats made it to codegen") { op }
       }
+      BinaryComputations.SUBSCRIPT -> TODO()
     }
   }
 

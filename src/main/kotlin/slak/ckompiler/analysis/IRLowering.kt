@@ -9,18 +9,19 @@ import slak.ckompiler.throwICE
 private val logger = LogManager.getLogger("Lowering")
 
 /**
- * These map to the analogous [slak.ckompiler.parser.BinaryOperators], but with the notable
+ * These (mostly) map to the analogous [slak.ckompiler.parser.BinaryOperators], but with the notable
  * exceptions of assignment and comma (which are treated separately).
  *
  * @param s exists for pretty-printing this class
  */
-enum class BinaryComputations(val s: String) {
+enum class BinaryComputations(private val s: String) {
   ADD("+"), SUBSTRACT("-"), MULTIPLY("*"), DIVIDE("/"), REMAINDER("%"),
   LEFT_SHIFT("<<"), RIGHT_SHIFT(">>"),
   LESS_THAN("<"), GREATER_THAN(">"), LESS_EQUAL_THAN("<="), GREATER_EQUAL_THAN(">="),
   EQUAL("=="), NOT_EQUAL("!="),
   BITWISE_AND("&"), BITWISE_OR("|"), BITWISE_XOR("^"),
-  LOGICAL_AND("&&"), LOGICAL_OR("||");
+  LOGICAL_AND("&&"), LOGICAL_OR("||"),
+  SUBSCRIPT("[]");
 
   override fun toString() = s
 }
@@ -53,7 +54,7 @@ fun BinaryOperators.asBinaryOperation() = when (this) {
 }
 
 /** @see BinaryComputations */
-enum class UnaryComputations(val op: String) {
+enum class UnaryComputations(private val op: String) {
   REF(Punctuators.AMP.s), DEREF(Punctuators.STAR.s),
   MINUS(Punctuators.MINUS.s), BIT_NOT(Punctuators.TILDE.s), NOT(Punctuators.NOT.s);
 
@@ -221,7 +222,10 @@ class IRLoweringContext {
     return if (target is TypedIdentifier) {
       ComputeReference(target, isSynthetic = false)
     } else {
-      TODO("no idea how to handle this case for now")
+      // FIXME: the way deref is handled is not really good, so this will kinda fail
+      val tempTarget = makeTemporary(target.type)
+      _ir += Store(tempTarget, transformExpr(target), isSynthetic = true)
+      tempTarget
     }
   }
 
@@ -286,6 +290,18 @@ class IRLoweringContext {
     return target
   }
 
+  private fun transformSubscript(arraySubscript: ArraySubscript): ComputeReference {
+    val binary = BinaryComputation(
+        BinaryComputations.SUBSCRIPT,
+        transformExpr(arraySubscript.subscripted),
+        transformExpr(arraySubscript.subscript),
+        arraySubscript.operationTarget()
+    )
+    val target = makeTemporary(arraySubscript.type)
+    _ir += Store(target, binary, isSynthetic = true)
+    return target
+  }
+
   /**
    * Because of [sequentialize], [IncDecOperation]s can only be found by themselves, not as part of
    * other expressions, so we can just treat both prefix/postfix as being `+= 1` or `-= 1`.
@@ -346,7 +362,7 @@ class IRLoweringContext {
     is PrefixDecrement, is PostfixDecrement ->
       transformIncDec(expr as IncDecOperation, isDec = true)
     is BinaryExpression -> transformBinary(expr)
-    is ArraySubscript -> TODO("deal with subscripts in IR")
+    is ArraySubscript -> transformSubscript(expr)
     is CastExpression -> TODO("deal with casts in IR")
     is SizeofExpression, is SizeofTypeName ->
       TODO("these are also sort of constants, have to be integrated into IRConstantExpression")

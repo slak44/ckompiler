@@ -1,6 +1,7 @@
 package slak.test.backend
 
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -180,6 +181,19 @@ class NasmTests {
         int* b = &a;
         int c = *b;
         return c;
+      }
+    """.trimIndent()))
+  }
+
+  @Disabled("fix dereferencing and synthetic store targets first")
+  @Test
+  fun `Simple Array Usage`() {
+    assertEquals(12 to "", compileAndRun("""
+      int main() {
+        int a[2];
+        a[0] = 12;
+        a[1] = 13;
+        return a[0];
       }
     """.trimIndent()))
   }
