@@ -165,4 +165,12 @@ class CLITests {
     assertTrue(File("./bla.s").exists())
     File("./bla.s").deleteOnExit()
   }
+
+  @Test
+  fun `Prints Version`() {
+    val (cli, exitCode) = cli("--version")
+    cli.assertNoDiagnostics()
+    assertEquals(ExitCodes.NORMAL, exitCode)
+    assertFalse(File("a.out").exists())
+  }
 }

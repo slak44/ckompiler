@@ -33,6 +33,12 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     This command line interface tries to stay consistent with gcc and clang as much as possible.
     """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler")
 
+  private val isPrintVersion by cli.flagArgument("--version", "Print compiler version")
+
+  init {
+    cli.helpSeparator()
+  }
+
   private var output: Optional<String> = Optional.empty()
 
   init {
@@ -341,6 +347,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       if (err is CommandLineException) return ExitCodes.BAD_COMMAND
       logger.error(err) { "Failed to parse CLI args" }
       return ExitCodes.ERROR
+    }
+    if (isPrintVersion) {
+      println("ckompiler version ${BuildProperties.version}")
+      return ExitCodes.NORMAL
     }
     Diagnostic.useColors = !disableColorDiags
     val sourceCount = srcFiles.size + if (stdin) 1 else 0
