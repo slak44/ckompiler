@@ -518,9 +518,10 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun genString(str: StringLiteralNode) = instrGen {
     // Make sure the entry in stringRefs exists
     if (str !in stringRefs) {
-      stringRefs[str] = "str_${stringRefIds()}_${str.string.filter(Char::isLetterOrDigit).take(10)}"
+      stringRefs[str] = "str_${stringRefIds()}_${str.string.filter(Char::isLetterOrDigit).take(5)}"
       // FIXME: handle different encodings
       val asBytes = str.string.toByteArray().joinToString(", ")
+      data += "; ${str.string}"
       data += "${stringRefs[str]}: db $asBytes, 0"
     }
     // FIXME: random use of rax
@@ -531,10 +532,11 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     if (flt.suffix == FloatingSuffix.LONG_DOUBLE) TODO("x87 stuff")
     // Make sure the entry in floatRefs exists
     if (flt !in floatRefs) {
-      val prettyName = flt.value.toString().filter(Char::isLetterOrDigit).take(10)
+      val prettyName = flt.value.toString().filter(Char::isLetterOrDigit).take(5)
       floatRefs[flt] = "flt_${floatRefIds()}_$prettyName"
       val kind = if (flt.suffix == FloatingSuffix.FLOAT) "dd" else "dq"
       // FIXME: a lot of stuff is going on with alignment (movaps instead of movsd segfaults)
+      data += "; ${flt.value}"
       data += "${floatRefs[flt]}: $kind ${flt.value}"
     }
     // FIXME: random use of xmm8
