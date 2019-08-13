@@ -1,4 +1,5 @@
 import java.net.URI
+import java.util.Properties
 
 plugins {
   application
@@ -41,3 +42,25 @@ tasks.test {
       "junit.jupiter.execution.timeout.default" to "5s"
   )
 }
+
+tasks.distZip {
+  application.applicationDistribution.from(File(rootDir, "stdlib")) {
+    into(".")
+  }
+}
+
+tasks.create("makePropsFile") {
+  doLast {
+    val props = Properties()
+    props["version"] = version
+    props["include-path"] = "/usr/include/ckompiler-$version"
+    val res = File(buildDir, "resources")
+    for (it in listOf("main", "test")) {
+      val writer = File(File(res, it), "ckompiler.properties").bufferedWriter()
+      props.store(writer, null)
+      writer.close()
+    }
+  }
+}
+
+tasks.classes.get().dependsOn("makePropsFile")

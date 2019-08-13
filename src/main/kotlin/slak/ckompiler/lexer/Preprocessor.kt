@@ -1,6 +1,7 @@
 package slak.ckompiler.lexer
 
 import slak.ckompiler.*
+import slak.ckompiler.BuildProperties
 import slak.ckompiler.parser.*
 import java.io.File
 import java.util.regex.Pattern
@@ -38,8 +39,11 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
   }
 
   companion object {
-    val defaultPaths = IncludePaths(emptyList(),
-        listOf(File("/usr/include"), File("/usr/local/include")), emptyList())
+    val defaultPaths = IncludePaths(
+        general = emptyList(),
+        system = listOf(File(BuildProperties.includePath)),
+        users = emptyList()
+    )
   }
 }
 
