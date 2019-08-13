@@ -5,7 +5,7 @@ import org.apache.logging.log4j.Logger
 import java.util.Properties
 
 object BuildProperties {
-  private val logger: Logger = LogManager.getLogger("Properties")
+  private val logger: Logger = LogManager.getLogger("BuildProperties")
   private const val propFileName = "ckompiler.properties"
   private val properties by lazy {
     val propsUrl = this::class.java.classLoader.getResource(propFileName)

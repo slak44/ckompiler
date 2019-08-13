@@ -43,6 +43,12 @@ tasks.test {
   )
 }
 
+sourceSets {
+  for (thing in listOf(main, test)) thing {
+    resources.srcDir(File(buildDir, "resources"))
+  }
+}
+
 tasks.distZip {
   application.applicationDistribution.from(File(rootDir, "stdlib")) {
     into(".")
@@ -55,12 +61,11 @@ tasks.create("makePropsFile") {
     props["version"] = version
     props["include-path"] = "/usr/include/ckompiler-$version"
     val res = File(buildDir, "resources")
-    for (it in listOf("main", "test")) {
-      val writer = File(File(res, it), "ckompiler.properties").bufferedWriter()
-      props.store(writer, null)
-      writer.close()
-    }
+    res.mkdirs()
+    val writer = File(res, "ckompiler.properties").bufferedWriter()
+    props.store(writer, null)
+    writer.close()
   }
 }
-
-tasks.classes.get().dependsOn("makePropsFile")
+tasks.processResources.get().dependsOn("makePropsFile")
+tasks.processTestResources.get().dependsOn("makePropsFile")
