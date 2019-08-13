@@ -9,7 +9,10 @@
         </Console>
     </Appenders>
     <Loggers>
-        <Root level="trace">
+        <Logger name="org.junit" additivity="false" level="INFO">
+            <AppenderRef level="INFO" ref="stderr"/>
+        </Logger>
+        <Root level="TRACE">
             <AppenderRef ref="stderr"/>
         </Root>
     </Loggers>

@@ -31,17 +31,16 @@ dependencies {
   implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
   testImplementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.5.0")
+  testImplementation(group = "org.apache.logging.log4j", name = "log4j-jul", version = "2.11.2")
   testImplementation(kotlin("test-junit"))
 }
 
 tasks.test {
   useJUnitPlatform()
-  systemProperties(
-      "junit.jupiter.execution.parallel.enabled" to "true",
-      "junit.jupiter.execution.parallel.mode.default" to "concurrent",
-      "junit.jupiter.execution.parallel.mode.classes.default" to "concurrent",
-      "junit.jupiter.execution.timeout.default" to "5s"
-  )
+  // Must be present at startup-ish time
+  systemProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager")
+  // Don't put this in junit-properties, because debugging tests in intellij triggers the timeout
+  systemProperty("junit.jupiter.execution.timeout.default", "5s")
 }
 
 sourceSets {
