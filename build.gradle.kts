@@ -12,6 +12,7 @@ version = "1.0-SNAPSHOT"
 application {
   mainClassName = "slak.ckompiler.MainKt"
   applicationName = "ckompiler"
+  applicationDistribution.from(File(rootDir, "stdlib"))
 }
 
 repositories {
@@ -46,12 +47,6 @@ tasks.test {
 sourceSets {
   for (thing in listOf(main, test)) thing {
     resources.srcDir(File(buildDir, "resources"))
-  }
-}
-
-tasks.distZip {
-  application.applicationDistribution.from(File(rootDir, "stdlib")) {
-    into(".")
   }
 }
 
