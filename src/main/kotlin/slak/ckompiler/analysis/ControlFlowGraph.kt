@@ -154,6 +154,7 @@ private class VariableRenamer(val doms: DominatorList,
     is ComputeReference -> listOf(e)
     is BinaryComputation -> findVariableUsage(e.lhs) + findVariableUsage(e.rhs)
     is UnaryComputation -> findVariableUsage(e.operand)
+    is CastComputation -> findVariableUsage(e.operand)
     is Call -> findCallUsage(e)
   }
 

@@ -173,6 +173,24 @@ class NasmTests {
     assertEquals(1 to "", compileAndRun("int main() { return $code; }"))
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = ["(int) 1.1F", "(int) 1.0F", "(int) 1.99F"])
+  fun `Float Cast To Int`(code: String) {
+    assertEquals(1 to "", compileAndRun("int main() { return $code; }"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["1", "123", "-1"])
+  fun `Int Cast To Float`(int: String) {
+    assertEquals(0 to "$int.00", compileAndRun("""
+      extern int printf(const char*, ...);
+      int main() {
+        printf("%.2f", (float) $int);
+        return 0;
+      }
+    """.trimIndent()))
+  }
+
   @Test
   fun `Int Pointers Referencing And Dereferencing`() {
     assertEquals(12 to "", compileAndRun("""

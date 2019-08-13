@@ -173,6 +173,15 @@ data class UnaryComputation(val op: UnaryComputations,
   override fun toString() = "$op$operand"
 }
 
+/**
+ * Represents a type cast in the IR. [kind] will refer to the resulting "thing" (ie [targetType]).
+ */
+data class CastComputation(val targetType: TypeName,
+                           val operand: ComputeConstant,
+                           override val kind: OperationTarget) : ComputeExpression(kind) {
+  override fun toString() = "($targetType) $operand"
+}
+
 /** Represents an instruction in the intermediate representation. */
 interface IRExpression
 
@@ -352,6 +361,14 @@ class IRLoweringContext {
     return target
   }
 
+  private fun transformCast(cast: CastExpression): ComputeReference {
+    val target = makeTemporary(cast.type)
+    val castComp = CastComputation(cast.type, transformExpr(cast.target), cast.operationTarget())
+    _ir += Store(target, castComp, isSynthetic = true)
+    return target
+
+  }
+
   private fun transformExpr(expr: Expression): ComputeConstant = when (expr) {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is TypedIdentifier -> ComputeReference(expr, isSynthetic = false)
@@ -363,7 +380,7 @@ class IRLoweringContext {
       transformIncDec(expr as IncDecOperation, isDec = true)
     is BinaryExpression -> transformBinary(expr)
     is ArraySubscript -> transformSubscript(expr)
-    is CastExpression -> TODO("deal with casts in IR")
+    is CastExpression -> transformCast(expr)
     is SizeofExpression, is SizeofTypeName ->
       TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
     is IntegerConstantNode -> ComputeInteger(expr)
@@ -387,6 +404,8 @@ class IRLoweringContext {
       is PrefixDecrement, is PostfixDecrement ->
         transformIncDec(topLevelExpr as IncDecOperation, isDec = true)
       is BinaryExpression -> transformBinary(topLevelExpr)
+      is ArraySubscript -> TODO()
+      is CastExpression -> transformCast(topLevelExpr)
       // FIXME: except for volatile reads, this can go below, probably
       is TypedIdentifier -> _ir += ComputeReference(topLevelExpr, isSynthetic = false)
       is SizeofExpression, is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,

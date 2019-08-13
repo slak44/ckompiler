@@ -117,8 +117,12 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     // envp:
     emit("lea rax, [8*rdi+rsp+16]")
     emit("mov rdx, [rax]")
+    // Align stack to 16 byte boundary
+    emit("sub rsp, 8")
     // Call main
     emit("call main")
+    // Restore rsp
+    emit("add rsp, 8")
     // Integral return value is in rax
     emit("mov rdi, rax")
     emit("call exit")
@@ -163,7 +167,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
           TODO("too many int parameters, not implemented yet")
         }
       } else if (arg.type.isSSEType()) {
-        emit("movups ${refArg.pos}, ${fltArgRegisters[fltArgCounter]}")
+        emit("movsd ${refArg.pos}, ${fltArgRegisters[fltArgCounter]}")
         fltArgCounter++
         if (fltArgCounter >= fltArgRegisters.size) {
           TODO("too many float parameters, not implemented yet")
@@ -273,7 +277,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       FloatType, DoubleType -> {
         // FIXME: random use of xmm8
         // FIXME: there are two SSE return registers, xmm0 and xmm1
-        emit("movups xmm0, xmm8")
+        emit("movsd xmm0, xmm8")
       }
       is ArrayType -> TODO()
       is BitfieldType -> TODO()
@@ -303,10 +307,10 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     var fltArgCounter = 0
     for (arg in call.args) {
       emit(genComputeConstant(arg))
-      if (arg is ComputeFloat) {
+      if (arg.kind == OperationTarget.SSE) {
         // FIXME: random use of xmm8
         if (fltArgCounter < fltArgRegisters.size) {
-          emit("movups ${fltArgRegisters[fltArgCounter]}, xmm8")
+          emit("movsd ${fltArgRegisters[fltArgCounter]}, xmm8")
           fltArgCounter++
         } else {
           emit("push xmm8")
@@ -352,7 +356,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       }
       OperationTarget.SSE -> {
         // FIXME: random use of xmm8
-        emit("movups ${store.target.pos}, xmm8")
+        emit("movsd ${store.target.pos}, xmm8")
       }
     }
   }
@@ -365,8 +369,23 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun FunctionGenContext.genComputeExpr(compute: ComputeExpression) = when (compute) {
     is BinaryComputation -> genBinary(compute)
     is UnaryComputation -> genUnary(compute)
+    is CastComputation -> genCast(compute)
     is Call -> genCall(compute)
     is ComputeConstant -> genComputeConstant(compute)
+  }
+
+  private fun FunctionGenContext.genCast(cast: CastComputation) = instrGen {
+    emit(genComputeConstant(cast.operand))
+    // FIXME: technically, there still is a cast here
+    //  it just doesn't cross value classes, but it still does things
+    //  big corner cut here
+    if (cast.operand.kind == cast.kind) return@instrGen
+    // FIXME: random use of rax & xmm8
+    when (cast.operand.kind to cast.kind) {
+      OperationTarget.INTEGER to OperationTarget.SSE -> emit("cvtsi2sd xmm8, rax")
+      OperationTarget.SSE to OperationTarget.INTEGER -> emit("cvttss2si rax, xmm8")
+      else -> logger.throwICE("Logically impossible, should be checked just above")
+    }
   }
 
   private fun FunctionGenContext.genUnary(unary: UnaryComputation) = when (unary.kind) {
@@ -454,7 +473,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun FunctionGenContext.genFltBinary(bin: BinaryComputation) = instrGen {
     emit(genComputeConstant(bin.rhs))
     // FIXME: random use of xmm8/xmm9
-    emit("movups xmm9, xmm8")
+    emit("movsd xmm9, xmm8")
     emit(genComputeConstant(bin.lhs))
     emit(genFltBinaryOperation(bin.op))
   }
@@ -472,7 +491,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       BinaryComputations.MULTIPLY -> emit("mulss xmm8, xmm9")
       BinaryComputations.DIVIDE -> {
         emit("divss xmm8, xmm9")
-        emit("movups xmm8, xmm9")
+        emit("movsd xmm8, xmm9")
       }
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
       BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
@@ -515,12 +534,11 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       val prettyName = flt.value.toString().filter(Char::isLetterOrDigit).take(10)
       floatRefs[flt] = "flt_${floatRefIds()}_$prettyName"
       val kind = if (flt.suffix == FloatingSuffix.FLOAT) "dd" else "dq"
-      // FIXME: a lot of stuff is going on with alignment (movaps instead of movups segfaults)
-      data += "align 16"
+      // FIXME: a lot of stuff is going on with alignment (movaps instead of movsd segfaults)
       data += "${floatRefs[flt]}: $kind ${flt.value}"
     }
     // FIXME: random use of xmm8
-    emit("movups xmm8, [${floatRefs[flt]}]")
+    emit("movsd xmm8, [${floatRefs[flt]}]")
   }
 
   private fun genInt(int: IntegerConstantNode) = instrGen {
@@ -538,7 +556,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       }
       OperationTarget.SSE -> {
         // FIXME: random use of xmm8
-        emit("movups xmm8, ${ref.pos}")
+        emit("movsd xmm8, ${ref.pos}")
       }
     }
   }

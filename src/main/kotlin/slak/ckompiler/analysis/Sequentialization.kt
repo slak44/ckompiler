@@ -93,8 +93,7 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
         BinaryExpression(op, lhs.seqImpl(), rhs.seqImpl()).withRange(tokenRange)
       }
     }
-    is CastExpression -> TODO("sequentialize CastExpression")
-    is ArraySubscript, is UnaryExpression,
+    is CastExpression, is ArraySubscript, is UnaryExpression,
     is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
     is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
       // Do nothing. These do not pose the problem of being sequenced before or after.
