@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="INFO">
     <Filters>
-        <MarkerFilter marker="ControlFlowVariableRenames" onMatch="DENY" onMismatch="ACCEPT"/>
+        <MarkerFilter marker="ControlFlowVariableRenames" onMatch="DENY" onMismatch="NEUTRAL"/>
     </Filters>
     <Appenders>
         <Console name="stderr" target="SYSTEM_ERR">
