@@ -92,9 +92,8 @@ Since the `DeclarationParser` implements some of those interfaces itself,
 
 ### Analysis
 
-The [analysis][analysis] package takes the syntax tree and it turns each
-function into a graph, with nodes that contain a simpler intermediate
-representation.
+The [analysis][analysis] package takes the syntax tree, and turns each function
+into a graph, with nodes that contain a simpler intermediate representation.
 
 ###### Control flow
 
@@ -190,7 +189,7 @@ definitions.
 
 Once this work is completed, the code is now in SSA form.
 
-If the `ControlFlowVariableRenames` marker in [src/main/resource/log4j2.xml] is
+If the `ControlFlowVariableRenames` marker in [log4j2.xml][log4j2_xml] is
 enabled (it is denied logging by default), the variable renamer will print a
 table outlining some of the steps done during renaming for the variable `x`:
 ```text
@@ -243,6 +242,7 @@ especially to the C standard.
 - [Intel 64 ISA reference][intel64isa]
 
 [impl_defs]: ./ListOfBehaviours.md
+[log4j2_xml]: ./src/main/resources/log4j2.xml
 [lexer]: ./src/main/kotlin/slak/ckompiler/lexer/LexicalElements.kt
 [pp]: ./src/main/kotlin/slak/ckompiler/lexer/Preprocessor.kt
 [tokens]: ./src/main/kotlin/slak/ckompiler/lexer/TokenModel.kt
