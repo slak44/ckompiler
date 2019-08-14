@@ -15,9 +15,10 @@ class IdCounter {
  * to choose from).
  */
 data class PhiFunction(val target: ComputeReference,
-                       val incoming: MutableList<Pair<BasicBlock, ComputeReference>>) {
-  override fun toString() =
-      "$target = φ(${incoming.joinToString(", ") { "${it.first.nodeId}" }})"
+                       val incoming: MutableMap<BasicBlock, ComputeReference>) {
+  override fun toString() = "$target = φ(${incoming.entries.joinToString(", ") {
+    "n${it.key.nodeId} v${it.value.version}"
+  }})"
 }
 
 sealed class Jump {

@@ -7,7 +7,6 @@ import slak.ckompiler.parser.FunctionDefinition
 import java.util.*
 
 private val logger = LogManager.getLogger("ControlFlow")
-private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
 class CFG(val f: FunctionDefinition,
@@ -55,8 +54,6 @@ class CFG(val f: FunctionDefinition,
     if (convertToSSA) {
       insertPhiFunctions(definitions)
       val renamer = VariableRenamer(doms, startBlock, nodes)
-      slak.ckompiler.analysis.logger.trace(varRenamesTrace, "BB| x mention  | x.reachingDef")
-      slak.ckompiler.analysis.logger.trace(varRenamesTrace, "------------------------------")
       renamer.variableRenaming()
     }
 
@@ -87,6 +84,8 @@ data class ReachingDef(val variable: ComputeReference,
 private class VariableRenamer(val doms: DominatorList,
                               val startBlock: BasicBlock,
                               nodes: Set<BasicBlock>) {
+  private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
+
   /** Returns [BasicBlock]s by doing a pre-order traversal of the dominator tree. */
   private val domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
 
@@ -218,7 +217,8 @@ private class VariableRenamer(val doms: DominatorList,
    */
   private fun traceVarUsageRename(BB: BasicBlock,
                                   oldReachingVar: ComputeReference?,
-                                  v: ComputeReference) {
+                                  v: ComputeReference,
+                                  isInPhi: Boolean = false) {
     if (v.tid.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
@@ -227,7 +227,8 @@ private class VariableRenamer(val doms: DominatorList,
           else "${v.reachingDef!!.variable.tid.name}${v.reachingDef!!.variable.version}"
       listOf(
           "${BB.nodeId}",
-          "${v.tid.name}${v.version} use".padStart(10, ' '),
+          "${if (isInPhi) " " else ""}${v.tid.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
+              .padStart(11, ' '),
           "$oldReachingStr updated into $newReachingStr"
       ).joinToString(" | ").toObjectMessage()
     }
@@ -245,7 +246,7 @@ private class VariableRenamer(val doms: DominatorList,
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
       listOf(
           "${BB.nodeId}",
-          "def ${def.tid.name}${def.version}".padEnd(10, ' '),
+          "def ${def.tid.name}${def.version}".padEnd(11, ' '),
           "$oldReachingStr then ${vPrime.tid.name}${vPrime.version}"
       ).joinToString(" | ").toObjectMessage()
     }
@@ -269,7 +270,14 @@ private class VariableRenamer(val doms: DominatorList,
    * Perform second phase of SSA construction.
    * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
-  fun variableRenaming() = domTreePreorder.forEach { BB ->
+  fun variableRenaming() {
+    logger.trace(varRenamesTrace, "BB| x mention   | x.reachingDef")
+    logger.trace(varRenamesTrace, "-------------------------------")
+    variableRenamingImpl()
+  }
+
+  /** @see variableRenaming */
+  private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
     for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
     for ((idx, i) in BB.instructions.withIndex()) {
       val def = if (i is Store && !i.isSynthetic) i.target else null
@@ -282,10 +290,12 @@ private class VariableRenamer(val doms: DominatorList,
       if (def == null) continue
       handleDef(BB, def, idx)
     }
-//    for (succ in BB.successors) for ((def) in succ.phiFunctions) {
-//      updateReachingDef(def, succ, -1)
-//      def.replaceWith(def.reachingDef)
-//    }
+    for (succ in BB.successors) for ((_, incoming) in succ.phiFunctions) {
+      val oldReachingVar = incoming[BB]!!.reachingDef?.variable
+      updateReachingDef(incoming[BB]!!, BB, Int.MAX_VALUE)
+      incoming[BB]!!.replaceWith(incoming[BB]!!.reachingDef)
+      traceVarUsageRename(succ, oldReachingVar, incoming[BB]!!, isInPhi = true)
+    }
   }
 }
 
@@ -304,11 +314,7 @@ private fun insertPhiFunctions(definitions: Map<ComputeReference, MutableSet<Bas
       w -= x
       for (y in x.dominanceFrontier) {
         if (y !in f) {
-          /* FIXME: should we actually include all the preds like this?
-              maybe we should leave this empty, or maybe check if the var was defined in that pred
-           */
-          y.phiFunctions += PhiFunction(v.copy(),
-              mutableListOf(*(y.preds.map { it to v }).toTypedArray()))
+          y.phiFunctions += PhiFunction(v.copy(), y.preds.associateWith { v.copy() }.toMutableMap())
           f += y
           if (y !in defsV) w += y
         }
