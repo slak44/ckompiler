@@ -241,6 +241,7 @@ private class VariableRenamer(val doms: DominatorList,
       handleDef(BB, def, idx)
     }
     for (succ in BB.successors) for ((_, incoming) in succ.phiFunctions) {
+      // FIXME: incomplete
       val oldReachingVar = incoming[BB]!!.reachingDef?.variable
       updateReachingDef(incoming[BB]!!, BB, Int.MAX_VALUE)
       incoming[BB]!!.replaceWith(incoming[BB]!!.reachingDef)
