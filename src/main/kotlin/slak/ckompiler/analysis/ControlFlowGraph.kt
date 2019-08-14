@@ -213,6 +213,52 @@ private class VariableRenamer(val doms: DominatorList,
   }
 
   /**
+   * Does the renaming for a variable definition.
+   */
+  private fun handleDef(BB: BasicBlock, def: ComputeReference, instrIdx: Int) {
+    val oldReachingDef = def.reachingDef
+    updateReachingDef(def, BB, instrIdx)
+    val vPrime = def.newVersion()
+    val reachingToPrime = ReachingDef(vPrime, BB, instrIdx)
+    def.reachingDef = reachingToPrime
+    def.replaceWith(reachingToPrime)
+    vPrime.reachingDef = oldReachingDef
+    traceVarDefinitionRename(BB, def, vPrime)
+  }
+
+  /** @see variableRenaming */
+  private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
+    for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
+    for ((idx, i) in BB.instructions.withIndex()) {
+      val def = if (i is Store && !i.isSynthetic) i.target else null
+      for (v in findVariableUsage(i)) {
+        val oldReachingVar = v.reachingDef?.variable
+        updateReachingDef(v, BB, idx)
+        v.replaceWith(v.reachingDef)
+        traceVarUsageRename(BB, oldReachingVar, v)
+      }
+      if (def == null) continue
+      handleDef(BB, def, idx)
+    }
+    for (succ in BB.successors) for ((_, incoming) in succ.phiFunctions) {
+      val oldReachingVar = incoming[BB]!!.reachingDef?.variable
+      updateReachingDef(incoming[BB]!!, BB, Int.MAX_VALUE)
+      incoming[BB]!!.replaceWith(incoming[BB]!!.reachingDef)
+      traceVarUsageRename(succ, oldReachingVar, incoming[BB]!!, isInPhi = true)
+    }
+  }
+
+  /**
+   * Perform second phase of SSA construction.
+   * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
+   */
+  fun variableRenaming() {
+    logger.trace(varRenamesTrace, "BB| x mention   | x.reachingDef")
+    logger.trace(varRenamesTrace, "-------------------------------")
+    variableRenamingImpl()
+  }
+
+  /**
    * Debug trace for variable usage renames.
    */
   private fun traceVarUsageRename(BB: BasicBlock,
@@ -252,51 +298,6 @@ private class VariableRenamer(val doms: DominatorList,
     }
   }
 
-  /**
-   * Does the renaming for a variable definition.
-   */
-  private fun handleDef(BB: BasicBlock, def: ComputeReference, instrIdx: Int) {
-    val oldReachingDef = def.reachingDef
-    updateReachingDef(def, BB, instrIdx)
-    val vPrime = def.newVersion()
-    val reachingToPrime = ReachingDef(vPrime, BB, instrIdx)
-    def.reachingDef = reachingToPrime
-    def.replaceWith(reachingToPrime)
-    vPrime.reachingDef = oldReachingDef
-    traceVarDefinitionRename(BB, def, vPrime)
-  }
-
-  /**
-   * Perform second phase of SSA construction.
-   * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
-   */
-  fun variableRenaming() {
-    logger.trace(varRenamesTrace, "BB| x mention   | x.reachingDef")
-    logger.trace(varRenamesTrace, "-------------------------------")
-    variableRenamingImpl()
-  }
-
-  /** @see variableRenaming */
-  private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
-    for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
-    for ((idx, i) in BB.instructions.withIndex()) {
-      val def = if (i is Store && !i.isSynthetic) i.target else null
-      for (v in findVariableUsage(i)) {
-        val oldReachingVar = v.reachingDef?.variable
-        updateReachingDef(v, BB, idx)
-        v.replaceWith(v.reachingDef)
-        traceVarUsageRename(BB, oldReachingVar, v)
-      }
-      if (def == null) continue
-      handleDef(BB, def, idx)
-    }
-    for (succ in BB.successors) for ((_, incoming) in succ.phiFunctions) {
-      val oldReachingVar = incoming[BB]!!.reachingDef?.variable
-      updateReachingDef(incoming[BB]!!, BB, Int.MAX_VALUE)
-      incoming[BB]!!.replaceWith(incoming[BB]!!.reachingDef)
-      traceVarUsageRename(succ, oldReachingVar, incoming[BB]!!, isInPhi = true)
-    }
-  }
 }
 
 /**
