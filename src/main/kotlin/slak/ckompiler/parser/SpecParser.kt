@@ -385,13 +385,11 @@ class SpecParser(declaratorParser: DeclaratorParser) :
     }
     val endToken = safeToken(-1)
 
+    val hasDeclSpecs = storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()
     // We found declaration specifiers, so this *is* a declarator, but there are no type specs
-    if ((storageSpecs.isNotEmpty() || typeQuals.isNotEmpty() || funSpecs.isNotEmpty()) &&
-        typeSpecifier == null) {
-      diagnostic {
-        id = DiagnosticId.MISSING_TYPE_SPEC
-        errorOn(safeToken(0))
-      }
+    if (hasDeclSpecs && typeSpecifier == null) diagnostic {
+      id = DiagnosticId.MISSING_TYPE_SPEC
+      errorOn(safeToken(0))
     }
 
     removeDuplicates(storageSpecs)
