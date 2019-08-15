@@ -72,14 +72,11 @@ private class TranslationUnitParser(private val specParser: SpecParser,
   init {
     if (tokenCount > 0) root.setRange(tokenAt(0) until relative(tokenCount - 1))
     translationUnit()
-    if (root.decls.isEmpty() &&
-        rootScope.tagNames.isEmpty() &&
-        rootScope.idents.isEmpty() &&
-        diags.isEmpty()) {
-      diagnostic {
-        id = DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL
-        column(0)
-      }
+    val isTranslationUnitEmpty =
+        root.decls.isEmpty() && rootScope.tagNames.isEmpty() && rootScope.idents.isEmpty()
+    if (isTranslationUnitEmpty && diags.isEmpty()) diagnostic {
+      id = DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL
+      column(0)
     }
     diags.forEach { it.print() }
   }
