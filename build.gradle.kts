@@ -3,7 +3,7 @@ import java.util.Properties
 
 plugins {
   application
-  kotlin("jvm") version "1.3.40"
+  kotlin("jvm") version "1.3.41"
 }
 
 group = "ckompiler"
