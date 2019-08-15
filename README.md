@@ -5,7 +5,8 @@ A C11 compiler written in Kotlin.
 This project is just a compiler; the assembler and linker are not implemented,
 and are assumed to exist in the environment (eg `nasm` and `ld`).
 
-Run `./gradlew build` for the compiler's CLI.
+Run `./gradlew build` for the compiler's CLI (will be created in
+`build/distributions/ckompiler-$version.zip`).
 
 JUnit tests can be found in the `slak.test` package, in `src/test/kotlin`.
 
