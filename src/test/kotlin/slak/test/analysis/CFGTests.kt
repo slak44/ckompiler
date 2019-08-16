@@ -1,8 +1,12 @@
 package slak.test.analysis
 
 import org.junit.jupiter.api.Test
+import slak.ckompiler.DiagnosticId
 import slak.ckompiler.analysis.*
+import slak.test.*
+import slak.test.assertDiags
 import slak.test.prepareCFG
+import slak.test.prepareCode
 import slak.test.resource
 import slak.test.source
 import kotlin.test.assertEquals
@@ -101,5 +105,13 @@ class CFGTests {
         cfg.startBlock.successors[0].successors[0].successors[0].successors[1]
     )
     assertEquals(correctOrder, sequence.toList())
+  }
+
+  @Test
+  fun `Unterminated Blocks In Function`() {
+    val code = "int f() {}"
+    val p = prepareCode(code, source)
+    val cfg = CFG(p.root.decls.firstFun(), source, code)
+    cfg.assertDiags(DiagnosticId.CONTROL_END_OF_NON_VOID)
   }
 }

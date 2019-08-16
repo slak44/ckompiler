@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
 import slak.ckompiler.parser.FunctionDefinition
+import slak.ckompiler.parser.VoidType
 import java.util.*
 
 private val logger = LogManager.getLogger("ControlFlow")
@@ -45,6 +46,17 @@ class CFG(val f: FunctionDefinition,
     } else {
       collapseEmptyBlocks(allNodes)
       nodes = filterReachable(allNodes)
+    }
+
+    nodes.filterNot(BasicBlock::isTerminated).forEach {
+      // If blocks are unterminated, and the function isn't void, the function is missing returns
+      if (f.functionType.returnType != VoidType) diagnostic {
+        id = DiagnosticId.CONTROL_END_OF_NON_VOID
+        formatArgs(f.name, f.functionType.returnType.toString())
+        column(f.tokenRange.last)
+      }
+      // Either way, terminate the blocks with a fake return
+      it.terminator = ImpossibleJump(newBlock(), returned = null)
     }
 
     postOrderNodes = postOrderNodes(startBlock, nodes)
@@ -273,7 +285,7 @@ private class VariableRenamer(val doms: DominatorList,
       listOf(
           "${bb.nodeId}",
           "${if (isInPhi) " " else ""}${v.tid.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
-              .padStart(traceCol2Length, ' '),
+              .padStart(TRACE_COL2_LENGTH, ' '),
           "$oldReachingStr updated into $newReachingStr"
       ).joinToString(" | ").toObjectMessage()
     }
@@ -291,7 +303,7 @@ private class VariableRenamer(val doms: DominatorList,
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
       listOf(
           "${bb.nodeId}",
-          "def ${def.tid.name}${def.version}".padEnd(traceCol2Length, ' '),
+          "def ${def.tid.name}${def.version}".padEnd(TRACE_COL2_LENGTH, ' '),
           "$oldReachingStr then ${vPrime.tid.name}${vPrime.version}"
       ).joinToString(" | ").toObjectMessage()
     }
@@ -299,7 +311,7 @@ private class VariableRenamer(val doms: DominatorList,
 
   companion object {
     private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
-    private const val traceCol2Length = 11
+    private const val TRACE_COL2_LENGTH = 11
   }
 }
 
