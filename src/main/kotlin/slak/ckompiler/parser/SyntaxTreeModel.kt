@@ -579,6 +579,7 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
 
 /** C standard: A.2.4 */
 data class FunctionDefinition(val funcIdent: TypedIdentifier,
+                              val functionType: FunctionType,
                               val parameters: List<TypedIdentifier>,
                               val compoundStatement: Statement) : ExternalDeclaration() {
   val name = funcIdent.name
@@ -591,7 +592,8 @@ data class FunctionDefinition(val funcIdent: TypedIdentifier,
   companion object {
     operator fun invoke(declSpec: DeclarationSpecifier,
                         functionDeclarator: Declarator,
-                        compoundStatement: Statement): FunctionDefinition {
+                        compoundStatement: Statement,
+                        functionType: FunctionType): FunctionDefinition {
       val funcIdent = TypedIdentifier(declSpec, functionDeclarator as NamedDeclarator)
       val paramDecls = functionDeclarator.getFunctionTypeList().params
       if (funcIdent.type !is FunctionType) {
@@ -606,7 +608,7 @@ data class FunctionDefinition(val funcIdent: TypedIdentifier,
           it.name == paramDecl.declarator.name.name && it.type == typeName
         }
       }
-      return FunctionDefinition(funcIdent, params, compoundStatement)
+      return FunctionDefinition(funcIdent, functionType, params, compoundStatement)
     }
   }
 }

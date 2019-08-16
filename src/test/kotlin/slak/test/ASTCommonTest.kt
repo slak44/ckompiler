@@ -147,14 +147,15 @@ internal infix fun String.withParamsV(params: List<ParameterDeclaration>) =
     withParams(params, true) as NamedDeclarator
 
 internal infix fun Pair<DeclarationSpecifier, Declarator>.body(s: Statement): FunctionDefinition {
-  if (s is ErrorStatement) return FunctionDefinition(first, second, s)
+  val fType = typeNameOf(first, second) as FunctionType
+  if (s is ErrorStatement) return FunctionDefinition(first, second, s, fType)
   if (s !is CompoundStatement) throw IllegalArgumentException("Not compound")
   if (!second.isFunction()) throw IllegalArgumentException("Not function")
   val ptl = second.getFunctionTypeList()
   ptl.scope.idents += s.scope.idents
   ptl.scope.labels += s.scope.labels
   ptl.scope.tagNames += s.scope.tagNames
-  return FunctionDefinition(first, second, CompoundStatement(s.items, ptl.scope))
+  return FunctionDefinition(first, second, CompoundStatement(s.items, ptl.scope), fType)
 }
 
 internal fun ifSt(e: Expression, success: () -> Statement) = IfStatement(e, success(), null)
