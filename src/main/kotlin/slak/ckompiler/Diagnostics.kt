@@ -199,7 +199,7 @@ data class Diagnostic(val id: DiagnosticId,
         .filter { it.second.first == line }
         .map {
           val startIdx = max(it.second.second, 0)
-          startIdx..max(startIdx + it.first.length(), 0)
+          startIdx until max(startIdx + it.first.length(), 1)
         }
         .fold(originalCaretLine) { caretLine, it ->
           caretLine.replaceRange(it, "~".repeat(it.length()))
