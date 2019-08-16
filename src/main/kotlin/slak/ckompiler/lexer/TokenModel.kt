@@ -1,14 +1,30 @@
 package slak.ckompiler.lexer
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.SourceFileName
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger("Tokens")
 
-/** Implementors are some kind of token from some grammar. */
-sealed class TokenObject(val consumedChars: Int) {
+/**
+ * Represents a token from the lexical grammar.
+ * @param consumedChars how many characters long was the token in the SOURCE (ie the data in the
+ * token might it appear shorter or longer than it was in the source)
+ */
+sealed class LexicalToken(val consumedChars: Int) {
+  /**
+   * Where the token came from.
+   */
+  var srcFileName: SourceFileName? = null
+
+  /**
+   * At what index within the source the token can be found.
+   */
   var startIdx: Int = INVALID_INDEX
-    set(value) {
+    private set(value) {
+      if (field != INVALID_INDEX) logger.throwICE("Trying to overwrite token startIdx") {
+        "field: $field, value: $value"
+      }
       if (value < 0) logger.throwICE("Bad starting idx") { "value: $value" }
       field = value
     }
@@ -21,6 +37,11 @@ sealed class TokenObject(val consumedChars: Int) {
 
   val range: IntRange by lazy { startIdx until startIdx + consumedChars }
 
+  fun withStartIdx(idx: Int): LexicalToken {
+    startIdx = idx
+    return this
+  }
+
   init {
     if (consumedChars == 0) {
       logger.throwICE("Zero-length token created") { "token: $this" }
@@ -31,16 +52,6 @@ sealed class TokenObject(val consumedChars: Int) {
 
   companion object {
     const val INVALID_INDEX = -0x35 // Arbitrary negative value
-  }
-}
-
-/**
- * Represents a token from the lexical grammar.
- */
-sealed class LexicalToken(consumedChars: Int) : TokenObject(consumedChars) {
-  fun withStartIdx(idx: Int): LexicalToken {
-    startIdx = idx
-    return this
   }
 }
 

@@ -34,7 +34,7 @@ sealed class ASTNode(val isRoot: Boolean = false) {
   private var lateTokenRange: IntRange? = null
 
   /**
-   * The range of 'stuff' in this node. Usually created from [TokenObject]'s range data.
+   * The range of 'stuff' in this node. Usually created from [LexicalToken]'s range data.
    * @throws slak.ckompiler.InternalCompilerError if accessed on a node without a range set
    */
   val tokenRange: IntRange by lazy {

@@ -794,8 +794,7 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
       id = DiagnosticId.EMPTY_CHAR_CONSTANT
       columns(currentOffset..(currentOffset + 1))
     }
-    token.startIdx = currentOffset
-    ppTokens += token
+    ppTokens += token.withStartIdx(currentOffset)
     dropChars(token.consumedChars)
     return tokenize()
   }
