@@ -161,11 +161,15 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     for (arg in cfg.f.parameters) {
       val refArg = ComputeReference(arg, isSynthetic = true)
       if (arg.type.isABIIntegerType()) {
-        emit("mov ${refArg.pos}, ${intArgRegisters[intArgCounter]}")
-        intArgCounter++
         if (intArgCounter >= intArgRegisters.size) {
-          TODO("too many int parameters, not implemented yet")
+          // r11 is neither callee-saved nor caller-saved in System V
+          // It can be safely used here
+          emit("pop r11")
+          emit("mov ${refArg.pos}, r11")
+        } else {
+          emit("mov ${refArg.pos}, ${intArgRegisters[intArgCounter]}")
         }
+        intArgCounter++
       } else if (arg.type.isSSEType()) {
         emit("movsd ${refArg.pos}, ${fltArgRegisters[fltArgCounter]}")
         fltArgCounter++
