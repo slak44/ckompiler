@@ -136,8 +136,7 @@ int main() {
 }
 ```
 
-produces the following graph
-
+produces the following graph  
 ![Graph Example](readme-resources/graph-example.png)
 
 ###### SSA form
@@ -149,12 +148,19 @@ The `CFG` class is also responsible for converting the code in its nodes to a
    particular, empty blocks (blocks with no code, no condition and no return)
    are removed from the graph.
    
+   Here is an example of a CFG that has not been cleaned:  
+   ![Empty Blocks](readme-resources/empty-blocks.png)
+   
+   All the blocks labeled `<EMPTY>` are redundant.
+   
    The edges are collapsed such that the control flow the graph represents is
-   unchanged. This is done in a loop until no more collapsing can be done
-   (because removing an empty block may also allow us to remove a previously
-   un-removeable block). See `collapseEmptyBlocks` in
-   [ControlFlowGraph.kt][cfg], and `BasicBlock.collapseEmptyPreds` in
-   [BasicBlock.kt][bb].
+   unchanged. This is done in a loop until no more collapsing can be done;
+   removing an empty block may also allow us to remove a previously
+   un-removeable block (this case is in the example above, with the two blocks
+   that come after the return).
+   
+   See `collapseEmptyBlocks` in [ControlFlowGraph.kt][cfg], and
+   `BasicBlock.collapseEmptyPreds` in [BasicBlock.kt][bb].
 2. Dead code elimination is performed, by finding subgraphs disconnected from
    the start node. See `filterReachable` in [ControlFlowGraph.kt][cfg]. 
    
@@ -162,8 +168,7 @@ The `CFG` class is also responsible for converting the code in its nodes to a
    For example, a basic block that contains a function return has an impossible
    edge to another basic block, which contains the code after the return.
    Strictly speaking, the second block is connected. For DCE purposes, however,
-   such blocks are considered disconnected. Such a graph looks like this:
-   
+   such blocks are considered disconnected. Such a graph looks like this:  
    ![Disconnected Fake Edge](readme-resources/disconnected-fake-edge.png)
 3. Unterminated `BasicBlock`s are identified. Warnings are reported for non-void
    functions (it means control flow reached the end of the function and didn't
