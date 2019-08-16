@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.ErrorStatement
 import slak.test.*
+import kotlin.test.assertEquals
 
 class FunctionsTests {
   @Test
@@ -189,5 +190,18 @@ class FunctionsTests {
     int func ("f" withParams listOf(double.toParam())) body compoundOf(
         returnSt(1)
     ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Prototype From Header`() {
+    val p = prepareCode("""
+      #include <printf.h>
+      int main() {
+        printf("Hello World!\n");
+        return 0;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    assertEquals(2, p.root.decls.size)
   }
 }
