@@ -17,7 +17,12 @@ internal fun preparePP(s: String, source: SourceFileName): Preprocessor {
   val incs = IncludePaths(emptyList(),
       listOf(IncludePaths.resource("headers/system")),
       listOf(IncludePaths.resource("headers/users")))
-  return Preprocessor(s, source, includePaths = incs + IncludePaths.defaultPaths)
+  return Preprocessor(
+      sourceText = s,
+      srcFileName = source,
+      includePaths = incs + IncludePaths.defaultPaths,
+      currentDir = File(".")
+  )
 }
 
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
@@ -66,7 +71,7 @@ internal fun IDebugHandler.assertDiags(vararg ids: DiagnosticId) =
     assertEquals(ids.toList(), diags.ids)
 
 internal fun assertPPDiagnostic(s: String, source: SourceFileName, vararg ids: DiagnosticId) {
-  val diagnostics = Preprocessor(s, source).diags
+  val diagnostics = preparePP(s, source).diags
   assertEquals(ids.toList(), diagnostics.ids)
 }
 

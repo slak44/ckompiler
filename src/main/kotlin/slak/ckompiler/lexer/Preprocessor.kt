@@ -54,7 +54,7 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
  */
 class Preprocessor(sourceText: String,
                    srcFileName: SourceFileName,
-                   currentDir: File = File("/usr/include"),
+                   currentDir: File,
                    cliDefines: Map<String, String> = emptyMap(),
                    initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
                    includePaths: IncludePaths = IncludePaths.defaultPaths,
