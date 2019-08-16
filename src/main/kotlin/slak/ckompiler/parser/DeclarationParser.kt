@@ -80,6 +80,35 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
   }
 
   /**
+   * Adds declaration to scope.
+   * @see IScopeHandler.newIdentifier
+   */
+  private fun addToScope(ds: DeclarationSpecifier, declarator: Declarator?) {
+    if (declarator !is NamedDeclarator) return
+    val identifier =
+        if (ds.isTypedef()) TypedefName(ds, declarator)
+        else TypedIdentifier(ds, declarator)
+    newIdentifier(identifier)
+  }
+
+  /**
+   * Parse an initializer for one of this declaration's declarators.
+   * @see DeclaratorParser.parseInitializer
+   */
+  private fun parseDeclarationInitializer(ds: DeclarationSpecifier,
+                                          endIdx: Int): ExpressionInitializer? {
+    if (current().asPunct() != Punctuators.ASSIGN) return null
+    val assignTok = current()
+    val initializer = parseInitializer(endIdx)
+    if (!ds.isTypedef()) return initializer
+    diagnostic {
+      id = DiagnosticId.TYPEDEF_NO_INITIALIZER
+      columns(assignTok..initializer)
+    }
+    return ExpressionInitializer.from(error<ErrorExpression>())
+  }
+
+  /**
    * Parse a `init-declarator-list`, a part of a `declaration`.
    *
    * C standard: A.2.2
@@ -90,31 +119,11 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
    */
   private fun parseInitDeclaratorList(ds: DeclarationSpecifier, firstDecl: Declarator? = null):
       List<Pair<Declarator, Initializer?>> {
-    fun addDeclaratorToScope(declarator: Declarator?) {
-      if (declarator !is NamedDeclarator) return
-      val identifier =
-          if (ds.isTypedef()) TypedefName(ds, declarator)
-          else TypedIdentifier(ds, declarator)
-      newIdentifier(identifier)
-    }
-
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       eat()
-      addDeclaratorToScope(firstDecl)
+      addToScope(ds, firstDecl)
       return listOfNotNull(firstDecl).map { it to null }
-    }
-
-    fun parseDeclarationInitializer(endIdx: Int): ExpressionInitializer? {
-      if (current().asPunct() != Punctuators.ASSIGN) return null
-      val assignTok = current()
-      val initializer = parseInitializer(endIdx)
-      if (!ds.isTypedef()) return initializer
-      diagnostic {
-        id = DiagnosticId.TYPEDEF_NO_INITIALIZER
-        columns(assignTok..initializer)
-      }
-      return ExpressionInitializer.from(error<ErrorExpression>())
     }
 
     val declaratorList = mutableListOf<Pair<Declarator, Initializer?>>()
@@ -125,7 +134,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
         if (stopIdx == -1) eatToSemi()
         else eatUntil(stopIdx)
       }
-      addDeclaratorToScope(declarator)
+      addToScope(ds, declarator)
       if (isEaten()) {
         diagnostic {
           id = DiagnosticId.EXPECTED_SEMI_AFTER
@@ -135,7 +144,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
         declaratorList += declarator to null
         return true
       }
-      declaratorList += declarator to parseDeclarationInitializer(endIdx)
+      declaratorList += declarator to parseDeclarationInitializer(ds, endIdx)
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
         eat()
