@@ -82,6 +82,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   INVALID_CAST_TYPE(ERROR, "Conversion to non-scalar type '%s' requested"),
   POINTER_FLOAT_CAST(ERROR,
       "Cannot convert between floating point type '%s' and pointer type '%s'"),
+  ILLEGAL_CAST_ASSIGNMENT(ERROR, "Assignment to cast is illegal, lvalue casts are not supported"),
+  EXPRESSION_NOT_ASSIGNABLE(ERROR, "Expression is not assignable"),
+  CONSTANT_NOT_ASSIGNABLE(ERROR, "Cannot assign to a constant"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

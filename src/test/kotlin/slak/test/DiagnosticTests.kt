@@ -2,6 +2,7 @@ package slak.test
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.Diagnostic
+import slak.ckompiler.DiagnosticId
 import slak.ckompiler.createDiagnostic
 import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
@@ -17,17 +18,32 @@ class DiagnosticTests {
                                                line: Int? = null,
                                                col: Int? = null,
                                                colCount: Int? = null) {
-    assert(diagNr in 0 until size)
-    this[diagNr].assertDiagCaret(line, col, colCount)
+    assertDiagSourceCol(diagNr, 0, line, col, colCount)
   }
 
   private fun Diagnostic.assertDiagCaret(line: Int? = null,
                                          col: Int? = null,
                                          colCount: Int? = null) {
-    val (errLine, errCol, _) = errorOf(caret)
+    assertDiagSourceCol(0, line, col, colCount)
+  }
+
+  private fun List<Diagnostic>.assertDiagSourceCol(diagNr: Int,
+                                                   sourceColIdx: Int,
+                                                   line: Int? = null,
+                                                   col: Int? = null,
+                                                   colCount: Int? = null) {
+    assert(diagNr in 0 until size)
+    this[diagNr].assertDiagSourceCol(sourceColIdx, line, col, colCount)
+  }
+
+  private fun Diagnostic.assertDiagSourceCol(sourceColIdx: Int,
+                                             line: Int? = null,
+                                             col: Int? = null,
+                                             colCount: Int? = null) {
+    val (errLine, errCol, _) = errorOf(sourceColumns[sourceColIdx])
     line?.let { assertEquals(line, errLine) }
     col?.let { assertEquals(col, errCol) }
-    colCount?.let { assertEquals(it, caret.length()) }
+    colCount?.let { assertEquals(it, sourceColumns[sourceColIdx].length()) }
   }
 
   @Test
@@ -144,5 +160,21 @@ class DiagnosticTests {
       int a = f(1, );
     """.trimIndent(), source)
     p.diags.assertDiagCaret(diagNr = 0, line = 2, col = 13, colCount = 1)
+  }
+
+  @Test
+  fun `Assignment To Cast Covers The Entire Cast Expression`() {
+    val p = prepareCode("int main() {int x = 1; (long) x = 5;}", source)
+    p.assertDiags(DiagnosticId.ILLEGAL_CAST_ASSIGNMENT)
+    p.diags.assertDiagCaret(diagNr = 0, col = 32, colCount = 1)
+    p.diags.assertDiagSourceCol(diagNr = 0, sourceColIdx = 1, col = 23, colCount = 8)
+  }
+
+  @Test
+  fun `Assignment To Constant Has Correct Length`() {
+    val p = prepareCode("int main() {2   = 5;}", source)
+    p.assertDiags(DiagnosticId.CONSTANT_NOT_ASSIGNABLE)
+    p.diags.assertDiagCaret(diagNr = 0, col = 16, colCount = 1)
+    p.diags.assertDiagSourceCol(diagNr = 0, sourceColIdx = 1, col = 12, colCount = 1)
   }
 }

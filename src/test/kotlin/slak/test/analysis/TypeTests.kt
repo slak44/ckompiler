@@ -63,6 +63,35 @@ class TypeTests {
   }
 
   @Test
+  fun `Assignment To Cast Not Allowed`() {
+    val p = prepareCode("int main() {int x = 1; (long) x = 5;}", source)
+    p.assertDiags(DiagnosticId.ILLEGAL_CAST_ASSIGNMENT)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare ("x" assign 1),
+        SignedLongType.cast(nameRef("x", SignedIntType)) assign 5
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Assignment To Binary Expression Not Allowed`() {
+    val p = prepareCode("int main() {int x; (x + 2) = 5;}", source)
+    p.assertDiags(DiagnosticId.EXPRESSION_NOT_ASSIGNABLE)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare "x",
+        (nameRef("x", SignedIntType) add 2) assign 5
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Assignment To Constant Not Allowed`() {
+    val p = prepareCode("int main() {2 = 5;}", source)
+    p.assertDiags(DiagnosticId.CONSTANT_NOT_ASSIGNABLE)
+    int func ("main" withParams emptyList()) body compoundOf(
+        2 assign 5
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Array Of Functions Not Allowed`() {
     val p = prepareCode("int a[123]();", source)
     p.assertDiags(DiagnosticId.INVALID_ARR_TYPE)

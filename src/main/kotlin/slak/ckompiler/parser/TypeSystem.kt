@@ -557,6 +557,32 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this
   COMMA -> rhs
 }
 
+fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expression) {
+  val op = pct.asBinaryOperator() ?: logger.throwICE("Not a binary operator") {
+    "lhs: $lhs, rhs: $rhs, pct: $pct"
+  }
+  if (op !in assignmentOps) return
+  // Don't bother when lhs is an error; these diagnostics would be bogus
+  if (lhs.type == ErrorType) return
+  when (lhs) {
+    is CastExpression -> diagnostic {
+      id = DiagnosticId.ILLEGAL_CAST_ASSIGNMENT
+      errorOn(pct)
+      columns(lhs.tokenRange)
+    }
+    is BinaryExpression -> diagnostic {
+      id = DiagnosticId.EXPRESSION_NOT_ASSIGNABLE
+      errorOn(pct)
+      columns(lhs.tokenRange)
+    }
+    is ExprConstantNode -> diagnostic {
+      id = DiagnosticId.CONSTANT_NOT_ASSIGNABLE
+      errorOn(pct)
+      columns(lhs.tokenRange)
+    }
+  }
+}
+
 /**
  * Runs [BinaryOperators.applyTo]. Prints appropriate diagnostics if [ErrorType] is returned. Does
  * not print anything if either [lhs] or [rhs] are [ErrorType].

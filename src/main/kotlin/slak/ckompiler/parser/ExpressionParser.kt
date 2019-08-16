@@ -130,6 +130,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
       binaryDiags(opTok as Punctuator, lhs, rhs)
+      validateAssignment(opTok, lhs, rhs)
       lhs = BinaryExpression(op, lhs, rhs).withRange(lhs..rhs)
     }
     return lhs

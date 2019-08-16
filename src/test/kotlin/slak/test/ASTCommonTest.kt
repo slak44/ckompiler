@@ -282,6 +282,7 @@ internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with BinaryOpera
 internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with BinaryOperators.DIV
 internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with BinaryOperators.COMMA
 internal infix fun <LHS, RHS> LHS.equals(that: RHS) = this to that with BinaryOperators.EQ
+internal infix fun <LHS, RHS> LHS.assign(that: RHS) = this to that with BinaryOperators.ASSIGN
 
 private fun <T> parseDSLElement(it: T): Expression {
   return when (it) {
