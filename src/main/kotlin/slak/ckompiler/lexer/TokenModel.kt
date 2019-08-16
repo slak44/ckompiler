@@ -16,6 +16,7 @@ sealed class LexicalToken(val consumedChars: Int) {
    * Where the token came from.
    */
   var srcFileName: SourceFileName? = null
+    private set
 
   /**
    * At what index within the source the token can be found.
@@ -37,10 +38,13 @@ sealed class LexicalToken(val consumedChars: Int) {
 
   val range: IntRange by lazy { startIdx until startIdx + consumedChars }
 
-  fun withStartIdx(idx: Int): LexicalToken {
-    startIdx = idx
+  fun withDebugData(srcFileName: SourceFileName, startIdx: Int): LexicalToken {
+    this.startIdx = startIdx
+    this.srcFileName = srcFileName
     return this
   }
+
+  fun copyDebugFrom(other: LexicalToken) = withDebugData(other.srcFileName!!, other.startIdx)
 
   init {
     if (consumedChars == 0) {

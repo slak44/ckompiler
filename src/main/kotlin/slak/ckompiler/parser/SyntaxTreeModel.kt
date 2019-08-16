@@ -14,8 +14,14 @@ val BlockItem.decl get() = (this as DeclarationItem).declaration
 
 infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx until other.startIdx
 
-operator fun LexicalToken.rangeTo(other: LexicalToken) =
-    startIdx until (other.startIdx + other.consumedChars)
+operator fun LexicalToken.rangeTo(other: LexicalToken): IntRange {
+  if (srcFileName != other.srcFileName) {
+    logger.warn("Creating token range across files") {
+      "this: $srcFileName, other: ${other.srcFileName}"
+    }
+  }
+  return startIdx until (other.startIdx + other.consumedChars)
+}
 
 operator fun IntRange.rangeTo(other: IntRange) = this.first..other.last
 

@@ -94,10 +94,11 @@ class Preprocessor(sourceText: String,
   private fun convert(tok: LexicalToken): LexicalToken? = when (tok) {
     is HeaderName -> debugHandler.logger.throwICE("HeaderName didn't disappear in phase 4") { tok }
     is NewLine -> null
-    is Identifier -> {
-      Keywords.values().firstOrNull { tok.name == it.keyword }
-          ?.let(::Keyword)?.withStartIdx(tok.startIdx) ?: tok
-    }
+    is Identifier -> Keywords.values()
+        .firstOrNull { tok.name == it.keyword }
+        ?.let(::Keyword)
+        ?.copyDebugFrom(tok)
+        ?: tok
     else -> tok
   }
 }
@@ -174,8 +175,8 @@ private class PPParser(
       // If these synthetic idents are used in a diagnostic, the startIdx must be valid
       // Also, if a diagnostic does something like defd..otherToken, it will work correctly, even
       // though "defined" may be longer than the otherToken
-      val defd = Identifier("defined").withStartIdx(ident.startIdx)
-      val unaryNot = Punctuator(Punctuators.NOT).withStartIdx(ident.startIdx)
+      val defd = Identifier("defined").copyDebugFrom(ident)
+      val unaryNot = Punctuator(Punctuators.NOT).copyDebugFrom(ident)
       return@tokenContext listOfNotNull(
           if (groupKind.name == "ifndef") unaryNot else null, defd, ident)
     } to groupKind.name
@@ -190,7 +191,7 @@ private class PPParser(
     fun definedIdent(ident: Identifier): LexicalToken {
       val isDefined = defines[ident] != null
       val ct = if (isDefined) IntegralConstant.one() else IntegralConstant.zero()
-      return ct.withStartIdx(ident.startIdx)
+      return ct.copyDebugFrom(ident)
     }
 
     if (idx + 1 >= e.size) {
@@ -273,7 +274,7 @@ private class PPParser(
         formatArgs(it.name)
         columns(it.range)
       }
-      processedToks += IntegralConstant.zero().withStartIdx(it.startIdx)
+      processedToks += IntegralConstant.zero().copyDebugFrom(it)
       idx++
     }
     val pm = ParenMatcher(this, TokenHandler(processedToks, this))
@@ -794,7 +795,7 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
       id = DiagnosticId.EMPTY_CHAR_CONSTANT
       columns(currentOffset..(currentOffset + 1))
     }
-    ppTokens += token.withStartIdx(currentOffset)
+    ppTokens += token.withDebugData(srcFileName, currentOffset)
     dropChars(token.consumedChars)
     return tokenize()
   }
