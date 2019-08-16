@@ -158,15 +158,15 @@ private fun GraphingContext.graphStatement(scope: LexicalScope,
         // Intentionally left empty
       }
       is ErrorInitializer -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-      is ForExpressionInitializer -> graphStatement(scope, current, s.init.value)
-      is DeclarationInitializer -> root.addDeclaration(scope, current, s.init.value)
+      is ForExpressionInitializer -> graphStatement(s.scope, current, s.init.value)
+      is DeclarationInitializer -> root.addDeclaration(s.scope, current, s.init.value)
     }
     val loopHeader = root.newBlock()
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, loopAfterBlock = afterLoopBlock)
-    val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
-    s.loopEnd?.let { graphStatement(scope, loopNext, it) }
+    val loopNext = loopContext.graphStatement(s.scope, loopBlock, s.loopable)
+    s.loopEnd?.let { graphStatement(s.scope, loopNext, it) }
     current.terminator = UncondJump(loopHeader)
     if (s.cond == null) {
       // No for condition means unconditional jump to loop block

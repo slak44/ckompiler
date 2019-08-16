@@ -681,7 +681,8 @@ data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
 data class ForStatement(val init: ForInitializer,
                         val cond: Expression?,
                         val loopEnd: Expression?,
-                        val loopable: Statement) : Statement()
+                        val loopable: Statement,
+                        val scope: LexicalScope) : Statement()
 
 /** C standard: 6.8.6.2 */
 class ContinueStatement : Statement(), Terminal, StringClassName by StringClassNameImpl

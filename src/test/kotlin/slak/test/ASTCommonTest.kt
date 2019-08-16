@@ -190,10 +190,6 @@ internal fun <T> List<T>.compound(scope: LexicalScope? = null) = CompoundStateme
   forEach {
     when (it) {
       is Declaration -> idents += declsToTypeIdents(it)
-      is ForStatement -> {
-        val names = (it.init as? DeclarationInitializer)?.value?.let(::declsToTypeIdents)
-        if (names != null) idents += names
-      }
       is LabeledStatement -> labels += it.label
       is Statement -> {
         // Do nothing intentionally
@@ -213,21 +209,27 @@ internal fun forSt(e: ForInitializer,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(e, cond, cont, loopable)
+  val scope = LexicalScope()
+  if (e is DeclarationInitializer) {
+    scope.idents += declsToTypeIdents(e.value)
+  }
+  return ForStatement(e, cond, cont, loopable, scope)
 }
 
 internal fun forSt(e: Expression,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(ForExpressionInitializer(e.zeroRange()), cond, cont, loopable)
+  return ForStatement(ForExpressionInitializer(e.zeroRange()), cond, cont, loopable, LexicalScope())
 }
 
 internal fun forSt(e: Declaration,
                    cond: Expression?,
                    cont: Expression?,
                    loopable: Statement): ForStatement {
-  return ForStatement(DeclarationInitializer(e.zeroRange()), cond, cont, loopable)
+  val scope = LexicalScope()
+  scope.idents += declsToTypeIdents(e)
+  return ForStatement(DeclarationInitializer(e.zeroRange()), cond, cont, loopable, scope)
 }
 
 internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNode(this), s)

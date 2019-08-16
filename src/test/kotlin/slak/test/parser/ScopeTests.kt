@@ -31,6 +31,54 @@ class ScopeTests {
   }
 
   @Test
+  fun `Adjacent Scopes Don't Overlap`() {
+    val p = prepareCode("""
+      int main() {
+        { int x = 1; }
+        { int x = 2; }
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Adjacent For-Loop Scopes Don't Overlap`() {
+    val p = prepareCode("""
+      int main() {
+        for (int x = 1; ; );
+        for (int x = 2; ; );
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `For-Loop Declaration Scope Is Separate`() {
+    val p = prepareCode("""
+      int main() {
+        int x = 1;
+        for (int x = 2; ; ) {
+          int x = 3;
+        }
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Loop-Local Scope Doesn't Collide With Outer Function Scope`() {
+    val p = prepareCode("""
+      int main() {
+        int x;
+        while (1) {
+          int x;
+        }
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
   fun `Shadowing Of File Scope Variable With Block Scope Variable`() {
     val p = prepareCode("int x; int main() { int x; }", source)
     p.assertNoDiagnostics()

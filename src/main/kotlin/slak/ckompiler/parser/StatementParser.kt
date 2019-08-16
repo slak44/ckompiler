@@ -356,11 +356,12 @@ class StatementParser(declarationParser: DeclarationParser,
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
     if (rparen == -1) return error<ErrorStatement>()
+    val forScope = newScope()
     // The 3 components of a for loop
-    val (clause1, expr2, expr3) = parseForLoopInner(rparen)
+    val (clause1, expr2, expr3) = forScope.withScope { parseForLoopInner(rparen) }
     eatUntil(rparen)
     eat() // The ')'
-    val loopable = parseStatement()
+    val loopable = forScope.withScope { parseStatement() }
     if (loopable == null) {
       diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
@@ -369,10 +370,10 @@ class StatementParser(declarationParser: DeclarationParser,
       // Attempt to eat the error
       eatToSemi()
       if (isNotEaten()) eat()
-      return ForStatement(clause1, expr2, expr3, error<ErrorExpression>())
+      return ForStatement(clause1, expr2, expr3, error<ErrorExpression>(), forScope)
           .withRange(forTok until safeToken(0))
     }
-    return ForStatement(clause1, expr2, expr3, loopable).withRange(forTok..loopable)
+    return ForStatement(clause1, expr2, expr3, loopable, forScope).withRange(forTok..loopable)
   }
 
   /**
