@@ -182,6 +182,12 @@ data class TypedIdentifier(override val name: String,
   }
 }
 
+data class TernaryConditional(val cond: Expression,
+                              val success: Expression,
+                              val failure: Expression) : Expression() {
+  override val type = resultOfTernary(success, failure)
+}
+
 /**
  * Represents a function call in an [Expression].
  *

@@ -115,6 +115,16 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
     outerLoop@ while (true) {
       if (isEaten()) break@outerLoop
       val opTok = current()
+      if (opTok.asPunct() == Punctuators.COLON) {
+        diagnostic {
+          id = DiagnosticId.EXPECTED_SEMI_AFTER
+          formatArgs("expression")
+          errorOn(opTok)
+        }
+        eatToSemi()
+        return lhs
+      }
+      if (opTok.asPunct() == Punctuators.QMARK) return parseTernaryExpr(lhs)
       val op = opTok.asBinaryOperator() ?: break@outerLoop
       if (op.precedence < minPrecedence) break@outerLoop
       eat()
@@ -136,7 +146,27 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
     return lhs
   }
 
-  // FIXME: implement ternary conditionals
+  private fun parseTernaryExpr(cond: Expression): Expression {
+    val colonIdx = findParenMatch(Punctuators.QMARK, Punctuators.COLON)
+    val qmark = current()
+    eat() // The ?
+    if (colonIdx == -1) {
+      eatToSemi()
+      return error<ErrorExpression>()
+    }
+    val success = parseExpr(colonIdx) ?: error<ErrorExpression>()
+    eat() // The :
+    val failure = parseExpr(tokenCount) ?: error<ErrorExpression>()
+    if (resultOfTernary(success, failure) == ErrorType) diagnostic {
+      id = DiagnosticId.INVALID_ARGS_TERNARY
+      formatArgs(success.type.toString(), failure.type.toString())
+      errorOn(qmark)
+      columns(success.tokenRange)
+      columns(success.tokenRange)
+    }
+    return TernaryConditional(cond, success, failure).withRange(cond..failure)
+  }
+
   private fun parseBaseExpr(): Expression? = when {
     // FIXME: implement generic-selection (A.2.1/6.5.1.1)
     current().asPunct() == Punctuators.RPAREN -> {

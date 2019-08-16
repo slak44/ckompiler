@@ -570,7 +570,7 @@ fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expr
       errorOn(pct)
       columns(lhs.tokenRange)
     }
-    is BinaryExpression -> diagnostic {
+    is BinaryExpression, is TernaryConditional -> diagnostic {
       id = DiagnosticId.EXPRESSION_NOT_ASSIGNABLE
       errorOn(pct)
       columns(lhs.tokenRange)
@@ -616,4 +616,38 @@ fun IDebugHandler.checkArrayElementType(declSpec: DeclarationSpecifier, declarat
     formatArgs(declarator.name, elemType)
     columns(declarator.tokenRange)
   }
+}
+
+/**
+ * Get resulting type of a ? : ternary operator expression.
+ *
+ * C standard: 6.5.15.0.3
+ */
+fun resultOfTernary(success: Expression, failure: Expression): TypeName {
+  if (success.type is ErrorType || failure.type is ErrorType) return ErrorType
+  if (success.type is ArithmeticType && failure.type is ArithmeticType) {
+    return usualArithmeticConversions(success.type, failure.type)
+  }
+  if (success.type is StructureType &&
+      failure.type is StructureType &&
+      success.type == failure.type) {
+    return success.type
+  }
+  if (success.type is UnionType && failure.type is UnionType && success.type == failure.type) {
+    return success.type
+  }
+  if (success.type is VoidType && failure.type is VoidType){
+    return VoidType
+  }
+  // FIXME: is null pointer constant case handled?
+  if (success.type is PointerType && failure.type is PointerType) {
+    // FIXME: overly strict check, compatibles are allowed
+    val successRef = (success.type as PointerType).referencedType
+    val failRef = (failure.type as PointerType).referencedType
+    // FIXME: these 2 ifs are incomplete, see standard
+    if (successRef is VoidType) return failure.type
+    if (failRef is VoidType) return success.type
+    return if (successRef != failRef) ErrorType else success.type
+  }
+  return ErrorType
 }

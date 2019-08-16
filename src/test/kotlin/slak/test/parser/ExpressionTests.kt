@@ -258,4 +258,52 @@ class ExpressionTests {
     val p = prepareCode("int main() {$cast;}", source)
     p.assertDiags(DiagnosticId.POINTER_FLOAT_CAST)
   }
+
+  @Test
+  fun `Ternary Simple`() {
+    val p = prepareCode("int a = 1 ? 2 : 3;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign 1.qmark(2, 3)) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Ternary Missing Colon`() {
+    val p = prepareCode("int a = 1 ? 2 ;", source)
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+  }
+
+  @Test
+  fun `Ternary Missing Question Mark`() {
+    val p = prepareCode("int a = 2 : 3;", source)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+  }
+
+  @Test
+  fun `Ternary With Parenthesis`() {
+    val p = prepareCode("int a = 1 ? (2 + 2) : (3 + 3);", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign 1.qmark(2 add 2, 3 add 3)) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Ternary Nested Middle`() {
+    val p = prepareCode("int a = 1 ? 11 ? 22 : 44 : 3;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign 1.qmark(11.qmark(22, 44), 3)) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Ternary Nested Last`() {
+    val p = prepareCode("int a = 1 ? 2 : 1 ? 3 : 4;", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign 1.qmark(2, 1.qmark(3, 4))) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Ternary Bad Assignment`() {
+    val p = prepareCode("int a = 1 ? 2 : a = 3;", source)
+    p.assertNoDiagnostics()
+    val badAssignment = nameRef("a", SignedIntType) assign 3
+    int declare ("a" assign 1.qmark(2, badAssignment)) assertEquals p.root.decls[0]
+  }
 }

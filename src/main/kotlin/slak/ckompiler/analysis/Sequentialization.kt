@@ -55,6 +55,7 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
   val sequencedAfter = mutableListOf<Expression>()
   val modifications = mutableMapOf<TypedIdentifier, MutableList<Expression>>()
   fun Expression.seqImpl(): Expression = when (this) {
+    is TernaryConditional -> TODO("deal with this")
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is FunctionCall -> {
       FunctionCall(calledExpr.seqImpl(), args.map(Expression::seqImpl)).withRange(tokenRange)

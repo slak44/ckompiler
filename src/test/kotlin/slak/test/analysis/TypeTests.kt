@@ -63,6 +63,22 @@ class TypeTests {
   }
 
   @Test
+  fun `Ternary Bad Types`() {
+    val p = prepareCode("""
+      struct vec2 {int x,y;} v1;
+      int main() {
+        1 ? 22 : v1;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.INVALID_ARGS_TERNARY)
+    val struct = struct("vec2", listOf(int declare listOf("x", "y")))
+    struct.toSpec() declare "v1" assertEquals p.root.decls[0]
+    int func ("main" withParams emptyList()) body compoundOf(
+        1.qmark(22, nameRef("v1", typeNameOf(struct.toSpec(), nameDecl("v1"))))
+    ) assertEquals p.root.decls[1]
+  }
+
+  @Test
   fun `Assignment To Cast Not Allowed`() {
     val p = prepareCode("int main() {int x = 1; (long) x = 5;}", source)
     p.assertDiags(DiagnosticId.ILLEGAL_CAST_ASSIGNMENT)
@@ -88,6 +104,21 @@ class TypeTests {
     p.assertDiags(DiagnosticId.CONSTANT_NOT_ASSIGNABLE)
     int func ("main" withParams emptyList()) body compoundOf(
         2 assign 5
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Assignment To Ternary Fails`() {
+    val p = prepareCode("""
+      int main() {
+        int x, y;
+        (1 ? x : y) = 2;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPRESSION_NOT_ASSIGNABLE)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare listOf("x", "y"),
+        1.qmark(nameRef("x", SignedIntType), nameRef("y", SignedIntType)) assign 2
     ) assertEquals p.root.decls[0]
   }
 

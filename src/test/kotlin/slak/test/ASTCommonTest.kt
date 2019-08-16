@@ -284,6 +284,12 @@ internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with BinaryOpe
 internal infix fun <LHS, RHS> LHS.equals(that: RHS) = this to that with BinaryOperators.EQ
 internal infix fun <LHS, RHS> LHS.assign(that: RHS) = this to that with BinaryOperators.ASSIGN
 
+internal fun <T1, T2, T3> T1.qmark(success: T2, failure: T3) = TernaryConditional(
+    parseDSLElement(this),
+    parseDSLElement(success),
+    parseDSLElement(failure)
+)
+
 private fun <T> parseDSLElement(it: T): Expression {
   return when (it) {
     is Expression -> it

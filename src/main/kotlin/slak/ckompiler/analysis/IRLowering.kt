@@ -381,6 +381,7 @@ class IRLoweringContext {
     is BinaryExpression -> transformBinary(expr)
     is ArraySubscript -> transformSubscript(expr)
     is CastExpression -> transformCast(expr)
+    is TernaryConditional -> TODO("deal with this")
     is SizeofExpression, is SizeofTypeName ->
       TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
     is IntegerConstantNode -> ComputeInteger(expr)

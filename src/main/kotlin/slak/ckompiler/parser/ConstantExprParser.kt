@@ -43,6 +43,7 @@ class ConstantExprParser(parenMatcher: ParenMatcher, val type: ConstantExprType)
    * expression.
    */
   private fun traverseExpr(expr: Expression): ExprConstantNode = when (expr) {
+    is TernaryConditional -> TODO("deal with this")
     is ErrorExpression, is IntegerConstantNode, is CharacterConstantNode -> expr as ExprConstantNode
     is FunctionCall, is ArraySubscript,
     is PrefixIncrement, is PrefixDecrement,
