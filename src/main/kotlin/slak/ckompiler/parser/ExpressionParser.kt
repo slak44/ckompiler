@@ -418,9 +418,8 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
         eat() // Eat the )
         // This is a cast
         val exprToCast = parsePrimaryExpr() ?: error<ErrorExpression>()
-        val range = lparen..tokenAt(endParenIdx)
-        validateCast(exprToCast.type, possibleName, range)
-        CastExpression(exprToCast, possibleName).withRange(range)
+        validateCast(exprToCast.type, possibleName, lparen..tokenAt(endParenIdx))
+        CastExpression(exprToCast, possibleName).withRange(lparen..exprToCast)
       } else {
         val parenExpr = parseExpr(endParenIdx)
         eat() // Eat the )
