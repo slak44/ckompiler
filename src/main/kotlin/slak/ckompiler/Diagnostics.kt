@@ -134,37 +134,41 @@ data class Diagnostic(val id: DiagnosticId,
                       val origin: String) {
   val caret: IntRange get() = sourceColumns[0]
 
+  private fun errorOfCol(col: IntRange): Triple<Int, Int, String> {
+    var currLine = 1
+    var currLineStart = 0
+    var currLineText = ""
+    sourceText
+    for ((idx, it) in sourceText.withIndex()) {
+      if (it == '\n') {
+        currLineText = sourceText.slice(currLineStart until idx)
+        if (col.first in currLineStart..idx) {
+          break
+        }
+        currLine++
+        currLineStart = idx + 1
+      }
+      if (idx == sourceText.length - 1) {
+        currLineText = sourceText.slice(currLineStart until sourceText.length)
+      }
+    }
+    return Triple(currLine, col.first - currLineStart, currLineText)
+  }
+
   /**
    * @returns (line, col, lineText) of the [col] in the [sourceText]
    */
   fun errorOf(col: IntRange?): Triple<Int, Int, String> = when {
     sourceText.isEmpty() -> Triple(1, 0, "")
-    col != null -> {
-      var currLine = 1
-      var currLineStart = 0
-      var currLineText = ""
-      sourceText
-      for ((idx, it) in sourceText.withIndex()) {
-        if (it == '\n') {
-          currLineText = sourceText.slice(currLineStart until idx)
-          if (col.first in currLineStart..idx) {
-            break
-          }
-          currLine++
-          currLineStart = idx + 1
-        }
-        if (idx == sourceText.length - 1) {
-          currLineText = sourceText.slice(currLineStart until sourceText.length)
-        }
-      }
-      Triple(currLine, col.first - currLineStart, currLineText)
-    }
+    col != null -> errorOfCol(col)
     else -> Triple(-1, -1, "???")
   }
 
   private val printable: String by lazy {
     val color = TermColors(if (useColors) TermColors.Level.TRUECOLOR else TermColors.Level.NONE)
     val (line, col, lineText) = errorOf(if (sourceColumns.isNotEmpty()) caret else null)
+    // Yes, it makes a copy, but interacting with String.format is basically impossible otherwise
+    @SuppressWarnings("SpreadOperator")
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     val kindText = when (id.kind) {
       ERROR -> color.brightRed
