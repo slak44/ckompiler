@@ -341,6 +341,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   )
 
   fun parse(args: Array<String>): ExitCodes {
+    @Suppress("TooGenericExceptionCaught")
     try {
       cli.parse(args)
     } catch (err: Exception) {
