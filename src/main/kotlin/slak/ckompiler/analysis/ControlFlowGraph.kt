@@ -84,8 +84,6 @@ data class ReachingDef(val variable: ComputeReference,
 private class VariableRenamer(val doms: DominatorList,
                               val startBlock: BasicBlock,
                               nodes: Set<BasicBlock>) {
-  private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
-
   /** Returns [BasicBlock]s by doing a pre-order traversal of the dominator tree. */
   private val domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
 
@@ -275,7 +273,7 @@ private class VariableRenamer(val doms: DominatorList,
       listOf(
           "${bb.nodeId}",
           "${if (isInPhi) " " else ""}${v.tid.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
-              .padStart(11, ' '),
+              .padStart(traceCol2Length, ' '),
           "$oldReachingStr updated into $newReachingStr"
       ).joinToString(" | ").toObjectMessage()
     }
@@ -293,12 +291,16 @@ private class VariableRenamer(val doms: DominatorList,
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
       listOf(
           "${bb.nodeId}",
-          "def ${def.tid.name}${def.version}".padEnd(11, ' '),
+          "def ${def.tid.name}${def.version}".padEnd(traceCol2Length, ' '),
           "$oldReachingStr then ${vPrime.tid.name}${vPrime.version}"
       ).joinToString(" | ").toObjectMessage()
     }
   }
 
+  companion object {
+    private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
+    private const val traceCol2Length = 11
+  }
 }
 
 /**
