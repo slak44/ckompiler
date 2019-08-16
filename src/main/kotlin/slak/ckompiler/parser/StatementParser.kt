@@ -306,9 +306,11 @@ class StatementParser(declarationParser: DeclarationParser,
     }
     // We only eat the first ';' if parseDeclaration didn't do that
     // And when parseDeclaration did eat the semi, ensure that we don't accidentally eat again
-    if (isNotEaten() &&
-        current().asPunct() == Punctuators.SEMICOLON &&
-        (firstSemi == 0 || safeToken(-1).asPunct() != Punctuators.SEMICOLON)) eat()
+    val parseDeclarationLeftSemi =
+        firstSemi == 0 || safeToken(-1).asPunct() != Punctuators.SEMICOLON
+    if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON && parseDeclarationLeftSemi) {
+      eat()
+    }
     val secondSemi = indexOfFirst(Punctuators.SEMICOLON)
     if (secondSemi == -1) {
       diagnostic {
