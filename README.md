@@ -165,10 +165,13 @@ The `CFG` class is also responsible for converting the code in its nodes to a
    such blocks are considered disconnected. Such a graph looks like this:
    
    ![Disconnected Fake Edge](readme-resources/disconnected-fake-edge.png)
-3. We precompute a list of the CFG's nodes in [post-order][post_order]
+3. Unterminated `BasicBlock`s are identified. Warnings are reported for non-void
+   functions (it means control flow reached the end of the function and didn't
+   find a return). The blocks are terminated with a `ImpossibleJump`.
+4. We precompute a list of the CFG's nodes in [post-order][post_order]
    (basically DFS, for the kinds of graphs encountered here). See
    `postOrderNodes` in [ControlFlowGraph.kt][cfg].
-4. An auxiliary data structure, `DominatorList`, is created. This list stores
+5. An auxiliary data structure, `DominatorList`, is created. This list stores 
    each node's _immediate dominator_. The list is then used to compute every
    node's _dominance frontier_, which is stored as a member of `BasicBlock`.
 
