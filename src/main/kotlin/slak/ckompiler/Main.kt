@@ -4,7 +4,7 @@ import kotlinx.cli.*
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
-import slak.ckompiler.backend.`nasm-x86-64`.NasmGenerator
+import slak.ckompiler.backend.nasmX64.NasmGenerator
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration

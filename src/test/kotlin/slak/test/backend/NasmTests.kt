@@ -9,7 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.ExitCodes
 import slak.ckompiler.SourceFileName
-import slak.ckompiler.backend.`nasm-x86-64`.NasmGenerator
+import slak.ckompiler.backend.nasmX64.NasmGenerator
 import slak.test.*
 import java.io.File
 import kotlin.test.assertEquals
