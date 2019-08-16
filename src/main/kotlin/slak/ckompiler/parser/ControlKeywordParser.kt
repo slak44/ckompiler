@@ -106,7 +106,12 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
   override fun parseReturn(): ReturnStatement? {
     val retKey = current()
     if (current().asKeyword() != Keywords.RETURN) return null
-    eat()
+    eat() // The 'return'
+    if (current().asPunct() == Punctuators.SEMICOLON) {
+      val semi = current()
+      eat() // The ';'
+      return ReturnStatement(null).withRange(retKey..semi)
+    }
     val semiIdx = indexOfFirst(Punctuators.SEMICOLON)
     val finalIdx = if (semiIdx == -1) tokenCount else semiIdx
     val expr = parseExpr(finalIdx)

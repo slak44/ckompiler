@@ -213,6 +213,19 @@ class StatementTests {
   }
 
   @Test
+  fun `Return Nothing`() {
+    val p = prepareCode("""
+      void f() {
+        return;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    void func "f" body compoundOf(
+        returnSt()
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Break Statement`() {
     val p = prepareCode("""
       int main() {

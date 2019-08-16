@@ -167,6 +167,7 @@ internal infix fun IfStatement.elseSt(failure: () -> Statement) =
 internal infix fun IfStatement.elseSt(failure: CompoundStatement) =
     IfStatement(this.cond, this.success, failure)
 
+internal fun returnSt() = ReturnStatement(null)
 internal fun <T> returnSt(e: T) = ReturnStatement(parseDSLElement(e))
 
 private fun declsToTypeIdents(d: Declaration): List<TypedIdentifier> {
@@ -278,6 +279,7 @@ internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with BinaryOpera
 internal infix fun <LHS, RHS> LHS.mul(that: RHS) = this to that with BinaryOperators.MUL
 internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with BinaryOperators.DIV
 internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with BinaryOperators.COMMA
+internal infix fun <LHS, RHS> LHS.equals(that: RHS) = this to that with BinaryOperators.EQ
 
 private fun <T> parseDSLElement(it: T): Expression {
   return when (it) {
