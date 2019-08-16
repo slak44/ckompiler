@@ -28,10 +28,52 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     })
   }
 
+  private data class SimpleHelpEntry(val name: String, val help: String) : HelpEntry {
+    override fun printHelp(helpPrinter: HelpPrinter) {
+      helpPrinter.printEntry(name, help)
+    }
+  }
+
+  private class PositionalArgumentsActionHandler : PositionalArgument {
+    override val maxArgs = Int.MAX_VALUE
+    override val minArgs = 0
+    override val name: String
+      get() = throw IllegalStateException("Should never call this")
+
+    private val actions = mutableListOf<(String) -> Boolean>()
+    private val leftoverArguments = mutableListOf<String>()
+
+    override val action = object : ArgumentAction {
+      override fun invoke(argument: String) {
+        val wasConsumed = actions.any { it(argument) }
+        if (!wasConsumed) leftoverArguments += argument
+      }
+    }
+
+    fun positionalAction(
+        cli: CommandLineBuilder,
+        name: String,
+        help: String,
+        action: (String) -> Boolean
+    ) {
+      cli.addUsageEntry(name)
+      cli.addHelpEntry(SimpleHelpEntry(name, help))
+      actions += action
+    }
+
+    fun getLeftover(): List<String> = leftoverArguments
+  }
+
   private val cli = CommandLineInterface("ckompiler", "ckompiler", """
     A C compiler written in Kotlin.
     This command line interface tries to stay consistent with gcc and clang as much as possible.
     """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler")
+
+  private val posHandler = PositionalArgumentsActionHandler()
+
+  init {
+    cli.addPositionalArgument(posHandler)
+  }
 
   private val isPrintVersion by cli.flagArgument("--version", "Print compiler version")
 
@@ -48,9 +90,10 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   private val stdin by cli.flagArgument("-", "Read translation unit from standard input")
-  private val files by cli.positionalArgumentsList("FILES...", "Translation units to be compiled")
 
   init {
+    cli.addHelpEntry(SimpleHelpEntry("FILES...", "Translation units to be compiled"))
+
     cli.helpSeparator()
   }
 
@@ -119,7 +162,24 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         "Directory to add to <...> search path") { systemIncludes.add(0, File(it)) }
     cli.flagValueAction("-isystem-after", "DIR",
         "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
+  }
 
+  private val linkerFlags = mutableListOf<String>()
+
+  init {
+    cli.helpGroup("Linker options")
+    posHandler.positionalAction(cli, "-lLIB", "Library name to link with") {
+      if (!it.startsWith("-l")) return@positionalAction false
+      linkerFlags += "${pickOsOption("linker-add-library-option")}${it.removePrefix("-l")}"
+      return@positionalAction true
+    }
+    posHandler.positionalAction(cli, "-L DIR", "Directory to search for libraries in") {
+      if (!it.startsWith("-L")) return@positionalAction false
+      linkerFlags += "${pickOsOption("linker-libpath-option")} ${it.removePrefix("-L")}"
+      return@positionalAction true
+    }
+  }
+  init {
     cli.helpGroup("Graphviz options (require --cfg-mode)")
   }
 
@@ -136,6 +196,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       "Force displaying the entire control flow graph")
   private val forceUnreachable by cli.flagArgument("--force-unreachable",
       "Force displaying of unreachable basic blocks and impossible edges")
+
+  private val files: List<String> by lazy { posHandler.getLeftover() }
 
   private val srcFiles: List<File> by lazy {
     val badOptions = files.filter { it.startsWith("--") }
@@ -168,16 +230,19 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   private val osOptions = mapOf(
       "file-opener" to OSOption("xdg-open", "start", "open"),
       "obj-format" to OSOption("elf64", "win64", "elf64"),
-      "linker" to OSOption("ld", "link.exe", "ld")
+      "linker" to OSOption("ld", "link.exe", "ld"),
+      "linker-libpath-option" to OSOption("-L", "/LIBPATH", "-L"),
+      "linker-add-library-option" to OSOption("-l", "", "-l")
   )
 
+  private val osName = System.getProperty("os.name")
+
   private fun pickOsOption(optionName: String): String {
-    val name = System.getProperty("os.name")
     val osOpts = osOptions[optionName] ?: logger.throwICE("No such OS option found") { optionName }
     return when {
-      name == "Linux" -> osOpts.linux
-      name.startsWith("Windows") -> osOpts.windows
-      name.startsWith("Mac OS") -> osOpts.mac
+      osName == "Linux" -> osOpts.linux
+      osName.startsWith("Windows") -> osOpts.windows
+      osName.startsWith("Mac OS") -> osOpts.mac
       else -> {
         logger.warn("Unrecognized OS, assuming linux")
         osOpts.linux
@@ -203,6 +268,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     args += listOf("/opt", File(output.orElse("a.out")).absolutePath)
     args += listOf("msvcrt.dll")
     args += listOf("/entry", "_start")
+    args += linkerFlags
     args += objFiles.map(File::getAbsolutePath)
     ProcessBuilder(args).inheritIO().start().waitFor()
   }
@@ -213,6 +279,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     args += listOf("-L/lib", "-lc")
     args += listOf("-dynamic-linker", "/lib/ld-linux-x86-64.so.2")
     args += listOf("-e", "_start")
+    args += linkerFlags
     args += objFiles.map(File::getAbsolutePath)
     ProcessBuilder(args).inheritIO().start().waitFor()
   }
