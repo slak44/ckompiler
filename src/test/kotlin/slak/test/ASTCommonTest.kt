@@ -17,6 +17,7 @@ internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, Integral
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 
+internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
 internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw)).zeroRange()
 internal val double =
@@ -300,6 +301,12 @@ internal fun <T> TypeName.cast(it: T) = CastExpression(parseDSLElement(it), this
 internal operator fun <T> UnaryOperators.get(it: T) = UnaryExpression(this, parseDSLElement(it))
 
 internal operator fun <T : Any> String.invoke(vararg l: T) = name(this)(l)
+
+internal operator fun FunctionDefinition.invoke() = FunctionCall(toRef(), emptyList())
+
+internal operator fun <T : Any> FunctionDefinition.invoke(vararg l: T): FunctionCall {
+  return FunctionCall(toRef(), l.map { parseDSLElement(it) })
+}
 
 internal operator fun <Receiver> Receiver.invoke(): FunctionCall {
   return FunctionCall(parseDSLElement(this), emptyList())

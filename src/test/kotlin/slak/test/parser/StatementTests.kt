@@ -39,6 +39,30 @@ class StatementTests {
   }
 
   @Test
+  fun `If With Else And Function Calls`() {
+    val p = prepareCode("""
+      void f() {}
+      void g() {}
+      int main() {
+        if (123) f();
+        else g();
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val f = void func "f" body emptyCompound()
+    val g = void func "g" body emptyCompound()
+    f assertEquals p.root.decls[0]
+    g assertEquals p.root.decls[1]
+    int func "main" body compoundOf(
+        ifSt(int(123)) {
+          f()
+        } elseSt {
+          g()
+        }
+    ) assertEquals p.root.decls[2]
+  }
+
+  @Test
   fun `If With Block`() {
     val p = prepareCode("""
       int main() {
