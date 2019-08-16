@@ -183,7 +183,8 @@ class SpecParser(declaratorParser: DeclaratorParser) :
    * 2. [Double] + [Keywords.LONG] => [LongDouble]
    * 3. [SignedLong] + [Keywords.LONG] => [SignedLongLong]
    * 4. null + [Keywords.INT] => [IntType]
-   * 4. etc.
+   * 5. [LongLong] + [Keywords.INT] => [LongLong]
+   * 6. etc.
    */
   private infix fun TypeSpecifier?.combineWith(next: Keyword): TypeSpecifier {
     if (this == null) return when (next.value) {
@@ -202,7 +203,23 @@ class SpecParser(declaratorParser: DeclaratorParser) :
     if (next.value == Keywords.SIGNED || next.value == Keywords.UNSIGNED) {
       return this.signSpec(next.value == Keywords.SIGNED, next)
     }
+    val isLong = this is LongType || this is LongLong || this is SignedLong || this is UnsignedLong
+        || this is SignedLongLong || this is UnsignedLongLong
+    // Combining any of the long types with int does nothing
+    if (next.value == Keywords.INT && isLong) return this
     when (this) {
+      is IntType -> when (next.value) {
+        Keywords.LONG -> return LongType(this.first)
+        else -> diagIncompat(this.toString(), next)
+      }
+      is SignedInt -> when (next.value) {
+        Keywords.LONG -> return SignedLong(this.first)
+        else -> diagIncompat(this.toString(), next)
+      }
+      is UnsignedInt -> when (next.value) {
+        Keywords.LONG -> return UnsignedLong(this.first)
+        else -> diagIncompat(this.toString(), next)
+      }
       is LongType -> when (next.value) {
         Keywords.DOUBLE -> return LongDouble(this.first)
         Keywords.LONG -> return LongLong(this.first)

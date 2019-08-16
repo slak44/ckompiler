@@ -16,13 +16,19 @@ class SpecTests {
       long unsigned long c = 3;
       double long d = 4;
       char signed e = 5;
+      long int f = 6;
+      int long g = 7;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int declare ("a" assign 1) assertEquals p.root.decls[0]
-    longLong declare ("b" assign 2) assertEquals p.root.decls[1]
-    uLongLong declare ("c" assign 3) assertEquals p.root.decls[2]
-    longDouble declare ("d" assign 4) assertEquals p.root.decls[3]
-    signedChar declare ("e" assign 5) assertEquals p.root.decls[4]
+    assertEquals(listOf(
+        int declare ("a" assign 1),
+        longLong declare ("b" assign 2),
+        uLongLong declare ("c" assign 3),
+        longDouble declare ("d" assign 4),
+        signedChar declare ("e" assign 5),
+        long declare ("f" assign 6),
+        long declare ("g" assign 7)
+    ), p.root.decls)
   }
 
   @Test

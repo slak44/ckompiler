@@ -21,6 +21,7 @@ internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zer
 internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw)).zeroRange()
 internal val double =
     DeclarationSpecifier(typeSpec = DoubleTypeSpec(Keywords.DOUBLE.kw)).zeroRange()
+internal val long = DeclarationSpecifier(typeSpec = LongType(Keywords.LONG.kw)).zeroRange()
 internal val longLong = DeclarationSpecifier(typeSpec = LongLong(Keywords.LONG.kw)).zeroRange()
 internal val uLongLong =
     DeclarationSpecifier(typeSpec = UnsignedLongLong(Keywords.UNSIGNED.kw)).zeroRange()
