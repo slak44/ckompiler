@@ -283,7 +283,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         }
         return null
       }
-      val cfg = CFG(function, relPath, text, forceAllNodes)
+      val cfg =
+          CFG(function, relPath, text, forceAllNodes = forceAllNodes, convertToSSA = !forceAllNodes)
       val graphviz = createGraphviz(cfg, text, !forceUnreachable, printingMethod)
       when {
         displayGraph -> {

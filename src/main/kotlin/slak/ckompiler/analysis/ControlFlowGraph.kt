@@ -60,13 +60,15 @@ class CFG(val f: FunctionDefinition,
     }
 
     postOrderNodes = postOrderNodes(startBlock, nodes)
-    doms = findDomFrontiers(startBlock, postOrderNodes)
 
     // SSA conversion
     if (convertToSSA) {
+      doms = findDomFrontiers(startBlock, postOrderNodes)
       insertPhiFunctions(definitions)
       val renamer = VariableRenamer(doms, startBlock, nodes)
       renamer.variableRenaming()
+    } else {
+      doms = DominatorList(nodes.size)
     }
 
     diags.forEach(Diagnostic::print)
