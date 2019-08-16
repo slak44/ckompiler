@@ -13,8 +13,7 @@ private val logger = LogManager.getLogger("ControlFlow")
 class CFG(val f: FunctionDefinition,
           srcFileName: SourceFileName,
           srcText: String,
-          forceAllNodes: Boolean = false,
-          convertToSSA: Boolean = true
+          forceAllNodes: Boolean = false
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(true)
   /** Raw set of nodes as obtained from [graph]. */
@@ -62,7 +61,7 @@ class CFG(val f: FunctionDefinition,
     postOrderNodes = postOrderNodes(startBlock, nodes)
 
     // SSA conversion
-    if (convertToSSA) {
+    if (!forceAllNodes) {
       doms = findDomFrontiers(startBlock, postOrderNodes)
       insertPhiFunctions(definitions)
       val renamer = VariableRenamer(doms, startBlock, nodes)

@@ -31,14 +31,14 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   return Parser(pp.tokens, source, s)
 }
 
-internal fun prepareCFG(s: String, source: SourceFileName, convertToSSA: Boolean = true): CFG {
+internal fun prepareCFG(s: String, source: SourceFileName): CFG {
   val p = prepareCode(s, source)
   p.assertNoDiagnostics()
-  return CFG(p.root.decls.firstFun(), source, s, convertToSSA = convertToSSA)
+  return CFG(p.root.decls.firstFun(), source, s)
 }
 
-internal fun prepareCFG(file: File, source: SourceFileName, convertToSSA: Boolean = true): CFG {
-  return prepareCFG(file.readText(), source, convertToSSA)
+internal fun prepareCFG(file: File, source: SourceFileName): CFG {
+  return prepareCFG(file.readText(), source)
 }
 
 @JvmName("cli_array")

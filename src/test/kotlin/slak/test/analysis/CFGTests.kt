@@ -81,7 +81,7 @@ class CFGTests {
 
   @Test
   fun `Pre-order Traversal Of Dominator Tree Is Correct For Diamond Graph`() {
-    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source, convertToSSA = false)
+    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
     val sequence = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
     val correctOrder = listOf(
         cfg.startBlock,
@@ -94,7 +94,7 @@ class CFGTests {
 
   @Test
   fun `Pre-order Traversal Of Dominator Tree Is Correct For Phi Test Graph`() {
-    val cfg = prepareCFG(resource("ssa/phiTest.c"), source, convertToSSA = false)
+    val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
     val sequence = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
     val correctOrder = listOf(
         cfg.startBlock,
