@@ -1,4 +1,4 @@
-package slak.ckompiler.backend.nasm_x86_64
+package slak.ckompiler.backend.`nasm-x86-64`
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*

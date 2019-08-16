@@ -215,15 +215,15 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Does the renaming for a variable definition.
    */
-  private fun handleDef(BB: BasicBlock, def: ComputeReference, instrIdx: Int) {
+  private fun handleDef(bb: BasicBlock, def: ComputeReference, instrIdx: Int) {
     val oldReachingDef = def.reachingDef
-    updateReachingDef(def, BB, instrIdx)
+    updateReachingDef(def, bb, instrIdx)
     val vPrime = def.newVersion()
-    val reachingToPrime = ReachingDef(vPrime, BB, instrIdx)
+    val reachingToPrime = ReachingDef(vPrime, bb, instrIdx)
     def.reachingDef = reachingToPrime
     def.replaceWith(reachingToPrime)
     vPrime.reachingDef = oldReachingDef
-    traceVarDefinitionRename(BB, def, vPrime)
+    traceVarDefinitionRename(bb, def, vPrime)
   }
 
   /** @see variableRenaming */
@@ -262,7 +262,7 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Debug trace for variable usage renames.
    */
-  private fun traceVarUsageRename(BB: BasicBlock,
+  private fun traceVarUsageRename(bb: BasicBlock,
                                   oldReachingVar: ComputeReference?,
                                   v: ComputeReference,
                                   isInPhi: Boolean = false) {
@@ -273,7 +273,7 @@ private class VariableRenamer(val doms: DominatorList,
           if (v.reachingDef == null) "⊥"
           else "${v.reachingDef!!.variable.tid.name}${v.reachingDef!!.variable.version}"
       listOf(
-          "${BB.nodeId}",
+          "${bb.nodeId}",
           "${if (isInPhi) " " else ""}${v.tid.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
               .padStart(11, ' '),
           "$oldReachingStr updated into $newReachingStr"
@@ -284,7 +284,7 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Debug trace for variable definition renames.
    */
-  private fun traceVarDefinitionRename(BB: BasicBlock,
+  private fun traceVarDefinitionRename(bb: BasicBlock,
                                        def: ComputeReference,
                                        vPrime: ComputeReference) {
     if (def.tid.name == "x") logger.trace(varRenamesTrace) {
@@ -292,7 +292,7 @@ private class VariableRenamer(val doms: DominatorList,
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
       listOf(
-          "${BB.nodeId}",
+          "${bb.nodeId}",
           "def ${def.tid.name}${def.version}".padEnd(11, ' '),
           "$oldReachingStr then ${vPrime.tid.name}${vPrime.version}"
       ).joinToString(" | ").toObjectMessage()
