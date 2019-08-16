@@ -278,6 +278,61 @@ class StatementParser(declarationParser: DeclarationParser,
   }
 
   /**
+   * Parses the stuff between the for's parenthesis.
+   * @see parseFor
+   */
+  private fun parseForLoopInner(
+      rparenIdx: Int
+  ): Triple<ForInitializer, Expression?, Expression?> = tokenContext(rparenIdx) {
+    val firstSemi = firstOutsideParens(
+        Punctuators.SEMICOLON, Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
+    if (firstSemi == tokenCount) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_IN_FOR
+        if (it.isNotEmpty()) errorOn(safeToken(it.size))
+        else errorOn(parentContext()[rparenIdx])
+      }
+      return@tokenContext Triple(error<ErrorInitializer>(),
+          error<ErrorExpression>(), error<ErrorExpression>())
+    }
+    // Handle the case where we have an empty clause1
+    val clause1 = if (firstSemi == 0) {
+      EmptyInitializer()
+    } else {
+      // parseDeclaration wants to see the semicolon as well, so +1
+      tokenContext(firstSemi + 1) {
+        parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)?.let(::DeclarationInitializer)
+      } ?: parseExpr(firstSemi)?.let(::ForExpressionInitializer) ?: error<ErrorInitializer>()
+    }
+    // We only eat the first ';' if parseDeclaration didn't do that
+    // And when parseDeclaration did eat the semi, ensure that we don't accidentally eat again
+    if (isNotEaten() &&
+        current().asPunct() == Punctuators.SEMICOLON &&
+        (firstSemi == 0 || safeToken(-1).asPunct() != Punctuators.SEMICOLON)) eat()
+    val secondSemi = indexOfFirst(Punctuators.SEMICOLON)
+    if (secondSemi == -1) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_SEMI_IN_FOR
+        errorOn(safeToken(it.size))
+      }
+      return@tokenContext Triple(clause1, error<ErrorExpression>(), error<ErrorExpression>())
+    }
+    // Handle the case where we have an empty expr2
+    val expr2 = if (secondSemi == firstSemi + 1) null else parseExpr(secondSemi)
+    eat() // The second ';'
+    // Handle the case where we have an empty expr3
+    val expr3 =
+        if (secondSemi + 1 == tokenCount) null else parseExpr(tokenCount)
+    if (isNotEaten()) {
+      diagnostic {
+        id = DiagnosticId.UNEXPECTED_IN_FOR
+        errorOn(safeToken(0))
+      }
+    }
+    return@tokenContext Triple(clause1, expr2, expr3)
+  }
+
+  /**
    * C standard: 6.8.5, 6.8.5.3
    *
    * @return null if there is no while, the [ForStatement] otherwise
@@ -300,54 +355,7 @@ class StatementParser(declarationParser: DeclarationParser,
     eat() // The '('
     if (rparen == -1) return error<ErrorStatement>()
     // The 3 components of a for loop
-    val (clause1, expr2, expr3) = tokenContext(rparen) {
-      val firstSemi = firstOutsideParens(
-          Punctuators.SEMICOLON, Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
-      if (firstSemi == tokenCount) {
-        diagnostic {
-          id = DiagnosticId.EXPECTED_SEMI_IN_FOR
-          if (it.isNotEmpty()) errorOn(safeToken(it.size))
-          else errorOn(parentContext()[rparen])
-        }
-        return@tokenContext Triple(error<ErrorInitializer>(),
-            error<ErrorExpression>(), error<ErrorExpression>())
-      }
-      // Handle the case where we have an empty clause1
-      val clause1 = if (firstSemi == 0) {
-        EmptyInitializer()
-      } else {
-        // parseDeclaration wants to see the semicolon as well, so +1
-        tokenContext(firstSemi + 1) {
-          parseDeclaration(SpecValidationRules.FOR_INIT_DECLARATION)?.let(::DeclarationInitializer)
-        } ?: parseExpr(firstSemi)?.let(::ForExpressionInitializer) ?: error<ErrorInitializer>()
-      }
-      // We only eat the first ';' if parseDeclaration didn't do that
-      // And when parseDeclaration did eat the semi, ensure that we don't accidentally eat again
-      if (isNotEaten() &&
-          current().asPunct() == Punctuators.SEMICOLON &&
-          (firstSemi == 0 || safeToken(-1).asPunct() != Punctuators.SEMICOLON)) eat()
-      val secondSemi = indexOfFirst(Punctuators.SEMICOLON)
-      if (secondSemi == -1) {
-        diagnostic {
-          id = DiagnosticId.EXPECTED_SEMI_IN_FOR
-          errorOn(safeToken(it.size))
-        }
-        return@tokenContext Triple(clause1, error<ErrorExpression>(), error<ErrorExpression>())
-      }
-      // Handle the case where we have an empty expr2
-      val expr2 = if (secondSemi == firstSemi + 1) null else parseExpr(secondSemi)
-      eat() // The second ';'
-      // Handle the case where we have an empty expr3
-      val expr3 =
-          if (secondSemi + 1 == tokenCount) null else parseExpr(tokenCount)
-      if (isNotEaten()) {
-        diagnostic {
-          id = DiagnosticId.UNEXPECTED_IN_FOR
-          errorOn(safeToken(0))
-        }
-      }
-      return@tokenContext Triple(clause1, expr2, expr3)
-    }
+    val (clause1, expr2, expr3) = parseForLoopInner(rparen)
     eatUntil(rparen)
     eat() // The ')'
     val loopable = parseStatement()
