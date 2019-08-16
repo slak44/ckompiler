@@ -426,9 +426,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       id = DiagnosticId.NO_INPUT_FILES
       executionFailed = true
     }
-    if (output.isPresent &&
-        (isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly) &&
-        sourceCount > 1) {
+    val isNotLinking = isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly
+    if (output.isPresent && isNotLinking && sourceCount > 1) {
       diagnostic { id = DiagnosticId.MULTIPLE_FILES_PARTIAL }
       return ExitCodes.EXECUTION_FAILED
     }
@@ -441,7 +440,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val objFiles = srcFiles.mapNotNull(this::compileFile)
     val allObjFiles = stdinObjFile?.let { objFiles + it } ?: objFiles
     if (executionFailed) return ExitCodes.EXECUTION_FAILED
-    if (!(isPreprocessOnly || isAssembleOnly || isCompileOnly || isCFGOnly)) {
+    if (!isNotLinking) {
       link(allObjFiles)
       for (objFile in allObjFiles) objFile.delete()
       File(output.orElse("a.out")).setExecutable(true)
