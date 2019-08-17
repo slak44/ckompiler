@@ -15,7 +15,7 @@ internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getRes
 
 internal fun preparePP(s: String, source: SourceFileName): Preprocessor {
   val incs = IncludePaths(emptyList(),
-      listOf(IncludePaths.resource("headers/system")),
+      listOf(IncludePaths.resource("include"), IncludePaths.resource("headers/system")),
       listOf(IncludePaths.resource("headers/users")))
   return Preprocessor(
       sourceText = s,

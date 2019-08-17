@@ -46,6 +46,7 @@ tasks.test {
 sourceSets {
   for (thing in listOf(main, test)) thing {
     resources.srcDir(File(buildDir, "resources"))
+    resources.srcDir(File(projectDir, "stdlib"))
   }
 }
 
