@@ -135,6 +135,15 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       "Disable colors in diagnostic messages")
 
   init {
+    cli.helpGroup("Warning control")
+  }
+
+  // FIXME: these:
+  private val wAll by cli.flagArgument("-Wall", "Currently a no-op (TODO)")
+  private val wExtra by cli.flagArgument("-Wextra", "Currently a no-op (TODO)")
+  private val pedantic by cli.flagArgument("-pedantic", "Currently a no-op (TODO)")
+
+  init {
     cli.helpGroup("Include path management")
   }
 
