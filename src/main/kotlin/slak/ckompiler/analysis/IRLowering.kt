@@ -371,6 +371,7 @@ class IRLoweringContext {
 
   private fun transformExpr(expr: Expression): ComputeConstant = when (expr) {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
+    is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
     is TypedIdentifier -> ComputeReference(expr, isSynthetic = false)
     is FunctionCall -> storeCall(transformCall(expr), expr.type)
     is UnaryExpression -> transformUnary(expr)
@@ -381,7 +382,6 @@ class IRLoweringContext {
     is BinaryExpression -> transformBinary(expr)
     is ArraySubscript -> transformSubscript(expr)
     is CastExpression -> transformCast(expr)
-    is TernaryConditional -> TODO("deal with this")
     is SizeofExpression, is SizeofTypeName ->
       TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
     is IntegerConstantNode -> ComputeInteger(expr)
@@ -397,6 +397,7 @@ class IRLoweringContext {
     _src += topLevelExpr
     when (topLevelExpr) {
       is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
+      is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
       // For top-level function calls, the return value is discarded, so don't bother storing it
       is FunctionCall -> _ir += transformCall(topLevelExpr)
       is UnaryExpression -> transformUnary(topLevelExpr)

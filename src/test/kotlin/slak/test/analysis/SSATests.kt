@@ -99,8 +99,8 @@ class SSATests {
 
     val blockFail1 = firstBlock.successors[1]
     assertVarState("x" ver 1, rhsVarOf(blockFail1, 0))
-    assertVarState("y" ver 1, rhsVarOf(blockFail1, 1))
-    assertVarState("tmp" ver 2, rhsVarOf(blockFail1, 3))
+    assertVarState("y" ver 1, rhsVarOf(blockFail1, 2))
+    assertVarState("tmp" ver 2, rhsVarOf(blockFail1, 4))
     assertVarState("x" ver 3, condVarOf(blockFail1))
 
     val blockFail2 = blockFail1.successors[1]

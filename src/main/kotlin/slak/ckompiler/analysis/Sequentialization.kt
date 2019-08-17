@@ -33,9 +33,10 @@ private data class SequentializationContext(
     val debugHandler: IDebugHandler
 ) : IDebugHandler by debugHandler
 
+private val ternaryIds = IdCounter()
+
 /** Recursive case of [sequentialize]. */
 private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
-  is TernaryConditional -> TODO("deal with this")
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
   is FunctionCall -> {
     FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e.tokenRange)
@@ -73,6 +74,15 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     } else {
       BinaryExpression(e.op, seqImpl(e.lhs), seqImpl(e.rhs)).withRange(e.tokenRange)
     }
+  }
+  is TernaryConditional -> {
+    val fakeAssignable = TypedIdentifier("__ternary_target_${ternaryIds()}", e.type)
+        .withRange(e.tokenRange)
+    // Don't sequentialize e.success/e.failure, because one of them will not be executed
+    // This is dealt with more in ASTGraphing
+    sequencedBefore += BinaryExpression(BinaryOperators.ASSIGN, fakeAssignable, e)
+        .withRange(e.tokenRange)
+    fakeAssignable
   }
   is CastExpression, is ArraySubscript, is UnaryExpression,
   is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,

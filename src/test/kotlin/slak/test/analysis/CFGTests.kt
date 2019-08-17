@@ -15,14 +15,14 @@ import kotlin.test.assertNotEquals
 class CFGTests {
   @Test
   fun `CFG Creation Doesn't Fail`() {
-    val cfg = prepareCFG(resource("cfgTest.c"), source)
+    val cfg = prepareCFG(resource("cfg/cfgTest.c"), source)
     assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Graphviz CFG Creation Doesn't Fail`() {
-    val text = resource("cfgTest.c").readText()
+    val text = resource("cfg/cfgTest.c").readText()
     val cfg = prepareCFG(text, source)
     assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
@@ -74,7 +74,7 @@ class CFGTests {
 
   @Test
   fun `Early Return In Function`() {
-    val cfg = prepareCFG(resource("earlyReturnTest.c"), source)
+    val cfg = prepareCFG(resource("cfg/earlyReturnTest.c"), source)
     assert(cfg.startBlock.irContext.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }

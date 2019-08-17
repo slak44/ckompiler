@@ -3,7 +3,9 @@ package slak.ckompiler.analysis
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
+import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.FunctionDefinition
+import slak.ckompiler.parser.Terminal
 import slak.ckompiler.parser.VoidType
 import java.util.*
 
@@ -474,7 +476,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
     visited += node
     nodesImpl -= node
     for (succ in node.successors) succ.preds -= node
-    for (deadCode in node.irContext.src) diagnostic {
+    for (deadCode in node.irContext.src.filterNot { it is Terminal }) diagnostic {
       id = DiagnosticId.UNREACHABLE_CODE
       columns(deadCode.tokenRange)
     }
