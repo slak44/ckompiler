@@ -405,7 +405,7 @@ class IRLoweringContext {
       is PrefixDecrement, is PostfixDecrement ->
         transformIncDec(topLevelExpr as IncDecOperation, isDec = true)
       is BinaryExpression -> transformBinary(topLevelExpr)
-      is ArraySubscript -> TODO()
+      is ArraySubscript -> transformSubscript(topLevelExpr)
       is CastExpression -> transformCast(topLevelExpr)
       // FIXME: except for volatile reads, this can go below, probably
       is TypedIdentifier -> _ir += ComputeReference(topLevelExpr, isSynthetic = false)
