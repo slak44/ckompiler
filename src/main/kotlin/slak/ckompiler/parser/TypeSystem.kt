@@ -544,16 +544,16 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this
   }
   // FIXME: assignment operator semantics are very complicated (6.5.16)
   ASSIGN -> lhs
-  MUL_ASSIGN -> TODO()
-  DIV_ASSIGN -> TODO()
-  MOD_ASSIGN -> TODO()
+  MUL_ASSIGN -> lhs
+  DIV_ASSIGN -> lhs
+  MOD_ASSIGN -> lhs
   PLUS_ASSIGN -> lhs
   SUB_ASSIGN -> lhs
-  LSH_ASSIGN -> TODO()
-  RSH_ASSIGN -> TODO()
-  AND_ASSIGN -> TODO()
-  XOR_ASSIGN -> TODO()
-  OR_ASSIGN -> TODO()
+  LSH_ASSIGN -> lhs
+  RSH_ASSIGN -> lhs
+  AND_ASSIGN -> lhs
+  XOR_ASSIGN -> lhs
+  OR_ASSIGN -> lhs
   COMMA -> rhs
 }
 
