@@ -29,7 +29,8 @@ class NasmTests {
    * Compiles and executes code. Returns exit code and stdout of executed code.
    */
   private fun compileAndRun(resource: File): Pair<Int, String> {
-    val (_, compilerExitCode) = cli(resource.absolutePath)
+    val (_, compilerExitCode) =
+        cli(resource.absolutePath, "-isystem", resource("include").absolutePath)
     assertEquals(ExitCodes.NORMAL, compilerExitCode)
     assertTrue(File("a.out").exists())
     val process = ProcessBuilder("./a.out")
@@ -52,7 +53,7 @@ class NasmTests {
    */
   private fun compileAndRun(code: String, args: List<String> = emptyList()): Pair<Int, String> {
     System.setIn(code.byteInputStream())
-    val (_, compilerExitCode) = cli("-")
+    val (_, compilerExitCode) = cli("-", "-isystem", resource("include").absolutePath)
     assertEquals(ExitCodes.NORMAL, compilerExitCode)
     assertTrue(File("a.out").exists())
     val process = ProcessBuilder("./a.out", *args.toTypedArray())
@@ -219,5 +220,10 @@ class NasmTests {
   @Test
   fun `Ternary Test`() {
     assertEquals(13 to "", compileAndRun(resource("e2e/ternaryOps.c")))
+  }
+
+  @Test
+  fun `Early Return In Void Function Works`() {
+    assertEquals(0 to "", compileAndRun(resource("e2e/earlyReturn.c")))
   }
 }

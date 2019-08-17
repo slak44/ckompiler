@@ -259,6 +259,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun FunctionGenContext.genReturn(retExpr: IRLoweringContext?) = instrGen {
     if (retExpr == null) {
       // Nothing to return
+      emit("jmp $retLabel")
       return@instrGen
     }
     emit(genExpressions(retExpr))
