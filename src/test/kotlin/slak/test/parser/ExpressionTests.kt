@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.lexer.StringEncoding
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
@@ -264,6 +265,14 @@ class ExpressionTests {
     val p = prepareCode("int a = 1 ? 2 : 3;", source)
     p.assertNoDiagnostics()
     int declare ("a" assign 1.qmark(2, 3)) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Ternary String Literals`() {
+    val p = prepareCode("const char* s = 1 ? \"foo\" : \"barbaz\";", source)
+    p.assertNoDiagnostics()
+    val ternary = 1.qmark(strLit("foo"), strLit("barbaz"))
+    constChar declare (ptr("s") assign ternary) assertEquals p.root.decls[0]
   }
 
   @Test

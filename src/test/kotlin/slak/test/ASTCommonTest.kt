@@ -1,10 +1,8 @@
 package slak.test
 
-import slak.ckompiler.lexer.FloatingSuffix
-import slak.ckompiler.lexer.IntegralSuffix
-import slak.ckompiler.lexer.Keyword
-import slak.ckompiler.lexer.Keywords
+import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
+import slak.ckompiler.parser.Char
 
 internal val Keywords.kw get() = Keyword(this)
 
@@ -29,6 +27,10 @@ internal val uLongLong =
 internal val longDouble = DeclarationSpecifier(typeSpec = LongDouble(Keywords.LONG.kw)).zeroRange()
 internal val signedChar =
     DeclarationSpecifier(typeSpec = SignedChar(Keywords.SIGNED.kw)).zeroRange()
+internal val constChar = DeclarationSpecifier(
+    typeSpec = Char(Keywords.CHAR.kw),
+    typeQualifiers = listOf(Keywords.CONST.kw)
+).zeroRange()
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = kotlin.test.assertEquals(this, rhs)
 
@@ -289,6 +291,8 @@ internal fun <T1, T2, T3> T1.qmark(success: T2, failure: T3) = TernaryConditiona
     parseDSLElement(success),
     parseDSLElement(failure)
 )
+
+internal fun strLit(string: String) = StringLiteralNode(string, StringEncoding.CHAR).zeroRange()
 
 private fun <T> parseDSLElement(it: T): Expression {
   return when (it) {

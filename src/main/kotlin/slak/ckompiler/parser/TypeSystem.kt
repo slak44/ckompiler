@@ -649,5 +649,11 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
     if (failRef is VoidType) return success.type
     return if (successRef != failRef) ErrorType else success.type
   }
+  // FIXME: arrays have much of the same problems as pointers here
+  if (success.type is ArrayType && failure.type is ArrayType) {
+    val successRef = (success.type as ArrayType).elementType
+    val failRef = (failure.type as ArrayType).elementType
+    return if (successRef != failRef) ErrorType else PointerType(successRef, emptyList())
+  }
   return ErrorType
 }
