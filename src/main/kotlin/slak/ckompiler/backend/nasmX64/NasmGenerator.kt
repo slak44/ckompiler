@@ -45,6 +45,8 @@ private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
 private data class FunctionGenContext(val variableRefs: MutableMap<TypedIdentifier, Int>,
                                       val wasBlockGenerated: BitSet,
                                       val cfg: CFG) {
+  var stackAlignmentCounter = 0
+
   val retLabel = ".return_${cfg.f.name}"
   val BasicBlock.label get() = ".block_${cfg.f.name}_$nodeId"
   val ComputeReference.pos get() = "[rbp${variableRefs[tid]}]"
@@ -105,6 +107,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   /**
+   * C standard: 5.1.2.2.3
    * System V ABI: 3.4.1, page 28, figure 3.9
    */
   private fun genStartRoutine() = instrGen {
@@ -129,13 +132,12 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   /**
-   * C standard: 5.1.2.2.3
    * System V ABI: 3.2.1, figure 3.3
    */
   private fun FunctionGenContext.genFun(cfg: CFG) = instrGen {
     label(cfg.f.name)
     // Callee-saved registers
-    // FIXME: if the registers are not used in the function, saving them wastes 2 instructions
+    // FIXME: if the registers are not used in the function, saving them wastes instructions
     // FIXME: using rbp as frame pointer wastes a general-purpose register
     emit("push rbp")
     emit("push rbx")
@@ -145,15 +147,14 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     // New stack frame
     emit("mov rbp, rsp")
     // Local variables
-    // FIXME: local variable size is not always 16 bytes
-    var rbpOffset = -16
+    // FIXME: this magic number 8 is too magic
+    //   use correct sizes
+    var rbpOffset = -8
     for ((ref) in cfg.definitions) {
       emit("; ${ref.tid.name}")
       // FIXME: they're not all required to go on the stack
-      // FIXME: initial value shouldn't always be 0
-      emit("push 0")
       variableRefs[ref.tid] = rbpOffset
-      rbpOffset -= 16
+      rbpOffset -= 8
     }
     // Regular function arguments
     var intArgCounter = 0
@@ -190,6 +191,8 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     }
     // Epilogue
     label(retLabel)
+    // FIXME: magic 8 again
+    if (stackAlignmentCounter != 0) emit("add rsp, ${stackAlignmentCounter * 8}")
     emit("mov rsp, rbp")
     emit("pop r9")
     emit("pop r8")
@@ -318,17 +321,24 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
           emit("movsd ${fltArgRegisters[fltArgCounter]}, xmm8")
           fltArgCounter++
         } else {
-          emit("push xmm8")
+          TODO()
         }
         continue
       }
       // FIXME: random use of rax
       if (intArgCounter < intArgRegisters.size) {
         emit("mov ${intArgRegisters[intArgCounter]}, rax")
-        intArgCounter++
       } else {
         emit("push rax")
       }
+      intArgCounter++
+    }
+    // FIXME: % 2 only by assuming int size
+    val intsOnStack = intArgCounter - intArgRegisters.size
+    if (intsOnStack > 0 && intsOnStack % 2 == 0) {
+      // FIXME: magic 8 again
+      emit("sub rsp, 8")
+      stackAlignmentCounter++
     }
     if (call.functionPointer is ComputeReference) {
       if (call.functionPointer.tid.type.asCallable()!!.variadic) {
@@ -540,7 +550,6 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       val prettyName = flt.value.toString().filter(Char::isLetterOrDigit).take(5)
       floatRefs[flt] = "flt_${floatRefIds()}_$prettyName"
       val kind = if (flt.suffix == FloatingSuffix.FLOAT) "dd" else "dq"
-      // FIXME: a lot of stuff is going on with alignment (movaps instead of movsd segfaults)
       data += "; ${flt.value}"
       data += "${floatRefs[flt]}: $kind ${flt.value}"
     }
