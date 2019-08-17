@@ -26,6 +26,62 @@ data class SequentialExpression(val before: List<Expression>,
   fun toList(): List<Expression> = before + remaining + after
 }
 
+private data class SequentializationContext(
+    val sequencedBefore: MutableList<Expression> = mutableListOf(),
+    val sequencedAfter: MutableList<Expression> = mutableListOf(),
+    val modifications: MutableMap<TypedIdentifier, MutableList<Expression>> = mutableMapOf(),
+    val debugHandler: IDebugHandler
+) : IDebugHandler by debugHandler
+
+/** Recursive case of [sequentialize]. */
+private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
+  is TernaryConditional -> TODO("deal with this")
+  is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
+  is FunctionCall -> {
+    FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e.tokenRange)
+  }
+  is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {
+    val incDec = (e as IncDecOperation).expr
+    if (e is PrefixIncrement || e is PrefixDecrement) sequencedBefore += e
+    else sequencedAfter += e
+    if (incDec is TypedIdentifier) {
+      modifications.getOrPut(incDec, ::mutableListOf).add(e)
+      incDec.copy().withRange(incDec.tokenRange)
+    } else {
+      // FIXME: we might need to make a copy of lhs, like we do for the other case
+      //  let's just see if this is a problem first
+      seqImpl(incDec)
+    }
+  }
+  is BinaryExpression -> {
+    // FIXME: there are sequence points with && || (also short-circuiting)
+    //  so we can't just pull out the assignment in something like a == null && a = 42
+    if (e.op in assignmentOps) {
+      // Hoist assignments out of expressions
+      sequencedBefore += e
+      if (e.lhs is TypedIdentifier) {
+        modifications.getOrPut(e.lhs, ::mutableListOf).add(e)
+        e.lhs.copy().withRange(e.lhs.tokenRange)
+      } else {
+        // FIXME: we might need to make a copy of lhs, like we do for the other case
+        //  let's just see if this is a problem first
+        seqImpl(e.lhs)
+      }
+    } else if (e.op == BinaryOperators.COMMA) {
+      sequencedBefore += sequentialize(e.lhs).toList()
+      seqImpl(e.rhs)
+    } else {
+      BinaryExpression(e.op, seqImpl(e.lhs), seqImpl(e.rhs)).withRange(e.tokenRange)
+    }
+  }
+  is CastExpression, is ArraySubscript, is UnaryExpression,
+  is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
+  is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
+    // Do nothing. These do not pose the problem of being sequenced before or after.
+    e
+  }
+}
+
 /**
  * Resolve sequencing issues within an expression.
  *
@@ -51,60 +107,10 @@ data class SequentialExpression(val before: List<Expression>,
  * @see SequentialExpression
  */
 fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
-  val sequencedBefore = mutableListOf<Expression>()
-  val sequencedAfter = mutableListOf<Expression>()
-  val modifications = mutableMapOf<TypedIdentifier, MutableList<Expression>>()
-  fun Expression.seqImpl(): Expression = when (this) {
-    is TernaryConditional -> TODO("deal with this")
-    is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
-    is FunctionCall -> {
-      FunctionCall(calledExpr.seqImpl(), args.map(Expression::seqImpl)).withRange(tokenRange)
-    }
-    is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {
-      val incDec = (this as IncDecOperation).expr
-      if (this is PrefixIncrement || this is PrefixDecrement) sequencedBefore += this
-      else sequencedAfter += this
-      if (incDec is TypedIdentifier) {
-        modifications.getOrPut(incDec, ::mutableListOf).add(this)
-        incDec.copy().withRange(incDec.tokenRange)
-      } else {
-        // FIXME: we might need to make a copy of lhs, like we do for the other case
-        //  let's just see if this is a problem first
-        incDec.seqImpl()
-      }
-    }
-    is BinaryExpression -> {
-      // FIXME: there are sequence points with && || (also short-circuiting)
-      //  so we can't just pull out the assignment in something like a == null && a = 42
-      if (op in assignmentOps) {
-        // Hoist assignments out of expressions
-        sequencedBefore += this
-        if (lhs is TypedIdentifier) {
-          modifications.getOrPut(lhs, ::mutableListOf).add(this)
-          lhs.copy().withRange(lhs.tokenRange)
-        } else {
-          // FIXME: we might need to make a copy of lhs, like we do for the other case
-          //  let's just see if this is a problem first
-          lhs.seqImpl()
-        }
-      } else if (op == BinaryOperators.COMMA) {
-        sequencedBefore += sequentialize(lhs).toList()
-        rhs.seqImpl()
-      } else {
-        BinaryExpression(op, lhs.seqImpl(), rhs.seqImpl()).withRange(tokenRange)
-      }
-    }
-    is CastExpression, is ArraySubscript, is UnaryExpression,
-    is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
-    is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
-      // Do nothing. These do not pose the problem of being sequenced before or after.
-      this
-    }
-  }
-
-  val remaining = expr.seqImpl()
+  val ctx = SequentializationContext(debugHandler = this)
+  val remaining = ctx.seqImpl(expr)
   // Take every variable with more than 1 modification and print diagnostics
-  for ((variable, modList) in modifications.filter { it.value.size > 1 }) diagnostic {
+  for ((variable, modList) in ctx.modifications.filter { it.value.size > 1 }) diagnostic {
     id = DiagnosticId.UNSEQUENCED_MODS
     formatArgs(variable.name)
     for (mod in modList) when (mod) {
@@ -113,5 +119,5 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
       else -> logger.throwICE("Modification doesn't modify anything") { mod }
     }
   }
-  return SequentialExpression(sequencedBefore, remaining, sequencedAfter)
+  return SequentialExpression(ctx.sequencedBefore, remaining, ctx.sequencedAfter)
 }
