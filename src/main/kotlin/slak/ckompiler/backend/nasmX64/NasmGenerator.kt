@@ -42,12 +42,12 @@ private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
 /**
  * Data used while generating a function from a [cfg].
  */
-private data class FunctionGenContext(val variableRefs: MutableMap<ComputeReference, Int>,
+private data class FunctionGenContext(val variableRefs: MutableMap<TypedIdentifier, Int>,
                                       val wasBlockGenerated: BitSet,
                                       val cfg: CFG) {
   val retLabel = ".return_${cfg.f.name}"
   val BasicBlock.label get() = ".block_${cfg.f.name}_$nodeId"
-  val ComputeReference.pos get() = "[rbp${variableRefs[copy()]}]"
+  val ComputeReference.pos get() = "[rbp${variableRefs[tid]}]"
 }
 
 /** Generate x86_64 NASM code. */
@@ -152,7 +152,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       // FIXME: they're not all required to go on the stack
       // FIXME: initial value shouldn't always be 0
       emit("push 0")
-      variableRefs[ref] = rbpOffset
+      variableRefs[ref.tid] = rbpOffset
       rbpOffset -= 16
     }
     // Regular function arguments

@@ -215,4 +215,9 @@ class NasmTests {
       }
     """.trimIndent()))
   }
+
+  @Test
+  fun `Ternary Test`() {
+    assertEquals(13 to "", compileAndRun(resource("e2e/ternaryOps.c")))
+  }
 }
