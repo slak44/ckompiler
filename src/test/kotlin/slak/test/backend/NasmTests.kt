@@ -234,7 +234,6 @@ class NasmTests {
     """.trimIndent()).justExitCode(12)
   }
 
-  @Disabled("fix dereferencing and synthetic store targets first")
   @Test
   fun `Simple Array Usage`() {
     compileAndRun("""
@@ -242,9 +241,9 @@ class NasmTests {
         int a[2];
         a[0] = 12;
         a[1] = 13;
-        return a[0];
+        return a[0] + a[1];
       }
-    """.trimIndent()).justExitCode(12)
+    """.trimIndent()).justExitCode(25)
   }
 
   @Test
