@@ -446,10 +446,14 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
     // The result of this operator is always `int`, as per 6.5.3.3.5
     if (!target.isScalar()) ErrorType else SignedIntType
   }
-  REF -> {
-    if (target is ErrorType) ErrorType
-    // FIXME: check ALL the constraints from 6.5.3.2.1
-    else PointerType(target, emptyList())
+  // FIXME: check ALL the constraints from 6.5.3.2.1
+  REF -> when (target) {
+    is ErrorType -> ErrorType
+    is PointerType -> {
+      if (target.referencedType is FunctionType) target
+      else PointerType(target, emptyList())
+    }
+    else -> PointerType(target, emptyList())
   }
   DEREF -> {
     if (target !is PointerType) ErrorType else target.referencedType
@@ -656,4 +660,16 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
     return if (successRef != failRef) ErrorType else PointerType(successRef, emptyList())
   }
   return ErrorType
+}
+
+/**
+ * Applies a cast to a common type to [operand]. Useful for actually performing usual arithmetic
+ * conversions and the like.
+ */
+fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
+  if (commonType == operand.type) return operand
+  if (commonType == ErrorType) return operand
+  // FIXME: this does not seem terribly correct, but 6.5.4.0.3 does say pointers need explicit casts
+  if (operand.type is PointerType || commonType is PointerType) return operand
+  return CastExpression(operand, commonType).withRange(operand.tokenRange)
 }

@@ -139,8 +139,10 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
-      binaryDiags(opTok as Punctuator, lhs, rhs)
+      val commonType = binaryDiags(opTok as Punctuator, lhs, rhs)
       validateAssignment(opTok, lhs, rhs)
+      lhs = convertToCommon(commonType, lhs)
+      rhs = convertToCommon(commonType, rhs)
       lhs = BinaryExpression(op, lhs, rhs).withRange(lhs..rhs)
     }
     return lhs
@@ -157,14 +159,19 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
     val success = parseExpr(colonIdx) ?: error<ErrorExpression>()
     eat() // The :
     val failure = parseExpr(tokenCount) ?: error<ErrorExpression>()
-    if (resultOfTernary(success, failure) == ErrorType) diagnostic {
+    val resType = resultOfTernary(success, failure)
+    if (resType == ErrorType) diagnostic {
       id = DiagnosticId.INVALID_ARGS_TERNARY
       formatArgs(success.type.toString(), failure.type.toString())
       errorOn(qmark)
       columns(success.tokenRange)
       columns(success.tokenRange)
     }
-    return TernaryConditional(cond, success, failure).withRange(cond..failure)
+    return TernaryConditional(
+        cond,
+        convertToCommon(resType, success),
+        convertToCommon(resType, failure)
+    ).withRange(cond..failure)
   }
 
   private fun parseBaseExpr(): Expression? = when {
@@ -360,7 +367,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
     } else {
       expr
     }
-    return UnaryExpression(op, exprChecked).withRange(c..expr)
+    return UnaryExpression(op, convertToCommon(resType, exprChecked)).withRange(c..expr)
   }
 
   /** C standard: 6.5.3.4 */
