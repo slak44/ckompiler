@@ -33,7 +33,7 @@ private class InstructionBuilder {
   fun toInstructions(): Instructions = instr
 }
 
-private fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
+private inline fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
   val builder = InstructionBuilder()
   builder.block()
   return builder.toInstructions()
@@ -156,6 +156,10 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       variableRefs[ref.tid] = rbpOffset
       rbpOffset -= 8
     }
+    val stackStuffCount = cfg.definitions.size + cfg.definitions.size % 2
+    // FIXME: magic 8 again
+    emit("sub rsp, ${stackStuffCount * 8}")
+    stackAlignmentCounter += stackStuffCount
     // Regular function arguments
     var intArgCounter = 0
     var fltArgCounter = 0
@@ -327,9 +331,13 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       }
       // FIXME: random use of rax
       if (intArgCounter < intArgRegisters.size) {
-        emit("mov ${intArgRegisters[intArgCounter]}, rax")
+        val reg = intArgRegisters[intArgCounter]
+        // FIXME: massive hack because we don't have a register allocator
+        if (arg is ComputeReference && arg.isSynthetic) emit("pop $reg")
+        else emit("mov $reg, rax")
       } else {
-        emit("push rax")
+        // FIXME: massive hack because we don't have a register allocator
+        if (!(arg is ComputeReference && arg.isSynthetic)) emit("push rax")
       }
       intArgCounter++
     }
@@ -359,10 +367,11 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
     // If the right hand side of the assignment isn't a synthetic reference (version 0), then gen
     // code for it
-    if (store.data !is ComputeReference || store.data.isSynthetic) {
+    if (store.data !is ComputeReference || !store.data.isSynthetic) {
       emit(genComputeExpr(store.data))
     }
     // FIXME: this is broken when the store isn't synthetic, but the store target *is*
+    // FIXME: this is also broken when the store is synthetic but it shouldn't be
     if (store.isSynthetic) return@instrGen
     when (store.data.kind) {
       OperationTarget.INTEGER -> {
@@ -409,7 +418,9 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   private fun FunctionGenContext.getIntUnary(unary: UnaryComputation) = instrGen {
-    emit(genComputeConstant(unary.operand))
+    if (unary.op !in listOf(UnaryComputations.REF, UnaryComputations.DEREF)) {
+      emit(genComputeConstant(unary.operand))
+    }
     // FIXME: random use of rax
     when (unary.op) {
       UnaryComputations.REF -> {
@@ -417,6 +428,8 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
           logger.throwICE("Cannot take address of non-var") { unary }
         }
         emit("lea rax, ${unary.operand.pos}")
+        // FIXME: massive hack because we don't have a register allocator
+        emit("push rax")
       }
       UnaryComputations.DEREF -> {
         if (unary.operand !is ComputeReference) {
@@ -425,6 +438,8 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
         // FIXME: random use of rcx
         emit("mov rcx, ${unary.operand.pos}")
         emit("mov rax, [rcx]")
+        // FIXME: massive hack because we don't have a register allocator
+        emit("push rax")
       }
       UnaryComputations.MINUS -> emit("neg rax")
       UnaryComputations.BIT_NOT -> emit("not rax")
