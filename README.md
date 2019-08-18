@@ -102,7 +102,8 @@ Control flow is resolved by converting the AST to a graph (see
 [ASTGraphing.kt][ast_graphing]), where each node (a so-called [BasicBlock][bb])
 represents a _linear_ piece of code, with no jumps, conditional or otherwise.
 Basically, all `ASTNode` subclasses are removed by the conversion to a graph,
-except for `Expression` subclasses.
+except for `Expression` subclasses (with certain exceptions that are also
+removed, namely `TernaryConditional`).
 
 Those linear pieces of code are represented as a `List<Expression>`, and are
 transformed to the simple IR (`List<IRExpression>`) while creating the graph
