@@ -458,24 +458,26 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
 
   private fun FunctionGenContext.genIntBinary(bin: BinaryComputation) = instrGen {
     emit(genComputeConstant(bin.rhs))
-    // FIXME: random use of rax/rbx
-    emit("mov rbx, rax")
+    // FIXME: random use of rax
+    emit("push rax")
     emit(genComputeConstant(bin.lhs))
+    // FIXME: random use of rbx
+    emit("pop rbx")
     emit(genIntBinaryOperation(bin.op))
   }
 
   /**
+   * FIXME: random use of rax/rbx
    * Assume operands are rax/rbx.
-   *
-   * FIXME: random use of rax
    * Assume returns in rax.
    */
   private fun genIntBinaryOperation(op: BinaryComputations) = instrGen {
     when (op) {
       BinaryComputations.ADD -> emit("add rax, rbx")
       BinaryComputations.SUBSTRACT -> emit("sub rax, rbx")
-      BinaryComputations.MULTIPLY -> emit("mul rax, rbx")
-      // FIXME: this is signed division
+      // FIXME: this is only signed mul
+      BinaryComputations.MULTIPLY -> emit("imul rax, rbx")
+      // FIXME: this is only signed division
       // FIXME: idiv is slooooow
       // It so happens idiv takes the dividend from rax
       // idiv clobbers rdx with the remainder

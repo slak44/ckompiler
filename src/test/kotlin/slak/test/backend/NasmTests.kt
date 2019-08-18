@@ -247,6 +247,11 @@ class NasmTests {
   }
 
   @Test
+  fun `Nested Expression`() {
+    compileAndRun("int main() { return (2 + 3) * (6 - 4); }").justExitCode(10)
+  }
+
+  @Test
   fun `Ternary Test`() {
     compileAndRun(resource("e2e/ternaryOps.c")).justExitCode(13)
   }
