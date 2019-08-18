@@ -256,4 +256,25 @@ class NasmTests {
   fun `Early Return In Void Function Works`() {
     compileAndRun(resource("e2e/earlyReturn.c")).justExitCode(0)
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["1", "-2", "100", "9999999", "0"])
+  fun `Scanf An Int`(int: String) {
+    compileAndRun {
+      text = """
+        #include <stdio.h>
+        int main() {
+          int n;
+          scanf("%d", &n);
+          printf("%d", n);
+          return 0;
+        }
+      """.trimIndent()
+      stdin = int
+    }.run {
+      assertEquals(0, exitCode)
+      assertEquals(int, stdout)
+      assertEquals("", stderr)
+    }
+  }
 }
