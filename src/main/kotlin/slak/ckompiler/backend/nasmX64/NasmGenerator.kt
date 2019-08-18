@@ -317,12 +317,13 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   private fun FunctionGenContext.genCall(call: Call) = instrGen {
     var intArgCounter = 0
     var fltArgCounter = 0
-    for (arg in call.args) {
+    for (arg in call.args.asReversed()) {
       emit(genComputeConstant(arg))
       if (arg.kind == OperationTarget.SSE) {
         // FIXME: random use of xmm8
         if (fltArgCounter < fltArgRegisters.size) {
-          emit("movsd ${fltArgRegisters[fltArgCounter]}, xmm8")
+          val reg = fltArgRegisters.asReversed()[fltArgRegisters.size - fltArgCounter - 1]
+          emit("movsd $reg, xmm8")
           fltArgCounter++
         } else {
           TODO()
@@ -331,7 +332,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       }
       // FIXME: random use of rax
       if (intArgCounter < intArgRegisters.size) {
-        val reg = intArgRegisters[intArgCounter]
+        val reg = intArgRegisters.asReversed()[intArgRegisters.size - intArgCounter - 1]
         // FIXME: massive hack because we don't have a register allocator
         if (arg is ComputeReference && arg.isSynthetic) emit("pop $reg")
         else emit("mov $reg, rax")

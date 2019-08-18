@@ -348,7 +348,7 @@ class IRLoweringContext {
    */
   private fun transformCall(funCall: FunctionCall): Call {
     val funDesignator = transformExpr(funCall.calledExpr)
-    val args = funCall.args.map(::transformExpr)
+    val args = funCall.args.asReversed().map(::transformExpr)
     return Call(funDesignator, args)
   }
 
