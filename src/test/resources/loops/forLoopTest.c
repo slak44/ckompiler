@@ -4,4 +4,5 @@ int main() {
     x += 2;
   }
   return x;
+  // This code can be completely constant-folded; it should fold to "return 86;"
 }

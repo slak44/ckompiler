@@ -256,6 +256,11 @@ class NasmTests {
   }
 
   @Test
+  fun `For Loop Summing Test`() {
+    compileAndRun(resource("loops/forLoopTest.c")).justExitCode(86)
+  }
+
+  @Test
   fun `Early Return In Void Function Works`() {
     compileAndRun(resource("e2e/earlyReturn.c")).justExitCode(0)
   }
