@@ -212,6 +212,11 @@ class NasmTests {
   }
 
   @Test
+  fun `Multiple Declarators`() {
+    compileAndRun("int main() { int a = 1, b = 2; return a + b; }").justExitCode(3)
+  }
+
+  @Test
   fun `Ternary Test`() {
     compileAndRun(resource("e2e/ternaryOps.c")).justExitCode(13)
   }
