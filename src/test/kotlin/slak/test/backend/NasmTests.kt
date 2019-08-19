@@ -269,15 +269,20 @@ class NasmTests {
   @ValueSource(strings = ["1", "-2", "100", "9999999", "0"])
   fun `Scanf An Int`(int: String) {
     compileAndRun {
-      text = """
-        #include <stdio.h>
-        int main() {
-          int n;
-          scanf("%d", &n);
-          printf("%d", n);
-          return 0;
-        }
-      """.trimIndent()
+      file = resource("e2e/scanfOnce.c")
+      stdin = int
+    }.run {
+      assertEquals(0, exitCode)
+      assertEquals(int, stdout)
+      assertEquals("", stderr)
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["1 3", "-2 4", "100 10000", "9999999 -1", "0 0", "0 1", "1 0"])
+  fun `Scanf Multiple Ints`(int: String) {
+    compileAndRun {
+      file = resource("e2e/scanfTwice.c")
       stdin = int
     }.run {
       assertEquals(0, exitCode)
