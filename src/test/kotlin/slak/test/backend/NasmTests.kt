@@ -87,33 +87,8 @@ class NasmTests {
   }
 
   @Test
-  fun `Main That Returns 0`() {
-    prepareNasm("int main() { return 0; }", source)
-  }
-
-  @Test
   fun `Multiple Functions`() {
     prepareNasm("int f() { return 0; } int main() { return 0; }", source)
-  }
-
-  @Test
-  fun `Main That Returns 1+1`() {
-    prepareNasm("int main() { return 1 + 1; }", source)
-  }
-
-  @Test
-  fun `Local Variable`() {
-    prepareNasm("int main() { int a; return 0; }", source)
-  }
-
-  @Test
-  fun `Local Variable Assignment`() {
-    prepareNasm("int main() { int a = 123; return 0; }", source)
-  }
-
-  @Test
-  fun `Local Variable Usage`() {
-    prepareNasm("int main() { int a = 123; return a; }", source)
   }
 
   // FIXME: doesn't check if it worked
@@ -132,20 +107,6 @@ class NasmTests {
   @Test
   fun `String Names Are Alphanumeric`() {
     prepareNasm("int main() { \"a:.><\"; return 1; }", source)
-  }
-
-  // FIXME: doesn't check if it worked
-  @Test
-  fun `Simple If With Compare`() {
-    prepareNasm("""
-      int main() {
-        int a = 1;
-        if (a < 55) {
-          return 1;
-        }
-        return 0;
-      }
-    """.trimIndent(), source)
   }
 
   @ParameterizedTest
