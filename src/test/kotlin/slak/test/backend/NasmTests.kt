@@ -256,4 +256,21 @@ class NasmTests {
       assertEquals("", stderr)
     }
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "1 454 786 -345 0 5 34 -11 99 1010 -444444",
+    "0 0 0 0 0 0 0 0 0 0 0",
+    "-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1"
+  ])
+  fun `Lots Of Int Parameters`(int: String) {
+    compileAndRun {
+      file = resource("e2e/manyIntParameters.c")
+      stdin = int
+    }.run {
+      assertEquals(0, exitCode)
+      assertEquals(int, stdout)
+      assertEquals("", stderr)
+    }
+  }
 }
