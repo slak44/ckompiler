@@ -54,8 +54,9 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
  */
 class Preprocessor(sourceText: String,
                    srcFileName: SourceFileName,
+                   targetData: MachineTargetData,
                    currentDir: File,
-                   cliDefines: Map<String, String> = emptyMap(),
+                   cliDefines: CLIDefines = emptyMap(),
                    initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
                    includePaths: IncludePaths = IncludePaths.defaultPaths,
                    ignoreTrigraphs: Boolean = false) {
@@ -69,7 +70,8 @@ class Preprocessor(sourceText: String,
     debugHandler = DebugHandler("Preprocessor", srcFileName, phase3Src)
     debugHandler.diags += phase1Diags
     val l = Lexer(debugHandler, phase3Src, srcFileName)
-    val parsedCliDefines = cliDefines.map {
+    val allInitialDefines = targetData.stddefDefines + targetData.stdintDefines + cliDefines
+    val parsedCliDefines = allInitialDefines.map {
       val cliDh = DebugHandler("Preprocessor", "<command line>", it.value)
       val cliLexer = Lexer(cliDh, it.value, "<command line>")
       debugHandler.diags += cliDh.diags

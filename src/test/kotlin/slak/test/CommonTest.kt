@@ -21,6 +21,7 @@ internal fun preparePP(s: String, source: SourceFileName): Preprocessor {
       sourceText = s,
       srcFileName = source,
       includePaths = incs + IncludePaths.defaultPaths,
+      targetData = MachineTargetData.x64,
       currentDir = File(".")
   )
 }

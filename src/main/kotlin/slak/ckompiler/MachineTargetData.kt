@@ -16,8 +16,63 @@ data class MachineTargetData(
     val boolSizeBytes: Int,
     val floatSizeBytes: Int,
     val doubleSizeBytes: Int,
-    val longDoubleSizeBytes: Int
+    val longDoubleSizeBytes: Int,
+    val sizeType: TypeName,
+    val ptrDiffType: TypeName
 ) {
+  @SuppressWarnings("MagicNumber")
+  private fun Int.toBits(): Int = this * 8
+
+  private val ints = mapOf(
+      boolSizeBytes to "_Bool",
+      shortSizeBytes to "short",
+      intSizeBytes to "int",
+      longSizeBytes to "long",
+      longLongSizeBytes to "long long"
+  )
+
+  /**
+   * C standard: 7.19
+   */
+  val stddefDefines: CLIDefines = mapOf(
+      "__PTRDIFF_T_TYPE" to ptrDiffType.toString(),
+      "__PTRDIFF_T_SIZE" to "${sizeOf(ptrDiffType).toBits()}",
+      "__SIZE_T_TYPE" to sizeType.toString(),
+      "__SIZE_T_SIZE" to "${sizeOf(sizeType).toBits()}",
+      "__MAX_ALIGN_T_TYPE" to "signed int", // FIXME: is this correct?
+      "__WCHAR_T_TYPE" to "signed int" // FIXME: is this correct?
+  )
+
+  /**
+   * C standard: 7.20
+   */
+  val stdintDefines: CLIDefines by lazy {
+    val map = mutableMapOf<String, String>()
+    for (size in listOf(1, 2, 4, 8)) {
+      // C standard: 7.20.1.1, 7.20.1.3
+      ints[size]?.also { map["__INT${size.toBits()}_T_TYPE"] = it }
+      // C standard: 7.20.1.2
+      ints.entries.firstOrNull { it.key >= size }?.also {
+        map["__INT_LEAST${size.toBits()}_T_TYPE"] = it.value
+        map["__INT_LEAST${size.toBits()}_T_SIZE"] = it.key.toBits().toString()
+      }
+    }
+    // C standard: 7.20.1.4
+    ints[ptrSizeBytes]?.also {
+      map["__INTPTR_T_TYPE"] = it
+      map["__INTPTR_T_SIZE"] = ptrSizeBytes.toBits().toString()
+    }
+    // C standard: 7.20.1.5
+    ints.maxBy { it.key }!!.also {
+      map["__INTMAX_T_TYPE"] = it.value
+      map["__INTMAX_T_SIZE"] = it.key.toBits().toString()
+    }
+    // C standard: 7.20.3
+    map["__WCHAR_T_SIZE"] = ints.entries.first { it.value == "int" }.key.toBits().toString()
+    // FIXME: 7.20.4 needs function-like macros
+    map
+  }
+
   /**
    * This function should return the size in bytes of the [type] given.
    *
@@ -55,7 +110,9 @@ data class MachineTargetData(
         boolSizeBytes = 4,
         floatSizeBytes = 4,
         doubleSizeBytes = 8,
-        longDoubleSizeBytes = 16
+        longDoubleSizeBytes = 16,
+        sizeType = UnsignedIntType,
+        ptrDiffType = SignedLongType
     )
   }
 }

@@ -18,6 +18,8 @@ enum class ExitCodes(val int: Int) {
   NORMAL(0), ERROR(1), EXECUTION_FAILED(2), BAD_COMMAND(4)
 }
 
+typealias CLIDefines = Map<String, String>
+
 class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   private fun CommandLineInterface.helpGroup(description: String) {
     addHelpEntry(object : HelpEntry {
@@ -330,7 +332,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         currentDir = parentDir,
         cliDefines = defines,
         includePaths = includePaths,
-        ignoreTrigraphs = disableTrigraphs
+        ignoreTrigraphs = disableTrigraphs,
+        targetData = MachineTargetData.x64
     )
     if (pp.diags.errors().isNotEmpty()) {
       executionFailed = true

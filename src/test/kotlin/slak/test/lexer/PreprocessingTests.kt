@@ -2,6 +2,8 @@ package slak.test.lexer
 
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Keywords
@@ -87,6 +89,13 @@ class PreprocessingTests {
     test2.assertNoDiagnostics()
     l.assertNoDiagnostics()
     assertEquals(test1.tokens + test2.tokens, l.tokens)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["stddef.h", "stdint.h"])
+  fun `Including Stdlib Headers Works`(headerName: String) {
+    val l = preparePP("#include <$headerName>", source)
+    l.assertNoDiagnostics()
   }
 
   @Test
