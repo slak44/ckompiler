@@ -122,6 +122,10 @@ sealed class TypeName {
   fun isABIIntegerType() = this is IntegralType || this is PointerType
 }
 
+/**
+ * Represents the type of an expression that is invalid, either due to syntax errors, or due to
+ * violations of semantic requirements.
+ */
 object ErrorType : TypeName() {
   override fun toString() = "<error type>"
 }
