@@ -383,7 +383,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val funcsCfgs = (allFuncs - main).map { CFG(it!!, relPath, text, false) }
     val mainCfg = main?.let { CFG(it, relPath, text, false) }
 
-    val nasm = NasmGenerator(declNames, funcsCfgs, mainCfg).nasm
+    val nasm = NasmGenerator(declNames, funcsCfgs, mainCfg, MachineTargetData.x64).nasm
 
     if (isCompileOnly) {
       val asmFile = File(currentDir, output.orElse("$baseName.s"))

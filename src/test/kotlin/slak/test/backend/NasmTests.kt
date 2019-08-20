@@ -7,6 +7,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.ExitCodes
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.backend.nasmX64.NasmGenerator
 import slak.test.*
@@ -19,7 +20,7 @@ class NasmTests {
   private fun prepareNasm(src: String, source: SourceFileName): String {
     val cfg = prepareCFG(src, source)
     cfg.assertNoDiagnostics()
-    val asm = NasmGenerator(emptyList(), emptyList(), cfg).nasm
+    val asm = NasmGenerator(emptyList(), emptyList(), cfg, MachineTargetData.x64).nasm
     println(asm)
     return asm
   }
