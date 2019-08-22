@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.nasmX64
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.lexer.FloatingSuffix
 import slak.ckompiler.parser.*
@@ -50,10 +51,18 @@ private data class FunctionGenContext(val variableRefs: MutableMap<TypedIdentifi
   val retLabel = ".return_${cfg.f.name}"
   val BasicBlock.label get() = ".block_${cfg.f.name}_$nodeId"
   val ComputeReference.pos get() = "[rbp${variableRefs[tid]}]"
+
+  // FIXME: register allocator.
+  val synthRefs = mutableMapOf<TypedIdentifier, String>()
 }
 
 /** Generate x86_64 NASM code. */
-class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?) {
+class NasmGenerator(
+    externals: List<String>,
+    functions: List<CFG>,
+    mainCfg: CFG?,
+    val target: MachineTargetData
+) {
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
@@ -120,12 +129,8 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     // envp:
     emit("lea rax, [8*rdi+rsp+16]")
     emit("mov rdx, [rax]")
-    // Align stack to 16 byte boundary
-    emit("sub rsp, 8")
     // Call main
     emit("call main")
-    // Restore rsp
-    emit("add rsp, 8")
     // Integral return value is in rax
     emit("mov rdi, rax")
     emit("call exit")
@@ -136,16 +141,17 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
    */
   private fun FunctionGenContext.genFun(cfg: CFG) = instrGen {
     label(cfg.f.name)
+    // FIXME: using rbp as frame pointer wastes a general-purpose register
+    // New stack frame
+    emit("push rbp")
+    emit("mov rbp, rsp")
     // Callee-saved registers
     // FIXME: if the registers are not used in the function, saving them wastes instructions
-    // FIXME: using rbp as frame pointer wastes a general-purpose register
-    emit("push rbp")
     emit("push rbx")
     emit("push r8")
     emit("push r9")
+    emit("sub rsp, 8")
     // FIXME: r12-r15 are also callee-saved
-    // New stack frame
-    emit("mov rbp, rsp")
     // Local variables
     // FIXME: this magic number 8 is too magic
     //   use correct sizes
@@ -167,9 +173,11 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       val refArg = ComputeReference(arg, isSynthetic = true)
       if (arg.type.isABIIntegerType()) {
         if (intArgCounter >= intArgRegisters.size) {
+          val idxOnStack = (intArgCounter - intArgRegisters.size) +
+              (fltArgCounter - fltArgRegisters.size).coerceAtLeast(0)
           // r11 is neither callee-saved nor caller-saved in System V
-          // It can be safely used here
-          emit("pop r11")
+          // See ABI for magic here:
+          emit("mov r11, [rbp+${idxOnStack * 8 + 16}]")
           emit("mov ${refArg.pos}, r11")
         } else {
           emit("mov ${refArg.pos}, ${intArgRegisters[intArgCounter]}")
@@ -197,11 +205,17 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     label(retLabel)
     // FIXME: magic 8 again
     if (stackAlignmentCounter != 0) emit("add rsp, ${stackAlignmentCounter * 8}")
-    emit("mov rsp, rbp")
+    emit("add rsp, 8")
     emit("pop r9")
     emit("pop r8")
     emit("pop rbx")
+
+    // FIXME: excuse me what the fuck?
+    emit("mov r11, [rbp+8]")
     emit("pop rbp")
+    emit("add rsp, 8")
+    emit("push r11")
+
     emit("ret")
   }
 
@@ -229,10 +243,19 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   private fun FunctionGenContext.genCondJump(jmp: CondJump) = instrGen {
-    emit(genExpressions(jmp.cond))
     // FIXME: missed optimization, we might be able to generate better code for stuff like
     //   `a < 1 && b > 2` if we look further than the last IR expression
     val condExpr = jmp.cond.ir.last()
+    emit(genExpressions(jmp.cond))
+    val conds = listOf(BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
+        BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
+        BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL)
+    if (condExpr is Store && condExpr.data is BinaryComputation && condExpr.data.op in conds) {
+      when (condExpr.data.kind) {
+        OperationTarget.INTEGER -> emit("cmp rax, rbx")
+        OperationTarget.SSE -> TODO()
+      }
+    }
     if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
       BinaryComputations.LESS_THAN -> emit("jl ${jmp.target.label}")
       BinaryComputations.GREATER_THAN -> emit("jg ${jmp.target.label}")
@@ -312,47 +335,46 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
   }
 
   /**
-   * System V ABI: 3.2.3, page 20
+   * System V ABI: 3.2.2, page 18; 3.2.3, page 20
    */
   private fun FunctionGenContext.genCall(call: Call) = instrGen {
-    var intArgCounter = 0
-    var fltArgCounter = 0
-    for (arg in call.args.asReversed()) {
-      emit(genComputeConstant(arg))
-      if (arg.kind == OperationTarget.SSE) {
-        // FIXME: random use of xmm8
-        if (fltArgCounter < fltArgRegisters.size) {
-          val reg = fltArgRegisters.asReversed()[fltArgRegisters.size - fltArgCounter - 1]
-          emit("movsd $reg, xmm8")
-          fltArgCounter++
-        } else {
-          TODO()
-        }
-        continue
-      }
+    val intArgs = call.args.withIndex().filter { (_, it) -> it.kind == OperationTarget.INTEGER }
+    val fltArgs = call.args.withIndex().filter { (_, it) -> it.kind == OperationTarget.SSE }
+    val intRegArgs = intArgs.take(intArgRegisters.size)
+    val fltRegArgs = fltArgs.take(fltArgRegisters.size)
+    val intStackArgs = intArgs.drop(intArgRegisters.size)
+    val fltStackArgs = fltArgs.drop(fltArgRegisters.size)
+    // FIXME: ignores arg size
+    val stackArgs = (intStackArgs + fltStackArgs).sortedBy { it.index }
+
+    for (idx in 0 until intRegArgs.size) {
+      emit(genComputeConstant(intRegArgs[idx].value))
       // FIXME: random use of rax
-      if (intArgCounter < intArgRegisters.size) {
-        val reg = intArgRegisters.asReversed()[intArgRegisters.size - intArgCounter - 1]
-        // FIXME: massive hack because we don't have a register allocator
-        if (arg is ComputeReference && arg.isSynthetic) emit("pop $reg")
-        else emit("mov $reg, rax")
-      } else {
-        // FIXME: massive hack because we don't have a register allocator
-        if (!(arg is ComputeReference && arg.isSynthetic)) emit("push rax")
-      }
-      intArgCounter++
+      emit("mov ${intArgRegisters[idx]}, rax")
     }
-    // FIXME: % 2 only by assuming int size
-    val intsOnStack = intArgCounter - intArgRegisters.size
-    if (intsOnStack > 0 && intsOnStack % 2 == 0) {
-      // FIXME: magic 8 again
-      emit("sub rsp, 8")
-      stackAlignmentCounter++
+
+    for (idx in 0 until fltRegArgs.size) {
+      emit(genComputeConstant(fltRegArgs[idx].value))
+      // FIXME: random use of xmm8
+      emit("movsd ${fltArgRegisters[idx]}, xmm8")
     }
+
+    // FIXME: % 2 only by assuming arg size
+    val argsAligned = stackArgs.size % 2 == 0
+    // We have to do this before pushing the stack args (obviously, in retrospect)
+    if (!argsAligned) emit("sub rsp, 8")
+
+    for (idx in 0 until stackArgs.size) {
+      emit(genComputeConstant(stackArgs.asReversed()[idx].value))
+      // FIXME: only ints
+      emit("push rax")
+    }
+
     if (call.functionPointer is ComputeReference) {
       if (call.functionPointer.tid.type.asCallable()!!.variadic) {
         // The ABI says al must contain the number of vector arguments
-        emit("mov al, $fltArgCounter")
+        // FIXME: does that include floats passed on the stack?
+        emit("mov al, ${fltArgs.size}")
       }
       emit("call ${call.functionPointer.tid.name}")
     } else {
@@ -363,6 +385,7 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
       // FIXME: random use of rax
       emit("call rax")
     }
+    if (!argsAligned) emit("add rsp, 8")
   }
 
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
@@ -373,7 +396,19 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     }
     // FIXME: this is broken when the store isn't synthetic, but the store target *is*
     // FIXME: this is also broken when the store is synthetic but it shouldn't be
-    if (store.isSynthetic) return@instrGen
+    if (store.isSynthetic) {
+      if (!synthRefs.containsKey(store.target.tid)) {
+        // FIXME: "just push all this shit on the stack lol, how bad can it get"
+        emit("sub rsp, 16")
+        stackAlignmentCounter += 2
+        // FIXME: magic 8
+        synthRefs[store.target.tid] = "[rbp-${stackAlignmentCounter * 8}]"
+        emit("mov qword ${synthRefs[store.target.tid]}, 0")
+      }
+      // FIXME: horrifying
+      emit("${irMov(store.target)} ${synthRefs[store.target.tid]}, ${irTarget(store.target)}")
+      return@instrGen
+    }
     when (store.data.kind) {
       OperationTarget.INTEGER -> {
         // FIXME: random use of rax
@@ -384,6 +419,18 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
         emit("movsd ${store.target.pos}, xmm8")
       }
     }
+  }
+
+  // FIXME: random use of rax/xmm8
+  private fun irTarget(e: ComputeExpression): String = when (e.kind) {
+    OperationTarget.INTEGER -> "rax"
+    OperationTarget.SSE -> "xmm8"
+  }
+
+  private fun irMov(e: ComputeReference): String = when (e.kind) {
+    OperationTarget.INTEGER -> "mov"
+    // FIXME: doubles are not the only floating point type in the world
+    OperationTarget.SSE -> "movsd"
   }
 
   /**
@@ -429,8 +476,6 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
           logger.throwICE("Cannot take address of non-var") { unary }
         }
         emit("lea rax, ${unary.operand.pos}")
-        // FIXME: massive hack because we don't have a register allocator
-        emit("push rax")
       }
       UnaryComputations.DEREF -> {
         if (unary.operand !is ComputeReference) {
@@ -439,8 +484,6 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
         // FIXME: random use of rcx
         emit("mov rcx, ${unary.operand.pos}")
         emit("mov rax, [rcx]")
-        // FIXME: massive hack because we don't have a register allocator
-        emit("push rax")
       }
       UnaryComputations.MINUS -> emit("neg rax")
       UnaryComputations.BIT_NOT -> emit("not rax")
@@ -458,11 +501,9 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
 
   private fun FunctionGenContext.genIntBinary(bin: BinaryComputation) = instrGen {
     emit(genComputeConstant(bin.rhs))
-    // FIXME: random use of rax
-    emit("push rax")
+    // FIXME: random use of rax/rbx
+    emit("mov rbx, rax")
     emit(genComputeConstant(bin.lhs))
-    // FIXME: random use of rbx
-    emit("pop rbx")
     emit(genIntBinaryOperation(bin.op))
   }
 
@@ -503,6 +544,16 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
     }
   }
 
+//  private fun pushXmm(reg: String) = instrGen {
+//    emit("sub rsp, 16")
+//    emit("movsd [rsp], $reg")
+//  }
+//
+//  private fun popXmm(reg: String) = instrGen {
+//    emit("movsd $reg, [rsp]")
+//    emit("add rsp, 16")
+//  }
+
   private fun FunctionGenContext.genFltBinary(bin: BinaryComputation) = instrGen {
     emit(genComputeConstant(bin.rhs))
     // FIXME: random use of xmm8/xmm9
@@ -519,13 +570,10 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
    */
   private fun genFltBinaryOperation(op: BinaryComputations) = instrGen {
     when (op) {
-      BinaryComputations.ADD -> emit("addss xmm8, xmm9")
-      BinaryComputations.SUBSTRACT -> emit("subss xmm8, xmm9")
-      BinaryComputations.MULTIPLY -> emit("mulss xmm8, xmm9")
-      BinaryComputations.DIVIDE -> {
-        emit("divss xmm8, xmm9")
-        emit("movsd xmm8, xmm9")
-      }
+      BinaryComputations.ADD -> emit("addsd xmm8, xmm9")
+      BinaryComputations.SUBSTRACT -> emit("subsd xmm8, xmm9")
+      BinaryComputations.MULTIPLY -> emit("mulsd xmm8, xmm9")
+      BinaryComputations.DIVIDE -> emit("divsd xmm8, xmm9")
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
       BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
       BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> TODO("???")
@@ -582,7 +630,19 @@ class NasmGenerator(externals: List<String>, functions: List<CFG>, mainCfg: CFG?
 
   private fun FunctionGenContext.genRefUse(ref: ComputeReference) = instrGen {
     // Same considerations as the ones in [genStore]
-    if (ref.isSynthetic) return@instrGen
+    if (ref.isSynthetic) {
+      if (!synthRefs.containsKey(ref.tid)) {
+        // FIXME: "just push all this shit on the stack lol, how bad can it get"
+        emit("sub rsp, 16")
+        stackAlignmentCounter += 2
+        // FIXME: magic 8
+        synthRefs[ref.tid] = "[rbp-${stackAlignmentCounter * 8}]"
+        emit("mov qword ${synthRefs[ref.tid]}, 0")
+      }
+      // FIXME: horrifying
+      emit("${irMov(ref)} ${irTarget(ref)}, ${synthRefs[ref.tid]}")
+      return@instrGen
+    }
     when (ref.kind) {
       OperationTarget.INTEGER -> {
         // FIXME: random use of rax
