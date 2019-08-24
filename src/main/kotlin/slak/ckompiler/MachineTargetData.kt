@@ -24,6 +24,7 @@ data class MachineTargetData(
   private fun Int.toBits(): Int = this * 8
 
   private val ints = mapOf(
+      1 to "char",
       boolSizeBytes to "_Bool",
       shortSizeBytes to "short",
       intSizeBytes to "int",
