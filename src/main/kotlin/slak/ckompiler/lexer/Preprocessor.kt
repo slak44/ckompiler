@@ -711,6 +711,11 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
     ITextSourceHandler by TextSourceHandler(sourceText, srcFileName) {
 
   val ppTokens = mutableListOf<LexicalToken>()
+  /**
+   * Comments can also be found here, besides the whitespace.
+   */
+  val whitespaceBefore = mutableListOf<String>()
+  private val currentWhitespace = StringBuilder()
 
   init {
     tokenize()
@@ -757,22 +762,32 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
    */
   private tailrec fun tokenize() {
     dropCharsWhile {
-      if (it == '\n') ppTokens += NewLine
+      if (it == '\n') {
+        whitespaceBefore += currentWhitespace.toString()
+        currentWhitespace.clear()
+        ppTokens += NewLine
+        return@dropCharsWhile true
+      }
+      currentWhitespace.append(it)
       return@dropCharsWhile it.isWhitespace()
     }
-    if (currentSrc.isEmpty()) return
+    if (currentSrc.isEmpty()) {
+      currentWhitespace.clear()
+      return
+    }
 
     // Comments
     if (currentSrc.startsWith("//")) {
-      dropCharsWhile { it != '\n' }
+      currentWhitespace.append(dropCharsWhile { it != '\n' })
       return tokenize()
     } else if (currentSrc.startsWith("/*")) {
-      dropCharsWhile { it != '*' || currentSrc[currentOffset + 1] != '/' }
+      currentWhitespace.append(dropCharsWhile { it != '*' || currentSrc[currentOffset + 1] != '/' })
       // Unterminated comment
       if (currentSrc.isEmpty()) diagnostic {
         id = DiagnosticId.UNFINISHED_COMMENT
         column(currentOffset)
       } else {
+        currentWhitespace.append("*/")
         // Get rid of the '*/'
         dropChars(2)
       }
@@ -798,6 +813,8 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
       columns(currentOffset..(currentOffset + 1))
     }
     ppTokens += token.withDebugData(srcFileName, currentOffset)
+    whitespaceBefore += currentWhitespace.toString()
+    currentWhitespace.clear()
     dropChars(token.consumedChars)
     return tokenize()
   }

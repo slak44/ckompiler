@@ -1,6 +1,7 @@
 package slak.ckompiler.lexer
 
 import slak.ckompiler.SourceFileName
+import java.lang.StringBuilder
 
 /**
  * Useful for delegation.
@@ -24,8 +25,9 @@ interface ITextSourceHandler {
    * The [currentOffset] is updated between [dropIfTrue] calls.
    * The [currentSrc] is _unchanged_ until this function returns, at which point it is updated to
    * reflect the new offset.
+   * The return value represents the dropped chars.
    */
-  fun dropCharsWhile(dropIfTrue: (Char) -> Boolean)
+  fun dropCharsWhile(dropIfTrue: (Char) -> Boolean): String
 }
 
 /**
@@ -42,11 +44,16 @@ class TextSourceHandler(override val originalSource: String,
     currentSrc = currentSrc.drop(count)
   }
 
-  override fun dropCharsWhile(dropIfTrue: (Char) -> Boolean) {
+  override fun dropCharsWhile(dropIfTrue: (Char) -> Boolean): String {
+    val sb = StringBuilder()
     currentSrc = currentSrc.dropWhile {
       val wasCharDropped = dropIfTrue(it)
-      if (wasCharDropped) currentOffset++
+      if (wasCharDropped) {
+        currentOffset++
+        sb.append(it)
+      }
       return@dropWhile wasCharDropped
     }
+    return sb.toString()
   }
 }
