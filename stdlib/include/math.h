@@ -1,3 +1,5 @@
+// C standard: 7.12.0.4
+#define INFINITY (1.0 / 0.0)
 // C standard: 7.12.9.6
 extern double round(double x);
 extern float roundf(float x);
