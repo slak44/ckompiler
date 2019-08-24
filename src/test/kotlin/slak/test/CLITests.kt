@@ -11,6 +11,7 @@ import slak.ckompiler.ExitCodes
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PrintStream
+import kotlin.system.exitProcess
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -30,6 +31,15 @@ class CLITests {
   fun removeCompilerOutput() {
     File("a.out").delete()
     File(".").listFiles()!!.filter { it.extension == "o" }.forEach { it.delete() }
+  }
+
+  @Test
+  fun `Ckompiler Properties File Exists`() {
+    val fileExists = resource("ckompiler.properties").exists()
+    if (!fileExists) {
+      System.err.println("ckompiler.properties file is missing; aborting test process")
+      exitProcess(-1)
+    }
   }
 
   @Test
