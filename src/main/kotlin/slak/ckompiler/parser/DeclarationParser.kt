@@ -3,6 +3,7 @@ package slak.ckompiler.parser
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.asPunct
+import slak.ckompiler.rangeTo
 import java.util.*
 
 interface IDeclarationParser : IDeclaratorParser {
@@ -54,11 +55,11 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
         }
         declSpec.isTypedef() -> diagnostic {
           id = DiagnosticId.TYPEDEF_REQUIRES_NAME
-          columns(declSpec.tokenRange)
+          columns(declSpec.range)
         }
         else -> diagnostic {
           id = DiagnosticId.MISSING_DECLARATIONS
-          columns(declSpec.tokenRange)
+          columns(declSpec.range)
         }
       }
       return declSpec to Optional.empty()
@@ -75,7 +76,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
                                 declarator: Declarator?): Declaration {
     val declList = parseInitDeclaratorList(declSpec, declarator)
     declList.forEach { checkArrayElementType(declSpec, it.first) }
-    val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.tokenRange.first
+    val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.range.first
     return Declaration(declSpec, declList).withRange(start until safeToken(-1).range.last)
   }
 

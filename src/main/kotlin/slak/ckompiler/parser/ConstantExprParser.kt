@@ -50,7 +50,7 @@ class ConstantExprParser(parenMatcher: ParenMatcher, val type: ConstantExprType)
     is PostfixIncrement, is PostfixDecrement -> {
       diagnostic {
         id = DiagnosticId.EXPR_NOT_CONSTANT
-        columns(expr.tokenRange)
+        columns(expr.range)
       }
       error<ErrorExpression>()
     }
@@ -66,7 +66,7 @@ class ConstantExprParser(parenMatcher: ParenMatcher, val type: ConstantExprType)
         diagnostic {
           id = DiagnosticId.INVALID_LITERAL_IN_PP
           formatArgs(if (expr is StringLiteralNode) "string" else "floating")
-          columns(expr.tokenRange)
+          columns(expr.range)
         }
         error<ErrorExpression>()
       } else {
@@ -87,7 +87,7 @@ class ConstantExprParser(parenMatcher: ParenMatcher, val type: ConstantExprType)
         expr.op == UnaryOperators.REF || expr.op == UnaryOperators.DEREF -> {
           diagnostic {
             id = DiagnosticId.EXPR_NOT_CONSTANT
-            columns(expr.tokenRange)
+            columns(expr.range)
           }
           error<ErrorExpression>()
         }
@@ -102,7 +102,7 @@ class ConstantExprParser(parenMatcher: ParenMatcher, val type: ConstantExprType)
         expr.op in assignmentOps || expr.op == BinaryOperators.COMMA -> {
           diagnostic {
             id = DiagnosticId.EXPR_NOT_CONSTANT
-            columns(expr.tokenRange)
+            columns(expr.range)
           }
           error<ErrorExpression>()
         }

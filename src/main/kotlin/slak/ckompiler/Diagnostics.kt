@@ -5,7 +5,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.message.ObjectMessage
 import slak.ckompiler.DiagnosticKind.*
-import slak.ckompiler.lexer.LexicalToken
 import kotlin.math.max
 import kotlin.math.min
 
@@ -132,6 +131,17 @@ typealias SourceFileName = String
 
 fun IntRange.length() = endInclusive + 1 - start
 
+/**
+ * Marks an object that corresponds to a range of indices in the program source.
+ */
+interface SourcedRange {
+  val range: IntRange
+}
+
+infix fun SourcedRange.until(other: SourcedRange) = range.first until other.range.first
+
+operator fun SourcedRange.rangeTo(other: SourcedRange) = range.first..other.range.last
+
 data class Diagnostic(val id: DiagnosticId,
                       val messageFormatArgs: List<Any>,
                       val sourceFileName: SourceFileName,
@@ -234,14 +244,14 @@ class DiagnosticBuilder {
     sourceColumns.add(range)
   }
 
-  fun errorOn(token: LexicalToken) {
-    sourceColumns.add(token.range)
+  fun errorOn(obj: SourcedRange) {
+    sourceColumns.add(obj.range)
   }
 
   inline fun <reified T> diagData(data: T) = when (data) {
     is IntRange -> columns(data)
     is Int -> column(data)
-    is LexicalToken -> errorOn(data)
+    is SourcedRange -> errorOn(data)
     else -> throw IllegalArgumentException("T must be Int, IntRange, or TokenObject")
   }
 

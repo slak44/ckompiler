@@ -1,10 +1,7 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.ITokenHandler
+import slak.ckompiler.*
 import slak.ckompiler.lexer.*
-import slak.ckompiler.throwICE
 
 interface TypeNameParser {
   /**
@@ -107,8 +104,8 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       eat() // The identifier token
       val name = IdentifierNode.from(nameTok)
       return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size)).also { d ->
-        val lastTok = d.suffixes.lastOrNull()?.tokenRange ?: nameTok.range
-        d.withRange(declStartTok.range..lastTok)
+        val lastTok = d.suffixes.lastOrNull() ?: nameTok
+        d.withRange(declStartTok..lastTok)
       }
     }
     if (nested is ErrorNode) return@tokenContext error<ErrorDeclarator>()
@@ -307,7 +304,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
       val declarator = parseAbstractDeclarator(paramEndIdx, true)
       declarator.withRange(specs..tokenAt(paramEndIdx - 1))
-      params += ParameterDeclaration(specs, declarator).withRange(declarator.tokenRange)
+      params += ParameterDeclaration(specs, declarator).withRange(declarator.range)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope). Ignore unnamed parameters.
       if (declarator is NamedDeclarator) scope.withScope {

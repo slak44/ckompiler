@@ -1,10 +1,7 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.ITokenHandler
+import slak.ckompiler.*
 import slak.ckompiler.lexer.*
-import slak.ckompiler.throwICE
 
 interface ISpecParser {
   /** C standard: A.2.2, 6.7 */
@@ -40,7 +37,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     }
     if (it.typeSpec is StructDefinition || it.typeSpec is UnionDefinition) diagnostic {
       id = DiagnosticId.FOR_INIT_NON_LOCAL
-      columns(it.tokenRange)
+      columns(it.range)
     }
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value

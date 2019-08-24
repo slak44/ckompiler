@@ -2,6 +2,7 @@ package slak.ckompiler.lexer
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.SourceFileName
+import slak.ckompiler.SourcedRange
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger("Tokens")
@@ -11,7 +12,7 @@ private val logger = LogManager.getLogger("Tokens")
  * @param consumedChars how many characters long was the token in the SOURCE (ie the data in the
  * token might it appear shorter or longer than it was in the source)
  */
-sealed class LexicalToken(val consumedChars: Int) {
+sealed class LexicalToken(val consumedChars: Int) : SourcedRange {
   /**
    * Where the token came from.
    */
@@ -36,7 +37,7 @@ sealed class LexicalToken(val consumedChars: Int) {
       return field
     }
 
-  val range: IntRange by lazy { startIdx until startIdx + consumedChars }
+  override val range: IntRange by lazy { startIdx until startIdx + consumedChars }
 
   fun withDebugData(srcFileName: SourceFileName, startIdx: Int): LexicalToken {
     this.startIdx = startIdx

@@ -115,8 +115,8 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     val funType = typeNameOf(declSpec, funDecl) as FunctionType
     val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope)
         ?: error<ErrorStatement>()
-    val start = if (declSpec.isEmpty()) block.tokenRange else declSpec.tokenRange
-    return FunctionDefinition(declSpec, funDecl, block, funType).withRange(start..block.tokenRange)
+    val start = if (declSpec.isEmpty()) block else declSpec
+    return FunctionDefinition(declSpec, funDecl, block, funType).withRange(start..block)
   }
 
   /**
@@ -131,7 +131,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     if (returnType is FunctionType || returnType is ArrayType) diagnostic {
       id = DiagnosticId.INVALID_RET_TYPE
       formatArgs(if (returnType is FunctionType) "function" else "array", returnType)
-      columns(declarator.tokenRange)
+      columns(declarator.range)
     }
   }
 

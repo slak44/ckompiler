@@ -61,7 +61,7 @@ private fun IRLoweringContext.joinToString(sourceCode: String, print: CodePrinti
   } else {
     src.joinToString("\n") {
       when (print) {
-        CodePrintingMethods.SOURCE_SUBSTRING -> sourceCode.substring(it.tokenRange).trim()
+        CodePrintingMethods.SOURCE_SUBSTRING -> sourceCode.substring(it.range).trim()
         CodePrintingMethods.EXPRESSION_TO_STRING -> it.toString()
         else -> throw IllegalStateException("The other case is checked above")
       }

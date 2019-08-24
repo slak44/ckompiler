@@ -1,6 +1,7 @@
 package slak.ckompiler.parser
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.SourcedRange
 import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
@@ -12,38 +13,18 @@ val ExternalDeclaration.fn get() = this as FunctionDefinition
 val BlockItem.st get() = (this as StatementItem).statement
 val BlockItem.decl get() = (this as DeclarationItem).declaration
 
-infix fun LexicalToken.until(other: LexicalToken): IntRange = this.startIdx until other.startIdx
-
-operator fun LexicalToken.rangeTo(other: LexicalToken): IntRange {
-  if (srcFileName != other.srcFileName) {
-    logger.warn("Creating token range across files") {
-      "this: $srcFileName, other: ${other.srcFileName}"
-    }
-  }
-  return startIdx until (other.startIdx + other.consumedChars)
-}
-
-operator fun IntRange.rangeTo(other: IntRange) = this.first..other.last
-
-operator fun LexicalToken.rangeTo(other: ASTNode) = this.startIdx..other.tokenRange.last
-
-operator fun ASTNode.rangeTo(other: LexicalToken) =
-    tokenRange.first until (other.startIdx + other.consumedChars)
-
-operator fun ASTNode.rangeTo(other: ASTNode) = tokenRange..other.tokenRange
-
 /**
  * Base class of all nodes from an Abstract Syntax Tree.
  * @param isRoot set to true if this [ASTNode] is the root node for the tree
  */
-sealed class ASTNode(val isRoot: Boolean = false) {
+sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
   private var lateTokenRange: IntRange? = null
 
   /**
    * The range of 'stuff' in this node. Usually created from [LexicalToken]'s range data.
    * @throws slak.ckompiler.InternalCompilerError if accessed on a node without a range set
    */
-  val tokenRange: IntRange by lazy {
+  override val range: IntRange by lazy {
     if (lateTokenRange == null) {
       logger.throwICE("Attempt to access missing token range data") { this }
     }
@@ -157,7 +138,7 @@ data class TypedIdentifier(override val name: String,
 ) : Expression(), OrdinaryIdentifier, Terminal {
   constructor(ds: DeclarationSpecifier,
               decl: NamedDeclarator) : this(decl.name.name, typeNameOf(ds, decl)) {
-    withRange(decl.name.tokenRange)
+    withRange(decl.name.range)
   }
 
   var id = varCounter()
@@ -167,7 +148,7 @@ data class TypedIdentifier(override val name: String,
 
   /**
    * Makes a copy of this [TypedIdentifier], that has the same [id].
-   * Useful for having a different [tokenRange].
+   * Useful for having a different [range].
    */
   fun copy(): TypedIdentifier {
     val other = TypedIdentifier(name, type)
@@ -464,7 +445,7 @@ data class ExpressionInitializer(val expr: Expression) : Initializer() {
   override fun toString() = expr.toString()
 
   companion object {
-    fun from(expr: Expression) = ExpressionInitializer(expr).withRange(expr.tokenRange)
+    fun from(expr: Expression) = ExpressionInitializer(expr).withRange(expr.range)
   }
 }
 
@@ -671,7 +652,7 @@ class ErrorInitializer : ForInitializer(), ErrorNode by ErrorNodeImpl
 
 data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   init {
-    withRange(value.tokenRange)
+    withRange(value.range)
   }
 
   override fun toString() = value.toString()
@@ -679,7 +660,7 @@ data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
 
 data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
   init {
-    withRange(value.tokenRange)
+    withRange(value.range)
   }
 }
 

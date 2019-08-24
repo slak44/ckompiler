@@ -3,7 +3,6 @@ package slak.ckompiler.analysis
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
-import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Terminal
 import slak.ckompiler.parser.VoidType
@@ -54,7 +53,7 @@ class CFG(val f: FunctionDefinition,
       if (f.functionType.returnType != VoidType) diagnostic {
         id = DiagnosticId.CONTROL_END_OF_NON_VOID
         formatArgs(f.name, f.functionType.returnType.toString())
-        column(f.tokenRange.last)
+        column(f.range.last)
       }
       // Either way, terminate the blocks with a fake return
       it.terminator = ImpossibleJump(newBlock(), returned = null)
@@ -478,7 +477,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
     for (succ in node.successors) succ.preds -= node
     for (deadCode in node.irContext.src.filterNot { it is Terminal }) diagnostic {
       id = DiagnosticId.UNREACHABLE_CODE
-      columns(deadCode.tokenRange)
+      columns(deadCode.range)
     }
   }
   return nodesImpl

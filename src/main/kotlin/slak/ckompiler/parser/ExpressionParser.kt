@@ -1,10 +1,7 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.ITokenHandler
+import slak.ckompiler.*
 import slak.ckompiler.lexer.*
-import slak.ckompiler.throwICE
 
 interface IExpressionParser {
   /**
@@ -164,8 +161,8 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
       id = DiagnosticId.INVALID_ARGS_TERNARY
       formatArgs(success.type.toString(), failure.type.toString())
       errorOn(qmark)
-      columns(success.tokenRange)
-      columns(success.tokenRange)
+      columns(success.range)
+      columns(success.range)
     }
     return TernaryConditional(
         cond,
@@ -280,7 +277,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
       if (called.type != ErrorType) diagnostic {
         id = DiagnosticId.CALL_OBJECT_TYPE
         formatArgs(called.type)
-        columns(called.tokenRange)
+        columns(called.range)
       }
       return error<ErrorExpression>()
     }

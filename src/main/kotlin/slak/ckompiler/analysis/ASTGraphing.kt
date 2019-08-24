@@ -2,6 +2,7 @@ package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.parser.*
+import slak.ckompiler.rangeTo
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger("ASTGraphing")
@@ -132,11 +133,11 @@ private fun graphTernary(
   val elseBlock = root.newBlock()
 
   val assignTrue = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.success)
-      .withRange(ternary.success.tokenRange)
+      .withRange(ternary.success.range)
   val ifNext = graphExprRegular(root, ifBlock, assignTrue)
 
   val assignFalse = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.failure)
-      .withRange(ternary.failure.tokenRange)
+      .withRange(ternary.failure.range)
   val elseNext = graphExprRegular(root, elseBlock, assignFalse)
 
   val afterIfBlock = root.newBlock()

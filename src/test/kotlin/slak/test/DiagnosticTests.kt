@@ -144,7 +144,7 @@ class DiagnosticTests {
     """.trimIndent()
     val p = prepareCode(src, source)
     val declarator = assertNotNull(p.root.decls[1] as? Declaration).declaratorList[0]
-    val callRange = assertNotNull(declarator.second).tokenRange
+    val callRange = assertNotNull(declarator.second).range
     val diag = createDiagnostic {
       sourceText = src
       columns(callRange)

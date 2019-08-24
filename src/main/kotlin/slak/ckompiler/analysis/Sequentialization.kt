@@ -39,7 +39,7 @@ private val ternaryIds = IdCounter()
 private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
   is FunctionCall -> {
-    FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e.tokenRange)
+    FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e.range)
   }
   is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {
     val incDec = (e as IncDecOperation).expr
@@ -47,7 +47,7 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     else sequencedAfter += e
     if (incDec is TypedIdentifier) {
       modifications.getOrPut(incDec, ::mutableListOf).add(e)
-      incDec.copy().withRange(incDec.tokenRange)
+      incDec.copy().withRange(incDec.range)
     } else {
       // FIXME: we might need to make a copy of lhs, like we do for the other case
       //  let's just see if this is a problem first
@@ -62,7 +62,7 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
       sequencedBefore += e
       if (e.lhs is TypedIdentifier) {
         modifications.getOrPut(e.lhs, ::mutableListOf).add(e)
-        e.lhs.copy().withRange(e.lhs.tokenRange)
+        e.lhs.copy().withRange(e.lhs.range)
       } else {
         // FIXME: we might need to make a copy of lhs, like we do for the other case
         //  let's just see if this is a problem first
@@ -72,16 +72,16 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
       sequencedBefore += sequentialize(e.lhs).toList()
       seqImpl(e.rhs)
     } else {
-      BinaryExpression(e.op, seqImpl(e.lhs), seqImpl(e.rhs)).withRange(e.tokenRange)
+      BinaryExpression(e.op, seqImpl(e.lhs), seqImpl(e.rhs)).withRange(e.range)
     }
   }
   is TernaryConditional -> {
     val fakeAssignable = TypedIdentifier("__ternary_target_${ternaryIds()}", e.type)
-        .withRange(e.tokenRange)
+        .withRange(e.range)
     // Don't sequentialize e.success/e.failure, because one of them will not be executed
     // This is dealt with more in ASTGraphing
     sequencedBefore += BinaryExpression(BinaryOperators.ASSIGN, fakeAssignable, e)
-        .withRange(e.tokenRange)
+        .withRange(e.range)
     fakeAssignable
   }
   is CastExpression, is ArraySubscript, is UnaryExpression,
@@ -124,8 +124,8 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
     id = DiagnosticId.UNSEQUENCED_MODS
     formatArgs(variable.name)
     for (mod in modList) when (mod) {
-      is BinaryExpression -> columns(mod.lhs.tokenRange)
-      is IncDecOperation -> columns(mod.tokenRange)
+      is BinaryExpression -> columns(mod.lhs.range)
+      is IncDecOperation -> columns(mod.range)
       else -> logger.throwICE("Modification doesn't modify anything") { mod }
     }
   }
