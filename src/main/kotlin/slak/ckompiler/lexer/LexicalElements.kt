@@ -415,3 +415,15 @@ fun IDebugHandler.integerConstant(s: String, currentOffset: Int): IntegralConsta
   }
   return null
 }
+
+/** C standard: A.1.8 */
+fun headerName(s: String): LexicalToken? {
+  val quote = s[0]
+  if (quote != '<' && quote != '"') return null
+  val otherQuote = if (s[0] == '<') '>' else '"'
+  val endIdx = s.drop(1).indexOfFirst { it == '\n' || it == otherQuote }
+  if (endIdx == -1 || s[1 + endIdx] == '\n') {
+    return ErrorToken(if (endIdx == -1) s.length else 1 + endIdx)
+  }
+  return HeaderName(s.slice(1..endIdx), quote)
+}

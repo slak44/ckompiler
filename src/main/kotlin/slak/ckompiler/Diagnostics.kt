@@ -23,6 +23,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // Preprocessor/Lexer
   TRIGRAPH_IGNORED(WARNING, "Trigraph ignored"),
   TRIGRAPH_PROCESSED(WARNING, "Trigraph converted to '%s' character"),
+  EXPECTED_HEADER_NAME(ERROR, "Expected \"FILENAME\" or <FILENAME>"),
   EXPECTED_H_Q_CHAR_SEQUENCE(ERROR, "Expected %cFILENAME%c"),
   EMPTY_CHAR_CONSTANT(ERROR, "Empty character constant"),
   INVALID_SUFFIX(ERROR, "Invalid suffix '%s' on %s constant"),
@@ -285,7 +286,7 @@ interface IDebugHandler {
  */
 class DebugHandler(private val diagSource: String,
                    private val srcFileName: SourceFileName,
-                   private val srcText: String) : IDebugHandler {
+                   val srcText: String) : IDebugHandler {
   override val logger: Logger = LogManager.getLogger(diagSource)
   override val diags = mutableListOf<Diagnostic>()
 

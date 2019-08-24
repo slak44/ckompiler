@@ -121,14 +121,6 @@ class PreprocessingTests {
     assertEquals(l.tokens, test1.tokens)
   }
 
-  @Disabled("We don't implement #including macro'd things yet, and the PP takes that path here")
-  @Test
-  fun `Header Name Unfinished Sequence`() {
-    assertPPDiagnostic("#include <test.h", source, DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
-    assertPPDiagnostic("#include \"test.h", source, DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
-    assertPPDiagnostic("#include <test.h\n>", source, DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE)
-  }
-
   @Test
   fun `Trigraphs Recognized`() {
     assertPPDiagnostic("??< ??>", source,
@@ -150,39 +142,6 @@ class PreprocessingTests {
     assertPPDiagnostic("#error This is an error.\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
     assertPPDiagnostic("#error This is an error.->23&&\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
     assertPPDiagnostic("#error 123sdadg\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
-  }
-
-  @Test
-  fun `Define Directive Errors`() {
-    assertPPDiagnostic("#define", source, DiagnosticId.MACRO_NAME_MISSING)
-    assertPPDiagnostic("#define;", source, DiagnosticId.MACRO_NAME_NOT_IDENT)
-    assertPPDiagnostic("#define ;", source, DiagnosticId.MACRO_NAME_NOT_IDENT)
-    assertPPDiagnostic("#define ()", source, DiagnosticId.MACRO_NAME_NOT_IDENT)
-    assertPPDiagnostic("#define ASD\n#define ASD 123", source,
-        DiagnosticId.MACRO_REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
-    assertPPDiagnostic("#define ASD\n#define ASD", source)
-    assertPPDiagnostic("#define ASD 123\n#define ASD 123", source)
-  }
-
-  @Test
-  fun `Define Directive Eats Line After Error`() {
-    val l = preparePP("#define ; asdf 123", source)
-    l.assertDiags(DiagnosticId.MACRO_NAME_NOT_IDENT)
-    assert(l.tokens.isEmpty())
-  }
-
-  @Test
-  fun `Literal LPAREN In Define Directive Is Valid`() {
-    val l = preparePP("#define LEFT_PAREN_OBJECT_MACRO (", source)
-    l.assertNoDiagnostics()
-    assert(l.tokens.isEmpty())
-  }
-
-  @Test
-  fun `Define Directive With No Replacement List Parsing`() {
-    val l = preparePP("#define FOO bar", source)
-    l.assertNoDiagnostics()
-    assert(l.tokens.isEmpty())
   }
 
   @Test

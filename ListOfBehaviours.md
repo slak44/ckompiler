@@ -13,6 +13,8 @@ type `unsigned int`
 - (J.3.1/5.1.1.2.0.1.3): Sequences of whitespace are retained in
 translation phase 3
 - (J.3.4/5.2.2.0.3): Escape sequences produce the relevant ASCII codes
+- (6.10.2.0.4): Macro replaced `#include` directives are resolved using
+diagnostic information for the given pp-tokens
 
 # List of Undefined Behaviours
 

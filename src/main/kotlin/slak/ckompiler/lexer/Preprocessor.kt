@@ -260,34 +260,35 @@ private class PPParser(
   }
 
   private fun evaluateConstExpr(e: List<LexicalToken>, directiveName: String): Boolean {
-    // FIXME: do macro replacement on the given list here
     val processedToks = mutableListOf<LexicalToken>()
     var idx = 0
     while (idx < e.size) {
       val it = e[idx]
-      if (it !is Identifier) {
-        processedToks += it
-        idx++
-        continue
-      }
-      if (it.name == "defined") {
+      if (it is Identifier && it.name == "defined") {
         val (tok, count) = handleDefinedOperator(idx, e)
         tok ?: return false
         idx += count
         processedToks += tok
         continue
       }
-      diagnostic {
-        id = DiagnosticId.NOT_DEFINED_IS_0
-        formatArgs(it.name)
-        columns(it.range)
-      }
-      processedToks += IntegralConstant.zero().copyDebugFrom(it)
+      processedToks += it
       idx++
     }
-    val pm = ParenMatcher(this, TokenHandler(processedToks, this))
+    val replaced = doMacroReplacement(processedToks).map {
+      if (it is Identifier) {
+        diagnostic {
+          id = DiagnosticId.NOT_DEFINED_IS_0
+          formatArgs(it.name)
+          columns(it.range)
+        }
+        IntegralConstant.zero().copyDebugFrom(it)
+      } else {
+        it
+      }
+    }
+    val pm = ParenMatcher(this, TokenHandler(replaced, this))
     val p = ConstantExprParser(pm, ConstantExprType.PREPROCESSOR)
-    val it = p.parseExpr(processedToks.size)
+    val it = p.parseExpr(replaced.size)
     if (p.isNotEaten()) diagnostic {
       id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
       formatArgs("#$directiveName")
@@ -486,6 +487,30 @@ private class PPParser(
     objectDefines[definedIdent] = replacementList
   }
 
+  private fun doMacroReplacement(ident: Identifier): List<LexicalToken> {
+    val replacementList = objectDefines[ident] ?: return listOf(ident)
+    val shouldRecurse = replacementList.any { it is Identifier && it in objectDefines }
+    return if (shouldRecurse) doMacroReplacement(replacementList) else replacementList
+  }
+
+  /**
+   * Does macro-replacement on the given token list. No-op if no macro names found. Returns a
+   * recursively-macro-replaced token list.
+   *
+   * FIXME: handle function-like macros
+   */
+  private fun doMacroReplacement(toks: List<LexicalToken>): List<LexicalToken> {
+    val res = mutableListOf<LexicalToken>()
+    for (tok in toks) {
+      if (tok is Identifier) {
+        res += doMacroReplacement(tok)
+      } else {
+        res += tok
+      }
+    }
+    return res
+  }
+
   private fun processInclude(header: HeaderName) {
     val includedFile = includePaths.search(header.data, currentDir, header.kind == '<')
     if (includedFile == null) {
@@ -512,8 +537,41 @@ private class PPParser(
         debugHandler = recursiveDH
     )
     debugHandler.diags += recursiveDH.diags
-    // FIXME: there are going to be problems here when implementing macro replacements
+    objectDefines.clear()
+    objectDefines += p.objectDefines
     outTokens += p.outTokens
+  }
+
+  /**
+   * Parses #include directives that require macro replacement.
+   */
+  private fun macroReplacedInclude(): HeaderName? = tokenContext(tokenCount) { afterInclude ->
+    val replacedName = doMacroReplacement(afterInclude)
+    val targetText =
+        replacedName.joinToString("") { debugHandler.srcText.slice(it.range) }
+    val actualHeaderName = headerName(targetText)
+    if (actualHeaderName == null) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_HEADER_NAME
+        errorOn(current())
+      }
+      return@tokenContext null
+    }
+    if (actualHeaderName !is HeaderName) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE
+        formatArgs(targetText[0], if (targetText[0] == '<') '>' else '"')
+        errorOn(current())
+      }
+      return@tokenContext null
+    }
+    if (targetText.length != actualHeaderName.consumedChars) diagnostic {
+      id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
+      formatArgs("#include")
+      val strLeft = targetText.drop(actualHeaderName.consumedChars)
+      columns(current().startIdx until (current().startIdx + strLeft.length))
+    }
+    return@tokenContext actualHeaderName
   }
 
   /**
@@ -531,7 +589,9 @@ private class PPParser(
       extraTokensOnLineDiag("include")
       processInclude(header)
     } else {
-      TODO("we must do macro replacements on this line, and try to find a header name again")
+      val header = macroReplacedInclude()
+      eatUntil(tokenCount)
+      if (header != null) processInclude(header)
     }
     return true
   }
@@ -563,7 +623,10 @@ private class PPParser(
       eatUntil(tokenCount)
       return true
     }
-    if (current().asPunct() == Punctuators.LPAREN && whitespaceBefore[currentIdx].isEmpty()) {
+    eat() // The definedIdent
+    if (isNotEaten() &&
+        current().asPunct() == Punctuators.LPAREN &&
+        whitespaceBefore[currentIdx].isEmpty()) {
       TODO("function-y macros aren't implemented yet")
     }
     // Everything else until the newline is part of the `replacement-list`
@@ -662,7 +725,7 @@ private class PPParser(
     tokenContext(lineEndIdx) {
       // `text-line` in the standard
       if (current().asPunct() != Punctuators.HASH) {
-        outTokens += it
+        outTokens += doMacroReplacement(it)
         eatUntil(lineEndIdx)
         return@tokenContext
       }
@@ -743,8 +806,11 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
     if (whitespaceBefore.size != ppTokens.size) logger.throwICE("Size mismatch in Lexer")
   }
 
-  /** C standard: A.1.8, 6.4.0.4 */
-  private fun headerName(s: String): LexicalToken? {
+  /**
+   * Finds regular header name tokens (ie not macro-replaced).
+   * C standard: A.1.8, 6.4.0.4
+   */
+  private fun directHeaderName(s: String): LexicalToken? {
     // We are required by 6.4.0.4 to only recognize the `header-name` pp-token within #include or
     // #pragma directives
     val canBeHeaderName = ppTokens.size > 1 &&
@@ -752,19 +818,7 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
         (ppTokens[ppTokens.size - 1] == Identifier("include") ||
             ppTokens[ppTokens.size - 1] == Identifier("pragma"))
     if (!canBeHeaderName) return null
-    val quote = s[0]
-    if (quote != '<' && quote != '"') return null
-    val otherQuote = if (s[0] == '<') '>' else '"'
-    val endIdx = s.drop(1).indexOfFirst { it == '\n' || it == otherQuote }
-    if (endIdx == -1 || s[1 + endIdx] == '\n') {
-      diagnostic {
-        id = DiagnosticId.EXPECTED_H_Q_CHAR_SEQUENCE
-        formatArgs(quote, otherQuote)
-        column(if (endIdx == -1) currentOffset + s.length else currentOffset + 1 + endIdx)
-      }
-      return ErrorToken(if (endIdx == -1) s.length else 1 + endIdx)
-    }
-    return HeaderName(s.slice(1..endIdx), quote)
+    return headerName(s)
   }
 
   /**
@@ -825,7 +879,7 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
     // floatingConstant before punct
 
     val token =
-        headerName(currentSrc) ?: characterConstant(currentSrc, currentOffset)
+        directHeaderName(currentSrc) ?: characterConstant(currentSrc, currentOffset)
         ?: stringLiteral(currentSrc, currentOffset) ?: floatingConstant(currentSrc, currentOffset)
         ?: integerConstant(currentSrc, currentOffset) ?: identifier(currentSrc) ?: punct(currentSrc)
         ?: logger.throwICE("Extraneous character")

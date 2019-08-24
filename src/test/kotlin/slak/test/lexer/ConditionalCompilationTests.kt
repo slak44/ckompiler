@@ -9,10 +9,6 @@ import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.Punctuators
 import slak.test.*
-import slak.test.assertNoDiagnostics
-import slak.test.assertPPDiagnostic
-import slak.test.preparePP
-import slak.test.source
 
 class ConditionalCompilationTests {
   @Test
@@ -196,7 +192,7 @@ class ConditionalCompilationTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
-    assert(Identifier("TEST") in l.defines.keys)
+    l.assertDefine("TEST", 123)
   }
 
   @Test
@@ -219,7 +215,7 @@ class ConditionalCompilationTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
-    assert(Identifier("TEST") !in l.defines.keys)
+    l.assertNotDefined("TEST")
   }
 
   @Test

@@ -6,6 +6,7 @@ import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 internal fun Preprocessor.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
@@ -84,6 +85,16 @@ internal fun <T : Any> parseSimpleTokens(it: T): LexicalToken = when (it) {
   is Double -> FloatingConstant(it.toString(), FloatingSuffix.NONE, Radix.DECIMAL, null)
   is String -> StringLiteral(it, StringEncoding.CHAR)
   else -> throw IllegalArgumentException("Bad type for simple token")
+}
+
+internal fun <T : Any> Preprocessor.assertDefine(name: String, vararg replacementList: T) {
+  val replList = defines[Identifier(name)]
+  assertNotNull(replList, "$name is not defined")
+  assertEquals(replacementList.map(::parseSimpleTokens).toList(), replList)
+}
+
+internal fun Preprocessor.assertNotDefined(name: String) {
+  assert(Identifier(name) !in defines.keys)
 }
 
 internal fun <T : Any> Preprocessor.assertTokens(vararg tokens: T) =
