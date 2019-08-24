@@ -43,7 +43,8 @@ interface ITokenHandler {
   fun indexOfFirst(block: (LexicalToken) -> Boolean): Int = indexOfFirst(-1, block)
 
   val tokenCount: Int
-  fun current(): LexicalToken
+  val currentIdx: Int
+  fun current(): LexicalToken = tokenAt(currentIdx)
   fun relative(offset: Int): LexicalToken
   fun tokenAt(contextIdx: Int): LexicalToken
 
@@ -97,11 +98,11 @@ class TokenHandler(tokens: List<LexicalToken>, debugHandler: IDebugHandler) :
 
   override fun isEaten(): Boolean = idxStack.peek() >= tokenCount
 
+  override val currentIdx: Int get() = idxStack.peek()
+
   override val tokenCount: Int get() = tokStack.peek().size
 
   override val tokensLeft: Int get() = (tokStack.peek().size - idxStack.peek()).coerceAtLeast(0)
-
-  override fun current(): LexicalToken = tokStack.peek()[idxStack.peek()]
 
   override fun relative(offset: Int): LexicalToken = tokStack.peek()[withOffset(offset)]
 

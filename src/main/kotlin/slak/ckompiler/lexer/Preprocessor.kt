@@ -79,6 +79,7 @@ class Preprocessor(sourceText: String,
     }.toMap()
     val p = PPParser(
         ppTokens = l.ppTokens,
+        whitespaceBefore = l.whitespaceBefore,
         initialDefines = initialDefines + parsedCliDefines,
         includePaths = includePaths,
         currentDir = currentDir,
@@ -112,6 +113,7 @@ class Preprocessor(sourceText: String,
  */
 private class PPParser(
     ppTokens: List<LexicalToken>,
+    private val whitespaceBefore: List<String>,
     initialDefines: Map<Identifier, List<LexicalToken>>,
     private val includePaths: IncludePaths,
     private val currentDir: File,
@@ -332,16 +334,17 @@ private class PPParser(
     eat() // if-group's newline
     var ifSectionStack = 1 // Counts how many if-groups were found
     var lastCondResult = evaluateConstExpr(ifGroupCond, directiveName)
-    var pickedGroup: List<LexicalToken>? = null
+    var pickedGroup: Pair<List<LexicalToken>, List<String>>? = null
     var wasElseFound = false
     var toks = mutableListOf<LexicalToken>()
+    var tokWhitespace = mutableListOf<String>()
 
     // This is here to reduce indent level inside
     fun ifDirectives(ident: Identifier): List<LexicalToken>? {
       eat() // #
       eat() // ident
       if (lastCondResult && pickedGroup == null) {
-        pickedGroup = toks
+        pickedGroup = toks to tokWhitespace
       }
       if ((ident.name == "elif" || ident.name == "else") && wasElseFound) {
         diagnostic {
@@ -373,7 +376,8 @@ private class PPParser(
         // End of if-section; exit function with correct tokens, or with nothing (if the
         // condition was false and there are no elif/else groups)
         val recursiveParser = PPParser(
-            ppTokens = pickedGroup ?: return emptyList(),
+            ppTokens = pickedGroup?.first ?: return emptyList(),
+            whitespaceBefore = pickedGroup?.second ?: return emptyList(),
             initialDefines = defines,
             includePaths = includePaths,
             currentDir = currentDir,
@@ -384,24 +388,28 @@ private class PPParser(
         return recursiveParser.outTokens
       }
       toks = mutableListOf()
+      tokWhitespace = mutableListOf()
       return null
     }
 
     outerLoop@ while (true) {
       while (isNotEaten() && current() == NewLine) {
         toks.add(current())
+        tokWhitespace.add(whitespaceBefore[currentIdx])
         eat()
       }
       if (isEaten()) break
       val possibleHash = current()
       if (possibleHash.asPunct() != Punctuators.HASH) {
         toks.add(possibleHash)
+        tokWhitespace.add(whitespaceBefore[currentIdx])
         eat()
         continue
       }
       // Make sure relative(1) below doesn't crash
       if (tokensLeft < 2) {
         toks.add(possibleHash)
+        tokWhitespace.add(whitespaceBefore[currentIdx])
         eat()
         break
       }
@@ -409,6 +417,8 @@ private class PPParser(
       if (ident == null) {
         toks.add(possibleHash)
         toks.add(relative(1))
+        tokWhitespace.add(whitespaceBefore[currentIdx])
+        tokWhitespace.add(whitespaceBefore[currentIdx + 1])
         eat()
         eat()
         continue
@@ -431,6 +441,7 @@ private class PPParser(
       }
       if (isEaten()) break
       toks.add(current())
+      tokWhitespace.add(whitespaceBefore[currentIdx])
       eat()
     }
     if (ifSectionStack > 0) diagnostic {
@@ -488,7 +499,14 @@ private class PPParser(
     recursiveDH.diags += phase1Diags
     val l = Lexer(recursiveDH, phase3Src, includedFile.absolutePath)
     val p = PPParser(
-        l.ppTokens, defines, includePaths, includedFile.parentFile, ignoreTrigraphs, recursiveDH)
+        ppTokens = l.ppTokens,
+        whitespaceBefore = l.whitespaceBefore,
+        initialDefines = defines,
+        includePaths = includePaths,
+        currentDir = includedFile.parentFile,
+        ignoreTrigraphs = ignoreTrigraphs,
+        debugHandler = recursiveDH
+    )
     debugHandler.diags += recursiveDH.diags
     // FIXME: there are going to be problems here when implementing macro replacements
     outTokens += p.outTokens
@@ -719,6 +737,7 @@ private class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName:
 
   init {
     tokenize()
+    if (whitespaceBefore.size != ppTokens.size) logger.throwICE("Size mismatch in Lexer")
   }
 
   /** C standard: A.1.8, 6.4.0.4 */
