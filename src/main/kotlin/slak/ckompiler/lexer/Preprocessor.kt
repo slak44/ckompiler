@@ -64,6 +64,7 @@ class Preprocessor(sourceText: String,
   private val debugHandler: DebugHandler
   val diags get() = debugHandler.diags
   val tokens: List<LexicalToken>
+  val defines: Map<Identifier, List<LexicalToken>>
 
   init {
     val (phase3Src, phase1Diags) = translationPhase1And2(ignoreTrigraphs, sourceText, srcFileName)
@@ -86,6 +87,7 @@ class Preprocessor(sourceText: String,
         ignoreTrigraphs = ignoreTrigraphs,
         debugHandler = debugHandler
     )
+    defines = p.objectDefines
     tokens = p.outTokens.mapNotNull(::convert)
     diags.forEach { it.print() }
   }
@@ -106,6 +108,8 @@ class Preprocessor(sourceText: String,
   }
 }
 
+typealias ParsedObjectDefines = Map<Identifier, List<LexicalToken>>
+
 /**
  * FIXME: translation phases 5, and 6? should happen around here
  *
@@ -114,7 +118,7 @@ class Preprocessor(sourceText: String,
 private class PPParser(
     ppTokens: List<LexicalToken>,
     private val whitespaceBefore: List<String>,
-    initialDefines: Map<Identifier, List<LexicalToken>>,
+    initialDefines: ParsedObjectDefines,
     private val includePaths: IncludePaths,
     private val currentDir: File,
     private val ignoreTrigraphs: Boolean,
@@ -122,10 +126,10 @@ private class PPParser(
 ) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens, debugHandler) {
 
   val outTokens = mutableListOf<LexicalToken>()
-  private val defines = mutableMapOf<Identifier, List<LexicalToken>>()
+  val objectDefines = mutableMapOf<Identifier, List<LexicalToken>>()
 
   init {
-    defines += initialDefines
+    objectDefines += initialDefines
     parseLine()
   }
 
@@ -193,7 +197,7 @@ private class PPParser(
    */
   private fun handleDefinedOperator(idx: Int, e: List<LexicalToken>): Pair<LexicalToken?, Int> {
     fun definedIdent(ident: Identifier): LexicalToken {
-      val isDefined = defines[ident] != null
+      val isDefined = objectDefines[ident] != null
       val ct = if (isDefined) IntegralConstant.one() else IntegralConstant.zero()
       return ct.copyDebugFrom(ident)
     }
@@ -326,7 +330,7 @@ private class PPParser(
    * Parses `if-section`. Returns null if there is something other than that. Unlike other
    * directives below, this also parses the "#" and is not limited to one line.
    */
-  private fun ifSection(): List<LexicalToken>? {
+  private fun ifSection(): Pair<List<LexicalToken>, ParsedObjectDefines>? {
     if (current().asPunct() != Punctuators.HASH) return null
     if (isEaten()) return null
     val groupStart = safeToken(0)
@@ -340,7 +344,7 @@ private class PPParser(
     var tokWhitespace = mutableListOf<String>()
 
     // This is here to reduce indent level inside
-    fun ifDirectives(ident: Identifier): List<LexicalToken>? {
+    fun ifDirectives(ident: Identifier): Pair<List<LexicalToken>, ParsedObjectDefines>? {
       eat() // #
       eat() // ident
       if (lastCondResult && pickedGroup == null) {
@@ -373,19 +377,19 @@ private class PPParser(
         wasElseFound = true
       }
       if (ident.name == "endif") {
+        if (pickedGroup == null) return emptyList<LexicalToken>() to emptyMap()
         // End of if-section; exit function with correct tokens, or with nothing (if the
         // condition was false and there are no elif/else groups)
         val recursiveParser = PPParser(
-            ppTokens = pickedGroup?.first ?: return emptyList(),
-            whitespaceBefore = pickedGroup?.second ?: return emptyList(),
-            initialDefines = defines,
+            ppTokens = pickedGroup!!.first,
+            whitespaceBefore = pickedGroup!!.second,
+            initialDefines = objectDefines,
             includePaths = includePaths,
             currentDir = currentDir,
             ignoreTrigraphs = ignoreTrigraphs,
             debugHandler = debugHandler
         )
-        // FIXME: deal with nested defines
-        return recursiveParser.outTokens
+        return recursiveParser.outTokens to recursiveParser.objectDefines
       }
       toks = mutableListOf()
       tokWhitespace = mutableListOf()
@@ -452,7 +456,7 @@ private class PPParser(
         "ifSectionStack: $ifSectionStack"
       }
     }
-    return emptyList()
+    return emptyList<LexicalToken>() to emptyMap()
   }
 
   private fun extraTokensOnLineDiag(directiveName: String) {
@@ -467,8 +471,8 @@ private class PPParser(
     }
   }
 
-  private fun addDefineMacro(definedIdent: Identifier, replacementList: List<LexicalToken>) {
-    if (definedIdent in defines && replacementList != defines[definedIdent]) {
+  private fun addDefineObjectMacro(definedIdent: Identifier, replacementList: List<LexicalToken>) {
+    if (definedIdent in objectDefines && replacementList != objectDefines[definedIdent]) {
       diagnostic {
         id = DiagnosticId.MACRO_REDEFINITION
         formatArgs(definedIdent.name)
@@ -476,10 +480,10 @@ private class PPParser(
       }
       diagnostic {
         id = DiagnosticId.REDEFINITION_PREVIOUS
-        columns(defines.keys.first { (name) -> name == definedIdent.name }.range)
+        columns(objectDefines.keys.first { (name) -> name == definedIdent.name }.range)
       }
     }
-    defines[definedIdent] = replacementList
+    objectDefines[definedIdent] = replacementList
   }
 
   private fun processInclude(header: HeaderName) {
@@ -501,7 +505,7 @@ private class PPParser(
     val p = PPParser(
         ppTokens = l.ppTokens,
         whitespaceBefore = l.whitespaceBefore,
-        initialDefines = defines,
+        initialDefines = objectDefines,
         includePaths = includePaths,
         currentDir = includedFile.parentFile,
         ignoreTrigraphs = ignoreTrigraphs,
@@ -565,7 +569,7 @@ private class PPParser(
     // Everything else until the newline is part of the `replacement-list`
     // If there is nothing left, the macro has no replacement list (valid case)
     tokenContext(tokenCount) {
-      addDefineMacro(definedIdent, it)
+      addDefineObjectMacro(definedIdent, it)
       eatUntil(tokenCount)
     }
     return true
@@ -647,9 +651,10 @@ private class PPParser(
     // We aren't interested in leading newlines
     while (isNotEaten() && current() == NewLine) eat()
     if (isEaten()) return
-    val condCode = ifSection()
-    if (condCode != null) {
-      outTokens += condCode
+    val condResult = ifSection()
+    if (condResult != null) {
+      outTokens += condResult.first
+      objectDefines += condResult.second
       return parseLine()
     }
     val newlineIdx = indexOfFirst { it == NewLine }

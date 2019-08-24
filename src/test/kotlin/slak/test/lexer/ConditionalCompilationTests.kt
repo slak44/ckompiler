@@ -188,6 +188,18 @@ class ConditionalCompilationTests {
   }
 
   @Test
+  fun `IfSection Define Is Added`() {
+    val l = preparePP("""
+      #if 1
+      #define TEST 123
+      #endif
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
+    assert(Identifier("TEST") in l.defines.keys)
+  }
+
+  @Test
   fun `IfSection Code Is Not Added`() {
     val l = preparePP("""
       #if 0
@@ -196,6 +208,18 @@ class ConditionalCompilationTests {
     """.trimIndent(), source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
+  }
+
+  @Test
+  fun `IfSection Define Is Not Added`() {
+    val l = preparePP("""
+      #if 0
+      #define TEST 123
+      #endif
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
+    assert(Identifier("TEST") !in l.defines.keys)
   }
 
   @Test
