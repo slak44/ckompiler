@@ -171,6 +171,13 @@ class PreprocessingTests {
   }
 
   @Test
+  fun `Literal LPAREN In Define Directive Is Valid`() {
+    val l = preparePP("#define LEFT_PAREN_OBJECT_MACRO (", source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
+  }
+
+  @Test
   fun `Define Directive With No Replacement List Parsing`() {
     val l = preparePP("#define FOO bar", source)
     l.assertNoDiagnostics()

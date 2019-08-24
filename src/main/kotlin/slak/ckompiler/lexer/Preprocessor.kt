@@ -537,8 +537,6 @@ private class PPParser(
    *
    * FIXME: implement function macros
    *
-   * FIXME: to even detect function macros, we need to know if the lparen was preceded by whitespace
-   *
    * C standard: 6.10.3
    */
   private fun define(): Boolean {
@@ -561,7 +559,7 @@ private class PPParser(
       eatUntil(tokenCount)
       return true
     }
-    if (current().asPunct() == Punctuators.LPAREN) {
+    if (current().asPunct() == Punctuators.LPAREN && whitespaceBefore[currentIdx].isEmpty()) {
       TODO("function-y macros aren't implemented yet")
     }
     // Everything else until the newline is part of the `replacement-list`
