@@ -82,8 +82,8 @@ internal inline infix fun <reified T : Any>
       is String -> nameDecl(it) to null
       is Declarator -> (it as Declarator) to null
       is Pair<*, *> -> {
-        if (it.first !is Declarator) throw IllegalArgumentException("Bad decl type")
-        if (it.second !is Initializer) throw IllegalArgumentException("Bad init type")
+        require(it.first is Declarator) { "Bad decl type" }
+        require(it.second is Initializer) { "Bad init type" }
         @Suppress("UNCHECKED_CAST") // It is checked just above
         it as DeclInit
       }
@@ -158,8 +158,8 @@ internal infix fun String.withParamsV(params: List<ParameterDeclaration>) =
 internal infix fun Pair<DeclarationSpecifier, Declarator>.body(s: Statement): FunctionDefinition {
   val fType = typeNameOf(first, second) as FunctionType
   if (s is ErrorStatement) return FunctionDefinition(first, second, s, fType)
-  if (s !is CompoundStatement) throw IllegalArgumentException("Not compound")
-  if (!second.isFunction()) throw IllegalArgumentException("Not function")
+  require(s is CompoundStatement) { "Not compound" }
+  require(second.isFunction()) { "Not function" }
   val ptl = second.getFunctionTypeList()
   ptl.scope.idents += s.scope.idents
   ptl.scope.labels += s.scope.labels
