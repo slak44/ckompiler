@@ -398,7 +398,13 @@ class PPParser(
     val res = mutableListOf<LexicalToken>()
     for (tok in toks) {
       if (tok is Identifier) {
-        res += doMacroReplacement(tok)
+        res += doMacroReplacement(tok).map {
+          val src = it.cloneSource()
+          it.copyDebugFrom(tok)
+          it.expandedName = tok.name
+          it.expandedFrom = src
+          it
+        }
       } else {
         res += tok
       }
@@ -442,8 +448,10 @@ class PPParser(
    */
   private fun macroReplacedInclude(): HeaderName? = tokenContext(tokenCount) { afterInclude ->
     val replacedName = doMacroReplacement(afterInclude)
-    val targetText =
-        replacedName.joinToString("") { debugHandler.srcText.slice(it.range) }
+    val targetText = replacedName.joinToString("") {
+      if (it.expandedFrom == null) it.sourceText!!.slice(it.range)
+      else it.expandedFrom!!.sourceText!!.slice(it.expandedFrom!!.range)
+    }
     val actualHeaderName = headerName(targetText)
     if (actualHeaderName == null) {
       diagnostic {

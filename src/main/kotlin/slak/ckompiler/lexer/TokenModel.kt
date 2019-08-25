@@ -10,28 +10,23 @@ private val logger = LogManager.getLogger("Tokens")
 /**
  * Represents a token from the lexical grammar.
  * @param consumedChars how many characters long was the token in the SOURCE (ie the data in the
- * token might it appear shorter or longer than it was in the source)
+ * token might appear shorter or longer than it was in the source)
  */
 sealed class LexicalToken(val consumedChars: Int) : SourcedRange {
-  /**
-   * Where the token came from.
-   */
   override var sourceFileName: SourceFileName? = null
-  /**
-   * Reference to the source this token came from.
-   */
   override var sourceText: String? = null
+  override var expandedName: String? = null
+  override var expandedFrom: SourcedRange? = null
+  override var range: IntRange = 0..0
 
   /**
    * At what index within the source the token can be found.
    */
   var startIdx: Int = INVALID_INDEX
     private set(value) {
-      if (field != INVALID_INDEX) logger.throwICE("Trying to overwrite token startIdx") {
-        "field: $field, value: $value"
-      }
       if (value < 0) logger.throwICE("Bad starting idx") { "value: $value" }
       field = value
+      range = startIdx until startIdx + consumedChars
     }
     get() {
       if (field == INVALID_INDEX) {
@@ -40,17 +35,28 @@ sealed class LexicalToken(val consumedChars: Int) : SourcedRange {
       return field
     }
 
-  override val range: IntRange by lazy { startIdx until startIdx + consumedChars }
-
-  fun withDebugData(srcFileName: SourceFileName, sourceText: String, startIdx: Int): LexicalToken {
+  fun withDebugData(
+      srcFileName: SourceFileName,
+      sourceText: String,
+      startIdx: Int,
+      expandedName: String? = null,
+      expandedFrom: SourcedRange? = null
+  ): LexicalToken {
     this.startIdx = startIdx
     this.sourceFileName = srcFileName
     this.sourceText = sourceText
+    this.expandedName = expandedName
+    this.expandedFrom = expandedFrom
     return this
   }
 
-  fun copyDebugFrom(other: LexicalToken) =
-      withDebugData(other.sourceFileName!!, other.sourceText!!, other.startIdx)
+  fun copyDebugFrom(other: LexicalToken) = withDebugData(
+      other.sourceFileName!!,
+      other.sourceText!!,
+      other.startIdx,
+      other.expandedName,
+      other.expandedFrom
+  )
 
   init {
     if (consumedChars == 0) {

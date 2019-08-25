@@ -9,13 +9,13 @@ import java.util.*
  * is the one used for scoping; actual declarations that use this typedef will have their own
  * identifiers
  */
-data class TypedefName(val declSpec: DeclarationSpecifier,
-                       val declarator: NamedDeclarator) : OrdinaryIdentifier {
+data class TypedefName(
+    val declSpec: DeclarationSpecifier,
+    val declarator: NamedDeclarator
+) : OrdinaryIdentifier,
+    // Only highlight the typedef's name in diagnostics, not the entire thing:
+    SourcedRange by declarator.name {
   override val name = declarator.name.name
-  // Only highlight the typedef's name in diagnostics, not the entire thing
-  override val range = declarator.name.range
-  override val sourceFileName = declarator.name.sourceFileName
-  override val sourceText = declarator.name.sourceText
   override val type = typeNameOf(declSpec, declarator)
   override val kindName = "typedef"
 

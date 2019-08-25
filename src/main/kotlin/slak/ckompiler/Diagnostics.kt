@@ -11,6 +11,8 @@ import kotlin.math.min
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
 
+  EXPANDED_FROM(OTHER, "Expanded from macro '%s'"),
+
   // CLI
   BAD_CLI_OPTION(ERROR, "Unrecognized command line option '%s'"),
   FILE_IS_DIRECTORY(ERROR, "File is a directory: '%s'"),
@@ -133,30 +135,62 @@ typealias SourceFileName = String
  * Marks an object that corresponds to a range of indices in the program source.
  */
 interface SourcedRange : ClosedRange<Int> {
+  /**
+   * Name of the translation unit's file. Has other values for test classes. Can be null if unknown.
+   */
   val sourceFileName: SourceFileName?
+  /**
+   * Reference to the source text this ranges is sourced from. Can be null if unknown.
+   */
   val sourceText: String?
+  /**
+   * Actual range inside [sourceText].
+   */
   val range: IntRange
+  /**
+   * Name of the macro this range was expanded from. (null if not macro-expanded)
+   */
+  val expandedName: String?
+  /**
+   * For macro-expanded ranges, the range in the macro. (null if not macro-expanded)
+   * For example:
+   * ```
+   * #define ASD 123 +
+   * int a = ASD;
+   * ```
+   * This creates a diagnostic on the `+` token.
+   * Its `range` will be on the line of `a`'s declaration, on `ASD`.
+   * This property will be on the define's line, at the `+`'s actual position.
+   */
+  val expandedFrom: SourcedRange?
 
   override val endInclusive: Int get() = range.last
   override val start: Int get() = range.first
+
+  fun cloneSource(): SourcedRange =
+      ClonedSourcedRange(sourceFileName, sourceText, range, expandedName, expandedFrom)
 }
 
 fun ClosedRange<Int>.length() = endInclusive + 1 - start
 
-private data class CompoundSourcedRange(
+private data class ClonedSourcedRange(
     override val sourceFileName: SourceFileName?,
     override val sourceText: String?,
-    override val range: IntRange
+    override val range: IntRange,
+    override val expandedName: String?,
+    override val expandedFrom: SourcedRange?
 ) : SourcedRange
 
 private fun combineSources(combinedRange: IntRange,
                            src1: SourcedRange,
                            src2: SourcedRange): SourcedRange = when {
   src1.sourceFileName == null -> {
-    CompoundSourcedRange(src2.sourceFileName, src2.sourceText, combinedRange)
+    ClonedSourcedRange(
+        src2.sourceFileName, src2.sourceText, combinedRange, src2.expandedName, src2.expandedFrom)
   }
   src2.sourceFileName == null || src1.sourceFileName == src2.sourceFileName -> {
-    CompoundSourcedRange(src1.sourceFileName, src1.sourceText, combinedRange)
+    ClonedSourcedRange(
+        src1.sourceFileName, src1.sourceText, combinedRange, src1.expandedName, src1.expandedFrom)
   }
   else -> throw IllegalArgumentException(
       "Trying to combine disjoint sources (${src1.sourceFileName} vs ${src2.sourceFileName})")
@@ -239,7 +273,18 @@ data class Diagnostic(
         .fold(originalCaretLine) { caretLine, it ->
           caretLine.replaceRange(it, "~".repeat(it.length()))
         }
-    return@lazy "$firstLine\n$lineText\n${color.green(caretLine)}"
+    val expandedDiags = sourceColumns
+        .asSequence()
+        .filter { it.expandedFrom != null }
+        .map { Diagnostic(
+            DiagnosticId.EXPANDED_FROM,
+            listOf(it.expandedName!!),
+            listOf(it.expandedFrom!!),
+            origin
+        ) }
+        .joinToString("\n") { it.printable }
+        .let { if (it.isNotEmpty()) "\n$it" else it }
+    return@lazy "$firstLine\n$lineText\n${color.green(caretLine)}$expandedDiags"
   }
 
   fun print() = println(printable)
@@ -261,11 +306,11 @@ class DiagnosticBuilder {
   private var sourceColumns = mutableListOf<SourcedRange>()
 
   fun column(col: Int) {
-    sourceColumns.add(CompoundSourcedRange(sourceFileName, sourceText, col..col))
+    sourceColumns.add(ClonedSourcedRange(sourceFileName, sourceText, col..col, null, null))
   }
 
   fun columns(range: IntRange) {
-    sourceColumns.add(CompoundSourcedRange(sourceFileName, sourceText, range))
+    sourceColumns.add(ClonedSourcedRange(sourceFileName, sourceText, range, null, null))
   }
 
   fun errorOn(obj: SourcedRange) {

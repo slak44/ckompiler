@@ -23,6 +23,8 @@ sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
 
   override var sourceText: String? = null
   override var sourceFileName: SourceFileName? = null
+  override var expandedName: String? = null
+  override var expandedFrom: SourcedRange? = null
 
   /**
    * The range of 'stuff' in this node. Usually created from [LexicalToken]'s range data.
