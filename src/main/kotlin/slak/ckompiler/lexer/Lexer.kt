@@ -106,7 +106,7 @@ class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceF
       id = DiagnosticId.EMPTY_CHAR_CONSTANT
       columns(currentOffset..(currentOffset + 1))
     }
-    ppTokens += token.withDebugData(srcFileName, currentOffset)
+    ppTokens += token.withDebugData(srcFileName, originalSource, currentOffset)
     whitespaceBefore += currentWhitespace.toString()
     currentWhitespace.clear()
     dropChars(token.consumedChars)

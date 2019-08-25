@@ -21,6 +21,7 @@ val BlockItem.decl get() = (this as DeclarationItem).declaration
 sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
   private var lateTokenRange: IntRange? = null
 
+  override var sourceText: String? = null
   override var sourceFileName: SourceFileName? = null
 
   /**
@@ -37,10 +38,11 @@ sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
   /** Sets this node's token range. */
   fun setRange(src: SourcedRange) {
     if (src.range.first > src.range.last) {
-      logger.throwICE("Bad token range on ASTNode") { "this: $this, range: $range" }
+      logger.throwICE("Bad token range on ASTNode") { "this: $this, range: $src" }
     }
     lateTokenRange = src.range
     sourceFileName = src.sourceFileName
+    sourceText = src.sourceText
   }
 
   override fun equals(other: Any?) = other is ASTNode

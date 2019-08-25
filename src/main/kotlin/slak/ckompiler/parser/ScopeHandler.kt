@@ -15,6 +15,7 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
   // Only highlight the typedef's name in diagnostics, not the entire thing
   override val range = declarator.name.range
   override val sourceFileName = declarator.name.sourceFileName
+  override val sourceText = declarator.name.sourceText
   override val type = typeNameOf(declSpec, declarator)
   override val kindName = "typedef"
 

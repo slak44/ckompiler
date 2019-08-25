@@ -135,6 +135,7 @@ typealias SourceFileName = String
  */
 interface SourcedRange : ClosedRange<Int> {
   val sourceFileName: SourceFileName?
+  val sourceText: String?
   val range: IntRange
 
   override val endInclusive: Int get() = range.last
@@ -145,67 +146,67 @@ fun ClosedRange<Int>.length() = endInclusive + 1 - start
 
 private data class CompoundSourcedRange(
     override val sourceFileName: SourceFileName?,
+    override val sourceText: String?,
     override val range: IntRange
 ) : SourcedRange
-private fun combineSources(src1: SourceFileName?, src2: SourceFileName?): SourceFileName? = when {
-  src1 == null -> src2
-  src2 == null -> src1
-  src1 == src2 -> src1
-  else -> null
+
+private fun combineSources(combinedRange: IntRange,
+                           src1: SourcedRange,
+                           src2: SourcedRange): SourcedRange = when {
+  src1.sourceFileName == null -> {
+    CompoundSourcedRange(src2.sourceFileName, src2.sourceText, combinedRange)
+  }
+  src2.sourceFileName == null || src1.sourceFileName == src2.sourceFileName -> {
+    CompoundSourcedRange(src1.sourceFileName, src1.sourceText, combinedRange)
+  }
+  else -> throw IllegalArgumentException(
+      "Trying to combine disjoint sources (${src1.sourceFileName} vs ${src2.sourceFileName})")
 }
 
 infix fun SourcedRange.until(other: SourcedRange): SourcedRange {
   val range = range.first until other.range.first
-  val srcFile = combineSources(sourceFileName, other.sourceFileName)
-  return CompoundSourcedRange(srcFile, range)
+  return combineSources(range, this, other)
 }
 
 operator fun SourcedRange.rangeTo(other: SourcedRange): SourcedRange {
   val range = range.first..other.range.last
-  val srcFile = combineSources(sourceFileName, other.sourceFileName)
-  return CompoundSourcedRange(srcFile, range)
+  return combineSources(range, this, other)
 }
 
-data class Diagnostic(val id: DiagnosticId,
-                      val messageFormatArgs: List<Any>,
-                      val sourceFileName: SourceFileName,
-                      val sourceText: String,
-                      val sourceColumns: List<SourcedRange>,
-                      val origin: String) {
+data class Diagnostic(
+    val id: DiagnosticId,
+    val messageFormatArgs: List<Any>,
+    val sourceColumns: List<SourcedRange>,
+    val origin: String
+) {
   private val caret: SourcedRange get() = sourceColumns[0]
 
-  private fun errorOfCol(col: SourcedRange): Triple<Int, Int, String> {
+  internal fun dataFor(col: SourcedRange): Triple<Int, Int, String> {
+    if (col.sourceText!!.isEmpty()) return Triple(1, 0, "")
     var currLine = 1
     var currLineStart = 0
     var currLineText = ""
-    for ((idx, it) in sourceText.withIndex()) {
+    for ((idx, it) in col.sourceText!!.withIndex()) {
       if (it == '\n') {
-        currLineText = sourceText.slice(currLineStart until idx)
+        currLineText = col.sourceText!!.slice(currLineStart until idx)
         if (col.range.first in currLineStart..idx) {
           break
         }
         currLine++
         currLineStart = idx + 1
       }
-      if (idx == sourceText.length - 1) {
-        currLineText = sourceText.slice(currLineStart until sourceText.length)
+      if (idx == col.sourceText!!.length - 1) {
+        currLineText = col.sourceText!!.slice(currLineStart until col.sourceText!!.length)
       }
     }
     return Triple(currLine, col.range.first - currLineStart, currLineText)
   }
 
-  /**
-   * @returns (line, col, lineText) of the [col] in the [sourceText]
-   */
-  fun errorOf(col: SourcedRange?): Triple<Int, Int, String> = when {
-    sourceText.isEmpty() -> Triple(1, 0, "")
-    col != null -> errorOfCol(col)
-    else -> Triple(-1, -1, "???")
-  }
-
   private val printable: String by lazy {
     val color = TermColors(if (useColors) TermColors.Level.TRUECOLOR else TermColors.Level.NONE)
-    val (line, col, lineText) = errorOf(if (sourceColumns.isNotEmpty()) caret else null)
+    val (line, col, lineText) =
+        if (sourceColumns.isNotEmpty()) dataFor(caret)
+        else Triple(-1, -1, "???")
     // Yes, it makes a copy, but interacting with String.format is basically impossible otherwise
     @SuppressWarnings("SpreadOperator")
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
@@ -214,9 +215,10 @@ data class Diagnostic(val id: DiagnosticId,
       WARNING -> color.brightMagenta
       OTHER -> color.blue
     }("${id.kind.text}:")
-    val firstLine = "$sourceFileName:$line:$col: $kindText $msg [$origin|${id.name}]"
+    val srcFileName = if (sourceColumns.isNotEmpty()) caret.sourceFileName else "<unknown>"
+    val firstLine = "$srcFileName:$line:$col: $kindText $msg [$origin|${id.name}]"
     // Special case where the file is empty
-    if (sourceText.isEmpty()) return@lazy firstLine
+    if (sourceColumns.isEmpty() || caret.sourceText!!.isEmpty()) return@lazy firstLine
     val spacesCount = max(col, 0)
     val tildeCount = min(
         max(caret.length() - 1, 0), // Size of provided range (caret eats one)
@@ -228,7 +230,7 @@ data class Diagnostic(val id: DiagnosticId,
     val caretLine = sourceColumns
         .asSequence()
         .drop(1)
-        .map { it to errorOf(it) }
+        .map { it to dataFor(it) }
         // FIXME: add tildes for the sourceColumns on different lines
         .filter { it.second.first == line }
         .map {
@@ -260,17 +262,15 @@ class DiagnosticBuilder {
   private var sourceColumns = mutableListOf<SourcedRange>()
 
   fun column(col: Int) {
-    sourceColumns.add(CompoundSourcedRange(sourceFileName, col..col))
+    sourceColumns.add(CompoundSourcedRange(sourceFileName, sourceText, col..col))
   }
 
   fun columns(range: IntRange) {
-    sourceColumns.add(CompoundSourcedRange(sourceFileName, range))
+    sourceColumns.add(CompoundSourcedRange(sourceFileName, sourceText, range))
   }
 
   fun errorOn(obj: SourcedRange) {
-    require(obj.sourceFileName == null || sourceFileName == obj.sourceFileName) {
-      "Diagnostic source differs from SourcedRange source: $sourceFileName vs ${obj.sourceFileName}"
-    }
+    require(obj.sourceFileName != null || obj.sourceText != null) { "SourcedRange source is null" }
     sourceColumns.add(obj)
   }
 
@@ -285,8 +285,7 @@ class DiagnosticBuilder {
     messageFormatArgs = args.toList()
   }
 
-  fun create() =
-      Diagnostic(id, messageFormatArgs, sourceFileName, sourceText, sourceColumns, origin)
+  fun create() = Diagnostic(id, messageFormatArgs, sourceColumns, origin)
 }
 
 fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {

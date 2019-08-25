@@ -70,7 +70,6 @@ private class TranslationUnitParser(private val specParser: SpecParser,
   val root = RootNode(rootScope)
 
   init {
-    if (tokenCount > 0) root.setRange(tokenAt(0) until relative(tokenCount - 1))
     translationUnit()
     val isTranslationUnitEmpty =
         root.decls.isEmpty() && rootScope.tagNames.isEmpty() && rootScope.idents.isEmpty()

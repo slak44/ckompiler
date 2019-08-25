@@ -9,7 +9,8 @@ import slak.ckompiler.parser.Char
 internal val Keywords.kw get() = Keyword(this)
 
 private object ZeroRange : SourcedRange {
-  override val sourceFileName: SourceFileName? = null
+  override val sourceFileName: SourceFileName? = javaClass.simpleName
+  override val sourceText: String? = ""
   override val range: IntRange = 0..0
 }
 

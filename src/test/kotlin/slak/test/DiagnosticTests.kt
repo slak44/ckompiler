@@ -40,7 +40,7 @@ class DiagnosticTests {
                                              line: Int? = null,
                                              col: Int? = null,
                                              colCount: Int? = null) {
-    val (errLine, errCol, _) = errorOf(sourceColumns[sourceColIdx])
+    val (errLine, errCol, _) = dataFor(sourceColumns[sourceColIdx])
     line?.let { assertEquals(line, errLine) }
     col?.let { assertEquals(col, errCol) }
     colCount?.let { assertEquals(it, sourceColumns[sourceColIdx].length()) }
