@@ -5,7 +5,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.message.ObjectMessage
 import slak.ckompiler.DiagnosticKind.*
-import kotlin.math.max
 import kotlin.math.min
 
 // FIXME: learn from "http://blog.llvm.org/2010/04/amazing-feats-of-clang-error-recovery.html"
@@ -219,12 +218,12 @@ data class Diagnostic(
     val firstLine = "$srcFileName:$line:$col: $kindText $msg [$origin|${id.name}]"
     // Special case where the file is empty
     if (sourceColumns.isEmpty() || caret.sourceText!!.isEmpty()) return@lazy firstLine
-    val spacesCount = max(col, 0)
+    val spacesCount = col.coerceAtLeast(0)
     val tildeCount = min(
-        max(caret.length() - 1, 0), // Size of provided range (caret eats one)
-        max(lineText.length - spacesCount + 1, 0) // Size of spaces + 1 for the caret
+        (caret.length() - 1).coerceAtLeast(0), // Size of provided range (caret eats one)
+        (lineText.length - spacesCount + 1).coerceAtLeast(0) // Size of spaces + 1 for the caret
     )
-    val spacesLeftAfterCaret = max(lineText.length - spacesCount - tildeCount - 1, 0)
+    val spacesLeftAfterCaret = (lineText.length - spacesCount - tildeCount - 1).coerceAtLeast(0)
     val originalCaretLine =
         " ".repeat(spacesCount) + '^' + "~".repeat(tildeCount) + " ".repeat(spacesLeftAfterCaret)
     val caretLine = sourceColumns
@@ -234,8 +233,8 @@ data class Diagnostic(
         // FIXME: add tildes for the sourceColumns on different lines
         .filter { it.second.first == line }
         .map {
-          val startIdx = max(it.second.second, 0)
-          startIdx until max(startIdx + it.first.length(), 1)
+          val startIdx = it.second.second.coerceAtLeast(0)
+          startIdx until (startIdx + it.first.length()).coerceAtLeast(1)
         }
         .fold(originalCaretLine) { caretLine, it ->
           caretLine.replaceRange(it, "~".repeat(it.length()))
