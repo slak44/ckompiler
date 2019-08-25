@@ -19,7 +19,7 @@ interface ITokenHandler {
   /** Get a range of the current token. Useful for [slak.ckompiler.parser.ErrorNode]s or
    * [slak.ckompiler.parser.Terminal]s.
    */
-  fun rangeOne() = safeToken(0).range
+  fun rangeOne(): SourcedRange = safeToken(0)
 
   fun parentContext(): List<LexicalToken>
 

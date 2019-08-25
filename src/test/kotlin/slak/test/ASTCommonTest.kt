@@ -1,13 +1,20 @@
 package slak.test
 
+import slak.ckompiler.SourceFileName
+import slak.ckompiler.SourcedRange
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.parser.Char
 
 internal val Keywords.kw get() = Keyword(this)
 
-fun <T : ASTNode> T.zeroRange(): T {
-  this.setRange(0..0)
+private object ZeroRange : SourcedRange {
+  override val sourceFileName: SourceFileName? = null
+  override val range: IntRange = 0..0
+}
+
+internal fun <T : ASTNode> T.zeroRange(): T {
+  this.setRange(ZeroRange)
   return this
 }
 

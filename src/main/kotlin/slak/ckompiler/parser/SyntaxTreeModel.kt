@@ -1,6 +1,7 @@
 package slak.ckompiler.parser
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
@@ -20,6 +21,8 @@ val BlockItem.decl get() = (this as DeclarationItem).declaration
 sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
   private var lateTokenRange: IntRange? = null
 
+  override var sourceFileName: SourceFileName? = null
+
   /**
    * The range of 'stuff' in this node. Usually created from [LexicalToken]'s range data.
    * @throws slak.ckompiler.InternalCompilerError if accessed on a node without a range set
@@ -32,11 +35,12 @@ sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
   }
 
   /** Sets this node's token range. */
-  fun setRange(range: IntRange) {
-    if (range.first > range.last) {
+  fun setRange(src: SourcedRange) {
+    if (src.range.first > src.range.last) {
       logger.throwICE("Bad token range on ASTNode") { "this: $this, range: $range" }
     }
-    lateTokenRange = range
+    lateTokenRange = src.range
+    sourceFileName = src.sourceFileName
   }
 
   override fun equals(other: Any?) = other is ASTNode
@@ -44,7 +48,7 @@ sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
 }
 
 /** Sets a node's token range, and returns the node. */
-fun <T : ASTNode> T.withRange(range: IntRange): T {
+fun <T : ASTNode> T.withRange(range: SourcedRange): T {
   this.setRange(range)
   return this
 }
@@ -138,7 +142,7 @@ data class TypedIdentifier(override val name: String,
 ) : Expression(), OrdinaryIdentifier, Terminal {
   constructor(ds: DeclarationSpecifier,
               decl: NamedDeclarator) : this(decl.name.name, typeNameOf(ds, decl)) {
-    withRange(decl.name.range)
+    withRange(decl.name)
   }
 
   var id = varCounter()
@@ -328,7 +332,7 @@ data class DeclarationSpecifier(val storageClass: Keyword? = null,
                                 val typeSpec: TypeSpecifier? = null) : ASTNode() {
 
   /** @return true if no specifiers were found */
-  fun isEmpty() = !hasStorageClass() && !isThreadLocal() && typeQualifiers.isEmpty() &&
+  fun isBlank() = !hasStorageClass() && !isThreadLocal() && typeQualifiers.isEmpty() &&
       functionSpecs.isEmpty() && typeSpec == null
 
   /**
@@ -401,7 +405,7 @@ data class IdentifierNode(val name: String) : ASTNode(), Terminal {
      * @param identifier this [LexicalToken] is casted to an [Identifier]
      */
     fun from(identifier: LexicalToken) =
-        IdentifierNode(identifier as Identifier).withRange(identifier.range)
+        IdentifierNode(identifier as Identifier).withRange(identifier)
   }
 }
 
@@ -445,7 +449,7 @@ data class ExpressionInitializer(val expr: Expression) : Initializer() {
   override fun toString() = expr.toString()
 
   companion object {
-    fun from(expr: Expression) = ExpressionInitializer(expr).withRange(expr.range)
+    fun from(expr: Expression) = ExpressionInitializer(expr).withRange(expr)
   }
 }
 
@@ -652,7 +656,7 @@ class ErrorInitializer : ForInitializer(), ErrorNode by ErrorNodeImpl
 
 data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   init {
-    withRange(value.range)
+    withRange(value)
   }
 
   override fun toString() = value.toString()
@@ -660,7 +664,7 @@ data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
 
 data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
   init {
-    withRange(value.range)
+    withRange(value)
   }
 }
 

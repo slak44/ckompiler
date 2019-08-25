@@ -37,7 +37,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
     }
     if (it.typeSpec is StructDefinition || it.typeSpec is UnionDefinition) diagnostic {
       id = DiagnosticId.FOR_INIT_NON_LOCAL
-      columns(it.range)
+      errorOn(it)
     }
     if (!it.hasStorageClass()) return@lambda
     val storage = it.storageClass!!.value
@@ -285,7 +285,7 @@ class SpecParser(declaratorParser: DeclaratorParser) :
     tokenContext(endIdx) {
       while (isNotEaten()) {
         val specQualList = parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
-        if (specQualList.isEmpty()) {
+        if (specQualList.isBlank()) {
           continue
         }
         if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
@@ -413,7 +413,7 @@ class SpecParser(declaratorParser: DeclaratorParser) :
     val (threadLocal, storageClass) = validateStorageClass(storageSpecs)
 
     val ds = DeclarationSpecifier(storageClass, threadLocal, typeQuals, funSpecs, typeSpecifier)
-    if (!ds.isEmpty()) ds.withRange(startTok..endToken)
+    if (!ds.isBlank()) ds.withRange(startTok..endToken)
 
     validation.validate(this, ds)
     return ds

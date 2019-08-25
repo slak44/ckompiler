@@ -62,7 +62,7 @@ class PPParser(
       if (ident !is Identifier) {
         diagnostic {
           id = DiagnosticId.MACRO_NAME_NOT_IDENT
-          columns(ident.range)
+          errorOn(ident)
         }
         // Eat the rest of the directive and return, so we don't print the warning below after this
         eatUntil(it.size)
@@ -72,7 +72,7 @@ class PPParser(
         diagnostic {
           id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
           formatArgs("#${groupKind.name}")
-          columns(safeToken(0)..it.last())
+          errorOn(safeToken(0)..it.last())
         }
         eatUntil(it.size)
       }
@@ -119,7 +119,7 @@ class PPParser(
         if (ident == null) {
           diagnostic {
             id = DiagnosticId.EXPECTED_IDENT
-            columns(e[idx + 2].range)
+            errorOn(e[idx + 2])
           }
           return null to 3
         }
@@ -132,13 +132,13 @@ class PPParser(
               column(e.last().range.last + 1)
             } else {
               // Wrong token as paren
-              columns(e[idx + 3].range)
+              errorOn(e[idx + 3])
             }
           }
           diagnostic {
             id = DiagnosticId.MATCH_PAREN_TARGET
             formatArgs("(")
-            columns(firstTok.range)
+            errorOn(firstTok)
           }
           return null to 4
         }
@@ -175,7 +175,7 @@ class PPParser(
         diagnostic {
           id = DiagnosticId.NOT_DEFINED_IS_0
           formatArgs(it.name)
-          columns(it.range)
+          errorOn(it)
         }
         IntegralConstant.zero().copyDebugFrom(it)
       } else {
@@ -188,7 +188,7 @@ class PPParser(
     if (p.isNotEaten()) diagnostic {
       id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
       formatArgs("#$directiveName")
-      columns(p.current()..p.tokenAt(p.tokenCount - 1))
+      errorOn(p.current()..p.tokenAt(p.tokenCount - 1))
     }
     return when (it) {
       // If the condition is missing, we simply return false
@@ -211,7 +211,7 @@ class PPParser(
     if (isNotEaten() && current() == NewLine) {
       diagnostic {
         id = DiagnosticId.ELIF_NO_CONDITION
-        columns(elif.range)
+        errorOn(elif)
       }
       return emptyList()
     }
@@ -251,7 +251,7 @@ class PPParser(
         diagnostic {
           id = DiagnosticId.ELSE_NOT_LAST
           formatArgs("#${ident.name}")
-          columns(ident.range)
+          errorOn(ident)
         }
       }
       if (ident.name == "elif") {
@@ -263,7 +263,7 @@ class PPParser(
           id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
           formatArgs("#${ident.name}")
           val lastLineTokIdx = if (firstNewLine == -1) tokenCount - 1 else firstNewLine - 1
-          columns(safeToken(0)..tokenAt(lastLineTokIdx))
+          errorOn(safeToken(0)..tokenAt(lastLineTokIdx))
         }
         if (firstNewLine == -1) eatUntil(tokenCount)
         else eatUntil(firstNewLine)
@@ -347,7 +347,7 @@ class PPParser(
     }
     if (ifSectionStack > 0) diagnostic {
       id = DiagnosticId.UNTERMINATED_CONDITIONAL
-      columns(groupStart.range)
+      errorOn(groupStart)
     } else {
       logger.throwICE("Impossible case; should have returned out of this function") {
         "ifSectionStack: $ifSectionStack"
@@ -360,8 +360,7 @@ class PPParser(
     if (isNotEaten()) {
       diagnostic {
         id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
-        val range = safeToken(0)..safeToken(tokenCount)
-        columns(range)
+        errorOn(safeToken(0)..safeToken(tokenCount))
         formatArgs("#$directiveName")
       }
       eatUntil(tokenCount)
@@ -373,11 +372,11 @@ class PPParser(
       diagnostic {
         id = DiagnosticId.MACRO_REDEFINITION
         formatArgs(definedIdent.name)
-        columns(definedIdent.range)
+        errorOn(definedIdent)
       }
       diagnostic {
         id = DiagnosticId.REDEFINITION_PREVIOUS
-        columns(objectDefines.keys.first { (name) -> name == definedIdent.name }.range)
+        errorOn(objectDefines.keys.first { (name) -> name == definedIdent.name })
       }
     }
     objectDefines[definedIdent] = replacementList
@@ -413,7 +412,7 @@ class PPParser(
       diagnostic {
         id = DiagnosticId.FILE_NOT_FOUND
         formatArgs(header.data)
-        columns(header.range)
+        errorOn(header)
       }
       return
     }
@@ -514,7 +513,7 @@ class PPParser(
     if (definedIdent == null) {
       diagnostic {
         id = DiagnosticId.MACRO_NAME_NOT_IDENT
-        columns(safeToken(0).range)
+        errorOn(safeToken(0))
       }
       eatUntil(tokenCount)
       return true
@@ -563,12 +562,12 @@ class PPParser(
     diagnostic {
       id = DiagnosticId.PP_ERROR_DIRECTIVE
       if (isNotEaten()) {
-        val range = safeToken(0)..safeToken(tokenCount)
-        formatArgs(sourceText.substring(range))
-        columns(tok.startIdx..range.last)
+        val srcRange = safeToken(0)..safeToken(tokenCount)
+        formatArgs(sourceText.substring(srcRange.range))
+        errorOn(tok..srcRange)
       } else {
         formatArgs("")
-        columns(tok.range)
+        errorOn(tok)
       }
     }
     return true
@@ -587,7 +586,7 @@ class PPParser(
       diagnostic {
         id = DiagnosticId.DIRECTIVE_WITHOUT_IF
         formatArgs("#${ident.name}")
-        columns(ident.range)
+        errorOn(ident)
       }
       eat() // The ident
       extraTokensOnLineDiag(ident.name)
@@ -601,7 +600,7 @@ class PPParser(
       id = DiagnosticId.INVALID_PP_DIRECTIVE
       val tok = safeToken(0)
       formatArgs(sourceText.substring(tok.range))
-      columns(tok.range)
+      errorOn(tok)
     }
     return true
   }

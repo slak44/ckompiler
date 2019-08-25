@@ -130,36 +130,58 @@ enum class DiagnosticKind(val text: String) {
 
 typealias SourceFileName = String
 
-fun IntRange.length() = endInclusive + 1 - start
-
 /**
  * Marks an object that corresponds to a range of indices in the program source.
  */
-interface SourcedRange {
+interface SourcedRange : ClosedRange<Int> {
+  val sourceFileName: SourceFileName?
   val range: IntRange
+
+  override val endInclusive: Int get() = range.last
+  override val start: Int get() = range.first
 }
 
-infix fun SourcedRange.until(other: SourcedRange) = range.first until other.range.first
+fun ClosedRange<Int>.length() = endInclusive + 1 - start
 
-operator fun SourcedRange.rangeTo(other: SourcedRange) = range.first..other.range.last
+private data class CompoundSourcedRange(
+    override val sourceFileName: SourceFileName?,
+    override val range: IntRange
+) : SourcedRange
+private fun combineSources(src1: SourceFileName?, src2: SourceFileName?): SourceFileName? = when {
+  src1 == null -> src2
+  src2 == null -> src1
+  src1 == src2 -> src1
+  else -> null
+}
+
+infix fun SourcedRange.until(other: SourcedRange): SourcedRange {
+  val range = range.first until other.range.first
+  val srcFile = combineSources(sourceFileName, other.sourceFileName)
+  return CompoundSourcedRange(srcFile, range)
+}
+
+operator fun SourcedRange.rangeTo(other: SourcedRange): SourcedRange {
+  val range = range.first..other.range.last
+  val srcFile = combineSources(sourceFileName, other.sourceFileName)
+  return CompoundSourcedRange(srcFile, range)
+}
 
 data class Diagnostic(val id: DiagnosticId,
                       val messageFormatArgs: List<Any>,
                       val sourceFileName: SourceFileName,
                       val sourceText: String,
-                      val sourceColumns: List<IntRange>,
+                      val sourceColumns: List<SourcedRange>,
                       val origin: String) {
-  val caret: IntRange get() = sourceColumns[0]
+  private val caret: SourcedRange get() = sourceColumns[0]
 
-  private fun errorOfCol(col: IntRange): Triple<Int, Int, String> {
+  private fun errorOfCol(col: SourcedRange): Triple<Int, Int, String> {
     var currLine = 1
     var currLineStart = 0
     var currLineText = ""
-    sourceText
     for ((idx, it) in sourceText.withIndex()) {
       if (it == '\n') {
         currLineText = sourceText.slice(currLineStart until idx)
-        if (col.first in currLineStart..idx) {
+        if (col.range.first in currLineStart..idx) {
           break
         }
         currLine++
@@ -169,13 +191,13 @@ data class Diagnostic(val id: DiagnosticId,
         currLineText = sourceText.slice(currLineStart until sourceText.length)
       }
     }
-    return Triple(currLine, col.first - currLineStart, currLineText)
+    return Triple(currLine, col.range.first - currLineStart, currLineText)
   }
 
   /**
    * @returns (line, col, lineText) of the [col] in the [sourceText]
    */
-  fun errorOf(col: IntRange?): Triple<Int, Int, String> = when {
+  fun errorOf(col: SourcedRange?): Triple<Int, Int, String> = when {
     sourceText.isEmpty() -> Triple(1, 0, "")
     col != null -> errorOfCol(col)
     else -> Triple(-1, -1, "???")
@@ -235,25 +257,28 @@ class DiagnosticBuilder {
   var sourceText: String = ""
   var origin: String = "<unknown>"
   private var messageFormatArgs: List<Any> = listOf()
-  private var sourceColumns = mutableListOf<IntRange>()
+  private var sourceColumns = mutableListOf<SourcedRange>()
 
   fun column(col: Int) {
-    sourceColumns.add(col..col)
+    sourceColumns.add(CompoundSourcedRange(sourceFileName, col..col))
   }
 
   fun columns(range: IntRange) {
-    sourceColumns.add(range)
+    sourceColumns.add(CompoundSourcedRange(sourceFileName, range))
   }
 
   fun errorOn(obj: SourcedRange) {
-    sourceColumns.add(obj.range)
+    require(obj.sourceFileName == null || sourceFileName == obj.sourceFileName) {
+      "Diagnostic source differs from SourcedRange source: $sourceFileName vs ${obj.sourceFileName}"
+    }
+    sourceColumns.add(obj)
   }
 
   inline fun <reified T> diagData(data: T) = when (data) {
     is IntRange -> columns(data)
     is Int -> column(data)
     is SourcedRange -> errorOn(data)
-    else -> throw IllegalArgumentException("T must be Int, IntRange, or TokenObject")
+    else -> throw IllegalArgumentException("T must be Int, IntRange, or SourcedRange")
   }
 
   fun formatArgs(vararg args: Any) {
@@ -334,4 +359,3 @@ inline fun Logger.throwICE(iceMessage: String,
 inline fun Logger.throwICE(iceMessage: String, crossinline msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage), msg)
 }
-

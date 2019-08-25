@@ -161,8 +161,8 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
       id = DiagnosticId.INVALID_ARGS_TERNARY
       formatArgs(success.type.toString(), failure.type.toString())
       errorOn(qmark)
-      columns(success.range)
-      columns(success.range)
+      errorOn(success)
+      errorOn(failure)
     }
     return TernaryConditional(
         cond,
@@ -277,7 +277,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
       if (called.type != ErrorType) diagnostic {
         id = DiagnosticId.CALL_OBJECT_TYPE
         formatArgs(called.type)
-        columns(called.range)
+        errorOn(called)
       }
       return error<ErrorExpression>()
     }
@@ -336,7 +336,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
       diagnostic {
         id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
         formatArgs(if (isInc) "increment" else "decrement", expr.type)
-        columns(c..expr)
+        errorOn(c..expr)
       }
       error<ErrorExpression>()
     } else {
@@ -358,7 +358,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
       diagnostic {
         id = DiagnosticId.INVALID_ARGUMENT_UNARY
         formatArgs(expr.type, op.op.s)
-        columns(c..expr)
+        errorOn(c..expr)
       }
       error<ErrorExpression>()
     } else {
@@ -497,7 +497,7 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
           return TypedIdentifier(ident, ErrorType).withRange(rangeOne())
         }
         // Change the token range from the original declaration's name to this particular occurrence
-        return existingIdent.copy().withRange(tok.range)
+        return existingIdent.copy().withRange(tok)
       }
       is IntegralConstant -> {
         // FIXME conversions might fail here?

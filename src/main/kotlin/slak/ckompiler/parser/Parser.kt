@@ -109,13 +109,13 @@ private class TranslationUnitParser(private val specParser: SpecParser,
       if (it.declarator !is NamedDeclarator) diagnostic {
         id = DiagnosticId.PARAM_NAME_OMITTED
         formatArgs(typeNameOf(it.declSpec, it.declarator))
-        columns(it.declSpec..it.declarator)
+        errorOn(it.declSpec..it.declarator)
       }
     }
     val funType = typeNameOf(declSpec, funDecl) as FunctionType
     val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope)
         ?: error<ErrorStatement>()
-    val start = if (declSpec.isEmpty()) block else declSpec
+    val start = if (declSpec.isBlank()) block else declSpec
     return FunctionDefinition(declSpec, funDecl, block, funType).withRange(start..block)
   }
 
@@ -131,7 +131,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     if (returnType is FunctionType || returnType is ArrayType) diagnostic {
       id = DiagnosticId.INVALID_RET_TYPE
       formatArgs(if (returnType is FunctionType) "function" else "array", returnType)
-      columns(declarator.range)
+      errorOn(declarator)
     }
   }
 
@@ -139,7 +139,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
   private tailrec fun translationUnit() {
     if (isEaten()) return
     val (declSpec, declaratorOpt) = preParseDeclarator(SpecValidationRules.FILE_SCOPED_VARIABLE)
-    if (declSpec.isEmpty()) {
+    if (declSpec.isBlank()) {
       // If we got here it means the current thing isn't a translation unit
       // So spit out an error and eat tokens
       diagnostic {

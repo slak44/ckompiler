@@ -4,10 +4,9 @@ import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Identifier
-import slak.ckompiler.parser.ErrorDeclarator
-import slak.ckompiler.parser.ErrorExpression
-import slak.ckompiler.parser.NamedDeclarator
-import slak.ckompiler.parser.TypedIdentifier
+import slak.ckompiler.lexer.Keywords
+import slak.ckompiler.lexer.Punctuators
+import slak.ckompiler.parser.*
 import kotlin.test.assertEquals
 
 /**
@@ -130,5 +129,57 @@ class ResilienceTests {
     // It is impossible to know exactly what is valid and what isn't when parens aren't matched, so
     // we only want to see if the root cause (unmatched paren) is reported
     assert(DiagnosticId.UNMATCHED_PAREN in p.diags.ids)
+  }
+
+  @Test
+  fun `Replaced Tokens Are Syntax Error In Parser`() {
+    val code = """
+      #define TEST 123 +
+      int a = TEST;
+    """.trimIndent()
+    val l = preparePP(code, source)
+    l.assertNoDiagnostics()
+    l.assertDefine("TEST", 123, Punctuators.PLUS)
+    l.assertTokens(
+        Keywords.INT, Identifier("a"), Punctuators.ASSIGN,
+        123, Punctuators.PLUS, Punctuators.SEMICOLON
+    )
+    val p = Parser(l.tokens, source, code)
+    p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
+  }
+
+
+  @Test
+  fun `Macro Syntax Error From Another File Causes Error In Parser`() {
+    val code = """
+      #include "badMacro.h"
+      int a = BAD_MACRO;
+    """.trimIndent()
+    val l = preparePP(code, source)
+    l.assertNoDiagnostics()
+    l.assertDefine("BAD_MACRO", 123, Punctuators.PLUS)
+    l.assertTokens(
+        Keywords.INT, Identifier("a"), Punctuators.ASSIGN,
+        123, Punctuators.PLUS, Punctuators.SEMICOLON
+    )
+    val p = Parser(l.tokens, source, code)
+    p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
+  }
+
+  @Test
+  fun `Macro Syntax Error In Another File Is Parser Error`() {
+    val code = """
+      #include "badMacro.h"
+      int a = MISSING_PRIMARY
+    """.trimIndent()
+    val l = preparePP(code, source)
+    l.assertNoDiagnostics()
+    l.assertDefine("MISSING_PRIMARY", 123, Punctuators.PLUS, Punctuators.SEMICOLON)
+    l.assertTokens(
+        Keywords.INT, Identifier("a"), Punctuators.ASSIGN,
+        123, Punctuators.PLUS, Punctuators.SEMICOLON
+    )
+    val p = Parser(l.tokens, source, code)
+    p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
   }
 }

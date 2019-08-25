@@ -477,7 +477,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
     for (succ in node.successors) succ.preds -= node
     for (deadCode in node.irContext.src.filterNot { it is Terminal }) diagnostic {
       id = DiagnosticId.UNREACHABLE_CODE
-      columns(deadCode.range)
+      errorOn(deadCode)
     }
   }
   return nodesImpl

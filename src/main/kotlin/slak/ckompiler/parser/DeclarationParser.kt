@@ -14,7 +14,7 @@ interface IDeclarationParser : IDeclaratorParser {
    */
   fun parseDeclaration(validationRules: SpecValidationRules): Declaration? {
     val (declSpec, firstDecl) = preParseDeclarator(validationRules)
-    if (declSpec.isEmpty()) return null
+    if (declSpec.isBlank()) return null
     if (!firstDecl!!.isPresent) return Declaration(declSpec, emptyList())
     return parseDeclaration(declSpec, firstDecl.get())
   }
@@ -22,7 +22,7 @@ interface IDeclarationParser : IDeclaratorParser {
   /**
    * Parse a [DeclarationSpecifier] and the first [Declarator] that follows.
    * @param validationRules extra checks to be performed on the [DeclarationSpecifier]
-   * @return if [DeclarationSpecifier.isEmpty] is true, the [Declarator] will be null, and if there
+   * @return if [DeclarationSpecifier.isBlank] is true, the [Declarator] will be null, and if there
    * is no declarator, it will be [Optional.empty]
    */
   fun preParseDeclarator(
@@ -55,17 +55,17 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
         }
         declSpec.isTypedef() -> diagnostic {
           id = DiagnosticId.TYPEDEF_REQUIRES_NAME
-          columns(declSpec.range)
+          errorOn(declSpec)
         }
         else -> diagnostic {
           id = DiagnosticId.MISSING_DECLARATIONS
-          columns(declSpec.range)
+          errorOn(declSpec)
         }
       }
       return declSpec to Optional.empty()
     }
     if (declSpec.isTag() && isEaten()) return declSpec to Optional.empty()
-    val declarator = if (declSpec.isEmpty()) null else Optional.of(parseNamedDeclarator(tokenCount))
+    val declarator = if (declSpec.isBlank()) null else Optional.of(parseNamedDeclarator(tokenCount))
     if (declarator != null && declarator.get().isFunction()) {
       SpecValidationRules.FUNCTION_DECLARATION.validate(specParser, declSpec)
     }
@@ -76,8 +76,8 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
                                 declarator: Declarator?): Declaration {
     val declList = parseInitDeclaratorList(declSpec, declarator)
     declList.forEach { checkArrayElementType(declSpec, it.first) }
-    val start = if (declSpec.isEmpty()) safeToken(0).startIdx else declSpec.range.first
-    return Declaration(declSpec, declList).withRange(start until safeToken(-1).range.last)
+    val start = if (declSpec.isBlank()) safeToken(0) else declSpec
+    return Declaration(declSpec, declList).withRange(start..safeToken(-1))
   }
 
   /**
@@ -104,7 +104,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
     if (!ds.isTypedef()) return initializer
     diagnostic {
       id = DiagnosticId.TYPEDEF_NO_INITIALIZER
-      columns(assignTok..initializer)
+      errorOn(assignTok..initializer)
     }
     return ExpressionInitializer.from(error<ErrorExpression>())
   }

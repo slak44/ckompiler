@@ -44,7 +44,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
 
   override fun parseTypeName(endIdx: Int): TypeName? = tokenContext(endIdx) {
     val declSpec = specParser.parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
-    if (declSpec.isEmpty()) return@tokenContext null
+    if (declSpec.isBlank()) return@tokenContext null
     val declarator = parseAbstractDeclarator(it.size, false)
     return@tokenContext typeNameOf(declSpec, declarator)
   }
@@ -288,7 +288,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         break
       }
       val specs = specParser.parseDeclSpecifiers(SpecValidationRules.FUNCTION_PARAMETER)
-      if (specs.isEmpty()) {
+      if (specs.isBlank()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
       // The parameter can have parens with commas in them
@@ -304,7 +304,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
       val declarator = parseAbstractDeclarator(paramEndIdx, true)
       declarator.withRange(specs..tokenAt(paramEndIdx - 1))
-      params += ParameterDeclaration(specs, declarator).withRange(declarator.range)
+      params += ParameterDeclaration(specs, declarator).withRange(declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope). Ignore unnamed parameters.
       if (declarator is NamedDeclarator) scope.withScope {
@@ -316,7 +316,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         val initializer = parseInitializer(paramEndIdx)
         diagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
-          columns(assignTok..initializer)
+          errorOn(assignTok..initializer)
         }
       }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {

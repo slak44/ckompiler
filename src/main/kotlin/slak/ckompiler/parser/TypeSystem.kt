@@ -1,14 +1,11 @@
 package slak.ckompiler.parser
 
 import org.apache.logging.log4j.LogManager
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
+import slak.ckompiler.*
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
-import slak.ckompiler.rangeTo
-import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger("TypeSystem")
 
@@ -39,7 +36,7 @@ fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
 }
 
 fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
-  if (decl is ErrorDeclarator || specQuals.isEmpty()) return ErrorType
+  if (decl is ErrorDeclarator || specQuals.isBlank()) return ErrorType
   // Pointers
   if (decl.indirection.isNotEmpty()) {
     val referencedType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes))
@@ -350,14 +347,14 @@ fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
  */
 fun IDebugHandler.validateCast(originalType: TypeName,
                                targetType: TypeName,
-                               castParenRange: IntRange) = when {
+                               castParenRange: SourcedRange) = when {
   targetType is ErrorType -> {
     // Don't report bogus diags for ErrorType
   }
   targetType !is VoidType && !targetType.isScalar() -> diagnostic {
     id = DiagnosticId.INVALID_CAST_TYPE
     formatArgs(targetType.toString())
-    columns(castParenRange)
+    errorOn(castParenRange)
   }
   (originalType is FloatingType && targetType is PointerType) ||
       (originalType is PointerType && targetType is FloatingType) -> diagnostic {
@@ -365,7 +362,7 @@ fun IDebugHandler.validateCast(originalType: TypeName,
     val floating = originalType as? FloatingType ?: targetType
     val pointer = originalType as? PointerType ?: targetType
     formatArgs(floating.toString(), pointer.toString())
-    columns(castParenRange)
+    errorOn(castParenRange)
   }
   else -> {
     // Nothing to say about other types
@@ -392,14 +389,14 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
       diagnostic {
         id = DiagnosticId.SUBSCRIPT_OF_FUNCTION
         formatArgs(subscripted.type.toString())
-        columns(subscripted.range)
+        errorOn(subscripted)
       }
       return ErrorType
     }
     if (!subscripted.type.isSubscriptable()) {
       diagnostic {
         id = DiagnosticId.INVALID_SUBSCRIPTED
-        columns(fullRange)
+        errorOn(fullRange)
       }
       return ErrorType
     }
@@ -408,7 +405,7 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
     if (subscript.type !is IntegralType) {
       diagnostic {
         id = DiagnosticId.SUBSCRIPT_NOT_INTEGRAL
-        columns(subscript.range)
+        errorOn(subscript)
       }
       return ErrorType
     }
@@ -421,7 +418,7 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
     diagnostic {
       id = DiagnosticId.SUBSCRIPT_OF_FUNCTION
       formatArgs(subscripted.type.toString())
-      columns(subscripted.range)
+      errorOn(subscripted)
     }
     return ErrorType to false
   }
@@ -577,17 +574,17 @@ fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expr
     is CastExpression -> diagnostic {
       id = DiagnosticId.ILLEGAL_CAST_ASSIGNMENT
       errorOn(pct)
-      columns(lhs.range)
+      errorOn(lhs)
     }
     is BinaryExpression, is TernaryConditional -> diagnostic {
       id = DiagnosticId.EXPRESSION_NOT_ASSIGNABLE
       errorOn(pct)
-      columns(lhs.range)
+      errorOn(lhs)
     }
     is ExprConstantNode -> diagnostic {
       id = DiagnosticId.CONSTANT_NOT_ASSIGNABLE
       errorOn(pct)
-      columns(lhs.range)
+      errorOn(lhs)
     }
   }
 }
@@ -607,8 +604,8 @@ fun IDebugHandler.binaryDiags(pct: Punctuator, lhs: Expression, rhs: Expression)
   diagnostic {
     id = DiagnosticId.INVALID_ARGS_BINARY
     errorOn(pct)
-    columns(lhs.range)
-    columns(rhs.range)
+    errorOn(lhs)
+    errorOn(rhs)
     formatArgs(op.op.s, lhs.type, rhs.type)
   }
   return ErrorType
@@ -623,7 +620,7 @@ fun IDebugHandler.checkArrayElementType(declSpec: DeclarationSpecifier, declarat
   if (elemType is FunctionType) diagnostic {
     id = DiagnosticId.INVALID_ARR_TYPE
     formatArgs(declarator.name, elemType)
-    columns(declarator.range)
+    errorOn(declarator)
   }
 }
 
@@ -676,5 +673,5 @@ fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
   if (commonType == ErrorType) return operand
   // FIXME: this does not seem terribly correct, but 6.5.4.0.3 does say pointers need explicit casts
   if (operand.type is PointerType || commonType is PointerType) return operand
-  return CastExpression(operand, commonType).withRange(operand.range)
+  return CastExpression(operand, commonType).withRange(operand)
 }

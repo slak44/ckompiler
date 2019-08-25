@@ -1,9 +1,6 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.DebugHandler
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.throwICE
+import slak.ckompiler.*
 import java.util.*
 
 /**
@@ -17,6 +14,7 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
   override val name = declarator.name.name
   // Only highlight the typedef's name in diagnostics, not the entire thing
   override val range = declarator.name.range
+  override val sourceFileName = declarator.name.sourceFileName
   override val type = typeNameOf(declSpec, declarator)
   override val kindName = "typedef"
 
@@ -33,10 +31,8 @@ data class TypedefName(val declSpec: DeclarationSpecifier,
  * C standard: 6.2.3.0.1
  * @see LexicalScope
  */
-interface OrdinaryIdentifier {
+interface OrdinaryIdentifier : SourcedRange {
   val name: String
-  /** @see ASTNode.range */
-  val range: IntRange
   /**
    * A string that identifies what kind of identifier this is. For example: 'typedef', 'variable'.
    * Is used by diagnostic messages.
@@ -190,7 +186,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
         }
         diagnostic {
           id = DiagnosticId.TAG_MISMATCH_PREVIOUS
-          columns(foundTag.tagIdent.range)
+          errorOn(foundTag.tagIdent)
         }
       }
       !tag.isCompleteType -> {
@@ -204,11 +200,11 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
         diagnostic {
           id = DiagnosticId.REDEFINITION
           formatArgs(tag.tagIdent.name)
-          columns(tag.tagIdent.range)
+          errorOn(tag.tagIdent)
         }
         diagnostic {
           id = DiagnosticId.REDEFINITION_PREVIOUS
-          columns(foundTag.tagIdent.range)
+          errorOn(foundTag.tagIdent)
         }
       }
     }
@@ -229,11 +225,11 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       diagnostic {
         this.id = DiagnosticId.REDEFINITION_OTHER_SYM
         formatArgs(found.name, found.kindName, id.kindName)
-        columns(id.range)
+        errorOn(id)
       }
       diagnostic {
         this.id = DiagnosticId.REDEFINITION_PREVIOUS
-        columns(found.range)
+        errorOn(found)
       }
       return
     }
@@ -245,22 +241,22 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       diagnostic {
         this.id = DiagnosticId.REDEFINITION_TYPEDEF
         formatArgs(id.typedefedToString(), found.typedefedToString())
-        columns(id.range)
+        errorOn(id)
       }
       diagnostic {
         this.id = DiagnosticId.REDEFINITION_PREVIOUS
-        columns(found.range)
+        errorOn(found)
       }
       return
     }
     diagnostic {
       this.id = DiagnosticId.REDEFINITION
       formatArgs(id.name)
-      columns(id.range)
+      errorOn(id)
     }
     diagnostic {
       this.id = DiagnosticId.REDEFINITION_PREVIOUS
-      columns(found.range)
+      errorOn(found)
     }
   }
 
@@ -273,11 +269,11 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       diagnostic {
         id = DiagnosticId.REDEFINITION_LABEL
         formatArgs(labelIdent.name)
-        columns(labelIdent.range)
+        errorOn(labelIdent)
       }
       diagnostic {
         id = DiagnosticId.REDEFINITION_PREVIOUS
-        columns(foundId.range)
+        errorOn(foundId)
       }
       return
     }

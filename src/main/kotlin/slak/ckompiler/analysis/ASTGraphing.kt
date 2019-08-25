@@ -133,11 +133,11 @@ private fun graphTernary(
   val elseBlock = root.newBlock()
 
   val assignTrue = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.success)
-      .withRange(ternary.success.range)
+      .withRange(ternary.success)
   val ifNext = graphExprRegular(root, ifBlock, assignTrue)
 
   val assignFalse = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.failure)
-      .withRange(ternary.failure.range)
+      .withRange(ternary.failure)
   val elseNext = graphExprRegular(root, elseBlock, assignFalse)
 
   val afterIfBlock = root.newBlock()

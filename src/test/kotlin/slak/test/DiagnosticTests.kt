@@ -51,8 +51,7 @@ class DiagnosticTests {
     val text = "ident     123.23A"
     val pp = preparePP(text, source)
     assert(pp.tokens[1] is ErrorToken)
-    // Test if error is on the last column
-    assertEquals(text.length - 1, pp.diags[0].sourceColumns[0].first)
+    pp.diags.assertDiagCaret(diagNr = 0, col = text.length - 1)
   }
 
   @Test
@@ -144,10 +143,11 @@ class DiagnosticTests {
     """.trimIndent()
     val p = prepareCode(src, source)
     val declarator = assertNotNull(p.root.decls[1] as? Declaration).declaratorList[0]
-    val callRange = assertNotNull(declarator.second).range
+    val callRange = assertNotNull(declarator.second)
     val diag = createDiagnostic {
+      sourceFileName = this@DiagnosticTests.source
       sourceText = src
-      columns(callRange)
+      errorOn(callRange)
     }
     diag.assertDiagCaret(line = 2, col = 13, colCount = 6)
     diag.print()
