@@ -1,18 +1,14 @@
 package slak.test.lexer
 
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EmptySource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.Punctuators
 import slak.test.*
-import slak.test.assertNoDiagnostics
-import slak.test.assertPPDiagnostic
-import slak.test.preparePP
-import slak.test.source
 import kotlin.test.assertEquals
 
 class PreprocessingTests {
@@ -134,14 +130,13 @@ class PreprocessingTests {
     assertEquals(listOf(Identifier("table")), l.tokens)
   }
 
-  @Disabled("FIXME: deal with the diagnostics in Preprocessors and this will pass")
-  @Test
-  fun `Error Directive`() {
-    assertPPDiagnostic("#error", source, DiagnosticId.PP_ERROR_DIRECTIVE)
-    assertPPDiagnostic("#error\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
-    assertPPDiagnostic("#error This is an error.\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
-    assertPPDiagnostic("#error This is an error.->23&&\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
-    assertPPDiagnostic("#error 123sdadg\n", source, DiagnosticId.PP_ERROR_DIRECTIVE)
+  @ParameterizedTest
+  @EmptySource
+  @ValueSource(strings = [
+    "\n", "    \n", "\t \n", " This is an error.\n", " This is an error.->23&&\n", " 123sdadg\n"
+  ])
+  fun `Error Directive`(string: String) {
+    assertPPDiagnostic("#error$string", source, DiagnosticId.PP_ERROR_DIRECTIVE)
   }
 
   @Test
