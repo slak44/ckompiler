@@ -377,10 +377,13 @@ class NasmGenerator(
         emit("mov al, ${fltArgs.size}")
       }
       emit("call ${call.functionPointer.tid.name}")
+      if (call.functionPointer.tid.type.asCallable()!!.returnType is FloatingType) {
+        emit("movsd xmm0, xmm8")
+      }
     } else {
+      // FIXME: this _definitely_ doesn't work (call through expr)
       // This is the case where we call some random function pointer
       // We expect the address in rax (expr result will be there)
-      // FIXME: this probably doesn't work
       emit(genComputeConstant(call.functionPointer))
       // FIXME: random use of rax
       emit("call rax")
