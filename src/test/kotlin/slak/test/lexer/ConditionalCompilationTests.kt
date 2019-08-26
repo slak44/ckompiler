@@ -365,4 +365,17 @@ class ConditionalCompilationTests {
     assertPPDiagnostic("#if defined", source,
         DiagnosticId.EXPECTED_IDENT, DiagnosticId.UNTERMINATED_CONDITIONAL)
   }
+
+  @Test
+  fun `IfSection Excluded Code Doesn't Produce Diagnostics`() {
+    val l = preparePP("""
+      #if 0
+      jsafabsvlkan
+      123
+      .
+      -------
+      #endif
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+  }
 }
