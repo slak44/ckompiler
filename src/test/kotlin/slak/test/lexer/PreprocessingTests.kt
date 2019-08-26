@@ -88,7 +88,7 @@ class PreprocessingTests {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = ["stddef.h", "stdint.h"])
+  @ValueSource(strings = ["stddef.h", "stdint.h", "math.h", "stdio.h"])
   fun `Including Stdlib Headers Works`(headerName: String) {
     val l = preparePP("#include <$headerName>", source)
     l.assertNoDiagnostics()
