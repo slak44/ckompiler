@@ -35,7 +35,7 @@ class NasmTests {
   private data class RunResult(val exitCode: Int, val stdout: String, val stderr: String)
 
   private fun RunResult.justExitCode(expected: Int) {
-    assertEquals(expected, expected)
+    assertEquals(expected, exitCode)
     assertEquals("", stdout)
     assertEquals("", stderr)
   }
