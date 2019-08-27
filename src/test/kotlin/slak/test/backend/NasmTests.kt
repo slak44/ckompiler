@@ -69,14 +69,17 @@ class NasmTests {
     require(builder.text != null || builder.file != null) { "Specify either text or file" }
     if (builder.file == null) {
       builder.file = File.createTempFile("input", ".c")
+      builder.file!!.deleteOnExit()
       builder.file!!.writeText(builder.text!!)
     }
     if (builder.text == null) {
       val otherInput = File.createTempFile("input", ".c")
+      otherInput.deleteOnExit()
       otherInput.writeText(builder.file!!.readText())
       builder.file = otherInput
     }
     val executable = File.createTempFile("exe", ".out")
+    executable.deleteOnExit()
     val (_, compilerExitCode) = cli(
         builder.file!!.absolutePath,
         "-isystem", resource("include").absolutePath,
