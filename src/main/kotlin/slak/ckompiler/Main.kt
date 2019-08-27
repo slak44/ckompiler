@@ -11,6 +11,7 @@ import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File
+import java.io.InputStream
 import java.util.*
 import kotlin.system.exitProcess
 
@@ -20,7 +21,12 @@ enum class ExitCodes(val int: Int) {
 
 typealias CLIDefines = Map<String, String>
 
-class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
+/**
+ * The command line interface for the compiler.
+ * @param stdinStream which stream to use for the `-` argument; should be [System.in] for main
+ */
+class CLI(private val stdinStream: InputStream) :
+    IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   private fun CommandLineInterface.helpGroup(description: String) {
     addHelpEntry(object : HelpEntry {
       override fun printHelp(helpPrinter: HelpPrinter) {
@@ -404,7 +410,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
-    val objFile = File(currentDir, "$baseName.o")
+    val objFile = File(parentDir, "$baseName.o")
     invokeNasm(objFile, asmFile)
     asmFile.delete()
     return objFile
@@ -444,7 +450,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return ExitCodes.EXECUTION_FAILED
     }
     val stdinObjFile = if (stdin) {
-      val inText = System.`in`.bufferedReader().readText()
+      val inText = stdinStream.bufferedReader().readText()
       compile(inText, "-", "-", File(".").absoluteFile, File(".").absoluteFile)
     } else {
       null
@@ -462,7 +468,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 }
 
 fun main(args: Array<String>) {
-  val cli = CLI()
+  val cli = CLI(System.`in`)
   val exitCode = cli.parse(args)
   cli.diags.forEach(Diagnostic::print)
   exitProcess(exitCode.int)

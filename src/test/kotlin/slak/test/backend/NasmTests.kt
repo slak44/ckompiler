@@ -1,9 +1,7 @@
 package slak.test.backend
 
-import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.parallel.Execution
-import org.junit.jupiter.api.parallel.ExecutionMode
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.ExitCodes
@@ -15,14 +13,39 @@ import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-@Execution(ExecutionMode.SAME_THREAD)
 class NasmTests {
-  private fun prepareNasm(src: String, source: SourceFileName): String {
-    val cfg = prepareCFG(src, source)
-    cfg.assertNoDiagnostics()
-    val asm = NasmGenerator(emptyList(), emptyList(), cfg, MachineTargetData.x64).nasm
-    println(asm)
-    return asm
+  @Nested
+  inner class NasmNotExecuted {
+    private fun prepareNasm(src: String, source: SourceFileName): String {
+      val cfg = prepareCFG(src, source)
+      cfg.assertNoDiagnostics()
+      val asm = NasmGenerator(emptyList(), emptyList(), cfg, MachineTargetData.x64).nasm
+      println(asm)
+      return asm
+    }
+
+    @Test
+    fun `Multiple Functions`() {
+      prepareNasm("int f() { return 0; } int main() { return 0; }", source)
+    }
+
+    // FIXME: doesn't check if it worked
+    @Test
+    fun `String Data`() {
+      prepareNasm("int main() { \"asdfg\"; return 1; }", source)
+    }
+
+    // FIXME: doesn't check if it worked
+    @Test
+    fun `String Data Not Duplicated`() {
+      prepareNasm("int main() { \"asdfg\"; \"asdfg\"; return 1; }", source)
+    }
+
+    // FIXME: doesn't check if it worked
+    @Test
+    fun `String Names Are Alphanumeric`() {
+      prepareNasm("int main() { \"a:.><\"; return 1; }", source)
+    }
   }
 
   private class CompileAndRunBuilder {
@@ -43,14 +66,27 @@ class NasmTests {
   private fun compileAndRun(block: CompileAndRunBuilder.() -> Unit): RunResult {
     val builder = CompileAndRunBuilder()
     builder.block()
-    if (builder.text != null) System.setIn(builder.text!!.byteInputStream())
-    val target = if (builder.text != null) "-" else builder.file!!.absolutePath
-    val (_, compilerExitCode) = cli(target, "-isystem", resource("include").absolutePath)
+    require(builder.text != null || builder.file != null) { "Specify either text or file" }
+    if (builder.file == null) {
+      builder.file = File.createTempFile("input", ".c")
+      builder.file!!.writeText(builder.text!!)
+    }
+    if (builder.text == null) {
+      val otherInput = File.createTempFile("input", ".c")
+      otherInput.writeText(builder.file!!.readText())
+      builder.file = otherInput
+    }
+    val executable = File.createTempFile("exe", ".out")
+    val (_, compilerExitCode) = cli(
+        builder.file!!.absolutePath,
+        "-isystem", resource("include").absolutePath,
+        "-o", executable.absolutePath
+    )
     assertEquals(ExitCodes.NORMAL, compilerExitCode)
-    assertTrue(File("a.out").exists())
+    assertTrue(executable.exists())
     val inputRedirect =
         if (builder.stdin != null) ProcessBuilder.Redirect.PIPE else ProcessBuilder.Redirect.INHERIT
-    val process = ProcessBuilder("./a.out", *builder.programArgList.toTypedArray())
+    val process = ProcessBuilder(executable.absolutePath, *builder.programArgList.toTypedArray())
         .redirectInput(inputRedirect)
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .redirectError(ProcessBuilder.Redirect.PIPE)
@@ -73,41 +109,6 @@ class NasmTests {
       text = code
       programArgList = programArgs
     }
-  }
-
-  private val stdin = System.`in`
-
-  @AfterEach
-  fun restoreStdin() {
-    System.setIn(stdin)
-  }
-
-  @AfterEach
-  fun removeCompilerOutput() {
-    File("a.out").delete()
-  }
-
-  @Test
-  fun `Multiple Functions`() {
-    prepareNasm("int f() { return 0; } int main() { return 0; }", source)
-  }
-
-  // FIXME: doesn't check if it worked
-  @Test
-  fun `String Data`() {
-    prepareNasm("int main() { \"asdfg\"; return 1; }", source)
-  }
-
-  // FIXME: doesn't check if it worked
-  @Test
-  fun `String Data Not Duplicated`() {
-    prepareNasm("int main() { \"asdfg\"; \"asdfg\"; return 1; }", source)
-  }
-
-  // FIXME: doesn't check if it worked
-  @Test
-  fun `String Names Are Alphanumeric`() {
-    prepareNasm("int main() { \"a:.><\"; return 1; }", source)
   }
 
   @ParameterizedTest

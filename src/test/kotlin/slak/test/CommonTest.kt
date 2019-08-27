@@ -5,6 +5,7 @@ import slak.ckompiler.analysis.CFG
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import java.io.File
+import java.io.InputStream
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -44,16 +45,16 @@ internal fun prepareCFG(file: File, source: SourceFileName): CFG {
 }
 
 @JvmName("cli_array")
-internal fun cli(args: Array<String>): Pair<CLI, ExitCodes> {
-  val cli = CLI()
-  val exitCode = cli.parse(args)
+internal fun cli(args: Array<String>): Pair<CLI, ExitCodes> = cli(null, *args)
+
+@JvmName("cli_vararg")
+internal fun cli(vararg args: String): Pair<CLI, ExitCodes> = cli(null, *args)
+
+internal fun cli(sysIn: InputStream?, vararg args: String): Pair<CLI, ExitCodes> {
+  val cli = CLI(sysIn ?: System.`in`)
+  val exitCode = cli.parse(args.toList().toTypedArray())
   cli.diags.forEach(Diagnostic::print)
   return cli to exitCode
-}
-
-@JvmName("cli_varag")
-internal fun cli(vararg args: String): Pair<CLI, ExitCodes> {
-  return cli(args.toList().toTypedArray())
 }
 
 internal fun cliCmd(commandLine: String?): Pair<CLI, ExitCodes> {
