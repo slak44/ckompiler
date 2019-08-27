@@ -69,6 +69,10 @@ class CLI(private val stdinStream: InputStream) :
       actions += action
     }
 
+    fun positionalAction(action: (String) -> Boolean) {
+      actions += action
+    }
+
     fun getLeftover(): List<String> = leftoverArguments
   }
 
@@ -141,12 +145,15 @@ class CLI(private val stdinStream: InputStream) :
       "Ignore trigraphs in source files")
   private val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
       "Disable colors in diagnostic messages")
+  // FIXME: stub:
+  private val positionIndependentCode by cli.flagArgument("-fPIC",
+      "Generate position independent code")
 
   init {
     cli.helpGroup("Warning control")
   }
 
-  // FIXME: these:
+  // FIXME: stub:
   private val wAll by cli.flagArgument("-Wall", "Currently a no-op (TODO)")
   private val wExtra by cli.flagArgument("-Wextra", "Currently a no-op (TODO)")
   private val pedantic by cli.flagArgument("-pedantic", "Currently a no-op (TODO)")
@@ -163,6 +170,11 @@ class CLI(private val stdinStream: InputStream) :
   init {
     cli.flagValueAction(listOf("-I", "--include-directory"), "DIR",
         "Directory to add to include search path") { generalIncludes += File(it) }
+    posHandler.positionalAction {
+      if (!it.startsWith("-I")) return@positionalAction false
+      generalIncludes += File(it.removePrefix("-I"))
+      return@positionalAction true
+    }
   }
 
   private val userIncludes = mutableListOf<File>()
@@ -179,7 +191,14 @@ class CLI(private val stdinStream: InputStream) :
         "Directory to add to <...> search path") { systemIncludes.add(0, File(it)) }
     cli.flagValueAction("-isystem-after", "DIR",
         "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
+
+    cli.helpGroup("Preprocessor options")
   }
+
+  // FIXME: stubs:
+  private val md by cli.flagArgument("-MD", "Currently a no-op (TODO)")
+  private val mt by cli.flagValueArgument("-MT", "FILE", "Currently a no-op (TODO)")
+  private val mf by cli.flagValueArgument("-MF", "FILE", "Currently a no-op (TODO)")
 
   private val linkerFlags = mutableListOf<String>()
 
