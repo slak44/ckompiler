@@ -49,7 +49,7 @@ private data class FunctionGenContext(val variableRefs: MutableMap<TypedIdentifi
   var stackAlignmentCounter = 0
 
   val retLabel = ".return_${cfg.f.name}"
-  val BasicBlock.label get() = ".block_${cfg.f.name}_$nodeId"
+  val BasicBlock.label get() = ".block_${cfg.f.name}_${hashCode()}"
   val ComputeReference.pos get() = "[rbp${variableRefs[tid]}]"
 
   // FIXME: register allocator.
@@ -197,7 +197,7 @@ class NasmGenerator(
     emit(genBlock(cfg.startBlock))
     // Generate leftover blocks not touched by travelling through the code
     for (block in cfg.nodes) {
-      if (!wasBlockGenerated[block.nodeId]) {
+      if (!wasBlockGenerated[block.postOrderId]) {
         emit(genBlock(block))
       }
     }
@@ -220,8 +220,8 @@ class NasmGenerator(
   }
 
   private fun FunctionGenContext.genBlock(b: BasicBlock) = instrGen {
-    if (wasBlockGenerated[b.nodeId]) return@instrGen
-    wasBlockGenerated[b.nodeId] = true
+    if (wasBlockGenerated[b.postOrderId]) return@instrGen
+    wasBlockGenerated[b.postOrderId] = true
     label(b.label)
     emit(genExpressions(b.irContext))
     emit(genJump(b.terminator))
@@ -269,7 +269,7 @@ class NasmGenerator(
     }
     // Try to generate the "else" block right after the cmp, so that if the cond is false, we just
     // keep executing without having to do another jump
-    if (!wasBlockGenerated[jmp.other.nodeId]) {
+    if (!wasBlockGenerated[jmp.other.postOrderId]) {
       emit(genBlock(jmp.other))
     } else {
       emit("jmp ${jmp.other.label}")

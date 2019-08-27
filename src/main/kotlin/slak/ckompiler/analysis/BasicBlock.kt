@@ -2,11 +2,17 @@ package slak.ckompiler.analysis
 
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
+import java.util.concurrent.atomic.AtomicInteger
 
-/** Returns a sequential integer on [invoke]. */
+/**
+ * Returns a sequential integer ID on [invoke].
+ *
+ * This operation is atomic. If multiple threads access this value in parallel, each thread's IDs
+ * will not be sequential (but they will be distinct).
+ */
 class IdCounter {
-  private var counter = 0
-  operator fun invoke() = counter++
+  private val counter = AtomicInteger()
+  operator fun invoke() = counter.getAndIncrement()
 }
 
 /**
@@ -17,11 +23,17 @@ class IdCounter {
 data class PhiFunction(val target: ComputeReference,
                        val incoming: MutableMap<BasicBlock, ComputeReference>) {
   override fun toString() = "$target = φ(${incoming.entries.joinToString(", ") {
-    "n${it.key.nodeId} v${it.value.version}"
+    "n${it.key.hashCode()} v${it.value.version}"
   }})"
 }
 
+/**
+ * Instances represent terminators for [BasicBlock]s.
+ */
 sealed class Jump {
+  /**
+   * List of blocks that this [Jump] could reach.
+   */
   abstract val successors: List<BasicBlock>
 }
 
@@ -30,13 +42,13 @@ data class CondJump(val cond: IRLoweringContext,
                     val target: BasicBlock,
                     val other: BasicBlock) : Jump() {
   override val successors = listOf(target, other)
-  override fun toString() = "CondJump<${target.nodeId}, ${other.nodeId}>$cond"
+  override fun toString() = "CondJump<${target.hashCode()}, ${other.hashCode()}>$cond"
 }
 
 /** Unconditionally jump to [target]. */
 data class UncondJump(val target: BasicBlock) : Jump() {
   override val successors = listOf(target)
-  override fun toString() = "UncondJump<${target.nodeId}>"
+  override fun toString() = "UncondJump<${target.hashCode()}>"
 }
 
 /**
@@ -54,7 +66,7 @@ data class ImpossibleJump(val target: BasicBlock, val returned: IRLoweringContex
  */
 data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Jump() {
   override val successors = listOf(target)
-  override fun toString() = "ConstantJump<${target.nodeId}>$"
+  override fun toString() = "ConstantJump<${target.hashCode()}>$"
 }
 
 /** Indicates an incomplete [BasicBlock]. */
@@ -66,23 +78,49 @@ object MissingJump : Jump() {
  * Stores a node of the [CFG], a basic block of [Expression]s who do not affect the control flow.
  *
  * Predecessors and successors do not track impossible edges.
+ *
+ * FIXME: a lot of things in here should not be mutable
  */
 class BasicBlock(val isRoot: Boolean = false) {
   /**
-   * List of SSA φ-functions in this block.
+   * List of SSA φ-functions at the start of this block.
    */
   val phiFunctions = mutableListOf<PhiFunction>()
   /**
    * Contains this block's IR expression list.
    */
   val irContext = IRLoweringContext()
-
-  val nodeId = nodeCounter()
+  /**
+   * Unique for each basic block. No other guarantees are provided about this value; it is opaque.
+   *
+   * Multiple instances of [CFG] being created at the same time can and will update the underlying
+   * counter in a (likely) unpredictable order, so in particular, these ids should not be assumed
+   * consecutive.
+   *
+   * @see hashCode
+   * @see equals
+   */
+  private val nodeId = nodeCounter()
+  /**
+   * If not -1, this value represents the post order of [BasicBlock]s in their respective [CFG].
+   *
+   * If set by [postOrderNodes], the values are guaranteed to be in the range [0..nodes.size) for
+   * a particular [CFG] instance.
+   */
   var postOrderId = -1
+  /**
+   * If not -1, this value represents the distance from the start block to this one in a [CFG].
+   */
   var height = -1
+  /**
+   * Set of blocks whose terminator leads to this one.
+   */
   val preds: MutableSet<BasicBlock> = mutableSetOf()
+  /** @see [Jump.successors] */
   val successors get() = terminator.successors
+  /** @see findDomFrontiers */
   val dominanceFrontier: MutableSet<BasicBlock> = mutableSetOf()
+  /** @see Jump */
   var terminator: Jump = MissingJump
     set(value) {
       field = value
@@ -98,6 +136,10 @@ class BasicBlock(val isRoot: Boolean = false) {
         }
       }
     }
+  /**
+   * Allows iteration over this [BasicBlock]'s IR, including [CondJump.cond] and
+   * [ImpossibleJump.returned], if they're available.
+   */
   val instructions
     get() = iterator {
       yieldAll(irContext.ir)
@@ -131,7 +173,7 @@ class BasicBlock(val isRoot: Boolean = false) {
    */
   fun collapseEmptyPreds(): Boolean {
     var wasCollapsed = false
-    emptyBlockLoop@ for (emptyBlock in preds.filter { it.isEmpty() }) {
+    emptyBlockLoop@ for (emptyBlock in preds.filter(BasicBlock::isEmpty)) {
       if (emptyBlock.isRoot) continue@emptyBlockLoop
       for (emptyBlockPred in emptyBlock.preds) {
         when (val oldTerm = emptyBlockPred.terminator) {
@@ -167,10 +209,14 @@ class BasicBlock(val isRoot: Boolean = false) {
   }
 
   override fun equals(other: Any?) = nodeId == (other as? BasicBlock)?.nodeId
+  /**
+   * @see nodeId
+   * @see Object.hashCode
+   */
   override fun hashCode() = nodeId
 
   override fun toString() =
-      "BasicBlock<$nodeId>(${irContext.ir.joinToString(";")}, $terminator)"
+      "BasicBlock<$nodeId/$postOrderId>(${irContext.ir.joinToString(";")}, $terminator)"
 
   companion object {
     private val nodeCounter = IdCounter()

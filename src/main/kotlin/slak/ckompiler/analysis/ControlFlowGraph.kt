@@ -285,7 +285,7 @@ private class VariableRenamer(val doms: DominatorList,
           if (v.reachingDef == null) "⊥"
           else "${v.reachingDef!!.variable.tid.name}${v.reachingDef!!.variable.version}"
       listOf(
-          "${bb.nodeId}",
+          "${bb.hashCode()}",
           "${if (isInPhi) " " else ""}${v.tid.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
               .padStart(TRACE_COL2_LENGTH, ' '),
           "$oldReachingStr updated into $newReachingStr"
@@ -304,7 +304,7 @@ private class VariableRenamer(val doms: DominatorList,
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
       listOf(
-          "${bb.nodeId}",
+          "${bb.hashCode()}",
           "def ${def.tid.name}${def.version}".padEnd(TRACE_COL2_LENGTH, ' '),
           "$oldReachingStr then ${vPrime.tid.name}${vPrime.version}"
       ).joinToString(" | ").toObjectMessage()
@@ -435,7 +435,11 @@ private fun findDomFrontiers(startNode: BasicBlock, postOrder: Set<BasicBlock>):
   return doms
 }
 
-/** Compute the post order for a set of nodes, and return it. */
+/**
+ * Compute the post order for a set of nodes, and return it.
+ *
+ * Also sets [BasicBlock.postOrderId] and [BasicBlock.height] accordingly.
+ */
 private fun postOrderNodes(startNode: BasicBlock, nodes: Set<BasicBlock>): Set<BasicBlock> {
   if (startNode !in nodes) logger.throwICE("startNode not in nodes") { "$startNode/$nodes" }
   val visited = mutableSetOf<BasicBlock>()

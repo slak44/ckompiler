@@ -56,14 +56,12 @@ class SSATests {
     for ((key, value) in cfg.definitions) {
       println("$key (${key.tid.id}) defined in \n\t${value.joinToString("\n\t")}")
     }
-    val realDefs = cfg.definitions.filterNot { it.key.tid.name.startsWith("__synthetic") }
+    val realDefs = cfg.definitions.filterNot { it.key.isSynthetic }
     assertEquals(3, realDefs.size)
-    val e = realDefs.entries.toList()
-    val rootId = cfg.startBlock.nodeId
-    fun blockIds(vararg id: Int) = id.map { rootId + it }.toList()
-    assertEquals(e[0].value.map { it.nodeId }, blockIds(0, 3, 4, 9))
-    assertEquals(e[1].value.map { it.nodeId }, blockIds(0, 3, 4))
-    assertEquals(e[2].value.map { it.nodeId }, blockIds(4))
+    val e = realDefs.values.toList()
+    assertEquals(e[0].map { it.postOrderId }, listOf(5, 2, 3, 1))
+    assertEquals(e[1].map { it.postOrderId }, listOf(5, 2, 3))
+    assertEquals(e[2].map { it.postOrderId }, listOf(3))
   }
 
   @Test
@@ -72,11 +70,10 @@ class SSATests {
     for (node in cfg.nodes) {
       println("$node φ-functions: \n\t${node.phiFunctions.joinToString("\n\t")}")
     }
-    val rootId = cfg.startBlock.nodeId
-    fun phis(id: Int) = cfg.nodes.first { it.nodeId == (rootId + id) }.phiFunctions
+    fun phis(id: Int) = cfg.nodes.first { it.postOrderId == id }.phiFunctions
     fun List<PhiFunction>.x() = firstOrNull { it.target.tid.name == "x" }
-    for (i in listOf(1, 2, 9)) assertNotNull(phis(i).x())
-    for (i in listOf(0, 3, 4)) assertNull(phis(i).x())
+    for (i in listOf(4, 0, 1)) assertNotNull(phis(i).x())
+    for (i in listOf(5, 2, 3)) assertNull(phis(i).x())
   }
 
   @Test

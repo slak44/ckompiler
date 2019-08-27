@@ -103,7 +103,7 @@ fun createGraphviz(graph: CFG,
     val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret
     val blockText = if (code.isBlank()) "<EMPTY>" else code.trim()
     val escapedQuotes = blockText.replace("\"", "\\\"")
-    "node${it.nodeId} [shape=box,$style,label=\"$escapedQuotes\"];"
+    "node${it.hashCode()} [shape=box,$style,label=\"$escapedQuotes\"];"
   } + sep + edges.joinToString(sep) {
     val color = when (it.type) {
       EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
@@ -114,7 +114,7 @@ fun createGraphviz(graph: CFG,
     if (reachableOnly && !it.to.isReachable()) {
       ""
     } else {
-      "node${it.from.nodeId} -> node${it.to.nodeId} [$color];"
+      "node${it.from.hashCode()} -> node${it.to.hashCode()} [$color];"
     }
   }
   return "digraph CFG {${sep}bgcolor=$BG$sep$content\n}"
