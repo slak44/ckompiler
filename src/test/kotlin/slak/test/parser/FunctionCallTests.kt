@@ -87,6 +87,26 @@ class FunctionCallTests {
     int declare ("a" assign f(1, (2 add 2) mul 4, 3)) assertEquals p.root.decls[1]
   }
 
+  @Test
+  fun `Nested Parens In Function Call`() {
+    val p = prepareCode("""
+      int f (int a, int b) { return a + b; }
+      int main() {
+        f(5, f(2, 3) + (2 * 3));
+        return 0;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("f" withParams listOf(int param "a", int param "b")) body compoundOf(
+        returnSt(nameRef("a", SignedIntType) add nameRef("b", SignedIntType))
+    ) assertEquals p.root.decls[0]
+    val f = nameRef("f", FunctionType(SignedIntType, List(2) { SignedIntType }))
+    int func ("main" withParams emptyList()) body compoundOf(
+        f(5, f(2, 3) add (2 mul 3)),
+        returnSt(0)
+    ) assertEquals p.root.decls[1]
+  }
+
   @ParameterizedTest
   @ValueSource(strings = [
     "int a = 1();",

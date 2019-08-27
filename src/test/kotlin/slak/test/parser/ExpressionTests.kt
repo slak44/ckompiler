@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.StringEncoding
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
@@ -258,6 +257,13 @@ class ExpressionTests {
   fun `Can't Cast Between Pointers And Floats`(cast: String) {
     val p = prepareCode("int main() {$cast;}", source)
     p.assertDiags(DiagnosticId.POINTER_FLOAT_CAST)
+  }
+
+  @Test
+  fun `More Parens Closed Than Opened`() {
+    val p = prepareCode("int a = (1 + 2));", source)
+    // This can create bullshit diags, so just check it didn't succeed
+    assert(p.diags.isNotEmpty())
   }
 
   @Test

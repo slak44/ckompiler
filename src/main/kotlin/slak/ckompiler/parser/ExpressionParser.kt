@@ -225,19 +225,9 @@ open class ExpressionParser(parenMatcher: ParenMatcher,
     tokenContext(callEnd) {
       while (isNotEaten()) {
         // The arguments can have parens with commas in them
-        // We're interested in the comma that comes after the argument expression
-        // So balance the parens, and look for the first comma after them
-        // Also, we do not eat what we find; we're only searching for the end of the current arg
-        // Once found, parseExpr handles parsing the arg and eating it
-        val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-        if (parenEndIdx == -1) {
-          logger.throwICE("Impossible case; the function call itself checks for an end paren, and" +
-              " if there are unmatched parens in the arguments, they'll find the call end paren," +
-              " which means that this findParenMatch call can never return -1 and get here")
-        }
-        val commaIdx = indexOfFirst(Punctuators.COMMA)
-        val exprEndIdx = if (commaIdx == -1) it.size else commaIdx
-        funcArgs += tokenContext(exprEndIdx) { argToks ->
+        val commaIdx = firstOutsideParens(
+            Punctuators.COMMA, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = true)
+        funcArgs += tokenContext(commaIdx) { argToks ->
           if (argToks.isEmpty()) {
             // Missing argument in the middle of the argument list
             diagnostic {

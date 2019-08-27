@@ -73,9 +73,8 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
           return@indexOfFirst false
         }
         final -> {
-          // FIXME: error here if stack is 0
           stack--
-          return@indexOfFirst stack == 0
+          return@indexOfFirst stack <= 0
         }
         Punctuators.SEMICOLON -> return@indexOfFirst stopAtSemi
         else -> return@indexOfFirst false
