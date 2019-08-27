@@ -252,8 +252,9 @@ class NasmGenerator(
         BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL)
     if (condExpr is Store && condExpr.data is BinaryComputation && condExpr.data.op in conds) {
       when (condExpr.data.kind) {
+        // FIXME: random use of rax, rbx, xmmm8, xmm9
         OperationTarget.INTEGER -> emit("cmp rax, rbx")
-        OperationTarget.SSE -> TODO()
+        OperationTarget.SSE -> emit("cmpsd xmm8, xmm9")
       }
     }
     if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
@@ -465,7 +466,7 @@ class NasmGenerator(
 
   private fun FunctionGenContext.genUnary(unary: UnaryComputation) = when (unary.kind) {
     OperationTarget.INTEGER -> getIntUnary(unary)
-    OperationTarget.SSE -> TODO()
+    OperationTarget.SSE -> getFltUnary(unary)
   }
 
   private fun FunctionGenContext.getIntUnary(unary: UnaryComputation) = instrGen {
@@ -494,6 +495,37 @@ class NasmGenerator(
         emit("test rax, rax")
         emit("sete al")
       }
+    }
+  }
+
+  private fun FunctionGenContext.getFltUnary(unary: UnaryComputation) = instrGen {
+    if (unary.op !in listOf(UnaryComputations.REF, UnaryComputations.DEREF)) {
+      emit(genComputeConstant(unary.operand))
+    }
+    // FIXME: random use of rax
+    when (unary.op) {
+      UnaryComputations.REF -> {
+        if (unary.operand !is ComputeReference) {
+          logger.throwICE("Cannot take address of non-var") { unary }
+        }
+        emit("lea rax, ${unary.operand.pos}")
+      }
+      UnaryComputations.DEREF -> {
+        if (unary.operand !is ComputeReference) {
+          logger.throwICE("Cannot dereference non-pointer") { unary }
+        }
+        // FIXME: random use of xmm8/rcx
+        emit("mov rcx, ${unary.operand.pos}")
+        emit("movsd xmm8, [rcx]")
+      }
+      UnaryComputations.MINUS -> {
+        // FIXME: random use of xmm8/xmm9
+        genFloat(FloatingConstantNode(-0.0, FloatingSuffix.NONE))
+        emit("movsd xmm9, xmm8")
+        emit("xorpd xmm8, xmm9")
+      }
+      UnaryComputations.BIT_NOT -> TODO()
+      UnaryComputations.NOT -> TODO()
     }
   }
 
@@ -579,7 +611,7 @@ class NasmGenerator(
       BinaryComputations.DIVIDE -> emit("divsd xmm8, xmm9")
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
       BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
-      BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> TODO("???")
+      BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("cmpsd xmm8, xmm9")
       BinaryComputations.LOGICAL_AND -> TODO("???")
       BinaryComputations.LOGICAL_OR -> TODO("???")
       BinaryComputations.BITWISE_AND, BinaryComputations.BITWISE_OR, BinaryComputations.BITWISE_XOR,
