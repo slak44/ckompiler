@@ -76,7 +76,9 @@ class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceF
       currentWhitespace.append(dropCharsWhile { it != '\n' })
       return tokenize()
     } else if (currentSrc.startsWith("/*")) {
-      currentWhitespace.append(dropCharsWhile { it != '*' || currentSrc[currentOffset + 1] != '/' })
+      currentWhitespace.append(dropCharsWhile {
+        it != '*' || (currentOffset < currentSrc.length - 1 && currentSrc[currentOffset + 1] != '/')
+      })
       // Unterminated comment
       if (currentSrc.isEmpty()) diagnostic {
         id = DiagnosticId.UNFINISHED_COMMENT

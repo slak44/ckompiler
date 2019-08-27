@@ -5,9 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EmptySource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Identifier
-import slak.ckompiler.lexer.Keywords
-import slak.ckompiler.lexer.Punctuators
+import slak.ckompiler.lexer.*
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -56,8 +54,32 @@ class PreprocessingTests {
   }
 
   @Test
+  fun `Comment Multi-line Code`() {
+    val l = preparePP("""
+      int main() {
+        /*double p = 2.0;
+        int n = 2;
+        printf("%.4f\n", pow(p, 1.0 / n));
+        */
+        return 0;
+      }
+    """.trimIndent(), source)
+    l.assertNoDiagnostics()
+    val zeroOct = IntegralConstant("0", IntegralSuffix.NONE, Radix.OCTAL)
+    l.assertTokens(Keywords.INT, Identifier("main"), Punctuators.LPAREN, Punctuators.RPAREN,
+        Punctuators.LBRACKET, Keywords.RETURN, zeroOct, Punctuators.SEMICOLON, Punctuators.RBRACKET)
+  }
+
+  @Test
   fun `Comment At End Of File`() {
     val l = preparePP("//", source)
+    l.assertNoDiagnostics()
+    assert(l.tokens.isEmpty())
+  }
+
+  @Test
+  fun `Multi-line Comment At End Of File`() {
+    val l = preparePP("/* 123c */", source)
     l.assertNoDiagnostics()
     assert(l.tokens.isEmpty())
   }
