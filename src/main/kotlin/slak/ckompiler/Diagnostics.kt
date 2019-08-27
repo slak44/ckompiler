@@ -354,7 +354,7 @@ interface IDebugHandler {
  */
 class DebugHandler(private val diagSource: String,
                    private val srcFileName: SourceFileName,
-                   val srcText: String) : IDebugHandler {
+                   private val srcText: String) : IDebugHandler {
   override val logger: Logger = LogManager.getLogger(diagSource)
   override val diags = mutableListOf<Diagnostic>()
 
