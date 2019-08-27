@@ -382,8 +382,8 @@ class PPParser(
     objectDefines[definedIdent] = replacementList
   }
 
-  private fun doMacroReplacement(ident: Identifier): List<LexicalToken> {
-    val replacementList = objectDefines[ident] ?: return listOf(ident)
+  private fun doMacroReplacement(ident: Identifier): List<LexicalToken>? {
+    val replacementList = objectDefines[ident] ?: return null
     val shouldRecurse = replacementList.any { it is Identifier && it in objectDefines }
     return if (shouldRecurse) doMacroReplacement(replacementList) else replacementList
   }
@@ -398,13 +398,13 @@ class PPParser(
     val res = mutableListOf<LexicalToken>()
     for (tok in toks) {
       if (tok is Identifier) {
-        res += doMacroReplacement(tok).map {
+        res += doMacroReplacement(tok)?.map {
           val src = it.cloneSource()
           it.copyDebugFrom(tok)
           it.expandedName = tok.name
           it.expandedFrom = src
           it
-        }
+        } ?: listOf(tok)
       } else {
         res += tok
       }
