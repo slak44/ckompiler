@@ -157,7 +157,7 @@ class NasmGenerator(
     //   use correct sizes
     var rbpOffset = -8
     for ((ref) in cfg.definitions) {
-      emit("; ${ref.tid.name}")
+      emit("; ${ref.tid.name} at $rbpOffset")
       // FIXME: they're not all required to go on the stack
       variableRefs[ref.tid] = rbpOffset
       rbpOffset -= 8
