@@ -28,7 +28,11 @@ class Preprocessor(sourceText: String,
     debugHandler = DebugHandler("Preprocessor", srcFileName, phase3Src)
     debugHandler.diags += phase1Diags
     val l = Lexer(debugHandler, phase3Src, srcFileName)
-    val allInitialDefines = targetData.stddefDefines + targetData.stdintDefines + cliDefines
+    val allInitialDefines = mandatoryMacros +
+        conditionalFeatureMacros +
+        targetData.stddefDefines +
+        targetData.stdintDefines +
+        cliDefines
     val parsedCliDefines = allInitialDefines.map {
       val cliDh = DebugHandler("Preprocessor", "<command line>", it.value)
       val cliLexer = Lexer(cliDh, it.value, "<command line>")
@@ -65,6 +69,29 @@ class Preprocessor(sourceText: String,
   }
 }
 
+/**
+ * C standard: 6.10.8.1
+ */
+private val mandatoryMacros: CLIDefines = mapOf(
+    "__DATE__" to "\"Mmm dd yyyy\"", // FIXME: this is dynamic
+    "__FILE__" to "\"__FILE__ macro not yet implemented\"", // FIXME: this is dynamic
+    "__LINE__" to "0", // FIXME: this is dynamic
+    "__STDC__" to "0", // This is not a conforming implementation yet; this will remain 0 for now
+    "__STDC_HOSTED__" to "1", // We support a hosted environment
+    "__STDC_VERSION__" to "201112L", // Only deal with C11 for now
+    "__TIME__" to "\"hh:mm:ss\"" // FIXME: this is dynamic
+)
+
+/**
+ * C standard: 6.10.8.3
+ */
+private val conditionalFeatureMacros: CLIDefines = mapOf(
+    "__STDC_NO_ATOMICS__" to "1",
+    "__STDC_NO_COMPLEX__" to "1",
+    "__STDC_NO_THREADS__" to "1",
+    "__STDC_NO_VLA__" to "1"
+)
+
 /** @see translationPhase1And2 */
 private val trigraphs = mapOf("??=" to "#", "??(" to "[", "??/" to "", "??)" to "]", "??'" to "^",
     "??<" to "}", "??!" to "|", "??>" to "}", "??-" to "~", "\\\n" to "")
@@ -91,8 +118,8 @@ private val trigraphPattern = Pattern.compile("(" +
  * C standard: 5.1.1.2.0.1.1, 5.1.1.2.0.1.2, 5.2.1.1
  */
 fun translationPhase1And2(ignoreTrigraphs: Boolean,
-                                  source: String,
-                                  srcFileName: SourceFileName): Pair<String, List<Diagnostic>> {
+                          source: String,
+                          srcFileName: SourceFileName): Pair<String, List<Diagnostic>> {
   val dh = DebugHandler("Trigraphs", srcFileName, source)
   val matcher = trigraphPattern.matcher(source)
   val sb = StringBuilder()
