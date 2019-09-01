@@ -221,6 +221,32 @@ class DeclarationTests {
   }
 
   @Test
+  fun `Array Of Incomplete Array`() {
+    val p = prepareCode("""
+      int main() {
+        int array_of_stuff[10][];
+        return 0;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ARRAY_OF_INCOMPLETE)
+    int declare nameDecl("array_of_stuff")[10][NoSize] assertEquals
+        p.root.decls[0].fn.block.items[0].decl
+  }
+
+  @Test
+  fun `Array With First Dimension Missing`() {
+    val p = prepareCode("""
+      int main() {
+        int array_of_stuff[][10];
+        return 0;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ARRAY_SIZE_MISSING)
+    int declare nameDecl("array_of_stuff")[NoSize][10] assertEquals
+        p.root.decls[0].fn.block.items[0].decl
+  }
+
+  @Test
   fun `Array Size Missing Allowed In Function Parameter`() {
     val p = prepareCode("""
       void f(int array[]);

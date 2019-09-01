@@ -160,6 +160,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
       }
       root.addExternalDeclaration(parseFunctionDefinition(declSpec, declarator))
     } else {
+      // FIXME: here are missing some validations, like tentative array definitions
       root.addExternalDeclaration(parseDeclaration(declSpec, declarator))
     }
     if (isEaten()) return

@@ -88,6 +88,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ILLEGAL_CAST_ASSIGNMENT(ERROR, "Assignment to cast is illegal, lvalue casts are not supported"),
   EXPRESSION_NOT_ASSIGNABLE(ERROR, "Expression is not assignable"),
   CONSTANT_NOT_ASSIGNABLE(ERROR, "Cannot assign to a constant"),
+  ARRAY_OF_INCOMPLETE(ERROR, "Array has incomplete element type '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
