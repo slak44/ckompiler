@@ -5,7 +5,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DebugHandler
 import slak.ckompiler.Diagnostic
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.SignedIntType
 import slak.test.*
 import kotlin.test.assertEquals
@@ -22,6 +24,12 @@ class IRTests {
   fun printDiags() {
     debugHandler.diags.forEach(Diagnostic::print)
     println()
+  }
+
+  private fun List<Expression>.toIRList(): List<IRExpression> {
+    val context = IRLoweringContext(MachineTargetData.x64, enableFolding = false)
+    forEach(context::buildIR)
+    return context.ir
   }
 
   private fun List<IRExpression>.print() = println(joinToString("\n"))

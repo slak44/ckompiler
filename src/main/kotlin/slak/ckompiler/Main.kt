@@ -387,7 +387,7 @@ class CLI(private val stdinStream: InputStream) :
         }
         return null
       }
-      val cfg = CFG(function, relPath, text, forceAllNodes)
+      val cfg = CFG(function, MachineTargetData.x64, relPath, text, forceAllNodes)
       val graphviz = createGraphviz(cfg, text, !forceUnreachable, printingMethod)
       when {
         displayGraph -> {
@@ -408,8 +408,8 @@ class CLI(private val stdinStream: InputStream) :
     val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
     // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
-    val funcsCfgs = (allFuncs - main).map { CFG(it!!, relPath, text, false) }
-    val mainCfg = main?.let { CFG(it, relPath, text, false) }
+    val funcsCfgs = (allFuncs - main).map { CFG(it!!, MachineTargetData.x64, relPath, text, false) }
+    val mainCfg = main?.let { CFG(it, MachineTargetData.x64, relPath, text, false) }
 
     val nasm = NasmGenerator(declNames, funcsCfgs, mainCfg, MachineTargetData.x64).nasm
 

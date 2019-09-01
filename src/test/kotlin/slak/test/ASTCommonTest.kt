@@ -22,9 +22,9 @@ internal fun <T : ASTNode> T.zeroRange(): T {
   return this
 }
 
-internal fun int(i: Long) = IntegerConstantNode(i)
+internal fun int(i: Long) = IntegerConstantNode(i).zeroRange()
 
-internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
+internal fun double(f: Double) = FloatingConstantNode(f, FloatingSuffix.NONE).zeroRange()
 
 internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
@@ -298,6 +298,10 @@ internal operator fun NamedDeclarator.get(noSize: NoSize): NamedDeclarator {
   return NamedDeclarator(name, indirection, suffixes + noSize)
 }
 
+internal operator fun <T> TypedIdentifier.get(it : T): ArraySubscript {
+  return ArraySubscript(this, parseDSLElement(it), (this.type as ArrayType).elementType).zeroRange()
+}
+
 internal fun prefixInc(e: Expression) = PrefixIncrement(e).zeroRange()
 internal fun postfixInc(e: Expression) = PostfixIncrement(e).zeroRange()
 
@@ -313,7 +317,7 @@ internal fun <T1, T2, T3> T1.qmark(success: T2, failure: T3) = TernaryConditiona
     parseDSLElement(this),
     parseDSLElement(success),
     parseDSLElement(failure)
-)
+).zeroRange()
 
 internal fun strLit(string: String) = StringLiteralNode(string, StringEncoding.CHAR).zeroRange()
 
@@ -340,20 +344,21 @@ internal fun sizeOf(it: TypeName) = SizeofTypeName(it, MachineTargetData.x64.siz
 
 internal fun <T> TypeName.cast(it: T) = CastExpression(parseDSLElement(it), this).zeroRange()
 
-internal operator fun <T> UnaryOperators.get(it: T) = UnaryExpression(this, parseDSLElement(it))
+internal operator fun <T> UnaryOperators.get(it: T) =
+    UnaryExpression(this, parseDSLElement(it)).zeroRange()
 
-internal operator fun <T : Any> String.invoke(vararg l: T) = name(this)(l)
+internal operator fun <T : Any> String.invoke(vararg l: T) = name(this)(l).zeroRange()
 
-internal operator fun FunctionDefinition.invoke() = FunctionCall(toRef(), emptyList())
+internal operator fun FunctionDefinition.invoke() = FunctionCall(toRef(), emptyList()).zeroRange()
 
 internal operator fun <T : Any> FunctionDefinition.invoke(vararg l: T): FunctionCall {
-  return FunctionCall(toRef(), l.map { parseDSLElement(it) })
+  return FunctionCall(toRef(), l.map { parseDSLElement(it) }).zeroRange()
 }
 
 internal operator fun <Receiver> Receiver.invoke(): FunctionCall {
-  return FunctionCall(parseDSLElement(this), emptyList())
+  return FunctionCall(parseDSLElement(this), emptyList()).zeroRange()
 }
 
 internal operator fun <Receiver, T : Any> Receiver.invoke(vararg l: T): FunctionCall {
-  return FunctionCall(parseDSLElement(this), l.map { parseDSLElement(it) })
+  return FunctionCall(parseDSLElement(this), l.map { parseDSLElement(it) }).zeroRange()
 }

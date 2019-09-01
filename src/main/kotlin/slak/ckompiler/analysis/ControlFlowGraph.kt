@@ -12,11 +12,12 @@ private val logger = LogManager.getLogger("ControlFlow")
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
 class CFG(val f: FunctionDefinition,
+          private val targetData: MachineTargetData,
           srcFileName: SourceFileName,
           srcText: String,
           forceAllNodes: Boolean = false
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
-  val startBlock = BasicBlock(true)
+  val startBlock = BasicBlock(isRoot = true, targetData = targetData)
   /** Raw set of nodes as obtained from [graph]. */
   val allNodes = mutableSetOf(startBlock)
   /** Filtered set of nodes that only contains reachable, non-empty nodes. */
@@ -75,7 +76,7 @@ class CFG(val f: FunctionDefinition,
   }
 
   fun newBlock(): BasicBlock {
-    val block = BasicBlock(false)
+    val block = BasicBlock(isRoot = false, targetData = targetData)
     allNodes += block
     return block
   }

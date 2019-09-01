@@ -1,7 +1,7 @@
 package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
-import slak.ckompiler.lexer.IntegralSuffix
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
@@ -208,18 +208,26 @@ class IRLoweringContext {
   private val _ir: MutableList<IRExpression> = mutableListOf()
   val src: List<Expression> get() = _src
   val ir: List<IRExpression> get() = _ir
+  private val enableFolding: Boolean
   private val tempIds: IdCounter
+  private val targetData: MachineTargetData
 
-  constructor() {
+  constructor(targetData: MachineTargetData, enableFolding: Boolean = true) {
+    this.targetData = targetData
+    this.enableFolding = enableFolding
     tempIds = IdCounter()
   }
 
   /**
    * Copy the synthetic variable counter from the [other] context. Useful when IR is in the same
    * block, but needs to be separated into 2 different contexts.
+   *
+   * Also copies [targetData] and [enableFolding] to avoid useless repetition.
    */
   constructor(other: IRLoweringContext) {
     tempIds = other.tempIds
+    targetData = other.targetData
+    enableFolding = other.enableFolding
   }
 
   private fun makeTemporary(type: TypeName): ComputeReference {
@@ -365,29 +373,30 @@ class IRLoweringContext {
     val castComp = CastComputation(cast.type, transformExpr(cast.target), cast.operationTarget())
     _ir += Store(target, castComp, isSynthetic = true)
     return target
-
   }
 
-  private fun transformExpr(expr: Expression): ComputeConstant = when (expr) {
+  private fun fold(expr: Expression) =
+      if (enableFolding) targetData.doConstantFolding(expr) else expr
+
+  private fun transformExpr(expr: Expression): ComputeConstant = when (val folded = fold(expr)) {
     is VoidExpression -> logger.throwICE("VoidExpression was removed")
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
-    is TypedIdentifier -> ComputeReference(expr, isSynthetic = false)
-    is FunctionCall -> storeCall(transformCall(expr), expr.type)
-    is UnaryExpression -> transformUnary(expr)
+    is SizeofTypeName -> logger.throwICE("SizeofTypeName was removed")
+    is TypedIdentifier -> ComputeReference(folded, isSynthetic = false)
+    is FunctionCall -> storeCall(transformCall(folded), folded.type)
+    is UnaryExpression -> transformUnary(folded)
     is PrefixIncrement, is PostfixIncrement ->
-      transformIncDec(expr as IncDecOperation, isDec = false)
+      transformIncDec(folded as IncDecOperation, isDec = false)
     is PrefixDecrement, is PostfixDecrement ->
-      transformIncDec(expr as IncDecOperation, isDec = true)
-    is BinaryExpression -> transformBinary(expr)
-    is ArraySubscript -> transformSubscript(expr)
-    is CastExpression -> transformCast(expr)
-    is SizeofTypeName ->
-      TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
-    is IntegerConstantNode -> ComputeInteger(expr)
-    is FloatingConstantNode -> ComputeFloat(expr)
-    is CharacterConstantNode -> ComputeChar(expr)
-    is StringLiteralNode -> ComputeString(expr)
+      transformIncDec(folded as IncDecOperation, isDec = true)
+    is BinaryExpression -> transformBinary(folded)
+    is ArraySubscript -> transformSubscript(folded)
+    is CastExpression -> transformCast(folded)
+    is IntegerConstantNode -> ComputeInteger(folded)
+    is FloatingConstantNode -> ComputeFloat(folded)
+    is CharacterConstantNode -> ComputeChar(folded)
+    is StringLiteralNode -> ComputeString(folded)
   }
 
   /**
@@ -395,22 +404,24 @@ class IRLoweringContext {
    */
   fun buildIR(topLevelExpr: Expression) {
     _src += topLevelExpr
-    when (topLevelExpr) {
+    when (val folded = fold(topLevelExpr)) {
       is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
       is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
+      is SizeofTypeName -> logger.throwICE("SizeofTypeName was removed")
+      is VoidExpression -> logger.throwICE("VoidExpression was removed")
       // For top-level function calls, the return value is discarded, so don't bother storing it
-      is FunctionCall -> _ir += transformCall(topLevelExpr)
-      is UnaryExpression -> transformUnary(topLevelExpr)
+      is FunctionCall -> _ir += transformCall(folded)
+      is UnaryExpression -> transformUnary(folded)
       is PrefixIncrement, is PostfixIncrement ->
-        transformIncDec(topLevelExpr as IncDecOperation, isDec = false)
+        transformIncDec(folded as IncDecOperation, isDec = false)
       is PrefixDecrement, is PostfixDecrement ->
-        transformIncDec(topLevelExpr as IncDecOperation, isDec = true)
-      is BinaryExpression -> transformBinary(topLevelExpr)
-      is ArraySubscript -> transformSubscript(topLevelExpr)
-      is CastExpression -> transformCast(topLevelExpr)
+        transformIncDec(folded as IncDecOperation, isDec = true)
+      is BinaryExpression -> transformBinary(folded)
+      is ArraySubscript -> transformSubscript(folded)
+      is CastExpression -> transformCast(folded)
       // FIXME: except for volatile reads, this can go below, probably
-      is TypedIdentifier -> _ir += ComputeReference(topLevelExpr, isSynthetic = false)
-      is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,
+      is TypedIdentifier -> _ir += ComputeReference(folded, isSynthetic = false)
+      is IntegerConstantNode, is FloatingConstantNode,
       is StringLiteralNode, is CharacterConstantNode -> {
         // We don't discard those because they might be jump conditions/return values
         val target = makeTemporary(topLevelExpr.type)
@@ -426,13 +437,4 @@ class IRLoweringContext {
   }
 
   override fun toString() = src.toString()
-}
-
-/**
- * Transforms a block of expressions to the equivalent IR version.
- */
-fun List<Expression>.toIRList(): List<IRExpression> {
-  val context = IRLoweringContext()
-  forEach(context::buildIR)
-  return context.ir
 }

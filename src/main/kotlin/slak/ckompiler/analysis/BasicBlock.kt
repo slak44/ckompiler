@@ -1,5 +1,6 @@
 package slak.ckompiler.analysis
 
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
 import java.util.concurrent.atomic.AtomicInteger
@@ -81,7 +82,7 @@ object MissingJump : Jump() {
  *
  * FIXME: a lot of things in here should not be mutable
  */
-class BasicBlock(val isRoot: Boolean = false) {
+class BasicBlock(val isRoot: Boolean = false, targetData: MachineTargetData) {
   /**
    * List of SSA φ-functions at the start of this block.
    */
@@ -89,7 +90,7 @@ class BasicBlock(val isRoot: Boolean = false) {
   /**
    * Contains this block's IR expression list.
    */
-  val irContext = IRLoweringContext()
+  val irContext = IRLoweringContext(targetData)
   /**
    * Unique for each basic block. No other guarantees are provided about this value; it is opaque.
    *

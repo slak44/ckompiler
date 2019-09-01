@@ -37,7 +37,7 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
 internal fun prepareCFG(s: String, source: SourceFileName): CFG {
   val p = prepareCode(s, source)
   p.assertNoDiagnostics()
-  return CFG(p.root.decls.firstFun(), source, s)
+  return CFG(p.root.decls.firstFun(), MachineTargetData.x64, source, s)
 }
 
 internal fun prepareCFG(file: File, source: SourceFileName): CFG {
