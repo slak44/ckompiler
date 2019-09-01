@@ -82,7 +82,12 @@ data class MachineTargetData(
   fun sizeOf(type: TypeName): Int = when (type) {
     ErrorType -> 0
     is FunctionType, is PointerType -> ptrSizeBytes
-    is ArrayType -> TODO()
+    is ArrayType -> {
+      val arrSize = type.size as ConstantArraySize
+      // FIXME: validate max array sizes somewhere
+      val size = (arrSize.size as IntegerConstantNode).value.toInt()
+      size * sizeOf(type.elementType)
+    }
     is BitfieldType -> TODO()
     is StructureType -> type.members?.sumBy(::sizeOf) ?: 0
     is UnionType -> type.optionTypes?.maxBy(::sizeOf)?.let(::sizeOf) ?: 0
