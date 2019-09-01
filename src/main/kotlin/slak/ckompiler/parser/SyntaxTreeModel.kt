@@ -474,10 +474,20 @@ data class StructDeclaration(val declSpecs: DeclarationSpecifier,
 sealed class ArrayTypeSize : DeclaratorSuffix()
 
 sealed class VariableArraySize : ArrayTypeSize()
-sealed class ConstantArraySize : ArrayTypeSize()
 
-/** Describes an array type that specifies no size in the square brackets. */
-object NoSize : ConstantArraySize() {
+sealed class ConstantArraySize : ArrayTypeSize() {
+  abstract val size: ExprConstantNode
+}
+
+/**
+ * Describes an array type that specifies no size in the square brackets.
+ *
+ * This can mean multiple things:
+ * 1. If on a [ExternalDeclaration]'s declarator, it's a tentative array definition
+ * 2. If on a function parameter, it's basically a pointer
+ * 3. If on a local declarator, it's an error
+ */
+object NoSize : ArrayTypeSize() {
   override fun toString() = ""
 }
 
@@ -529,9 +539,11 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
  * @param typeQuals the `type-qualifier`s between the square brackets
  * @param isStatic if the keyword "static" appears between the square brackets
  */
-data class FunctionParameterConstantSize(val typeQuals: TypeQualifierList,
-                                         val isStatic: Boolean,
-                                         val size: ExprConstantNode) : ConstantArraySize() {
+data class FunctionParameterConstantSize(
+    val typeQuals: TypeQualifierList,
+    val isStatic: Boolean,
+    override val size: ExprConstantNode
+) : ConstantArraySize() {
   override fun toString(): String {
     return "${if (isStatic) "static " else ""}${typeQuals.stringify()}$size"
   }
@@ -549,7 +561,7 @@ data class ExpressionSize(val expr: Expression) : VariableArraySize() {
  * Describes an array type whose size is exactly [size].
  * @param size result of integer constant expression
  */
-data class ConstantSize(val size: ExprConstantNode) : ConstantArraySize() {
+data class ConstantSize(override val size: ExprConstantNode) : ConstantArraySize() {
   override fun toString() = "$size"
 }
 

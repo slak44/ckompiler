@@ -612,11 +612,22 @@ fun IDebugHandler.binaryDiags(pct: Punctuator, lhs: Expression, rhs: Expression)
 }
 
 /**
- * Check that an array doesn't have an element type of [FunctionType]. Print diagnostic otherwise.
+ * Check that an array doesn't have an element type of [FunctionType].
+ * Check that array size exists.
+ *
+ * Prints diagnostics.
  */
-fun IDebugHandler.checkArrayElementType(declSpec: DeclarationSpecifier, declarator: Declarator) {
+fun IDebugHandler.checkArrayType(declSpec: DeclarationSpecifier, declarator: Declarator) {
   if (!declarator.isArray()) return
-  val elemType = (typeNameOf(declSpec, declarator) as? ArrayType)?.elementType ?: return
+  val typeName = typeNameOf(declSpec, declarator) as? ArrayType
+  if (typeName?.size is NoSize) {
+    diagnostic {
+      id = DiagnosticId.ARRAY_SIZE_MISSING
+      formatArgs(declarator.name.name)
+      errorOn(declarator.name)
+    }
+  }
+  val elemType = typeName?.elementType ?: return
   if (elemType is FunctionType) diagnostic {
     id = DiagnosticId.INVALID_ARR_TYPE
     formatArgs(declarator.name, elemType)

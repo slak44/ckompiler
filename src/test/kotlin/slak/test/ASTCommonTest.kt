@@ -125,6 +125,9 @@ internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) =
 internal infix fun DeclarationSpecifier.param(s: String) =
     ParameterDeclaration(this, nameDecl(s)).zeroRange()
 
+internal infix fun DeclarationSpecifier.param(s: NamedDeclarator) =
+    ParameterDeclaration(this, s).zeroRange()
+
 internal infix fun DeclarationSpecifier.withParams(params: List<ParameterDeclaration>) =
     this param
         (AbstractDeclarator(emptyList(), emptyList()).withParams(params) as AbstractDeclarator)
@@ -288,6 +291,10 @@ internal operator fun <T> NamedDeclarator.get(arraySize: T): NamedDeclarator {
   val e = parseDSLElement(arraySize)
   val size = if (e is ExprConstantNode) ConstantSize(e) else ExpressionSize(e)
   return NamedDeclarator(name, indirection, suffixes + size)
+}
+
+internal operator fun NamedDeclarator.get(noSize: NoSize): NamedDeclarator {
+  return NamedDeclarator(name, indirection, suffixes + noSize)
 }
 
 internal fun prefixInc(e: Expression) = PrefixIncrement(e).zeroRange()

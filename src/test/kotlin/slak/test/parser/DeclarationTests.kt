@@ -5,12 +5,10 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
-import slak.ckompiler.parser.ErrorExpression
-import slak.ckompiler.parser.ErrorType
+import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
 
-/** Similarly to [LexingTests], these are not strictly unit tests. */
 class DeclarationTests {
   @Test
   fun `Basic Declaration`() {
@@ -207,6 +205,29 @@ class DeclarationTests {
     val p = prepareCode("int array_of_stuff[((int) 4.7) / 2];", source)
     p.assertNoDiagnostics()
     int declare nameDecl("array_of_stuff")[2] assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Array Size Missing`() {
+    val p = prepareCode("""
+      int main() {
+        int array_of_stuff[];
+        return 0;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ARRAY_SIZE_MISSING)
+    int declare nameDecl("array_of_stuff")[NoSize] assertEquals
+        p.root.decls[0].fn.block.items[0].decl
+  }
+
+  @Test
+  fun `Array Size Missing Allowed In Function Parameter`() {
+    val p = prepareCode("""
+      void f(int array[]);
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    void proto ("f" withParams listOf(int param nameDecl("array")[NoSize])) assertEquals
+        p.root.decls[0]
   }
 
   @ParameterizedTest

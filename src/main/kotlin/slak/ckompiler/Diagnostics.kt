@@ -63,6 +63,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_RPAREN_AFTER_VARIADIC(ERROR, "Expected ')' after variadic '...'"),
   TRANSLATION_UNIT_NEEDS_DECL(WARNING,
       "ISO C requires a translation unit to contain at least one declaration"),
+  ARRAY_SIZE_MISSING(ERROR, "Array size missing for '%s'"),
   ARRAY_STATIC_NO_SIZE(ERROR, "'static' may not be used without an array size"),
   UNSUPPORTED_VLA(ERROR, "Variable length arrays are not supported by this implementation"),
   PARAM_NAME_OMITTED(ERROR, "Parameter name omitted for type '%s'"),

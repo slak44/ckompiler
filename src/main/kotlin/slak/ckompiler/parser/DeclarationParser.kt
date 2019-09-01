@@ -75,7 +75,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
   override fun parseDeclaration(declSpec: DeclarationSpecifier,
                                 declarator: Declarator?): Declaration {
     val declList = parseInitDeclaratorList(declSpec, declarator)
-    declList.forEach { checkArrayElementType(declSpec, it.first) }
+    declList.forEach { checkArrayType(declSpec, it.first) }
     val start = if (declSpec.isBlank()) safeToken(0) else declSpec
     return Declaration(declSpec, declList).withRange(start..safeToken(-1))
   }
