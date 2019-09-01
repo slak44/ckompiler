@@ -22,7 +22,7 @@ internal fun <T : ASTNode> T.zeroRange(): T {
   return this
 }
 
-internal fun int(i: Long): IntegerConstantNode = IntegerConstantNode(i, IntegralSuffix.NONE)
+internal fun int(i: Long) = IntegerConstantNode(i)
 
 internal fun double(f: Double): FloatingConstantNode = FloatingConstantNode(f, FloatingSuffix.NONE)
 

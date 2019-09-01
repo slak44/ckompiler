@@ -269,8 +269,10 @@ class VoidExpression : ExprConstantNode() {
   override val type = VoidType
 }
 
-data class IntegerConstantNode(val value: Long,
-                               val suffix: IntegralSuffix) : ExprConstantNode() {
+data class IntegerConstantNode(
+    val value: Long,
+    val suffix: IntegralSuffix = IntegralSuffix.NONE
+) : ExprConstantNode() {
   override val type = when (suffix) {
     IntegralSuffix.UNSIGNED -> UnsignedIntType
     IntegralSuffix.UNSIGNED_LONG -> UnsignedLongType
@@ -318,7 +320,7 @@ data class StringLiteralNode(val string: String,
   override val type = ArrayType(when (encoding) {
     StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
     else -> UnsignedLongLongType
-  }, ExpressionSize(IntegerConstantNode(string.length.toLong(), IntegralSuffix.NONE)))
+  }, ConstantSize(IntegerConstantNode(string.length.toLong())))
 }
 
 /**

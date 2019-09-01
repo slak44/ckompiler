@@ -317,8 +317,7 @@ class IRLoweringContext {
    */
   private fun transformIncDec(expr: IncDecOperation, isDec: Boolean): ComputeReference {
     val op = if (isDec) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
-    val one = IntegerConstantNode(1, IntegralSuffix.NONE)
-    val incremented = BinaryExpression(op, expr.expr, one)
+    val incremented = BinaryExpression(op, expr.expr, IntegerConstantNode(1))
     return transformCompoundAssigns(incremented)
   }
 

@@ -206,7 +206,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
         BinaryOperators.NEQ -> lhsConst != rhsConst
         else -> logger.throwICE("Logically impossible condition")
       }
-      IntegerConstantNode(if (result) 1L else 0L, IntegralSuffix.NONE)
+      IntegerConstantNode(if (result) 1L else 0L)
     }
     is IntegralType -> {
       val lhsConst = convertToInt(lhs)
@@ -220,7 +220,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
         BinaryOperators.NEQ -> lhsConst != rhsConst
         else -> logger.throwICE("Logically impossible condition")
       }
-      IntegerConstantNode(if (result) 1L else 0L, IntegralSuffix.NONE)
+      IntegerConstantNode(if (result) 1L else 0L)
     }
     else -> TODO("unknown result type")
   }
@@ -241,7 +241,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
       BinaryOperators.OR -> (lhsConst != 0L || rhsConst != 0L).let { if (it) 1L else 0L }
       else -> logger.throwICE("Logically impossible condition")
     }
-    return IntegerConstantNode(result, IntegralSuffix.NONE)
+    return IntegerConstantNode(result)
   }
 
   private fun doBinary(lhs: ExprConstantNode,
@@ -272,9 +272,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
         }
         UnaryOperators.PLUS -> FloatingConstantNode(+toApply, FloatingSuffix.NONE)
         UnaryOperators.MINUS -> FloatingConstantNode(-toApply, FloatingSuffix.NONE)
-        UnaryOperators.NOT -> {
-          IntegerConstantNode(if (toApply != 0.0) 1L else 0L, IntegralSuffix.NONE)
-        }
+        UnaryOperators.NOT -> IntegerConstantNode(if (toApply != 0.0) 1L else 0L)
       }
     }
     is IntegralType -> {
@@ -288,7 +286,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
         UnaryOperators.BIT_NOT -> toApply.inv()
         UnaryOperators.NOT -> if (toApply != 0L) 0L else 1L
       }
-      IntegerConstantNode(result, IntegralSuffix.NONE)
+      IntegerConstantNode(result)
     }
     else -> TODO("unknown result type")
   }
@@ -296,7 +294,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
   private fun doCast(type: TypeName, target: ExprConstantNode): ExprConstantNode = when (type) {
     ErrorType -> ErrorExpression().withRange(target)
     VoidType -> VoidExpression().withRange(target)
-    is IntegralType -> IntegerConstantNode(convertToInt(target), IntegralSuffix.NONE)
+    is IntegralType -> IntegerConstantNode(convertToInt(target))
     is FloatingType -> FloatingConstantNode(convertToFloat(target), FloatingSuffix.NONE)
     is PointerType -> TODO()
     is FunctionType -> TODO()
