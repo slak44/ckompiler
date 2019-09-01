@@ -273,6 +273,10 @@ data class CastExpression(val target: Expression, override val type: TypeName) :
 
 sealed class ExprConstantNode : Expression(), Terminal
 
+class VoidExpression : ExprConstantNode() {
+  override val type = VoidType
+}
+
 data class IntegerConstantNode(val value: Long,
                                val suffix: IntegralSuffix) : ExprConstantNode() {
   override val type = when (suffix) {
@@ -467,10 +471,13 @@ data class StructDeclaration(val declSpecs: DeclarationSpecifier,
  *
  * C standard: 6.7.6.2
  */
-sealed class ArrayTypeSize(val hasVariableSize: Boolean) : DeclaratorSuffix()
+sealed class ArrayTypeSize : DeclaratorSuffix()
+
+sealed class VariableArraySize : ArrayTypeSize()
+sealed class ConstantArraySize : ArrayTypeSize()
 
 /** Describes an array type that specifies no size in the square brackets. */
-object NoSize : ArrayTypeSize(false) {
+object NoSize : ConstantArraySize() {
   override fun toString() = ""
 }
 
@@ -484,7 +491,7 @@ object NoSize : ArrayTypeSize(false) {
  * @param vlaStar (diagnostic data) the * in the square brackets: `int v[*];`
  */
 data class UnconfinedVariableSize(val typeQuals: TypeQualifierList,
-                                  val vlaStar: Punctuator) : ArrayTypeSize(true) {
+                                  val vlaStar: Punctuator) : VariableArraySize() {
   override fun toString() = "${typeQuals.stringify()} *"
 }
 
@@ -500,8 +507,7 @@ data class UnconfinedVariableSize(val typeQuals: TypeQualifierList,
  */
 data class FunctionParameterSize(val typeQuals: TypeQualifierList,
                                  val isStatic: Boolean,
-                                 val expr: Expression?) :
-    ArrayTypeSize(false /* FIXME: not always false */) {
+                                 val expr: Expression?) : VariableArraySize() {
   init {
     if (isStatic && expr == null) logger.throwICE("Array size, static without expr") { this }
     if (expr == null && typeQuals.isEmpty()) {
@@ -516,13 +522,35 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
 }
 
 /**
+ * Describes an array type whose size is exactly [size], where the type is a function
+ * parameter's type.
+ *
+ * C standard: 6.7.6.2.0.3, 6.7.6.3.0.7, 6.7.6.2.0.4
+ * @param typeQuals the `type-qualifier`s between the square brackets
+ * @param isStatic if the keyword "static" appears between the square brackets
+ */
+data class FunctionParameterConstantSize(val typeQuals: TypeQualifierList,
+                                         val isStatic: Boolean,
+                                         val size: ExprConstantNode) : ConstantArraySize() {
+  override fun toString(): String {
+    return "${if (isStatic) "static " else ""}${typeQuals.stringify()}$size"
+  }
+}
+
+/**
  * Describes an array type whose size is specified by [expr]. A non-constant [expr] describes a VLA,
  * which this implementation does **not support**.
- * @param expr integral expression
  */
-data class ExpressionSize(val expr: Expression) :
-    ArrayTypeSize(false /* FIXME: not always false */) {
+data class ExpressionSize(val expr: Expression) : VariableArraySize() {
   override fun toString() = "$expr"
+}
+
+/**
+ * Describes an array type whose size is exactly [size].
+ * @param size result of integer constant expression
+ */
+data class ConstantSize(val size: ExprConstantNode) : ConstantArraySize() {
+  override fun toString() = "$size"
 }
 
 /** C standard: A.2.4 */

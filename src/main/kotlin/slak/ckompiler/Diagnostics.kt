@@ -332,12 +332,6 @@ class DiagnosticBuilder {
   fun create() = Diagnostic(id, messageFormatArgs, sourceColumns, origin)
 }
 
-fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
-  val builder = DiagnosticBuilder()
-  builder.build()
-  return builder.create()
-}
-
 /**
  * Useful for delegation.
  * @see DebugHandler
@@ -345,7 +339,11 @@ fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
 interface IDebugHandler {
   val logger: Logger
   val diags: List<Diagnostic>
+  fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic
   fun diagnostic(build: DiagnosticBuilder.() -> Unit)
+
+  // FIXME: use this in preprocessor
+  fun includeNestedDiags(diags: List<Diagnostic>)
 }
 
 /**
@@ -358,13 +356,21 @@ class DebugHandler(private val diagSource: String,
   override val logger: Logger = LogManager.getLogger(diagSource)
   override val diags = mutableListOf<Diagnostic>()
 
+  override fun includeNestedDiags(diags: List<Diagnostic>) {
+    this.diags += diags
+  }
+
   override fun diagnostic(build: DiagnosticBuilder.() -> Unit) {
-    diags += createDiagnostic {
-      sourceFileName = srcFileName
-      sourceText = srcText
-      origin = diagSource
-      this.build()
-    }
+    diags += createDiagnostic(build)
+  }
+
+  override fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic {
+    val builder = DiagnosticBuilder()
+    builder.sourceFileName = srcFileName
+    builder.sourceText = srcText
+    builder.origin = diagSource
+    builder.build()
+    return builder.create()
   }
 }
 

@@ -199,7 +199,14 @@ class DeclarationTests {
   fun `Array 6D Declaration`() {
     val p = prepareCode("int array6d[73][23][2][78 + 1][3 / 1][1];", source)
     p.assertNoDiagnostics()
-    int declare nameDecl("array6d")[73][23][2][78 add 1][3 div 1][1] assertEquals p.root.decls[0]
+    int declare nameDecl("array6d")[73][23][2][79][3][1] assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Array With Float Cast In Size`() {
+    val p = prepareCode("int array_of_stuff[((int) 4.7) / 2];", source)
+    p.assertNoDiagnostics()
+    int declare nameDecl("array_of_stuff")[2] assertEquals p.root.decls[0]
   }
 
   @ParameterizedTest
@@ -219,9 +226,14 @@ class DeclarationTests {
     p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
   }
 
-  @Test
-  fun `Unsupported VLA`() {
-    val p = prepareCode("int array_of_stuff[*];", source)
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "int array_of_stuff[*];",
+    "int x = 23; int array_of_stuff[x];",
+    "int x = 23; int array_of_stuff[(x + 2) / 2];"
+  ])
+  fun `Unsupported VLA`(str: String) {
+    val p = prepareCode(str, source)
     p.assertDiags(DiagnosticId.UNSUPPORTED_VLA)
   }
 }

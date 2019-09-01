@@ -370,6 +370,7 @@ class IRLoweringContext {
   }
 
   private fun transformExpr(expr: Expression): ComputeConstant = when (expr) {
+    is VoidExpression -> logger.throwICE("VoidExpression was removed")
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
     is TypedIdentifier -> ComputeReference(expr, isSynthetic = false)

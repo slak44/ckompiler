@@ -38,6 +38,7 @@ private val ternaryIds = IdCounter()
 /** Recursive case of [sequentialize]. */
 private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
+  is VoidExpression -> logger.throwICE("VoidExpression was removed")
   is FunctionCall -> {
     FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e)
   }

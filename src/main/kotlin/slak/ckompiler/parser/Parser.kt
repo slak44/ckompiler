@@ -44,6 +44,8 @@ class Parser(tokens: List<LexicalToken>, srcFileName: SourceFileName, srcText: S
     val declParser = DeclarationParser(parenMatcher, scopeHandler)
     declParser.specParser = SpecParser(declParser)
     declParser.expressionParser = ExpressionParser(parenMatcher, declParser, declParser)
+    declParser.constExprParser =
+        ConstantExprParser(ConstantExprType.DECLARATOR_ARRAY_SIZE, declParser.expressionParser)
     val controlKeywordParser = ControlKeywordParser(declParser.expressionParser)
     val statementParser = StatementParser(declParser, controlKeywordParser)
     trParser = TranslationUnitParser(declParser.specParser, statementParser)

@@ -41,6 +41,8 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
   internal lateinit var specParser: SpecParser
   /** @see specParser */
   internal lateinit var expressionParser: ExpressionParser
+  /** @see expressionParser */
+  internal lateinit var constExprParser: ConstantExprParser
 
   override fun parseTypeName(endIdx: Int): TypeName? = tokenContext(endIdx) {
     val declSpec = specParser.parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
@@ -357,16 +359,25 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       return quals.map { k -> k as Keyword }
     }
 
-    fun qualsAndStatic(quals: TypeQualifierList, staticKw: LexicalToken): FunctionParameterSize {
+    fun qualsAndStatic(quals: TypeQualifierList, staticKw: LexicalToken): ArrayTypeSize {
       if (isEaten()) {
         diagnostic {
           id = DiagnosticId.ARRAY_STATIC_NO_SIZE
           errorOn(staticKw)
         }
-        return FunctionParameterSize(quals, true, error<ErrorExpression>())
+        return FunctionParameterConstantSize(quals, true, error<ErrorExpression>())
       }
       val expr = expressionParser.parseExpr(it.size) ?: error<ErrorExpression>()
-      return FunctionParameterSize(quals, true, expr)
+      val (constExpr, diags) = constExprParser.evaluateExpr(expr)
+      return if (diags.isEmpty() && constExpr !is ErrorExpression) {
+        FunctionParameterConstantSize(quals, true, constExpr)
+      } else {
+        diagnostic {
+          id = DiagnosticId.UNSUPPORTED_VLA
+          errorOn(expr)
+        }
+        FunctionParameterSize(quals, true, expr)
+      }
     }
     if (current().asKeyword() == Keywords.STATIC) {
       val staticKw = current()
@@ -393,10 +404,23 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       return@tokenContext FunctionParameterSize(quals, false, null)
     }
     val expr = expressionParser.parseExpr(it.size) ?: error<ErrorExpression>()
-    if (quals.isEmpty()) {
-      return@tokenContext ExpressionSize(expr)
+    val (constExpr, diags) = constExprParser.evaluateExpr(expr)
+    if (diags.isEmpty() && constExpr !is ErrorExpression) {
+      if (quals.isEmpty()) {
+        return@tokenContext ConstantSize(constExpr)
+      } else {
+        return@tokenContext FunctionParameterConstantSize(quals, false, constExpr)
+      }
     } else {
-      return@tokenContext FunctionParameterSize(quals, false, expr)
+      diagnostic {
+        id = DiagnosticId.UNSUPPORTED_VLA
+        errorOn(expr)
+      }
+      if (quals.isEmpty()) {
+        return@tokenContext ExpressionSize(expr)
+      } else {
+        return@tokenContext FunctionParameterSize(quals, false, expr)
+      }
     }
   }
 

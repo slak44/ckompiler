@@ -278,11 +278,16 @@ internal fun typedef(ds: DeclarationSpecifier,
   return tdSpec to ref
 }
 
-internal operator fun <T> IdentifierNode.get(arraySize: T) =
-    NamedDeclarator(this, emptyList(), listOf(ExpressionSize(parseDSLElement(arraySize))))
+internal operator fun <T> IdentifierNode.get(arraySize: T): NamedDeclarator {
+  val e = parseDSLElement(arraySize)
+  require(e is ExprConstantNode)
+  return NamedDeclarator(this, emptyList(), listOf(ConstantSize(e)))
+}
 
 internal operator fun <T> NamedDeclarator.get(arraySize: T): NamedDeclarator {
-  return NamedDeclarator(name, indirection, suffixes + ExpressionSize(parseDSLElement(arraySize)))
+  val e = parseDSLElement(arraySize)
+  val size = if (e is ExprConstantNode) ConstantSize(e) else ExpressionSize(e)
+  return NamedDeclarator(name, indirection, suffixes + size)
 }
 
 internal fun prefixInc(e: Expression) = PrefixIncrement(e).zeroRange()

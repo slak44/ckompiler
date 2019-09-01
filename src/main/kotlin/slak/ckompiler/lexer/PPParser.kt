@@ -183,8 +183,8 @@ class PPParser(
       }
     }
     val pm = ParenMatcher(this, TokenHandler(replaced, this))
-    val p = ConstantExprParser(pm, ConstantExprType.PREPROCESSOR)
-    val it = p.parseExpr(replaced.size)
+    val p = ConstantExprParser(ConstantExprType.PREPROCESSOR, pm, ConstExprIdents, ConstExprIdents)
+    val it = p.parseConstant(replaced.size)
     if (p.isNotEaten()) diagnostic {
       id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
       formatArgs("#$directiveName")
@@ -197,7 +197,7 @@ class PPParser(
       is ErrorExpression -> false
       is IntegerConstantNode -> it.value != 0L
       is CharacterConstantNode -> it.char != 0
-      is FloatingConstantNode -> {
+      is FloatingConstantNode, is VoidExpression -> {
         logger.throwICE("Not a valid constant from ConstantExprParser with PREPROCESSOR type")
       }
       is StringLiteralNode -> logger.throwICE("Not a valid constant from ConstantExprParser")

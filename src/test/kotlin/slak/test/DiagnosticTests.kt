@@ -1,10 +1,7 @@
 package slak.test
 
 import org.junit.jupiter.api.Test
-import slak.ckompiler.Diagnostic
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.createDiagnostic
-import slak.ckompiler.length
+import slak.ckompiler.*
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.parser.Declaration
 import kotlin.test.assertEquals
@@ -144,9 +141,7 @@ class DiagnosticTests {
     val p = prepareCode(src, source)
     val declarator = assertNotNull(p.root.decls[1] as? Declaration).declaratorList[0]
     val callRange = assertNotNull(declarator.second)
-    val diag = createDiagnostic {
-      sourceFileName = this@DiagnosticTests.source
-      sourceText = src
+    val diag = DebugHandler(source, source, src).createDiagnostic {
       errorOn(callRange)
     }
     diag.assertDiagCaret(line = 2, col = 13, colCount = 6)
