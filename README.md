@@ -109,6 +109,9 @@ Those linear pieces of code are represented as a `List<Expression>`, and are
 transformed to the simple IR (`List<IRExpression>`) while creating the graph
 (see [sequentialize][seq] and [IRLoweringContext][ir]).
 
+Constant folding is also applied to the expressions during this process (see
+[ConstantFolding.kt][const_fold]).
+
 While creating the graph, various variable declarations are encountered. These
 do not show up in the IR; instead, they are tracked in a separate data structure
 (see `CFG.definitions`). A "definition" is either a declaration in the C sense,
@@ -267,11 +270,11 @@ especially to the C standard.
 [seq]: ./src/main/kotlin/slak/ckompiler/analysis/Sequentialization.kt
 [ir]: ./src/main/kotlin/slak/ckompiler/analysis/IRLowering.kt
 [cfg]: ./src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt
+[const_fold]: ./src/main/kotlin/slak/ckompiler/analysis/ConstantFolding.kt
 [nasm_gen]:
 ./src/main/kotlin/slak/ckompiler/backend/nasm_x86_64/NasmGenerator.kt
 [diags]: ./src/main/kotlin/slak/ckompiler/Diagnostics.kt
 [cfg_graphviz_create]: ./src/main/kotlin/slak/ckompiler/analysis/CFGGraphviz.kt
-
 [ssa]: https://en.wikipedia.org/wiki/Static_single_assignment_form
 [graphviz]: https://www.graphviz.org/
 [intel64isa]:
