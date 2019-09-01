@@ -1,5 +1,6 @@
 package slak.test.parser
 
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -163,7 +164,7 @@ class ExpressionTests {
   fun `Sizeof Type Name`() {
     val p = prepareCode("int a = sizeof(int);", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign SizeofTypeName(SignedIntType)) assertEquals p.root.decls[0]
+    int declare ("a" assign sizeOf(SignedIntType)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -171,6 +172,13 @@ class ExpressionTests {
     val p = prepareCode("int a = sizeof(1 + 2 * 3);", source)
     p.assertNoDiagnostics()
     int declare ("a" assign sizeOf(1 add (2 mul 3))) assertEquals p.root.decls[0]
+  }
+
+  @Disabled("have to deal with incomplete structs in type system first")
+  @Test
+  fun `Sizeof Incomplete Type`() {
+    val p = prepareCode("struct x; int a = sizeof(struct x);", source)
+    p.assertDiags(DiagnosticId.SIZEOF_ON_INCOMPLETE)
   }
 
   @Test

@@ -657,7 +657,7 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
   if (success.type is UnionType && failure.type is UnionType && success.type == failure.type) {
     return success.type
   }
-  if (success.type is VoidType && failure.type is VoidType){
+  if (success.type is VoidType && failure.type is VoidType) {
     return VoidType
   }
   // FIXME: is null pointer constant case handled?
@@ -689,4 +689,33 @@ fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
   // FIXME: this does not seem terribly correct, but 6.5.4.0.3 does say pointers need explicit casts
   if (operand.type is PointerType || commonType is PointerType) return operand
   return CastExpression(operand, commonType).withRange(operand)
+}
+
+/**
+ * Validate the operand type for a `sizeof`. Prints diagnostics.
+ */
+fun IDebugHandler.checkSizeofType(
+    typeName: TypeName,
+    sizeofRange: SourcedRange,
+    targetRange: SourcedRange
+) {
+  if (typeName is ErrorType) return
+  if (typeName is BitfieldType) {
+    diagnostic {
+      id = DiagnosticId.SIZEOF_ON_BITFIELD
+      errorOn(sizeofRange)
+      errorOn(targetRange)
+    }
+    return
+  }
+  if (!typeName.isCompleteObjectType()) {
+    diagnostic {
+      id = DiagnosticId.SIZEOF_ON_INCOMPLETE
+      formatArgs(typeName.toString())
+      errorOn(sizeofRange)
+      errorOn(targetRange)
+    }
+    return
+  }
+
 }

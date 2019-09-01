@@ -18,7 +18,8 @@ class PPParser(
     private val includePaths: IncludePaths,
     private val currentDir: File,
     private val ignoreTrigraphs: Boolean,
-    private val debugHandler: DebugHandler
+    private val debugHandler: DebugHandler,
+    private val machineTargetData: MachineTargetData
 ) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens, debugHandler) {
 
   val outTokens = mutableListOf<LexicalToken>()
@@ -183,7 +184,13 @@ class PPParser(
       }
     }
     val pm = ParenMatcher(this, TokenHandler(replaced, this))
-    val p = ConstantExprParser(ConstantExprType.PREPROCESSOR, pm, ConstExprIdents, ConstExprIdents)
+    val p = ConstantExprParser(
+        type = ConstantExprType.PREPROCESSOR,
+        parenMatcher = pm,
+        identSearchable = ConstExprIdents,
+        typeNameParser = ConstExprIdents,
+        machineTargetData = machineTargetData
+    )
     val it = p.parseConstant(replaced.size)
     if (p.isNotEaten()) diagnostic {
       id = DiagnosticId.EXTRA_TOKENS_DIRECTIVE
@@ -284,7 +291,8 @@ class PPParser(
             includePaths = includePaths,
             currentDir = currentDir,
             ignoreTrigraphs = ignoreTrigraphs,
-            debugHandler = debugHandler
+            debugHandler = debugHandler,
+            machineTargetData = machineTargetData
         )
         return recursiveParser.outTokens to recursiveParser.objectDefines
       }
@@ -435,7 +443,8 @@ class PPParser(
         includePaths = includePaths,
         currentDir = includedFile.parentFile,
         ignoreTrigraphs = ignoreTrigraphs,
-        debugHandler = recursiveDH
+        debugHandler = recursiveDH,
+        machineTargetData = machineTargetData
     )
     debugHandler.diags += recursiveDH.diags
     objectDefines.clear()

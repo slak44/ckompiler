@@ -31,7 +31,7 @@ internal fun preparePP(s: String, source: SourceFileName): Preprocessor {
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
   val pp = preparePP(s, source)
   pp.assertNoDiagnostics()
-  return Parser(pp.tokens, source, s)
+  return Parser(pp.tokens, source, s, MachineTargetData.x64)
 }
 
 internal fun prepareCFG(s: String, source: SourceFileName): CFG {

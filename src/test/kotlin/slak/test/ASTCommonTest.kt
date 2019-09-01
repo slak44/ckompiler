@@ -1,5 +1,6 @@
 package slak.test
 
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.lexer.*
@@ -332,7 +333,10 @@ internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: BinaryOperators): BinaryEx
   return BinaryExpression(op, lhs, rhs).zeroRange()
 }
 
-internal fun <T> sizeOf(it: T) = SizeofExpression(parseDSLElement(it)).zeroRange()
+internal fun <T> sizeOf(it: T) =
+    SizeofTypeName(parseDSLElement(it).type, MachineTargetData.x64.sizeType).zeroRange()
+
+internal fun sizeOf(it: TypeName) = SizeofTypeName(it, MachineTargetData.x64.sizeType).zeroRange()
 
 internal fun <T> TypeName.cast(it: T) = CastExpression(parseDSLElement(it), this).zeroRange()
 

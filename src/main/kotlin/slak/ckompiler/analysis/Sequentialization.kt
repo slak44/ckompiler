@@ -84,7 +84,7 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     fakeAssignable
   }
   is CastExpression, is ArraySubscript, is UnaryExpression,
-  is SizeofExpression, is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
+  is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
   is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
     // Do nothing. These do not pose the problem of being sequenced before or after.
     e

@@ -46,7 +46,8 @@ class Preprocessor(sourceText: String,
         includePaths = includePaths,
         currentDir = currentDir,
         ignoreTrigraphs = ignoreTrigraphs,
-        debugHandler = debugHandler
+        debugHandler = debugHandler,
+        machineTargetData = targetData
     )
     defines = p.objectDefines
     tokens = p.outTokens.mapNotNull(::convert)

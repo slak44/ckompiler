@@ -2,6 +2,7 @@ package slak.test
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Keywords
@@ -144,7 +145,7 @@ class ResilienceTests {
         Keywords.INT, Identifier("a"), Punctuators.ASSIGN,
         123, Punctuators.PLUS, Punctuators.SEMICOLON
     )
-    val p = Parser(l.tokens, source, code)
+    val p = Parser(l.tokens, source, code, MachineTargetData.x64)
     p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
   }
 
@@ -162,7 +163,7 @@ class ResilienceTests {
         Keywords.INT, Identifier("a"), Punctuators.ASSIGN,
         123, Punctuators.PLUS, Punctuators.SEMICOLON
     )
-    val p = Parser(l.tokens, source, code)
+    val p = Parser(l.tokens, source, code, MachineTargetData.x64)
     p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
   }
 
@@ -179,7 +180,7 @@ class ResilienceTests {
         Keywords.INT, Identifier("a"), Punctuators.ASSIGN,
         123, Punctuators.PLUS, Punctuators.SEMICOLON
     )
-    val p = Parser(l.tokens, source, code)
+    val p = Parser(l.tokens, source, code, MachineTargetData.x64)
     p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
   }
 }

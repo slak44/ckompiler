@@ -48,8 +48,9 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
       type: ConstantExprType,
       parenMatcher: ParenMatcher,
       identSearchable: IdentSearchable,
-      typeNameParser: TypeNameParser
-  ) : this(type, ExpressionParser(parenMatcher, identSearchable, typeNameParser))
+      typeNameParser: TypeNameParser,
+      machineTargetData: MachineTargetData
+  ) : this(type, ExpressionParser(parenMatcher, identSearchable, typeNameParser, machineTargetData))
 
   override fun parseConstant(endIdx: Int): ExprConstantNode? {
     if (endIdx == 0) return null
@@ -137,7 +138,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
         else -> doBinary(lhs, rhs, expr.op, expr.type)
       }
     }
-    is SizeofExpression, is SizeofTypeName -> TODO("deal with this after we implement sizeof")
+    is SizeofTypeName -> TODO("deal with this after we implement sizeof")
   }
 
   private fun convertToFloat(e: ExprConstantNode): Double = when (e) {

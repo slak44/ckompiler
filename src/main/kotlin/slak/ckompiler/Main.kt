@@ -370,7 +370,7 @@ class CLI(private val stdinStream: InputStream) :
       return null
     }
 
-    val p = Parser(pp.tokens, relPath, text)
+    val p = Parser(pp.tokens, relPath, text, MachineTargetData.x64)
     if (p.diags.errors().isNotEmpty()) {
       executionFailed = true
       return null

@@ -198,24 +198,16 @@ data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Ex
   override val type = op.applyTo(operand.type)
 }
 
-/** C standard: A.2.1 */
-data class SizeofTypeName(val typeName: TypeName) : Expression() {
-  override val type = UnsignedIntType
-
-  init {
-    // FIXME: disallow function types/incomplete types/bitfield members
-  }
-}
-
-/** C standard: A.2.1 */
-data class SizeofExpression(val sizeExpr: Expression) : Expression() {
-  // FIXME: do we have to keep the expression? can we just take sizeExpr.type and forget the rest?
-  override val type = UnsignedIntType
-
-  init {
-    // FIXME: disallow function types/incomplete types/bitfield members
-  }
-}
+/**
+ * Represents an application of the unary `sizeof` operator.
+ *
+ * Since we do not support VLAs, `sizeof` always returns an integer constant.
+ *
+ * C standard: A.2.1. 6.5.3.4
+ * @param sizeOfWho which type to take the size of
+ * @param type the resulting type of the `sizeof` expression, is `size_t` for the current target
+ */
+data class SizeofTypeName(val sizeOfWho: TypeName, override val type: TypeName) : Expression()
 
 /**
  * Represents the argument of ++x, x++, --x and x--.

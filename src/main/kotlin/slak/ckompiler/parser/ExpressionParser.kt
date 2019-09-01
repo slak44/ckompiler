@@ -87,7 +87,8 @@ fun LexicalToken.asUnaryOperator(): UnaryOperators? = asPunct()?.asUnaryOperator
 class ExpressionParser(
     parenMatcher: ParenMatcher,
     identSearchable: IdentSearchable,
-    typeNameParser: TypeNameParser
+    typeNameParser: TypeNameParser,
+    private val machineTargetData: MachineTargetData
 ) : IExpressionParser,
     IDebugHandler by parenMatcher,
     ITokenHandler by parenMatcher,
@@ -365,13 +366,15 @@ class ExpressionParser(
     if (isEaten()) return error<ErrorExpression>()
     if (current().asPunct() != Punctuators.LPAREN) {
       val expr = parseUnaryExpression() ?: error<ErrorExpression>()
-      return SizeofExpression(expr).withRange(sizeOf..expr)
+      checkSizeofType(expr.type, sizeOf, expr)
+      return SizeofTypeName(expr.type, machineTargetData.sizeType).withRange(sizeOf..expr)
     }
     val rParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     if (rParenIdx == -1) {
       eatToSemi()
       return error<ErrorExpression>()
     }
+    val lParen = current()
     eat() // The '('
     val typeName = parseTypeName(rParenIdx)
     if (typeName == null) {
@@ -384,10 +387,14 @@ class ExpressionParser(
         expr
       }
       eat() // The ')'
-      return SizeofExpression(retExpr).withRange(sizeOf..tokenAt(rParenIdx))
+      checkSizeofType(retExpr.type, sizeOf, retExpr)
+      return SizeofTypeName(retExpr.type, machineTargetData.sizeType)
+          .withRange(sizeOf..tokenAt(rParenIdx))
     }
     eat() // The ')'
-    return SizeofTypeName(typeName).withRange(sizeOf..tokenAt(rParenIdx))
+    checkSizeofType(typeName, sizeOf, lParen..tokenAt(rParenIdx))
+    return SizeofTypeName(typeName, machineTargetData.sizeType)
+        .withRange(sizeOf..tokenAt(rParenIdx))
   }
 
   /** C standard: 6.5.3 */

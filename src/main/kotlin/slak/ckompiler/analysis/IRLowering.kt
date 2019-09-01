@@ -383,7 +383,7 @@ class IRLoweringContext {
     is BinaryExpression -> transformBinary(expr)
     is ArraySubscript -> transformSubscript(expr)
     is CastExpression -> transformCast(expr)
-    is SizeofExpression, is SizeofTypeName ->
+    is SizeofTypeName ->
       TODO("these are also sort of constants, have to be integrated into IRConstantExpression")
     is IntegerConstantNode -> ComputeInteger(expr)
     is FloatingConstantNode -> ComputeFloat(expr)
@@ -411,7 +411,7 @@ class IRLoweringContext {
       is CastExpression -> transformCast(topLevelExpr)
       // FIXME: except for volatile reads, this can go below, probably
       is TypedIdentifier -> _ir += ComputeReference(topLevelExpr, isSynthetic = false)
-      is SizeofExpression, is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,
+      is SizeofTypeName, is IntegerConstantNode, is FloatingConstantNode,
       is StringLiteralNode, is CharacterConstantNode -> {
         // We don't discard those because they might be jump conditions/return values
         val target = makeTemporary(topLevelExpr.type)

@@ -33,7 +33,12 @@ inline fun <reified T> ITokenHandler.error(): T where T : ASTNode, T : ErrorNode
  * @param tokens list of tokens to parse
  * @param srcFileName the name of the file in which the tokens were extracted from
  */
-class Parser(tokens: List<LexicalToken>, srcFileName: SourceFileName, srcText: String) {
+class Parser(
+    tokens: List<LexicalToken>,
+    srcFileName: SourceFileName,
+    srcText: String,
+    machineTargetData: MachineTargetData
+) {
   private val trParser: TranslationUnitParser
 
   init {
@@ -43,7 +48,8 @@ class Parser(tokens: List<LexicalToken>, srcFileName: SourceFileName, srcText: S
     val parenMatcher = ParenMatcher(debugHandler, tokenHandler)
     val declParser = DeclarationParser(parenMatcher, scopeHandler)
     declParser.specParser = SpecParser(declParser)
-    declParser.expressionParser = ExpressionParser(parenMatcher, declParser, declParser)
+    declParser.expressionParser =
+        ExpressionParser(parenMatcher, declParser, declParser, machineTargetData)
     declParser.constExprParser =
         ConstantExprParser(ConstantExprType.DECLARATOR_ARRAY_SIZE, declParser.expressionParser)
     val controlKeywordParser = ControlKeywordParser(declParser.expressionParser)
