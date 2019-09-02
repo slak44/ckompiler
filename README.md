@@ -214,7 +214,7 @@ int main() {
 ```
 
 produces the following graph  
-![Graph Example](readme-resources/graph-example.png)
+<p align="center"><img src="readme-resources/graph-example.png" alt="Graph Example"/></p>
 
 ###### SSA form
 
@@ -226,7 +226,7 @@ The `CFG` class is also responsible for converting the code in its nodes to a
    are removed from the graph.
    
    Here is an example of a CFG that has not been cleaned:  
-   ![Empty Blocks](readme-resources/empty-blocks.png)
+   <p align="center"><img src="readme-resources/empty-blocks.png" alt="Empty Blocks"/></p>
    
    All the blocks labeled `<EMPTY>` are redundant.
    
@@ -246,7 +246,7 @@ The `CFG` class is also responsible for converting the code in its nodes to a
    edge to another basic block, which contains the code after the return.
    Strictly speaking, the second block is connected. For DCE purposes, however,
    such blocks are considered disconnected. Such a graph looks like this:  
-   ![Disconnected Fake Edge](readme-resources/disconnected-fake-edge.png)
+   <p align="center"><img src="readme-resources/disconnected-fake-edge.png" alt="Disconnected Fake Edge"/></p>
 3. Unterminated `BasicBlock`s are identified. Warnings are reported for non-void
    functions (it means control flow reached the end of the function and didn't
    find a return). The blocks are terminated with a `ImpossibleJump`.
