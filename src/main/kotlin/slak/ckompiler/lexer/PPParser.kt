@@ -1,5 +1,6 @@
 package slak.ckompiler.lexer
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
 import java.io.File
@@ -649,5 +650,9 @@ class PPParser(
     }
     eat() // Get rid of the newline too
     return parseLine()
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }

@@ -6,7 +6,7 @@ import slak.ckompiler.lexer.IntegralSuffix
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger("ExpressionEvaluator")
+private val logger = LogManager.getLogger()
 
 fun convertToFloat(e: ExprConstantNode): Double = when (e) {
   is IntegerConstantNode -> e.value.toDouble()

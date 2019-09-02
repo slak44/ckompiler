@@ -1,9 +1,12 @@
 package slak.ckompiler.analysis
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
+
+private val logger = LogManager.getLogger()
 
 /**
  * A bunch of expressions that should be equivalent to the original expression that was

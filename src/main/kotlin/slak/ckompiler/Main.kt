@@ -1,6 +1,7 @@
 package slak.ckompiler
 
 import kotlinx.cli.*
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
@@ -483,6 +484,10 @@ class CLI(private val stdinStream: InputStream) :
       File(output.orElse("a.out")).setExecutable(true)
     }
     return if (diags.errors().isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }
 

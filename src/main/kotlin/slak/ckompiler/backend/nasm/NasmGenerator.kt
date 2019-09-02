@@ -8,7 +8,7 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
 
-private val logger = LogManager.getLogger("CodeGenerator")
+private val logger = LogManager.getLogger()
 
 typealias Instructions = List<String>
 

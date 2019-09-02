@@ -1,5 +1,6 @@
 package slak.ckompiler.parser
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 
@@ -171,5 +172,9 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     }
     if (isEaten()) return
     else return translationUnit()
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }

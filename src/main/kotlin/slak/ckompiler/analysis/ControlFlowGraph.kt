@@ -8,7 +8,7 @@ import slak.ckompiler.parser.Terminal
 import slak.ckompiler.parser.VoidType
 import java.util.*
 
-private val logger = LogManager.getLogger("ControlFlow")
+private val logger = LogManager.getLogger()
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
 class CFG(val f: FunctionDefinition,

@@ -1,5 +1,6 @@
 package slak.ckompiler.parser
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 
@@ -428,5 +429,7 @@ class SpecParser(declaratorParser: DeclaratorParser) :
     val typeQualifiers =
         listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE, Keywords.ATOMIC)
     private val funSpecifiers = listOf(Keywords.NORETURN, Keywords.INLINE)
+
+    private val logger = LogManager.getLogger()
   }
 }

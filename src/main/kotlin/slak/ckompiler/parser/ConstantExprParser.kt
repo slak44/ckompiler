@@ -1,5 +1,6 @@
 package slak.ckompiler.parser
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import slak.ckompiler.analysis.evalBinary
 import slak.ckompiler.analysis.evalCast
@@ -136,5 +137,9 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
       }
     }
     is SizeofTypeName -> TODO("deal with this after we implement sizeof")
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }

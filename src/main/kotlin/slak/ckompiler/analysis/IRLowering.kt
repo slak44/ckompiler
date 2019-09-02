@@ -6,7 +6,7 @@ import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger("Lowering")
+private val logger = LogManager.getLogger()
 
 /**
  * These (mostly) map to the analogous [slak.ckompiler.parser.BinaryOperators], but with the notable

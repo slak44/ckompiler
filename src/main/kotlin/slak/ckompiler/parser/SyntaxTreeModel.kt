@@ -7,7 +7,7 @@ import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger("AST")
+private val logger = LogManager.getLogger()
 
 val Declarator.name get() = (this as NamedDeclarator).name
 val ExternalDeclaration.fn get() = this as FunctionDefinition

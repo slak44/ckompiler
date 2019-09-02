@@ -1,8 +1,11 @@
 package slak.ckompiler.lexer
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.throwICE
+
+private val logger = LogManager.getLogger()
 
 interface StaticTokenEnum {
   val realName: String

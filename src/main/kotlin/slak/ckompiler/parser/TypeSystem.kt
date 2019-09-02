@@ -7,7 +7,7 @@ import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
 
-private val logger = LogManager.getLogger("TypeSystem")
+private val logger = LogManager.getLogger()
 
 fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
   val tagName = if (tagSpecifier.isAnonymous) null else tagSpecifier.tagIdent.name

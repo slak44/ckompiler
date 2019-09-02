@@ -1,7 +1,6 @@
 package slak.ckompiler
 
 import com.github.ajalt.mordant.TermColors
-import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.message.ObjectMessage
 import slak.ckompiler.DiagnosticKind.*
@@ -341,7 +340,6 @@ class DiagnosticBuilder {
  * @see DebugHandler
  */
 interface IDebugHandler {
-  val logger: Logger
   val diags: List<Diagnostic>
   fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic
   fun diagnostic(build: DiagnosticBuilder.() -> Unit)
@@ -351,13 +349,12 @@ interface IDebugHandler {
 }
 
 /**
- * This class handles [Diagnostic]s and logging for a particular source
- * (eg [slak.ckompiler.parser.Parser]). It is intended for use with delegation via [IDebugHandler].
+ * This class handles [Diagnostic]s for a particular source (eg [slak.ckompiler.parser.Parser]).
+ * It is intended for use with delegation via [IDebugHandler].
  */
 class DebugHandler(private val diagSource: String,
                    private val srcFileName: SourceFileName,
                    private val srcText: String) : IDebugHandler {
-  override val logger: Logger = LogManager.getLogger(diagSource)
   override val diags = mutableListOf<Diagnostic>()
 
   override fun includeNestedDiags(diags: List<Diagnostic>) {

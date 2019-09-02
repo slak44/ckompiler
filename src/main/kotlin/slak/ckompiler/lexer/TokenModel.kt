@@ -5,7 +5,7 @@ import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger("Tokens")
+private val logger = LogManager.getLogger()
 
 /**
  * Represents a token from the lexical grammar.

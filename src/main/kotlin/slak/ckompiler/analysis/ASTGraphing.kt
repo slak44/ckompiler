@@ -5,7 +5,7 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.rangeTo
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger("ASTGraphing")
+private val logger = LogManager.getLogger()
 
 fun graph(cfg: CFG) {
   for (p in cfg.f.parameters) {

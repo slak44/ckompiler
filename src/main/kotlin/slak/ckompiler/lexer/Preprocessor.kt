@@ -1,5 +1,6 @@
 package slak.ckompiler.lexer
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import java.io.File
 import java.util.regex.Pattern
@@ -59,7 +60,7 @@ class Preprocessor(sourceText: String,
    * convenient to do it here.
    */
   private fun convert(tok: LexicalToken): LexicalToken? = when (tok) {
-    is HeaderName -> debugHandler.logger.throwICE("HeaderName didn't disappear in phase 4") { tok }
+    is HeaderName -> logger.throwICE("HeaderName didn't disappear in phase 4") { tok }
     is NewLine -> null
     is Identifier -> Keywords.values()
         .firstOrNull { tok.name == it.keyword }
@@ -67,6 +68,10 @@ class Preprocessor(sourceText: String,
         ?.copyDebugFrom(tok)
         ?: tok
     else -> tok
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }
 

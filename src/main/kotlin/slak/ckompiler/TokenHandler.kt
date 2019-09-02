@@ -1,5 +1,6 @@
 package slak.ckompiler
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.lexer.LexicalToken
 import java.util.*
 
@@ -55,6 +56,7 @@ interface ITokenHandler {
   fun eatUntil(contextIdx: Int)
 }
 
+// FIXME: useless dependency on debug handler?
 class TokenHandler(tokens: List<LexicalToken>, debugHandler: IDebugHandler) :
     ITokenHandler, IDebugHandler by debugHandler {
   private val tokStack = Stack<List<LexicalToken>>()
@@ -122,5 +124,9 @@ class TokenHandler(tokens: List<LexicalToken>, debugHandler: IDebugHandler) :
     } else {
       idxStack.push(contextIdx)
     }
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }

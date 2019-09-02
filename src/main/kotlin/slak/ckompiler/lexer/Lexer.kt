@@ -1,5 +1,6 @@
 package slak.ckompiler.lexer
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 
 /**
@@ -131,5 +132,9 @@ class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceF
     }
 
     return tokenize()
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }

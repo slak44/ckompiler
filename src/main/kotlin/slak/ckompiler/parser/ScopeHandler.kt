@@ -1,5 +1,6 @@
 package slak.ckompiler.parser
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import java.util.*
 
@@ -296,6 +297,10 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       if (idx != -1) return it.tagNames[idx]
     }
     return null
+  }
+
+  companion object {
+    private val logger = LogManager.getLogger()
   }
 }
 
