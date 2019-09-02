@@ -325,7 +325,10 @@ class NasmGenerator(
   }
 
   private fun FunctionGenContext.genExpressions(ctx: IRLoweringContext) = instrGen {
-    for (e in ctx.ir) emit(genExpr(e))
+    for (e in ctx.ir) {
+      emit("; ${e.toString().replace("\n", "\\n")}")
+      emit(genExpr(e))
+    }
   }
 
   private fun FunctionGenContext.genExpr(e: IRExpression) = when (e) {
@@ -339,6 +342,13 @@ class NasmGenerator(
    * System V ABI: 3.2.2, page 18; 3.2.3, page 20
    */
   private fun FunctionGenContext.genCall(call: Call) = instrGen {
+    // Caller-saved registers
+    // FIXME: random use of rax/rdi/xmm8
+    emit("push rax")
+    emit("push rdi")
+    emit(pushXmm("xmm8"))
+    stackAlignmentCounter += 4
+
     val intArgs = call.args.withIndex().filter { (_, it) -> it.kind == OperationTarget.INTEGER }
     val fltArgs = call.args.withIndex().filter { (_, it) -> it.kind == OperationTarget.SSE }
     val intRegArgs = intArgs.take(intArgRegisters.size)
@@ -390,6 +400,11 @@ class NasmGenerator(
       emit("call rax")
     }
     if (!argsAligned) emit("add rsp, 8")
+    // FIXME: random use of rax/rdi/xmm8
+    emit(popXmm("xmm8"))
+    emit("pop rdi")
+    emit("pop rax")
+    stackAlignmentCounter -= 4
   }
 
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
@@ -579,15 +594,15 @@ class NasmGenerator(
     }
   }
 
-//  private fun pushXmm(reg: String) = instrGen {
-//    emit("sub rsp, 16")
-//    emit("movsd [rsp], $reg")
-//  }
-//
-//  private fun popXmm(reg: String) = instrGen {
-//    emit("movsd $reg, [rsp]")
-//    emit("add rsp, 16")
-//  }
+  private fun pushXmm(reg: String) = instrGen {
+    emit("sub rsp, 16")
+    emit("movsd [rsp], $reg")
+  }
+
+  private fun popXmm(reg: String) = instrGen {
+    emit("movsd $reg, [rsp]")
+    emit("add rsp, 16")
+  }
 
   private fun FunctionGenContext.genFltBinary(bin: BinaryComputation) = instrGen {
     emit(genComputeConstant(bin.rhs))
