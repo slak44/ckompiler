@@ -5,7 +5,7 @@ A C11 compiler written in Kotlin.
 This project is just a compiler; the assembler and linker are not implemented,
 and are assumed to exist in the environment (eg `nasm` and `ld`).
 
-Run `./gradlew build` for the compiler's CLI (will be created in
+Run `./gradlew distZip` for the compiler's CLI (will be created in
 `build/distributions/ckompiler-$version.zip`).
 
 JUnit tests can be found in the `slak.test` package, in `src/test/kotlin`.
@@ -21,29 +21,102 @@ structures.
 ### Errors
 
 A compiler has to deal with two classes of "errors"; those that come from the
-code being compiled, and those that signal issues in the compiler itself. Both
-of them are handled by the `DebugHandler` class (and its corresponding
+code being compiled ("diagnostics"), and those that signal issues in the
+compiler itself.
+
+All of the relevant code can be found in the [Diagnostics.kt][diags] file.
+
+###### Diagnostics
+
+Diagnostics are handled by the `DebugHandler` class (and its corresponding
 interface, `IDebugHandler`, read the [parser](#Parser) section for details).
 
-For the former, we generate `Diagnostic` instances. These are created using a
-simple DSL, and the messages themselves are created internally, and lazily, in
-the `Diagnostic` class. An example of the `IDebugHandler.diagnostic` DSL, used
-in the parser:
+We generate `Diagnostic` instances using a simple DSL, but the error messages,
+the source extracts and the caret/tilde markers are created lazily, internally.
+They are only computed when (or if) the diagnostic gets printed. This is useful,
+because it makes creating a `Diagnostic` instance relatively cheap. As a result,
+we can create diagnostics even if they might be discarded later, with little
+cost. One such place where diagnostics are sometimes discarded is
+`ConstantExprParser#evaluateExpr`.
+
+An example of the `IDebugHandler.diagnostic` DSL, used in the parser:
 ```kotlin
 // ...
 diagnostic {
   id = DiagnosticId.INVALID_ARGUMENT_UNARY
   formatArgs(expr.type, op.op.s)
-  columns(c..expr)
+  errorOn(c..expr)
 }
 // ...
 ```
+The range passed to `errorOn` in the example above, is an implementor of the
+`SourcedRange` interface. `LexicalToken` and `ASTNode` are such implementations.
+The `rangeTo` operator is overloaded on `SourcedRange`s to easily combine
+multiple ranges:
+```kotlin
+sizeOf..tokenAt(rParenIdx)
+```
+The `sizeOf` token and the token returned by `tokenAt(rParenIdx)` are not
+adjacent (think of __`sizeof`__`(1 + 1`__`)`__), but this overload allows the
+parser to trivially create a compound `SourcedRange` that covers the entire
+sizeof expression.
 
-For the latter, we use logging (via [Log4j 2][log4j2]), the
+Another example, used in `sequentialize`:
+```kotlin
+// ...
+diagnostic {
+  id = DiagnosticId.UNSEQUENCED_MODS
+  formatArgs(variable.name)
+  for (mod in modList) when (mod) {
+    is BinaryExpression -> errorOn(mod.lhs)
+    is IncDecOperation -> errorOn(mod)
+    else -> logger.throwICE("Modification doesn't modify anything") { mod }
+  }
+}
+// ...
+```
+This illustrates the utility provided by using a lambda + builder DSL. Arbitrary
+code can run in the construction of the diagnostic, which makes it easy to
+tailor the same diagnostic to different situations.
+
+Finally, an example from the preprocessor:
+```kotlin
+// ...
+diagnostic {
+  id = if (ignoreTrigraphs) DiagnosticId.TRIGRAPH_IGNORED else DiagnosticId.TRIGRAPH_PROCESSED
+  if (!ignoreTrigraphs) formatArgs(replacement)
+  columns(matchResult.start() until matchResult.end())
+}
+// ...
+```
+Even the kind of diagnostic can be dynamically selected based on arbitrary
+logic, which makes it easy to support feature flags like `-fno-trigraphs` in
+diagnostics.
+
+###### Compiler Errors
+
+For actual issues in the compiler, we use logging (via [Log4j 2][log4j2]), the
 `InternalCompilerError` class, and the `throwICE` extension methods on logger
-instances.
+instances. An instance of ICE being thrown means invariants were violated,
+"impossible" situations occurred, or misuse of an API was encountered. As a
+result, these exceptions should not be caught anywhere: it is desirable for the
+application to crash if someone threw an ICE. Every ICE is an unfixed bug in the
+compiler.
 
-All of this code can be found in the [Diagnostics.kt][diags] file.
+Since the compiler is still a work in progress, there are many features/code
+paths that are not yet implemented. They generally do not throw ICEs, rather
+they use `kotlin.NotImplementedError` created by the `TODO` function.
+
+### Target-Specific Information
+
+Certain things depend on the target ISA and/or the machine (the size of an
+`int`, for example). `MachineTargetData` instances contain all this information.
+
+`MachineTargetData` also generates various macros used in stdlib headers (such
+as `__PTRDIFF_T_TYPE` for `stddef.h`).
+
+For now, only x64 Linux is supported, but the infrastructure for x86 and other
+platforms exists.
 
 ### Lexer
 
@@ -63,8 +136,8 @@ be found in the [ExpressionParser][expr_parser] class.
 
 Much of the parser is built out of loosely coupled classes that each handle
 parts of parsing the grammar (eg [ParenMatcher][paren_matcher] handles
-everything about parenthesis, [StatementParser][st_parser] parses function block
-statements, etc).  
+everything about matching parenthesis, [StatementParser][st_parser] parses
+function block statements, etc).  
 Each of these has an associated interface (`IExpressionParser` for the
 `ExpressionParser` class), that is used for delegation.  
 For example, when the `DeclarationParser` needs to parse an initializer
