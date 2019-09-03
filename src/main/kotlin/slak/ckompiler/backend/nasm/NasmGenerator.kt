@@ -260,7 +260,7 @@ class NasmGenerator(
       when (condExpr.data.kind) {
         // FIXME: random use of rax, rbx, xmmm8, xmm9
         OperationTarget.INTEGER -> emit("cmp rax, rbx")
-        OperationTarget.SSE -> emit("cmpsd xmm8, xmm9")
+        OperationTarget.SSE -> emit("comisd xmm8, xmm9")
       }
     }
     if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
@@ -640,7 +640,7 @@ class NasmGenerator(
       BinaryComputations.DIVIDE -> emit("divsd xmm8, xmm9")
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
       BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
-      BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("cmpsd xmm8, xmm9")
+      BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("comisd xmm8, xmm9")
       BinaryComputations.LOGICAL_AND -> TODO("???")
       BinaryComputations.LOGICAL_OR -> TODO("???")
       BinaryComputations.BITWISE_AND, BinaryComputations.BITWISE_OR, BinaryComputations.BITWISE_XOR,
@@ -681,7 +681,13 @@ class NasmGenerator(
       floatRefs[flt] = "flt_${floatRefIds()}_$prettyName"
       val kind = if (flt.suffix == FloatingSuffix.FLOAT) "dd" else "dq"
       data += "; ${flt.value}"
-      data += "${floatRefs[flt]}: $kind ${flt.value}"
+      val fltNasm = when {
+        flt.value.isNaN() -> "__QNaN__"
+        flt.value == Double.POSITIVE_INFINITY -> "__Infinity__"
+        flt.value == Double.NEGATIVE_INFINITY -> "-__Infinity__"
+        else -> flt.value.toString()
+      }
+      data += "${floatRefs[flt]}: $kind $fltNasm"
     }
     // FIXME: random use of xmm8
     emit("movsd xmm8, [${floatRefs[flt]}]")

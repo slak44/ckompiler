@@ -291,8 +291,10 @@ data class IntegerConstantNode(
   override fun toString() = "$value$suffix"
 }
 
-data class FloatingConstantNode(val value: Double,
-                                val suffix: FloatingSuffix) : ExprConstantNode() {
+data class FloatingConstantNode(
+    val value: Double,
+    val suffix: FloatingSuffix
+) : ExprConstantNode() {
   override val type = when (suffix) {
     FloatingSuffix.FLOAT -> FloatType
     FloatingSuffix.LONG_DOUBLE -> LongDoubleType
