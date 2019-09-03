@@ -21,10 +21,12 @@ class NasmTests {
 
   private data class RunResult(val exitCode: Int, val stdout: String, val stderr: String)
 
-  private fun RunResult.justExitCode(expected: Int) {
-    assertEquals(expected, exitCode)
-    assertEquals("", stdout)
-    assertEquals("", stderr)
+  private fun RunResult.justExitCode(expected: Int) = expect(exitCode = expected)
+
+  private fun RunResult.expect(exitCode: Int = 0, stdout: String = "", stderr: String = "") {
+    assertEquals(exitCode, this.exitCode, "Exit code is wrong;")
+    assertEquals(stdout, this.stdout, "stdout is wrong;")
+    assertEquals(stderr, this.stderr, "stderr is wrong;")
   }
 
   private fun compileAndRun(block: CompileAndRunBuilder.() -> Unit): RunResult {
@@ -49,8 +51,8 @@ class NasmTests {
         "-isystem", resource("include").absolutePath,
         "-o", executable.absolutePath
     )
-    assertEquals(ExitCodes.NORMAL, compilerExitCode)
-    assertTrue(executable.exists())
+    assertEquals(ExitCodes.NORMAL, compilerExitCode, "CLI reported a failure")
+    assertTrue(executable.exists(), "Expected executable to exist")
     val inputRedirect =
         if (builder.stdin != null) ProcessBuilder.Redirect.PIPE else ProcessBuilder.Redirect.INHERIT
     val process = ProcessBuilder(executable.absolutePath, *builder.programArgList.toTypedArray())
@@ -82,11 +84,7 @@ class NasmTests {
   @ValueSource(strings = ["1", "1 2", "1 2 3", "1 2 3 4"])
   fun `Returns Argc`(cmdLine: String) {
     val args = cmdLine.split(" ")
-    compileAndRun("int main(int argc) { return argc; }", args).run {
-      assertEquals(args.size + 1, exitCode)
-      assertEquals("", stdout)
-      assertEquals("", stderr)
-    }
+    compileAndRun("int main(int argc) { return argc; }", args).justExitCode(args.size + 1)
   }
 
   @Test
@@ -111,11 +109,7 @@ class NasmTests {
 
   @Test
   fun `Hello World!`() {
-    compileAndRun(resource("e2e/helloWorld.c")).run {
-      assertEquals(0, exitCode)
-      assertEquals("Hello World!\n", stdout)
-      assertEquals("", stderr)
-    }
+    compileAndRun(resource("e2e/helloWorld.c")).expect(stdout = "Hello World!\n")
   }
 
   @Test
@@ -144,11 +138,7 @@ class NasmTests {
         printf("%.2f", (float) $int);
         return 0;
       }
-    """.trimIndent()).run {
-      assertEquals(0, exitCode)
-      assertEquals("$int.00", stdout)
-      assertEquals("", stderr)
-    }
+    """.trimIndent()).expect(stdout = "$int.00")
   }
 
   @Test
@@ -185,11 +175,7 @@ class NasmTests {
         printf("$str");
         return 0;
       }
-    """.trimIndent()).run {
-      assertEquals(0, exitCode)
-      assertEquals(str, stdout)
-      assertEquals("", stderr)
-    }
+    """.trimIndent()).expect(stdout = str)
   }
 
   @Disabled("arrays are broken in codegen")
@@ -227,11 +213,7 @@ class NasmTests {
 
   @Test
   fun `Looped Printf`() {
-    compileAndRun(resource("loops/loopedPrintf.c")).run {
-      assertEquals(0, exitCode)
-      assertEquals("0 1 4 9 16 25 36 49 64 81 \n", stdout)
-      assertEquals("", stderr)
-    }
+    compileAndRun(resource("loops/loopedPrintf.c")).expect(stdout = "0 1 4 9 16 25 36 49 64 81 \n")
   }
 
   @Test
@@ -245,11 +227,7 @@ class NasmTests {
     compileAndRun {
       file = resource("e2e/scanfIntOnce.c")
       stdin = int
-    }.run {
-      assertEquals(0, exitCode)
-      assertEquals(int, stdout)
-      assertEquals("", stderr)
-    }
+    }.expect(stdout = int)
   }
 
   @ParameterizedTest
@@ -258,11 +236,7 @@ class NasmTests {
     compileAndRun {
       file = resource("e2e/scanfIntTwice.c")
       stdin = int
-    }.run {
-      assertEquals(0, exitCode)
-      assertEquals(int, stdout)
-      assertEquals("", stderr)
-    }
+    }.expect(stdout = int)
   }
 
   @ParameterizedTest
@@ -275,11 +249,7 @@ class NasmTests {
     compileAndRun {
       file = resource("e2e/manyIntParameters.c")
       stdin = int
-    }.run {
-      assertEquals(0, exitCode)
-      assertEquals(int, stdout)
-      assertEquals("", stderr)
-    }
+    }.expect(stdout = int)
   }
 
   @ParameterizedTest
@@ -290,10 +260,6 @@ class NasmTests {
     compileAndRun {
       file = resource("e2e/scanfFloatOnce.c")
       stdin = flt
-    }.run {
-      assertEquals(0, exitCode)
-      assertEquals(flt, stdout)
-      assertEquals("", stderr)
-    }
+    }.expect(stdout = flt)
   }
 }
