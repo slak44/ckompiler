@@ -455,8 +455,8 @@ class NasmGenerator(
   }
 
   // FIXME: random use of rax/xmm8
-  private fun irTarget(e: ComputeExpression): String = when (e.kind) {
-    OperationTarget.INTEGER -> "rax"
+  private fun irTarget(e: ComputeReference): String = when (e.kind) {
+    OperationTarget.INTEGER -> regFor(e.tid.type)
     OperationTarget.SSE -> "xmm8"
   }
 
@@ -687,9 +687,17 @@ class NasmGenerator(
     emit("movsd xmm8, [${floatRefs[flt]}]")
   }
 
-  private fun genInt(int: IntegerConstantNode) = instrGen {
+  // FIXME: another big hack
+  private fun regFor(typeName: TypeName) = when (target.sizeOf(typeName)) {
     // FIXME: random use of rax
-    emit("mov rax, ${int.value}")
+    8 -> "rax"
+    // FIXME: random use of eax
+    4 -> "eax"
+    else -> "rax"
+  }
+
+  private fun genInt(int: IntegerConstantNode) = instrGen {
+    emit("mov ${regFor(int.type)}, ${int.value}")
   }
 
   private fun FunctionGenContext.genRefUse(ref: ComputeReference) = instrGen {
@@ -706,7 +714,7 @@ class NasmGenerator(
     when (ref.kind) {
       OperationTarget.INTEGER -> {
         // FIXME: random use of rax
-        emit("mov rax, ${ref.pos}")
+        emit("mov ${regFor(ref.tid.type)}, ${ref.pos}")
       }
       OperationTarget.SSE -> {
         // FIXME: random use of xmm8
