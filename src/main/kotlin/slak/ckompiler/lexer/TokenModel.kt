@@ -142,7 +142,7 @@ data class StringLiteral(
     val data: String,
     val encoding: StringEncoding,
     val realLength: Int = data.length
-) : CharSequence(realLength, encoding.prefixLength) {
+) : CharSequence(realLength, encoding.prefix.length) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is StringLiteral) return false
@@ -165,7 +165,7 @@ data class CharLiteral(
     val data: String,
     val encoding: CharEncoding,
     val realLength: Int = data.length
-) : CharSequence(realLength, encoding.prefixLength) {
+) : CharSequence(realLength, encoding.prefix.length) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is CharLiteral) return false

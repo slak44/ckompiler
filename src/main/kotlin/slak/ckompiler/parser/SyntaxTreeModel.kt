@@ -164,7 +164,13 @@ data class TypedIdentifier(override val name: String,
     return other
   }
 
-  override fun toString() = "$type $name"
+  override fun toString(): String {
+    return if (type is FunctionType) {
+      type.toString().replace("${type.returnType} ", "${type.returnType} $name")
+    } else {
+      "$type $name"
+    }
+  }
 
   companion object {
     private val varCounter = IdCounter()
@@ -309,6 +315,8 @@ data class FloatingConstantNode(val value: Double,
 data class CharacterConstantNode(val char: Int,
                                  val encoding: CharEncoding) : ExprConstantNode() {
   override val type = UnsignedIntType
+
+  override fun toString() = "${encoding.prefix}'${char.toChar()}'"
 }
 
 /**
@@ -321,6 +329,8 @@ data class StringLiteralNode(val string: String,
     StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
     else -> UnsignedLongLongType
   }, ConstantSize(IntegerConstantNode(string.length.toLong())))
+
+  override fun toString() = "${encoding.prefix}\"$string\""
 }
 
 /**

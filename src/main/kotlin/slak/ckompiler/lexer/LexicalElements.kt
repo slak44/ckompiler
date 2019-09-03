@@ -230,12 +230,12 @@ fun IDebugHandler.charSequence(s: String,
   return contents to originalLength
 }
 
-enum class StringEncoding(val prefixLength: Int) {
-  CHAR(0), UTF8(2), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
+enum class StringEncoding(val prefix: String) {
+  CHAR(""), UTF8("u8"), WCHAR_T("L"), CHAR16_T("u"), CHAR32_T("U")
 }
 
-enum class CharEncoding(val prefixLength: Int) {
-  UNSIGNED_CHAR(0), WCHAR_T(1), CHAR16_T(1), CHAR32_T(1)
+enum class CharEncoding(val prefix: String) {
+  UNSIGNED_CHAR(""), WCHAR_T("L"), CHAR16_T("u"), CHAR32_T("U")
 }
 
 /** C standard: A.1.6, 6.4.5 */
@@ -248,7 +248,7 @@ fun IDebugHandler.stringLiteral(s: String, currentOffset: Int): StringLiteral? {
     s.startsWith("U\"") -> StringEncoding.CHAR32_T
     else -> return null
   }
-  val data = charSequence(s, currentOffset, '"', encoding.prefixLength)
+  val data = charSequence(s, currentOffset, '"', encoding.prefix.length)
   return StringLiteral(data.first, encoding, data.second)
 }
 
@@ -261,7 +261,7 @@ fun IDebugHandler.characterConstant(s: String, currentOffset: Int): CharLiteral?
     s.startsWith("U'") -> CharEncoding.CHAR32_T
     else -> return null
   }
-  val data = charSequence(s, currentOffset, '\'', encoding.prefixLength)
+  val data = charSequence(s, currentOffset, '\'', encoding.prefix.length)
   return CharLiteral(data.first, encoding, data.second)
 }
 

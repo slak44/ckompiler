@@ -143,7 +143,8 @@ data class FunctionType(val returnType: TypeName,
   override fun toString(): String {
     // This doesn't really work when the return type is a function/array, but that isn't valid
     // anyway
-    return "$returnType (${params.joinToString()})"
+    val variadicStr = if (variadic) ", ..." else ""
+    return "$returnType (${params.joinToString()}$variadicStr)"
   }
 }
 

@@ -190,7 +190,8 @@ data class Call(
     val functionPointer: ComputeConstant,
     val args: List<ComputeConstant>
 ) : ComputeExpression(OperationTarget.INTEGER), IRExpression {
-  override fun toString() = "$functionPointer(${args.joinToString(", ")})"
+  override fun toString() =
+      "${(functionPointer as? ComputeReference)?.tid?.name}(${args.joinToString(", ")})"
 }
 
 /**
