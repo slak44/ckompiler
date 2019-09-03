@@ -7,6 +7,8 @@ import slak.ckompiler.lexer.FloatingSuffix
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
+import kotlin.math.absoluteValue
+import kotlin.math.sign
 
 private val logger = LogManager.getLogger()
 
@@ -40,6 +42,8 @@ private inline fun instrGen(block: InstructionBuilder.() -> Unit): Instructions 
   return builder.toInstructions()
 }
 
+private fun Int.toHex() = "${if (sign == -1) "-" else ""}0x${absoluteValue.toString(16)}"
+
 /**
  * Data used while generating a function from a [cfg].
  */
@@ -50,7 +54,7 @@ private data class FunctionGenContext(val variableRefs: MutableMap<TypedIdentifi
 
   val retLabel = ".return_${cfg.f.name}"
   val BasicBlock.label get() = ".block_${cfg.f.name}_${hashCode()}"
-  val ComputeReference.pos get() = "[rbp${variableRefs[tid]}]"
+  val ComputeReference.pos get() = "[rbp${variableRefs[tid]?.toHex()}]"
 
   // FIXME: register allocator.
   var synthsRemain = cfg.synthCount
@@ -160,14 +164,14 @@ class NasmGenerator(
     // FIXME: the *4 are the 4 pushes above
     var rbpOffset = -8 - 8 * 4
     for ((ref) in cfg.definitions) {
-      emit("; ${ref.tid.name} at $rbpOffset")
+      emit("; ${ref.tid.name} at ${rbpOffset.toHex()}")
       // FIXME: they're not all required to go on the stack
       variableRefs[ref.tid] = rbpOffset
       rbpOffset -= 8
     }
     for (idx in 0 until cfg.synthCount) {
-      emit("; $idx at $rbpOffset")
-      synthRefs[idx] = "[rbp${rbpOffset}]"
+      emit("; $idx at ${rbpOffset.toHex()}")
+      synthRefs[idx] = "[rbp${rbpOffset.toHex()}]"
       rbpOffset -= 8
     }
     val vars = cfg.definitions.size + cfg.synthCount
