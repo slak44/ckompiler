@@ -254,7 +254,8 @@ class NasmTests {
 
   @ParameterizedTest
   @ValueSource(strings = [
-    "-1.0", "-2.0", "100.0", "9999999.0", "0.0", "-1.2", "23.2351", "1.1", "0.3"
+    "-1.0000", "-2.0000", "100.0000", "9999999.0000", "0.0000",
+    "-1.2000", "23.2351", "1.1000", "0.3000"
   ])
   fun `Scanf A Float`(flt: String) {
     compileAndRun {
