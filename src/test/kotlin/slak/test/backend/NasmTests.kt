@@ -289,4 +289,19 @@ class NasmTests {
       assertEquals("", stderr)
     }
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "-1.0", "-2.0", "100.0", "9999999.0", "0.0", "-1.2", "23.2351", "1.1", "0.3"
+  ])
+  fun `Scanf A Float`(flt: String) {
+    compileAndRun {
+      file = resource("e2e/scanfFloatOnce.c")
+      stdin = flt
+    }.run {
+      assertEquals(0, exitCode)
+      assertEquals(flt, stdout)
+      assertEquals("", stderr)
+    }
+  }
 }
