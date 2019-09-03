@@ -1,54 +1,17 @@
 package slak.test.backend
 
 import org.junit.jupiter.api.Disabled
-import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.ExitCodes
-import slak.ckompiler.MachineTargetData
-import slak.ckompiler.SourceFileName
-import slak.ckompiler.backend.nasm.NasmGenerator
-import slak.test.*
+import slak.test.cli
+import slak.test.resource
 import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class NasmTests {
-  @Nested
-  inner class NasmNotExecuted {
-    private fun prepareNasm(src: String, source: SourceFileName): String {
-      val cfg = prepareCFG(src, source)
-      cfg.assertNoDiagnostics()
-      val asm = NasmGenerator(emptyList(), emptyList(), cfg, MachineTargetData.x64).nasm
-      println(asm)
-      return asm
-    }
-
-    @Test
-    fun `Multiple Functions`() {
-      prepareNasm("int f() { return 0; } int main() { return 0; }", source)
-    }
-
-    // FIXME: doesn't check if it worked
-    @Test
-    fun `String Data`() {
-      prepareNasm("int main() { \"asdfg\"; return 1; }", source)
-    }
-
-    // FIXME: doesn't check if it worked
-    @Test
-    fun `String Data Not Duplicated`() {
-      prepareNasm("int main() { \"asdfg\"; \"asdfg\"; return 1; }", source)
-    }
-
-    // FIXME: doesn't check if it worked
-    @Test
-    fun `String Names Are Alphanumeric`() {
-      prepareNasm("int main() { \"a:.><\"; return 1; }", source)
-    }
-  }
-
   private class CompileAndRunBuilder {
     var text: String? = null
     var file: File? = null
@@ -198,6 +161,35 @@ class NasmTests {
         return c;
       }
     """.trimIndent()).justExitCode(12)
+  }
+
+  @Disabled("fix pointer operations first")
+  @Test
+  fun `Identical String Literals Compare Equal Because Deduplication`() {
+    compileAndRun("""
+      int main() {
+        return "asdfg" == "asdfg";
+      }
+    """.trimIndent()).justExitCode(1)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "a:.><", "       ", "\uFEFE", ">>>>>>>>>>",
+    "-------", "#define", "#", "!", "?", "'", "'''''''''''"
+  ])
+  fun `Printf Random Non-Alphanumerics`(str: String) {
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        printf("$str");
+        return 0;
+      }
+    """.trimIndent()).run {
+      assertEquals(0, exitCode)
+      assertEquals(str, stdout)
+      assertEquals("", stderr)
+    }
   }
 
   @Disabled("arrays are broken in codegen")
