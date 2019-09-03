@@ -39,6 +39,8 @@ class CFG(val f: FunctionDefinition,
    * @see insertPhiFunctions
    */
   val definitions = mutableMapOf<ComputeReference, MutableSet<BasicBlock>>()
+  // FIXME: Tentative number of synthetic vars in this block. Is it really useful?
+  var synthCount = 0
 
   init {
     graph(this)

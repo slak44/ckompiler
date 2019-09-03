@@ -12,9 +12,19 @@ fun graph(cfg: CFG) {
     cfg.definitions[ComputeReference(p, isSynthetic = false)] = mutableSetOf()
   }
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
+  val synthList = mutableListOf<String>()
   for (block in cfg.allNodes) {
-    val definitions = block.irContext.ir.mapNotNull { it as? Store }.filterNot { it.isSynthetic }
-    for ((target) in definitions) cfg.addDefinition(block, target)
+    for (instr in block.instructions) {
+      if (instr !is Store) continue
+      if (instr.isSynthetic) {
+        if (instr.target.tid.name !in synthList) {
+          cfg.synthCount++
+          synthList += instr.target.tid.name
+        }
+      } else {
+        cfg.addDefinition(block, instr.target)
+      }
+    }
   }
 }
 

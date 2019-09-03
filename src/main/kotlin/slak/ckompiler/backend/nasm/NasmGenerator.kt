@@ -53,7 +53,9 @@ private data class FunctionGenContext(val variableRefs: MutableMap<TypedIdentifi
   val ComputeReference.pos get() = "[rbp${variableRefs[tid]}]"
 
   // FIXME: register allocator.
-  val synthRefs = mutableMapOf<TypedIdentifier, String>()
+  var synthsRemain = cfg.synthCount
+  val tidToSynthRefs = mutableMapOf<String, Int>()
+  val synthRefs = mutableMapOf<Int, String>()
 }
 
 /** Generate x86_64 NASM code. */
@@ -153,16 +155,23 @@ class NasmGenerator(
     emit("sub rsp, 8")
     // FIXME: r12-r15 are also callee-saved
     // Local variables
-    // FIXME: this magic number 8 is too magic
-    //   use correct sizes
-    var rbpOffset = -8
+    // FIXME: number 8 is magic here
+    // FIXME: use correct sizes for values, not just 8
+    // FIXME: the *4 are the 4 pushes above
+    var rbpOffset = -8 - 8 * 4
     for ((ref) in cfg.definitions) {
       emit("; ${ref.tid.name} at $rbpOffset")
       // FIXME: they're not all required to go on the stack
       variableRefs[ref.tid] = rbpOffset
       rbpOffset -= 8
     }
-    val stackStuffCount = cfg.definitions.size + cfg.definitions.size % 2
+    for (idx in 0 until cfg.synthCount) {
+      emit("; $idx at $rbpOffset")
+      synthRefs[idx] = "[rbp${rbpOffset}]"
+      rbpOffset -= 8
+    }
+    val vars = cfg.definitions.size + cfg.synthCount
+    val stackStuffCount = vars + vars % 2
     // FIXME: magic 8 again
     emit("sub rsp, ${stackStuffCount * 8}")
     stackAlignmentCounter += stackStuffCount
@@ -204,18 +213,15 @@ class NasmGenerator(
     // Epilogue
     label(retLabel)
     // FIXME: magic 8 again
-    if (stackAlignmentCounter != 0) emit("add rsp, ${stackAlignmentCounter * 8}")
+    if (stackAlignmentCounter != 0) emit("add rsp, ${(stackAlignmentCounter) * 8}")
     emit("add rsp, 8")
     emit("pop r9")
     emit("pop r8")
     emit("pop rbx")
-
-    // FIXME: excuse me what the fuck?
-    emit("mov r11, [rbp+8]")
-    emit("pop rbp")
-    emit("add rsp, 8")
-    emit("push r11")
-
+    // Use equivalent leave here
+    //  emit("mov rsp, rbp")
+    //  emit("pop rbp")
+    emit("leave")
     emit("ret")
   }
 
@@ -328,6 +334,14 @@ class NasmGenerator(
     for (e in ctx.ir) {
       emit("; ${e.toString().replace("\n", "\\n")}")
       emit(genExpr(e))
+      // Return values bla bla
+      if (e is Call) {
+        // FIXME: random use of rax/rdi/xmm8
+        emit(popXmm("xmm8"))
+        emit("pop rdi")
+        emit("pop rax")
+        stackAlignmentCounter -= 4
+      }
     }
   }
 
@@ -400,11 +414,6 @@ class NasmGenerator(
       emit("call rax")
     }
     if (!argsAligned) emit("add rsp, 8")
-    // FIXME: random use of rax/rdi/xmm8
-    emit(popXmm("xmm8"))
-    emit("pop rdi")
-    emit("pop rax")
-    stackAlignmentCounter -= 4
   }
 
   private fun FunctionGenContext.genStore(store: Store) = instrGen {
@@ -416,16 +425,13 @@ class NasmGenerator(
     // FIXME: this is broken when the store isn't synthetic, but the store target *is*
     // FIXME: this is also broken when the store is synthetic but it shouldn't be
     if (store.isSynthetic) {
-      if (!synthRefs.containsKey(store.target.tid)) {
-        // FIXME: "just push all this shit on the stack lol, how bad can it get"
-        emit("sub rsp, 16")
-        stackAlignmentCounter += 2
-        // FIXME: magic 8
-        synthRefs[store.target.tid] = "[rbp-${stackAlignmentCounter * 8}]"
-        emit("mov qword ${synthRefs[store.target.tid]}, 0")
+      if (!tidToSynthRefs.containsKey(store.target.tid.name)) {
+        tidToSynthRefs[store.target.tid.name] = cfg.synthCount - synthsRemain
+        synthsRemain--
       }
       // FIXME: horrifying
-      emit("${irMov(store.target)} ${synthRefs[store.target.tid]}, ${irTarget(store.target)}")
+      val sr = synthRefs[tidToSynthRefs[store.target.tid.name]]
+      emit("${irMov(store.target)} $sr, ${irTarget(store.target)}")
       return@instrGen
     }
     when (store.data.kind) {
@@ -437,6 +443,14 @@ class NasmGenerator(
         // FIXME: random use of xmm8
         emit("movsd ${store.target.pos}, xmm8")
       }
+    }
+    // Do this shit here so they don't overwrite return values
+    if (store.data is Call) {
+      // FIXME: random use of rax/rdi/xmm8
+      emit(popXmm("xmm8"))
+      emit("pop rdi")
+      emit("pop rax")
+      stackAlignmentCounter -= 4
     }
   }
 
@@ -681,16 +695,12 @@ class NasmGenerator(
   private fun FunctionGenContext.genRefUse(ref: ComputeReference) = instrGen {
     // Same considerations as the ones in [genStore]
     if (ref.isSynthetic) {
-      if (!synthRefs.containsKey(ref.tid)) {
-        // FIXME: "just push all this shit on the stack lol, how bad can it get"
-        emit("sub rsp, 16")
-        stackAlignmentCounter += 2
-        // FIXME: magic 8
-        synthRefs[ref.tid] = "[rbp-${stackAlignmentCounter * 8}]"
-        emit("mov qword ${synthRefs[ref.tid]}, 0")
+      if (!tidToSynthRefs.containsKey(ref.tid.name)) {
+        tidToSynthRefs[ref.tid.name] = cfg.synthCount - synthsRemain
+        synthsRemain--
       }
       // FIXME: horrifying
-      emit("${irMov(ref)} ${irTarget(ref)}, ${synthRefs[ref.tid]}")
+      emit("${irMov(ref)} ${irTarget(ref)}, ${synthRefs[tidToSynthRefs[ref.tid.name]]}")
       return@instrGen
     }
     when (ref.kind) {
