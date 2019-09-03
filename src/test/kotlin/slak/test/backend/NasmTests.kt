@@ -234,6 +234,15 @@ class NasmTests {
   }
 
   @Test
+  fun `Looped Printf`() {
+    compileAndRun(resource("loops/loopedPrintf.c")).run {
+      assertEquals(0, exitCode)
+      assertEquals("0 1 4 9 16 25 36 49 64 81 \n", stdout)
+      assertEquals("", stderr)
+    }
+  }
+
+  @Test
   fun `Early Return In Void Function Works`() {
     compileAndRun(resource("e2e/earlyReturn.c")).justExitCode(0)
   }
