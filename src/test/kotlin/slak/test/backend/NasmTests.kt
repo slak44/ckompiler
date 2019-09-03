@@ -251,7 +251,7 @@ class NasmTests {
   @ValueSource(strings = ["1", "-2", "100", "9999999", "0"])
   fun `Scanf An Int`(int: String) {
     compileAndRun {
-      file = resource("e2e/scanfOnce.c")
+      file = resource("e2e/scanfIntOnce.c")
       stdin = int
     }.run {
       assertEquals(0, exitCode)
@@ -264,7 +264,7 @@ class NasmTests {
   @ValueSource(strings = ["1 3", "-2 4", "100 10000", "9999999 -1", "0 0", "0 1", "1 0"])
   fun `Scanf Multiple Ints`(int: String) {
     compileAndRun {
-      file = resource("e2e/scanfTwice.c")
+      file = resource("e2e/scanfIntTwice.c")
       stdin = int
     }.run {
       assertEquals(0, exitCode)
