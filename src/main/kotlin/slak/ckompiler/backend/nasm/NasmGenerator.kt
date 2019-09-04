@@ -197,7 +197,7 @@ class NasmGenerator(
         }
         intArgCounter++
       } else if (arg.type.isSSEType()) {
-        emit("movsd ${refArg.pos}, ${fltArgRegisters[fltArgCounter]}")
+        emit("${irMov(refArg)} ${refArg.pos}, ${fltArgRegisters[fltArgCounter]}")
         fltArgCounter++
         if (fltArgCounter >= fltArgRegisters.size) {
           TODO("too many float parameters, not implemented yet")
@@ -320,7 +320,12 @@ class NasmGenerator(
         // function still returns nothing
       }
       // SSE classification
-      FloatType, DoubleType -> {
+      FloatType -> {
+        // FIXME: random use of xmm8
+        // FIXME: there are two SSE return registers, xmm0 and xmm1
+        emit("movss xmm0, xmm8")
+      }
+      DoubleType -> {
         // FIXME: random use of xmm8
         // FIXME: there are two SSE return registers, xmm0 and xmm1
         emit("movsd xmm0, xmm8")
@@ -376,16 +381,19 @@ class NasmGenerator(
     // FIXME: ignores arg size
     val stackArgs = (intStackArgs + fltStackArgs).sortedBy { it.index }
 
-    for (idx in 0 until intRegArgs.size) {
+    for (idx in intRegArgs.indices) {
       emit(genComputeConstant(intRegArgs[idx].value))
       // FIXME: random use of rax
       emit("mov ${intArgRegisters[idx]}, rax")
     }
 
-    for (idx in 0 until fltRegArgs.size) {
-      emit(genComputeConstant(fltRegArgs[idx].value))
+    for (idx in fltRegArgs.indices) {
+      val regArg = fltRegArgs[idx].value
+      emit(genComputeConstant(regArg))
+      // FIXME: yet another ugly hack:
+      val mov = if (regArg is ComputeReference) irMov(regArg) else "movsd"
       // FIXME: random use of xmm8
-      emit("movsd ${fltArgRegisters[idx]}, xmm8")
+      emit("$mov ${fltArgRegisters[idx]}, xmm8")
     }
 
     // FIXME: % 2 only by assuming arg size
@@ -407,7 +415,7 @@ class NasmGenerator(
       }
       emit("call ${call.functionPointer.tid.name}")
       if (call.functionPointer.tid.type.asCallable()!!.returnType is FloatingType) {
-        emit("movsd xmm0, xmm8")
+        emit("${irMov(call.functionPointer)} xmm0, xmm8")
       }
     } else {
       // FIXME: this _definitely_ doesn't work (call through expr)
@@ -445,7 +453,7 @@ class NasmGenerator(
       }
       OperationTarget.SSE -> {
         // FIXME: random use of xmm8
-        emit("movsd ${store.target.pos}, xmm8")
+        emit("${irMov(store.target)} ${store.target.pos}, xmm8")
       }
     }
     // Do this shit here so they don't overwrite return values
@@ -464,10 +472,14 @@ class NasmGenerator(
     OperationTarget.SSE -> "xmm8"
   }
 
-  private fun irMov(e: ComputeReference): String = when (e.kind) {
+  private fun irMov(e: ComputeExpression): String = when (e.kind) {
     OperationTarget.INTEGER -> "mov"
-    // FIXME: doubles are not the only floating point type in the world
-    OperationTarget.SSE -> "movsd"
+    // FIXME: 4/8 bytes are not the only floating point types in the world
+    OperationTarget.SSE -> when (target.sizeOf(e.resType)) {
+      4 -> "movss"
+      8 -> "movsd"
+      else -> "movsd"
+    }
   }
 
   /**
@@ -485,6 +497,10 @@ class NasmGenerator(
 
   private fun FunctionGenContext.genCast(cast: CastComputation) = instrGen {
     emit(genComputeConstant(cast.operand))
+    if (cast.operand.resType == FloatType && cast.resType == DoubleType) {
+      emit("cvtss2sd xmm8, xmm8")
+      return@instrGen
+    }
     // FIXME: technically, there still is a cast here
     //  it just doesn't cross value classes, but it still does things
     //  big corner cut here
@@ -492,7 +508,7 @@ class NasmGenerator(
     // FIXME: random use of rax & xmm8
     when (cast.operand.kind to cast.kind) {
       OperationTarget.INTEGER to OperationTarget.SSE -> emit("cvtsi2sd xmm8, rax")
-      OperationTarget.SSE to OperationTarget.INTEGER -> emit("cvttss2si rax, xmm8")
+      OperationTarget.SSE to OperationTarget.INTEGER -> emit("cvttsd2si rax, xmm8")
       else -> logger.throwICE("Logically impossible, should be checked just above")
     }
   }
@@ -549,13 +565,14 @@ class NasmGenerator(
         }
         // FIXME: random use of xmm8/rcx
         emit("mov rcx, ${unary.operand.pos}")
-        emit("movsd xmm8, [rcx]")
+        emit("${irMov(unary.operand)} xmm8, [rcx]")
       }
       UnaryComputations.MINUS -> {
         // FIXME: random use of xmm8/xmm9
         genFloat(FloatingConstantNode(-0.0, FloatingSuffix.NONE))
-        emit("movsd xmm9, xmm8")
-        emit("xorpd xmm8, xmm9")
+        emit("${irMov(unary.operand)} xmm9, xmm8")
+        val xor = if (unary.operand.resType == FloatType) "xorss" else "xorpd"
+        emit("$xor xmm8, xmm9")
       }
       UnaryComputations.BIT_NOT -> TODO()
       UnaryComputations.NOT -> TODO()
@@ -614,18 +631,18 @@ class NasmGenerator(
 
   private fun pushXmm(reg: String) = instrGen {
     emit("sub rsp, 16")
-    emit("movsd [rsp], $reg")
+    emit("movq [rsp], $reg")
   }
 
   private fun popXmm(reg: String) = instrGen {
-    emit("movsd $reg, [rsp]")
+    emit("movq $reg, [rsp]")
     emit("add rsp, 16")
   }
 
   private fun FunctionGenContext.genFltBinary(bin: BinaryComputation) = instrGen {
     emit(genComputeConstant(bin.rhs))
     // FIXME: random use of xmm8/xmm9
-    emit("movsd xmm9, xmm8")
+    emit("${irMov(bin)} xmm9, xmm8")
     emit(genComputeConstant(bin.lhs))
     emit(genFltBinaryOperation(bin.op))
   }
@@ -693,8 +710,9 @@ class NasmGenerator(
       }
       data += "${floatRefs[flt]}: $kind $fltNasm"
     }
+    val mov = if (flt.suffix == FloatingSuffix.FLOAT) "movss" else "movsd"
     // FIXME: random use of xmm8
-    emit("movsd xmm8, [${floatRefs[flt]}]")
+    emit("$mov xmm8, [${floatRefs[flt]}]")
   }
 
   // FIXME: another big hack
@@ -728,7 +746,7 @@ class NasmGenerator(
       }
       OperationTarget.SSE -> {
         // FIXME: random use of xmm8
-        emit("movsd xmm8, ${ref.pos}")
+        emit("${irMov(ref)} xmm8, ${ref.pos}")
       }
     }
   }

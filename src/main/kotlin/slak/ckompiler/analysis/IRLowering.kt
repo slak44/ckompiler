@@ -71,34 +71,45 @@ fun UnaryOperators.asUnaryOperations(): UnaryComputations = when (this) {
 }
 
 /** An expression between 2 known operands; not a tree. */
-sealed class ComputeExpression(open val kind: OperationTarget)
+sealed class ComputeExpression(open val kind: OperationTarget, open val resType: TypeName)
 
 /** Basic pieces of data for [ComputeExpression]s. */
-sealed class ComputeConstant(override val kind: OperationTarget) : ComputeExpression(kind)
+sealed class ComputeConstant(
+    override val kind: OperationTarget,
+    override val resType: TypeName
+) : ComputeExpression(kind, resType)
 
 /** @see IntegerConstantNode */
-data class ComputeInteger(val int: IntegerConstantNode) : ComputeConstant(OperationTarget.INTEGER) {
+data class ComputeInteger(
+    val int: IntegerConstantNode
+) : ComputeConstant(OperationTarget.INTEGER, int.type) {
   override fun toString() = int.toString()
 
   fun negate() = ComputeInteger(int.copy(value = -int.value))
 }
 
 /** @see FloatingConstantNode */
-data class ComputeFloat(val float: FloatingConstantNode) : ComputeConstant(OperationTarget.SSE) {
+data class ComputeFloat(
+    val float: FloatingConstantNode
+) : ComputeConstant(OperationTarget.SSE, float.type) {
   override fun toString() = float.toString()
 
   fun negate() = ComputeFloat(float.copy(value = -float.value))
 }
 
 /** @see CharacterConstantNode */
-data class ComputeChar(val char: CharacterConstantNode) : ComputeConstant(OperationTarget.INTEGER) {
+data class ComputeChar(
+    val char: CharacterConstantNode
+) : ComputeConstant(OperationTarget.INTEGER, char.type) {
   override fun toString() = char.toString()
 
   fun negate() = ComputeChar(char.copy(char = -char.char))
 }
 
 /** @see StringLiteralNode */
-data class ComputeString(val str: StringLiteralNode) : ComputeConstant(OperationTarget.INTEGER) {
+data class ComputeString(
+    val str: StringLiteralNode
+) : ComputeConstant(OperationTarget.INTEGER, str.type) {
   override fun toString() = str.toString()
 }
 
@@ -109,7 +120,7 @@ data class ComputeString(val str: StringLiteralNode) : ComputeConstant(Operation
 data class ComputeReference(
     val tid: TypedIdentifier,
     val isSynthetic: Boolean
-) : ComputeConstant(tid.type.operationTarget()), IRExpression {
+) : ComputeConstant(tid.type.operationTarget(), tid.type), IRExpression {
   var version = 0
 
   /**
@@ -159,26 +170,35 @@ private fun Expression.operationTarget() = type.operationTarget()
  * Similar to [BinaryExpression], but doesn't support commas and assignments, and has
  * [ComputeConstant] arguments.
  */
-data class BinaryComputation(val op: BinaryComputations,
-                             val lhs: ComputeConstant,
-                             val rhs: ComputeConstant,
-                             override val kind: OperationTarget) : ComputeExpression(kind) {
+data class BinaryComputation(
+    val op: BinaryComputations,
+    val lhs: ComputeConstant,
+    val rhs: ComputeConstant,
+    override val kind: OperationTarget,
+    override val resType: TypeName
+) : ComputeExpression(kind, resType) {
   override fun toString() = "$lhs $op $rhs"
 }
 
 /** @see UnaryExpression */
-data class UnaryComputation(val op: UnaryComputations,
-                            val operand: ComputeConstant,
-                            override val kind: OperationTarget) : ComputeExpression(kind) {
+data class UnaryComputation(
+    val op: UnaryComputations,
+    val operand: ComputeConstant,
+    override val kind: OperationTarget,
+    override val resType: TypeName
+) : ComputeExpression(kind, resType) {
   override fun toString() = "$op$operand"
 }
 
 /**
  * Represents a type cast in the IR. [kind] will refer to the resulting "thing" (ie [targetType]).
  */
-data class CastComputation(val targetType: TypeName,
-                           val operand: ComputeConstant,
-                           override val kind: OperationTarget) : ComputeExpression(kind) {
+data class CastComputation(
+    val targetType: TypeName,
+    val operand: ComputeConstant,
+    override val kind: OperationTarget,
+    override val resType: TypeName
+) : ComputeExpression(kind, resType) {
   override fun toString() = "($targetType) $operand"
 }
 
@@ -188,8 +208,9 @@ interface IRExpression
 /** The instruction for a function call in IR. */
 data class Call(
     val functionPointer: ComputeConstant,
-    val args: List<ComputeConstant>
-) : ComputeExpression(OperationTarget.INTEGER), IRExpression {
+    val args: List<ComputeConstant>,
+    override val resType: TypeName
+) : ComputeExpression(resType.operationTarget(), resType), IRExpression {
   override fun toString() =
       "${(functionPointer as? ComputeReference)?.tid?.name}(${args.joinToString(", ")})"
 }
@@ -198,9 +219,11 @@ data class Call(
  * The instruction to store a [ComputeExpression]'s result to a target [ComputeReference] variable.
  * @param isSynthetic if this store was generated when converting to the IR
  */
-data class Store(val target: ComputeReference,
-                 val data: ComputeExpression,
-                 val isSynthetic: Boolean) : IRExpression {
+data class Store(
+    val target: ComputeReference,
+    val data: ComputeExpression,
+    val isSynthetic: Boolean
+) : IRExpression {
   override fun toString() = "${if (isSynthetic) "[SYNTHETIC] " else ""}$target = $data"
 }
 
@@ -281,7 +304,8 @@ class IRLoweringContext {
         additionalOperation,
         assignTarget,
         transformExpr(expr.rhs),
-        expr.operationTarget()
+        expr.operationTarget(),
+        expr.type
     )
     val assignableResult = makeTemporary(expr.lhs.type)
     _ir += Store(assignableResult, additionalComputation, isSynthetic = true)
@@ -301,7 +325,8 @@ class IRLoweringContext {
         operation,
         transformExpr(expr.lhs),
         transformExpr(expr.rhs),
-        expr.operationTarget()
+        expr.operationTarget(),
+        expr.type
     )
     val target = makeTemporary(expr.type)
     _ir += Store(target, binary, isSynthetic = true)
@@ -313,7 +338,8 @@ class IRLoweringContext {
         BinaryComputations.SUBSCRIPT,
         transformExpr(arraySubscript.subscripted),
         transformExpr(arraySubscript.subscript),
-        arraySubscript.operationTarget()
+        arraySubscript.operationTarget(),
+        arraySubscript.type
     )
     val target = makeTemporary(arraySubscript.type)
     _ir += Store(target, binary, isSynthetic = true)
@@ -346,7 +372,8 @@ class IRLoweringContext {
       else -> logger.throwICE("Illegal type for unary minus") { expr }
     }
     val target = makeTemporary(expr.type)
-    val unary = UnaryComputation(expr.op.asUnaryOperations(), irOperand, expr.operationTarget())
+    val unary =
+        UnaryComputation(expr.op.asUnaryOperations(), irOperand, expr.operationTarget(), expr.type)
     _ir += Store(target, unary, isSynthetic = true)
     return target
   }
@@ -357,7 +384,7 @@ class IRLoweringContext {
   private fun transformCall(funCall: FunctionCall): Call {
     val funDesignator = transformExpr(funCall.calledExpr)
     val args = funCall.args.map(::transformExpr)
-    return Call(funDesignator, args)
+    return Call(funDesignator, args, funCall.type)
   }
 
   /**
@@ -371,7 +398,8 @@ class IRLoweringContext {
 
   private fun transformCast(cast: CastExpression): ComputeReference {
     val target = makeTemporary(cast.type)
-    val castComp = CastComputation(cast.type, transformExpr(cast.target), cast.operationTarget())
+    val castComp =
+        CastComputation(cast.type, transformExpr(cast.target), cast.operationTarget(), cast.type)
     _ir += Store(target, castComp, isSynthetic = true)
     return target
   }
