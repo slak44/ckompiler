@@ -316,7 +316,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
         val assignTok = current()
-        val initializer = parseInitializer(paramEndIdx)
+        val initializer = parseInitializer(ErrorType, paramEndIdx)
         diagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
           errorOn(assignTok..initializer)
@@ -331,7 +331,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
   }
 
   // FIXME: return type will change with the initializer list
-  protected fun parseInitializer(endIdx: Int): ExpressionInitializer {
+  protected fun parseInitializer(initializerFor: TypeName, endIdx: Int): ExpressionInitializer {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
@@ -348,7 +348,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
     val expr = expressionParser.parseExpr(endIdx) ?: error<ErrorExpression>()
-    return ExpressionInitializer.from(expr)
+    return ExpressionInitializer.from(convertToCommon(initializerFor, expr))
   }
 
   /** C standard: 6.7.6.2 */

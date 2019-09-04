@@ -23,12 +23,15 @@ internal fun <T : ASTNode> T.zeroRange(): T {
 }
 
 internal fun int(i: Long) = IntegerConstantNode(i).zeroRange()
+internal fun long(i: Long) = IntegerConstantNode(i, IntegralSuffix.LONG).zeroRange()
 
 internal fun double(f: Double) = FloatingConstantNode(f, FloatingSuffix.NONE).zeroRange()
 
 internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
 internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw)).zeroRange()
+internal val float =
+    DeclarationSpecifier(typeSpec = FloatTypeSpec(Keywords.FLOAT.kw)).zeroRange()
 internal val double =
     DeclarationSpecifier(typeSpec = DoubleTypeSpec(Keywords.DOUBLE.kw)).zeroRange()
 internal val long = DeclarationSpecifier(typeSpec = LongType(Keywords.LONG.kw)).zeroRange()

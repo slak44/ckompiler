@@ -74,7 +74,7 @@ class ExpressionTests {
   fun `Size Of Primary Expression`() {
     val p = prepareCode("int a = sizeof 1;", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign sizeOf(1)) assertEquals p.root.decls[0]
+    int declare ("a" assign SignedIntType.cast(sizeOf(1))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -164,14 +164,14 @@ class ExpressionTests {
   fun `Sizeof Type Name`() {
     val p = prepareCode("int a = sizeof(int);", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign sizeOf(SignedIntType)) assertEquals p.root.decls[0]
+    int declare ("a" assign SignedIntType.cast(sizeOf(SignedIntType))) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Sizeof Parenthesized Expression`() {
     val p = prepareCode("int a = sizeof(1 + 2 * 3);", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign sizeOf(1 add (2 mul 3))) assertEquals p.root.decls[0]
+    int declare ("a" assign SignedIntType.cast(sizeOf(1 add (2 mul 3)))) assertEquals p.root.decls[0]
   }
 
   @Disabled("have to deal with incomplete structs in type system first")

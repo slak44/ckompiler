@@ -96,11 +96,14 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
    * Parse an initializer for one of this declaration's declarators.
    * @see DeclaratorParser.parseInitializer
    */
-  private fun parseDeclarationInitializer(ds: DeclarationSpecifier,
-                                          endIdx: Int): ExpressionInitializer? {
+  private fun parseDeclarationInitializer(
+      expectedType: TypeName,
+      ds: DeclarationSpecifier,
+      endIdx: Int
+  ): ExpressionInitializer? {
     if (current().asPunct() != Punctuators.ASSIGN) return null
     val assignTok = current()
-    val initializer = parseInitializer(endIdx)
+    val initializer = parseInitializer(expectedType, endIdx)
     if (!ds.isTypedef()) return initializer
     diagnostic {
       id = DiagnosticId.TYPEDEF_NO_INITIALIZER
@@ -145,7 +148,8 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
         declaratorList += declarator to null
         return true
       }
-      declaratorList += declarator to parseDeclarationInitializer(ds, endIdx)
+      val expectedType = typeNameOf(ds, declarator)
+      declaratorList += declarator to parseDeclarationInitializer(expectedType, ds, endIdx)
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
         eat()

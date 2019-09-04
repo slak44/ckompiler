@@ -683,10 +683,13 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
 /**
  * Applies a cast to a common type to [operand]. Useful for actually performing usual arithmetic
  * conversions and the like.
+ *
+ * If either parameter has [ErrorType], or if both parameters have identical types, the result is
+ * the unchanged [operand] parameter.
  */
 fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
   if (commonType == operand.type) return operand
-  if (commonType == ErrorType) return operand
+  if (commonType == ErrorType || operand.type == ErrorType) return operand
   // FIXME: this does not seem terribly correct, but 6.5.4.0.3 does say pointers need explicit casts
   if (operand.type is PointerType || commonType is PointerType) return operand
   return CastExpression(operand, commonType).withRange(operand)

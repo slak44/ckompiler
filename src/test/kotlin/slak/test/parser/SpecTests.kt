@@ -22,12 +22,12 @@ class SpecTests {
     p.assertNoDiagnostics()
     assertEquals(listOf(
         int declare ("a" assign 1),
-        longLong declare ("b" assign 2),
-        uLongLong declare ("c" assign 3),
-        longDouble declare ("d" assign 4),
-        signedChar declare ("e" assign 5),
-        long declare ("f" assign 6),
-        long declare ("g" assign 7)
+        longLong declare ("b" assign SignedLongLongType.cast(2)),
+        uLongLong declare ("c" assign UnsignedLongLongType.cast(3)),
+        longDouble declare ("d" assign LongDoubleType.cast(4)),
+        signedChar declare ("e" assign SignedCharType.cast(5)),
+        long declare ("f" assign SignedLongType.cast(6)),
+        long declare ("g" assign SignedLongType.cast(7))
     ), p.root.decls)
   }
 
@@ -338,7 +338,7 @@ class SpecTests {
         nameDecl("special_int")
     )
     typedef declare "special_int" assertEquals p.root.decls[0]
-    specialIntType declare ("x" assign 213) assertEquals p.root.decls[1]
+    specialIntType declare ("x" assign UnsignedIntType.cast(213)) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -353,7 +353,7 @@ class SpecTests {
     val (typedef, specialIntType) = typedef(uInt, nameDecl("special_int"))
     typedef declare "special_int" assertEquals p.root.decls[0]
     int func "main" body compoundOf(
-        specialIntType declare ("x" assign 213)
+        specialIntType declare ("x" assign UnsignedIntType.cast(213))
     ) assertEquals p.root.decls[1]
   }
 

@@ -1,9 +1,12 @@
 package slak.test.analysis
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
+import kotlin.test.assertEquals
 
 class TypeTests {
   @Test
@@ -135,5 +138,56 @@ class TypeTests {
     p.assertDiags(DiagnosticId.INVALID_ARR_TYPE)
     val badDecl = int declare (name("a")[123] withParams emptyList())
     int func ("main" withParams emptyList()) body compoundOf(badDecl) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Implicit Casts For Expressions`() {
+    val p = prepareCode("""
+      int main() {
+        12 + 2.2;
+        12L + 2;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body compoundOf(
+        DoubleType.cast(12) add 2.2,
+        long(12) add SignedLongType.cast(2)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Implicit Casts For Initializers`() {
+    val p = prepareCode("""
+      int main() {
+        int a = 1.2;
+        float f = 12;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare ("a" assign SignedIntType.cast(1.2)),
+        float declare ("f" assign FloatType.cast(12))
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Suppress("unused")
+  enum class ArithmeticConversionTestCase(
+      val lhs: TypeName,
+      val rhs: TypeName,
+      val expected: TypeName
+  ) {
+    LONG_INT(SignedLongType, SignedIntType, SignedLongType),
+    INT_LONG(SignedIntType, SignedLongType, SignedLongType),
+    FLT_DOUBLE(FloatType, DoubleType, DoubleType),
+    INT_INT(SignedIntType, SignedIntType, SignedIntType),
+    FLT_INT(FloatType, SignedIntType, FloatType),
+    ERROR_INT(ErrorType, SignedIntType, ErrorType)
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = ArithmeticConversionTestCase::class)
+  fun `Usual Arithmetic Conversions`(case: ArithmeticConversionTestCase) {
+    val result = usualArithmeticConversions(case.lhs, case.rhs)
+    assertEquals(case.expected, result, "Conversion failed")
   }
 }
