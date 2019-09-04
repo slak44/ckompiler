@@ -196,7 +196,7 @@ sealed class IntegralType : ArithmeticType(), Comparable<IntegralType> {
   abstract val corespondingType: IntegralType
 
   /** @see conversionRank */
-  override operator fun compareTo(other: IntegralType) = other.conversionRank - this.conversionRank
+  override operator fun compareTo(other: IntegralType) = this.conversionRank - other.conversionRank
 }
 
 /**
