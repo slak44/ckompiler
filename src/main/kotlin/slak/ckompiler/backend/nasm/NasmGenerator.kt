@@ -642,7 +642,7 @@ class NasmGenerator(
     // FIXME: random use of xmm8/xmm9
     emit("${irMov(bin)} xmm9, xmm8")
     emit(genComputeConstant(bin.lhs))
-    emit(genFltBinaryOperation(bin.op))
+    emit(genFloatingBinaryOperations(bin))
   }
 
   /**
@@ -651,7 +651,36 @@ class NasmGenerator(
    * FIXME: random use of xmm8/xmm9
    * Assume returns in xmm8.
    */
+  private fun genFloatingBinaryOperations(
+      bin: BinaryComputation
+  ) = when (target.sizeOf(bin.resType)) {
+    // FIXME: ugly hack
+    4 -> genFltBinaryOperation(bin.op)
+    8 -> genDblBinaryOperation(bin.op)
+    else -> genDblBinaryOperation(bin.op)
+  }
+
   private fun genFltBinaryOperation(op: BinaryComputations) = instrGen {
+    when (op) {
+      BinaryComputations.ADD -> emit("addss xmm8, xmm9")
+      BinaryComputations.SUBSTRACT -> emit("subss xmm8, xmm9")
+      BinaryComputations.MULTIPLY -> emit("mulss xmm8, xmm9")
+      BinaryComputations.DIVIDE -> emit("divss xmm8, xmm9")
+      BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
+      BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
+      BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("comiss xmm8, xmm9")
+      BinaryComputations.LOGICAL_AND -> TODO("???")
+      BinaryComputations.LOGICAL_OR -> TODO("???")
+      BinaryComputations.BITWISE_AND, BinaryComputations.BITWISE_OR, BinaryComputations.BITWISE_XOR,
+      BinaryComputations.REMAINDER, BinaryComputations.LEFT_SHIFT,
+      BinaryComputations.RIGHT_SHIFT -> {
+        logger.throwICE("Illegal operation between floats made it to codegen") { op }
+      }
+      BinaryComputations.SUBSCRIPT -> TODO()
+    }
+  }
+
+  private fun genDblBinaryOperation(op: BinaryComputations) = instrGen {
     when (op) {
       BinaryComputations.ADD -> emit("addsd xmm8, xmm9")
       BinaryComputations.SUBSTRACT -> emit("subsd xmm8, xmm9")
