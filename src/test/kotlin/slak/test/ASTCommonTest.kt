@@ -24,7 +24,7 @@ internal fun <T : ASTNode> T.zeroRange(): T {
 
 internal fun int(i: Long) = IntegerConstantNode(i).zeroRange()
 internal fun long(i: Long) = IntegerConstantNode(i, IntegralSuffix.LONG).zeroRange()
-
+internal fun float(f: Double) = FloatingConstantNode(f, FloatingSuffix.FLOAT).zeroRange()
 internal fun double(f: Double) = FloatingConstantNode(f, FloatingSuffix.NONE).zeroRange()
 
 internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()

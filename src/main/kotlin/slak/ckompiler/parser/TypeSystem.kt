@@ -696,6 +696,74 @@ fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
 }
 
 /**
+ * Checks function type's [FunctionType.params] vs [args]. Reports diagnostics for problems.
+ * Handles variadic functions. Performs the required conversions. Returns the transformed args.
+ *
+ * [calledExpr]'s type MUST be [FunctionType].
+ *
+ * C standard: 6.5.2.2
+ */
+fun IDebugHandler.matchFunctionArguments(
+    calledExpr: Expression,
+    args: List<Expression>
+): List<Expression>? {
+  require(calledExpr.type.isCallable()) { "Called expression is not callable" }
+  val funType = calledExpr.type.asCallable()!!
+  if (!funType.variadic && funType.params.size != args.size) {
+    diagnostic {
+      id = DiagnosticId.FUN_CALL_ARG_COUNT
+      val which = if (funType.params.size > args.size) "few" else "many"
+      formatArgs(which, funType.params.size, args.size)
+      errorOn(calledExpr)
+      if (args.isNotEmpty()) errorOn(args.last())
+    }
+    return null
+  }
+  if (funType.variadic && args.size < funType.params.size) {
+    diagnostic {
+      id = DiagnosticId.FUN_CALL_ARG_COUNT_VAR
+      formatArgs(funType.params.size, args.size)
+      errorOn(calledExpr)
+      if (args.isNotEmpty()) errorOn(args.last())
+    }
+    return null
+  }
+  val variadicArgs = args.drop(funType.params.size).map(::defaultArgumentPromotions)
+  val transformedRegularArgs = mutableListOf<Expression>()
+  for ((expectedArgType, actualArg) in funType.params.zip(args)) {
+    // 6.5.2.2.0.7 says we treat conversions as if by assignment here
+    // FIXME: applyTo is incomplete for assignment
+    //   when it gets done, print diagnostic here if types aren't compatible
+    val resultType = ASSIGN.applyTo(expectedArgType, actualArg.type)
+    transformedRegularArgs += convertToCommon(resultType, actualArg)
+  }
+  return transformedRegularArgs + variadicArgs
+}
+
+/**
+ * Figures out what this argument should be promoted to, and wraps it in a [CastExpression] if
+ * required.
+ *
+ * The default argument promotions are only applied in certain cases (namely variadic args and
+ * prototype-less function arguments).
+ *
+ * [ErrorType] expressions pass through.
+ *
+ * C standard: 6.5.2.2.0.6
+ */
+fun defaultArgumentPromotions(sourceArg: Expression): Expression {
+  val type = sourceArg.type
+  // floats always become doubles
+  if (type is FloatType) return CastExpression(sourceArg, DoubleType).withRange(sourceArg)
+  // Integer promotions are also applied (only if they're not redundant)
+  if (type is IntegralType && type.promotedType != type) {
+    return CastExpression(sourceArg, type.promotedType).withRange(sourceArg)
+  }
+  // Otherwise, do nothing
+  return sourceArg
+}
+
+/**
  * Validate the operand type for a `sizeof`. Prints diagnostics.
  */
 fun IDebugHandler.checkSizeofType(

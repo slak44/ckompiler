@@ -152,6 +152,6 @@ class FunctionCallTests {
       int f(int, int, int);
       int a = $funCallStr;
     """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
+    assert(DiagnosticId.EXPECTED_EXPR in p.diags.ids)
   }
 }

@@ -262,9 +262,13 @@ class ExpressionParser(
     return Pair(funcArgs, tokenAt(callEnd))
   }
 
+  /**
+   * C standard: 6.5.2.2
+   */
   private fun parseFunctionCall(called: Expression): Expression {
     val (args, endParenTok) = parseArgumentExprList()
-    if (called.type.asCallable() == null) {
+    val callable = called.type.asCallable()
+    if (callable == null) {
       // Don't report bogus error when the type is bullshit; a diagnostic was printed somewhere
       if (called.type != ErrorType) diagnostic {
         id = DiagnosticId.CALL_OBJECT_TYPE
@@ -273,7 +277,8 @@ class ExpressionParser(
       }
       return error<ErrorExpression>()
     }
-    return FunctionCall(called, args).withRange(called..endParenTok)
+    val transformedArgs = matchFunctionArguments(called, args) ?: return error<ErrorExpression>()
+    return FunctionCall(called, transformedArgs).withRange(called..endParenTok)
   }
 
   private fun parseSubscript(subscripted: Expression): Expression {

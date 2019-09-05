@@ -3,6 +3,7 @@ package slak.test.analysis
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -140,6 +141,30 @@ class TypeTests {
     int func ("main" withParams emptyList()) body compoundOf(badDecl) assertEquals p.root.decls[0]
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = ["f(1, 2, 3);", "f(1);", "f();"])
+  fun `Wrong Argument Count`(string: String) {
+    val p = prepareCode("""
+      void f(int a, int b) {}
+      int main() {
+        $string
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.FUN_CALL_ARG_COUNT)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["f(1);", "f();"])
+  fun `Wrong Argument Count Variadic`(string: String) {
+    val p = prepareCode("""
+      void f(int a, int b, ...) {}
+      int main() {
+        $string
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.FUN_CALL_ARG_COUNT_VAR)
+  }
+
   @Test
   fun `Implicit Casts For Expressions`() {
     val p = prepareCode("""
@@ -168,6 +193,28 @@ class TypeTests {
         int declare ("a" assign SignedIntType.cast(1.2)),
         float declare ("f" assign FloatType.cast(12))
     ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Implicit Casts For Variadic Function Call Arguments`() {
+    val p = prepareCode("""
+      void f(int a, ...) {}
+      int main() {
+        f(1, 2.2F, 3.3F, (char) 23);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    void func ("f" withParamsV listOf(int param "a")) body emptyCompound() assertEquals
+        p.root.decls[0]
+    val f = nameRef("f", FunctionType(VoidType, listOf(SignedIntType), variadic = true))
+    int func ("main" withParams emptyList()) body compoundOf(
+        f(
+            1,
+            DoubleType.cast(float(2.2)),
+            DoubleType.cast(float(3.3)),
+            SignedIntType.cast(SignedCharType.cast(23))
+        )
+    ) assertEquals p.root.decls[1]
   }
 
   @Suppress("unused")

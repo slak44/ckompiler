@@ -125,7 +125,7 @@ class ResilienceTests {
     val funProto = int proto ("f" withParams listOf(int.toParam(), int.toParam()))
     funProto assertEquals p.root.decls[0]
     val f = TypedIdentifier(funProto.declSpecs, funProto.declaratorList[0].first as NamedDeclarator)
-    int declare listOf("x" assign f()) assertEquals p.root.decls[1]
+    int declare listOf("x" assign ErrorExpression()) assertEquals p.root.decls[1]
     // The parser gets incredibly confused by stuff like this
     // It is impossible to know exactly what is valid and what isn't when parens aren't matched, so
     // we only want to see if the root cause (unmatched paren) is reported
