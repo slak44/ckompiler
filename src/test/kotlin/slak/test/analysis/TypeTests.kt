@@ -228,6 +228,7 @@ class TypeTests {
     FLT_DOUBLE(FloatType, DoubleType, DoubleType),
     INT_INT(SignedIntType, SignedIntType, SignedIntType),
     FLT_INT(FloatType, SignedIntType, FloatType),
+    INT_FLT(SignedIntType, FloatType, FloatType),
     ERROR_INT(ErrorType, SignedIntType, ErrorType)
   }
 
