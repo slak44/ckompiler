@@ -320,15 +320,10 @@ class NasmGenerator(
         // function still returns nothing
       }
       // SSE classification
-      FloatType -> {
-        // FIXME: random use of xmm8
-        // FIXME: there are two SSE return registers, xmm0 and xmm1
-        emit("movss xmm0, xmm8")
-      }
-      DoubleType -> {
-        // FIXME: random use of xmm8
-        // FIXME: there are two SSE return registers, xmm0 and xmm1
-        emit("movsd xmm0, xmm8")
+      // FIXME: random use of xmm8
+      // FIXME: there are two SSE return registers, xmm0 and xmm1
+      FloatType, DoubleType -> {
+        emit("${irSSEMov(retExpr.src.last().type)} xmm0, xmm8")
       }
       is ArrayType -> TODO()
       is BitfieldType -> TODO()
@@ -414,8 +409,9 @@ class NasmGenerator(
         emit("mov al, ${fltArgs.size}")
       }
       emit("call ${call.functionPointer.tid.name}")
-      if (call.functionPointer.tid.type.asCallable()!!.returnType is FloatingType) {
-        emit("${irMov(call.functionPointer)} xmm0, xmm8")
+      val retType = call.functionPointer.tid.type.asCallable()!!.returnType
+      if (retType is FloatingType) {
+        emit("${irSSEMov(retType)} xmm8, xmm0")
       }
     } else {
       // FIXME: this _definitely_ doesn't work (call through expr)
@@ -474,12 +470,14 @@ class NasmGenerator(
 
   private fun irMov(e: ComputeExpression): String = when (e.kind) {
     OperationTarget.INTEGER -> "mov"
-    // FIXME: 4/8 bytes are not the only floating point types in the world
-    OperationTarget.SSE -> when (target.sizeOf(e.resType)) {
-      4 -> "movss"
-      8 -> "movsd"
-      else -> "movsd"
-    }
+    OperationTarget.SSE -> irSSEMov(e.resType)
+  }
+
+  // FIXME: 4/8 bytes are not the only floating point types in the world
+  private fun irSSEMov(t: TypeName): String = when (target.sizeOf(t)) {
+    4 -> "movss"
+    8 -> "movsd"
+    else -> "movsd"
   }
 
   /**
