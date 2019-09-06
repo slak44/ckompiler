@@ -264,7 +264,13 @@ class NasmGenerator(
       when (condExpr.data.kind) {
         // FIXME: random use of rax, rbx, xmmm8, xmm9
         OperationTarget.INTEGER -> emit("cmp rax, rbx")
-        OperationTarget.SSE -> emit("comisd xmm8, xmm9")
+        OperationTarget.SSE -> when (target.sizeOf(condExpr.data.resType)) {
+          // FIXME: duplicated code
+          // FIXME: yet another retarded when-expression on the size of floats
+          4 -> emit("comiss xmm8, xmm9")
+          8 -> emit("comisd xmm8, xmm9")
+          else -> emit("comisd xmm8, xmm9")
+        }
       }
     }
     if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
