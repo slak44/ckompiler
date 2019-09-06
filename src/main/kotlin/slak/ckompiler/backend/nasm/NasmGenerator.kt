@@ -247,9 +247,29 @@ class NasmGenerator(
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
 
-  private fun FunctionGenContext.genZeroJump(target: BasicBlock) = instrGen {
-    emit("cmp rax, 0") // FIXME: random use of rax
-    emit("jnz ${target.label}")
+  private fun FunctionGenContext.genZeroJump(block: BasicBlock, ce: ComputeExpression) = instrGen {
+    when (ce.kind) {
+      // FIXME: random use of rax, rbx, xmm8, xmm9
+      OperationTarget.INTEGER -> emit("cmp rax, 0")
+      OperationTarget.SSE -> {
+        // FIXME: ultra ugly hack
+        when (target.sizeOf(ce.resType)) {
+          // FIXME: duplicated code
+          // FIXME: yet another retarded when-expression on the size of floats
+          4 -> {
+            emit("${irSSEMov(ce.resType)} xmm9, xmm8")
+            emit(genFloat(FloatingConstantNode(0.0, FloatingSuffix.FLOAT)))
+            emit("comiss xmm9, xmm8")
+          }
+          else -> {
+            emit("${irSSEMov(ce.resType)} xmm9, xmm8")
+            emit(genFloat(FloatingConstantNode(0.0, FloatingSuffix.NONE)))
+            emit("comisd xmm9, xmm8")
+          }
+        }
+      }
+    }
+    emit("jnz ${block.label}")
   }
 
   private fun FunctionGenContext.genCondJump(jmp: CondJump) = instrGen {
@@ -262,7 +282,7 @@ class NasmGenerator(
         BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL)
     if (condExpr is Store && condExpr.data is BinaryComputation && condExpr.data.op in conds) {
       when (condExpr.data.kind) {
-        // FIXME: random use of rax, rbx, xmmm8, xmm9
+        // FIXME: random use of rax, rbx, xmm8, xmm9
         OperationTarget.INTEGER -> emit("cmp rax, rbx")
         OperationTarget.SSE -> when (target.sizeOf(condExpr.data.resType)) {
           // FIXME: duplicated code
@@ -273,16 +293,27 @@ class NasmGenerator(
         }
       }
     }
+    val isSigned = when ((condExpr as? Store)?.data?.kind) {
+      OperationTarget.INTEGER -> condExpr.target.resType is SignedIntegralType
+      OperationTarget.SSE -> false
+      null -> true
+    }
     if (condExpr is Store && condExpr.data is BinaryComputation) when (condExpr.data.op) {
-      BinaryComputations.LESS_THAN -> emit("jl ${jmp.target.label}")
-      BinaryComputations.GREATER_THAN -> emit("jg ${jmp.target.label}")
-      BinaryComputations.LESS_EQUAL_THAN -> emit("jle ${jmp.target.label}")
-      BinaryComputations.GREATER_EQUAL_THAN -> emit("jge ${jmp.target.label}")
+      BinaryComputations.LESS_THAN -> emit("${if (isSigned) "jl" else "jb"} ${jmp.target.label}")
+      BinaryComputations.GREATER_THAN -> emit("${if (isSigned) "jg" else "ja"} ${jmp.target.label}")
+      BinaryComputations.LESS_EQUAL_THAN ->
+        emit("${if (isSigned) "jle" else "jbe"} ${jmp.target.label}")
+      BinaryComputations.GREATER_EQUAL_THAN ->
+        emit("${if (isSigned) "jge" else "jae"} ${jmp.target.label}")
       BinaryComputations.EQUAL -> emit("je ${jmp.target.label}")
       BinaryComputations.NOT_EQUAL -> emit("jne ${jmp.target.label}")
-      else -> emit(genZeroJump(jmp.target))
+      else -> emit(genZeroJump(jmp.target, condExpr.data))
+    } else if (condExpr is ComputeExpression) {
+      emit(genZeroJump(jmp.target, condExpr))
+    } else if (condExpr is Store) {
+      emit(genZeroJump(jmp.target, condExpr.data))
     } else {
-      emit(genZeroJump(jmp.target))
+      logger.throwICE("Illegal IRExpression implementor")
     }
     // Try to generate the "else" block right after the cmp, so that if the cond is false, we just
     // keep executing without having to do another jump
