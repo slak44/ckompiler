@@ -532,24 +532,20 @@ class NasmGenerator(
 
   private fun FunctionGenContext.genCast(cast: CastComputation) = instrGen {
     emit(genComputeConstant(cast.operand))
-    // FIXME: disgusting hacks
-    if (cast.operand.resType == FloatType && cast.resType == DoubleType) {
-      emit("cvtss2sd xmm8, xmm8")
-      return@instrGen
-    }
-    if (cast.operand.resType == DoubleType && cast.resType == FloatType) {
-      emit("cvtsd2ss xmm8, xmm8")
-      return@instrGen
-    }
     // FIXME: technically, there still is a cast here
-    //  it just doesn't cross value classes, but it still does things
-    //  big corner cut here
-    if (cast.operand.kind == cast.kind) return@instrGen
+    if (cast.operand.resType == cast.resType) return@instrGen
     // FIXME: random use of rax & xmm8
-    when (cast.operand.kind to cast.kind) {
-      OperationTarget.INTEGER to OperationTarget.SSE -> emit("cvtsi2sd xmm8, rax")
-      OperationTarget.SSE to OperationTarget.INTEGER -> emit("cvttsd2si rax, xmm8")
-      else -> logger.throwICE("Logically impossible, should be checked just above")
+    val c = cast.operand.resType to cast.resType
+    when {
+      c.first is IntegralType && c.second is FloatType -> emit("cvtsi2ss xmm8, rax")
+      c.first is IntegralType && c.second is DoubleType -> emit("cvtsi2sd xmm8, rax")
+      c.first is FloatType && c.second is IntegralType -> emit("cvttss2si xmm8, rax")
+      c.first is DoubleType && c.second is IntegralType -> emit("cvttsd2si xmm8, rax")
+      c.first is FloatType && c.second is DoubleType -> emit("cvtss2sd xmm8, xmm8")
+      c.first is DoubleType && c.second is FloatType -> emit("cvtsd2ss xmm8, xmm8")
+      // FIXME: yet another ugly hack
+      c.first is IntegralType && c.second is IntegralType -> return@instrGen
+      else -> logger.throwICE("Logically impossible")
     }
   }
 
