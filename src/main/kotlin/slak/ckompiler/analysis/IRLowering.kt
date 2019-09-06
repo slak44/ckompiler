@@ -70,6 +70,7 @@ fun UnaryOperators.asUnaryOperations(): UnaryComputations = when (this) {
   UnaryOperators.NOT -> UnaryComputations.NOT
 }
 
+// FIXME: retarded use of open instead of abstract properties
 /** An expression between 2 known operands; not a tree. */
 sealed class ComputeExpression(open val kind: OperationTarget, open val resType: TypeName)
 
@@ -325,7 +326,7 @@ class IRLoweringContext {
         operation,
         transformExpr(expr.lhs),
         transformExpr(expr.rhs),
-        expr.operationTarget(),
+        expr.lhs.operationTarget(), // FIXME: always correct?
         expr.type
     )
     val target = makeTemporary(expr.type)
