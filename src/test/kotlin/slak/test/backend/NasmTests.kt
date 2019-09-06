@@ -3,6 +3,7 @@ package slak.test.backend
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.ExitCodes
 import slak.test.cli
@@ -262,5 +263,29 @@ class NasmTests {
       file = resource("e2e/scanfFloatOnce.c")
       stdin = flt
     }.expect(stdout = flt)
+  }
+
+  @Suppress("unused")
+  enum class InfNaNTestCases(val expr: String, val output: String) {
+    INF_EXPR("1.0 / 0.0", "inf"),
+    NAN_EXPR("0.0 / 0.0", "nan"),
+    NEG_NAN_EXPR("-0.0 / 0.0", "nan"),
+    NEG_INF_EXPR("-1.0 / 0.0", "-inf"),
+    MACRO_INF_EXPR("INFINITY", "inf"),
+    NEG_MACRO_INF_EXPR("-INFINITY", "-inf"),
+  }
+
+  @ParameterizedTest
+  @EnumSource(InfNaNTestCases::class)
+  fun `Handle Infinities And NaNs`(test: InfNaNTestCases) {
+    compileAndRun("""
+      #include <stdio.h>
+      #include <math.h>
+      int main() {
+        double res = ${test.expr};
+        printf("%f", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = test.output)
   }
 }
