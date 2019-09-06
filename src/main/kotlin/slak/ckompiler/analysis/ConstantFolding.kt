@@ -17,7 +17,7 @@ fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (ex
     if (foldedOperand is ExprConstantNode) {
       evalUnary(foldedOperand, expr.op).withRange(expr)
     } else {
-      UnaryExpression(expr.op, foldedOperand).withRange(expr)
+      expr.copy(operand = foldedOperand).withRange(expr)
     }
   }
   is BinaryExpression -> {
@@ -26,7 +26,7 @@ fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (ex
     if (lhs is ExprConstantNode && rhs is ExprConstantNode) {
       evalBinary(lhs, rhs, expr.op, expr.type).withRange(expr)
     } else {
-      BinaryExpression(expr.op, lhs, rhs).withRange(expr)
+      expr.copy(lhs = lhs, rhs = rhs).withRange(expr)
     }
   }
   is CastExpression -> {
@@ -34,7 +34,7 @@ fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (ex
     if (target is ExprConstantNode) {
       evalCast(expr.type, target).withRange(expr)
     } else {
-      CastExpression(target, expr.type).withRange(expr)
+      expr.copy(target = target).withRange(expr)
     }
   }
   is ArraySubscript -> ArraySubscript(

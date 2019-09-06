@@ -433,8 +433,6 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
 }
 
 /**
- * FIXME: where do the these promotions actually happen?
- *
  * C standard: 6.5.3.3.1, 6.5.3.3.5
  * @return the type of the expression after applying a unary operator ([ErrorType] if it can't be
  * applied)
@@ -482,25 +480,39 @@ private fun intOp(lhs: TypeName, rhs: TypeName): TypeName {
 }
 
 /**
+ * The resulting types of a [BinaryExpression] on two operands.
+ *
+ * [exprType] is the type of the [BinaryExpression] that will be created.
+ * [operandCommonType] is the type each operand must be converted to before the [BinaryExpression]
+ * is applied.
+ *
+ * Both are [ErrorType] if the types and the [BinaryOperators] don't match.
+ *
+ * @see convertToCommon
+ */
+data class BinaryResult(val exprType: TypeName, val operandCommonType: TypeName) {
+  constructor(type: TypeName) : this(type, type)
+}
+
+/**
  * C standard: 6.5.5.0.2, 6.5.5, 6.5.6, 6.5.7, 6.5.8, 6.5.8.0.6, 6.5.9, 6.5.10, 6.5.11, 6.5.12,
  * 6.5.13, 6.5.14, 6.5.17
- * @return the type of the expression after applying the binary operator on the operands
- * ([ErrorType] if it can't be applied)
+ * @see BinaryResult
  */
-fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this) {
-  MUL, DIV -> arithmOp(lhs, rhs)
-  MOD -> intOp(lhs, rhs)
+fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): BinaryResult = when (this) {
+  MUL, DIV -> BinaryResult(arithmOp(lhs, rhs))
+  MOD -> BinaryResult(intOp(lhs, rhs))
   ADD -> {
     val ptr = lhs as? PointerType ?: rhs as? PointerType
     if (ptr == null) {
       // Regular arithmetic
-      arithmOp(lhs, rhs)
+      BinaryResult(arithmOp(lhs, rhs))
     } else {
       // Pointer arithmetic
       // FIXME: handle ArrayType (6.5.6.0.8)
       // FIXME: the ptr.referencedType must be a complete object type (6.5.6.0.2)
       val other = if (lhs is PointerType) rhs else lhs
-      if (other !is IntegralType) ErrorType else ptr
+      BinaryResult(if (other !is IntegralType) ErrorType else ptr)
     }
   }
   SUB -> {
@@ -508,7 +520,7 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this
     // FIXME: the ptr.referencedType must be a complete object type (6.5.6.0.2)
     if (ptr == null) {
       // Regular arithmetic
-      arithmOp(lhs, rhs)
+      BinaryResult(arithmOp(lhs, rhs))
     } else {
       // Pointer arithmetic
       val otherPtr = rhs as? PointerType
@@ -516,54 +528,70 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): TypeName = when (this
       // FIXME: the otherPtr.referencedType must be a complete object type (6.5.6.0.2)
       if (otherPtr == null) {
         // ptr minus integer case
-        if (rhs !is IntegralType) ErrorType else ptr
+        BinaryResult(if (rhs !is IntegralType) ErrorType else ptr)
       } else {
         // ptr minus ptr case
         // FIXME: this should actually return ptrdiff_t (6.5.6.0.9)
         // FIXME: overly strict check, compatibles are allowed (6.5.6.0.3)
-        if (ptr.referencedType != otherPtr.referencedType) ErrorType else ptr
+        BinaryResult(if (ptr.referencedType != otherPtr.referencedType) ErrorType else ptr)
       }
     }
   }
-  LSH, RSH -> intOp(lhs, rhs)
+  LSH, RSH -> BinaryResult(intOp(lhs, rhs))
   LT, GT, LEQ, GEQ -> {
     val lPtr = lhs as? PointerType
     val rPtr = rhs as? PointerType
     if (lPtr == null || rPtr == null) {
-      // FIXME: the arithmetic conversions get lost here
-      arithmOp(lhs, rhs)
-      if (lhs.isRealType() && rhs.isRealType()) SignedIntType else ErrorType
+      val commonType = arithmOp(lhs, rhs)
+      val resultType = if (lhs.isRealType() && rhs.isRealType()) SignedIntType else ErrorType
+      BinaryResult(resultType, commonType)
     } else {
       // FIXME: the referenced types must be compatible object types (6.5.8.0.2)
-      SignedIntType
+      BinaryResult(SignedIntType, lPtr)
     }
   }
   EQ, NEQ -> {
     if (lhs is ArithmeticType && rhs is ArithmeticType) {
-      usualArithmeticConversions(lhs, rhs)
+      BinaryResult(SignedIntType, usualArithmeticConversions(lhs, rhs))
     } else {
       TODO("lots of pointer arithmetic shit (6.5.9)")
     }
   }
-  BIT_AND, BIT_XOR, BIT_OR -> intOp(lhs, rhs)
+  BIT_AND, BIT_XOR, BIT_OR -> BinaryResult(intOp(lhs, rhs))
   AND, OR -> {
-    if (!lhs.isScalar() || !rhs.isScalar()) ErrorType else SignedIntType
+    if (!lhs.isScalar() || !rhs.isScalar()) {
+      BinaryResult(ErrorType)
+    } else {
+      val lPtr = lhs as? PointerType
+      val rPtr = rhs as? PointerType
+      if (lPtr == null || rPtr == null) {
+        val commonType = arithmOp(lhs, rhs)
+        val resultType = if (lhs.isRealType() && rhs.isRealType()) SignedIntType else ErrorType
+        BinaryResult(resultType, commonType)
+      } else {
+        TODO("handle pointers here")
+      }
+    }
   }
   // FIXME: assignment operator semantics are very complicated (6.5.16)
-  ASSIGN -> lhs
-  MUL_ASSIGN -> lhs
-  DIV_ASSIGN -> lhs
-  MOD_ASSIGN -> lhs
-  PLUS_ASSIGN -> lhs
-  SUB_ASSIGN -> lhs
-  LSH_ASSIGN -> lhs
-  RSH_ASSIGN -> lhs
-  AND_ASSIGN -> lhs
-  XOR_ASSIGN -> lhs
-  OR_ASSIGN -> lhs
-  COMMA -> rhs
+  ASSIGN -> BinaryResult(lhs)
+  MUL_ASSIGN -> BinaryResult(lhs)
+  DIV_ASSIGN -> BinaryResult(lhs)
+  MOD_ASSIGN -> BinaryResult(lhs)
+  PLUS_ASSIGN -> BinaryResult(lhs)
+  SUB_ASSIGN -> BinaryResult(lhs)
+  LSH_ASSIGN -> BinaryResult(lhs)
+  RSH_ASSIGN -> BinaryResult(lhs)
+  AND_ASSIGN -> BinaryResult(lhs)
+  XOR_ASSIGN -> BinaryResult(lhs)
+  OR_ASSIGN -> BinaryResult(lhs)
+  COMMA -> BinaryResult(rhs)
 }
 
+/**
+ * Technically, this should be checked by [applyTo]. In practice, only real (read: non-synthetic)
+ * assignments need to be checked.
+ */
 fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expression) {
   val op = pct.asBinaryOperator() ?: logger.throwICE("Not a binary operator") {
     "lhs: $lhs, rhs: $rhs, pct: $pct"
@@ -595,13 +623,13 @@ fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expr
  * not print anything if either [lhs] or [rhs] are [ErrorType].
  * @throws [slak.ckompiler.InternalCompilerError] if [pct] does not represent a binary operator
  */
-fun IDebugHandler.binaryDiags(pct: Punctuator, lhs: Expression, rhs: Expression): TypeName {
+fun IDebugHandler.binaryDiags(pct: Punctuator, lhs: Expression, rhs: Expression): BinaryResult {
   val op = pct.asBinaryOperator() ?: logger.throwICE("Not a binary operator") {
     "lhs: $lhs, rhs: $rhs, pct: $pct"
   }
-  if (lhs.type is ErrorType || rhs.type is ErrorType) return ErrorType
-  val res = op.applyTo(lhs.type, rhs.type)
-  if (res != ErrorType) return res
+  if (lhs.type is ErrorType || rhs.type is ErrorType) return BinaryResult(ErrorType)
+  val binRes = op.applyTo(lhs.type, rhs.type)
+  if (binRes.exprType != ErrorType) return binRes
   diagnostic {
     id = DiagnosticId.INVALID_ARGS_BINARY
     errorOn(pct)
@@ -609,7 +637,7 @@ fun IDebugHandler.binaryDiags(pct: Punctuator, lhs: Expression, rhs: Expression)
     errorOn(rhs)
     formatArgs(op.op.s, lhs.type, rhs.type)
   }
-  return ErrorType
+  return BinaryResult(ErrorType)
 }
 
 /**
@@ -734,8 +762,8 @@ fun IDebugHandler.matchFunctionArguments(
     // 6.5.2.2.0.7 says we treat conversions as if by assignment here
     // FIXME: applyTo is incomplete for assignment
     //   when it gets done, print diagnostic here if types aren't compatible
-    val resultType = ASSIGN.applyTo(expectedArgType, actualArg.type)
-    transformedRegularArgs += convertToCommon(resultType, actualArg)
+    val (_, commonType) = ASSIGN.applyTo(expectedArgType, actualArg.type)
+    transformedRegularArgs += convertToCommon(commonType, actualArg)
   }
   return transformedRegularArgs + variadicArgs
 }

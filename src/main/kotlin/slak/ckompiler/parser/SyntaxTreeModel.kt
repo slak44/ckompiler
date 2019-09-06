@@ -253,9 +253,12 @@ data class PostfixDecrement(override val expr: Expression) : Expression(), IncDe
 }
 
 /** Represents a binary operation in an expression. */
-data class BinaryExpression(val op: BinaryOperators, val lhs: Expression, val rhs: Expression) :
-    Expression() {
-  override val type = op.applyTo(lhs.type, rhs.type)
+data class BinaryExpression(
+    val op: BinaryOperators,
+    val lhs: Expression,
+    val rhs: Expression,
+    override val type: TypeName
+) : Expression() {
   override fun toString() = "($lhs $op $rhs)"
 }
 
@@ -457,14 +460,19 @@ class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl {
 }
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
-sealed class Initializer : ASTNode()
+sealed class Initializer : ASTNode() {
+  abstract val assignTok: Punctuator
+}
 
-data class ExpressionInitializer(val expr: Expression) : Initializer() {
-  override fun toString() = expr.toString()
-
-  companion object {
-    fun from(expr: Expression) = ExpressionInitializer(expr).withRange(expr)
+data class ExpressionInitializer(
+    val expr: Expression,
+    override val assignTok: Punctuator
+) : Initializer() {
+  init {
+    withRange(expr)
   }
+
+  override fun toString() = expr.toString()
 }
 
 data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode()

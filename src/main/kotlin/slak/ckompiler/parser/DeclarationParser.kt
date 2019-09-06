@@ -1,6 +1,7 @@
 package slak.ckompiler.parser
 
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.asPunct
 import slak.ckompiler.rangeTo
@@ -100,16 +101,16 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
       expectedType: TypeName,
       ds: DeclarationSpecifier,
       endIdx: Int
-  ): ExpressionInitializer? {
+  ): Initializer? {
     if (current().asPunct() != Punctuators.ASSIGN) return null
-    val assignTok = current()
-    val initializer = parseInitializer(expectedType, endIdx)
+    val assignTok = current() as Punctuator
+    val initializer = parseInitializer(assignTok, expectedType, endIdx)
     if (!ds.isTypedef()) return initializer
     diagnostic {
       id = DiagnosticId.TYPEDEF_NO_INITIALIZER
       errorOn(assignTok..initializer)
     }
-    return ExpressionInitializer.from(error<ErrorExpression>())
+    return ExpressionInitializer(error<ErrorExpression>(), assignTok)
   }
 
   /**

@@ -76,14 +76,17 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
       sequencedBefore += sequentialize(e.lhs).toList()
       seqImpl(e.rhs)
     } else {
-      BinaryExpression(e.op, seqImpl(e.lhs), seqImpl(e.rhs)).withRange(e)
+      e.copy(lhs = seqImpl(e.lhs), rhs = seqImpl(e.rhs)).withRange(e)
     }
   }
   is TernaryConditional -> {
+    // This is synthetic, but it must participate in SSA construction, unlike the synthetic
+    // temporaries, because unlike them, it is guaranteed to be used in multiple basic blocks
     val fakeAssignable = TypedIdentifier("__ternary_target_${ternaryIds()}", e.type).withRange(e)
     // Don't sequentialize e.success/e.failure, because one of them will not be executed
     // This is dealt with more in ASTGraphing
-    sequencedBefore += BinaryExpression(BinaryOperators.ASSIGN, fakeAssignable, e).withRange(e)
+    val fakeAssignment = BinaryExpression(BinaryOperators.ASSIGN, fakeAssignable, e, fakeAssignable.type)
+    sequencedBefore += fakeAssignment.withRange(e)
     fakeAssignable
   }
   is CastExpression, is ArraySubscript, is UnaryExpression,

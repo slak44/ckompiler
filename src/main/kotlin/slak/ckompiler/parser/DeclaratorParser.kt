@@ -315,8 +315,8 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       }
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
-        val assignTok = current()
-        val initializer = parseInitializer(ErrorType, paramEndIdx)
+        val assignTok = current() as Punctuator
+        val initializer = parseInitializer(assignTok, ErrorType, paramEndIdx)
         diagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
           errorOn(assignTok..initializer)
@@ -330,8 +330,11 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return@tokenContext ParameterTypeList(params, scope, isVariadic)
   }
 
-  // FIXME: return type will change with the initializer list
-  protected fun parseInitializer(initializerFor: TypeName, endIdx: Int): ExpressionInitializer {
+  protected fun parseInitializer(
+      assignTok: Punctuator,
+      initializerFor: TypeName,
+      endIdx: Int
+  ): Initializer {
     eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
@@ -339,7 +342,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      return ExpressionInitializer.from(error<ErrorExpression>())
+      return ExpressionInitializer(error<ErrorExpression>(), assignTok)
     }
     // Parse initializer-list
     if (current().asPunct() == Punctuators.LBRACKET) {
@@ -348,7 +351,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
     val expr = expressionParser.parseExpr(endIdx) ?: error<ErrorExpression>()
-    return ExpressionInitializer.from(convertToCommon(initializerFor, expr))
+    return ExpressionInitializer(convertToCommon(initializerFor, expr), assignTok)
   }
 
   /** C standard: 6.7.6.2 */

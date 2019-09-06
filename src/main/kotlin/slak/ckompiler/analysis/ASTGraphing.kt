@@ -80,14 +80,13 @@ private fun CFG.addDeclaration(
       logger.throwICE("Redefinition of declaration") { ident }
     }
     definitions[ident] = mutableSetOf(current)
-    latestBlock = transformInitializer(this, latestBlock, ident, init)
+    latestBlock = transformInitializer(latestBlock, ident, init)
   }
   return latestBlock
 }
 
 /** Generate IR for an [Initializer]. */
-private fun transformInitializer(
-    cfg: CFG,
+private fun CFG.transformInitializer(
     current: BasicBlock,
     ident: ComputeReference,
     init: Initializer?
@@ -98,8 +97,11 @@ private fun transformInitializer(
   }
   is ExpressionInitializer -> {
     // Transform this into an assignment expression
-    graphExprRegular(cfg, current, BinaryExpression(BinaryOperators.ASSIGN, ident.tid, init.expr)
-        .withRange(ident.tid..init.expr))
+    val (exprType, commonType) = binaryDiags(init.assignTok, ident.tid, init.expr)
+    val convertedInit = convertToCommon(commonType, init.expr)
+    val initAssign = BinaryExpression(BinaryOperators.ASSIGN, ident.tid, convertedInit, exprType)
+        .withRange(ident.tid..init.expr)
+    graphExprRegular(this, current, initAssign)
   }
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
@@ -142,11 +144,11 @@ private fun graphTernary(
   val ifBlock = root.newBlock()
   val elseBlock = root.newBlock()
 
-  val assignTrue = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.success)
+  val assignTrue = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.success, target.type)
       .withRange(ternary.success)
   val ifNext = graphExprRegular(root, ifBlock, assignTrue)
 
-  val assignFalse = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.failure)
+  val assignFalse = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.failure, target.type)
       .withRange(ternary.failure)
   val elseNext = graphExprRegular(root, elseBlock, assignFalse)
 

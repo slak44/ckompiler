@@ -138,11 +138,11 @@ class ExpressionParser(
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)
       }
-      val commonType = binaryDiags(opTok as Punctuator, lhs, rhs)
+      val (exprType, commonType) = binaryDiags(opTok as Punctuator, lhs, rhs)
       validateAssignment(opTok, lhs, rhs)
       lhs = convertToCommon(commonType, lhs)
       rhs = convertToCommon(commonType, rhs)
-      lhs = BinaryExpression(op, lhs, rhs).withRange(lhs..rhs)
+      lhs = BinaryExpression(op, lhs, rhs, exprType).withRange(lhs..rhs)
     }
     return lhs
   }

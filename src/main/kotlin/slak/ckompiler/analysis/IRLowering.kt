@@ -352,7 +352,8 @@ class IRLoweringContext {
    */
   private fun transformIncDec(expr: IncDecOperation, isDec: Boolean): ComputeReference {
     val op = if (isDec) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
-    val incremented = BinaryExpression(op, expr.expr, IntegerConstantNode(1))
+    // FIXME: this ignores a bunch of type checking, should do this entire thing in sequentialize
+    val incremented = BinaryExpression(op, expr.expr, IntegerConstantNode(1), expr.expr.type)
     return transformCompoundAssigns(incremented)
   }
 

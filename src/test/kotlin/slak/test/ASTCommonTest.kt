@@ -8,6 +8,8 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.parser.Char
 
 internal val Keywords.kw get() = Keyword(this)
+internal val Punctuators.pct get() =
+  Punctuator(this).withDebugData("ASTCommonTest", "", 0) as Punctuator
 
 private object ZeroRange : SourcedRange {
   override val expandedName: String? = null
@@ -62,16 +64,16 @@ internal fun String.withPtrs(vararg q: TypeQualifierList) =
     NamedDeclarator(name(this), q.asList(), emptyList())
 
 internal infix fun <T> String.assign(it: T) =
-    nameDecl(this) to ExpressionInitializer(parseDSLElement(it))
+    nameDecl(this) to ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct)
 
 internal infix fun <T> Declarator.assign(it: T) =
-    this to ExpressionInitializer(parseDSLElement(it))
+    this to ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct)
 
 internal infix fun <T> TypedIdentifier.assign(it: T) =
-    BinaryExpression(BinaryOperators.ASSIGN, this, parseDSLElement(it))
+    BinaryExpression(BinaryOperators.ASSIGN, this, parseDSLElement(it), type)
 
 internal infix fun <T> TypedIdentifier.plusAssign(it: T) =
-    BinaryExpression(BinaryOperators.PLUS_ASSIGN, this, parseDSLElement(it))
+    BinaryExpression(BinaryOperators.PLUS_ASSIGN, this, parseDSLElement(it), type)
 
 internal typealias DeclInit = Pair<Declarator, Initializer?>
 
@@ -315,6 +317,7 @@ internal infix fun <LHS, RHS> LHS.div(that: RHS) = this to that with BinaryOpera
 internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with BinaryOperators.COMMA
 internal infix fun <LHS, RHS> LHS.equals(that: RHS) = this to that with BinaryOperators.EQ
 internal infix fun <LHS, RHS> LHS.assign(that: RHS) = this to that with BinaryOperators.ASSIGN
+internal infix fun <LHS, RHS> LHS.less(that: RHS) = this to that with BinaryOperators.LT
 
 internal fun <T1, T2, T3> T1.qmark(success: T2, failure: T3) = TernaryConditional(
     parseDSLElement(this),
@@ -337,7 +340,8 @@ private fun <T> parseDSLElement(it: T): Expression {
 internal infix fun <LHS, RHS> Pair<LHS, RHS>.with(op: BinaryOperators): BinaryExpression {
   val lhs = parseDSLElement(first)
   val rhs = parseDSLElement(second)
-  return BinaryExpression(op, lhs, rhs).zeroRange()
+  val (exprType, _) = op.applyTo(lhs.type, rhs.type)
+  return BinaryExpression(op, lhs, rhs, exprType).zeroRange()
 }
 
 internal fun <T> sizeOf(it: T) =

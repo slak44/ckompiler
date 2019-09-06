@@ -181,6 +181,19 @@ class TypeTests {
   }
 
   @Test
+  fun `No Cast For Float Comparisons`() {
+    val p = prepareCode("""
+      int main() {
+        12.2F < 23.3F;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body compoundOf(
+        float(12.2) less float(23.3)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Implicit Casts For Initializers`() {
     val p = prepareCode("""
       int main() {
