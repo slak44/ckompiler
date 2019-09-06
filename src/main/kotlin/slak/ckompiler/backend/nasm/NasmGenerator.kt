@@ -501,8 +501,13 @@ class NasmGenerator(
 
   private fun FunctionGenContext.genCast(cast: CastComputation) = instrGen {
     emit(genComputeConstant(cast.operand))
+    // FIXME: disgusting hacks
     if (cast.operand.resType == FloatType && cast.resType == DoubleType) {
       emit("cvtss2sd xmm8, xmm8")
+      return@instrGen
+    }
+    if (cast.operand.resType == DoubleType && cast.resType == FloatType) {
+      emit("cvtsd2ss xmm8, xmm8")
       return@instrGen
     }
     // FIXME: technically, there still is a cast here
