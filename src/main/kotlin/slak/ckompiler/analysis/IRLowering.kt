@@ -315,8 +315,6 @@ class IRLoweringContext {
   }
 
   /**
-   * FIXME: we could do constant folding around here maybe
-   *
    * @return a variable containing the result of the expression
    */
   private fun transformBinary(expr: BinaryExpression): ComputeReference {
