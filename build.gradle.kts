@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "ckompiler"
-version = "SNAPSHOT1"
+version = "SNAPSHOT2"
 
 val includePath = "usr/include/ckompiler-$version"
 
