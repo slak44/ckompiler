@@ -1,6 +1,6 @@
 # Maintainer: Stefan Silviu <stefan.silviu.alexandru@gmail.com>
 pkgname=ckompiler
-pkgver=SNAPSHOT1
+pkgver=SNAPSHOT2
 pkgrel=1
 pkgdesc='A C11 compiler written in Kotlin'
 arch=('any')
@@ -11,8 +11,8 @@ optdepends=('nasm: for assembling compiled files'
             'graphviz: CFG viewing support')
 makedepends=('gradle>=5.5' 'kotlin>=1.3.41')
 provides=('ckompiler')
-source=('https://github.com/slak44/ckompiler/archive/SNAPSHOT1.zip')
-sha256sums=('4c57f063a2d1e8eb8ba5fd1fe723643f84870a14ebaa4a0e5d187c49fdac76f4')
+source=('https://github.com/slak44/ckompiler/archive/SNAPSHOT2.zip')
+sha256sums=('e7f747f01ae007c6e1c8725249d6459ec30c2fa55e82478383518495e93b6e51')
 
 build() {
   cd "$pkgname-$pkgver"
@@ -33,8 +33,10 @@ package() {
   # Move the jars from /lib to inside /usr/share/java
   install -d "$pkgdir/usr/share/java/$pkgname/"
   mv "$pkgdir/lib" "$pkgdir/usr/share/java/$pkgname/"
+  # Delete APP_HOME detection
+  sed -i "25,43d" "$pkgdir/usr/bin/ckompiler"
   # Set the APP_HOME property to where we actually put the thing
-  sed -i "s/cd \"\$SAVED\" >\/dev\/null/APP_HOME=\/usr\/share\/java\/$pkgname/" "$pkgdir/usr/bin/ckompiler"
+  sed -i "25iAPP_HOME=\/usr\/share\/java\/$pkgname\/" "$pkgdir/usr/bin/ckompiler"
   # We're not on windows
   rm "$pkgdir/usr/bin/$pkgname.bat"
 }
