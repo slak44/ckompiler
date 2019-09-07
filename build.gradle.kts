@@ -7,12 +7,20 @@ plugins {
 }
 
 group = "ckompiler"
-version = "1.0-SNAPSHOT"
+version = "SNAPSHOT1"
+
+val includePath = "usr/include/ckompiler-$version"
 
 application {
   mainClassName = "slak.ckompiler.MainKt"
   applicationName = "ckompiler"
-  applicationDistribution.from(File(rootDir, "stdlib"))
+  executableDir = "usr/bin"
+  applicationDistribution.from(File(rootDir, "stdlib/include")).into(includePath)
+}
+
+tasks.installDist {
+  val installPath = System.getenv("DESTDIR") ?: ""
+  if (installPath.isNotBlank()) destinationDir = File(installPath)
 }
 
 repositories {
@@ -54,7 +62,7 @@ tasks.create("makePropsFile") {
   doLast {
     val props = Properties()
     props["version"] = version
-    props["include-path"] = "/usr/include/ckompiler-$version"
+    props["include-path"] = "/$includePath"
     val res = File(buildDir, "resources")
     res.mkdirs()
     val writer = File(res, "ckompiler.properties").bufferedWriter()
