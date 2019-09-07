@@ -6,6 +6,7 @@ import slak.ckompiler.SourcedRange
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.parser.Char
+import slak.ckompiler.parser.Short
 
 internal val Keywords.kw get() = Keyword(this)
 internal val Punctuators.pct get() =
@@ -30,6 +31,7 @@ internal fun float(f: Double) = FloatingConstantNode(f, FloatingSuffix.FLOAT).ze
 internal fun double(f: Double) = FloatingConstantNode(f, FloatingSuffix.NONE).zeroRange()
 
 internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()
+internal val short = DeclarationSpecifier(typeSpec = Short(Keywords.SHORT.kw)).zeroRange()
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
 internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw)).zeroRange()
 internal val float =

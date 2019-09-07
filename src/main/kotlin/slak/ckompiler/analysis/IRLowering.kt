@@ -293,24 +293,62 @@ class IRLoweringContext {
       BinaryOperators.OR_ASSIGN to BinaryComputations.BITWISE_OR
   )
 
+  private val compoundAssignTmp = mapOf(
+      BinaryOperators.MUL_ASSIGN to BinaryOperators.MUL,
+      BinaryOperators.DIV_ASSIGN to BinaryOperators.DIV,
+      BinaryOperators.MOD_ASSIGN to BinaryOperators.MOD,
+      BinaryOperators.PLUS_ASSIGN to BinaryOperators.ADD,
+      BinaryOperators.SUB_ASSIGN to BinaryOperators.SUB,
+      BinaryOperators.LSH_ASSIGN to BinaryOperators.LSH,
+      BinaryOperators.RSH_ASSIGN to BinaryOperators.RSH,
+      BinaryOperators.AND_ASSIGN to BinaryOperators.BIT_AND,
+      BinaryOperators.XOR_ASSIGN to BinaryOperators.BIT_XOR,
+      BinaryOperators.OR_ASSIGN to BinaryOperators.BIT_OR
+  )
+
   /**
+   * FIXME: should do this in sequentialize...
+   *
    * @return assigned variable
    */
   private fun transformCompoundAssigns(expr: BinaryExpression): ComputeReference {
     if (expr.op == BinaryOperators.ASSIGN) return transformAssign(expr.lhs, expr.rhs)
     val additionalOperation = compoundAssignOps[expr.op]
         ?: logger.throwICE("Only assignments must get here") { expr }
-    val assignTarget = getAssignable(expr.lhs)
+    // FIXME: this code is a really dumb way to fix this
+    val binType = compoundAssignTmp
+        .getValue(expr.op)
+        .applyTo(expr.lhs.type, expr.rhs.type)
+        .operandCommonType
+    val lhs = transformExpr(
+        if (binType != expr.lhs.type) CastExpression(expr.lhs, binType).withRange(expr.lhs)
+        else expr.lhs
+    )
+    val rhs = transformExpr(
+        if (binType != expr.rhs.type) CastExpression(expr.rhs, binType).withRange(expr.rhs)
+        else expr.rhs
+    )
     val additionalComputation = BinaryComputation(
         additionalOperation,
-        assignTarget,
-        transformExpr(expr.rhs),
+        lhs,
+        rhs,
         expr.operationTarget(),
-        expr.type
+        binType
     )
-    val assignableResult = makeTemporary(expr.lhs.type)
+    val assignableResult = makeTemporary(binType)
     _ir += Store(assignableResult, additionalComputation, isSynthetic = true)
-    _ir += Store(assignTarget, assignableResult, isSynthetic = false)
+    val assignTarget = getAssignable(expr.lhs)
+    val actualAssignable = if (assignableResult.resType == assignTarget.resType) {
+      assignableResult
+    } else {
+      CastComputation(
+          assignTarget.resType,
+          assignableResult,
+          assignTarget.resType.operationTarget(),
+          assignTarget.resType
+      )
+    }
+    _ir += Store(assignTarget, actualAssignable, isSynthetic = false)
     return assignTarget
   }
 

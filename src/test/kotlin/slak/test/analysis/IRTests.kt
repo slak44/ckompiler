@@ -7,7 +7,9 @@ import slak.ckompiler.DebugHandler
 import slak.ckompiler.Diagnostic
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.parser.DoubleType
 import slak.ckompiler.parser.Expression
+import slak.ckompiler.parser.FloatType
 import slak.ckompiler.parser.SignedIntType
 import slak.test.*
 import kotlin.test.assertEquals
@@ -76,6 +78,20 @@ class IRTests {
     ir.print()
     ir.assertSSAForTemporaries()
     // FIXME: incomplete
+  }
+
+  @Test
+  fun `Implicit Casts In Compound Assignments Are Correct`() {
+    val x = nameRef("x", FloatType)
+    val y = nameRef("y", DoubleType)
+    val ir = listOf(
+        x assign float(1.0),
+        y assign 2.0,
+        x plusAssign (y sub 0.5)
+    ).toIRList()
+    ir.print()
+    ir.assertSSAForTemporaries()
+    // FIXME: this should not be the IR's problem
   }
 
   @Test

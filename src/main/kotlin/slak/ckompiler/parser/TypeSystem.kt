@@ -326,9 +326,10 @@ fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
   if (lhs is LongDoubleType || rhs is LongDoubleType) return LongDoubleType
   if (lhs is DoubleType || rhs is DoubleType) return DoubleType
   if (lhs is FloatType || rhs is FloatType) return FloatType
+  // Same type, don't bother with anything else
+  if (lhs.javaClass == rhs.javaClass) return lhs
   val lInt = lhs.promotedType as IntegralType
   val rInt = rhs.promotedType as IntegralType
-  if (lInt.javaClass == rInt.javaClass) return lhs
   val big = maxOf(lInt, rInt)
   val small = minOf(lInt, rInt)
   // Check for same signed-ness

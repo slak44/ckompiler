@@ -88,7 +88,7 @@ class TypeTests {
     p.assertDiags(DiagnosticId.ILLEGAL_CAST_ASSIGNMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         int declare ("x" assign 1),
-        SignedLongType.cast(nameRef("x", SignedIntType)) assign SignedLongType.cast(5)
+        SignedLongType.cast(nameRef("x", SignedIntType)) assign 5
     ) assertEquals p.root.decls[0]
   }
 
@@ -194,6 +194,23 @@ class TypeTests {
   }
 
   @Test
+  fun `Compound Assignment Implicit Casts Are Correct`() {
+    val p = prepareCode("""
+      int main() {
+        double d = 123.23;
+        float f = 1.0F;
+        f += d - 0.23;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body compoundOf(
+        double declare ("d" assign 123.23),
+        float declare ("f" assign float(1.0)),
+        nameRef("f", FloatType) plusAssign (nameRef("d", DoubleType) sub 0.23)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Implicit Casts For Initializers`() {
     val p = prepareCode("""
       int main() {
@@ -206,6 +223,30 @@ class TypeTests {
         int declare ("a" assign SignedIntType.cast(1.2)),
         float declare ("f" assign FloatType.cast(12))
     ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Implicit Casts For Regular Function Call Arguments`() {
+    val p = prepareCode("""
+      void f(int sh, double flt) {}
+      int main() {
+        short sh = 12;
+        float flt = 2.0F;
+        f(sh, flt);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    void func ("f" withParams listOf(int param "sh", double param "flt")) body
+        emptyCompound() assertEquals p.root.decls[0]
+    val f = nameRef("f", FunctionType(VoidType, listOf(SignedIntType, DoubleType)))
+    int func ("main" withParams emptyList()) body compoundOf(
+        short declare ("sh" assign SignedShortType.cast(12)),
+        float declare ("flt" assign float(2.0)),
+        f(
+            SignedIntType.cast(nameRef("sh", SignedShortType)),
+            DoubleType.cast(nameRef("flt", FloatType))
+        )
+    ) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -236,6 +277,7 @@ class TypeTests {
       val rhs: TypeName,
       val expected: TypeName
   ) {
+    SHORT_INT(SignedShortType, SignedIntType, SignedIntType),
     LONG_INT(SignedLongType, SignedIntType, SignedLongType),
     INT_LONG(SignedIntType, SignedLongType, SignedLongType),
     FLT_DOUBLE(FloatType, DoubleType, DoubleType),

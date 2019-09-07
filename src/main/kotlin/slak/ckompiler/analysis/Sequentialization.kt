@@ -85,7 +85,8 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     val fakeAssignable = TypedIdentifier("__ternary_target_${ternaryIds()}", e.type).withRange(e)
     // Don't sequentialize e.success/e.failure, because one of them will not be executed
     // This is dealt with more in ASTGraphing
-    val fakeAssignment = BinaryExpression(BinaryOperators.ASSIGN, fakeAssignable, e, fakeAssignable.type)
+    val fakeAssignment =
+        BinaryExpression(BinaryOperators.ASSIGN, fakeAssignable, e, fakeAssignable.type)
     sequencedBefore += fakeAssignment.withRange(e)
     fakeAssignable
   }
