@@ -77,6 +77,13 @@ class CLI(private val stdinStream: InputStream) :
     fun getLeftover(): List<String> = leftoverArguments
   }
 
+  private val currentDir = File(System.getProperty("user.dir")!!)
+
+  private fun fileFrom(path: String): File {
+    val file = File(path)
+    return if (file.isAbsolute) file else File(currentDir, path)
+  }
+
   private val cli = CommandLineInterface("ckompiler", "ckompiler", """
     A C compiler written in Kotlin.
     This command line interface tries to stay consistent with gcc and clang as much as possible.
@@ -170,10 +177,10 @@ class CLI(private val stdinStream: InputStream) :
 
   init {
     cli.flagValueAction(listOf("-I", "--include-directory"), "DIR",
-        "Directory to add to include search path") { generalIncludes += File(it) }
+        "Directory to add to include search path") { generalIncludes += fileFrom(it) }
     posHandler.positionalAction {
       if (!it.startsWith("-I")) return@positionalAction false
-      generalIncludes += File(it.removePrefix("-I"))
+      generalIncludes += fileFrom(it.removePrefix("-I"))
       return@positionalAction true
     }
   }
@@ -182,16 +189,16 @@ class CLI(private val stdinStream: InputStream) :
 
   init {
     cli.flagValueAction("-iquote", "DIR",
-        "Directory to add to \"...\" include search path") { userIncludes += File(it) }
+        "Directory to add to \"...\" include search path") { userIncludes += fileFrom(it) }
   }
 
   private val systemIncludes = mutableListOf<File>()
 
   init {
     cli.flagValueAction("-isystem", "DIR",
-        "Directory to add to <...> search path") { systemIncludes.add(0, File(it)) }
+        "Directory to add to <...> search path") { systemIncludes.add(0, fileFrom(it)) }
     cli.flagValueAction("-isystem-after", "DIR",
-        "Directory to add to the end of the <...> search path") { systemIncludes += File(it) }
+        "Directory to add to the end of the <...> search path") { systemIncludes += fileFrom(it) }
 
     cli.helpGroup("Preprocessor options")
   }
@@ -243,7 +250,7 @@ class CLI(private val stdinStream: InputStream) :
       formatArgs(option)
     }
     (files - badOptions).mapNotNull {
-      val file = File(it)
+      val file = fileFrom(it)
       if (!file.exists()) {
         diagnostic {
           id = DiagnosticId.FILE_NOT_FOUND
@@ -302,7 +309,7 @@ class CLI(private val stdinStream: InputStream) :
 
   private fun invokeLink(objFiles: List<File>) {
     val args = mutableListOf("link.exe")
-    args += listOf("/opt", File(output.orElse("a.out")).absolutePath)
+    args += listOf("/opt", fileFrom(output.orElse("a.out")).absolutePath)
     args += listOf("msvcrt.dll")
     args += listOf("/entry", "_start")
     args += linkerFlags
@@ -312,7 +319,7 @@ class CLI(private val stdinStream: InputStream) :
 
   private fun invokeLd(objFiles: List<File>) {
     val args = mutableListOf("ld")
-    args += listOf("-o", File(output.orElse("a.out")).absolutePath)
+    args += listOf("-o", fileFrom(output.orElse("a.out")).absolutePath)
     args += listOf("-L/lib", "-lc")
     args += listOf("-dynamic-linker", "/lib/ld-linux-x86-64.so.2")
     args += listOf("-e", "_start")
@@ -346,8 +353,7 @@ class CLI(private val stdinStream: InputStream) :
       text: String,
       relPath: String,
       baseName: String,
-      parentDir: File,
-      currentDir: File
+      parentDir: File
   ): File? {
     val includePaths =
         IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
@@ -399,7 +405,7 @@ class CLI(private val stdinStream: InputStream) :
           openFileDefault(dest)
         }
         output.isEmpty -> println(graphviz)
-        else -> File(output.get()).writeText(graphviz)
+        else -> fileFrom(output.get()).writeText(graphviz)
       }
 
       return null
@@ -415,7 +421,7 @@ class CLI(private val stdinStream: InputStream) :
     val nasm = NasmGenerator(declNames, funcsCfgs, mainCfg, MachineTargetData.x64).nasm
 
     if (isCompileOnly) {
-      val asmFile = File(currentDir, output.orElse("$baseName.s"))
+      val asmFile = fileFrom(output.orElse("$baseName.s"))
       asmFile.writeText(nasm)
       return null
     }
@@ -425,7 +431,7 @@ class CLI(private val stdinStream: InputStream) :
     asmFile.writeText(nasm)
 
     if (isAssembleOnly) {
-      val objFile = File(currentDir, output.orElse("$baseName.o"))
+      val objFile = fileFrom(output.orElse("$baseName.o"))
       invokeNasm(objFile, asmFile)
       return null
     }
@@ -440,8 +446,7 @@ class CLI(private val stdinStream: InputStream) :
       file.readText(),
       file.path,
       file.nameWithoutExtension,
-      file.absoluteFile.parentFile,
-      File(".").absoluteFile
+      file.absoluteFile.parentFile
   )
 
   fun parse(args: Array<String>): ExitCodes {
@@ -471,7 +476,7 @@ class CLI(private val stdinStream: InputStream) :
     }
     val stdinObjFile = if (stdin) {
       val inText = stdinStream.bufferedReader().readText()
-      compile(inText, "-", "-", File(".").absoluteFile, File(".").absoluteFile)
+      compile(inText, "-", "-", currentDir)
     } else {
       null
     }
@@ -481,7 +486,7 @@ class CLI(private val stdinStream: InputStream) :
     if (!isNotLinking) {
       link(allObjFiles)
       for (objFile in allObjFiles) objFile.delete()
-      File(output.orElse("a.out")).setExecutable(true)
+      fileFrom(output.orElse("a.out")).setExecutable(true)
     }
     return if (diags.errors().isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
   }
