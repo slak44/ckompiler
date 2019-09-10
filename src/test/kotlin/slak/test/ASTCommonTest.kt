@@ -320,6 +320,8 @@ internal infix fun <LHS, RHS> LHS.comma(that: RHS) = this to that with BinaryOpe
 internal infix fun <LHS, RHS> LHS.equals(that: RHS) = this to that with BinaryOperators.EQ
 internal infix fun <LHS, RHS> LHS.assign(that: RHS) = this to that with BinaryOperators.ASSIGN
 internal infix fun <LHS, RHS> LHS.less(that: RHS) = this to that with BinaryOperators.LT
+internal infix fun <LHS, RHS> LHS.land(that: RHS) = this to that with BinaryOperators.AND
+internal infix fun <LHS, RHS> LHS.lor(that: RHS) = this to that with BinaryOperators.OR
 
 internal fun <T1, T2, T3> T1.qmark(success: T2, failure: T3) = TernaryConditional(
     parseDSLElement(this),

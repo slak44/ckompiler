@@ -213,6 +213,12 @@ class NasmTests {
   }
 
   @Test
+  fun `Shortcircuiting Test`() {
+    compileAndRun(resource("e2e/shortCircuiting.c")).justExitCode(55)
+  }
+
+
+  @Test
   fun `For Loop Summing Test`() {
     compileAndRun(resource("loops/forLoopTest.c")).justExitCode(86)
   }

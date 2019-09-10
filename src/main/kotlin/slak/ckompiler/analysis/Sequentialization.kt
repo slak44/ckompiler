@@ -84,6 +84,26 @@ private fun SequentializationContext.handleAssignments(e: BinaryExpression): Exp
   return assignTarget
 }
 
+/**
+ * `x == 1 && y == 1` is equivalent to `x == 1 ? (y == 1) : 0`.
+ */
+private fun SequentializationContext.seqLogicalAnd(e: BinaryExpression): Expression {
+  require(e.op == BinaryOperators.AND)
+  return seqImpl(
+      TernaryConditional(e.lhs, e.rhs, IntegerConstantNode(0).withRange(e)).withRange(e)
+  )
+}
+
+/**
+ * `x == 1 || y == 1` is equivalent to `x == 1 ? 1 : (y == 1)`.
+ */
+private fun SequentializationContext.seqLogicalOr(e: BinaryExpression): Expression {
+  require(e.op == BinaryOperators.OR)
+  return seqImpl(
+      TernaryConditional(e.lhs, IntegerConstantNode(1).withRange(e), e.rhs).withRange(e)
+  )
+}
+
 /** Recursive case of [sequentialize]. */
 private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
@@ -102,17 +122,15 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     else sequencedAfter += dismantled
     incDecTarget
   }
-  is BinaryExpression -> {
-    // FIXME: there are sequence points with && || (also short-circuiting)
-    //  so we can't just pull out the assignment in something like a == null && a = 42
-    when {
-      e.op in assignmentOps -> handleAssignments(e)
-      e.op == BinaryOperators.COMMA -> {
-        sequencedBefore += sequentialize(e.lhs).toList()
-        seqImpl(e.rhs)
-      }
-      else -> e.copy(lhs = seqImpl(e.lhs), rhs = seqImpl(e.rhs)).withRange(e)
+  is BinaryExpression -> when {
+    e.op == BinaryOperators.AND -> seqLogicalAnd(e)
+    e.op == BinaryOperators.OR -> seqLogicalOr(e)
+    e.op in assignmentOps -> handleAssignments(e)
+    e.op == BinaryOperators.COMMA -> {
+      sequencedBefore += sequentialize(e.lhs).toList()
+      seqImpl(e.rhs)
     }
+    else -> e.copy(lhs = seqImpl(e.lhs), rhs = seqImpl(e.rhs)).withRange(e)
   }
   is TernaryConditional -> {
     // This is synthetic, but it must participate in SSA construction, unlike the synthetic

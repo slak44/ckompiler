@@ -27,6 +27,12 @@ class SequenceTests {
     debugHandler.diags.forEach(Diagnostic::print)
   }
 
+  private fun Expression.assertIsSynthetic(): TypedIdentifier {
+    require(this is TypedIdentifier) { "Expression isn't TypedIdentifier" }
+    require(name.startsWith("__")) { "Expression isn't synthetic" }
+    return this
+  }
+
   @Test
   fun `Linear Expression Is Unchanged`() {
     val expr = 1 add 2 mul 6 add sizeOf(1 add 1)
@@ -151,5 +157,41 @@ class SequenceTests {
     assertEquals(listOf(x, x assign (x add 1)), sequencedBefore)
     assert(sequencedAfter.isEmpty())
     assertEquals(int(123), remaining)
+  }
+
+  @Test
+  fun `Ternary Operator`() {
+    val x = nameRef("x", SignedIntType)
+    val y = nameRef("y", SignedIntType)
+    val expr = (x sub 3).qmark(y add 2, y add 3)
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    remaining.assertIsSynthetic()
+    assertEquals(listOf(remaining assign expr), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
+  }
+
+  @Test
+  fun `Logical AND Is Turned Into Ternary`() {
+    val x = nameRef("x", SignedIntType)
+    val y = nameRef("y", SignedIntType)
+    val expr = (x equals 1) land (y equals 1)
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    remaining.assertIsSynthetic()
+    assertEquals(listOf(remaining assign (x equals 1).qmark(y equals 1, 0)), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
+  }
+
+  @Test
+  fun `Logical OR Is Turned Into Ternary`() {
+    val x = nameRef("x", SignedIntType)
+    val y = nameRef("y", SignedIntType)
+    val expr = (x equals 1) lor (y equals 1)
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    remaining.assertIsSynthetic()
+    assertEquals(listOf(remaining assign (x equals 1).qmark(1, y equals 1)), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
   }
 }
