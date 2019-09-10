@@ -334,8 +334,7 @@ class ExpressionParser(
       val c = current().asPunct()
       val r = baseExpr..safeToken(0)
       eat() // The postfix op
-      if (c == Punctuators.INC) PostfixIncrement(baseExpr).withRange(r)
-      else PostfixDecrement(baseExpr).withRange(r)
+      IncDecOperation(baseExpr, isDecrement = c == Punctuators.DEC, isPostfix = true).withRange(r)
     }
     else -> baseExpr
   }
@@ -343,23 +342,21 @@ class ExpressionParser(
   /** C standard: 6.5.3.1 */
   private fun parsePrefixIncDec(): Expression {
     val c = current()
-    val isInc = c.asPunct() == Punctuators.INC
+    val isDec = c.asPunct() == Punctuators.DEC
     eat() // The prefix op
     val expr = parseUnaryExpression() ?: error<ErrorExpression>()
     val isNotValidType = !expr.type.isRealType() && expr.type !is PointerType
     val exprChecked = if (expr.type != ErrorType && isNotValidType) {
       diagnostic {
         id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
-        formatArgs(if (isInc) "increment" else "decrement", expr.type)
+        formatArgs(if (isDec) "decrement" else "increment", expr.type)
         errorOn(c..expr)
       }
       error<ErrorExpression>()
     } else {
       expr
     }
-    val prefix: Expression =
-        if (isInc) PrefixIncrement(exprChecked) else PrefixDecrement(exprChecked)
-    return prefix.withRange(c..expr)
+    return IncDecOperation(exprChecked, isDecrement = isDec, isPostfix = false).withRange(c..expr)
   }
 
   /** C standard: 6.5.3.2, 6.5.3.3 */

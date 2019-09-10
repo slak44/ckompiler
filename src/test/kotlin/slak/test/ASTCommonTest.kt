@@ -309,8 +309,10 @@ internal operator fun <T> TypedIdentifier.get(it : T): ArraySubscript {
   return ArraySubscript(this, parseDSLElement(it), (this.type as ArrayType).elementType).zeroRange()
 }
 
-internal fun prefixInc(e: Expression) = PrefixIncrement(e).zeroRange()
-internal fun postfixInc(e: Expression) = PostfixIncrement(e).zeroRange()
+internal fun prefixInc(e: Expression) =
+    IncDecOperation(e, isDecrement = false, isPostfix = false).zeroRange()
+internal fun postfixInc(e: Expression) =
+    IncDecOperation(e, isDecrement = false, isPostfix = true).zeroRange()
 
 internal infix fun <LHS, RHS> LHS.add(that: RHS) = this to that with BinaryOperators.ADD
 internal infix fun <LHS, RHS> LHS.sub(that: RHS) = this to that with BinaryOperators.SUB

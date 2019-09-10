@@ -53,7 +53,7 @@ class TypeTests {
     val p = prepareCode("int main() {++main;}", source)
     p.assertDiags(DiagnosticId.INVALID_INC_DEC_ARGUMENT)
     int func ("main" withParams emptyList()) body compoundOf(
-        PrefixIncrement(ErrorExpression())
+        prefixInc(ErrorExpression())
     ) assertEquals p.root.decls[0]
   }
 

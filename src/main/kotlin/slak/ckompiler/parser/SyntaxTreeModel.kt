@@ -216,42 +216,14 @@ data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Ex
 data class SizeofTypeName(val sizeOfWho: TypeName, override val type: TypeName) : Expression()
 
 /**
- * FIXME: collapse all 4 implementors to one class
- *
  * Represents the argument of ++x, x++, --x and x--.
  */
-interface IncDecOperation {
-  val expr: Expression
-}
-
-/**
- * @param expr expression to increment. Expected to be of correct type.
- */
-data class PrefixIncrement(override val expr: Expression) : Expression(), IncDecOperation {
+data class IncDecOperation(
+    val expr: Expression,
+    val isDecrement: Boolean,
+    val isPostfix: Boolean
+) : Expression() {
   override val type = expr.type
-}
-
-/**
- * @param expr expression to increment. Expected to be of correct type.
- */
-data class PrefixDecrement(override val expr: Expression) : Expression(), IncDecOperation {
-  override val type = expr.type
-}
-
-data class PostfixIncrement(override val expr: Expression) : Expression(), IncDecOperation {
-  override val type = expr.type
-
-  init {
-    // FIXME: filter on expr.type (6.5.3.1)
-  }
-}
-
-data class PostfixDecrement(override val expr: Expression) : Expression(), IncDecOperation {
-  override val type = expr.type
-
-  init {
-    // FIXME: filter on expr.type (6.5.3.1)
-  }
 }
 
 /** Represents a binary operation in an expression. */

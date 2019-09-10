@@ -81,7 +81,7 @@ class ExpressionTests {
   fun `Simple Prefix Increment`() {
     val p = prepareCode("int a = ++b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    int declare ("a" assign PrefixIncrement(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
+    int declare ("a" assign prefixInc(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -89,14 +89,14 @@ class ExpressionTests {
     // This is invalid code, but valid grammar
     val p = prepareCode("int a = ++(1);", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign PrefixIncrement(int(1))) assertEquals p.root.decls[0]
+    int declare ("a" assign prefixInc(int(1))) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Simple Postfix Increment`() {
     val p = prepareCode("int a = b++;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    int declare ("a" assign PostfixIncrement(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
+    int declare ("a" assign postfixInc(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -104,7 +104,7 @@ class ExpressionTests {
     // This is invalid code, but valid grammar
     val p = prepareCode("int a = (1)++;", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign PostfixIncrement(int(1))) assertEquals p.root.decls[0]
+    int declare ("a" assign postfixInc(int(1))) assertEquals p.root.decls[0]
   }
 
   @Test

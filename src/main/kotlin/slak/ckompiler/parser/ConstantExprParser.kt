@@ -69,8 +69,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
     is ErrorExpression, is VoidExpression,
     is IntegerConstantNode, is CharacterConstantNode -> expr as ExprConstantNode
     is FunctionCall, is ArraySubscript,
-    is PrefixIncrement, is PrefixDecrement,
-    is PostfixIncrement, is PostfixDecrement -> {
+    is IncDecOperation -> {
       diags += createDiagnostic {
         id = DiagnosticId.EXPR_NOT_CONSTANT
         errorOn(expr)

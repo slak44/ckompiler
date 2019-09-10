@@ -111,15 +111,12 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
   is FunctionCall -> {
     FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e)
   }
-  is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {
-    val incDecTarget = makeAssignmentTarget((e as IncDecOperation).expr, e)
-    val op =
-        if (e is PrefixDecrement || e is PostfixDecrement) BinaryOperators.SUB_ASSIGN
-        else BinaryOperators.PLUS_ASSIGN
+  is IncDecOperation -> {
+    val incDecTarget = makeAssignmentTarget(e.expr, e)
+    val op = if (e.isDecrement) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
     // These are equivalent to compound assignments, so reuse that code
     val dismantled = dismantleCompound(op, incDecTarget, IntegerConstantNode(1).withRange(e), e)
-    if (e is PrefixIncrement || e is PrefixDecrement) sequencedBefore += dismantled
-    else sequencedAfter += dismantled
+    if (e.isPostfix) sequencedAfter += dismantled else sequencedBefore += dismantled
     incDecTarget
   }
   is BinaryExpression -> when {

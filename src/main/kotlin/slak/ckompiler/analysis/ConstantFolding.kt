@@ -52,8 +52,5 @@ fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (ex
       failure = doConstantFolding(expr.failure).withRange(expr.failure)
   ).withRange(expr)
   is TypedIdentifier -> expr
-  is PrefixIncrement -> expr
-  is PrefixDecrement -> expr
-  is PostfixIncrement -> expr
-  is PostfixDecrement -> expr
+  is IncDecOperation -> expr
 }

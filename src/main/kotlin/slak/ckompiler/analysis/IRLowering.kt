@@ -369,8 +369,7 @@ class IRLoweringContext {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
     is SizeofTypeName -> logger.throwICE("SizeofTypeName was removed")
-    is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement ->
-      logger.throwICE("Increments/Decrements were removed")
+    is IncDecOperation -> logger.throwICE("IncDecOperation was removed")
     is TypedIdentifier -> ComputeReference(folded, isSynthetic = false)
     is FunctionCall -> storeCall(transformCall(folded), folded.type)
     is UnaryExpression -> transformUnary(folded)
@@ -393,8 +392,7 @@ class IRLoweringContext {
       is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
       is SizeofTypeName -> logger.throwICE("SizeofTypeName was removed")
       is VoidExpression -> logger.throwICE("VoidExpression was removed")
-      is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement ->
-        logger.throwICE("Increments/Decrements were removed")
+      is IncDecOperation -> logger.throwICE("IncDecOperation was removed")
       // For top-level function calls, the return value is discarded, so don't bother storing it
       is FunctionCall -> _ir += transformCall(folded)
       is UnaryExpression -> transformUnary(folded)
