@@ -280,83 +280,14 @@ class IRLoweringContext {
     return irTarget
   }
 
-  private val compoundAssignOps = mapOf(
-      BinaryOperators.MUL_ASSIGN to BinaryComputations.MULTIPLY,
-      BinaryOperators.DIV_ASSIGN to BinaryComputations.DIVIDE,
-      BinaryOperators.MOD_ASSIGN to BinaryComputations.REMAINDER,
-      BinaryOperators.PLUS_ASSIGN to BinaryComputations.ADD,
-      BinaryOperators.SUB_ASSIGN to BinaryComputations.SUBSTRACT,
-      BinaryOperators.LSH_ASSIGN to BinaryComputations.LEFT_SHIFT,
-      BinaryOperators.RSH_ASSIGN to BinaryComputations.RIGHT_SHIFT,
-      BinaryOperators.AND_ASSIGN to BinaryComputations.BITWISE_AND,
-      BinaryOperators.XOR_ASSIGN to BinaryComputations.BITWISE_XOR,
-      BinaryOperators.OR_ASSIGN to BinaryComputations.BITWISE_OR
-  )
-
-  private val compoundAssignTmp = mapOf(
-      BinaryOperators.MUL_ASSIGN to BinaryOperators.MUL,
-      BinaryOperators.DIV_ASSIGN to BinaryOperators.DIV,
-      BinaryOperators.MOD_ASSIGN to BinaryOperators.MOD,
-      BinaryOperators.PLUS_ASSIGN to BinaryOperators.ADD,
-      BinaryOperators.SUB_ASSIGN to BinaryOperators.SUB,
-      BinaryOperators.LSH_ASSIGN to BinaryOperators.LSH,
-      BinaryOperators.RSH_ASSIGN to BinaryOperators.RSH,
-      BinaryOperators.AND_ASSIGN to BinaryOperators.BIT_AND,
-      BinaryOperators.XOR_ASSIGN to BinaryOperators.BIT_XOR,
-      BinaryOperators.OR_ASSIGN to BinaryOperators.BIT_OR
-  )
-
-  /**
-   * FIXME: should do this in sequentialize...
-   *
-   * @return assigned variable
-   */
-  private fun transformCompoundAssigns(expr: BinaryExpression): ComputeReference {
-    if (expr.op == BinaryOperators.ASSIGN) return transformAssign(expr.lhs, expr.rhs)
-    val additionalOperation = compoundAssignOps[expr.op]
-        ?: logger.throwICE("Only assignments must get here") { expr }
-    // FIXME: this code is a really dumb way to fix this
-    val binType = compoundAssignTmp
-        .getValue(expr.op)
-        .applyTo(expr.lhs.type, expr.rhs.type)
-        .operandCommonType
-    val lhs = transformExpr(
-        if (binType != expr.lhs.type) CastExpression(expr.lhs, binType).withRange(expr.lhs)
-        else expr.lhs
-    )
-    val rhs = transformExpr(
-        if (binType != expr.rhs.type) CastExpression(expr.rhs, binType).withRange(expr.rhs)
-        else expr.rhs
-    )
-    val additionalComputation = BinaryComputation(
-        additionalOperation,
-        lhs,
-        rhs,
-        expr.operationTarget(),
-        binType
-    )
-    val assignableResult = makeTemporary(binType)
-    _ir += Store(assignableResult, additionalComputation, isSynthetic = true)
-    val assignTarget = getAssignable(expr.lhs)
-    val actualAssignable = if (assignableResult.resType == assignTarget.resType) {
-      assignableResult
-    } else {
-      CastComputation(
-          assignTarget.resType,
-          assignableResult,
-          assignTarget.resType.operationTarget(),
-          assignTarget.resType
-      )
-    }
-    _ir += Store(assignTarget, actualAssignable, isSynthetic = false)
-    return assignTarget
-  }
-
   /**
    * @return a variable containing the result of the expression
    */
   private fun transformBinary(expr: BinaryExpression): ComputeReference {
-    if (expr.op in assignmentOps) return transformCompoundAssigns(expr)
+    if (expr.op == BinaryOperators.ASSIGN) return transformAssign(expr.lhs, expr.rhs)
+    if (expr.op in assignmentOps) {
+      logger.throwICE("Compound assignment was removed in sequentialize")
+    }
     val operation = expr.op.asBinaryOperation()
     val binary = BinaryComputation(
         operation,
@@ -381,17 +312,6 @@ class IRLoweringContext {
     val target = makeTemporary(arraySubscript.type)
     _ir += Store(target, binary, isSynthetic = true)
     return target
-  }
-
-  /**
-   * Because of [sequentialize], [IncDecOperation]s can only be found by themselves, not as part of
-   * other expressions, so we can just treat both prefix/postfix as being `+= 1` or `-= 1`.
-   */
-  private fun transformIncDec(expr: IncDecOperation, isDec: Boolean): ComputeReference {
-    val op = if (isDec) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
-    // FIXME: this ignores a bunch of type checking, should do this entire thing in sequentialize
-    val incremented = BinaryExpression(op, expr.expr, IntegerConstantNode(1), expr.expr.type)
-    return transformCompoundAssigns(incremented)
   }
 
   /**
@@ -450,13 +370,11 @@ class IRLoweringContext {
     is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
     is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
     is SizeofTypeName -> logger.throwICE("SizeofTypeName was removed")
+    is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement ->
+      logger.throwICE("Increments/Decrements were removed")
     is TypedIdentifier -> ComputeReference(folded, isSynthetic = false)
     is FunctionCall -> storeCall(transformCall(folded), folded.type)
     is UnaryExpression -> transformUnary(folded)
-    is PrefixIncrement, is PostfixIncrement ->
-      transformIncDec(folded as IncDecOperation, isDec = false)
-    is PrefixDecrement, is PostfixDecrement ->
-      transformIncDec(folded as IncDecOperation, isDec = true)
     is BinaryExpression -> transformBinary(folded)
     is ArraySubscript -> transformSubscript(folded)
     is CastExpression -> transformCast(folded)
@@ -476,13 +394,11 @@ class IRLoweringContext {
       is TernaryConditional -> logger.throwICE("TernaryConditional was removed")
       is SizeofTypeName -> logger.throwICE("SizeofTypeName was removed")
       is VoidExpression -> logger.throwICE("VoidExpression was removed")
+      is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement ->
+        logger.throwICE("Increments/Decrements were removed")
       // For top-level function calls, the return value is discarded, so don't bother storing it
       is FunctionCall -> _ir += transformCall(folded)
       is UnaryExpression -> transformUnary(folded)
-      is PrefixIncrement, is PostfixIncrement ->
-        transformIncDec(folded as IncDecOperation, isDec = false)
-      is PrefixDecrement, is PostfixDecrement ->
-        transformIncDec(folded as IncDecOperation, isDec = true)
       is BinaryExpression -> transformBinary(folded)
       is ArraySubscript -> transformSubscript(folded)
       is CastExpression -> transformCast(folded)

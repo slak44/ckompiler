@@ -72,10 +72,10 @@ internal infix fun <T> Declarator.assign(it: T) =
     this to ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct)
 
 internal infix fun <T> TypedIdentifier.assign(it: T) =
-    BinaryExpression(BinaryOperators.ASSIGN, this, parseDSLElement(it), type)
+    BinaryExpression(BinaryOperators.ASSIGN, this, parseDSLElement(it), type).zeroRange()
 
 internal infix fun <T> TypedIdentifier.plusAssign(it: T) =
-    BinaryExpression(BinaryOperators.PLUS_ASSIGN, this, parseDSLElement(it), type)
+    BinaryExpression(BinaryOperators.PLUS_ASSIGN, this, parseDSLElement(it), type).zeroRange()
 
 internal typealias DeclInit = Pair<Declarator, Initializer?>
 

@@ -3,6 +3,7 @@ package slak.ckompiler.analysis
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
+import slak.ckompiler.SourcedRange
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
@@ -38,6 +39,51 @@ private data class SequentializationContext(
 
 private val ternaryIds = IdCounter()
 
+private fun SequentializationContext.makeAssignmentTarget(
+    modified: Expression,
+    modExpr: Expression
+): Expression {
+  return if (modified is TypedIdentifier) {
+    modifications.getOrPut(modified, ::mutableListOf).add(modExpr)
+    modified.copy().withRange(modified)
+  } else {
+    // FIXME: we might need to make a copy of lhs, like we do for the other case
+    //  let's just see if this is a problem first
+    seqImpl(modified)
+  }
+}
+
+/**
+ * Breaks down compound assignments into the equivalent simple assignment, eg `a += 2 + 3` becomes
+ * `a = a + (2 + 3)`.
+ */
+private fun dismantleCompound(
+    op: BinaryOperators,
+    assignTarget: Expression,
+    rhs: Expression,
+    range: SourcedRange
+): BinaryExpression {
+  val extraOp = compoundAssignOps.getValue(op)
+  val (extraOpType, extraCommon) = extraOp.applyTo(assignTarget.type, rhs.type)
+  val nLhs = convertToCommon(extraCommon, assignTarget)
+  val nRhs = convertToCommon(extraCommon, rhs)
+  val extraExpr = BinaryExpression(extraOp, nLhs, nRhs, extraOpType).withRange(range)
+  return BinaryExpression(
+      op = BinaryOperators.ASSIGN,
+      lhs = assignTarget,
+      rhs = convertToCommon(assignTarget.type, extraExpr),
+      type = assignTarget.type
+  ).withRange(range)
+}
+
+private fun SequentializationContext.handleAssignments(e: BinaryExpression): Expression {
+  val assignTarget = makeAssignmentTarget(e.lhs, e)
+  // Move assignments before the expression
+  sequencedBefore +=
+      if (e.op != BinaryOperators.ASSIGN) dismantleCompound(e.op, assignTarget, e.rhs, e) else e
+  return assignTarget
+}
+
 /** Recursive case of [sequentialize]. */
 private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
@@ -46,37 +92,26 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e)
   }
   is PrefixIncrement, is PrefixDecrement, is PostfixIncrement, is PostfixDecrement -> {
-    val incDec = (e as IncDecOperation).expr
-    if (e is PrefixIncrement || e is PrefixDecrement) sequencedBefore += e
-    else sequencedAfter += e
-    if (incDec is TypedIdentifier) {
-      modifications.getOrPut(incDec, ::mutableListOf).add(e)
-      incDec.copy().withRange(incDec)
-    } else {
-      // FIXME: we might need to make a copy of lhs, like we do for the other case
-      //  let's just see if this is a problem first
-      seqImpl(incDec)
-    }
+    val incDecTarget = makeAssignmentTarget((e as IncDecOperation).expr, e)
+    val op =
+        if (e is PrefixDecrement || e is PostfixDecrement) BinaryOperators.SUB_ASSIGN
+        else BinaryOperators.PLUS_ASSIGN
+    // These are equivalent to compound assignments, so reuse that code
+    val dismantled = dismantleCompound(op, incDecTarget, IntegerConstantNode(1).withRange(e), e)
+    if (e is PrefixIncrement || e is PrefixDecrement) sequencedBefore += dismantled
+    else sequencedAfter += dismantled
+    incDecTarget
   }
   is BinaryExpression -> {
     // FIXME: there are sequence points with && || (also short-circuiting)
     //  so we can't just pull out the assignment in something like a == null && a = 42
-    if (e.op in assignmentOps) {
-      // Hoist assignments out of expressions
-      sequencedBefore += e
-      if (e.lhs is TypedIdentifier) {
-        modifications.getOrPut(e.lhs, ::mutableListOf).add(e)
-        e.lhs.copy().withRange(e.lhs)
-      } else {
-        // FIXME: we might need to make a copy of lhs, like we do for the other case
-        //  let's just see if this is a problem first
-        seqImpl(e.lhs)
+    when {
+      e.op in assignmentOps -> handleAssignments(e)
+      e.op == BinaryOperators.COMMA -> {
+        sequencedBefore += sequentialize(e.lhs).toList()
+        seqImpl(e.rhs)
       }
-    } else if (e.op == BinaryOperators.COMMA) {
-      sequencedBefore += sequentialize(e.lhs).toList()
-      seqImpl(e.rhs)
-    } else {
-      e.copy(lhs = seqImpl(e.lhs), rhs = seqImpl(e.rhs)).withRange(e)
+      else -> e.copy(lhs = seqImpl(e.lhs), rhs = seqImpl(e.rhs)).withRange(e)
     }
   }
   is TernaryConditional -> {

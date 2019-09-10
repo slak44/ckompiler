@@ -3,19 +3,14 @@ package slak.test.analysis
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import slak.ckompiler.DebugHandler
 import slak.ckompiler.Diagnostic
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.analysis.sequentialize
-import slak.ckompiler.parser.SignedIntType
+import slak.ckompiler.parser.*
 import slak.test.*
-import slak.test.assertDiags
-import slak.test.assertNoDiagnostics
-import slak.test.int
-import slak.test.nameRef
-import slak.test.postfixInc
-import slak.test.prefixInc
-import slak.test.sizeOf
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 
@@ -55,6 +50,39 @@ class SequenceTests {
     assertEquals(5 mul x, remaining)
   }
 
+  @ParameterizedTest
+  @EnumSource(value = BinaryOperators::class, mode = EnumSource.Mode.INCLUDE, names = [
+    "MUL_ASSIGN", "DIV_ASSIGN", "MOD_ASSIGN", "PLUS_ASSIGN", "SUB_ASSIGN",
+    "LSH_ASSIGN", "RSH_ASSIGN", "AND_ASSIGN", "XOR_ASSIGN", "OR_ASSIGN"
+  ])
+  fun `Compound Assignments Are Deconstructed`(compoundAssignOp: BinaryOperators) {
+    val x = nameRef("x", SignedIntType)
+    val compoundAssignment = x to (2 add 3) with compoundAssignOp
+    val expr = 5 mul compoundAssignment
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assert(sequencedAfter.isEmpty())
+    assertEquals(5 mul x, remaining)
+    assertEquals(1, sequencedBefore.size)
+    // Check that x += 2 + 3 becomes x = x + (2 + 3), basically
+    val complementary = compoundAssignOps.getValue(compoundAssignOp)
+    assertEquals(x assign (x to (2 add 3) with complementary), sequencedBefore[0])
+  }
+
+  @Test
+  fun `Implicit Casts In Compound Assignments Are Correct`() {
+    val x = nameRef("x", FloatType)
+    val y = nameRef("y", DoubleType)
+    val expr = x plusAssign (y sub 0.5)
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assert(sequencedAfter.isEmpty())
+    assertEquals(x, remaining)
+    assertEquals(listOf(
+        x assign FloatType.cast(DoubleType.cast(x) add (y sub 0.5))
+    ), sequencedBefore)
+  }
+
   @Test
   fun `Leftover TypedIdentifier Is Cloned After Assignment Hoisting`() {
     val x = nameRef("x", SignedIntType)
@@ -74,7 +102,7 @@ class SequenceTests {
     val expr = 5 mul prefixInc(x)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assertEquals(listOf(prefixInc(x)), sequencedBefore)
+    assertEquals(listOf(x assign (x add 1)), sequencedBefore)
     assert(sequencedAfter.isEmpty())
     assertEquals(5 mul x, remaining)
   }
@@ -85,7 +113,7 @@ class SequenceTests {
     val expr = prefixInc(x)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assertEquals(listOf(expr), sequencedBefore)
+    assertEquals(listOf(x assign (x add 1)), sequencedBefore)
     assert(sequencedAfter.isEmpty())
     // Equal, but not the same: a copy must have been made
     assertEquals(x, remaining)
@@ -99,7 +127,7 @@ class SequenceTests {
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assert(sequencedBefore.isEmpty())
-    assertEquals(listOf(postfixInc(x)), sequencedAfter)
+    assertEquals(listOf(x assign (x add 1)), sequencedAfter)
     assertEquals(5 mul x, remaining)
   }
 
@@ -110,7 +138,7 @@ class SequenceTests {
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertDiags(DiagnosticId.UNSEQUENCED_MODS)
     assert(sequencedBefore.isEmpty())
-    assertEquals(listOf(postfixInc(x), postfixInc(x)), sequencedAfter)
+    assertEquals(listOf(x assign (x add 1), x assign (x add 1)), sequencedAfter)
     assertEquals(x mul x, remaining)
   }
 
@@ -120,7 +148,7 @@ class SequenceTests {
     val expr = postfixInc(x) comma 123
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assertEquals(listOf(x, postfixInc(x)), sequencedBefore)
+    assertEquals(listOf(x, x assign (x add 1)), sequencedBefore)
     assert(sequencedAfter.isEmpty())
     assertEquals(int(123), remaining)
   }

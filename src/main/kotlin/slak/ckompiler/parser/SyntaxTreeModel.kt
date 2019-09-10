@@ -216,6 +216,8 @@ data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Ex
 data class SizeofTypeName(val sizeOfWho: TypeName, override val type: TypeName) : Expression()
 
 /**
+ * FIXME: collapse all 4 implementors to one class
+ *
  * Represents the argument of ++x, x++, --x and x--.
  */
 interface IncDecOperation {

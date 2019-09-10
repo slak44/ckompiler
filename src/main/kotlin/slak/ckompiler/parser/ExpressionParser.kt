@@ -78,6 +78,19 @@ val assignmentOps = setOf(BinaryOperators.ASSIGN, BinaryOperators.MUL_ASSIGN,
     BinaryOperators.SUB_ASSIGN, BinaryOperators.LSH_ASSIGN, BinaryOperators.RSH_ASSIGN,
     BinaryOperators.AND_ASSIGN, BinaryOperators.XOR_ASSIGN, BinaryOperators.OR_ASSIGN)
 
+val compoundAssignOps = mapOf(
+    BinaryOperators.MUL_ASSIGN to BinaryOperators.MUL,
+    BinaryOperators.DIV_ASSIGN to BinaryOperators.DIV,
+    BinaryOperators.MOD_ASSIGN to BinaryOperators.MOD,
+    BinaryOperators.PLUS_ASSIGN to BinaryOperators.ADD,
+    BinaryOperators.SUB_ASSIGN to BinaryOperators.SUB,
+    BinaryOperators.LSH_ASSIGN to BinaryOperators.LSH,
+    BinaryOperators.RSH_ASSIGN to BinaryOperators.RSH,
+    BinaryOperators.AND_ASSIGN to BinaryOperators.BIT_AND,
+    BinaryOperators.XOR_ASSIGN to BinaryOperators.BIT_XOR,
+    BinaryOperators.OR_ASSIGN to BinaryOperators.BIT_OR
+)
+
 private fun Punctuators.asBinaryOperator() = BinaryOperators.values().find { it.op == this }
 private fun Punctuators.asUnaryOperator() = UnaryOperators.values().find { it.op == this }
 

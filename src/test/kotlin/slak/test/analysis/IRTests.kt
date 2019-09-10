@@ -71,30 +71,6 @@ class IRTests {
   }
 
   @Test
-  fun `Simple Compound Assignment`() {
-    val x = nameRef("x", SignedIntType)
-    val expr = x plusAssign 1
-    val ir = listOf(expr).toIRList()
-    ir.print()
-    ir.assertSSAForTemporaries()
-    // FIXME: incomplete
-  }
-
-  @Test
-  fun `Implicit Casts In Compound Assignments Are Correct`() {
-    val x = nameRef("x", FloatType)
-    val y = nameRef("y", DoubleType)
-    val ir = listOf(
-        x assign float(1.0),
-        y assign 2.0,
-        x plusAssign (y sub 0.5)
-    ).toIRList()
-    ir.print()
-    ir.assertSSAForTemporaries()
-    // FIXME: this should not be the IR's problem
-  }
-
-  @Test
   fun `Sequentialized Expression`() {
     val x = nameRef("x", SignedIntType)
     val y = nameRef("y", SignedIntType)
