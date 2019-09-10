@@ -634,7 +634,7 @@ class NasmGenerator(
   private fun genIntBinaryOperation(op: BinaryComputations) = instrGen {
     when (op) {
       BinaryComputations.ADD -> emit("add rax, rbx")
-      BinaryComputations.SUBSTRACT -> emit("sub rax, rbx")
+      BinaryComputations.SUBTRACT -> emit("sub rax, rbx")
       // FIXME: this is only signed mul
       BinaryComputations.MULTIPLY -> emit("imul rax, rbx")
       // FIXME: this is only signed division
@@ -699,7 +699,7 @@ class NasmGenerator(
   private fun genFltBinaryOperation(op: BinaryComputations) = instrGen {
     when (op) {
       BinaryComputations.ADD -> emit("addss xmm8, xmm9")
-      BinaryComputations.SUBSTRACT -> emit("subss xmm8, xmm9")
+      BinaryComputations.SUBTRACT -> emit("subss xmm8, xmm9")
       BinaryComputations.MULTIPLY -> emit("mulss xmm8, xmm9")
       BinaryComputations.DIVIDE -> emit("divss xmm8, xmm9")
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
@@ -717,7 +717,7 @@ class NasmGenerator(
   private fun genDblBinaryOperation(op: BinaryComputations) = instrGen {
     when (op) {
       BinaryComputations.ADD -> emit("addsd xmm8, xmm9")
-      BinaryComputations.SUBSTRACT -> emit("subsd xmm8, xmm9")
+      BinaryComputations.SUBTRACT -> emit("subsd xmm8, xmm9")
       BinaryComputations.MULTIPLY -> emit("mulsd xmm8, xmm9")
       BinaryComputations.DIVIDE -> emit("divsd xmm8, xmm9")
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,

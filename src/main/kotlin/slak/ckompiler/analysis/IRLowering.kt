@@ -15,7 +15,7 @@ private val logger = LogManager.getLogger()
  * @param s exists for pretty-printing this class
  */
 enum class BinaryComputations(private val s: String) {
-  ADD("+"), SUBSTRACT("-"), MULTIPLY("*"), DIVIDE("/"), REMAINDER("%"),
+  ADD("+"), SUBTRACT("-"), MULTIPLY("*"), DIVIDE("/"), REMAINDER("%"),
   LEFT_SHIFT("<<"), RIGHT_SHIFT(">>"),
   LESS_THAN("<"), GREATER_THAN(">"), LESS_EQUAL_THAN("<="), GREATER_EQUAL_THAN(">="),
   EQUAL("=="), NOT_EQUAL("!="),
@@ -37,7 +37,7 @@ fun BinaryOperators.asBinaryOperation() = when (this) {
   BinaryOperators.DIV -> BinaryComputations.DIVIDE
   BinaryOperators.MOD -> BinaryComputations.REMAINDER
   BinaryOperators.ADD -> BinaryComputations.ADD
-  BinaryOperators.SUB -> BinaryComputations.SUBSTRACT
+  BinaryOperators.SUB -> BinaryComputations.SUBTRACT
   BinaryOperators.LSH -> BinaryComputations.LEFT_SHIFT
   BinaryOperators.RSH -> BinaryComputations.RIGHT_SHIFT
   BinaryOperators.LT -> BinaryComputations.LESS_THAN
