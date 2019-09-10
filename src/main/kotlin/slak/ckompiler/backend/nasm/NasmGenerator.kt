@@ -652,8 +652,8 @@ class NasmGenerator(
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
       BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
       BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("cmp rax, rbx")
-      BinaryComputations.BITWISE_AND, BinaryComputations.LOGICAL_AND -> emit("and rax, rbx")
-      BinaryComputations.BITWISE_OR, BinaryComputations.LOGICAL_OR -> emit("or rax, rbx")
+      BinaryComputations.BITWISE_AND -> emit("and rax, rbx")
+      BinaryComputations.BITWISE_OR -> emit("or rax, rbx")
       BinaryComputations.BITWISE_XOR -> emit("xor rax, rbx")
       BinaryComputations.SUBSCRIPT -> {
         // FIXME: random use of rcx
@@ -705,8 +705,6 @@ class NasmGenerator(
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
       BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
       BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("comiss xmm8, xmm9")
-      BinaryComputations.LOGICAL_AND -> TODO("???")
-      BinaryComputations.LOGICAL_OR -> TODO("???")
       BinaryComputations.BITWISE_AND, BinaryComputations.BITWISE_OR, BinaryComputations.BITWISE_XOR,
       BinaryComputations.REMAINDER, BinaryComputations.LEFT_SHIFT,
       BinaryComputations.RIGHT_SHIFT -> {
@@ -725,8 +723,6 @@ class NasmGenerator(
       BinaryComputations.LESS_THAN, BinaryComputations.GREATER_THAN,
       BinaryComputations.LESS_EQUAL_THAN, BinaryComputations.GREATER_EQUAL_THAN,
       BinaryComputations.EQUAL, BinaryComputations.NOT_EQUAL -> emit("comisd xmm8, xmm9")
-      BinaryComputations.LOGICAL_AND -> TODO("???")
-      BinaryComputations.LOGICAL_OR -> TODO("???")
       BinaryComputations.BITWISE_AND, BinaryComputations.BITWISE_OR, BinaryComputations.BITWISE_XOR,
       BinaryComputations.REMAINDER, BinaryComputations.LEFT_SHIFT,
       BinaryComputations.RIGHT_SHIFT -> {

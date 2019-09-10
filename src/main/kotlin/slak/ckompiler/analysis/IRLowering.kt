@@ -20,7 +20,6 @@ enum class BinaryComputations(private val s: String) {
   LESS_THAN("<"), GREATER_THAN(">"), LESS_EQUAL_THAN("<="), GREATER_EQUAL_THAN(">="),
   EQUAL("=="), NOT_EQUAL("!="),
   BITWISE_AND("&"), BITWISE_OR("|"), BITWISE_XOR("^"),
-  LOGICAL_AND("&&"), LOGICAL_OR("||"),
   SUBSCRIPT("[]");
 
   override fun toString() = s
@@ -32,6 +31,8 @@ enum class BinaryComputations(private val s: String) {
 fun BinaryOperators.asBinaryOperation() = when (this) {
   in assignmentOps -> logger.throwICE("Assignment isn't a binary computation")
   BinaryOperators.COMMA -> logger.throwICE("Commas must be removed by sequentialize")
+  BinaryOperators.AND, BinaryOperators.OR ->
+    logger.throwICE("Logical AND/OR must be removed by sequentialize")
   BinaryOperators.MUL -> BinaryComputations.MULTIPLY
   BinaryOperators.DIV -> BinaryComputations.DIVIDE
   BinaryOperators.MOD -> BinaryComputations.REMAINDER
@@ -48,8 +49,6 @@ fun BinaryOperators.asBinaryOperation() = when (this) {
   BinaryOperators.BIT_AND -> BinaryComputations.BITWISE_AND
   BinaryOperators.BIT_XOR -> BinaryComputations.BITWISE_XOR
   BinaryOperators.BIT_OR -> BinaryComputations.BITWISE_OR
-  BinaryOperators.AND -> BinaryComputations.LOGICAL_AND
-  BinaryOperators.OR -> BinaryComputations.LOGICAL_OR
   else -> logger.throwICE("Impossible branch (kotlin compiler can't see this)")
 }
 
