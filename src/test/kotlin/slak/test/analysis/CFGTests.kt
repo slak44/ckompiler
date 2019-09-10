@@ -107,7 +107,14 @@ class CFGTests {
   fun `Unterminated Blocks In Function`() {
     val code = "int f() {}"
     val p = prepareCode(code, source)
-    val cfg = CFG(p.root.decls.firstFun(), MachineTargetData.x64, source, code)
+    val cfg = CFG(p.root.decls.firstFun(), MachineTargetData.x64, source, code,
+        forceReturnZero = false, forceAllNodes = false)
     cfg.assertDiags(DiagnosticId.CONTROL_END_OF_NON_VOID)
+  }
+
+  @Test
+  fun `Unterminated Block In Main Is OK`() {
+    val cfg = prepareCFG(resource("e2e/emptyMain.c"), source)
+    cfg.assertNoDiagnostics()
   }
 }

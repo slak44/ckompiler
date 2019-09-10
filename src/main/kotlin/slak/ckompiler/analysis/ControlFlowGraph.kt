@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
 import slak.ckompiler.parser.FunctionDefinition
+import slak.ckompiler.parser.IntegerConstantNode
 import slak.ckompiler.parser.Terminal
 import slak.ckompiler.parser.VoidType
 import java.util.*
@@ -15,7 +16,8 @@ class CFG(val f: FunctionDefinition,
           private val targetData: MachineTargetData,
           srcFileName: SourceFileName,
           srcText: String,
-          forceAllNodes: Boolean = false
+          forceReturnZero: Boolean,
+          forceAllNodes: Boolean
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(isRoot = true, targetData = targetData)
   /** Raw set of nodes as obtained from [graph]. */
@@ -52,14 +54,25 @@ class CFG(val f: FunctionDefinition,
     }
 
     nodes.filterNot(BasicBlock::isTerminated).forEach {
+      // For some functions (read: for main), it is desirable to return 0 if there are no explicit
+      // returns found; so don't print diagnostics and add the relevant IR
       // If blocks are unterminated, and the function isn't void, the function is missing returns
-      if (f.functionType.returnType != VoidType) diagnostic {
+      if (f.functionType.returnType != VoidType && !forceReturnZero) diagnostic {
         id = DiagnosticId.CONTROL_END_OF_NON_VOID
         formatArgs(f.name, f.functionType.returnType.toString())
         column(f.range.last)
       }
+      // C standard: 5.1.2.2.3
+      val ret = if (forceReturnZero) {
+        val ctx = IRLoweringContext(it.irContext)
+        ctx.buildIR(IntegerConstantNode(0))
+        synthCount++
+        ctx
+      } else {
+        null
+      }
       // Either way, terminate the blocks with a fake return
-      it.terminator = ImpossibleJump(newBlock(), returned = null)
+      it.terminator = ImpossibleJump(newBlock(), returned = ret)
     }
 
     postOrderNodes = postOrderNodes(startBlock, nodes)

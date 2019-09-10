@@ -24,7 +24,7 @@ typealias CLIDefines = Map<String, String>
 
 /**
  * The command line interface for the compiler.
- * @param stdinStream which stream to use for the `-` argument; should be [System.in] for main
+ * @param stdinStream which stream to use for the `-` argument; should be [System. in] for main
  */
 class CLI(private val stdinStream: InputStream) :
     IDebugHandler by DebugHandler("CLI", "<command line>", "") {
@@ -223,6 +223,7 @@ class CLI(private val stdinStream: InputStream) :
       return@positionalAction true
     }
   }
+
   init {
     cli.helpGroup("Graphviz options (require --cfg-mode)")
   }
@@ -394,7 +395,14 @@ class CLI(private val stdinStream: InputStream) :
         }
         return null
       }
-      val cfg = CFG(function, MachineTargetData.x64, relPath, text, forceAllNodes)
+      val cfg = CFG(
+          f = function,
+          targetData = MachineTargetData.x64,
+          srcFileName = relPath,
+          srcText = text,
+          forceAllNodes = forceAllNodes,
+          forceReturnZero = function.name == "main"
+      )
       val graphviz = createGraphviz(cfg, text, !forceUnreachable, printingMethod)
       when {
         displayGraph -> {
@@ -415,8 +423,26 @@ class CLI(private val stdinStream: InputStream) :
     val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
     // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
-    val funcsCfgs = (allFuncs - main).map { CFG(it!!, MachineTargetData.x64, relPath, text, false) }
-    val mainCfg = main?.let { CFG(it, MachineTargetData.x64, relPath, text, false) }
+    val funcsCfgs = (allFuncs - main).map {
+      CFG(
+          f = it!!,
+          targetData = MachineTargetData.x64,
+          srcFileName = relPath,
+          srcText = text,
+          forceReturnZero = false,
+          forceAllNodes = false
+      )
+    }
+    val mainCfg = main?.let {
+      CFG(
+          f = it,
+          targetData = MachineTargetData.x64,
+          srcFileName = relPath,
+          srcText = text,
+          forceReturnZero = true,
+          forceAllNodes = false
+      )
+    }
 
     val nasm = NasmGenerator(declNames, funcsCfgs, mainCfg, MachineTargetData.x64).nasm
 

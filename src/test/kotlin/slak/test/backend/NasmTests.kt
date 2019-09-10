@@ -89,6 +89,11 @@ class NasmTests {
   }
 
   @Test
+  fun `Empty Main Returns 0`() {
+    compileAndRun(resource("e2e/emptyMain.c")).justExitCode(0)
+  }
+
+  @Test
   fun `Exit Code 10`() {
     compileAndRun(resource("e2e/returns10.c")).justExitCode(10)
   }
