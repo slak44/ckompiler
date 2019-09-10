@@ -172,7 +172,17 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
  * the arguments, and before the actual call. This means two function calls cannot interleave (see
  * note 94).
  *
- * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2, 6.5.17, 6.5.2.2.0.10
+ * The ternary conditional operator has a sequence point between the evaluation of its first operand
+ * (the condition) and whichever of the second/third operands is chosen to be executed. This
+ * behaviour is achieved by deferring to the CFG: the ternary is hoisted out of the expression, its
+ * result assigned to a synthetic temporary, which is then used in the conditional's original place.
+ *
+ * Logical ANDs and Logical ORs are implemented by lowering them to ternary conditionals. This means
+ * we won't be able to implement them with efficient CPU instructions in codegen (eg `and`/`or`),
+ * but observing their short-circuit behaviour prevented that anyway.
+ *
+ * C standard: C.1, 5.1.2.3, 6.5.16.0.3, 6.5.3.1.0.2, 6.5.2.4.0.2, 6.5.17, 6.5.2.2.0.10, 6.5.15.0.4,
+ *   6.5.13.0.4, 6.5.14.0.4
  * @see SequentialExpression
  */
 fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
