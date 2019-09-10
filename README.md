@@ -31,6 +31,14 @@ All of the relevant code can be found in the [Diagnostics.kt][diags] file.
 Diagnostics are handled by the `DebugHandler` class (and its corresponding
 interface, `IDebugHandler`, read the [parser](#Parser) section for details).
 
+Printed diagnostics look like this:
+
+<pre>
+someFile.c:1:27: <span style="color: red">error:</span> Expression is not assignable [Parser|EXPRESSION_NOT_ASSIGNABLE]
+int main() {int x; (x + 2) = 5;}
+                    <span style="color: green">~~~~~  ^</span>    
+</pre>
+
 We generate `Diagnostic` instances using a simple DSL, but the error messages,
 the source extracts and the caret/tilde markers are created lazily, internally.
 They are only computed when (or if) the diagnostic gets printed. This is useful,
