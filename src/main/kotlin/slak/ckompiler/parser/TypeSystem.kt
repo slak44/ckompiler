@@ -38,10 +38,14 @@ fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
 
 fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   if (decl is ErrorDeclarator || specQuals.isBlank()) return ErrorType
+  val isStorageRegister = specQuals.storageClass?.value == Keywords.REGISTER
   // Pointers
   if (decl.indirection.isNotEmpty()) {
     val referencedType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes))
-    return decl.indirection.fold(referencedType) { type, curr -> PointerType(type, curr) }
+    val ind = decl.indirection.dropLast(1).fold(referencedType) { type, curr ->
+      PointerType(type, curr, false)
+    }
+    return PointerType(ind, decl.indirection.last(), isStorageRegister)
   }
   // Functions
   if (decl.isFunction()) {
@@ -56,7 +60,7 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   if (decl.isArray()) {
     val size = decl.getArrayTypeSize()
     val elemType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
-    return ArrayType(elemType, size)
+    return ArrayType(elemType, size, isStorageRegister)
   }
   val unqualified = when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
@@ -81,8 +85,8 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
       return specQuals.typeSpec.typedefName.type
     }
   }
-  return if (specQuals.typeQualifiers.isNotEmpty()) {
-    QualifiedType(specQuals.typeQualifiers, unqualified)
+  return if (specQuals.typeQualifiers.isNotEmpty() || isStorageRegister) {
+    QualifiedType(unqualified, specQuals.typeQualifiers, isStorageRegister)
   } else {
     unqualified
   }
@@ -95,6 +99,7 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
  */
 sealed class TypeName {
   abstract val typeQuals: TypeQualifierList
+  abstract val isStorageRegister: Boolean
 
   /**
    * @return null if this type can't be called, or the [FunctionType] to call otherwise
@@ -150,10 +155,15 @@ sealed class TypeName {
 }
 
 data class QualifiedType(
+    val unqualified: UnqualifiedTypeName,
     override val typeQuals: TypeQualifierList,
-    val unqualified: UnqualifiedTypeName
+    override val isStorageRegister: Boolean
 ) : TypeName() {
-  override fun toString() = "${typeQuals.stringify()} $unqualified"
+  override fun toString(): String {
+    val typeQualStr = if (typeQuals.isEmpty()) "" else (typeQuals.stringify() + " ")
+    val registerStr = if (isStorageRegister) "register " else ""
+    return "$registerStr$typeQualStr$unqualified"
+  }
 }
 
 data class FunctionType(
@@ -163,6 +173,8 @@ data class FunctionType(
 ) : TypeName() {
   // FIXME: functions have their own qualifiers
   override val typeQuals: TypeQualifierList = emptyList()
+
+  override val isStorageRegister = false
 
   override fun toString(): String {
     // This doesn't really work when the return type is a function/array, but that isn't valid
@@ -179,13 +191,14 @@ data class FunctionType(
  */
 data class PointerType(
     val referencedType: TypeName,
-    override val typeQuals: TypeQualifierList
+    override val typeQuals: TypeQualifierList,
+    override val isStorageRegister: Boolean
 ) : TypeName() {
   constructor(
       referencedType: TypeName,
       ptrQuals: TypeQualifierList,
       decayedFrom: TypeName
-  ) : this(referencedType, ptrQuals) {
+  ) : this(referencedType, ptrQuals, decayedFrom.isStorageRegister) {
     this.decayedFrom = decayedFrom
   }
 
@@ -197,10 +210,14 @@ data class PointerType(
   var decayedFrom: TypeName? = null
     private set
 
-  override fun toString() = decayedFrom?.toString() ?: "$referencedType *${typeQuals.stringify()}"
+  override fun toString() = "$referencedType *${typeQuals.stringify()}"
 }
 
-data class ArrayType(val elementType: TypeName, val size: ArrayTypeSize) : TypeName() {
+data class ArrayType(
+    val elementType: TypeName,
+    val size: ArrayTypeSize,
+    override val isStorageRegister: Boolean
+) : TypeName() {
   /**
    * Arrays can't be qualified, only their element.
    *
@@ -208,11 +225,15 @@ data class ArrayType(val elementType: TypeName, val size: ArrayTypeSize) : TypeN
    */
   override val typeQuals: TypeQualifierList = emptyList()
 
-  override fun toString() = "$elementType[$size]"
+  override fun toString() = "${if (isStorageRegister) "register " else ""}$elementType[$size]"
 }
 
 // FIXME: implement these too
-data class BitfieldType(val elementType: TypeName, val size: Expression) : TypeName() {
+data class BitfieldType(
+    val elementType: TypeName,
+    val size: Expression,
+    override val isStorageRegister: Boolean
+) : TypeName() {
   override val typeQuals: TypeQualifierList = emptyList()
 }
 
@@ -224,6 +245,7 @@ data class BitfieldType(val elementType: TypeName, val size: Expression) : TypeN
 sealed class UnqualifiedTypeName : TypeName() {
   // Self-explanatory
   override val typeQuals: TypeQualifierList = emptyList()
+  override val isStorageRegister = false
 }
 
 /**
@@ -536,17 +558,17 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
   }
   REF -> when (target) {
     is ErrorType -> ErrorType
-    is ArrayType -> PointerType(target.elementType, emptyList())
+    is ArrayType -> PointerType(target.elementType, emptyList(), isStorageRegister = false)
     is PointerType -> {
       val original = target.decayedFrom
       if (original != null) {
         // & is an exception to these implicit conversions, so don't nest pointer types
-        PointerType(original, target.typeQuals)
+        PointerType(original, target.typeQuals, isStorageRegister = false)
       } else {
-        PointerType(target, emptyList())
+        PointerType(target, emptyList(), isStorageRegister = false)
       }
     }
-    else -> PointerType(target, emptyList())
+    else -> PointerType(target, emptyList(), isStorageRegister = false)
   }
   DEREF -> {
     if (target !is PointerType) ErrorType else target.referencedType
@@ -558,6 +580,13 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
  */
 fun IDebugHandler.validateAddressOf(expr: UnaryExpression) {
   require(expr.op == REF) { "Not an address of operation" }
+  if (expr.operand.type.isStorageRegister) {
+    diagnostic {
+      id = DiagnosticId.ADDRESS_OF_REGISTER
+      formatArgs(if (expr.operand is TypedIdentifier) expr.operand.name else "???")
+      errorOn(expr.operand)
+    }
+  }
   if (expr.operand.type == ErrorType) return
   if (expr.operand.type is BitfieldType) {
     diagnostic {
@@ -572,7 +601,6 @@ fun IDebugHandler.validateAddressOf(expr: UnaryExpression) {
       errorOn(expr)
     }
   }
-  // FIXME: deny address of register storage class
 }
 
 /**
@@ -834,7 +862,8 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
   if (successType is ArrayType && failureType is ArrayType) {
     val successRef = successType.elementType
     val failRef = failureType.elementType
-    return if (successRef != failRef) ErrorType else PointerType(successRef, emptyList())
+    return if (successRef != failRef) ErrorType
+    else PointerType(successRef, emptyList(), isStorageRegister = false)
   }
   return ErrorType
 }

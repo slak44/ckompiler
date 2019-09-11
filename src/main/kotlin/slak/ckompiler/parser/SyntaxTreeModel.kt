@@ -406,7 +406,7 @@ data class StringLiteralNode(val string: String,
   override val type = ArrayType(when (encoding) {
     StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
     else -> UnsignedLongLongType
-  }, ConstantSize(IntegerConstantNode(string.length.toLong())))
+  }, ConstantSize(IntegerConstantNode(string.length.toLong())), isStorageRegister = false)
 
   override fun toString() = "${encoding.prefix}\"$string\""
 }

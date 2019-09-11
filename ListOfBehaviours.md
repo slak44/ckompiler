@@ -26,6 +26,8 @@ diagnostic information for the given pp-tokens
   of declaration (by default, certain things are able to influence it)
 - (6.10.1.0.4) When the `defined` unary operator is used incorrectly, we print
   an error diagnostic, and the entire expression has value `0`
+- (6.3.2.1.0.3) Lvalue conversion on an array object with `register` storage
+  class is ignored, address is taken
 
 # List of Unspecified Behaviours
 

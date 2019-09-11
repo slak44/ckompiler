@@ -53,13 +53,16 @@ internal val constChar = DeclarationSpecifier(
     typeQualifiers = const
 ).zeroRange()
 
-internal fun const(type: UnqualifiedTypeName) = QualifiedType(const, type)
+internal fun const(type: UnqualifiedTypeName) =
+    QualifiedType(type, const, isStorageRegister = false)
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = kotlin.test.assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).zeroRange()
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
-internal fun FunctionDefinition.toRef() = nameRef(name, PointerType(functionType, emptyList()))
+internal fun FunctionDefinition.toRef() =
+    nameRef(name, PointerType(functionType, emptyList(), isStorageRegister = false))
+
 internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
 
 internal fun ptr(d: Declarator) =
@@ -366,11 +369,8 @@ internal fun <T> TypeName.cast(it: T) = CastExpression(parseDSLElement(it), this
 
 internal operator fun <T> UnaryOperators.get(it: T): UnaryExpression {
   val operand = parseDSLElement(it)
-  val realOperand = if (
-      this == UnaryOperators.REF &&
-      operand is TypedIdentifier &&
-      operand.type is FunctionType) {
-    TypedIdentifier(operand.name, PointerType(operand.type, emptyList(), operand.type))
+  val realOperand = if (this == UnaryOperators.REF && operand is TypedIdentifier) {
+    TypedIdentifier(operand.name, operand.type.normalize())
   } else {
     operand
   }
