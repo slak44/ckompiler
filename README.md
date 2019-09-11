@@ -18,6 +18,52 @@ Also see what was chosen for some
 The compiler is mostly implemented as a processing pipeline of immutable data
 structures.
 
+### Interfaces And Delegation
+
+Many components in the compiler are decoupled: they exist as concrete classes
+that implement an associated interface. Users of the components are given an
+instance of the concrete classes, and they use it to immediately delegate the
+associated interfaces.
+
+For example, when the `DeclarationParser` needs to parse an initializer
+expression, it implements the `IExpressionParser` interface, and delegates that
+job to a concrete `ExpressionParser` instance received through the constructor
+(or, in some cases, via `lateinit` properties, to resolve cyclic dependencies).
+
+As a code example, the largest of the components, `StatementParser`, is declared
+like this:
+```kotlin
+class StatementParser(declarationParser: DeclarationParser,
+                      controlKeywordParser: ControlKeywordParser) :
+    IStatementParser,
+    IDebugHandler by declarationParser,
+    ITokenHandler by declarationParser,
+    IScopeHandler by declarationParser,
+    IParenMatcher by declarationParser,
+    IExpressionParser by controlKeywordParser,
+    IDeclarationParser by declarationParser,
+    IControlKeywordParser by controlKeywordParser { /* ... */ }
+```
+As the code shows, `StatementParser` doesn't receive 7 separate components, even
+though it delegates the implementation of 7 different interfaces.
+Since the `DeclarationParser` implements some of those interfaces itself,
+`StatementParser` only needs an instance of that for all of them.
+
+This approach has several advantages:
+
+1. Components are forced to be written against the exposed interfaces, allowing
+   implementation details to be hidden in the concrete classes (better
+   encapsulation).
+2. The dependencies between components are made explicit; for example, a
+   `ScopeHandler` has no business using a `ControlKeywordParser`. Requiring
+   manual delegation helps prevent accidental coupling.
+3. The syntax is clean: there is usually no need to write `component.doThing()`,
+   rather `doThing()` can be called directly. This is most obvious for parser
+   components using `ITokenHandler`, since they have lots (hundreds) of calls to
+   functions like `current`, `eat`, `isEaten` or `tokenContext`, and without
+   delegation, they'd end up polluting the source with `tokenHandler.current()`
+   everywhere.
+
 ### Errors
 
 A compiler has to deal with two classes of "errors"; those that come from the
@@ -29,7 +75,7 @@ All of the relevant code can be found in the [Diagnostics.kt][diags] file.
 ###### Diagnostics
 
 Diagnostics are handled by the `DebugHandler` class (and its corresponding
-interface, `IDebugHandler`, read the [parser](#Parser) section for details).
+interface, `IDebugHandler`.
 
 Printed diagnostics look like this:
 
@@ -58,16 +104,21 @@ diagnostic {
 // ...
 ```
 The range passed to `errorOn` in the example above, is an implementor of the
-`SourcedRange` interface. `LexicalToken` and `ASTNode` are such implementations.
+`SourcedRange` interface.
+
 The `rangeTo` operator is overloaded on `SourcedRange`s to easily combine
-multiple ranges:
+multiple ranges into one, like in this example from the parser:
 ```kotlin
 sizeOf..tokenAt(rParenIdx)
 ```
 The `sizeOf` token and the token returned by `tokenAt(rParenIdx)` are not
-adjacent (think of __`sizeof`__`(1 + 1`__`)`__), but this overload allows the
-parser to trivially create a compound `SourcedRange` that covers the entire
-sizeof expression.
+adjacent (think of `sizeof(1 + 1)`), but this overload allows the parser to
+trivially create a compound `SourcedRange` to cover the entire sizeof
+expression.
+
+Since `LexicalToken` and `ASTNode` are implementations of `SourcedRange`,
+compound ranges can be created by mixing and matching tokens and AST pieces
+(`tok..node` and `node..tok` are both valid syntax).
 
 Another example, used in `sequentialize`:
 ```kotlin
@@ -84,8 +135,8 @@ diagnostic {
 // ...
 ```
 This illustrates the utility provided by using a lambda + builder DSL. Arbitrary
-code can run in the construction of the diagnostic, which makes it easy to
-tailor the same diagnostic to different situations.
+code can run in the construction of the diagnostic, so the same diagnostic can
+be tailored to different situations.
 
 Finally, an example from the preprocessor:
 ```kotlin
@@ -126,6 +177,57 @@ as `__PTRDIFF_T_TYPE` for `stddef.h`).
 For now, only x64 Linux is supported, but the infrastructure for x86 and other
 platforms exists.
 
+### The `ITokenHandler` Interface
+
+This interface allows a user to interact with a list of `LexicalToken`s. It
+provides functions to process a token, move past it to the next one, search for
+the first token to meet a condition, or easily get debug data.
+
+By far the most interesting feature, however, is the `tokenContext` function.
+One of the most common operations when parsing is having to create a
+"sub-parser" for certain nested data: the contents of a set of parenthesis in
+expressions, statement blocks for functions, argument lists for function calls
+or function prototypes, and many more.  
+The `tokenContext` function takes an end index, and a lambda. A sublist is
+created, including the tokens from the current one, to the one specified by the
+end index. This is just a view into the larger list of tokens, so no array
+copies are made. The lambda is then executed.  
+This is how context nesting works in an expression:
+```
+2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Root context
+2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^      Outer paren's context (1st tier)
+2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5
+              ^^^^^     ^^^^^^^^^^^       Each inner paren has its own context,
+                                          but they're at the same "tier", not
+                                          nested (2nd tier)
+2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5 
+                         ^^^^^            Finally, the inner-most paren has yet
+                                          another context, nested 3 tiers deep
+```
+Eating tokens in nested contexts advances the parent contexts through them. On
+the diagram, eating the `7 * 7` tokens in the inner-most context will advance
+all the 3 levels above beyond these tokens (but no further!).
+
+The context's magic lies in the fact that the behaviour of the `ITokenHandler`'s
+functions is dynamic based on the token context. For example, if we're parsing
+an expression such as `1 + (2 * 3 - 4) - 7`, the parens will get their own
+context. Eating tokens (via `eat` or `eatUntil`) in this context will never eat
+tokens beyond the contents of the parens. In context, the `isEaten` function
+will return true after `4` was eaten, even if there are other tokens afterwards.
+
+Most functions of the interface react to the context. As a result, parsing can
+be reasoned about in discrete chunks: each context deals with its own contents,
+and does not care what is being parsed in the parent contexts. Let's say an
+error is encountered inside a context: `1 + (2 * 3 - ) - 7`. There is a missing
+primary expression inside the paren. The expression parser notices, and consumes
+all the tokens in the context. However, this does not affect the outer
+expression's: the interface provides no way to eat tokens beyond the ones
+allocated to the context, accidentally or otherwise.
+
+This interface is used both in the parser, and in the preprocessor.
+
 ### Lexer
 
 The [lexer][lexer] operates on the source code string, and produces a list of
@@ -148,29 +250,6 @@ everything about matching parenthesis, [StatementParser][st_parser] parses
 function block statements, etc).  
 Each of these has an associated interface (`IExpressionParser` for the
 `ExpressionParser` class), that is used for delegation.  
-For example, when the `DeclarationParser` needs to parse an initializer
-expression, it implements the `IExpressionParser` interface, and delegates that
-job to a concrete `ExpressionParser` instance received through the constructor
-(or via `lateinit` properties, in some cases, to resolve cyclic dependencies).
-
-As a code example, the largest of the components, `StatementParser`, is declared
-like this:
-```kotlin
-class StatementParser(declarationParser: DeclarationParser,
-                      controlKeywordParser: ControlKeywordParser) :
-    IStatementParser,
-    IDebugHandler by declarationParser,
-    ITokenHandler by declarationParser,
-    IScopeHandler by declarationParser,
-    IParenMatcher by declarationParser,
-    IExpressionParser by controlKeywordParser,
-    IDeclarationParser by declarationParser,
-    IControlKeywordParser by controlKeywordParser { /* ... */ }
-```
-As the code shows, `StatementParser` doesn't receive 7 separate components, even
-though it delegates the implementation of 7 different interfaces.
-Since the `DeclarationParser` implements some of those interfaces itself,
-`StatementParser` only needs an instance of that for all of them.
 
 ### Analysis
 
@@ -257,7 +336,7 @@ The `CFG` class is also responsible for converting the code in its nodes to a
    <p align="center"><img src="readme-resources/disconnected-fake-edge.png" alt="Disconnected Fake Edge"/></p>
 3. Unterminated `BasicBlock`s are identified. Warnings are reported for non-void
    functions (it means control flow reached the end of the function and didn't
-   find a return). The blocks are terminated with a `ImpossibleJump`.
+   find a return). The blocks are terminated with an `ImpossibleJump`.
 4. We precompute a list of the CFG's nodes in [post-order][post_order]
    (basically DFS, for the kinds of graphs encountered here). See
    `postOrderNodes` in [ControlFlowGraph.kt][cfg].
