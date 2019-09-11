@@ -91,6 +91,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ILLEGAL_CAST_ASSIGNMENT(ERROR, "Assignment to cast is illegal, lvalue casts are not supported"),
   EXPRESSION_NOT_ASSIGNABLE(ERROR, "Expression is not assignable"),
   CONSTANT_NOT_ASSIGNABLE(ERROR, "Cannot assign to a constant"),
+  CONST_QUALIFIED_NOT_ASSIGNABLE(ERROR,
+      "Assignment to %s '%s' with const-qualified type '%s'"),
   ARRAY_OF_INCOMPLETE(ERROR, "Array has incomplete element type '%s'"),
   SIZEOF_ON_BITFIELD(ERROR, "Sizeof applied to a bit-field"),
   SIZEOF_ON_INCOMPLETE(WARNING, "Sizeof applied to incomplete type '%s'"),

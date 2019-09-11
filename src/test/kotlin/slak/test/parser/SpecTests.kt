@@ -333,12 +333,11 @@ class SpecTests {
       special_int x = 213;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val (typedef, specialIntType) = typedef(
-        DeclarationSpecifier(typeQualifiers = listOf(Keywords.CONST.kw), typeSpec = uInt.typeSpec),
-        nameDecl("special_int")
-    )
+    val (typedef, specialIntType) =
+        typedef(uInt.copy(typeQualifiers = const), nameDecl("special_int"))
     typedef declare "special_int" assertEquals p.root.decls[0]
-    specialIntType declare ("x" assign UnsignedIntType.cast(213)) assertEquals p.root.decls[1]
+    specialIntType declare ("x" assign const(UnsignedIntType).cast(213)) assertEquals
+        p.root.decls[1]
   }
 
   @Test

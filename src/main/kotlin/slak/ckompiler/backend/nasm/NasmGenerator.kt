@@ -8,6 +8,7 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
 import kotlin.math.absoluteValue
+import kotlin.math.log
 import kotlin.math.sign
 
 private val logger = LogManager.getLogger()
@@ -339,8 +340,9 @@ class NasmGenerator(
       return@instrGen
     }
     emit(genExpressions(retExpr))
-    when (retExpr.src.last().type) {
+    when (retExpr.src.last().type.unqualify()) {
       ErrorType -> logger.throwICE("ErrorType cannot propagate to codegen stage") { retExpr }
+      is QualifiedType -> logger.throwICE("QualifiedType is removed just above")
       is FunctionType -> logger.throwICE("FunctionType is an illegal return type") { retExpr }
       // INTEGER classification
       is PointerType, is IntegralType -> {

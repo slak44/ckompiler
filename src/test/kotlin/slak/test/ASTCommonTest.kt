@@ -31,6 +31,8 @@ internal fun long(i: Long) = IntegerConstantNode(i, IntegralSuffix.LONG).zeroRan
 internal fun float(f: Double) = FloatingConstantNode(f, FloatingSuffix.FLOAT).zeroRange()
 internal fun double(f: Double) = FloatingConstantNode(f, FloatingSuffix.NONE).zeroRange()
 
+internal val const: TypeQualifierList = listOf(Keywords.CONST.kw)
+
 internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()
 internal val short = DeclarationSpecifier(typeSpec = Short(Keywords.SHORT.kw)).zeroRange()
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
@@ -48,8 +50,10 @@ internal val signedChar =
     DeclarationSpecifier(typeSpec = SignedChar(Keywords.SIGNED.kw)).zeroRange()
 internal val constChar = DeclarationSpecifier(
     typeSpec = Char(Keywords.CHAR.kw),
-    typeQualifiers = listOf(Keywords.CONST.kw)
+    typeQualifiers = const
 ).zeroRange()
+
+internal fun const(type: UnqualifiedTypeName) = QualifiedType(const, type)
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = kotlin.test.assertEquals(this, rhs)
 

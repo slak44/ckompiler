@@ -180,8 +180,10 @@ data class TypedIdentifier(
     valueType = if (type is PointerType && type.decayedFrom is FunctionType) {
       // Function designators are lvalues
       ValueType.LVALUE
+    } else if (type is QualifiedType && Keywords.CONST in type.typeQuals) {
+      // Const-qualification means it's not modifiable
+      ValueType.LVALUE
     } else if (type.isCompleteObjectType() && !isArrayPtr) {
-      // FIXME: to be modifiable, it must also not be const-qualified
       ValueType.MODIFIABLE_LVALUE
     } else {
       // FIXME: is everything else an lvalue?
@@ -252,12 +254,13 @@ data class UnaryExpression(
     override val type: TypeName
 ) : Expression() {
   /**
-   * FIXME: to be modifiable, it must also not be const-qualified
-   *
    * C standard: 6.5.3.2.0.4
    */
-  override val valueType =
-      if (op == UnaryOperators.DEREF) ValueType.MODIFIABLE_LVALUE else ValueType.RVALUE
+  override val valueType = when {
+    op != UnaryOperators.DEREF -> ValueType.RVALUE
+    operand.type is QualifiedType && Keywords.CONST in operand.type.typeQuals -> ValueType.LVALUE
+    else -> ValueType.MODIFIABLE_LVALUE
+  }
 }
 
 /**
@@ -269,7 +272,10 @@ data class UnaryExpression(
  * @param sizeOfWho which type to take the size of
  * @param type the resulting type of the `sizeof` expression, is `size_t` for the current target
  */
-data class SizeofTypeName(val sizeOfWho: TypeName, override val type: TypeName) : Expression() {
+data class SizeofTypeName(
+    val sizeOfWho: TypeName,
+    override val type: UnqualifiedTypeName
+) : Expression() {
   override val valueType: ValueType = ValueType.RVALUE
 }
 
@@ -316,12 +322,14 @@ data class ArraySubscript(
   override fun toString() = "$subscripted[$subscript]"
 
   /**
-   * FIXME: to be modifiable, it must also not be const-qualified
-   *   it is an lvalue at least anyway
-   *
    * C standard: 6.5.2.1.0.2
    */
-  override val valueType = ValueType.MODIFIABLE_LVALUE
+  override val valueType =
+      if (subscripted.type is QualifiedType && Keywords.CONST in subscripted.type.typeQuals) {
+        ValueType.LVALUE
+      } else {
+        ValueType.MODIFIABLE_LVALUE
+      }
 }
 
 data class CastExpression(val target: Expression, override val type: TypeName) : Expression() {
@@ -471,10 +479,12 @@ data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
 typealias TypeQualifierList = List<Keyword>
 
 @JvmName("TypeQualifierList#stringify")
-fun TypeQualifierList.stringify() = '*' + joinToString(" ") { (value) -> value.keyword }
+fun TypeQualifierList.stringify() = joinToString(" ") { (value) -> value.keyword }
 
 @JvmName("List_TypeQualifierList_#stringify")
-fun List<TypeQualifierList>.stringify() = joinToString { it.stringify() }
+fun List<TypeQualifierList>.stringify() = joinToString { '*' + it.stringify() }
+
+operator fun TypeQualifierList.contains(k: Keywords): Boolean = k in map { it.value }
 
 data class IdentifierNode(val name: String) : ASTNode(), Terminal {
   constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)

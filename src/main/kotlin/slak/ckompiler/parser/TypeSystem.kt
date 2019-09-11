@@ -2,6 +2,7 @@ package slak.ckompiler.parser
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
+import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.parser.BinaryOperators.*
@@ -57,10 +58,9 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
     val elemType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
     return ArrayType(elemType, size)
   }
-  return when (specQuals.typeSpec) {
+  val unqualified = when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
     is EnumSpecifier -> TODO("enums not implemented yet")
-    is TypedefNameSpecifier -> specQuals.typeSpec.typedefName.type
     is VoidTypeSpec -> VoidType
     is Bool -> BooleanType
     is Signed, is IntType, is SignedInt -> SignedIntType
@@ -76,15 +76,26 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
     is FloatTypeSpec -> FloatType
     is DoubleTypeSpec -> DoubleType
     is LongDouble -> LongDoubleType
+    is TypedefNameSpecifier -> {
+      // FIXME: add specQuals quals to the typedef's quals
+      return specQuals.typeSpec.typedefName.type
+    }
+  }
+  return if (specQuals.typeQualifiers.isNotEmpty()) {
+    QualifiedType(specQuals.typeQualifiers, unqualified)
+  } else {
+    unqualified
   }
 }
 
 /**
- * Instances represent types.
+ * Instances represent maybe-qualified types.
  *
- * C standard: 6.2.5, 6.2.5.0.20
+ * C standard: 6.2.5, 6.2.5.0.26
  */
 sealed class TypeName {
+  abstract val typeQuals: TypeQualifierList
+
   /**
    * @return null if this type can't be called, or the [FunctionType] to call otherwise
    */
@@ -96,28 +107,28 @@ sealed class TypeName {
 
   fun isCallable() = asCallable() != null
 
-  fun isRealType(): Boolean = this is ArithmeticType // We don't implement complex types yet.
+  fun isRealType(): Boolean = unqualify() is ArithmeticType // We don't implement complex types yet.
 
   /** C standard: 6.2.5.0.21 */
-  fun isScalar(): Boolean = this is ArithmeticType || this is PointerType
+  fun isScalar(): Boolean = unqualify() is ArithmeticType || this is PointerType
 
   /**
    * FIXME: check for incomplete struct/union types; they are currently not even represented
    *
    * C standard: 6.2.5.0.1
    */
-  fun isCompleteObjectType() = this !is FunctionType && this !is VoidType &&
+  fun isCompleteObjectType() = this !is FunctionType && unqualify() !is VoidType &&
       (this as? ArrayType)?.size !is NoSize
 
   /**
    * System V ABI: 3.2.3, page 17
    */
-  fun isSSEType() = this is FloatType || this is DoubleType
+  fun isSSEType() = unqualify() is FloatType || unqualify() is DoubleType
 
   /**
    * System V ABI: 3.2.3, page 17
    */
-  fun isABIIntegerType() = this is IntegralType || this is PointerType
+  fun isABIIntegerType() = unqualify() is IntegralType || unqualify() is PointerType
 
   /**
    * Applies conversions specified by the standard (functions & arrays to pointers).
@@ -129,14 +140,36 @@ sealed class TypeName {
     is ArrayType -> PointerType(elementType, emptyList(), this)
     else -> this
   }
+
+  /**
+   * If this is [QualifiedType], return [QualifiedType.unqualified]. Otherwise, return this.
+   */
+  fun unqualify(): TypeName {
+    return if (this is QualifiedType) unqualified else this
+  }
 }
 
-/**
- * Represents the type of an expression that is invalid, either due to syntax errors, or due to
- * violations of semantic requirements.
- */
-object ErrorType : TypeName() {
-  override fun toString() = "<error type>"
+data class QualifiedType(
+    override val typeQuals: TypeQualifierList,
+    val unqualified: UnqualifiedTypeName
+) : TypeName() {
+  override fun toString() = "${typeQuals.stringify()} $unqualified"
+}
+
+data class FunctionType(
+    val returnType: TypeName,
+    val params: List<TypeName>,
+    val variadic: Boolean = false
+) : TypeName() {
+  // FIXME: functions have their own qualifiers
+  override val typeQuals: TypeQualifierList = emptyList()
+
+  override fun toString(): String {
+    // This doesn't really work when the return type is a function/array, but that isn't valid
+    // anyway
+    val variadicStr = if (variadic) ", ..." else ""
+    return "$returnType (${params.joinToString()}$variadicStr)"
+  }
 }
 
 /**
@@ -144,7 +177,10 @@ object ErrorType : TypeName() {
  *
  * C standard: 6.2.5
  */
-data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifierList) : TypeName() {
+data class PointerType(
+    val referencedType: TypeName,
+    override val typeQuals: TypeQualifierList
+) : TypeName() {
   constructor(
       referencedType: TypeName,
       ptrQuals: TypeQualifierList,
@@ -161,42 +197,58 @@ data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifier
   var decayedFrom: TypeName? = null
     private set
 
-  override fun toString() = decayedFrom?.toString() ?: "$referencedType ${ptrQuals.stringify()}"
-}
-
-data class FunctionType(val returnType: TypeName,
-                        val params: List<TypeName>,
-                        val variadic: Boolean = false) : TypeName() {
-  override fun toString(): String {
-    // This doesn't really work when the return type is a function/array, but that isn't valid
-    // anyway
-    val variadicStr = if (variadic) ", ..." else ""
-    return "$returnType (${params.joinToString()}$variadicStr)"
-  }
+  override fun toString() = decayedFrom?.toString() ?: "$referencedType *${typeQuals.stringify()}"
 }
 
 data class ArrayType(val elementType: TypeName, val size: ArrayTypeSize) : TypeName() {
+  /**
+   * Arrays can't be qualified, only their element.
+   *
+   * C standard: 6.7.2.4.0.9
+   */
+  override val typeQuals: TypeQualifierList = emptyList()
+
   override fun toString() = "$elementType[$size]"
 }
 
 // FIXME: implement these too
-data class BitfieldType(val elementType: TypeName, val size: Expression) : TypeName()
+data class BitfieldType(val elementType: TypeName, val size: Expression) : TypeName() {
+  override val typeQuals: TypeQualifierList = emptyList()
+}
 
-data class StructureType(val name: String?, val members: List<TypeName>?) : TypeName() {
+/**
+ * Instances represent explicitly unqualified types.
+ *
+ * C standard: 6.2.5.0.20
+ */
+sealed class UnqualifiedTypeName : TypeName() {
+  // Self-explanatory
+  override val typeQuals: TypeQualifierList = emptyList()
+}
+
+/**
+ * Represents the type of an expression that is invalid, either due to syntax errors, or due to
+ * violations of semantic requirements.
+ */
+object ErrorType : UnqualifiedTypeName() {
+  override fun toString() = "<error type>"
+}
+
+data class StructureType(val name: String?, val members: List<TypeName>?) : UnqualifiedTypeName() {
   override fun toString(): String {
     val nameStr = if (name == null) "" else "$name "
     return "struct $nameStr{...}"
   }
 }
 
-data class UnionType(val name: String?, val optionTypes: List<TypeName>?) : TypeName() {
+data class UnionType(val name: String?, val optionTypes: List<TypeName>?) : UnqualifiedTypeName() {
   override fun toString(): String {
     val nameStr = if (name == null) "" else "$name "
     return "union $nameStr{...}"
   }
 }
 
-sealed class BasicType : TypeName()
+sealed class BasicType : UnqualifiedTypeName()
 
 /** C standard: 6.2.5.0.18 */
 sealed class ArithmeticType : BasicType() {
@@ -343,7 +395,10 @@ object VoidType : BasicType() {
  * C standard: 6.3.1.8
  * @return the "common real type" everything gets converted to
  */
-fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
+fun usualArithmeticConversions(
+    lhs: UnqualifiedTypeName,
+    rhs: UnqualifiedTypeName
+): UnqualifiedTypeName {
   if (lhs is ErrorType || rhs is ErrorType) return ErrorType
   if (lhs !is ArithmeticType || rhs !is ArithmeticType) {
     logger.throwICE("Applying arithmetic conversions on non-arithmetic operands") {
@@ -374,9 +429,11 @@ fun usualArithmeticConversions(lhs: TypeName, rhs: TypeName): TypeName {
  * C standard: 6.5.4
  * @param castParenRange diagnostic range for the parenthesised cast type name
  */
-fun IDebugHandler.validateCast(originalType: TypeName,
-                               targetType: TypeName,
-                               castParenRange: SourcedRange) = when {
+fun IDebugHandler.validateCast(
+    originalType: TypeName,
+    targetType: TypeName,
+    castParenRange: SourcedRange
+) = when {
   targetType is ErrorType -> {
     // Don't report bogus diags for ErrorType
   }
@@ -405,9 +462,11 @@ fun IDebugHandler.validateCast(originalType: TypeName,
  *
  * C standard: 6.5.2.1.0.1
  */
-fun IDebugHandler.typeOfSubscript(subscripted: Expression,
-                                  subscript: Expression,
-                                  endSqBracket: LexicalToken): Pair<TypeName, Boolean> {
+fun IDebugHandler.typeOfSubscript(
+    subscripted: Expression,
+    subscript: Expression,
+    endSqBracket: LexicalToken
+): Pair<TypeName, Boolean> {
   val fullRange = subscripted..endSqBracket
 
   fun TypeName.isSubscriptable() =
@@ -482,7 +541,7 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
       val original = target.decayedFrom
       if (original != null) {
         // & is an exception to these implicit conversions, so don't nest pointer types
-        PointerType(original, target.ptrQuals)
+        PointerType(original, target.typeQuals)
       } else {
         PointerType(target, emptyList())
       }
@@ -520,7 +579,7 @@ fun IDebugHandler.validateAddressOf(expr: UnaryExpression) {
  * Boilerplate that checks [lhs]/[rhs] to be [ArithmeticType], then applies
  * [usualArithmeticConversions]. Returns [ErrorType] if a check fails.
  */
-private fun arithmOp(lhs: TypeName, rhs: TypeName): TypeName {
+private fun arithmOp(lhs: TypeName, rhs: TypeName): UnqualifiedTypeName {
   return if (lhs !is ArithmeticType || rhs !is ArithmeticType) ErrorType
   else usualArithmeticConversions(lhs, rhs)
 }
@@ -529,7 +588,7 @@ private fun arithmOp(lhs: TypeName, rhs: TypeName): TypeName {
  * Boilerplate that checks [lhs]/[rhs] to be [IntegralType], then applies
  * [usualArithmeticConversions]. Returns [ErrorType] if a check fails.
  */
-private fun intOp(lhs: TypeName, rhs: TypeName): TypeName {
+private fun intOp(lhs: TypeName, rhs: TypeName): UnqualifiedTypeName {
   return if (lhs !is IntegralType || rhs !is IntegralType) ErrorType
   else usualArithmeticConversions(lhs, rhs)
 }
@@ -668,6 +727,17 @@ fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expr
       errorOn(pct)
       errorOn(lhs)
     }
+    lhs.type is QualifiedType && Keywords.CONST in lhs.type.typeQuals -> diagnostic {
+      id = DiagnosticId.CONST_QUALIFIED_NOT_ASSIGNABLE
+      val isVariable = lhs is TypedIdentifier
+      formatArgs(
+          if (isVariable) "variable" else "expression",
+          lhs.sourceText?.substring(lhs.range) ?: "???",
+          lhs.type.toString()
+      )
+      errorOn(pct)
+      errorOn(lhs)
+    }
     lhs.valueType != Expression.ValueType.MODIFIABLE_LVALUE -> diagnostic {
       id = DiagnosticId.EXPRESSION_NOT_ASSIGNABLE
       errorOn(pct)
@@ -733,35 +803,37 @@ fun IDebugHandler.checkArrayType(declSpec: DeclarationSpecifier, declarator: Dec
  * C standard: 6.5.15.0.3
  */
 fun resultOfTernary(success: Expression, failure: Expression): TypeName {
-  if (success.type is ErrorType || failure.type is ErrorType) return ErrorType
-  if (success.type is ArithmeticType && failure.type is ArithmeticType) {
-    return usualArithmeticConversions(success.type, failure.type)
+  val successType = success.type
+  val failureType = failure.type
+  if (successType is ErrorType || failureType is ErrorType) return ErrorType
+  if (successType is ArithmeticType && failureType is ArithmeticType) {
+    return usualArithmeticConversions(successType, failureType)
   }
-  if (success.type is StructureType &&
-      failure.type is StructureType &&
-      success.type == failure.type) {
-    return success.type
+  if (successType is StructureType &&
+      failureType is StructureType &&
+      successType == failureType) {
+    return successType
   }
-  if (success.type is UnionType && failure.type is UnionType && success.type == failure.type) {
-    return success.type
+  if (successType is UnionType && failureType is UnionType && successType == failureType) {
+    return successType
   }
-  if (success.type is VoidType && failure.type is VoidType) {
+  if (successType is VoidType && failureType is VoidType) {
     return VoidType
   }
   // FIXME: is null pointer constant case handled?
-  if (success.type is PointerType && failure.type is PointerType) {
+  if (successType is PointerType && failureType is PointerType) {
     // FIXME: overly strict check, compatibles are allowed
-    val successRef = (success.type as PointerType).referencedType
-    val failRef = (failure.type as PointerType).referencedType
+    val successRef = successType.referencedType
+    val failRef = failureType.referencedType
     // FIXME: these 2 ifs are incomplete, see standard
-    if (successRef is VoidType) return failure.type
-    if (failRef is VoidType) return success.type
-    return if (successRef != failRef) ErrorType else success.type
+    if (successRef is VoidType) return failureType
+    if (failRef is VoidType) return successType
+    return if (successRef != failRef) ErrorType else successType
   }
   // FIXME: arrays have much of the same problems as pointers here
-  if (success.type is ArrayType && failure.type is ArrayType) {
-    val successRef = (success.type as ArrayType).elementType
-    val failRef = (failure.type as ArrayType).elementType
+  if (successType is ArrayType && failureType is ArrayType) {
+    val successRef = successType.elementType
+    val failRef = failureType.elementType
     return if (successRef != failRef) ErrorType else PointerType(successRef, emptyList())
   }
   return ErrorType
@@ -775,10 +847,13 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
  * the unchanged [operand] parameter.
  */
 fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
-  if (commonType == operand.type) return operand
-  if (commonType == ErrorType || operand.type == ErrorType) return operand
+  val opType = operand.type
+  if (commonType == opType) return operand
+  if (commonType == ErrorType || opType == ErrorType) return operand
   // FIXME: this does not seem terribly correct, but 6.5.4.0.3 does say pointers need explicit casts
-  if (operand.type is PointerType || commonType is PointerType) return operand
+  if (opType is PointerType || commonType is PointerType) return operand
+  // FIXME: this also does not seem terribly correct, but why would we cast int to const int?
+  if (commonType.unqualify() == opType.unqualify()) return operand
   return CastExpression(operand, commonType).withRange(operand)
 }
 

@@ -17,8 +17,8 @@ data class MachineTargetData(
     val floatSizeBytes: Int,
     val doubleSizeBytes: Int,
     val longDoubleSizeBytes: Int,
-    val sizeType: TypeName,
-    val ptrDiffType: TypeName
+    val sizeType: UnqualifiedTypeName,
+    val ptrDiffType: UnqualifiedTypeName
 ) {
   @SuppressWarnings("MagicNumber")
   private fun Int.toBits(): Int = this * 8
@@ -81,6 +81,7 @@ data class MachineTargetData(
    */
   fun sizeOf(type: TypeName): Int = when (type) {
     ErrorType -> 0
+    is QualifiedType -> sizeOf(type.unqualified)
     is FunctionType, is PointerType -> ptrSizeBytes
     is ArrayType -> {
       val arrSize = type.size as ConstantArraySize

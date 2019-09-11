@@ -277,9 +277,9 @@ class TypeTests {
 
   @Suppress("unused")
   enum class ArithmeticConversionTestCase(
-      val lhs: TypeName,
-      val rhs: TypeName,
-      val expected: TypeName
+      val lhs: UnqualifiedTypeName,
+      val rhs: UnqualifiedTypeName,
+      val expected: UnqualifiedTypeName
   ) {
     SHORT_INT(SignedShortType, SignedIntType, SignedIntType),
     LONG_INT(SignedLongType, SignedIntType, SignedLongType),
@@ -474,6 +474,89 @@ class TypeTests {
     int func ("main" withParams emptyList()) body compoundOf(
         int declare ("a" assign 2),
         (nameRef("a", SignedIntType) assign 3) assign 5
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Assignment To Const Variable Fails`() {
+    val p = prepareCode("""
+      int main() {
+        const int a = 2;
+        a = 3;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.CONST_QUALIFIED_NOT_ASSIGNABLE)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int.copy(typeQualifiers = const) declare ("a" assign 2),
+        nameRef("a", QualifiedType(const, SignedIntType)) assign 3
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Assignment To Const Expression Fails`() {
+    val p = prepareCode("""
+      int main() {
+        const int a = 2;
+        const int* b = &a;
+        *b = 3;
+      }
+    """.trimIndent(), source)
+    val a = nameRef("a", QualifiedType(const, SignedIntType))
+    val b = nameRef("b", PointerType(QualifiedType(const, SignedIntType), emptyList()))
+    p.assertDiags(DiagnosticId.CONST_QUALIFIED_NOT_ASSIGNABLE)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int.copy(typeQualifiers = const) declare ("a" assign 2),
+        int.copy(typeQualifiers = const) declare (ptr("b") assign UnaryOperators.REF[a]),
+        UnaryOperators.DEREF[b] assign 3
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Assignment To Pointer To Const Int Works`() {
+    val p = prepareCode("""
+      int main() {
+        int x = 2, y = 5;
+        const int* b = &x;
+        b = &y;
+      }
+    """.trimIndent(), source)
+    val x = nameRef("x", SignedIntType)
+    val y = nameRef("y", SignedIntType)
+    val b = nameRef("b", PointerType(QualifiedType(const, SignedIntType), emptyList()))
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare listOf("x" assign 2, "y" assign 5),
+        int.copy(typeQualifiers = const) declare (ptr("b") assign UnaryOperators.REF[x]),
+        b assign UnaryOperators.REF[y]
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Const Initialization Works With Constant Expressions`() {
+    val p = prepareCode("""
+      int main() {
+        const int a = 2 + 2;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body compoundOf(
+        int.copy(typeQualifiers = const) declare ("a" assign (2 add 2))
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Const Initialization Works With Non-Constant Expressions`() {
+    val p = prepareCode("""
+      int main() {
+        int b = 873;
+        const int a = b + 2;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val b = nameRef("b", SignedIntType)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare ("b" assign 873),
+        int.copy(typeQualifiers = const) declare ("a" assign (b add 2))
     ) assertEquals p.root.decls[0]
   }
 }

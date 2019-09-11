@@ -181,4 +181,6 @@ fun evalCast(type: TypeName, target: ExprConstantNode): ExprConstantNode = when 
   is BitfieldType -> TODO()
   is StructureType -> TODO()
   is UnionType -> TODO()
+  // FIXME: this is a stub:
+  is QualifiedType -> evalCast(type.unqualified, target)
 }
