@@ -44,7 +44,7 @@ class Parser(
 
   init {
     val debugHandler = DebugHandler("Parser", srcFileName, srcText)
-    val tokenHandler = TokenHandler(tokens, debugHandler)
+    val tokenHandler = TokenHandler(tokens)
     val scopeHandler = ScopeHandler(debugHandler)
     val parenMatcher = ParenMatcher(debugHandler, tokenHandler)
     val declParser = DeclarationParser(parenMatcher, scopeHandler)

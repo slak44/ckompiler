@@ -21,7 +21,7 @@ class PPParser(
     private val ignoreTrigraphs: Boolean,
     private val debugHandler: DebugHandler,
     private val machineTargetData: MachineTargetData
-) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens, debugHandler) {
+) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens) {
 
   val outTokens = mutableListOf<LexicalToken>()
   val objectDefines = mutableMapOf<Identifier, List<LexicalToken>>()
@@ -184,7 +184,7 @@ class PPParser(
         it
       }
     }
-    val pm = ParenMatcher(this, TokenHandler(replaced, this))
+    val pm = ParenMatcher(this, TokenHandler(replaced))
     val p = ConstantExprParser(
         type = ConstantExprType.PREPROCESSOR,
         parenMatcher = pm,

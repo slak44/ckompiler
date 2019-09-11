@@ -56,9 +56,7 @@ interface ITokenHandler {
   fun eatUntil(contextIdx: Int)
 }
 
-// FIXME: useless dependency on debug handler?
-class TokenHandler(tokens: List<LexicalToken>, debugHandler: IDebugHandler) :
-    ITokenHandler, IDebugHandler by debugHandler {
+class TokenHandler(tokens: List<LexicalToken>) : ITokenHandler{
   private val tokStack = Stack<List<LexicalToken>>()
   private val idxStack = Stack<Int>()
 
