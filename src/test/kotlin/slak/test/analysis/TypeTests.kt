@@ -387,6 +387,22 @@ class TypeTests {
   }
 
   @Test
+  fun `Indirection On Function Works`() {
+    val p = prepareCode("""
+      int f() { return 23; }
+      int main() {
+        int b = (*f)();
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val f = int func "f" body compoundOf(returnSt(23))
+    f assertEquals p.root.decls[0]
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare ("b" assign UnaryOperators.DEREF[f]())
+    ) assertEquals p.root.decls[1]
+  }
+
+  @Test
   fun `Arrays Are Actually Pointers`() {
     val p = prepareCode("""
       int main() {
