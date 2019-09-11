@@ -166,17 +166,6 @@ Since the compiler is still a work in progress, there are many features/code
 paths that are not yet implemented. They generally do not throw ICEs, rather
 they use `kotlin.NotImplementedError` created by the `TODO` function.
 
-### Target-Specific Information
-
-Certain things depend on the target ISA and/or the machine (the size of an
-`int`, for example). `MachineTargetData` instances contain all this information.
-
-`MachineTargetData` also generates various macros used in stdlib headers (such
-as `__PTRDIFF_T_TYPE` for `stddef.h`).
-
-For now, only x64 Linux is supported, but the infrastructure for x86 and other
-platforms exists.
-
 ### The `ITokenHandler` Interface
 
 This interface allows a user to interact with a list of `LexicalToken`s. It
@@ -392,6 +381,17 @@ table outlining some of the steps done during renaming for the variable `x`:
 ```
 
 (timestamps omitted for brevity)
+
+### Target-Specific Information
+
+Certain things depend on the target ISA and/or the machine (the size of an
+`int`, for example). `MachineTargetData` instances contain all this information.
+
+`MachineTargetData` also generates various macros used in stdlib headers (such
+as `__PTRDIFF_T_TYPE` for `stddef.h`).
+
+For now, only x64 Linux is supported, but the infrastructure for x86 and other
+platforms exists.
 
 ### Codegen
 
