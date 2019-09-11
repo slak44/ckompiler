@@ -24,7 +24,7 @@ fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (ex
     val lhs = doConstantFolding(expr.lhs).withRange(expr.lhs)
     val rhs = doConstantFolding(expr.rhs).withRange(expr.rhs)
     if (lhs is ExprConstantNode && rhs is ExprConstantNode) {
-      evalBinary(lhs, rhs, expr.op, expr.type).withRange(expr)
+      evalBinary(lhs, rhs, expr.op, lhs.type).withRange(expr)
     } else {
       expr.copy(lhs = lhs, rhs = rhs).withRange(expr)
     }
