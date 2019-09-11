@@ -6,6 +6,8 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.lexer.Keyword
+import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
@@ -397,6 +399,37 @@ class TypeTests {
     val vec = nameRef("vec", PointerType(SignedIntType, emptyList()))
     int func ("main" withParams emptyList()) body compoundOf(
         int declare nameDecl("vec")[20],
+        int declare (ptr("p") assign vec)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Taking Address Of Register Variable Is Not Allowed`() {
+    val p = prepareCode("""
+      int main() {
+        register int a;
+        int* p = &a;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ADDRESS_OF_REGISTER)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int.copy(storageClass = Keywords.REGISTER.kw) declare "a",
+        int declare (ptr("p") assign UnaryOperators.REF[nameRef("a", SignedIntType)])
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Taking Address Of Register Array Is Undefined Behaviour`() {
+    val p = prepareCode("""
+      int main() {
+        register int vec[20];
+        int* p = vec;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ADDRESS_OF_REGISTER)
+    val vec = nameRef("vec", PointerType(SignedIntType, emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        int.copy(storageClass = Keywords.REGISTER.kw) declare nameDecl("vec")[20],
         int declare (ptr("p") assign vec)
     ) assertEquals p.root.decls[0]
   }
