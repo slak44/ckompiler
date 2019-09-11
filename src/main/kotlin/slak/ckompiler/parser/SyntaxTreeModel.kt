@@ -125,6 +125,19 @@ class Noop : Statement(), Terminal {
 sealed class Expression : Statement() {
   /** The [TypeName] of this expression's result. */
   abstract val type: TypeName
+  /** @see ValueType */
+  abstract val valueType: ValueType
+
+  /**
+   * [LVALUE] designates an object.
+   * [MODIFIABLE_LVALUE] is an [LVALUE] with a bunch of restrictions on type.
+   * [RVALUE] is the value of an expression (see note 64).
+   *
+   * C standard: 6.3.2.1.0.1, note 64
+   */
+  enum class ValueType {
+    LVALUE, MODIFIABLE_LVALUE, RVALUE
+  }
 }
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
@@ -152,10 +165,29 @@ data class TypedIdentifier(
     withRange(decl.name)
   }
 
+  override val valueType: ValueType
+
   var id = varCounter()
     private set
 
   override val kindName = "variable"
+
+  /**
+   * C standard: 6.3.2.1.0.1
+   */
+  init {
+    val isArrayPtr = type is PointerType && type.decayedFrom is ArrayType
+    valueType = if (type is PointerType && type.decayedFrom is FunctionType) {
+      // Function designators are lvalues
+      ValueType.LVALUE
+    } else if (type.isCompleteObjectType() && !isArrayPtr) {
+      // FIXME: to be modifiable, it must also not be const-qualified
+      ValueType.MODIFIABLE_LVALUE
+    } else {
+      // FIXME: is everything else an lvalue?
+      ValueType.LVALUE
+    }
+  }
 
   /**
    * Makes a copy of this [TypedIdentifier], that has the same [id].
@@ -180,10 +212,20 @@ data class TypedIdentifier(
   }
 }
 
-data class TernaryConditional(val cond: Expression,
-                              val success: Expression,
-                              val failure: Expression) : Expression() {
+data class TernaryConditional(
+    val cond: Expression,
+    val success: Expression,
+    val failure: Expression
+) : Expression() {
   override val type = resultOfTernary(success, failure)
+
+  /**
+   * "A conditional expression does not yield an lvalue."
+   *
+   * C standard: note 110
+   */
+  override val valueType: ValueType = ValueType.RVALUE
+
 }
 
 /**
@@ -196,6 +238,7 @@ data class TernaryConditional(val cond: Expression,
 data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : Expression() {
   override val type = calledExpr.type.asCallable()?.returnType
       ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }
+  override val valueType: ValueType = ValueType.RVALUE
 }
 
 /**
@@ -203,8 +246,18 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
  * "unary-operator cast-expression" part of it.
  * C standard: A.2.1
  */
-data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Expression() {
-  override val type = op.applyTo(operand.type)
+data class UnaryExpression(
+    val op: UnaryOperators,
+    val operand: Expression,
+    override val type: TypeName
+) : Expression() {
+  /**
+   * FIXME: to be modifiable, it must also not be const-qualified
+   *
+   * C standard: 6.5.3.2.0.4
+   */
+  override val valueType =
+      if (op == UnaryOperators.DEREF) ValueType.MODIFIABLE_LVALUE else ValueType.RVALUE
 }
 
 /**
@@ -216,7 +269,9 @@ data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Ex
  * @param sizeOfWho which type to take the size of
  * @param type the resulting type of the `sizeof` expression, is `size_t` for the current target
  */
-data class SizeofTypeName(val sizeOfWho: TypeName, override val type: TypeName) : Expression()
+data class SizeofTypeName(val sizeOfWho: TypeName, override val type: TypeName) : Expression() {
+  override val valueType: ValueType = ValueType.RVALUE
+}
 
 /**
  * Represents ++x, x++, --x and x--.
@@ -227,6 +282,17 @@ data class IncDecOperation(
     val isPostfix: Boolean
 ) : Expression() {
   override val type = expr.type
+
+  /**
+   * For prefix ops, we have to apply assignment rules, and 6.5.16.0.3 says the result is not an
+   * lvalue.
+   *
+   * For postfix ops, 6.5.2.4.0.2 says that "The result of the postfix ++ operator is the value of
+   * the operand". The value of an expression is an rvalue.
+   *
+   * C standard: 6.5.16.0.3, 6.5.2.4.0.2
+   */
+  override val valueType = ValueType.RVALUE
 }
 
 /** Represents a binary operation in an expression. */
@@ -237,19 +303,41 @@ data class BinaryExpression(
     override val type: TypeName
 ) : Expression() {
   override fun toString() = "($lhs $op $rhs)"
+
+  /** C standard: 6.5.16.0.3 */
+  override val valueType = ValueType.RVALUE
 }
 
-data class ArraySubscript(val subscripted: Expression,
-                          val subscript: Expression,
-                          override val type: TypeName) : Expression() {
+data class ArraySubscript(
+    val subscripted: Expression,
+    val subscript: Expression,
+    override val type: TypeName
+) : Expression() {
   override fun toString() = "$subscripted[$subscript]"
+
+  /**
+   * FIXME: to be modifiable, it must also not be const-qualified
+   *   it is an lvalue at least anyway
+   *
+   * C standard: 6.5.2.1.0.2
+   */
+  override val valueType = ValueType.MODIFIABLE_LVALUE
 }
 
 data class CastExpression(val target: Expression, override val type: TypeName) : Expression() {
   override fun toString() = "($type) $target"
+
+  /**
+   * "A cast does not yield an lvalue."
+   *
+   * C standard: note 104
+   */
+  override val valueType = ValueType.RVALUE
 }
 
-sealed class ExprConstantNode : Expression(), Terminal
+sealed class ExprConstantNode : Expression(), Terminal {
+  override val valueType: ValueType = ValueType.RVALUE
+}
 
 class VoidExpression : ExprConstantNode() {
   override val type = VoidType

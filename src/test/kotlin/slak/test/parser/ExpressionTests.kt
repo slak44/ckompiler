@@ -85,10 +85,9 @@ class ExpressionTests {
 
   @Test
   fun `Paren Prefix Increment`() {
-    // This is invalid code, but valid grammar
-    val p = prepareCode("int a = ++(1);", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign prefixInc(int(1))) assertEquals p.root.decls[0]
+    val p = prepareCode("int a = ++(b);", source)
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
+    int declare ("a" assign prefixInc(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -100,10 +99,9 @@ class ExpressionTests {
 
   @Test
   fun `Paren Postfix Increment`() {
-    // This is invalid code, but valid grammar
-    val p = prepareCode("int a = (1)++;", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign postfixInc(int(1))) assertEquals p.root.decls[0]
+    val p = prepareCode("int a = (b)++;", source)
+    p.assertDiags(DiagnosticId.USE_UNDECLARED)
+    int declare ("a" assign postfixInc(nameRef("b", ErrorType))) assertEquals p.root.decls[0]
   }
 
   @Test

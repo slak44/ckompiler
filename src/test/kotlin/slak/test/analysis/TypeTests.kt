@@ -6,7 +6,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -337,7 +336,7 @@ class TypeTests {
   }
 
   @Test
-  fun `Ref On Array Type Results In Simple Pointer`() {
+  fun `Address Of Array Type Results In Simple Pointer`() {
     val p = prepareCode("""
       int main() {
         int v[20];
@@ -354,7 +353,7 @@ class TypeTests {
   }
 
   @Test
-  fun `Ref On Function Type Results In Simple Pointer`() {
+  fun `Address Of Function Type Results In Simple Pointer`() {
     val p = prepareCode("""
       typedef int mf(void);
       int main() {
@@ -364,7 +363,7 @@ class TypeTests {
     p.assertNoDiagnostics()
     val (typedef, mf) = typedef(int, "mf" withParams emptyList())
     typedef proto "mf" assertEquals p.root.decls[0]
-    val main = nameRef("main", PointerType(FunctionType(SignedIntType, emptyList()), emptyList()))
+    val main = nameRef("main", FunctionType(SignedIntType, emptyList()))
     int func ("main" withParams emptyList()) body compoundOf(
         mf declare (ptr("x") assign UnaryOperators.REF[main])
     ) assertEquals p.root.decls[1]
@@ -404,6 +403,19 @@ class TypeTests {
   }
 
   @Test
+  fun `Taking Address Of Rvalue Is Not Allowed`() {
+    val p = prepareCode("""
+      int main() {
+        &123;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.ADDRESS_REQUIRES_LVALUE)
+    int func ("main" withParams emptyList()) body compoundOf(
+        UnaryOperators.REF[123]
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Taking Address Of Register Variable Is Not Allowed`() {
     val p = prepareCode("""
       int main() {
@@ -431,6 +443,21 @@ class TypeTests {
     int func ("main" withParams emptyList()) body compoundOf(
         int.copy(storageClass = Keywords.REGISTER.kw) declare nameDecl("vec")[20],
         int declare (ptr("p") assign vec)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Assignment Result Is Not An Lvalue`() {
+    val p = prepareCode("""
+      int main() {
+        int a = 2;
+        (a = 3) = 5;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPRESSION_NOT_ASSIGNABLE)
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare ("a" assign 2),
+        (nameRef("a", SignedIntType) assign 3) assign 5
     ) assertEquals p.root.decls[0]
   }
 }

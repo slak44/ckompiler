@@ -369,7 +369,10 @@ class ExpressionParser(
     } else {
       expr
     }
-    return UnaryExpression(op, convertToCommon(resType, exprChecked)).withRange(c..expr)
+    val unary = UnaryExpression(op, convertToCommon(resType, exprChecked), resType)
+        .withRange(c..expr)
+    if (op == UnaryOperators.REF) validateAddressOf(unary)
+    return unary
   }
 
   /** C standard: 6.5.3.4 */

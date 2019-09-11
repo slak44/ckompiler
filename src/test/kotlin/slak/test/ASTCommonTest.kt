@@ -9,8 +9,9 @@ import slak.ckompiler.parser.Char
 import slak.ckompiler.parser.Short
 
 internal val Keywords.kw get() = Keyword(this)
-internal val Punctuators.pct get() =
-  Punctuator(this).withDebugData("ASTCommonTest", "", 0) as Punctuator
+internal val Punctuators.pct
+  get() =
+    Punctuator(this).withDebugData("ASTCommonTest", "", 0) as Punctuator
 
 private object ZeroRange : SourcedRange {
   override val expandedName: String? = null
@@ -166,6 +167,7 @@ private fun String.withParams(params: List<ParameterDeclaration>, variadic: Bool
 
 internal infix fun String.withParams(params: List<ParameterDeclaration>) =
     withParams(params, false) as NamedDeclarator
+
 internal infix fun String.withParamsV(params: List<ParameterDeclaration>) =
     withParams(params, true) as NamedDeclarator
 
@@ -310,6 +312,7 @@ internal operator fun <T> TypedIdentifier.get(it: T): ArraySubscript {
 
 internal fun prefixInc(e: Expression) =
     IncDecOperation(e, isDecrement = false, isPostfix = false).zeroRange()
+
 internal fun postfixInc(e: Expression) =
     IncDecOperation(e, isDecrement = false, isPostfix = true).zeroRange()
 
@@ -357,8 +360,18 @@ internal fun sizeOf(it: TypeName) = SizeofTypeName(it, MachineTargetData.x64.siz
 
 internal fun <T> TypeName.cast(it: T) = CastExpression(parseDSLElement(it), this).zeroRange()
 
-internal operator fun <T> UnaryOperators.get(it: T) =
-    UnaryExpression(this, parseDSLElement(it)).zeroRange()
+internal operator fun <T> UnaryOperators.get(it: T): UnaryExpression {
+  val operand = parseDSLElement(it)
+  val realOperand = if (
+      this == UnaryOperators.REF &&
+      operand is TypedIdentifier &&
+      operand.type is FunctionType) {
+    TypedIdentifier(operand.name, PointerType(operand.type, emptyList(), operand.type))
+  } else {
+    operand
+  }
+  return UnaryExpression(this, realOperand, applyTo(realOperand.type)).zeroRange()
+}
 
 internal operator fun <T : Any> String.invoke(vararg l: T) = name(this)(l).zeroRange()
 

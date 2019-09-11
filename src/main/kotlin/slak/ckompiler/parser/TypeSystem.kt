@@ -461,21 +461,20 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
 }
 
 /**
- * C standard: 6.5.3.3.1, 6.5.3.3.5, 6.3.2.1.0.3, 6.3.2.1.0.4
+ * C standard: 6.5.3.3.0.1, 6.5.3.3.0.5, 6.3.2.1.0.3, 6.3.2.1.0.4
  * @return the type of the expression after applying a unary operator ([ErrorType] if it can't be
  * applied)
  */
 fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
   PLUS, MINUS -> if (target !is ArithmeticType) ErrorType else target.promotedType
   BIT_NOT -> {
-    // FIXME: do 6.5.3.3.4
+    // FIXME: do 6.5.3.3.0.4
     if (target !is IntegralType) ErrorType else target.promotedType
   }
   NOT -> {
-    // The result of this operator is always `int`, as per 6.5.3.3.5
+    // The result of this operator is always `int`, as per 6.5.3.3.0.5
     if (!target.isScalar()) ErrorType else SignedIntType
   }
-  // FIXME: check ALL the constraints from 6.5.3.2.1
   REF -> when (target) {
     is ErrorType -> ErrorType
     is ArrayType -> PointerType(target.elementType, emptyList())
@@ -493,6 +492,28 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
   DEREF -> {
     if (target !is PointerType) ErrorType else target.referencedType
   }
+}
+
+/**
+ * C standard: 6.5.3.2.0.1
+ */
+fun IDebugHandler.validateAddressOf(expr: UnaryExpression) {
+  require(expr.op == REF) { "Not an address of operation" }
+  if (expr.operand.type == ErrorType) return
+  if (expr.operand.type is BitfieldType) {
+    diagnostic {
+      id = DiagnosticId.ADDRESS_OF_BITFIELD
+      errorOn(expr)
+    }
+  }
+  if (expr.operand.valueType == Expression.ValueType.RVALUE) {
+    diagnostic {
+      id = DiagnosticId.ADDRESS_REQUIRES_LVALUE
+      formatArgs(expr.type.toString())
+      errorOn(expr)
+    }
+  }
+  // FIXME: deny address of register storage class
 }
 
 /**
@@ -634,24 +655,25 @@ fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expr
     "lhs: $lhs, rhs: $rhs, pct: $pct"
   }
   if (op !in assignmentOps) return
-  // Don't bother when lhs is an error; these diagnostics would be bogus
-  if (lhs.type == ErrorType) return
-  when (lhs) {
-    is CastExpression -> diagnostic {
+  when {
+    // Don't bother when lhs is an error; these diagnostics would be bogus
+    lhs.type == ErrorType -> return
+    lhs is CastExpression -> diagnostic {
       id = DiagnosticId.ILLEGAL_CAST_ASSIGNMENT
       errorOn(pct)
       errorOn(lhs)
     }
-    is BinaryExpression, is TernaryConditional -> diagnostic {
-      id = DiagnosticId.EXPRESSION_NOT_ASSIGNABLE
-      errorOn(pct)
-      errorOn(lhs)
-    }
-    is ExprConstantNode -> diagnostic {
+    lhs is ExprConstantNode -> diagnostic {
       id = DiagnosticId.CONSTANT_NOT_ASSIGNABLE
       errorOn(pct)
       errorOn(lhs)
     }
+    lhs.valueType != Expression.ValueType.MODIFIABLE_LVALUE -> diagnostic {
+      id = DiagnosticId.EXPRESSION_NOT_ASSIGNABLE
+      errorOn(pct)
+      errorOn(lhs)
+    }
+    else -> return
   }
 }
 
@@ -876,14 +898,20 @@ fun IDebugHandler.checkIncDec(operand: Expression, isDec: Boolean, range: Source
   val type = operand.type
   if (type == ErrorType) return ErrorType
   val isActuallyPointer = type is PointerType && type.decayedFrom == null
-  return if (type.isRealType() || isActuallyPointer) {
-    type
-  } else {
+  if (!type.isRealType() && !isActuallyPointer) {
     diagnostic {
       id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
       formatArgs(if (isDec) "decrement" else "increment", type)
       errorOn(range)
     }
-    ErrorType
+    return ErrorType
   }
+  if (operand.valueType != Expression.ValueType.MODIFIABLE_LVALUE) {
+    diagnostic {
+      id = DiagnosticId.INVALID_MOD_LVALUE_INC_DEC
+      errorOn(operand)
+    }
+    return ErrorType
+  }
+  return type
 }

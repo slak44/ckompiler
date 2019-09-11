@@ -76,6 +76,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   CALL_OBJECT_TYPE(ERROR, "Called object type '%s' is not a function or function pointer"),
   INVALID_ARGUMENT_UNARY(ERROR, "Invalid argument type '%s' to unary operator '%s'"),
   INVALID_INC_DEC_ARGUMENT(ERROR, "Cannot %s value of type '%s'"),
+  INVALID_MOD_LVALUE_INC_DEC(ERROR, "Expression is not a modifiable lvalue"),
   INVALID_RET_TYPE(ERROR, "Function cannot return %s type '%s'"),
   INVALID_ARR_TYPE(ERROR, "'%s' declared as array of functions of type '%s'"),
   INVALID_ARGS_BINARY(ERROR, "Invalid operands to binary operator '%s': '%s' and '%s'"),
@@ -91,10 +92,12 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPRESSION_NOT_ASSIGNABLE(ERROR, "Expression is not assignable"),
   CONSTANT_NOT_ASSIGNABLE(ERROR, "Cannot assign to a constant"),
   ARRAY_OF_INCOMPLETE(ERROR, "Array has incomplete element type '%s'"),
-  SIZEOF_ON_BITFIELD(ERROR, "Sizeof applied to a bitfield"),
+  SIZEOF_ON_BITFIELD(ERROR, "Sizeof applied to a bit-field"),
   SIZEOF_ON_INCOMPLETE(WARNING, "Sizeof applied to incomplete type '%s'"),
   SIZEOF_ON_FUNCTION(WARNING, "Sizeof applied to function type '%s'"),
   ADDRESS_OF_REGISTER(ERROR, "Taking address of register variable '%s'"),
+  ADDRESS_OF_BITFIELD(ERROR, "Taking address of bit-field"),
+  ADDRESS_REQUIRES_LVALUE(ERROR, "Taking address of rvalue of type '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
