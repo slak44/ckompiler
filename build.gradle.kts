@@ -4,10 +4,11 @@ import java.util.Properties
 plugins {
   application
   kotlin("jvm") version "1.3.41"
+  `maven-publish`
 }
 
 group = "ckompiler"
-version = "SNAPSHOT2"
+version = "SNAPSHOT3"
 
 val includePath = "usr/include/ckompiler-$version"
 
@@ -72,3 +73,24 @@ tasks.create("makePropsFile") {
 }
 tasks.processResources.get().dependsOn("makePropsFile")
 tasks.processTestResources.get().dependsOn("makePropsFile")
+
+publishing {
+  repositories {
+    maven {
+      name = "Github"
+      url = uri("https://maven.pkg.github.com/slak44")
+      credentials {
+        username = "slak44"
+        password = File(projectDir, "publish-token").readText().trim()
+      }
+    }
+  }
+  publications {
+    register("mavenJava", MavenPublication::class) {
+      from(components["java"])
+      pom {
+        url.set("https://github.com/slak44/ckompiler.git")
+      }
+    }
+  }
+}
