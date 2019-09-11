@@ -8,6 +8,7 @@ import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 
 class DeclarationTests {
   @Test
@@ -252,8 +253,19 @@ class DeclarationTests {
       void f(int array[]);
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    void proto ("f" withParams listOf(int param nameDecl("array")[NoSize])) assertEquals
-        p.root.decls[0]
+    // There is a weird interaction with LexicalScope by the test DSL here, so do this manually:
+    val proto = void proto ("f" withParams listOf(int param nameDecl("array")[NoSize]))
+    assert(proto.declaratorList.isNotEmpty())
+    assert(proto.declaratorList[0].first is NamedDeclarator)
+    val func = proto.declaratorList[0].first
+    assert(func.isFunction())
+    val ptl = func.getFunctionTypeList()
+    assert(ptl.params.isNotEmpty())
+    assert(ptl.params[0].declarator is NamedDeclarator)
+    val decl = ptl.params[0].declarator
+    assertEquals("array", decl.name.name)
+    assertEquals(emptyList(), decl.indirection)
+    assertEquals(listOf(NoSize), decl.suffixes)
   }
 
   @ParameterizedTest

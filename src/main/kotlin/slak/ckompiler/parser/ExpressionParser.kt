@@ -345,17 +345,10 @@ class ExpressionParser(
     val isDec = c.asPunct() == Punctuators.DEC
     eat() // The prefix op
     val expr = parseUnaryExpression() ?: error<ErrorExpression>()
-    val isNotValidType = !expr.type.isRealType() && expr.type !is PointerType
-    val exprChecked = if (expr.type != ErrorType && isNotValidType) {
-      diagnostic {
-        id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
-        formatArgs(if (isDec) "decrement" else "increment", expr.type)
-        errorOn(c..expr)
-      }
-      error<ErrorExpression>()
-    } else {
-      expr
-    }
+    val resType = checkIncDec(expr, isDec, c..expr)
+    val exprChecked =
+        if (resType != ErrorType || expr.type == ErrorType) expr
+        else error<ErrorExpression>()
     return IncDecOperation(exprChecked, isDecrement = isDec, isPostfix = false).withRange(c..expr)
   }
 
@@ -386,8 +379,8 @@ class ExpressionParser(
     if (isEaten()) return error<ErrorExpression>()
     if (current().asPunct() != Punctuators.LPAREN) {
       val expr = parseUnaryExpression() ?: error<ErrorExpression>()
-      checkSizeofType(expr.type, sizeOf, expr)
-      return SizeofTypeName(expr.type, machineTargetData.sizeType).withRange(sizeOf..expr)
+      val type = checkSizeofType(expr.type, sizeOf, expr)
+      return SizeofTypeName(type, machineTargetData.sizeType).withRange(sizeOf..expr)
     }
     val rParenIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     if (rParenIdx == -1) {
@@ -397,7 +390,7 @@ class ExpressionParser(
     val lParen = current()
     eat() // The '('
     val typeName = parseTypeName(rParenIdx)
-    if (typeName == null) {
+    val resType = if (typeName == null) {
       // Not a type name, so it's a parenthesized expression
       val expr = parseExpr(rParenIdx)
       val retExpr = if (expr == null) {
@@ -408,13 +401,11 @@ class ExpressionParser(
       }
       eat() // The ')'
       checkSizeofType(retExpr.type, sizeOf, retExpr)
-      return SizeofTypeName(retExpr.type, machineTargetData.sizeType)
-          .withRange(sizeOf..tokenAt(rParenIdx))
+    } else {
+      eat() // The ')'
+      checkSizeofType(typeName, sizeOf, lParen..tokenAt(rParenIdx))
     }
-    eat() // The ')'
-    checkSizeofType(typeName, sizeOf, lParen..tokenAt(rParenIdx))
-    return SizeofTypeName(typeName, machineTargetData.sizeType)
-        .withRange(sizeOf..tokenAt(rParenIdx))
+    return SizeofTypeName(resType, machineTargetData.sizeType).withRange(sizeOf..tokenAt(rParenIdx))
   }
 
   /** C standard: 6.5.3 */

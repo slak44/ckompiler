@@ -54,7 +54,7 @@ internal infix fun ASTNode.assertEquals(rhs: ASTNode) = kotlin.test.assertEquals
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).zeroRange()
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
-internal fun FunctionDefinition.toRef() = funcIdent
+internal fun FunctionDefinition.toRef() = nameRef(name, PointerType(functionType, emptyList()))
 internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
 
 internal fun ptr(d: Declarator) =
@@ -170,15 +170,14 @@ internal infix fun String.withParamsV(params: List<ParameterDeclaration>) =
     withParams(params, true) as NamedDeclarator
 
 internal infix fun Pair<DeclarationSpecifier, Declarator>.body(s: Statement): FunctionDefinition {
-  val fType = typeNameOf(first, second) as FunctionType
-  if (s is ErrorStatement) return FunctionDefinition(first, second, s, fType)
+  if (s is ErrorStatement) return FunctionDefinition(first, second, s)
   require(s is CompoundStatement) { "Not compound" }
   require(second.isFunction()) { "Not function" }
   val ptl = second.getFunctionTypeList()
   ptl.scope.idents += s.scope.idents
   ptl.scope.labels += s.scope.labels
   ptl.scope.tagNames += s.scope.tagNames
-  return FunctionDefinition(first, second, CompoundStatement(s.items, ptl.scope), fType)
+  return FunctionDefinition(first, second, CompoundStatement(s.items, ptl.scope))
 }
 
 internal fun ifSt(e: Expression, success: () -> Statement) = IfStatement(e, success(), null)
@@ -305,7 +304,7 @@ internal operator fun NamedDeclarator.get(noSize: NoSize): NamedDeclarator {
   return NamedDeclarator(name, indirection, suffixes + noSize)
 }
 
-internal operator fun <T> TypedIdentifier.get(it : T): ArraySubscript {
+internal operator fun <T> TypedIdentifier.get(it: T): ArraySubscript {
   return ArraySubscript(this, parseDSLElement(it), (this.type as ArrayType).elementType).zeroRange()
 }
 
@@ -338,6 +337,7 @@ private fun <T> parseDSLElement(it: T): Expression {
     is Expression -> it
     is Int -> int(it.toLong())
     is Double -> double(it.toDouble())
+    is FunctionDefinition -> it.toRef()
     is Declaration -> throw IllegalArgumentException("Bad types (did you mean to use a nameRef?)")
     else -> throw IllegalArgumentException("Bad types")
   }
@@ -374,4 +374,13 @@ internal operator fun <Receiver> Receiver.invoke(): FunctionCall {
 
 internal operator fun <Receiver, T : Any> Receiver.invoke(vararg l: T): FunctionCall {
   return FunctionCall(parseDSLElement(this), l.map { parseDSLElement(it) }).zeroRange()
+}
+
+internal fun fnPtrOf(d: Declaration): TypedIdentifier {
+  require(d.declaratorList.size == 1)
+  require(d.declaratorList[0].first is NamedDeclarator)
+  require(d.declaratorList[0].first.isFunction())
+  val fnType = typeNameOf(d.declSpecs, d.declaratorList[0].first)
+  require(fnType is FunctionType)
+  return nameRef(d.declaratorList[0].first.name.name, PointerType(fnType, emptyList(), fnType))
 }

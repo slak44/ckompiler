@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.DoubleType
-import slak.ckompiler.parser.FunctionType
 import slak.ckompiler.parser.SignedIntType
 import slak.test.*
 
@@ -17,7 +15,9 @@ class FunctionCallTests {
       int a = f();
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, listOf()))
+    val proto = int proto "f"
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign f()) assertEquals p.root.decls[1]
   }
 
@@ -28,7 +28,9 @@ class FunctionCallTests {
       int a = f(123);
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, listOf(SignedIntType)))
+    val proto = int proto ("f" withParams listOf(int param "x"))
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign f(123)) assertEquals p.root.decls[1]
   }
 
@@ -39,7 +41,9 @@ class FunctionCallTests {
       int a = f(123 - 123);
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, listOf(SignedIntType)))
+    val proto = int proto ("f" withParams listOf(int param "x"))
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign f(123 sub 123)) assertEquals p.root.decls[1]
   }
 
@@ -50,7 +54,9 @@ class FunctionCallTests {
       int a = f(123, 5.5);
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, listOf(SignedIntType, DoubleType)))
+    val proto = int proto ("f" withParams listOf(int param "x", double param "y"))
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign f(123, 5.5)) assertEquals p.root.decls[1]
   }
 
@@ -61,7 +67,9 @@ class FunctionCallTests {
       int a = f(123 - 123, 5.1*2.3);
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, listOf(SignedIntType, DoubleType)))
+    val proto = int proto ("f" withParams listOf(int param "x", double param "y"))
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign f(123 sub 123, 5.1 mul 2.3)) assertEquals p.root.decls[1]
   }
 
@@ -72,7 +80,9 @@ class FunctionCallTests {
       int a = f(1,2,3);
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, List(3) { SignedIntType }))
+    val proto = int proto ("f" withParams listOf(int param "a", int param "b", int param "c"))
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign f(1, 2, 3)) assertEquals p.root.decls[1]
   }
 
@@ -83,7 +93,9 @@ class FunctionCallTests {
       int a = f(1,(2+2)*4,3);
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, List(3) { SignedIntType }))
+    val proto = int proto ("f" withParams listOf(int param "a", int param "b", int param "c"))
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign f(1, (2 add 2) mul 4, 3)) assertEquals p.root.decls[1]
   }
 
@@ -97,10 +109,10 @@ class FunctionCallTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    int func ("f" withParams listOf(int param "a", int param "b")) body compoundOf(
+    val f = int func ("f" withParams listOf(int param "a", int param "b")) body compoundOf(
         returnSt(nameRef("a", SignedIntType) add nameRef("b", SignedIntType))
-    ) assertEquals p.root.decls[0]
-    val f = nameRef("f", FunctionType(SignedIntType, List(2) { SignedIntType }))
+    )
+    f assertEquals p.root.decls[0]
     int func ("main" withParams emptyList()) body compoundOf(
         f(5, f(2, 3) add (2 mul 3)),
         returnSt(0)

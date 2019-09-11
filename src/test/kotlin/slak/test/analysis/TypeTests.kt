@@ -1,5 +1,6 @@
 package slak.test.analysis
 
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
@@ -44,7 +45,9 @@ class TypeTests {
       int a = (&f)();
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val f = nameRef("f", FunctionType(SignedIntType, emptyList()))
+    val proto = int proto "f"
+    proto assertEquals p.root.decls[0]
+    val f = fnPtrOf(proto)
     int declare ("a" assign UnaryOperators.REF[f]()) assertEquals p.root.decls[1]
   }
 
@@ -61,8 +64,9 @@ class TypeTests {
   fun `Binary Add Bad Types`() {
     val p = prepareCode("int main() {1 + main;}", source)
     p.assertDiags(DiagnosticId.INVALID_ARGS_BINARY)
+    val main = int proto ("main" withParams emptyList())
     int func ("main" withParams emptyList()) body compoundOf(
-        1 add nameRef("main", FunctionType(SignedIntType, emptyList()))
+        1 add fnPtrOf(main)
     ) assertEquals p.root.decls[0]
   }
 
@@ -236,9 +240,9 @@ class TypeTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    void func ("f" withParams listOf(int param "sh", double param "flt")) body
-        emptyCompound() assertEquals p.root.decls[0]
-    val f = nameRef("f", FunctionType(VoidType, listOf(SignedIntType, DoubleType)))
+    val f = void func ("f" withParams listOf(int param "sh", double param "flt")) body
+        emptyCompound()
+    f assertEquals p.root.decls[0]
     int func ("main" withParams emptyList()) body compoundOf(
         short declare ("sh" assign SignedShortType.cast(12)),
         float declare ("flt" assign float(2.0)),
@@ -258,9 +262,8 @@ class TypeTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    void func ("f" withParamsV listOf(int param "a")) body emptyCompound() assertEquals
-        p.root.decls[0]
-    val f = nameRef("f", FunctionType(VoidType, listOf(SignedIntType), variadic = true))
+    val f = void func ("f" withParamsV listOf(int param "a")) body emptyCompound()
+    f assertEquals p.root.decls[0]
     int func ("main" withParams emptyList()) body compoundOf(
         f(
             1,
@@ -292,5 +295,109 @@ class TypeTests {
   fun `Usual Arithmetic Conversions`(case: ArithmeticConversionTestCase) {
     val result = usualArithmeticConversions(case.lhs, case.rhs)
     assertEquals(case.expected, result, "Conversion failed")
+  }
+
+  @Disabled("have to deal with incomplete structs in type system first")
+  @Test
+  fun `Sizeof Incomplete Type`() {
+    val p = prepareCode("struct x; int a = sizeof(struct x);", source)
+    p.assertDiags(DiagnosticId.SIZEOF_ON_INCOMPLETE)
+  }
+
+  @Test
+  fun `Sizeof Function Type`() {
+    val p = prepareCode("""
+      int main() {
+        sizeof main;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.SIZEOF_ON_FUNCTION)
+    val main = nameRef("main", FunctionType(SignedIntType, emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        sizeOf(main)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Sizeof Array Type`() {
+    val p = prepareCode("""
+      int main() {
+        int v[20];
+        sizeof v;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val v = nameRef("v", ArrayType(SignedIntType, ConstantSize(int(20))))
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare nameDecl("v")[20],
+        sizeOf(v)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Ref On Array Type Results In Simple Pointer`() {
+    val p = prepareCode("""
+      int main() {
+        int v[20];
+        int* x = &v;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val arrayType = ArrayType(SignedIntType, ConstantSize(int(20)))
+    val v = nameRef("v", PointerType(SignedIntType, emptyList(), arrayType))
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare nameDecl("v")[20],
+        int declare (ptr("x") assign UnaryOperators.REF[v])
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Ref On Function Type Results In Simple Pointer`() {
+    val p = prepareCode("""
+      typedef int mf(void);
+      int main() {
+        mf* x = &main;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val (typedef, mf) = typedef(int, "mf" withParams emptyList())
+    typedef proto "mf" assertEquals p.root.decls[0]
+    val main = nameRef("main", PointerType(FunctionType(SignedIntType, emptyList()), emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        mf declare (ptr("x") assign UnaryOperators.REF[main])
+    ) assertEquals p.root.decls[1]
+  }
+
+  @Test
+  fun `Functions Are Actually Pointers`() {
+    val p = prepareCode("""
+      typedef int mf(void);
+      int main() {
+        mf* asdf = main;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val (typedef, mf) = typedef(int, "mf" withParams emptyList())
+    typedef proto "mf" assertEquals p.root.decls[0]
+    val main = nameRef("main", PointerType(FunctionType(SignedIntType, emptyList()), emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        mf declare (ptr("asdf") assign main)
+    ) assertEquals p.root.decls[1]
+  }
+
+  @Test
+  fun `Arrays Are Actually Pointers`() {
+    val p = prepareCode("""
+      int main() {
+        int vec[20];
+        int* p = vec;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val vec = nameRef("vec", PointerType(SignedIntType, emptyList()))
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare nameDecl("vec")[20],
+        int declare (ptr("p") assign vec)
+    ) assertEquals p.root.decls[0]
   }
 }

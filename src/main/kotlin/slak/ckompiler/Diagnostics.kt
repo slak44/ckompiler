@@ -93,6 +93,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ARRAY_OF_INCOMPLETE(ERROR, "Array has incomplete element type '%s'"),
   SIZEOF_ON_BITFIELD(ERROR, "Sizeof applied to a bitfield"),
   SIZEOF_ON_INCOMPLETE(WARNING, "Sizeof applied to incomplete type '%s'"),
+  SIZEOF_ON_FUNCTION(WARNING, "Sizeof applied to function type '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

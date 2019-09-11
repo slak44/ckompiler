@@ -118,6 +118,17 @@ sealed class TypeName {
    * System V ABI: 3.2.3, page 17
    */
   fun isABIIntegerType() = this is IntegralType || this is PointerType
+
+  /**
+   * Applies conversions specified by the standard (functions & arrays to pointers).
+   *
+   * C standard: 6.3.2.1.0.3, 6.3.2.1.0.4
+   */
+  fun normalize(): TypeName = when (this) {
+    is FunctionType -> PointerType(this, emptyList(), this)
+    is ArrayType -> PointerType(elementType, emptyList(), this)
+    else -> this
+  }
 }
 
 /**
@@ -134,7 +145,23 @@ object ErrorType : TypeName() {
  * C standard: 6.2.5
  */
 data class PointerType(val referencedType: TypeName, val ptrQuals: TypeQualifierList) : TypeName() {
-  override fun toString() = "$referencedType ${ptrQuals.stringify()}"
+  constructor(
+      referencedType: TypeName,
+      ptrQuals: TypeQualifierList,
+      decayedFrom: TypeName
+  ) : this(referencedType, ptrQuals) {
+    this.decayedFrom = decayedFrom
+  }
+
+  /**
+   * If this pointer type is actually another type that was implicitly converted to a pointer, this
+   * property stores that original type ([FunctionType] or [ArrayType], basically). It is null in
+   * any other case.
+   */
+  var decayedFrom: TypeName? = null
+    private set
+
+  override fun toString() = decayedFrom?.toString() ?: "$referencedType ${ptrQuals.stringify()}"
 }
 
 data class FunctionType(val returnType: TypeName,
@@ -434,7 +461,7 @@ fun IDebugHandler.typeOfSubscript(subscripted: Expression,
 }
 
 /**
- * C standard: 6.5.3.3.1, 6.5.3.3.5
+ * C standard: 6.5.3.3.1, 6.5.3.3.5, 6.3.2.1.0.3, 6.3.2.1.0.4
  * @return the type of the expression after applying a unary operator ([ErrorType] if it can't be
  * applied)
  */
@@ -451,9 +478,15 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
   // FIXME: check ALL the constraints from 6.5.3.2.1
   REF -> when (target) {
     is ErrorType -> ErrorType
+    is ArrayType -> PointerType(target.elementType, emptyList())
     is PointerType -> {
-      if (target.referencedType is FunctionType) target
-      else PointerType(target, emptyList())
+      val original = target.decayedFrom
+      if (original != null) {
+        // & is an exception to these implicit conversions, so don't nest pointer types
+        PointerType(original, target.ptrQuals)
+      } else {
+        PointerType(target, emptyList())
+      }
     }
     else -> PointerType(target, emptyList())
   }
@@ -497,7 +530,7 @@ data class BinaryResult(val exprType: TypeName, val operandCommonType: TypeName)
 
 /**
  * C standard: 6.5.5.0.2, 6.5.5, 6.5.6, 6.5.7, 6.5.8, 6.5.8.0.6, 6.5.9, 6.5.10, 6.5.11, 6.5.12,
- * 6.5.13, 6.5.14, 6.5.17
+ * 6.5.13, 6.5.14, 6.5.17, 6.5.6.0.2
  * @see BinaryResult
  */
 fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): BinaryResult = when (this) {
@@ -511,9 +544,12 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): BinaryResult = when (
     } else {
       // Pointer arithmetic
       // FIXME: handle ArrayType (6.5.6.0.8)
-      // FIXME: the ptr.referencedType must be a complete object type (6.5.6.0.2)
-      val other = if (lhs is PointerType) rhs else lhs
-      BinaryResult(if (other !is IntegralType) ErrorType else ptr)
+      if (!ptr.referencedType.isCompleteObjectType()) {
+        BinaryResult(ErrorType)
+      } else {
+        val other = if (lhs is PointerType) rhs else lhs
+        BinaryResult(if (other !is IntegralType) ErrorType else ptr)
+      }
     }
   }
   SUB -> {
@@ -793,30 +829,61 @@ fun defaultArgumentPromotions(sourceArg: Expression): Expression {
 }
 
 /**
- * Validate the operand type for a `sizeof`. Prints diagnostics.
+ * Validate the operand type for a `sizeof`. Prints diagnostics. Returns the type of the sizeof's
+ * operand, with its pointer implicit conversions removed.
+ *
+ * C standard: 6.3.2.1.0.3, 6.3.2.1.0.4
+ * @see PointerType.decayedFrom
+ * @see TypeName.normalize
  */
 fun IDebugHandler.checkSizeofType(
     typeName: TypeName,
     sizeofRange: SourcedRange,
     targetRange: SourcedRange
-) {
-  if (typeName is ErrorType) return
-  if (typeName is BitfieldType) {
+): TypeName {
+  if (typeName is ErrorType) return ErrorType
+  val unconvertedType = if (typeName is PointerType) typeName.decayedFrom ?: typeName else typeName
+  if (unconvertedType is BitfieldType) {
     diagnostic {
       id = DiagnosticId.SIZEOF_ON_BITFIELD
       errorOn(sizeofRange)
       errorOn(targetRange)
     }
-    return
-  }
-  if (!typeName.isCompleteObjectType()) {
+  } else if (unconvertedType is FunctionType) {
+    diagnostic {
+      id = DiagnosticId.SIZEOF_ON_FUNCTION
+      formatArgs(typeName.toString())
+      errorOn(sizeofRange)
+      errorOn(targetRange)
+    }
+  } else if (!unconvertedType.isCompleteObjectType()) {
     diagnostic {
       id = DiagnosticId.SIZEOF_ON_INCOMPLETE
       formatArgs(typeName.toString())
       errorOn(sizeofRange)
       errorOn(targetRange)
     }
-    return
   }
+  return unconvertedType
+}
 
+/**
+ * Validate operand of [IncDecOperation]. Print diagnostics. Return type of operation.
+ *
+ * C standard: 6.5.3.1, 6.5.2.4
+ */
+fun IDebugHandler.checkIncDec(operand: Expression, isDec: Boolean, range: SourcedRange): TypeName {
+  val type = operand.type
+  if (type == ErrorType) return ErrorType
+  val isActuallyPointer = type is PointerType && type.decayedFrom == null
+  return if (type.isRealType() || isActuallyPointer) {
+    type
+  } else {
+    diagnostic {
+      id = DiagnosticId.INVALID_INC_DEC_ARGUMENT
+      formatArgs(if (isDec) "decrement" else "increment", type)
+      errorOn(range)
+    }
+    ErrorType
+  }
 }

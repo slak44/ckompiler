@@ -141,11 +141,14 @@ class ErrorExpression : ExprConstantNode(), ErrorNode by ErrorNodeImpl {
  * same name (name shadowing). Creating other instances is fine as long as they are not leaked to
  * the rest of the AST.
  */
-data class TypedIdentifier(override val name: String,
-                           override val type: TypeName
+data class TypedIdentifier(
+    override val name: String,
+    override val type: TypeName
 ) : Expression(), OrdinaryIdentifier, Terminal {
-  constructor(ds: DeclarationSpecifier,
-              decl: NamedDeclarator) : this(decl.name.name, typeNameOf(ds, decl)) {
+  constructor(
+      ds: DeclarationSpecifier,
+      decl: NamedDeclarator
+  ) : this(decl.name.name, typeNameOf(ds, decl).normalize()) {
     withRange(decl.name)
   }
 
@@ -216,7 +219,7 @@ data class UnaryExpression(val op: UnaryOperators, val operand: Expression) : Ex
 data class SizeofTypeName(val sizeOfWho: TypeName, override val type: TypeName) : Expression()
 
 /**
- * Represents the argument of ++x, x++, --x and x--.
+ * Represents ++x, x++, --x and x--.
  */
 data class IncDecOperation(
     val expr: Expression,
@@ -613,17 +616,17 @@ data class FunctionDefinition(val funcIdent: TypedIdentifier,
   }
 
   companion object {
-    operator fun invoke(declSpec: DeclarationSpecifier,
-                        functionDeclarator: Declarator,
-                        compoundStatement: Statement,
-                        functionType: FunctionType): FunctionDefinition {
-      val funcIdent = TypedIdentifier(declSpec, functionDeclarator as NamedDeclarator)
+    operator fun invoke(
+        declSpec: DeclarationSpecifier,
+        functionDeclarator: Declarator,
+        compoundStatement: Statement
+    ): FunctionDefinition {
+      require(functionDeclarator is NamedDeclarator) { "Declarator missing name" }
+      val functionType = typeNameOf(declSpec, functionDeclarator)
+      require(functionType is FunctionType) { "Declarator not function type" }
+      val funcIdent = TypedIdentifier(functionDeclarator.name.name, functionType)
       val paramDecls = functionDeclarator.getFunctionTypeList().params
-      if (funcIdent.type !is FunctionType) {
-        logger.throwICE("Function identifier type is not FunctionType") { funcIdent.type }
-      }
-      val paramTypes = funcIdent.type.asCallable()!!.params
-      val params = paramDecls.zip(paramTypes).mapNotNull { (paramDecl, typeName) ->
+      val params = paramDecls.zip(functionType.params).mapNotNull { (paramDecl, typeName) ->
         if (paramDecl.declarator !is NamedDeclarator) return@mapNotNull null
         if (compoundStatement !is CompoundStatement) return@mapNotNull null
         val blockIdents = compoundStatement.scope.idents.mapNotNull { it as? TypedIdentifier }

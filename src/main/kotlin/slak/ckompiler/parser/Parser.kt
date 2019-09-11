@@ -120,11 +120,10 @@ private class TranslationUnitParser(private val specParser: SpecParser,
         errorOn(it.declSpec..it.declarator)
       }
     }
-    val funType = typeNameOf(declSpec, funDecl) as FunctionType
     val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope)
         ?: error<ErrorStatement>()
     val start = if (declSpec.isBlank()) block else declSpec
-    return FunctionDefinition(declSpec, funDecl, block, funType).withRange(start..block)
+    return FunctionDefinition(declSpec, funDecl, block).withRange(start..block)
   }
 
   /**
