@@ -217,13 +217,15 @@ allocated to the context, accidentally or otherwise.
 
 This interface is used both in the parser, and in the preprocessor.
 
-### Lexer
+### Front-end
+
+###### Lexer
 
 The [lexer][lexer] operates on the source code string, and produces a list of
 [LexicalToken][tokens]s and its subclasses. It is integrated in the
 [Preprocessor][pp]. They deal with translation phases 1-6.
 
-### Parser
+###### Parser
 
 The [parser][parser] operates on the token list, and produces an
 [abstract syntax tree][ast] of `ASTNode` instances. It also performs type
@@ -240,7 +242,7 @@ function block statements, etc).
 Each of these has an associated interface (`IExpressionParser` for the
 `ExpressionParser` class), that is used for delegation.  
 
-### Analysis
+### Analysis And IR ("middle-end")
 
 The [analysis][analysis] package takes the syntax tree, and turns each function
 into a graph, with nodes that contain a simpler intermediate representation.
@@ -382,7 +384,9 @@ table outlining some of the steps done during renaming for the variable `x`:
 
 (timestamps omitted for brevity)
 
-### Target-Specific Information
+### Back-end
+
+###### Target-Specific Information
 
 Certain things depend on the target ISA and/or the machine (the size of an
 `int`, for example). `MachineTargetData` instances contain all this information.
@@ -393,7 +397,7 @@ as `__PTRDIFF_T_TYPE` for `stddef.h`).
 For now, only x64 Linux is supported, but the infrastructure for x86 and other
 platforms exists.
 
-### Codegen
+###### Codegen
 
 Code generation takes the graphs for the functions in the translation unit, and
 generates code for a target. It currently targets x86_64 NASM, and, in the
