@@ -152,6 +152,19 @@ sealed class TypeName {
   fun unqualify(): TypeName {
     return if (this is QualifiedType) unqualified else this
   }
+
+  /**
+   * FIXME: the rules for compatible types are VERY annoying, and spread across the entire standard
+   *
+   * C standard: 6.2.7
+   */
+  fun isCompatibleWith(other: TypeName): Boolean {
+    if (this is ErrorType || other is ErrorType) return false
+    if (typeQuals != other.typeQuals) return false
+    val unqualified = unqualify()
+    val otherUnqual = other.unqualify()
+    return unqualified == otherUnqual
+  }
 }
 
 data class QualifiedType(
@@ -696,10 +709,19 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): BinaryResult = when (
     }
   }
   EQ, NEQ -> {
+    val lPtr = lhs as? PointerType
+    val rPtr = rhs as? PointerType
     if (lhs is ArithmeticType && rhs is ArithmeticType) {
       BinaryResult(SignedIntType, usualArithmeticConversions(lhs, rhs))
+    } else if (lhs == rhs) {
+      BinaryResult(SignedIntType, lhs)
+    } else if (lPtr == null && rPtr == null) {
+      // They can't be both non-pointers
+      BinaryResult(ErrorType)
+    } else if (lPtr == rPtr) {
+      BinaryResult(SignedIntType, lhs)
     } else {
-      TODO("lots of pointer arithmetic shit (6.5.9)")
+      TODO("even more pointer cmps stuff / 6.5.9")
     }
   }
   BIT_AND, BIT_XOR, BIT_OR -> BinaryResult(intOp(lhs, rhs))

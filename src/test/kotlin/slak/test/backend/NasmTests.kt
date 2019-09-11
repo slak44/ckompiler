@@ -159,9 +159,8 @@ class NasmTests {
     """.trimIndent()).justExitCode(12)
   }
 
-  @Disabled("fix pointer operations first")
   @Test
-  fun `Identical String Literals Compare Equal Because Deduplication`() {
+  fun `Identical String Literals Compare Equal Because Deduplication Or Folding`() {
     compileAndRun("""
       int main() {
         return "asdfg" == "asdfg";

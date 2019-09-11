@@ -57,6 +57,21 @@ fun evalBasicArithmetic(
   else -> TODO("unknown result type")
 }
 
+fun evalLiteralsComparable(
+    lhs: StringLiteralNode,
+    rhs: StringLiteralNode,
+    op: BinaryOperators
+): ExprConstantNode {
+  val result = when (op) {
+    BinaryOperators.LEQ, BinaryOperators.LT -> true
+    BinaryOperators.GEQ, BinaryOperators.GT -> false
+    BinaryOperators.EQ -> lhs == rhs
+    BinaryOperators.NEQ -> lhs != rhs
+    else -> logger.throwICE("Logically impossible condition")
+  }
+  return IntegerConstantNode(if (result) 1L else 0L)
+}
+
 // Just because it has the same syntax, it doesn't mean it does the same thing
 @Suppress("DuplicatedCode")
 fun evalBasicComparable(
@@ -125,7 +140,11 @@ fun evalBinary(
 ): ExprConstantNode = when (op) {
   BinaryOperators.LT, BinaryOperators.GT, BinaryOperators.LEQ, BinaryOperators.GEQ,
   BinaryOperators.EQ, BinaryOperators.NEQ -> {
-    evalBasicComparable(lhs, rhs, op, resType)
+    if (lhs is StringLiteralNode && rhs is StringLiteralNode) {
+      evalLiteralsComparable(lhs, rhs, op)
+    } else {
+      evalBasicComparable(lhs, rhs, op, resType)
+    }
   }
   BinaryOperators.MUL, BinaryOperators.DIV, BinaryOperators.ADD, BinaryOperators.SUB -> {
     evalBasicArithmetic(lhs, rhs, op, resType)

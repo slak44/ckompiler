@@ -586,4 +586,17 @@ class TypeTests {
         int.copy(typeQualifiers = const) declare ("a" assign (b add 2))
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Pointer Equality`() {
+    val p = prepareCode("""
+      int main() {
+        return "asdf" == "asdf";
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func ("main" withParams emptyList()) body compoundOf(
+        returnSt(strLit("asdf") equals strLit("asdf"))
+    ) assertEquals p.root.decls[0]
+  }
 }
