@@ -101,7 +101,7 @@ class ExpressionParser(
     parenMatcher: ParenMatcher,
     identSearchable: IdentSearchable,
     typeNameParser: TypeNameParser,
-    private val machineTargetData: MachineTargetData
+    val machineTargetData: MachineTargetData
 ) : IExpressionParser,
     IDebugHandler by parenMatcher,
     ITokenHandler by parenMatcher,

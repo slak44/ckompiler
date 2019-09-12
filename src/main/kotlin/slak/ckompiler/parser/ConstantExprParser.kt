@@ -17,7 +17,7 @@ object ConstExprIdents : IdentSearchable, TypeNameParser {
 }
 
 enum class ConstantExprType {
-  PREPROCESSOR, DECLARATOR_ARRAY_SIZE
+  PREPROCESSOR, DECLARATOR_ARRAY_SIZE, INTEGER_CONSTANT
 }
 
 interface IConstantExprParser : IDebugHandler {
@@ -36,11 +36,15 @@ interface IConstantExprParser : IDebugHandler {
 }
 
 /** C standard: 6.6 */
-class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParser) :
-    IConstantExprParser,
+class ConstantExprParser(
+    val type: ConstantExprType,
+    exprParser: ExpressionParser
+) : IConstantExprParser,
     IDebugHandler by exprParser,
     ITokenHandler by exprParser,
     IExpressionParser by exprParser {
+
+  private val targetData: MachineTargetData = exprParser.machineTargetData
 
   constructor(
       type: ConstantExprType,
@@ -63,8 +67,10 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
     return evaluateExprImpl(maybeSuppressed, expr) to maybeSuppressed
   }
 
-  private fun evaluateExprImpl(diags: MutableList<Diagnostic>,
-                               expr: Expression): ExprConstantNode = when (expr) {
+  private fun evaluateExprImpl(
+      diags: MutableList<Diagnostic>,
+      expr: Expression
+  ): ExprConstantNode = when (expr) {
     is TernaryConditional -> TODO("deal with this")
     is ErrorExpression, is VoidExpression,
     is IntegerConstantNode, is CharacterConstantNode -> expr as ExprConstantNode
@@ -80,6 +86,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
       ConstantExprType.PREPROCESSOR -> {
         logger.throwICE("Impossible to get here; identifiers evaluate to 0 in PP")
       }
+      ConstantExprType.INTEGER_CONSTANT,
       ConstantExprType.DECLARATOR_ARRAY_SIZE -> ErrorExpression().withRange(expr)
     }
     is StringLiteralNode, is FloatingConstantNode -> when (type) {
@@ -93,6 +100,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
       }
       // Floats are allowed here in certain places
       // This will check the type of the result anyway
+      ConstantExprType.INTEGER_CONSTANT,
       ConstantExprType.DECLARATOR_ARRAY_SIZE -> expr as ExprConstantNode
     }
     is CastExpression -> when (type) {
@@ -100,6 +108,7 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
         logger.throwICE("Impossible to get here; type names cannot be" +
             " recognized in preprocessor, so casts can't either")
       }
+      ConstantExprType.INTEGER_CONSTANT,
       ConstantExprType.DECLARATOR_ARRAY_SIZE -> {
         evalCast(expr.type, evaluateExprImpl(diags, expr.target))
       }
@@ -135,7 +144,9 @@ class ConstantExprParser(val type: ConstantExprType, exprParser: ExpressionParse
         else -> evalBinary(lhs, rhs, expr.op, expr.type)
       }
     }
-    is SizeofTypeName -> TODO("deal with this after we implement sizeof")
+    is SizeofTypeName -> {
+      IntegerConstantNode(targetData.sizeOf(expr.sizeOfWho).toLong()).withRange(expr)
+    }
   }
 
   companion object {
