@@ -220,7 +220,7 @@ private fun GraphingContext.graphStatement(
     )) {
       val switchInnerLast = graphStatement(scope, switchInnerBlock, s.statement)
       switchInnerLast.terminator = UncondJump(switchAfterBlock)
-      currentNext.terminator = SelectJump(condIr, cases, switchAfterBlock)
+      currentNext.terminator = SelectJump(condIr, cases, currentDefaultBlock ?: switchAfterBlock)
     }
     switchAfterBlock
   }
