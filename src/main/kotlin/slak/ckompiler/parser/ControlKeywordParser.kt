@@ -14,12 +14,17 @@ interface IControlKeywordParser {
   /**
    * C standard: A.2.3, 6.8.6.2
    *
+   * @param isInLoop prints diagnostic if false
    * @return null if there is no continue, the [ContinueStatement] otherwise
    */
-  fun parseContinue(): ContinueStatement?
+  fun parseContinue(isInLoop: Boolean): ContinueStatement?
 
-  /** C standard: A.2.3, 6.8.6.3 */
-  fun parseBreak(): BreakStatement?
+  /**
+   * Print diagnostic if neither of [isInLoop] and [isInSwitch] is true.
+   *
+   * C standard: A.2.3, 6.8.6.3
+   */
+  fun parseBreak(isInSwitch: Boolean, isInLoop: Boolean): BreakStatement?
 
   /** C standard: A.2.3, 6.8.6.3 */
   fun parseReturn(): ReturnStatement?
@@ -60,7 +65,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     }
   }
 
-  override fun parseContinue(): ContinueStatement? {
+  override fun parseContinue(isInLoop: Boolean): ContinueStatement? {
     if (current().asKeyword() != Keywords.CONTINUE) return null
     val continueTok = current()
     eat()
@@ -76,10 +81,14 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
       semiTok = current()
       eat() // The ';'
     }
+    if (!isInLoop) diagnostic {
+      id = DiagnosticId.CONTINUE_OUTSIDE_LOOP
+      errorOn(continueTok)
+    }
     return ContinueStatement().withRange(continueTok..(semiTok ?: continueTok))
   }
 
-  override fun parseBreak(): BreakStatement? {
+  override fun parseBreak(isInSwitch: Boolean, isInLoop: Boolean): BreakStatement? {
     if (current().asKeyword() != Keywords.BREAK) return null
     val breakTok = current()
     eat()
@@ -94,6 +103,10 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     } else {
       semiTok = current()
       eat() // The ';'
+    }
+    if (!isInLoop && !isInSwitch) diagnostic {
+      id = DiagnosticId.BREAK_OUTSIDE_LOOP_SWITCH
+      errorOn(breakTok)
     }
     return BreakStatement().withRange(breakTok..(semiTok ?: breakTok))
   }

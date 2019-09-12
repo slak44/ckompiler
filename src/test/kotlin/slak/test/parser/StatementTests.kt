@@ -260,7 +260,7 @@ class StatementTests {
         break
       }
     """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER, DiagnosticId.BREAK_OUTSIDE_LOOP_SWITCH)
     int func "main" body compoundOf(
         BreakStatement()
     ) assertEquals p.root.decls[0]
@@ -288,7 +288,7 @@ class StatementTests {
         continue
       }
     """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER, DiagnosticId.CONTINUE_OUTSIDE_LOOP)
     int func "main" body compoundOf(
         ContinueStatement()
     ) assertEquals p.root.decls[0]

@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.ErrorExpression
-import slak.ckompiler.parser.ErrorStatement
-import slak.ckompiler.parser.Noop
-import slak.ckompiler.parser.SignedIntType
+import slak.ckompiler.parser.*
 import slak.test.*
 import slak.test.source
 
@@ -316,6 +313,40 @@ class SwitchTests {
             2323.caseLabeled(compoundOf(
                 defaultLabeled(int(2))
             ))
+        ))
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Switch Statement Break Inside Is Ok`() {
+    val p = prepareCode("""
+      int main() {
+        switch (123) {
+          break;
+        }
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func "main" body compoundOf(
+        switch(123, compoundOf(
+            BreakStatement()
+        ))
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Break Inside Case Is Ok`() {
+    val p = prepareCode("""
+      int main() {
+        switch (123) {
+          case 23: break;
+        }
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    int func "main" body compoundOf(
+        switch(123, compoundOf(
+            23.caseLabeled(BreakStatement())
         ))
     ) assertEquals p.root.decls[0]
   }

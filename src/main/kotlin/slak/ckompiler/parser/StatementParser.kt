@@ -27,13 +27,15 @@ class StatementParser(
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser {
 
+  private data class StatementContext(val isInSwitch: Boolean, val isInLoop: Boolean)
+
   /** @see [IStatementParser.parseCompoundStatement] */
   override fun parseCompoundStatement(functionScope: LexicalScope?): Statement? {
-    return parseCompoundStatementImpl(isInSwitch = false, functionScope = functionScope)
+    val ctx = StatementContext(isInSwitch = false, isInLoop = false)
+    return ctx.parseCompoundStatementImpl(functionScope)
   }
 
-  private fun parseCompoundStatementImpl(
-      isInSwitch: Boolean,
+  private fun StatementContext.parseCompoundStatementImpl(
       functionScope: LexicalScope?
   ): Statement? {
     val lbracket = current()
@@ -53,8 +55,7 @@ class StatementParser(
         // [SpecParser] gets confused)
         // Parse expressions after declarations (we get fake diagnostics about expecting a primary
         // expression, when the construct was actually just part of a [DeclarationSpecifier])
-        val item = parseStatement(isInSwitch = isInSwitch, parseExpressionStatement = false)
-            ?.let(::StatementItem)
+        val item = parseStatement(parseExpressionStatement = false)?.let(::StatementItem)
             ?: parseDeclaration(SpecValidationRules.NONE)?.let(::DeclarationItem)
             ?: parseExpressionStatement()?.let(::StatementItem)
             ?: continue
@@ -127,8 +128,8 @@ class StatementParser(
   /**
    * Call [parseStatement] and complain if no statement is found.
    */
-  private fun parseAndExpectStatement(isInSwitch: Boolean): Statement {
-    val statement = parseStatement(isInSwitch = isInSwitch)
+  private fun StatementContext.parseAndExpectStatement(): Statement {
+    val statement = parseStatement()
     return if (statement == null) {
       diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
@@ -144,7 +145,7 @@ class StatementParser(
   }
 
   /** C standard: A.2.3, 6.8.1 */
-  private fun parseDefaultStatement(isInSwitch: Boolean): Statement? {
+  private fun StatementContext.parseDefaultStatement(): Statement? {
     if (current().asKeyword() != Keywords.DEFAULT) return null
     val default = current()
     eat()
@@ -163,12 +164,12 @@ class StatementParser(
       return ErrorStatement()
     }
     eat() // The ':'
-    val st = parseAndExpectStatement(isInSwitch)
+    val st = parseAndExpectStatement()
     return DefaultStatement(st).withRange(default..st)
   }
 
   /** C standard: A.2.3, 6.8.1 */
-  private fun parseCaseStatement(isInSwitch: Boolean): Statement? {
+  private fun StatementContext.parseCaseStatement(): Statement? {
     if (current().asKeyword() != Keywords.CASE) return null
     val case = current()
     eat()
@@ -200,7 +201,7 @@ class StatementParser(
       eatUntil(firstColonIdx)
     }
     eat() // The ':'
-    val st = parseAndExpectStatement(isInSwitch)
+    val st = parseAndExpectStatement()
     return CaseStatement(constExpr, st).withRange(case..st)
   }
 
@@ -208,7 +209,7 @@ class StatementParser(
    * C standard: A.2.3, 6.8.1
    * @return the [LabeledStatement] if it is there, or null if there is no such statement
    */
-  private fun parseLabeledStatement(isInSwitch: Boolean): Statement? {
+  private fun StatementContext.parseLabeledStatement(): Statement? {
     val maybeIdent = current()
     val isColonAfterIdent = tokensLeft >= 2 && relative(1).asPunct() == Punctuators.COLON
     if (maybeIdent !is Identifier || !isColonAfterIdent) return null
@@ -216,19 +217,19 @@ class StatementParser(
     newLabel(label)
     eat() // Get rid of ident
     eat() // Get rid of ':'
-    val labeled = parseAndExpectStatement(isInSwitch)
+    val labeled = parseAndExpectStatement()
     return LabeledStatement(label, labeled).withRange(maybeIdent..labeled)
   }
 
   /**
    * C standard: 6.8.4.2, A.2.3
    */
-  private fun parseSwitch(): Statement? {
+  private fun StatementContext.parseSwitch(): Statement? {
     if (current().asKeyword() != Keywords.SWITCH) return null
     val switchTok = current()
     eat() // The 'switch'
     val cond = parseSelectionStCond(Keywords.SWITCH) ?: return error<ErrorStatement>()
-    val switchSt = parseAndExpectStatement(isInSwitch = true)
+    val switchSt = copy(isInSwitch = true).parseAndExpectStatement()
     return SwitchStatement(cond, switchSt).withRange(switchTok..switchSt)
   }
 
@@ -236,7 +237,7 @@ class StatementParser(
    * C standard: A.2.3, 6.8.4.1
    * @return the [IfStatement] if it is there, or null if it isn't
    */
-  private fun parseIfStatement(isInSwitch: Boolean): Statement? {
+  private fun StatementContext.parseIfStatement(): Statement? {
     if (current().asKeyword() != Keywords.IF) return null
     val ifTok = current()
     eat() // The 'if'
@@ -248,7 +249,7 @@ class StatementParser(
       }
       error<ErrorStatement>()
     } else {
-      val statement = parseStatement(isInSwitch = isInSwitch)
+      val statement = parseStatement()
       if (statement == null) {
         diagnostic {
           id = DiagnosticId.EXPECTED_STATEMENT
@@ -265,7 +266,7 @@ class StatementParser(
     }
     return if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
       eat() // The 'else'
-      val elseStatement = parseAndExpectStatement(isInSwitch)
+      val elseStatement = parseAndExpectStatement()
       IfStatement(cond, statementSuccess, elseStatement).withRange(ifTok..elseStatement)
     } else {
       IfStatement(cond, statementSuccess, null).withRange(ifTok..statementSuccess)
@@ -292,7 +293,7 @@ class StatementParser(
    *
    * @return null if there is no while, the [WhileStatement] otherwise
    */
-  private fun parseWhile(isInSwitch: Boolean): Statement? {
+  private fun StatementContext.parseWhile(): Statement? {
     if (current().asKeyword() != Keywords.WHILE) return null
     val whileTok = current()
     eat() // The WHILE
@@ -309,7 +310,7 @@ class StatementParser(
       cond
     }
     eat() // The ')'
-    val loopable = parseAndExpectStatement(isInSwitch)
+    val loopable = copy(isInLoop = true).parseAndExpectStatement()
     return WhileStatement(condition, loopable).withRange(whileTok..loopable)
   }
 
@@ -318,14 +319,14 @@ class StatementParser(
    *
    * @return null if there is no while, the [DoWhileStatement] otherwise
    */
-  private fun parseDoWhile(isInSwitch: Boolean): Statement? {
+  private fun StatementContext.parseDoWhile(): Statement? {
     if (current().asKeyword() != Keywords.DO) return null
     val doTok = current()
     val theWhile = findKeywordMatch(Keywords.DO, Keywords.WHILE, stopAtSemi = false)
     eat() // The DO
     if (theWhile == -1) return error<ErrorStatement>()
     val statement = tokenContext(theWhile) {
-      parseStatement(isInSwitch = isInSwitch)
+      copy(isInLoop = true).parseStatement()
     }
     val loopable = if (statement == null) {
       diagnostic {
@@ -441,7 +442,7 @@ class StatementParser(
    *
    * @return null if there is no while, the [ForStatement] otherwise
    */
-  private fun parseFor(isInSwitch: Boolean): Statement? {
+  private fun StatementContext.parseFor(): Statement? {
     if (current().asKeyword() != Keywords.FOR) return null
     val forTok = current()
     eat() // The FOR
@@ -455,7 +456,7 @@ class StatementParser(
     eatUntil(rparen)
     eat() // The ')'
     val loopable = forScope.withScope {
-      parseStatement(isInSwitch = isInSwitch)
+      copy(isInLoop = true).parseStatement()
     }
     if (loopable == null) {
       diagnostic {
@@ -474,32 +475,27 @@ class StatementParser(
   /**
    * C standard: A.2.3
    * @param parseExpressionStatement if false, this function will not parse expression statements
-   * @param isInSwitch if false, this function will print diagnostics on switch statement case
-   * and default labels
    * @return null if no statement was found, or the [Statement] otherwise
    */
-  private fun parseStatement(
-      parseExpressionStatement: Boolean = true,
-      isInSwitch: Boolean = false
-  ): Statement? {
+  private fun StatementContext.parseStatement(parseExpressionStatement: Boolean = true): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
       val n = Noop().withRange(rangeOne())
       eat()
       return n
     }
-    val res = parseDefaultStatement(isInSwitch)
-        ?: parseCaseStatement(isInSwitch)
-        ?: parseLabeledStatement(isInSwitch)
-        ?: parseCompoundStatementImpl(isInSwitch, null)
+    val res = parseDefaultStatement()
+        ?: parseCaseStatement()
+        ?: parseLabeledStatement()
+        ?: parseCompoundStatementImpl(null)
         ?: parseSwitch()
-        ?: parseIfStatement(isInSwitch)
+        ?: parseIfStatement()
         ?: parseGotoStatement()
-        ?: parseWhile(isInSwitch)
-        ?: parseDoWhile(isInSwitch)
-        ?: parseFor(isInSwitch)
-        ?: parseContinue()
-        ?: parseBreak()
+        ?: parseWhile()
+        ?: parseDoWhile()
+        ?: parseFor()
+        ?: parseContinue(isInLoop = isInLoop)
+        ?: parseBreak(isInSwitch = isInSwitch, isInLoop = isInLoop)
         ?: parseReturn()
     if (res != null) return res
     return if (parseExpressionStatement) parseExpressionStatement() else null

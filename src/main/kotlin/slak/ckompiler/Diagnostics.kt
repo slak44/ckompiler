@@ -73,6 +73,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   FUN_CALL_ARG_COUNT(ERROR, "Too %s arguments to function call, expected '%d', got '%d'"),
   FUN_CALL_ARG_COUNT_VAR(ERROR,
       "Too few arguments to function call, expected at least '%d', got '%d'"),
+  CONTINUE_OUTSIDE_LOOP(ERROR, "'continue' statement found outside loop"),
+  BREAK_OUTSIDE_LOOP_SWITCH(ERROR, "'break' statement found outside loop or switch"),
 
   // Type system
   CALL_OBJECT_TYPE(ERROR, "Called object type '%s' is not a function or function pointer"),
