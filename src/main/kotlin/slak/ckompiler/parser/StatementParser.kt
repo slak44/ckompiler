@@ -280,7 +280,8 @@ class StatementParser(declarationParser: DeclarationParser,
    * @see parseFor
    */
   private fun parseForLoopInner(
-      rparenIdx: Int
+      rparenIdx: Int,
+      rparen: LexicalToken
   ): Triple<ForInitializer, Expression?, Expression?> = tokenContext(rparenIdx) {
     val firstSemi = firstOutsideParens(
         Punctuators.SEMICOLON, Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
@@ -288,7 +289,7 @@ class StatementParser(declarationParser: DeclarationParser,
       diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_IN_FOR
         if (it.isNotEmpty()) errorOn(safeToken(it.size))
-        else errorOn(parentContext()[rparenIdx])
+        else errorOn(rparen)
       }
       return@tokenContext Triple(error<ErrorInitializer>(),
           error<ErrorExpression>(), error<ErrorExpression>())
@@ -356,7 +357,7 @@ class StatementParser(declarationParser: DeclarationParser,
     if (rparen == -1) return error<ErrorStatement>()
     val forScope = newScope()
     // The 3 components of a for loop
-    val (clause1, expr2, expr3) = forScope.withScope { parseForLoopInner(rparen) }
+    val (clause1, expr2, expr3) = forScope.withScope { parseForLoopInner(rparen, tokenAt(rparen)) }
     eatUntil(rparen)
     eat() // The ')'
     val loopable = forScope.withScope { parseStatement() }

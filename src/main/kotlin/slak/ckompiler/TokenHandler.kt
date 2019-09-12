@@ -22,8 +22,6 @@ interface ITokenHandler {
    */
   fun rangeOne(): SourcedRange = safeToken(0)
 
-  fun parentContext(): List<LexicalToken>
-
   /**
    * Creates a "sub-parser" context for a given list of tokens. However many elements are eaten in
    * the sub context will be eaten in the parent context too. Useful for parsing parenthesis and the
@@ -72,7 +70,7 @@ class TokenHandler(tokens: List<LexicalToken>) : ITokenHandler{
   }
 
   override fun safeToken(offset: Int) = when {
-    !isValidOffset(offset) && tokStack.peek().isEmpty() -> parentContext().last()
+    !isValidOffset(offset) && tokStack.peek().isEmpty() -> tokStack[tokStack.size - 2].last()
     !isValidOffset(offset) -> tokStack.peek().last()
     else -> tokStack.peek()[withOffset(offset).coerceIn(0 until tokenCount)]
   }
@@ -87,8 +85,6 @@ class TokenHandler(tokens: List<LexicalToken>) : ITokenHandler{
     idxStack.push(idxStack.pop() + eatenInContext)
     return result
   }
-
-  override fun parentContext(): List<LexicalToken> = tokStack[tokStack.size - 2]
 
   override fun indexOfFirst(startIdx: Int, block: (LexicalToken) -> Boolean): Int {
     val toDrop = if (startIdx == -1) idxStack.peek() else startIdx
