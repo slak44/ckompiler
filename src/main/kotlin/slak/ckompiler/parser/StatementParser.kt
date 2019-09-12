@@ -161,7 +161,7 @@ class StatementParser(
         column(colPastTheEnd(0))
       }
       eatToSemi()
-      return ErrorStatement()
+      return error<ErrorStatement>()
     }
     eat() // The ':'
     val st = parseAndExpectStatement()
@@ -189,7 +189,7 @@ class StatementParser(
       }
       eatToSemi()
       eat() // The ';'
-      return ErrorStatement()
+      return error<ErrorStatement>()
     }
     val constExpr = parseConstant(firstColonIdx) ?: error<ErrorExpression>()
     if (currentIdx < firstColonIdx) {
