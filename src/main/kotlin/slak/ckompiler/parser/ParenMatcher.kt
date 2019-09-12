@@ -1,7 +1,10 @@
 package slak.ckompiler.parser
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
+
+private val logger = LogManager.getLogger()
 
 interface IParenMatcher {
   /**
@@ -101,7 +104,13 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
       if (!disableDiags) diagnostic {
         id = DiagnosticId.MATCH_PAREN_TARGET
         formatArgs(start.realName)
-        errorOn(tokenAt(if (startIdx == -1) 0 else startIdx))
+        val unmatched = tokenAt(if (startIdx == -1) currentIdx else startIdx)
+        if ((unmatched as? StaticToken)?.enum != start) {
+          logger.throwICE("Token reported by MATCH_PAREN_TARGET is not the right one") {
+            "expected: $start\nactual: $unmatched"
+          }
+        }
+        errorOn(unmatched)
       }
       return -1
     }
