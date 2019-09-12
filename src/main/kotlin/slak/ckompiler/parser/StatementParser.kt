@@ -63,6 +63,15 @@ class StatementParser(
   }
 
   /**
+   * Eat everything until the first [Punctuators.LBRACKET] or the first [Punctuators.SEMICOLON].
+   */
+  private fun eatUntilSemiOrBracket() {
+    val end = indexOfFirst(Punctuators.LBRACKET, Punctuators.SEMICOLON)
+    eatUntil(end)
+    if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
+  }
+
+  /**
    * Expect the paren after a statement name: `if (`, `while (`, etc.
    *
    * Returns true if the paren is there, false otherwise. Prints diagnostic and eats some stuff if
@@ -75,9 +84,7 @@ class StatementParser(
         formatArgs(statementName.keyword)
         errorOn(safeToken(0))
       }
-      val end = indexOfFirst(Punctuators.LBRACKET, Punctuators.SEMICOLON)
-      eatUntil(end)
-      if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
+      eatUntilSemiOrBracket()
       return false
     }
     return true
@@ -90,7 +97,10 @@ class StatementParser(
   private fun parseSelectionStCond(statementName: Keywords): Expression? {
     if (!checkLParenExists(statementName)) return null
     val condParenEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condParenEnd == -1) return null
+    if (condParenEnd == -1) {
+      eatUntilSemiOrBracket()
+      return null
+    }
     eat() // The '(' from the if/switch
     val condExpr = parseExpr(condParenEnd)
     val cond = if (condExpr == null) {
