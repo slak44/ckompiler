@@ -119,8 +119,8 @@ class StatementParser(
   /**
    * Call [parseStatement] and complain if no statement is found.
    */
-  private fun parseAndExpectStatement(parseCaseDefaultLabels: Boolean): Statement {
-    val statement = parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
+  private fun parseAndExpectStatement(isInSwitch: Boolean): Statement {
+    val statement = parseStatement(isInSwitch = isInSwitch)
     return if (statement == null) {
       diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
@@ -136,11 +136,11 @@ class StatementParser(
   }
 
   /** C standard: A.2.3, 6.8.1 */
-  private fun parseDefaultStatement(parseCaseDefaultLabels: Boolean): Statement? {
+  private fun parseDefaultStatement(isInSwitch: Boolean): Statement? {
     if (current().asKeyword() != Keywords.DEFAULT) return null
     val default = current()
     eat()
-    if (!parseCaseDefaultLabels) diagnostic {
+    if (!isInSwitch) diagnostic {
       id = DiagnosticId.UNEXPECTED_SWITCH_LABEL
       formatArgs(Keywords.DEFAULT.keyword)
       errorOn(default)
@@ -155,16 +155,16 @@ class StatementParser(
       return ErrorStatement()
     }
     eat() // The ':'
-    val st = parseAndExpectStatement(parseCaseDefaultLabels)
+    val st = parseAndExpectStatement(isInSwitch)
     return DefaultStatement(st).withRange(default..st)
   }
 
   /** C standard: A.2.3, 6.8.1 */
-  private fun parseCaseStatement(parseCaseDefaultLabels: Boolean): Statement? {
+  private fun parseCaseStatement(isInSwitch: Boolean): Statement? {
     if (current().asKeyword() != Keywords.CASE) return null
     val case = current()
     eat()
-    if (!parseCaseDefaultLabels) diagnostic {
+    if (!isInSwitch) diagnostic {
       id = DiagnosticId.UNEXPECTED_SWITCH_LABEL
       formatArgs(Keywords.CASE.keyword)
       errorOn(case)
@@ -192,7 +192,7 @@ class StatementParser(
       eatUntil(firstColonIdx)
     }
     eat() // The ':'
-    val st = parseAndExpectStatement(parseCaseDefaultLabels)
+    val st = parseAndExpectStatement(isInSwitch)
     return CaseStatement(constExpr, st).withRange(case..st)
   }
 
@@ -200,7 +200,7 @@ class StatementParser(
    * C standard: A.2.3, 6.8.1
    * @return the [LabeledStatement] if it is there, or null if there is no such statement
    */
-  private fun parseLabeledStatement(parseCaseDefaultLabels: Boolean): Statement? {
+  private fun parseLabeledStatement(isInSwitch: Boolean): Statement? {
     val maybeIdent = current()
     val isColonAfterIdent = tokensLeft >= 2 && relative(1).asPunct() == Punctuators.COLON
     if (maybeIdent !is Identifier || !isColonAfterIdent) return null
@@ -208,7 +208,7 @@ class StatementParser(
     newLabel(label)
     eat() // Get rid of ident
     eat() // Get rid of ':'
-    val labeled = parseAndExpectStatement(parseCaseDefaultLabels)
+    val labeled = parseAndExpectStatement(isInSwitch)
     return LabeledStatement(label, labeled).withRange(maybeIdent..labeled)
   }
 
@@ -220,7 +220,7 @@ class StatementParser(
     val switchTok = current()
     eat() // The 'switch'
     val cond = parseSelectionStCond(Keywords.SWITCH) ?: return error<ErrorStatement>()
-    val switchSt = parseAndExpectStatement(parseCaseDefaultLabels = true)
+    val switchSt = parseAndExpectStatement(isInSwitch = true)
     return SwitchStatement(cond, switchSt).withRange(switchTok..switchSt)
   }
 
@@ -228,7 +228,7 @@ class StatementParser(
    * C standard: A.2.3, 6.8.4.1
    * @return the [IfStatement] if it is there, or null if it isn't
    */
-  private fun parseIfStatement(parseCaseDefaultLabels: Boolean): Statement? {
+  private fun parseIfStatement(isInSwitch: Boolean): Statement? {
     if (current().asKeyword() != Keywords.IF) return null
     val ifTok = current()
     eat() // The 'if'
@@ -240,7 +240,7 @@ class StatementParser(
       }
       error<ErrorStatement>()
     } else {
-      val statement = parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
+      val statement = parseStatement(isInSwitch = isInSwitch)
       if (statement == null) {
         diagnostic {
           id = DiagnosticId.EXPECTED_STATEMENT
@@ -257,7 +257,7 @@ class StatementParser(
     }
     return if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
       eat() // The 'else'
-      val elseStatement = parseAndExpectStatement(parseCaseDefaultLabels)
+      val elseStatement = parseAndExpectStatement(isInSwitch)
       IfStatement(cond, statementSuccess, elseStatement).withRange(ifTok..elseStatement)
     } else {
       IfStatement(cond, statementSuccess, null).withRange(ifTok..statementSuccess)
@@ -284,7 +284,7 @@ class StatementParser(
    *
    * @return null if there is no while, the [WhileStatement] otherwise
    */
-  private fun parseWhile(parseCaseDefaultLabels: Boolean): Statement? {
+  private fun parseWhile(isInSwitch: Boolean): Statement? {
     if (current().asKeyword() != Keywords.WHILE) return null
     val whileTok = current()
     eat() // The WHILE
@@ -301,7 +301,7 @@ class StatementParser(
       cond
     }
     eat() // The ')'
-    val loopable = parseAndExpectStatement(parseCaseDefaultLabels)
+    val loopable = parseAndExpectStatement(isInSwitch)
     return WhileStatement(condition, loopable).withRange(whileTok..loopable)
   }
 
@@ -310,14 +310,14 @@ class StatementParser(
    *
    * @return null if there is no while, the [DoWhileStatement] otherwise
    */
-  private fun parseDoWhile(parseCaseDefaultLabels: Boolean): Statement? {
+  private fun parseDoWhile(isInSwitch: Boolean): Statement? {
     if (current().asKeyword() != Keywords.DO) return null
     val doTok = current()
     val theWhile = findKeywordMatch(Keywords.DO, Keywords.WHILE, stopAtSemi = false)
     eat() // The DO
     if (theWhile == -1) return error<ErrorStatement>()
     val statement = tokenContext(theWhile) {
-      parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
+      parseStatement(isInSwitch = isInSwitch)
     }
     val loopable = if (statement == null) {
       diagnostic {
@@ -433,7 +433,7 @@ class StatementParser(
    *
    * @return null if there is no while, the [ForStatement] otherwise
    */
-  private fun parseFor(parseCaseDefaultLabels: Boolean): Statement? {
+  private fun parseFor(isInSwitch: Boolean): Statement? {
     if (current().asKeyword() != Keywords.FOR) return null
     val forTok = current()
     eat() // The FOR
@@ -447,7 +447,7 @@ class StatementParser(
     eatUntil(rparen)
     eat() // The ')'
     val loopable = forScope.withScope {
-      parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
+      parseStatement(isInSwitch = isInSwitch)
     }
     if (loopable == null) {
       diagnostic {
@@ -466,13 +466,13 @@ class StatementParser(
   /**
    * C standard: A.2.3
    * @param parseExpressionStatement if false, this function will not parse expression statements
-   * @param parseCaseDefaultLabels if false, this function will not parse a switch statement's case
+   * @param isInSwitch if false, this function will print diagnostics on switch statement case
    * and default labels
    * @return null if no statement was found, or the [Statement] otherwise
    */
   private fun parseStatement(
       parseExpressionStatement: Boolean = true,
-      parseCaseDefaultLabels: Boolean = false
+      isInSwitch: Boolean = false
   ): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
@@ -480,16 +480,16 @@ class StatementParser(
       eat()
       return n
     }
-    val res = parseDefaultStatement(parseCaseDefaultLabels)
-        ?: parseCaseStatement(parseCaseDefaultLabels)
-        ?: parseLabeledStatement(parseCaseDefaultLabels)
+    val res = parseDefaultStatement(isInSwitch)
+        ?: parseCaseStatement(isInSwitch)
+        ?: parseLabeledStatement(isInSwitch)
         ?: parseCompoundStatement()
         ?: parseSwitch()
-        ?: parseIfStatement(parseCaseDefaultLabels)
+        ?: parseIfStatement(isInSwitch)
         ?: parseGotoStatement()
-        ?: parseWhile(parseCaseDefaultLabels)
-        ?: parseDoWhile(parseCaseDefaultLabels)
-        ?: parseFor(parseCaseDefaultLabels)
+        ?: parseWhile(isInSwitch)
+        ?: parseDoWhile(isInSwitch)
+        ?: parseFor(isInSwitch)
         ?: parseContinue()
         ?: parseBreak()
         ?: parseReturn()
