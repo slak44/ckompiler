@@ -29,6 +29,13 @@ class StatementParser(
 
   /** @see [IStatementParser.parseCompoundStatement] */
   override fun parseCompoundStatement(functionScope: LexicalScope?): Statement? {
+    return parseCompoundStatementImpl(isInSwitch = false, functionScope = functionScope)
+  }
+
+  private fun parseCompoundStatementImpl(
+      isInSwitch: Boolean,
+      functionScope: LexicalScope?
+  ): Statement? {
     val lbracket = current()
     if (current().asPunct() != Punctuators.LBRACKET) return null
     val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
@@ -46,7 +53,8 @@ class StatementParser(
         // [SpecParser] gets confused)
         // Parse expressions after declarations (we get fake diagnostics about expecting a primary
         // expression, when the construct was actually just part of a [DeclarationSpecifier])
-        val item = parseStatement(parseExpressionStatement = false)?.let(::StatementItem)
+        val item = parseStatement(isInSwitch = isInSwitch, parseExpressionStatement = false)
+            ?.let(::StatementItem)
             ?: parseDeclaration(SpecValidationRules.NONE)?.let(::DeclarationItem)
             ?: parseExpressionStatement()?.let(::StatementItem)
             ?: continue
@@ -483,7 +491,7 @@ class StatementParser(
     val res = parseDefaultStatement(isInSwitch)
         ?: parseCaseStatement(isInSwitch)
         ?: parseLabeledStatement(isInSwitch)
-        ?: parseCompoundStatement()
+        ?: parseCompoundStatementImpl(isInSwitch, null)
         ?: parseSwitch()
         ?: parseIfStatement(isInSwitch)
         ?: parseGotoStatement()
