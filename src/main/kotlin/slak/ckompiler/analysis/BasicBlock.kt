@@ -1,6 +1,7 @@
 package slak.ckompiler.analysis
 
 import slak.ckompiler.MachineTargetData
+import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
 import java.util.concurrent.atomic.AtomicInteger
@@ -39,11 +40,26 @@ sealed class Jump {
 }
 
 /** If [cond] is true, jump to [target], otherwise jump to [other]. */
-data class CondJump(val cond: IRLoweringContext,
-                    val target: BasicBlock,
-                    val other: BasicBlock) : Jump() {
+data class CondJump(
+    val cond: IRLoweringContext,
+    val target: BasicBlock,
+    val other: BasicBlock
+) : Jump() {
   override val successors = listOf(target, other)
   override fun toString() = "CondJump<${target.hashCode()}, ${other.hashCode()}>$cond"
+}
+
+/** Select jump target from [options] based on [cond], or pick [default] otherwise. */
+data class SelectJump(
+    val cond: IRLoweringContext,
+    val options: Map<ExprConstantNode, BasicBlock>,
+    val default: BasicBlock
+) : Jump() {
+  override val successors = options.values + default
+  override fun toString(): String {
+    val opts = options.entries.joinToString(" ") { it.value.hashCode().toString() }
+    return "SelectJump<$opts, default: ${default.hashCode()}>($cond)"
+  }
 }
 
 /** Unconditionally jump to [target]. */

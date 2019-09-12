@@ -243,6 +243,7 @@ class NasmGenerator(
     is UncondJump -> genUncondJump(jmp.target)
     is ImpossibleJump -> genReturn(jmp.returned)
     is ConstantJump -> genUncondJump(jmp.target)
+    is SelectJump -> TODO()
     MissingJump -> logger.throwICE("Incomplete BasicBlock")
   }
 

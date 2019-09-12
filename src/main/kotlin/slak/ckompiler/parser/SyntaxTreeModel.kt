@@ -763,9 +763,6 @@ data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope
   }
 }
 
-/** C standard: 6.8.1 */
-data class LabeledStatement(val label: IdentifierNode, val statement: Statement) : Statement()
-
 /** C standard: 6.8.4.1 */
 data class IfStatement(val cond: Expression,
                        val success: Statement,
@@ -775,10 +772,25 @@ data class IfStatement(val cond: Expression,
 data class SwitchStatement(val controllingExpr: Expression, val statement: Statement) : Statement()
 
 /** C standard: 6.8.1 */
-data class DefaultStatement(val statement: Statement): Statement()
+sealed class StatementWithLabel : Statement() {
+  /** Labeled statement. */
+  abstract val statement: Statement
+}
 
 /** C standard: 6.8.1 */
-data class CaseStatement(val caseExpr: ExprConstantNode, val statement: Statement): Statement()
+data class LabeledStatement(
+    val label: IdentifierNode,
+    override val statement: Statement
+) : StatementWithLabel()
+
+/** C standard: 6.8.1 */
+data class CaseStatement(
+    val caseExpr: ExprConstantNode,
+    override val statement: Statement
+): StatementWithLabel()
+
+/** C standard: 6.8.1 */
+data class DefaultStatement(override val statement: Statement): StatementWithLabel()
 
 /** C standard: 6.8.5.1 */
 data class WhileStatement(val cond: Expression, val loopable: Statement) : Statement()

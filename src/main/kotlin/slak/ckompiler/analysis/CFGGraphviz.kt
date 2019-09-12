@@ -4,6 +4,8 @@ import slak.ckompiler.analysis.GraphvizColors.*
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,
+  /** An edge that might be traversed based on what value is. */
+  COND_MAYBE,
   /** An edge that cannot ever be traversed. */
   IMPOSSIBLE
 }
@@ -34,6 +36,11 @@ private fun CFG.graphEdges(): List<Edge> {
         edges += Edge(node, t.target)
         edges += Edge(node, t.impossible, EdgeType.IMPOSSIBLE)
       }
+      is SelectJump -> {
+        val t = node.terminator as SelectJump
+        edges += t.options.values.map { Edge(node, it, EdgeType.COND_MAYBE) }
+        edges += Edge(node, t.default, EdgeType.COND_MAYBE)
+      }
       MissingJump -> {
         // Do nothing intentionally
       }
@@ -46,6 +53,7 @@ private enum class GraphvizColors(val color: String) {
   BG("\"#3C3F41ff\""), BLOCK_DEFAULT("\"#ccccccff\""),
   BLOCK_START("powderblue"), BLOCK_RETURN("mediumpurple2"),
   COND_TRUE("darkolivegreen3"), COND_FALSE("lightcoral"),
+  COND_MAYBE("\"#D7BA4A\""),
   IMPOSSIBLE("black");
 
   override fun toString() = color
@@ -61,7 +69,9 @@ private fun IRLoweringContext.joinToString(sourceCode: String, print: CodePrinti
   } else {
     src.joinToString("\n") {
       when (print) {
-        CodePrintingMethods.SOURCE_SUBSTRING -> sourceCode.substring(it.range).trim()
+        CodePrintingMethods.SOURCE_SUBSTRING -> {
+          (it.sourceText ?: sourceCode).substring(it.range).trim()
+        }
         CodePrintingMethods.EXPRESSION_TO_STRING -> it.toString()
         else -> throw IllegalStateException("The other case is checked above")
       }
@@ -77,10 +87,12 @@ private fun IRLoweringContext.joinToString(sourceCode: String, print: CodePrinti
  * ckompiler --cfg-mode /tmp/file.c 2> /dev/null | dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
  * ```
  */
-fun createGraphviz(graph: CFG,
-                   sourceCode: String,
-                   reachableOnly: Boolean,
-                   print: CodePrintingMethods): String {
+fun createGraphviz(
+    graph: CFG,
+    sourceCode: String,
+    reachableOnly: Boolean,
+    print: CodePrintingMethods
+): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
   val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
@@ -109,6 +121,7 @@ fun createGraphviz(graph: CFG,
       EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
       EdgeType.COND_TRUE -> "color=$COND_TRUE"
       EdgeType.COND_FALSE -> "color=$COND_FALSE"
+      EdgeType.COND_MAYBE -> "color=$COND_MAYBE"
       EdgeType.IMPOSSIBLE -> "color=$IMPOSSIBLE"
     }
     if (reachableOnly && !it.to.isReachable()) {
