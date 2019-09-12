@@ -772,7 +772,13 @@ data class IfStatement(val cond: Expression,
                        val failure: Statement?) : Statement()
 
 /** C standard: 6.8.4.2 */
-data class SwitchStatement(val switch: Expression, val body: Statement) : Statement()
+data class SwitchStatement(val controllingExpr: Expression, val statement: Statement) : Statement()
+
+/** C standard: 6.8.1 */
+data class DefaultStatement(val statement: Statement): Statement()
+
+/** C standard: 6.8.1 */
+data class CaseStatement(val caseExpr: ExprConstantNode, val statement: Statement): Statement()
 
 /** C standard: 6.8.5.1 */
 data class WhileStatement(val cond: Expression, val loopable: Statement) : Statement()

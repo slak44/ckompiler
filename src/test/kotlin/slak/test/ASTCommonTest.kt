@@ -263,7 +263,12 @@ internal fun forSt(e: Declaration,
   return ForStatement(DeclarationInitializer(e.zeroRange()), cond, cont, loopable, scope)
 }
 
-internal infix fun String.labeled(s: Statement) = LabeledStatement(IdentifierNode(this), s)
+internal infix fun String.labeled(s: Statement) = LabeledStatement(name(this), s).zeroRange()
+
+internal fun defaultLabeled(s: Statement) = DefaultStatement(s).zeroRange()
+
+internal fun <T> T.caseLabeled(s: Statement) =
+    CaseStatement(parseDSLElement(this) as ExprConstantNode, s).zeroRange()
 
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 

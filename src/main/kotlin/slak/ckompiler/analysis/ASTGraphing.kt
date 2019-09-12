@@ -193,7 +193,7 @@ private fun GraphingContext.graphStatement(
     elseNext?.terminator = UncondJump(afterIfBlock)
     afterIfBlock
   }
-  is SwitchStatement -> TODO("implement switches")
+  is DefaultStatement, is CaseStatement, is SwitchStatement -> TODO("implement switches")
   is WhileStatement -> {
     val loopHeader = root.newBlock()
     val loopBlock = root.newBlock()

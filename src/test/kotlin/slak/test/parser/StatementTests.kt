@@ -1,6 +1,8 @@
 package slak.test.parser
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -174,6 +176,19 @@ class StatementTests {
   }
 
   @Test
+  fun `If Missing Paren`() {
+    val p = prepareCode("""
+      int main() {
+        if 1) 1 + 1;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_LPAREN_AFTER)
+    int func "main" body compoundOf(
+        ErrorStatement()
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Return Basic`() {
     val p = prepareCode("""
       int main() {
@@ -295,6 +310,19 @@ class StatementTests {
   }
 
   @Test
+  fun `Label With No Colon Is Degenerate Expression`() {
+    val p = prepareCode("""
+      int main() {
+        label
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.USE_UNDECLARED, DiagnosticId.EXPECTED_SEMI_AFTER)
+    int func "main" body compoundOf(
+        nameRef("label", ErrorType)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Label No Semi`() {
     val p = prepareCode("""
       int main() {
@@ -302,10 +330,9 @@ class StatementTests {
       }
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.EXPECTED_STATEMENT)
-    // This hacky thing is needed because the parser is smart enough to add the label to the scope
-    // even if the final LabeledStatement is an error, while the test DSL is *not*
-    val scope = LexicalScope(labels = mutableListOf(name("label")))
-    int func "main" body compoundOf(ErrorStatement(), scope = scope) assertEquals p.root.decls[0]
+    int func "main" body compoundOf(
+        "label" labeled ErrorStatement()
+    ) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -318,6 +345,72 @@ class StatementTests {
     p.assertNoDiagnostics()
     int func "main" body compoundOf(
         "label" labeled (1 add 1)
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Default Label Outside Switch Is Error`() {
+    val p = prepareCode("""
+      int main() {
+        default: ;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.UNEXPECTED_SWITCH_LABEL)
+    int func "main" body compoundOf(
+        defaultLabeled(Noop())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Default Label Without Colon Is Error`() {
+    val p = prepareCode("""
+      int main() {
+        default
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.UNEXPECTED_SWITCH_LABEL, DiagnosticId.EXPECTED_COLON_AFTER)
+    int func "main" body compoundOf(
+        ErrorStatement()
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Case Label Outside Switch Is Error`() {
+    val p = prepareCode("""
+      int main() {
+        case 123: ;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.UNEXPECTED_SWITCH_LABEL)
+    int func "main" body compoundOf(
+        123.caseLabeled(Noop())
+    ) assertEquals p.root.decls[0]
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["case 123", "case", "case 1 + 1", "case (123)"])
+  fun `Case Label Without Colon Is Error`(caseStr: String) {
+    val p = prepareCode("""
+      int main() {
+        $caseStr;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.UNEXPECTED_SWITCH_LABEL, DiagnosticId.EXPECTED_COLON_AFTER)
+    int func "main" body compoundOf(
+        ErrorStatement()
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Case Label With Extra Tokens In Expr`() {
+    val p = prepareCode("""
+      int main() {
+        case 123 123: ;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.UNEXPECTED_SWITCH_LABEL, DiagnosticId.EXPECTED_COLON_AFTER)
+    int func "main" body compoundOf(
+        123.caseLabeled(Noop())
     ) assertEquals p.root.decls[0]
   }
 

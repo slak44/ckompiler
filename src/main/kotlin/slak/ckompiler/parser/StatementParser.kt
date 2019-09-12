@@ -14,9 +14,10 @@ interface IStatementParser {
   fun parseCompoundStatement(functionScope: LexicalScope? = null): Statement?
 }
 
-class StatementParser(declarationParser: DeclarationParser,
-                      controlKeywordParser: ControlKeywordParser) :
-    IStatementParser,
+class StatementParser(
+    declarationParser: DeclarationParser,
+    controlKeywordParser: ControlKeywordParser
+) : IStatementParser,
     IDebugHandler by declarationParser,
     ITokenHandler by declarationParser,
     IScopeHandler by declarationParser,
@@ -61,39 +62,35 @@ class StatementParser(declarationParser: DeclarationParser,
   }
 
   /**
-   * C standard: A.2.3, 6.8.1
-   * @return the [LabeledStatement] if it is there, or null if there is no such statement
+   * Expect the paren after a statement name: `if (`, `while (`, etc.
+   *
+   * Returns true if the paren is there, false otherwise. Prints diagnostic and eats some stuff if
+   * false.
    */
-  private fun parseLabeledStatement(): Statement? {
-    val ident = current()
-    // FIXME: this only parses the first kind of labeled statement (6.8.1)
-    if (ident !is Identifier || relative(1).asPunct() != Punctuators.COLON) return null
-    val label = IdentifierNode.from(ident)
-    newLabel(label)
-    eat() // Get rid of ident
-    eat() // Get rid of ':'
-    val labeled = parseStatement()
-    if (labeled == null) {
+  private fun checkLParenExists(statementName: Keywords): Boolean {
+    if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
       diagnostic {
-        id = DiagnosticId.EXPECTED_STATEMENT
-        errorOn(relative(-1))
+        id = DiagnosticId.EXPECTED_LPAREN_AFTER
+        formatArgs(statementName.keyword)
+        errorOn(safeToken(0))
       }
-      return error<ErrorStatement>()
+      val end = indexOfFirst(Punctuators.LBRACKET, Punctuators.SEMICOLON)
+      eatUntil(end)
+      if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
+      return false
     }
-    return LabeledStatement(label, labeled).withRange(ident..labeled)
+    return true
   }
 
   /**
-   * C standard: A.2.3, 6.8.4.1
-   * @return the [IfStatement] if it is there, or null if it isn't
+   * Parse the condition for an if/switch. Returns null if the if/switch is an error statement, or
+   * the condition expr otherwise.
    */
-  private fun parseIfStatement(): Statement? {
-    if (current().asKeyword() != Keywords.IF) return null
-    val ifTok = current()
-    eat() // The 'if'
+  private fun parseSelectionStCond(statementName: Keywords): Expression? {
+    if (!checkLParenExists(statementName)) return null
     val condParenEnd = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-    if (condParenEnd == -1) return error<ErrorStatement>()
-    eat() // The '(' from the if
+    if (condParenEnd == -1) return null
+    eat() // The '(' from the if/switch
     val condExpr = parseExpr(condParenEnd)
     val cond = if (condExpr == null) {
       // Eat everything between parens
@@ -104,7 +101,127 @@ class StatementParser(declarationParser: DeclarationParser,
     } else {
       condExpr
     }
-    eat() // The ')' from the if
+    eat() // The ')' from the if/switch
+    return cond
+  }
+
+  /**
+   * Call [parseStatement] and complain if no statement is found.
+   */
+  private fun parseAndExpectStatement(parseCaseDefaultLabels: Boolean): Statement {
+    val statement = parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
+    return if (statement == null) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_STATEMENT
+        errorOn(safeToken(0))
+      }
+      // Attempt to eat the error
+      eatToSemi()
+      if (isNotEaten()) eat()
+      error<ErrorStatement>()
+    } else {
+      statement
+    }
+  }
+
+  /** C standard: A.2.3, 6.8.1 */
+  private fun parseDefaultStatement(parseCaseDefaultLabels: Boolean): Statement? {
+    if (current().asKeyword() != Keywords.DEFAULT) return null
+    val default = current()
+    eat()
+    if (!parseCaseDefaultLabels) diagnostic {
+      id = DiagnosticId.UNEXPECTED_SWITCH_LABEL
+      formatArgs(Keywords.DEFAULT.keyword)
+      errorOn(default)
+    }
+    if (isEaten() || current().asPunct() != Punctuators.COLON) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_COLON_AFTER
+        formatArgs(Keywords.DEFAULT.keyword)
+        column(colPastTheEnd(0))
+      }
+      eatToSemi()
+      return ErrorStatement()
+    }
+    eat() // The ':'
+    val st = parseAndExpectStatement(parseCaseDefaultLabels)
+    return DefaultStatement(st).withRange(default..st)
+  }
+
+  /** C standard: A.2.3, 6.8.1 */
+  private fun parseCaseStatement(parseCaseDefaultLabels: Boolean): Statement? {
+    if (current().asKeyword() != Keywords.CASE) return null
+    val case = current()
+    eat()
+    if (!parseCaseDefaultLabels) diagnostic {
+      id = DiagnosticId.UNEXPECTED_SWITCH_LABEL
+      formatArgs(Keywords.CASE.keyword)
+      errorOn(case)
+    }
+    val firstColonIdx = firstOutsideParens(
+        Punctuators.COLON, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = true)
+    if (firstColonIdx == tokenCount || tokenAt(firstColonIdx).asPunct() != Punctuators.COLON) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_COLON_AFTER
+        formatArgs(Keywords.CASE.keyword)
+        if (firstColonIdx == tokenCount) errorOn(tokenAt(tokenCount - 1))
+        else errorOn(tokenAt(firstColonIdx))
+      }
+      eatToSemi()
+      eat() // The ';'
+      return ErrorStatement()
+    }
+    val constExpr = ErrorExpression() // FIXME: .
+    if (currentIdx < firstColonIdx) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_COLON_AFTER
+        formatArgs(Keywords.CASE.keyword)
+        errorOn(tokenAt(firstColonIdx))
+      }
+      eatUntil(firstColonIdx)
+    }
+    eat() // The ':'
+    val st = parseAndExpectStatement(parseCaseDefaultLabels)
+    return CaseStatement(constExpr, st).withRange(case..st)
+  }
+
+  /**
+   * C standard: A.2.3, 6.8.1
+   * @return the [LabeledStatement] if it is there, or null if there is no such statement
+   */
+  private fun parseLabeledStatement(parseCaseDefaultLabels: Boolean): Statement? {
+    val maybeIdent = current()
+    val isColonAfterIdent = tokensLeft >= 2 && relative(1).asPunct() == Punctuators.COLON
+    if (maybeIdent !is Identifier || !isColonAfterIdent) return null
+    val label = IdentifierNode.from(maybeIdent)
+    newLabel(label)
+    eat() // Get rid of ident
+    eat() // Get rid of ':'
+    val labeled = parseAndExpectStatement(parseCaseDefaultLabels)
+    return LabeledStatement(label, labeled).withRange(maybeIdent..labeled)
+  }
+
+  /**
+   * C standard: 6.8.4.2, A.2.3
+   */
+  private fun parseSwitch(): Statement? {
+    if (current().asKeyword() != Keywords.SWITCH) return null
+    val switchTok = current()
+    eat() // The 'switch'
+    val cond = parseSelectionStCond(Keywords.SWITCH) ?: return error<ErrorStatement>()
+    val switchSt = parseAndExpectStatement(parseCaseDefaultLabels = true)
+    return SwitchStatement(cond, switchSt).withRange(switchTok..switchSt)
+  }
+
+  /**
+   * C standard: A.2.3, 6.8.4.1
+   * @return the [IfStatement] if it is there, or null if it isn't
+   */
+  private fun parseIfStatement(parseCaseDefaultLabels: Boolean): Statement? {
+    if (current().asKeyword() != Keywords.IF) return null
+    val ifTok = current()
+    eat() // The 'if'
+    val cond = parseSelectionStCond(Keywords.IF) ?: return error<ErrorStatement>()
     val statementSuccess = if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
       diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
@@ -112,7 +229,7 @@ class StatementParser(declarationParser: DeclarationParser,
       }
       error<ErrorStatement>()
     } else {
-      val statement = parseStatement()
+      val statement = parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
       if (statement == null) {
         diagnostic {
           id = DiagnosticId.EXPECTED_STATEMENT
@@ -127,25 +244,12 @@ class StatementParser(declarationParser: DeclarationParser,
         statement
       }
     }
-    if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
+    return if (isNotEaten() && current().asKeyword() == Keywords.ELSE) {
       eat() // The 'else'
-      val elseStatement = parseStatement()
-      val statementFailure = if (elseStatement == null) {
-        diagnostic {
-          id = DiagnosticId.EXPECTED_STATEMENT
-          errorOn(safeToken(0))
-        }
-        // Eat until the next thing
-        eatToSemi()
-        if (isNotEaten()) eat()
-        error<ErrorStatement>()
-      } else {
-        elseStatement
-      }
-      return IfStatement(cond, statementSuccess, statementFailure)
-          .withRange(ifTok..statementFailure)
+      val elseStatement = parseAndExpectStatement(parseCaseDefaultLabels)
+      IfStatement(cond, statementSuccess, elseStatement).withRange(ifTok..elseStatement)
     } else {
-      return IfStatement(cond, statementSuccess, null).withRange(ifTok..statementSuccess)
+      IfStatement(cond, statementSuccess, null).withRange(ifTok..statementSuccess)
     }
   }
 
@@ -169,21 +273,11 @@ class StatementParser(declarationParser: DeclarationParser,
    *
    * @return null if there is no while, the [WhileStatement] otherwise
    */
-  private fun parseWhile(): Statement? {
+  private fun parseWhile(parseCaseDefaultLabels: Boolean): Statement? {
     if (current().asKeyword() != Keywords.WHILE) return null
     val whileTok = current()
     eat() // The WHILE
-    if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
-      diagnostic {
-        id = DiagnosticId.EXPECTED_LPAREN_AFTER
-        formatArgs(Keywords.WHILE.keyword)
-        errorOn(safeToken(0))
-      }
-      val end = indexOfFirst(Punctuators.LBRACKET, Punctuators.SEMICOLON)
-      eatUntil(end)
-      if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) eat()
-      return error<ErrorStatement>()
-    }
+    if (!checkLParenExists(Keywords.WHILE)) return error<ErrorStatement>()
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
     if (rparen == -1) return error<ErrorStatement>()
@@ -196,19 +290,7 @@ class StatementParser(declarationParser: DeclarationParser,
       cond
     }
     eat() // The ')'
-    val statement = parseStatement()
-    val loopable = if (statement == null) {
-      diagnostic {
-        id = DiagnosticId.EXPECTED_STATEMENT
-        errorOn(safeToken(0))
-      }
-      // Attempt to eat the error
-      eatToSemi()
-      if (isNotEaten()) eat()
-      error<ErrorStatement>()
-    } else {
-      statement
-    }
+    val loopable = parseAndExpectStatement(parseCaseDefaultLabels)
     return WhileStatement(condition, loopable).withRange(whileTok..loopable)
   }
 
@@ -217,13 +299,15 @@ class StatementParser(declarationParser: DeclarationParser,
    *
    * @return null if there is no while, the [DoWhileStatement] otherwise
    */
-  private fun parseDoWhile(): Statement? {
+  private fun parseDoWhile(parseCaseDefaultLabels: Boolean): Statement? {
     if (current().asKeyword() != Keywords.DO) return null
     val doTok = current()
     val theWhile = findKeywordMatch(Keywords.DO, Keywords.WHILE, stopAtSemi = false)
     eat() // The DO
     if (theWhile == -1) return error<ErrorStatement>()
-    val statement = tokenContext(theWhile) { parseStatement() }
+    val statement = tokenContext(theWhile) {
+      parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
+    }
     val loopable = if (statement == null) {
       diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
@@ -338,20 +422,11 @@ class StatementParser(declarationParser: DeclarationParser,
    *
    * @return null if there is no while, the [ForStatement] otherwise
    */
-  private fun parseFor(): Statement? {
+  private fun parseFor(parseCaseDefaultLabels: Boolean): Statement? {
     if (current().asKeyword() != Keywords.FOR) return null
     val forTok = current()
     eat() // The FOR
-    if (isEaten() || current().asPunct() != Punctuators.LPAREN) {
-      diagnostic {
-        id = DiagnosticId.EXPECTED_LPAREN_AFTER
-        formatArgs(Keywords.FOR.keyword)
-        errorOn(safeToken(0))
-      }
-      eatToSemi()
-      if (isNotEaten()) eat()
-      return error<ErrorStatement>()
-    }
+    if (!checkLParenExists(Keywords.FOR)) return error<ErrorStatement>()
     val rparen = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
     eat() // The '('
     if (rparen == -1) return error<ErrorStatement>()
@@ -360,7 +435,9 @@ class StatementParser(declarationParser: DeclarationParser,
     val (clause1, expr2, expr3) = forScope.withScope { parseForLoopInner(rparen, tokenAt(rparen)) }
     eatUntil(rparen)
     eat() // The ')'
-    val loopable = forScope.withScope { parseStatement() }
+    val loopable = forScope.withScope {
+      parseStatement(parseCaseDefaultLabels = parseCaseDefaultLabels)
+    }
     if (loopable == null) {
       diagnostic {
         id = DiagnosticId.EXPECTED_STATEMENT
@@ -378,22 +455,30 @@ class StatementParser(declarationParser: DeclarationParser,
   /**
    * C standard: A.2.3
    * @param parseExpressionStatement if false, this function will not parse expression statements
+   * @param parseCaseDefaultLabels if false, this function will not parse a switch statement's case
+   * and default labels
    * @return null if no statement was found, or the [Statement] otherwise
    */
-  private fun parseStatement(parseExpressionStatement: Boolean = true): Statement? {
+  private fun parseStatement(
+      parseExpressionStatement: Boolean = true,
+      parseCaseDefaultLabels: Boolean = false
+  ): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
       val n = Noop().withRange(rangeOne())
       eat()
       return n
     }
-    val res = parseLabeledStatement()
+    val res = parseDefaultStatement(parseCaseDefaultLabels)
+        ?: parseCaseStatement(parseCaseDefaultLabels)
+        ?: parseLabeledStatement(parseCaseDefaultLabels)
         ?: parseCompoundStatement()
-        ?: parseIfStatement()
+        ?: parseSwitch()
+        ?: parseIfStatement(parseCaseDefaultLabels)
         ?: parseGotoStatement()
-        ?: parseWhile()
-        ?: parseDoWhile()
-        ?: parseFor()
+        ?: parseWhile(parseCaseDefaultLabels)
+        ?: parseDoWhile(parseCaseDefaultLabels)
+        ?: parseFor(parseCaseDefaultLabels)
         ?: parseContinue()
         ?: parseBreak()
         ?: parseReturn()
