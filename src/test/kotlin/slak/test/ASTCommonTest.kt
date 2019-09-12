@@ -270,6 +270,9 @@ internal fun defaultLabeled(s: Statement) = DefaultStatement(s).zeroRange()
 internal fun <T> T.caseLabeled(s: Statement) =
     CaseStatement(parseDSLElement(this) as ExprConstantNode, s).zeroRange()
 
+internal fun <T> switch(onExpr: T, statement: Statement) =
+    SwitchStatement(parseDSLElement(onExpr), statement).zeroRange()
+
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
 internal inline fun <reified T> struct(name: String?, decls: List<T>): StructDefinition {
