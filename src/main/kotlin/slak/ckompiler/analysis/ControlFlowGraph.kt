@@ -3,10 +3,7 @@ package slak.ckompiler.analysis
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
-import slak.ckompiler.parser.FunctionDefinition
-import slak.ckompiler.parser.IntegerConstantNode
-import slak.ckompiler.parser.Terminal
-import slak.ckompiler.parser.VoidType
+import slak.ckompiler.parser.*
 import java.util.*
 
 private val logger = LogManager.getLogger()
@@ -65,7 +62,13 @@ class CFG(val f: FunctionDefinition,
       // C standard: 5.1.2.2.3
       val ret = if (forceReturnZero) {
         val ctx = IRLoweringContext(it.irContext)
-        ctx.buildIR(IntegerConstantNode(0))
+        ctx.buildIR(IntegerConstantNode(0).withRange(object : SourcedRange {
+          override val sourceFileName = f.sourceFileName
+          override val sourceText = "0"
+          override val range = 0..0
+          override val expandedName: String? = null
+          override val expandedFrom: SourcedRange? = null
+        }))
         synthCount++
         ctx
       } else {
