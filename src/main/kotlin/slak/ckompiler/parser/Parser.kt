@@ -54,7 +54,11 @@ class Parser(
     declParser.constExprParser =
         ConstantExprParser(ConstantExprType.DECLARATOR_ARRAY_SIZE, declParser.expressionParser)
     val controlKeywordParser = ControlKeywordParser(declParser.expressionParser)
-    val statementParser = StatementParser(declParser, controlKeywordParser)
+    val statementParser = StatementParser(
+        declParser,
+        controlKeywordParser,
+        ConstantExprParser(ConstantExprType.INTEGER_CONSTANT, declParser.expressionParser)
+    )
     trParser = TranslationUnitParser(declParser.specParser, statementParser)
   }
 

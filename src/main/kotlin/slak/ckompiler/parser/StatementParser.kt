@@ -16,13 +16,14 @@ interface IStatementParser {
 
 class StatementParser(
     declarationParser: DeclarationParser,
-    controlKeywordParser: ControlKeywordParser
+    controlKeywordParser: ControlKeywordParser,
+    constExprParser: ConstantExprParser
 ) : IStatementParser,
-    IDebugHandler by declarationParser,
     ITokenHandler by declarationParser,
     IScopeHandler by declarationParser,
     IParenMatcher by declarationParser,
     IExpressionParser by controlKeywordParser,
+    IConstantExprParser by constExprParser,
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser {
 
@@ -171,7 +172,7 @@ class StatementParser(
       eat() // The ';'
       return ErrorStatement()
     }
-    val constExpr = ErrorExpression() // FIXME: .
+    val constExpr = parseConstant(firstColonIdx) ?: error<ErrorExpression>()
     if (currentIdx < firstColonIdx) {
       diagnostic {
         id = DiagnosticId.EXPECTED_COLON_AFTER

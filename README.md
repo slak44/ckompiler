@@ -33,14 +33,16 @@ job to a concrete `ExpressionParser` instance received through the constructor
 As a code example, the largest of the components, `StatementParser`, is declared
 like this:
 ```kotlin
-class StatementParser(declarationParser: DeclarationParser,
-                      controlKeywordParser: ControlKeywordParser) :
-    IStatementParser,
-    IDebugHandler by declarationParser,
+class StatementParser(
+    declarationParser: DeclarationParser,
+    controlKeywordParser: ControlKeywordParser,
+    constExprParser: ConstantExprParser
+) : IStatementParser,
     ITokenHandler by declarationParser,
     IScopeHandler by declarationParser,
     IParenMatcher by declarationParser,
     IExpressionParser by controlKeywordParser,
+    IConstantExprParser by constExprParser,
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser { /* ... */ }
 ```
