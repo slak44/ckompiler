@@ -10,9 +10,12 @@ private enum class EdgeType {
   IMPOSSIBLE
 }
 
-private data class Edge(val from: BasicBlock,
-                        val to: BasicBlock,
-                        val type: EdgeType = EdgeType.NORMAL)
+private data class Edge(
+    val from: BasicBlock,
+    val to: BasicBlock,
+    val type: EdgeType = EdgeType.NORMAL,
+    val text: String = ""
+)
 
 private fun CFG.graphEdges(): List<Edge> {
   val edges = mutableListOf<Edge>()
@@ -38,8 +41,10 @@ private fun CFG.graphEdges(): List<Edge> {
       }
       is SelectJump -> {
         val t = node.terminator as SelectJump
-        edges += t.options.values.map { Edge(node, it, EdgeType.COND_MAYBE) }
-        edges += Edge(node, t.default, EdgeType.COND_MAYBE)
+        edges += t.options.entries.map {
+          Edge(node, it.value, EdgeType.COND_MAYBE, it.key.toString())
+        }
+        edges += Edge(node, t.default, EdgeType.COND_MAYBE, "default")
       }
       MissingJump -> {
         // Do nothing intentionally
@@ -79,6 +84,12 @@ private fun IRLoweringContext.joinToString(sourceCode: String, print: CodePrinti
   }
 }
 
+private fun String.unescape(): String =
+    replace("\"", "\\\"")
+        .replace("\\b", "\\\\b")
+        .replace("\\t", "\\\\t")
+        .replace("\\n", "\\\\n")
+
 /**
  * Pretty graph for debugging purposes.
  * Possible usages:
@@ -102,7 +113,11 @@ fun createGraphviz(
       else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
     }
 
-    val phi = it.phiFunctions.joinToString("\n") { p -> p.toString() }
+    val phi = if (print == CodePrintingMethods.IR_EXPRESSION_TO_STRING) {
+      it.phiFunctions.joinToString("\n") { p -> p.toString() }
+    } else {
+      ""
+    }
     val rawCode = it.irContext.joinToString(sourceCode, print)
 
     val cond = (it.terminator as? CondJump)?.cond?.let { context ->
@@ -114,8 +129,7 @@ fun createGraphviz(
 
     val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret
     val blockText = if (code.isBlank()) "<EMPTY>" else code.trim()
-    val escapedQuotes = blockText.replace("\"", "\\\"")
-    "node${it.hashCode()} [shape=box,$style,label=\"$escapedQuotes\"];"
+    "node${it.hashCode()} [shape=box,$style,label=\"${blockText.unescape()}\"];"
   } + sep + edges.joinToString(sep) {
     val color = when (it.type) {
       EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
@@ -127,7 +141,8 @@ fun createGraphviz(
     if (reachableOnly && !it.to.isReachable()) {
       ""
     } else {
-      "node${it.from.hashCode()} -> node${it.to.hashCode()} [$color];"
+      val props = "$color,label=\"${it.text.unescape()}\",fontcolor=$BLOCK_DEFAULT"
+      "node${it.from.hashCode()} -> node${it.to.hashCode()} [$props];"
     }
   }
   return "digraph CFG {${sep}bgcolor=$BG$sep$content\n}"
