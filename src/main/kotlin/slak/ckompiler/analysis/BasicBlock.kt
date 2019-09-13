@@ -1,10 +1,14 @@
 package slak.ckompiler.analysis
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
+import slak.ckompiler.throwICE
 import java.util.concurrent.atomic.AtomicInteger
+
+private val logger = LogManager.getLogger()
 
 /**
  * Returns a sequential integer ID on [invoke].
@@ -146,6 +150,9 @@ class BasicBlock(val isRoot: Boolean = false, targetData: MachineTargetData) {
           value.target.preds += this
           value.other.preds += this
         }
+        is SelectJump -> {
+          for (target in value.successors) target.preds += this
+        }
         is ConstantJump -> value.target.preds += this
         is UncondJump -> value.target.preds += this
         is ImpossibleJump, MissingJump -> {
@@ -172,14 +179,13 @@ class BasicBlock(val isRoot: Boolean = false, targetData: MachineTargetData) {
   fun isReachable(): Boolean {
     if (isRoot) return true
     return preds.any { pred ->
-      when (pred.terminator) {
+      when (val t = pred.terminator) {
         is UncondJump -> true
-        is ConstantJump -> (pred.terminator as ConstantJump).target == this
-        is CondJump -> {
-          val t = pred.terminator as CondJump
-          t.target == this || t.other == this
-        }
-        else -> false
+        is ImpossibleJump -> false
+        is ConstantJump -> t.target == this
+        is CondJump -> t.target == this || t.other == this
+        is SelectJump -> this in t.successors
+        MissingJump -> logger.throwICE("BasicBlock predecessor has MissingJump terminator")
       }
     }
   }
