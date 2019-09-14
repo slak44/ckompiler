@@ -125,9 +125,10 @@ class CLITests {
     assertTrue(File("bla.o").exists())
   }
 
-  @Test
-  fun `Bad Option`() {
-    val (cli, exitCode) = cli("--dfghbnjgned-not-an-actual-option")
+  @ParameterizedTest
+  @ValueSource(strings = ["--dfghbnjgned-not-an-actual-option", "--include-directory/tmp"])
+  fun `Bad Option`(opt: String) {
+    val (cli, exitCode) = cli(opt)
     cli.assertDiags(DiagnosticId.BAD_CLI_OPTION, DiagnosticId.NO_INPUT_FILES)
     assertEquals(ExitCodes.EXECUTION_FAILED, exitCode)
     assertFalse(File("a.out").exists())
@@ -182,5 +183,21 @@ class CLITests {
     cli.assertNoDiagnostics()
     assertEquals(ExitCodes.NORMAL, exitCode)
     assertFalse(File("a.out").exists())
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["-L/tmp/foo", "-L /tmp/foo"])
+  fun `Linker -L Flag Works`(arg: String) {
+    val outStream = ByteArrayOutputStream()
+    System.setOut(PrintStream(outStream))
+    val (cli, exitCode) = cli(
+        *arg.split(" ").toTypedArray(),
+        "--print-linker-comm",
+        resource("e2e/returns10.c").absolutePath
+    )
+    cli.assertNoDiagnostics()
+    assertEquals(ExitCodes.NORMAL, exitCode)
+    stdout.println(outStream)
+    assert("-L/tmp/foo" in outStream.toString())
   }
 }

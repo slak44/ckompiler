@@ -27,54 +27,6 @@ typealias CLIDefines = Map<String, String>
  */
 class CLI(private val stdinStream: InputStream) :
     IDebugHandler by DebugHandler("CLI", "<command line>", "") {
-  private fun CommandLineInterface.helpGroup(description: String) {
-    addHelpEntry(object : HelpEntry {
-      override fun printHelp(helpPrinter: HelpPrinter) {
-        helpPrinter.printSeparator()
-        helpPrinter.printText(description)
-      }
-    })
-  }
-
-  private data class SimpleHelpEntry(val name: String, val help: String) : HelpEntry {
-    override fun printHelp(helpPrinter: HelpPrinter) {
-      helpPrinter.printEntry(name, help)
-    }
-  }
-
-  private class PositionalArgumentsActionHandler : PositionalArgument {
-    override val maxArgs = Int.MAX_VALUE
-    override val minArgs = 0
-    override val name: String
-      get() = throw IllegalStateException("Should never call this")
-
-    private val actions = mutableListOf<(String) -> Boolean>()
-    private val leftoverArguments = mutableListOf<String>()
-
-    override val action = object : ArgumentAction {
-      override fun invoke(argument: String) {
-        val wasConsumed = actions.any { it(argument) }
-        if (!wasConsumed) leftoverArguments += argument
-      }
-    }
-
-    fun positionalAction(
-        cli: CommandLineBuilder,
-        name: String,
-        help: String,
-        action: (String) -> Boolean
-    ) {
-      cli.addUsageEntry(name)
-      cli.addHelpEntry(SimpleHelpEntry(name, help))
-      actions += action
-    }
-
-    fun positionalAction(action: (String) -> Boolean) {
-      actions += action
-    }
-
-    fun getLeftover(): List<String> = leftoverArguments
-  }
 
   private val currentDir = File(System.getProperty("user.dir")!!)
 
@@ -83,15 +35,16 @@ class CLI(private val stdinStream: InputStream) :
     return if (file.isAbsolute) file else File(currentDir, path)
   }
 
-  private val cli = CommandLineInterface("ckompiler", "ckompiler", """
+  private val cli = object : CommandLineInterface("ckompiler", "ckompiler", """
     A C compiler written in Kotlin.
     This command line interface tries to stay consistent with gcc and clang as much as possible.
-    """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler")
+    """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler"),
+      BlackHoleBuilder {
+    override val blackHole = PositionalBlackHole()
 
-  private val posHandler = PositionalArgumentsActionHandler()
-
-  init {
-    cli.addPositionalArgument(posHandler)
+    init {
+      addPositionalArgument(blackHole)
+    }
   }
 
   private val isPrintVersion by cli.flagArgument("--version", "Print compiler version")
@@ -109,25 +62,34 @@ class CLI(private val stdinStream: InputStream) :
   }
 
   private val stdin by cli.flagArgument("-", "Read translation unit from standard input")
+  private val files by cli.positionalList("FILES...",
+      "Translation units to be compiled", priority = -1) {
+    if (it.startsWith("-")) {
+      diagnostic {
+        id = DiagnosticId.BAD_CLI_OPTION
+        formatArgs(it)
+      }
+      null
+    } else {
+      fileFrom(it)
+    }
+  }
 
   init {
-    cli.addHelpEntry(SimpleHelpEntry("FILES...", "Translation units to be compiled"))
-
     cli.helpSeparator()
   }
 
-  val defines = mutableMapOf<String, String>()
+  val defines: CLIDefines by cli.flagValueArgumentMap("-D", "<macro>=<value>",
+      "Define <macro> with <value>, or 1 if value is ommited") {
+    if ('=' in it) {
+      val (name, value) = it.split("=")
+      name to value
+    } else {
+      it to "1"
+    }
+  }
 
   init {
-    cli.flagValueAction("-D", "<macro>=<value>",
-        "Define <macro> with <value>, or 1 if value is ommited") {
-      defines += if ('=' in it) {
-        val (name, value) = it.split("=")
-        name to value
-      } else {
-        it to "1"
-      }
-    }
     cli.helpGroup("Operation modes")
   }
 
@@ -147,14 +109,14 @@ class CLI(private val stdinStream: InputStream) :
     cli.helpGroup("Feature toggles")
   }
 
-  // FIXME: maybe add versions without no- that override each other
-  private val disableTrigraphs by cli.flagArgument("-fno-trigraphs",
-      "Ignore trigraphs in source files")
-  private val disableColorDiags by cli.flagArgument("-fno-color-diagnostics",
-      "Disable colors in diagnostic messages")
+  private val useTrigraphs by cli.toggleableFlagArgument("-ftrigraphs", "-fno-trigraphs",
+      "Control trigraph usage in source files", initialValue = false)
+  private val useColorDiags by cli.toggleableFlagArgument(
+      "-fcolor-diagnostics", "-fno-color-diagnostics",
+      "Control colors in diagnostic messages", initialValue = true)
   // FIXME: stub:
-  private val positionIndependentCode by cli.flagArgument("-fPIC",
-      "Generate position independent code")
+  private val positionIndependentCode by cli.toggleableFlagArgument("-fPIC", "-fno-PIC",
+      "Generate position independent code", initialValue = true)
 
   init {
     cli.helpGroup("Warning control")
@@ -172,33 +134,23 @@ class CLI(private val stdinStream: InputStream) :
   private val includeBarrier by cli.flagArgument(listOf("-I-", "--include-barrier"),
       "Remove current directory from include list", false, flagValue = false)
 
-  private val generalIncludes = mutableListOf<File>()
+  private val generalIncludes: List<File> by cli.flagOrPositionalArgumentList(
+      flags = listOf("-I", "--include-directory"),
+      valueSyntax = "DIR",
+      help = "Directory to add to include search path",
+      positionalPredicate = { it.startsWith("-I") },
+      mapping = { fileFrom(it.removePrefix("-I")) }
+  )
+
+  private val userIncludes: List<File> by cli.flagValueArgumentList("-iquote", "DIR",
+      "Directory to add to \"...\" include search path", ::fileFrom)
+
+  private val systemIncludes: List<File> by cli.flagValueArgumentList("-isystem", "DIR",
+      "Directory to add to <...> search path", ::fileFrom)
+  private val systemIncludesAfter: List<File> by cli.flagValueArgumentList("-isystem-after", "DIR",
+      "Directory to add to the end of the <...> search path", ::fileFrom)
 
   init {
-    cli.flagValueAction(listOf("-I", "--include-directory"), "DIR",
-        "Directory to add to include search path") { generalIncludes += fileFrom(it) }
-    posHandler.positionalAction {
-      if (!it.startsWith("-I")) return@positionalAction false
-      generalIncludes += fileFrom(it.removePrefix("-I"))
-      return@positionalAction true
-    }
-  }
-
-  private val userIncludes = mutableListOf<File>()
-
-  init {
-    cli.flagValueAction("-iquote", "DIR",
-        "Directory to add to \"...\" include search path") { userIncludes += fileFrom(it) }
-  }
-
-  private val systemIncludes = mutableListOf<File>()
-
-  init {
-    cli.flagValueAction("-isystem", "DIR",
-        "Directory to add to <...> search path") { systemIncludes.add(0, fileFrom(it)) }
-    cli.flagValueAction("-isystem-after", "DIR",
-        "Directory to add to the end of the <...> search path") { systemIncludes += fileFrom(it) }
-
     cli.helpGroup("Preprocessor options")
   }
 
@@ -207,21 +159,25 @@ class CLI(private val stdinStream: InputStream) :
   private val mt by cli.flagValueArgument("-MT", "FILE", "Currently a no-op (TODO)")
   private val mf by cli.flagValueArgument("-MF", "FILE", "Currently a no-op (TODO)")
 
-  private val linkerFlags = mutableListOf<String>()
-
   init {
     cli.helpGroup("Linker options")
-    posHandler.positionalAction(cli, "-lLIB", "Library name to link with") {
-      if (!it.startsWith("-l")) return@positionalAction false
-      linkerFlags += "${pickOsOption("linker-add-library-option")}${it.removePrefix("-l")}"
-      return@positionalAction true
-    }
-    posHandler.positionalAction(cli, "-L DIR", "Directory to search for libraries in") {
-      if (!it.startsWith("-L")) return@positionalAction false
-      linkerFlags += "${pickOsOption("linker-libpath-option")} ${it.removePrefix("-L")}"
-      return@positionalAction true
-    }
   }
+
+  private val linkLibNames: List<String> by cli.flagOrPositionalArgumentList(
+      flags = listOf("-l"),
+      valueSyntax = "LIB",
+      help = "Library name to link with",
+      positionalPredicate = { it.startsWith("-l") },
+      mapping = { it.removePrefix("-l") }
+  )
+
+  private val linkLibDirNames: List<String> by cli.flagOrPositionalArgumentList(
+      flags = listOf("-L"),
+      valueSyntax = "DIR",
+      help = "Directory to search for libraries in",
+      positionalPredicate = { it.startsWith("-L") },
+      mapping = { it.removePrefix("-L") }
+  )
 
   init {
     cli.helpGroup("Graphviz options (require --cfg-mode)")
@@ -241,16 +197,16 @@ class CLI(private val stdinStream: InputStream) :
   private val forceUnreachable by cli.flagArgument("--force-unreachable",
       "Force displaying of unreachable basic blocks and impossible edges")
 
-  private val files: List<String> by lazy { posHandler.getLeftover() }
+  init {
+    cli.helpGroup("Compiler debug options")
+  }
+
+  private val printLinkerComm by cli.flagArgument("--print-linker-comm", "Print linker commands")
+  private val printAsmComm by cli.flagArgument("--print-asm-comm", "Print assembler commands")
 
   private val srcFiles: List<File> by lazy {
-    val badOptions = files.filter { it.startsWith("--") }
-    for (option in badOptions) diagnostic {
-      id = DiagnosticId.BAD_CLI_OPTION
-      formatArgs(option)
-    }
-    (files - badOptions).mapNotNull {
-      val file = fileFrom(it)
+    files.mapNotNull {
+      val file = it
       if (!file.exists()) {
         diagnostic {
           id = DiagnosticId.FILE_NOT_FOUND
@@ -274,9 +230,7 @@ class CLI(private val stdinStream: InputStream) :
   private val osOptions = mapOf(
       "file-opener" to OSOption("xdg-open", "start", "open"),
       "obj-format" to OSOption("elf64", "win64", "elf64"),
-      "linker" to OSOption("ld", "link.exe", "ld"),
-      "linker-libpath-option" to OSOption("-L", "/LIBPATH", "-L"),
-      "linker-add-library-option" to OSOption("-l", "", "-l")
+      "linker" to OSOption("ld", "link.exe", "ld")
   )
 
   private val osName = System.getProperty("os.name")
@@ -299,6 +253,7 @@ class CLI(private val stdinStream: InputStream) :
     args += listOf("-f", pickOsOption("obj-format"))
     if (debug) args += listOf("-g", "-F", "dwarf")
     args += listOf("-o", objFile.absolutePath, asmFile.absolutePath)
+    if (printAsmComm) println(args.joinToString(" "))
     ProcessBuilder(args).inheritIO().start().waitFor()
   }
 
@@ -312,8 +267,10 @@ class CLI(private val stdinStream: InputStream) :
     args += listOf("/opt", fileFrom(output.orElse("a.out")).absolutePath)
     args += listOf("msvcrt.dll")
     args += listOf("/entry", "_start")
-    args += linkerFlags
+    args += linkLibDirNames.map { "/LIBPATH:\"$it\"" }
+    args += linkLibNames
     args += objFiles.map(File::getAbsolutePath)
+    if (printLinkerComm) println(args.joinToString(" "))
     ProcessBuilder(args).inheritIO().start().waitFor()
   }
 
@@ -323,8 +280,10 @@ class CLI(private val stdinStream: InputStream) :
     args += listOf("-L/lib", "-lc")
     args += listOf("-dynamic-linker", "/lib/ld-linux-x86-64.so.2")
     args += listOf("-e", "_start")
-    args += linkerFlags
+    args += linkLibDirNames.map { "-L$it" }
+    args += linkLibNames.map { "-l$it" }
     args += objFiles.map(File::getAbsolutePath)
+    if (printLinkerComm) println(args.joinToString(" "))
     ProcessBuilder(args).inheritIO().start().waitFor()
   }
 
@@ -355,8 +314,8 @@ class CLI(private val stdinStream: InputStream) :
       baseName: String,
       parentDir: File
   ): File? {
-    val includePaths =
-        IncludePaths.defaultPaths + IncludePaths(generalIncludes, systemIncludes, userIncludes)
+    val includePaths = IncludePaths.defaultPaths +
+        IncludePaths(generalIncludes, systemIncludes + systemIncludesAfter, userIncludes)
     includePaths.includeBarrier = includeBarrier
     val pp = Preprocessor(
         sourceText = text,
@@ -364,7 +323,7 @@ class CLI(private val stdinStream: InputStream) :
         currentDir = parentDir,
         cliDefines = defines,
         includePaths = includePaths,
-        ignoreTrigraphs = disableTrigraphs,
+        ignoreTrigraphs = !useTrigraphs,
         targetData = MachineTargetData.x64
     )
     if (pp.diags.errors().isNotEmpty()) {
@@ -488,7 +447,7 @@ class CLI(private val stdinStream: InputStream) :
       println("ckompiler version ${BuildProperties.version}")
       return ExitCodes.NORMAL
     }
-    Diagnostic.useColors = !disableColorDiags
+    Diagnostic.useColors = useColorDiags
     val sourceCount = srcFiles.size + if (stdin) 1 else 0
     if (sourceCount == 0) diagnostic {
       id = DiagnosticId.NO_INPUT_FILES
