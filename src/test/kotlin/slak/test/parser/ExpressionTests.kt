@@ -1,12 +1,12 @@
 package slak.test.parser
 
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
-import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class ExpressionTests {
@@ -42,17 +42,14 @@ class ExpressionTests {
   @Test
   fun `Arithmetic Expression Unmatched Parens`() {
     val p = prepareCode("int a = (1 * (2 + 3);", source)
-    assertEquals(listOf(
-        DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET), p.diags.ids)
+    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
     int declare ("a" assign ErrorExpression()) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Arithmetic Expression Unmatched Right Paren At End Of Expr`() {
     val p = prepareCode("int a = 1 + 1);", source)
-    assertEquals(listOf(
-        DiagnosticId.EXPECTED_SEMI_AFTER,
-        DiagnosticId.EXPECTED_EXTERNAL_DECL), p.diags.ids)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER, DiagnosticId.EXPECTED_EXTERNAL_DECL)
     int declare ("a" assign (1 add 1)) assertEquals p.root.decls[0]
   }
 
@@ -63,7 +60,7 @@ class ExpressionTests {
         1 + 1 +
       }
     """.trimIndent(), source)
-    assert(p.diags.ids.contains(DiagnosticId.EXPECTED_SEMI_AFTER))
+    assert(DiagnosticId.EXPECTED_SEMI_AFTER in p.diags.ids)
     int func "main" body compoundOf(
         1 add 1 add ErrorExpression()
     ) assertEquals p.root.decls[0]
@@ -168,7 +165,8 @@ class ExpressionTests {
   fun `Sizeof Parenthesized Expression`() {
     val p = prepareCode("int a = sizeof(1 + 2 * 3);", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign SignedIntType.cast(sizeOf(1 add (2 mul 3)))) assertEquals p.root.decls[0]
+    int declare ("a" assign SignedIntType.cast(sizeOf(1 add (2 mul 3)))) assertEquals
+        p.root.decls[0]
   }
 
   @Test
@@ -264,59 +262,62 @@ class ExpressionTests {
     assert(p.diags.isNotEmpty())
   }
 
-  @Test
-  fun `Ternary Simple`() {
-    val p = prepareCode("int a = 1 ? 2 : 3;", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign 1.qmark(2, 3)) assertEquals p.root.decls[0]
-  }
+  @Nested
+  inner class TernaryTests {
+    @Test
+    fun `Ternary Simple`() {
+      val p = prepareCode("int a = 1 ? 2 : 3;", source)
+      p.assertNoDiagnostics()
+      int declare ("a" assign 1.qmark(2, 3)) assertEquals p.root.decls[0]
+    }
 
-  @Test
-  fun `Ternary String Literals`() {
-    val p = prepareCode("const char* s = 1 ? \"foo\" : \"barbaz\";", source)
-    p.assertNoDiagnostics()
-    val ternary = 1.qmark(strLit("foo"), strLit("barbaz"))
-    constChar declare (ptr("s") assign ternary) assertEquals p.root.decls[0]
-  }
+    @Test
+    fun `Ternary String Literals`() {
+      val p = prepareCode("const char* s = 1 ? \"foo\" : \"barbaz\";", source)
+      p.assertNoDiagnostics()
+      val ternary = 1.qmark(strLit("foo"), strLit("barbaz"))
+      constChar declare (ptr("s") assign ternary) assertEquals p.root.decls[0]
+    }
 
-  @Test
-  fun `Ternary Missing Colon`() {
-    val p = prepareCode("int a = 1 ? 2 ;", source)
-    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
-  }
+    @Test
+    fun `Ternary Missing Colon`() {
+      val p = prepareCode("int a = 1 ? 2 ;", source)
+      p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+    }
 
-  @Test
-  fun `Ternary Missing Question Mark`() {
-    val p = prepareCode("int a = 2 : 3;", source)
-    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
-  }
+    @Test
+    fun `Ternary Missing Question Mark`() {
+      val p = prepareCode("int a = 2 : 3;", source)
+      p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+    }
 
-  @Test
-  fun `Ternary With Parenthesis`() {
-    val p = prepareCode("int a = 1 ? (2 + 2) : (3 + 3);", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign 1.qmark(2 add 2, 3 add 3)) assertEquals p.root.decls[0]
-  }
+    @Test
+    fun `Ternary With Parenthesis`() {
+      val p = prepareCode("int a = 1 ? (2 + 2) : (3 + 3);", source)
+      p.assertNoDiagnostics()
+      int declare ("a" assign 1.qmark(2 add 2, 3 add 3)) assertEquals p.root.decls[0]
+    }
 
-  @Test
-  fun `Ternary Nested Middle`() {
-    val p = prepareCode("int a = 1 ? 11 ? 22 : 44 : 3;", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign 1.qmark(11.qmark(22, 44), 3)) assertEquals p.root.decls[0]
-  }
+    @Test
+    fun `Ternary Nested Middle`() {
+      val p = prepareCode("int a = 1 ? 11 ? 22 : 44 : 3;", source)
+      p.assertNoDiagnostics()
+      int declare ("a" assign 1.qmark(11.qmark(22, 44), 3)) assertEquals p.root.decls[0]
+    }
 
-  @Test
-  fun `Ternary Nested Last`() {
-    val p = prepareCode("int a = 1 ? 2 : 1 ? 3 : 4;", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign 1.qmark(2, 1.qmark(3, 4))) assertEquals p.root.decls[0]
-  }
+    @Test
+    fun `Ternary Nested Last`() {
+      val p = prepareCode("int a = 1 ? 2 : 1 ? 3 : 4;", source)
+      p.assertNoDiagnostics()
+      int declare ("a" assign 1.qmark(2, 1.qmark(3, 4))) assertEquals p.root.decls[0]
+    }
 
-  @Test
-  fun `Ternary Bad Assignment`() {
-    val p = prepareCode("int a = 1 ? 2 : a = 3;", source)
-    p.assertNoDiagnostics()
-    val badAssignment = nameRef("a", SignedIntType) assign 3
-    int declare ("a" assign 1.qmark(2, badAssignment)) assertEquals p.root.decls[0]
+    @Test
+    fun `Ternary Bad Assignment`() {
+      val p = prepareCode("int a = 1 ? 2 : a = 3;", source)
+      p.assertNoDiagnostics()
+      val badAssignment = nameRef("a", SignedIntType) assign 3
+      int declare ("a" assign 1.qmark(2, badAssignment)) assertEquals p.root.decls[0]
+    }
   }
 }
