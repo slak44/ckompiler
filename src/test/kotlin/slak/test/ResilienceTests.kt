@@ -7,7 +7,9 @@ import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.Punctuators
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.ErrorDeclarator
+import slak.ckompiler.parser.ErrorExpression
+import slak.ckompiler.parser.Parser
 import kotlin.test.assertEquals
 
 /**

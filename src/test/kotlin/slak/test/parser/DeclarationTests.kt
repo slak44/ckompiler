@@ -8,7 +8,6 @@ import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
-import kotlin.test.assertSame
 
 class DeclarationTests {
   @Test

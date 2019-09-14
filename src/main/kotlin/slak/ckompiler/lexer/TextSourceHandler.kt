@@ -1,7 +1,6 @@
 package slak.ckompiler.lexer
 
 import slak.ckompiler.SourceFileName
-import java.lang.StringBuilder
 
 /**
  * Useful for delegation.

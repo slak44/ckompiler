@@ -1,7 +1,6 @@
 package slak.ckompiler
 
 import slak.ckompiler.parser.*
-import java.lang.IllegalArgumentException
 
 /**
  * Machine and ISA-dependent information. Used to generate stuff like stdint/stddef, for sizeof, or

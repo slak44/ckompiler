@@ -7,10 +7,6 @@ import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.*
 import slak.test.*
-import slak.test.assertNoDiagnostics
-import slak.test.assertPPDiagnostic
-import slak.test.preparePP
-import slak.test.source
 
 /**
  * These are something like "pseudo" unit tests, because technically, while most of them test a

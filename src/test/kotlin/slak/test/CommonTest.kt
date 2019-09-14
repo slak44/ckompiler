@@ -3,7 +3,9 @@ package slak.test
 import slak.ckompiler.*
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.lexer.*
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.ExternalDeclaration
+import slak.ckompiler.parser.FunctionDefinition
+import slak.ckompiler.parser.Parser
 import java.io.File
 import java.io.InputStream
 import kotlin.test.assertEquals

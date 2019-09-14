@@ -1,7 +1,10 @@
 package slak.test
 
 import org.junit.jupiter.api.Test
-import slak.ckompiler.*
+import slak.ckompiler.DebugHandler
+import slak.ckompiler.Diagnostic
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.parser.Declaration
 import kotlin.test.assertEquals

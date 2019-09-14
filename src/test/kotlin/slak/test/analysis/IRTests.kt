@@ -7,9 +7,7 @@ import slak.ckompiler.DebugHandler
 import slak.ckompiler.Diagnostic
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
-import slak.ckompiler.parser.DoubleType
 import slak.ckompiler.parser.Expression
-import slak.ckompiler.parser.FloatType
 import slak.ckompiler.parser.SignedIntType
 import slak.test.*
 import kotlin.test.assertEquals

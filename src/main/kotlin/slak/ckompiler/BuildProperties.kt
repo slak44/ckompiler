@@ -1,8 +1,7 @@
 package slak.ckompiler
 
 import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
-import java.util.Properties
+import java.util.*
 
 object BuildProperties {
   private val logger = LogManager.getLogger()

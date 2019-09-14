@@ -8,7 +8,6 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import java.util.*
 import kotlin.math.absoluteValue
-import kotlin.math.log
 import kotlin.math.sign
 
 private val logger = LogManager.getLogger()

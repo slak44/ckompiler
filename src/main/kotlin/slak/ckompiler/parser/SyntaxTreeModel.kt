@@ -5,6 +5,7 @@ import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
+import slak.ckompiler.parser.Expression.ValueType.*
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()

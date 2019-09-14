@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
-import slak.ckompiler.parser.IntegerConstantNode
 import slak.test.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
