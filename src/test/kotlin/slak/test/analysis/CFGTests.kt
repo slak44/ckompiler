@@ -4,9 +4,12 @@ import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.parser.IntegerConstantNode
 import slak.test.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class CFGTests {
   @Test
@@ -104,6 +107,21 @@ class CFGTests {
   }
 
   @Test
+  fun `Pre-order Traversal Of Dominator Tree Is Correct For Switch Graph`() {
+    val cfg = prepareCFG(resource("cfg/switch.c"), source)
+    val sequence = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
+    val l = sequence.toList()
+    assertEquals(cfg.nodes.size, l.size)
+    assertEquals(cfg.startBlock, l[0])
+    val ret = l.first { it.terminator is ImpossibleJump }
+    assertEquals(cfg.nodes.first { it.terminator is ImpossibleJump }, ret)
+    assertEquals(
+        cfg.startBlock.successors.sortedBy { it.postOrderId },
+        (l - cfg.startBlock - ret).sortedBy { it!!.postOrderId }
+    )
+  }
+
+  @Test
   fun `Unterminated Blocks In Function`() {
     val code = "int f() {}"
     val p = prepareCode(code, source)
@@ -116,5 +134,23 @@ class CFGTests {
   fun `Unterminated Block In Main Is OK`() {
     val cfg = prepareCFG(resource("e2e/emptyMain.c"), source)
     cfg.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Switch And SelectJumps`() {
+    val cfg = prepareCFG(resource("cfg/switch.c"), source)
+    cfg.assertNoDiagnostics()
+    assertEquals(5, cfg.nodes.size)
+    val ret = cfg.nodes.first { it.terminator is ImpossibleJump }
+    assertTrue(ret !in cfg.startBlock.successors)
+    val sel = cfg.startBlock.terminator
+    assertTrue(sel is SelectJump)
+    assertEquals(listOf(ret), sel.default.successors)
+    assertEquals(2, sel.options.size)
+    val option2 = sel.options.entries.firstOrNull { it.value.successors == listOf(ret) }
+    assertNotNull(option2)
+    val option1 = (sel.options - option2.key).values.firstOrNull()
+    assertNotNull(option1)
+    assertEquals(listOf(option2.value), option1.successors)
   }
 }
