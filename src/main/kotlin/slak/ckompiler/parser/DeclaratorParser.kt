@@ -59,16 +59,30 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    * Pass true to [allowName] to permit parsing an identifier as well, if it appears (will behave
    * like [parseNamedDeclarator], but with no errors if there is no such identifier).
    *
+   * If [Declarator.isBlank] is true, the [ASTNode.range] is not attached.
+   *
    * C standard: 6.7.7.0.1
    */
   private fun parseAbstractDeclarator(endIdx: Int,
                                       allowName: Boolean): Declarator = tokenContext(endIdx) {
-    if (it.isEmpty()) return@tokenContext AbstractDeclarator(emptyList(), emptyList())
+    if (it.isEmpty()) {
+      // The range is intentionally missing, but the callers should know not to use it or add it
+      // themselves
+      return@tokenContext AbstractDeclarator(emptyList(), emptyList())
+    }
+    val startTok = current()
     val pointers = parsePointer(it.size)
     // Some pointers and nothing else is a valid abstract declarator
-    if (isEaten()) return@tokenContext AbstractDeclarator(pointers, emptyList())
-    if (current().asPunct() == Punctuators.LPAREN && relative(1).asPunct() == Punctuators.RPAREN) {
+    if (isEaten()) {
+      return@tokenContext AbstractDeclarator(pointers, emptyList())
+          .withRange(startTok..safeToken(0))
+    }
+    // This fast path is here because parseNestedDeclarator thinks "()" is an error, and it isn't
+    if (tokensLeft >= 2 &&
+        current().asPunct() == Punctuators.LPAREN &&
+        relative(1).asPunct() == Punctuators.RPAREN) {
       return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
+          .withRange(startTok..safeToken(0))
     }
     val nested = parseNestedDeclarator<AbstractDeclarator>(allowName)
     // If it isn't nested stuff, it's probably suffixes
@@ -77,15 +91,19 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         val name = IdentifierNode.from(current())
         eat() // The identifier token
         return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size))
+            .withRange(startTok..safeToken(0))
       }
       return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
+          .withRange(startTok..safeToken(0))
     }
     if (allowName && nested is NamedDeclarator) {
       return@tokenContext NamedDeclarator(nested.name,
           pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
+          .withRange(startTok..safeToken(0))
     }
     return@tokenContext AbstractDeclarator(
         pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
+        .withRange(startTok..safeToken(0))
   }
 
   /** C standard: 6.7.6.0.1 */

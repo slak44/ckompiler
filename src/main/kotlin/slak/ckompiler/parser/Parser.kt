@@ -165,7 +165,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     if (!declaratorOpt!!.isPresent) return translationUnit()
     val declarator = declaratorOpt.get()
     checkFunctionReturnType(declSpec, declarator)
-    if (declarator.isFunction() && current().asPunct() != Punctuators.SEMICOLON) {
+    if (declarator.isFunction() && isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) {
       if (declarator.name.name == "main") {
         SpecValidationRules.MAIN_FUNCTION_DECLARATION.validate(specParser, declSpec)
       }
