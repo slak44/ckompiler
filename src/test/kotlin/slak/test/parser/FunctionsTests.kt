@@ -2,6 +2,7 @@ package slak.test.parser
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.parser.AbstractDeclarator
 import slak.ckompiler.parser.ErrorStatement
 import slak.ckompiler.parser.PointerType
 import slak.ckompiler.parser.SignedIntType
@@ -181,9 +182,31 @@ class FunctionsTests {
 
   @Test
   fun `Function Prototype Return Pointer To Function`() {
-    val p = prepareCode("int (*f(int x))(int y);", source)
+    val p = prepareCode("int (*f(int x))(double y);", source)
     p.assertNoDiagnostics()
-    val f = int declare ptr("f" withParams listOf(int param "x") withParams listOf(int param "y"))
+    val f =
+        int declare ptr("f" withParams listOf(int param "x") withParams listOf(double param "y"))
+    f assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Function Prototype Return Nested Pointer To Function`() {
+    val p = prepareCode("int (*(*f(int x))(int y))(int z);", source)
+    p.assertNoDiagnostics()
+    val f = int declare ptr("f" withParams listOf(int param "x")
+        withParams listOf(int param "y") withParams listOf(int param "z"))
+    f assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Function Prototype Return Pointer To Function Complex`() {
+    val p = prepareCode("int (*fpfi(int (*)(long), int))(int, int);", source)
+    p.assertNoDiagnostics()
+    val innerFun = int param (AbstractDeclarator(listOf(listOf()), emptyList())
+        withParams listOf(long.toParam()))
+    val f =
+        int declare (ptr("fpfi" withParams listOf(innerFun, int.toParam()))
+            withParams listOf(int.toParam(), int.toParam()))
     f assertEquals p.root.decls[0]
   }
 

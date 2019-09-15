@@ -136,14 +136,11 @@ internal infix fun DeclarationSpecifier.declare(s: String) =
 internal infix fun DeclarationSpecifier.declare(sm: List<StructMember>) =
     StructDeclaration(this, sm).zeroRange()
 
-internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) =
+internal infix fun DeclarationSpecifier.param(s: Declarator) =
     ParameterDeclaration(this, s).zeroRange()
 
 internal infix fun DeclarationSpecifier.param(s: String) =
     ParameterDeclaration(this, nameDecl(s)).zeroRange()
-
-internal infix fun DeclarationSpecifier.param(s: NamedDeclarator) =
-    ParameterDeclaration(this, s).zeroRange()
 
 internal infix fun DeclarationSpecifier.withParams(params: List<ParameterDeclaration>) =
     this param (AbstractDeclarator(emptyList(), emptyList()).zeroRange().withParams(params)
