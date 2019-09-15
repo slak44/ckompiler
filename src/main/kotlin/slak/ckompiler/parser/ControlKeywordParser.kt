@@ -137,7 +137,7 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     } else {
       eat() // The ';'
     }
-    validateReturnValue(retKey, expr, expectedType, funcName)
-    return ReturnStatement(expr).withRange(retKey until safeToken(0))
+    val ret = validateReturnValue(retKey, expr, expectedType, funcName)
+    return ReturnStatement(ret).withRange(retKey until safeToken(0))
   }
 }

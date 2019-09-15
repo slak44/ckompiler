@@ -1044,31 +1044,37 @@ fun IDebugHandler.checkIncDec(operand: Expression, isDec: Boolean, range: Source
 
 /**
  * Checks that return statements' returned value (or lack thereof) is consistent with the function's
- * return type. Prints diagnostics.
+ * return type ([expectedType]). Prints diagnostics. Returns [expr] with the required conversions
+ * applied, or null if [expr] was null.
+ *
+ * C standard: 6.8.6.4
  */
 fun IDebugHandler.validateReturnValue(
     returnKeyword: LexicalToken,
     expr: Expression?,
     expectedType: TypeName,
     funcName: String
-) {
+): Expression? {
+  // Standard says values are converted as if by assignment
+  val (_, commonType) = ASSIGN.applyTo(expectedType, expr?.type ?: VoidType)
   val diagnosticId = when {
     expr == null && expectedType != VoidType -> DiagnosticId.NON_VOID_RETURNS_NOTHING
     expr != null && expr.type != VoidType && expectedType == VoidType ->
       DiagnosticId.VOID_RETURNS_VALUE
     expr != null && expr.type == VoidType && expectedType == VoidType ->
       DiagnosticId.DONT_RETURN_VOID_EXPR
-    expr != null && expr.type != expectedType -> DiagnosticId.RET_TYPE_MISMATCH
+    expr != null && commonType == ErrorType -> DiagnosticId.RET_TYPE_MISMATCH
     else -> null
   }
   if (diagnosticId != null) diagnostic {
     id = diagnosticId
     if (id == DiagnosticId.RET_TYPE_MISMATCH) {
-      formatArgs(expectedType.toString(), expr?.type ?: VoidType.toString())
+      formatArgs(expectedType.toString(), (expr?.type ?: VoidType).toString())
     } else {
       formatArgs(funcName)
     }
     errorOn(returnKeyword)
     expr?.let { errorOn(it) }
   }
+  return if (expr == null) null else convertToCommon(commonType, expr)
 }
