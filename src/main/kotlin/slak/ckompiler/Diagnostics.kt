@@ -104,6 +104,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ADDRESS_OF_REGISTER(ERROR, "Taking address of register variable '%s'"),
   ADDRESS_OF_BITFIELD(ERROR, "Taking address of bit-field"),
   ADDRESS_REQUIRES_LVALUE(ERROR, "Taking address of rvalue of type '%s'"),
+  SWITCH_COND_IS_BOOL(WARNING, "Switch condition has boolean type"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

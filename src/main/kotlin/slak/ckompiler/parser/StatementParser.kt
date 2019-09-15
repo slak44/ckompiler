@@ -232,6 +232,10 @@ class StatementParser(
     val switchTok = current()
     eat() // The 'switch'
     val cond = parseSelectionStCond(Keywords.SWITCH) ?: return error<ErrorStatement>()
+    if (cond.type is BooleanType) diagnostic {
+      id = DiagnosticId.SWITCH_COND_IS_BOOL
+      errorOn(cond)
+    }
     val switchSt = copy(isInSwitch = true).parseAndExpectStatement()
     return SwitchStatement(cond, switchSt).withRange(switchTok..switchSt)
   }

@@ -349,4 +349,19 @@ class SwitchTests {
         ))
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Switch Statement Condition Has Boolean Type`() {
+    val p = prepareCode("""
+      int main() {
+        _Bool b = 0;
+        switch (b) { }
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.SWITCH_COND_IS_BOOL)
+    int func "main" body compoundOf(
+        bool declare ("b" assign BooleanType.cast(0)),
+        switch(nameRef("b", BooleanType), emptyCompound())
+    ) assertEquals p.root.decls[0]
+  }
 }

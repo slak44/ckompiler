@@ -34,6 +34,7 @@ internal fun double(f: Double) = FloatingConstantNode(f, FloatingSuffix.NONE).ze
 internal val const: TypeQualifierList = listOf(Keywords.CONST.kw)
 
 internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()
+internal val bool = DeclarationSpecifier(typeSpec = Bool(Keywords.BOOL.kw)).zeroRange()
 internal val short = DeclarationSpecifier(typeSpec = Short(Keywords.SHORT.kw)).zeroRange()
 internal val int = DeclarationSpecifier(typeSpec = IntType(Keywords.INT.kw)).zeroRange()
 internal val uInt = DeclarationSpecifier(typeSpec = UnsignedInt(Keywords.UNSIGNED.kw)).zeroRange()
