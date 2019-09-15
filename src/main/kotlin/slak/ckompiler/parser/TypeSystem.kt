@@ -637,6 +637,28 @@ private fun intOp(lhs: TypeName, rhs: TypeName): UnqualifiedTypeName {
 }
 
 /**
+ * Returns [BinaryResult.operandCommonType] for simple assignments.
+ */
+private fun applyAssign(lhs: TypeName, rhs: TypeName): TypeName {
+  val target = lhs.unqualify()
+  if (target is BooleanType && rhs is PointerType) {
+    return lhs
+  }
+  if (target is ArithmeticType) {
+    return if (rhs.unqualify() !is ArithmeticType) ErrorType else lhs
+  }
+  if (target is StructureType || target is UnionType) {
+    // FIXME: actually check things (6.5.16.1)
+    return if (target != rhs.unqualify()) ErrorType else target
+  }
+  if (lhs is PointerType) {
+    // FIXME: actually check things (6.5.16.1)
+    return if (rhs !is PointerType) ErrorType else lhs
+  }
+  return ErrorType
+}
+
+/**
  * The resulting types of a [BinaryExpression] on two operands.
  *
  * [exprType] is the type of the [BinaryExpression] that will be created.
@@ -653,7 +675,7 @@ data class BinaryResult(val exprType: TypeName, val operandCommonType: TypeName)
 
 /**
  * C standard: 6.5.5.0.2, 6.5.5, 6.5.6, 6.5.7, 6.5.8, 6.5.8.0.6, 6.5.9, 6.5.10, 6.5.11, 6.5.12,
- * 6.5.13, 6.5.14, 6.5.17, 6.5.6.0.2
+ * 6.5.13, 6.5.14, 6.5.17, 6.5.6.0.2, 6.5.16
  * @see BinaryResult
  */
 fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): BinaryResult = when (this) {
@@ -742,19 +764,10 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): BinaryResult = when (
       }
     }
   }
-  // FIXME: assignment operator semantics are very complicated (6.5.16)
-  ASSIGN -> BinaryResult(lhs)
-  MUL_ASSIGN -> BinaryResult(lhs)
-  DIV_ASSIGN -> BinaryResult(lhs)
-  MOD_ASSIGN -> BinaryResult(lhs)
-  PLUS_ASSIGN -> BinaryResult(lhs)
-  SUB_ASSIGN -> BinaryResult(lhs)
-  LSH_ASSIGN -> BinaryResult(lhs)
-  RSH_ASSIGN -> BinaryResult(lhs)
-  AND_ASSIGN -> BinaryResult(lhs)
-  XOR_ASSIGN -> BinaryResult(lhs)
-  OR_ASSIGN -> BinaryResult(lhs)
   COMMA -> BinaryResult(rhs)
+  // Treat compounds as regular assigns, because they're dealt with in sequentialize anyway
+  ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, PLUS_ASSIGN, SUB_ASSIGN, LSH_ASSIGN, RSH_ASSIGN,
+  AND_ASSIGN, XOR_ASSIGN, OR_ASSIGN -> BinaryResult(lhs, applyAssign(lhs, rhs))
 }
 
 /**

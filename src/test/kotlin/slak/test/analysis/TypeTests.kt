@@ -93,7 +93,7 @@ class TypeTests {
     p.assertDiags(DiagnosticId.ILLEGAL_CAST_ASSIGNMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         int declare ("x" assign 1),
-        SignedLongType.cast(nameRef("x", SignedIntType)) assign 5
+        SignedLongType.cast(nameRef("x", SignedIntType)) assign SignedLongType.cast(5)
     ) assertEquals p.root.decls[0]
   }
 

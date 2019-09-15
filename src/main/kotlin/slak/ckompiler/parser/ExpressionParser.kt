@@ -154,10 +154,10 @@ class ExpressionParser(
       val (exprType, commonType) = binaryDiags(opTok as Punctuator, lhs, rhs)
       validateAssignment(opTok, lhs, rhs)
       if (op !in assignmentOps) {
-        // FIXME:
-        //   We really shouldn't cast the target of an assignment to anything
-        //   If this is a compound assignment, this is dealt with later anyway
         lhs = convertToCommon(commonType, lhs)
+        rhs = convertToCommon(commonType, rhs)
+      } else if (op == BinaryOperators.ASSIGN) {
+        // Compounds are dealt with later
         rhs = convertToCommon(commonType, rhs)
       }
       lhs = BinaryExpression(op, lhs, rhs, exprType).withRange(lhs..rhs)
