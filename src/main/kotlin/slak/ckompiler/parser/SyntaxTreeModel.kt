@@ -180,15 +180,15 @@ data class TypedIdentifier(
     val isArrayPtr = type is PointerType && type.decayedFrom is ArrayType
     valueType = if (type is PointerType && type.decayedFrom is FunctionType) {
       // Function designators are lvalues
-      ValueType.LVALUE
+      LVALUE
     } else if (type is QualifiedType && Keywords.CONST in type.typeQuals) {
       // Const-qualification means it's not modifiable
-      ValueType.LVALUE
+      LVALUE
     } else if (type.isCompleteObjectType() && !isArrayPtr) {
-      ValueType.MODIFIABLE_LVALUE
+      MODIFIABLE_LVALUE
     } else {
       // FIXME: is everything else an lvalue?
-      ValueType.LVALUE
+      LVALUE
     }
   }
 
@@ -227,7 +227,7 @@ data class TernaryConditional(
    *
    * C standard: note 110
    */
-  override val valueType: ValueType = ValueType.RVALUE
+  override val valueType: ValueType = RVALUE
 
 }
 
@@ -241,7 +241,7 @@ data class TernaryConditional(
 data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : Expression() {
   override val type = calledExpr.type.asCallable()?.returnType
       ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }
-  override val valueType: ValueType = ValueType.RVALUE
+  override val valueType: ValueType = RVALUE
 }
 
 /**
@@ -258,9 +258,9 @@ data class UnaryExpression(
    * C standard: 6.5.3.2.0.4
    */
   override val valueType = when {
-    op != UnaryOperators.DEREF -> ValueType.RVALUE
-    operand.type is QualifiedType && Keywords.CONST in operand.type.typeQuals -> ValueType.LVALUE
-    else -> ValueType.MODIFIABLE_LVALUE
+    op != UnaryOperators.DEREF -> RVALUE
+    operand.type is QualifiedType && Keywords.CONST in operand.type.typeQuals -> LVALUE
+    else -> MODIFIABLE_LVALUE
   }
 }
 
@@ -277,7 +277,7 @@ data class SizeofTypeName(
     val sizeOfWho: TypeName,
     override val type: UnqualifiedTypeName
 ) : Expression() {
-  override val valueType: ValueType = ValueType.RVALUE
+  override val valueType: ValueType = RVALUE
 }
 
 /**
@@ -299,7 +299,7 @@ data class IncDecOperation(
    *
    * C standard: 6.5.16.0.3, 6.5.2.4.0.2
    */
-  override val valueType = ValueType.RVALUE
+  override val valueType = RVALUE
 }
 
 /** Represents a binary operation in an expression. */
@@ -312,7 +312,7 @@ data class BinaryExpression(
   override fun toString() = "($lhs $op $rhs)"
 
   /** C standard: 6.5.16.0.3 */
-  override val valueType = ValueType.RVALUE
+  override val valueType = RVALUE
 }
 
 data class ArraySubscript(
@@ -327,9 +327,9 @@ data class ArraySubscript(
    */
   override val valueType =
       if (subscripted.type is QualifiedType && Keywords.CONST in subscripted.type.typeQuals) {
-        ValueType.LVALUE
+        LVALUE
       } else {
-        ValueType.MODIFIABLE_LVALUE
+        MODIFIABLE_LVALUE
       }
 }
 
@@ -341,11 +341,11 @@ data class CastExpression(val target: Expression, override val type: TypeName) :
    *
    * C standard: note 104
    */
-  override val valueType = ValueType.RVALUE
+  override val valueType = RVALUE
 }
 
 sealed class ExprConstantNode : Expression(), Terminal {
-  override val valueType: ValueType = ValueType.RVALUE
+  override val valueType: ValueType = RVALUE
 }
 
 class VoidExpression : ExprConstantNode() {
