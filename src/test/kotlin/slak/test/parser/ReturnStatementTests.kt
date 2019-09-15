@@ -106,30 +106,43 @@ class ReturnStatementTests {
     p.assertDiags(DiagnosticId.DONT_RETURN_VOID_EXPR)
   }
 
-  @Suppress("unused")
-  enum class ReturnMismatchTests(
-      val type: String,
-      val expectedType: DeclarationSpecifier,
-      val str: String,
-      val expected: Expression
-  ) {
-    INT_FLOAT("int", int, "2.0F", float(2.0)),
-    INT_VOID("int", int, "(void) 2", VoidType.cast(2)),
-    STRUCT_FLOAT("struct { float x, y; }",
-        struct(null, listOf(float declare listOf("x", "y"))).toSpec(), "5.7F", float(5.7))
-  }
-
-  @ParameterizedTest
-  @EnumSource(ReturnMismatchTests::class)
-  fun `Return Type Mismatch`(ret: ReturnMismatchTests) {
+  @Test
+  fun `Return Type Mismatch Void`() {
     val p = prepareCode("""
-      ${ret.type} f() {
-        return ${ret.str};
+      int f() {
+        return (void) 2;
       }
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.RET_TYPE_MISMATCH)
-    ret.expectedType func "f" body compoundOf(
-        returnSt(ret.expected)
+    int func "f" body compoundOf(
+        returnSt(VoidType.cast(2))
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Return Type Mismatch With Struct`() {
+    val p = prepareCode("""
+      struct { float x, y; } f() {
+        return 5.7F;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.RET_TYPE_MISMATCH)
+    val s = struct(null, listOf(float declare listOf("x", "y"))).toSpec()
+    s func "f" body compoundOf(
+        returnSt(float(5.7))
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Return Type Mismatch With Pointers`() {
+    val p = prepareCode("""
+      int* f() {
+        return 5.7F;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.RET_TYPE_MISMATCH)
+    int func (ptr("f") withParams emptyList()) body compoundOf(
+        returnSt(float(5.7))
     ) assertEquals p.root.decls[0]
   }
 }
