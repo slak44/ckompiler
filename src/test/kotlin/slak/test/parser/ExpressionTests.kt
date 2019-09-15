@@ -67,13 +67,6 @@ class ExpressionTests {
   }
 
   @Test
-  fun `Size Of Primary Expression`() {
-    val p = prepareCode("int a = sizeof 1;", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign SignedIntType.cast(sizeOf(1))) assertEquals p.root.decls[0]
-  }
-
-  @Test
   fun `Simple Prefix Increment`() {
     val p = prepareCode("int a = ++b;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
@@ -152,33 +145,6 @@ class ExpressionTests {
     p.assertNoDiagnostics()
     ((123 add 124) comma (35 add 36)) comma (1 add 2) assertEquals
         p.root.decls[0].fn.block.items[0].st
-  }
-
-  @Test
-  fun `Sizeof Type Name`() {
-    val p = prepareCode("int a = sizeof(int);", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign SignedIntType.cast(sizeOf(SignedIntType))) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun `Sizeof Parenthesized Expression`() {
-    val p = prepareCode("int a = sizeof(1 + 2 * 3);", source)
-    p.assertNoDiagnostics()
-    int declare ("a" assign SignedIntType.cast(sizeOf(1 add (2 mul 3)))) assertEquals
-        p.root.decls[0]
-  }
-
-  @Test
-  fun `Sizeof Bad Parens`() {
-    val p = prepareCode("int a = sizeof(int;", source)
-    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
-  }
-
-  @Test
-  fun `Sizeof Bad Parens Expr`() {
-    val p = prepareCode("int a = sizeof(1;", source)
-    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
   }
 
   @Test

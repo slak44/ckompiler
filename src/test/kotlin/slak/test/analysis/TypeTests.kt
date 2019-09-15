@@ -1,6 +1,5 @@
 package slak.test.analysis
 
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
@@ -306,44 +305,6 @@ class TypeTests {
   fun `Usual Arithmetic Conversions`(case: ArithmeticConversionTestCase) {
     val result = usualArithmeticConversions(case.lhs, case.rhs)
     assertEquals(case.expected, result, "Conversion failed")
-  }
-
-  @Disabled("have to deal with incomplete structs in type system first")
-  @Test
-  fun `Sizeof Incomplete Type`() {
-    val p = prepareCode("struct x; int a = sizeof(struct x);", source)
-    p.assertDiags(DiagnosticId.SIZEOF_ON_INCOMPLETE)
-  }
-
-  @Test
-  fun `Sizeof Function Type`() {
-    val p = prepareCode("""
-      int main() {
-        sizeof main;
-      }
-    """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.SIZEOF_ON_FUNCTION)
-    val main = nameRef("main", FunctionType(SignedIntType, emptyList()))
-    int func ("main" withParams emptyList()) body compoundOf(
-        sizeOf(main)
-    ) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun `Sizeof Array Type`() {
-    val p = prepareCode("""
-      int main() {
-        int v[20];
-        sizeof v;
-      }
-    """.trimIndent(), source)
-    p.assertNoDiagnostics()
-    val v =
-        nameRef("v", ArrayType(SignedIntType, ConstantSize(int(20)), isStorageRegister = false))
-    int func ("main" withParams emptyList()) body compoundOf(
-        int declare nameDecl("v")[20],
-        sizeOf(v)
-    ) assertEquals p.root.decls[0]
   }
 
   @Test

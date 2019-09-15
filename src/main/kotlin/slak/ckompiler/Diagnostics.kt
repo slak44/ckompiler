@@ -104,6 +104,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   CONST_QUALIFIED_NOT_ASSIGNABLE(ERROR,
       "Assignment to %s '%s' with const-qualified type '%s'"),
   ARRAY_OF_INCOMPLETE(ERROR, "Array has incomplete element type '%s'"),
+  SIZEOF_TYPENAME_PARENS(ERROR, "Expected parentheses around type name in sizeof expression"),
   SIZEOF_ON_BITFIELD(ERROR, "Sizeof applied to a bit-field"),
   SIZEOF_ON_INCOMPLETE(WARNING, "Sizeof applied to incomplete type '%s'"),
   SIZEOF_ON_FUNCTION(WARNING, "Sizeof applied to function type '%s'"),

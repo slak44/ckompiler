@@ -384,6 +384,16 @@ class ExpressionParser(
     eat() // The 'sizeof'
     if (isEaten()) return error<ErrorExpression>()
     if (current().asPunct() != Punctuators.LPAREN) {
+      val col = colPastTheEnd(0)
+      val badTypeName = parseTypeName(tokenCount)
+      if (badTypeName != null) {
+        diagnostic {
+          id = DiagnosticId.SIZEOF_TYPENAME_PARENS
+          column(col)
+        }
+        eatToSemi()
+        return error<ErrorExpression>()
+      }
       val expr = parseUnaryExpression() ?: error<ErrorExpression>()
       val type = checkSizeofType(expr.type, sizeOf, expr)
       return SizeofTypeName(type, machineTargetData.sizeType).withRange(sizeOf..expr)
