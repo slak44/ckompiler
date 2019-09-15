@@ -26,8 +26,12 @@ interface IControlKeywordParser {
    */
   fun parseBreak(isInSwitch: Boolean, isInLoop: Boolean): BreakStatement?
 
-  /** C standard: A.2.3, 6.8.6.3 */
-  fun parseReturn(): ReturnStatement?
+  /**
+   * Print diagnostic if the returned value does not match [expectedType].
+   *
+   * C standard: A.2.3, 6.8.6.3
+   */
+  fun parseReturn(expectedType: TypeName, funcName: String): ReturnStatement?
 }
 
 class ControlKeywordParser(expressionParser: ExpressionParser) :
@@ -111,16 +115,14 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
     return BreakStatement().withRange(breakTok..(semiTok ?: breakTok))
   }
 
-  /* FIXME: make sure return type matches function
-      stuff like this too:
-      warning: void function 'g' should not return void expression */
-  override fun parseReturn(): ReturnStatement? {
+  override fun parseReturn(expectedType: TypeName, funcName: String): ReturnStatement? {
     val retKey = current()
     if (current().asKeyword() != Keywords.RETURN) return null
     eat() // The 'return'
     if (current().asPunct() == Punctuators.SEMICOLON) {
       val semi = current()
       eat() // The ';'
+      validateReturnValue(retKey, null, expectedType, funcName)
       return ReturnStatement(null).withRange(retKey..semi)
     }
     val semiIdx = indexOfFirst(Punctuators.SEMICOLON)
@@ -132,9 +134,10 @@ class ControlKeywordParser(expressionParser: ExpressionParser) :
         formatArgs("return statement")
         column(colPastTheEnd(0))
       }
-      return ReturnStatement(expr).withRange(retKey until safeToken(0))
+    } else {
+      eat() // The ';'
     }
-    eat() // The ';'
+    validateReturnValue(retKey, expr, expectedType, funcName)
     return ReturnStatement(expr).withRange(retKey until safeToken(0))
   }
 }

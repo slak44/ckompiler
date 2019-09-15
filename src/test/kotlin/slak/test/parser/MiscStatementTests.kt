@@ -1,63 +1,14 @@
 package slak.test.parser
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
 
 class MiscStatementTests {
-  @Test
-  fun `Return Basic`() {
-    val p = prepareCode("""
-      int main() {
-        return 0;
-      }
-    """.trimIndent(), source)
-    p.assertNoDiagnostics()
-    int func "main" body compoundOf(
-        returnSt(int(0))
-    ) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun `Return Expression`() {
-    val p = prepareCode("""
-      int main() {
-        return (1 + 1) / 2;
-      }
-    """.trimIndent(), source)
-    p.assertNoDiagnostics()
-    int func "main" body compoundOf(
-        returnSt((1 add 1) div 2)
-    ) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun `Return Missing Semi`() {
-    val p = prepareCode("""
-      int main() {
-        return 0
-      }
-    """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
-    int func "main" body compoundOf(
-        returnSt(int(0))
-    ) assertEquals p.root.decls[0]
-  }
-
-  @Test
-  fun `Return Nothing`() {
-    val p = prepareCode("""
-      void f() {
-        return;
-      }
-    """.trimIndent(), source)
-    p.assertNoDiagnostics()
-    void func "f" body compoundOf(
-        returnSt()
-    ) assertEquals p.root.decls[0]
-  }
-
   @Test
   fun `Break Statement`() {
     val p = prepareCode("""

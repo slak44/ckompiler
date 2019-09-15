@@ -108,7 +108,8 @@ private class TranslationUnitParser(private val specParser: SpecParser,
                                       funDecl: Declarator): FunctionDefinition {
     if (!funDecl.isFunction()) logger.throwICE("Not a function declarator") { funDecl }
     if (funDecl !is NamedDeclarator) logger.throwICE("Function definition without name") { funDecl }
-    newIdentifier(TypedIdentifier(declSpec, funDecl))
+    val funTid = TypedIdentifier(declSpec, funDecl)
+    newIdentifier(funTid)
     if (current().asPunct() != Punctuators.LBRACKET) {
       TODO("possible unimplemented grammar (old-style K&R functions?)")
     }
@@ -124,7 +125,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
         errorOn(it.declSpec..it.declarator)
       }
     }
-    val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope)
+    val block = parseCompoundStatement(funDecl.getFunctionTypeList().scope, funTid)
         ?: error<ErrorStatement>()
     val start = if (declSpec.isBlank()) block else declSpec
     return FunctionDefinition(declSpec, funDecl, block).withRange(start..block)

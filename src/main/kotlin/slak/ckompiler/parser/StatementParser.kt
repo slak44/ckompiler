@@ -1,20 +1,22 @@
 package slak.ckompiler.parser
 
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.ITokenHandler
+import slak.ckompiler.*
 import slak.ckompiler.lexer.*
-import slak.ckompiler.rangeTo
-import slak.ckompiler.until
 
 interface IStatementParser {
   /**
-   * Parses a `compound-statement`, including the { } brackets.
+   * Parses a `compound-statement`, including the { } brackets. Intended for function definition
+   * blocks.
    *
    * C standard: A.2.3
-   * @param functionScope the scope of the function for which this is a block, null otherwise
+   * @param functionScope the scope of the function for which this is a block
+   * @param function the [TypedIdentifier] of the function for which this is a block
    * @return null if there is no compound statement, or the [CompoundStatement] otherwise
    */
-  fun parseCompoundStatement(functionScope: LexicalScope? = null): Statement?
+  fun parseCompoundStatement(
+      functionScope: LexicalScope,
+      function: TypedIdentifier
+  ): Statement?
 }
 
 class StatementParser(
@@ -30,14 +32,32 @@ class StatementParser(
     IDeclarationParser by declarationParser,
     IControlKeywordParser by controlKeywordParser {
 
-  private data class StatementContext(val isInSwitch: Boolean, val isInLoop: Boolean)
+  private data class StatementContext(
+      val isInSwitch: Boolean,
+      val isInLoop: Boolean,
+      val expectedReturnType: TypeName,
+      val funcName: String
+  )
 
   /** @see [IStatementParser.parseCompoundStatement] */
-  override fun parseCompoundStatement(functionScope: LexicalScope?): Statement? {
-    val ctx = StatementContext(isInSwitch = false, isInLoop = false)
+  override fun parseCompoundStatement(
+      functionScope: LexicalScope,
+      function: TypedIdentifier
+  ): Statement? {
+    val ctx = StatementContext(
+        isInSwitch = false,
+        isInLoop = false,
+        expectedReturnType = function.type.asCallable()!!.returnType,
+        funcName = function.name
+    )
     return ctx.parseCompoundStatementImpl(functionScope)
   }
 
+  /**
+   * This function also deals with compound statements inside function definitions.
+   *
+   * Pass null to create a new scope, pass a scope to use it as the block's scope.
+   */
   private fun StatementContext.parseCompoundStatementImpl(
       functionScope: LexicalScope?
   ): Statement? {
@@ -484,7 +504,9 @@ class StatementParser(
    * @param parseExpressionStatement if false, this function will not parse expression statements
    * @return null if no statement was found, or the [Statement] otherwise
    */
-  private fun StatementContext.parseStatement(parseExpressionStatement: Boolean = true): Statement? {
+  private fun StatementContext.parseStatement(
+      parseExpressionStatement: Boolean = true
+  ): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {
       val n = Noop().withRange(rangeOne())
@@ -503,7 +525,7 @@ class StatementParser(
         ?: parseFor()
         ?: parseContinue(isInLoop = isInLoop)
         ?: parseBreak(isInSwitch = isInSwitch, isInLoop = isInLoop)
-        ?: parseReturn()
+        ?: parseReturn(expectedReturnType, funcName)
     if (res != null) return res
     return if (parseExpressionStatement) parseExpressionStatement() else null
   }
