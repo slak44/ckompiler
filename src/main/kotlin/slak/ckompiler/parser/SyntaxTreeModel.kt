@@ -788,10 +788,10 @@ data class LabeledStatement(
 data class CaseStatement(
     val caseExpr: ExprConstantNode,
     override val statement: Statement
-): StatementWithLabel()
+) : StatementWithLabel()
 
 /** C standard: 6.8.1 */
-data class DefaultStatement(override val statement: Statement): StatementWithLabel()
+data class DefaultStatement(override val statement: Statement) : StatementWithLabel()
 
 /** C standard: 6.8.5.1 */
 data class WhileStatement(val cond: Expression, val loopable: Statement) : Statement()
