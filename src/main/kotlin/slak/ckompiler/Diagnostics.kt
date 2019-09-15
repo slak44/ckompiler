@@ -61,6 +61,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_IDENT_OR_PAREN(ERROR, "Expected identifier or '('"),
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
   EXPECTED_RPAREN_AFTER_VARIADIC(ERROR, "Expected ')' after variadic '...'"),
+  EXPECTED_PARAM_DECL(ERROR, "Expected parameter declarator"),
   UNEXPECTED_SWITCH_LABEL(ERROR, "Unexpected '%s' label outside switch statement"),
   TRANSLATION_UNIT_NEEDS_DECL(WARNING,
       "ISO C requires a translation unit to contain at least one declaration"),

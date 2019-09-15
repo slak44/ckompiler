@@ -462,9 +462,11 @@ class ErrorSuffix : DeclaratorSuffix(), ErrorNode by ErrorNodeImpl
  *
  * C standard: 6.7.6.0.1
  */
-data class ParameterTypeList(val params: List<ParameterDeclaration>,
-                             val scope: LexicalScope,
-                             val variadic: Boolean = false) : DeclaratorSuffix() {
+data class ParameterTypeList(
+    val params: List<ParameterDeclaration>,
+    val scope: LexicalScope,
+    val variadic: Boolean = false
+) : DeclaratorSuffix() {
   override fun toString(): String {
     val paramStr = params.joinToString(", ")
     val variadicStr = if (!variadic) "" else ", ..."
@@ -472,8 +474,10 @@ data class ParameterTypeList(val params: List<ParameterDeclaration>,
   }
 }
 
-data class ParameterDeclaration(val declSpec: DeclarationSpecifier,
-                                val declarator: Declarator) : ASTNode() {
+data class ParameterDeclaration(
+    val declSpec: DeclarationSpecifier,
+    val declarator: Declarator
+) : ASTNode() {
   override fun toString() = "$declSpec $declarator"
 }
 
@@ -505,6 +509,12 @@ data class IdentifierNode(val name: String) : ASTNode(), Terminal {
 sealed class Declarator : ASTNode() {
   abstract val indirection: List<TypeQualifierList>
   abstract val suffixes: List<DeclaratorSuffix>
+
+  /**
+   * A declarator that consists of no tokens. It is not only valid grammar, it can actually occur in
+   * parameter declarations. Yes, it is ridiculous.
+   */
+  fun isBlank() = this is AbstractDeclarator && indirection.isEmpty() && suffixes.isEmpty()
 
   fun isFunction() = suffixes.isNotEmpty() && suffixes[0] is ParameterTypeList
   fun isArray() = suffixes.isNotEmpty() && suffixes[0] is ArrayTypeSize

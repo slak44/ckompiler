@@ -314,23 +314,23 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         }
         break
       }
+      // First thing is comma, complain
+      if (current().asPunct() == Punctuators.COMMA) {
+        eat() // The ','
+        diagnostic {
+          id = DiagnosticId.EXPECTED_PARAM_DECL
+          errorOn(safeToken(0))
+        }
+        continue
+      }
       val specs = specParser.parseDeclSpecifiers(SpecValidationRules.FUNCTION_PARAMETER)
       if (specs.isBlank()) {
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
-      // The parameter can have parens with commas in them
-      // We're interested in the comma that comes after the parameter
-      // So balance the parens, and look for the first comma after them
-      // Also, we do not eat what we find; we're only searching for the end of the current param
-      // Once found, parseNamedDeclarator handles parsing the param and eating it
-      val parenEndIdx = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
-      if (parenEndIdx == -1) {
-        TODO("handle error case where there is an unmatched paren in the parameter list")
-      }
-      val commaIdx = indexOfFirst(Punctuators.COMMA)
-      val paramEndIdx = if (commaIdx == -1) it.size else commaIdx
+      val paramEndIdx = firstOutsideParens(
+          Punctuators.COMMA, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
       val declarator = parseAbstractDeclarator(paramEndIdx, true)
-      declarator.withRange(specs..tokenAt(paramEndIdx - 1))
+      if (declarator.isBlank()) declarator.withRange(specs..tokenAt(paramEndIdx - 1))
       params += ParameterDeclaration(specs, declarator).withRange(declarator)
       // Add param name to current scope (which can be either block scope or
       // function prototype scope). Ignore unnamed parameters.
@@ -349,6 +349,13 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; found comma that separates params
         eat()
+        if (isNotEaten()) continue
+        // Found comma, then list ended; complain
+        diagnostic {
+          id = DiagnosticId.EXPECTED_PARAM_DECL
+          errorOn(safeToken(0))
+        }
+        break
       }
     }
     return@tokenContext ParameterTypeList(params, scope, isVariadic)
