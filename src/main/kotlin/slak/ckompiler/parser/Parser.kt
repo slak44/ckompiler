@@ -143,7 +143,7 @@ private class TranslationUnitParser(private val specParser: SpecParser,
     if (returnType is FunctionType || returnType is ArrayType) diagnostic {
       id = DiagnosticId.INVALID_RET_TYPE
       formatArgs(if (returnType is FunctionType) "function" else "array", returnType)
-      errorOn(declarator)
+      errorOn(declSpec..declarator)
     }
   }
 
