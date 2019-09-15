@@ -224,6 +224,18 @@ class ExpressionTests {
   }
 
   @Test
+  fun `Subscripts Are Char`() {
+    val p = prepareCode("""
+      int main() {
+        char c = 'b';
+        int v[200];
+        v[c];
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.SUBSCRIPT_TYPE_CHAR)
+  }
+
+  @Test
   fun `Simple Cast Expression`() {
     val p = prepareCode("int a = 1; unsigned int b = (unsigned) a;", source)
     p.assertNoDiagnostics()

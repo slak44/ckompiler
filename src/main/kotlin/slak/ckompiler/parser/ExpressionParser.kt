@@ -312,11 +312,14 @@ class ExpressionParser(
     val endParenTok = tokenAt(endParenIdx)
     val (resultingType, areSwapped) = typeOfSubscript(subscripted, subscript, endParenTok)
     val realSubscripted = if (!areSwapped) subscripted else subscript
-    return ArraySubscript(
-        realSubscripted,
-        if (!areSwapped) subscript else subscripted,
-        resultingType
-    ).withRange(realSubscripted..endParenTok)
+    val realSubscript = if (!areSwapped) subscript else subscripted
+    if (realSubscript.type is SignedCharType || realSubscript.type is UnsignedCharType) diagnostic {
+      id = DiagnosticId.SUBSCRIPT_TYPE_CHAR
+      formatArgs(realSubscript.type.toString())
+      errorOn(realSubscript)
+    }
+    return ArraySubscript(realSubscripted, realSubscript, resultingType)
+        .withRange(realSubscripted..endParenTok)
   }
 
   // FIXME: implement initializer-lists (6.5.2)
