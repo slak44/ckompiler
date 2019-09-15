@@ -3,6 +3,8 @@ package slak.test.parser
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.ErrorStatement
+import slak.ckompiler.parser.PointerType
+import slak.ckompiler.parser.SignedIntType
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -130,6 +132,15 @@ class FunctionsTests {
       int f(int y = 1, int x = 54 + 3 / 34 >> 3);
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.NO_DEFAULT_ARGS, DiagnosticId.NO_DEFAULT_ARGS)
+  }
+
+  @Test
+  fun `Function Return Pointer Type`() {
+    val p = prepareCode("int* f(int a) {return (int*)0;}", source)
+    p.assertNoDiagnostics()
+    int func (ptr("f") withParams listOf(int param "a")) body compoundOf(
+        returnSt(PointerType(SignedIntType, emptyList(), false).cast(0))
+    ) assertEquals p.root.decls[0]
   }
 
   @Test

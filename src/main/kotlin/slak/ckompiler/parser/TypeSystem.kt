@@ -39,6 +39,14 @@ fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
 fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   if (decl is ErrorDeclarator || specQuals.isBlank()) return ErrorType
   val isStorageRegister = specQuals.storageClass?.value == Keywords.REGISTER
+  // Functions
+  if (decl.isFunction()) {
+    val ptl = decl.getFunctionTypeList()
+    val paramTypes = ptl.params.map { typeNameOf(it.declSpec, it.declarator) }
+    val retDecl = AbstractDeclarator(decl.indirection, decl.suffixes.drop(1)).withRange(decl)
+    val retType = typeNameOf(specQuals, retDecl)
+    return FunctionType(retType, paramTypes, ptl.variadic)
+  }
   // Pointers
   if (decl.indirection.isNotEmpty()) {
     val referencedType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes))
@@ -46,13 +54,6 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
       PointerType(type, curr, false)
     }
     return PointerType(ind, decl.indirection.last(), isStorageRegister)
-  }
-  // Functions
-  if (decl.isFunction()) {
-    val ptl = decl.getFunctionTypeList()
-    val paramTypes = ptl.params.map { typeNameOf(it.declSpec, it.declarator) }
-    val retType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
-    return FunctionType(retType, paramTypes, ptl.variadic)
   }
   // Structure/Union
   if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)

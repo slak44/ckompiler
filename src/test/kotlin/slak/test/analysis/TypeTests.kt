@@ -171,6 +171,16 @@ class TypeTests {
   }
 
   @Test
+  fun `Function Returning Pointer Type Has Correct Function Type`() {
+    val p = prepareCode("int* f(int);", source)
+    p.assertNoDiagnostics()
+    val d = int proto (ptr("f") withParams listOf(int.toParam()))
+    d assertEquals p.root.decls[0]
+    val fType = FunctionType(PointerType(SignedIntType, emptyList(), false), listOf(SignedIntType))
+    assertEquals(fType, typeNameOf(d.declSpecs, d.declaratorList[0].first))
+  }
+
+  @Test
   fun `Implicit Casts For Expressions`() {
     val p = prepareCode("""
       int main() {
