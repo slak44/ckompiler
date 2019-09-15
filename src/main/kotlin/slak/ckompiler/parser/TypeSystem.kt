@@ -59,7 +59,8 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   // Arrays
   if (decl.isArray()) {
     val size = decl.getArrayTypeSize()
-    val elemType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes.drop(1)))
+    val elemDecl = AbstractDeclarator(emptyList(), decl.suffixes.drop(1)).withRange(decl)
+    val elemType = typeNameOf(specQuals, elemDecl)
     return ArrayType(elemType, size, isStorageRegister)
   }
   val unqualified = when (specQuals.typeSpec) {

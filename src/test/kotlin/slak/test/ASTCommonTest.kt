@@ -64,15 +64,15 @@ internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
 internal fun FunctionDefinition.toRef() =
     nameRef(name, PointerType(functionType, emptyList(), isStorageRegister = false))
 
-internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList())
+internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList()).zeroRange()
 
 internal fun ptr(d: Declarator) =
-    NamedDeclarator(d.name, d.indirection + listOf(listOf()), d.suffixes)
+    NamedDeclarator(d.name, d.indirection + listOf(listOf()), d.suffixes).zeroRange()
 
 internal fun ptr(s: String) = ptr(nameDecl(s))
 
 internal fun String.withPtrs(vararg q: TypeQualifierList) =
-    NamedDeclarator(name(this), q.asList(), emptyList())
+    NamedDeclarator(name(this), q.asList(), emptyList()).zeroRange()
 
 internal infix fun <T> String.assign(it: T) =
     nameDecl(this) to ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct)
@@ -110,7 +110,7 @@ internal inline infix fun <reified T : Any>
       else -> throw IllegalArgumentException("Bad type")
     }
   }
-  return Declaration(this, decls)
+  return Declaration(this, decls).zeroRange()
 }
 
 @JvmName("declareDeclarators")
@@ -119,10 +119,10 @@ internal infix fun DeclarationSpecifier.declare(list: List<DeclInit>) =
 
 @JvmName("declareStrings")
 internal infix fun DeclarationSpecifier.declare(list: List<String>) =
-    Declaration(this, list.map { nameDecl(it) to null })
+    Declaration(this, list.map { nameDecl(it) to null }).zeroRange()
 
 internal infix fun DeclarationSpecifier.proto(decl: Declarator) =
-    Declaration(this, listOf(decl to null))
+    Declaration(this, listOf(decl to null)).zeroRange()
 
 internal infix fun DeclarationSpecifier.proto(s: String) = this proto (s withParams emptyList())
 
@@ -131,10 +131,10 @@ internal infix fun DeclarationSpecifier.func(decl: Declarator) = this to decl
 internal infix fun DeclarationSpecifier.func(s: String) = this to (s withParams emptyList())
 
 internal infix fun DeclarationSpecifier.declare(s: String) =
-    Declaration(this, listOf(nameDecl(s) to null))
+    Declaration(this, listOf(nameDecl(s) to null)).zeroRange()
 
 internal infix fun DeclarationSpecifier.declare(sm: List<StructMember>) =
-    StructDeclaration(this, sm)
+    StructDeclaration(this, sm).zeroRange()
 
 internal infix fun DeclarationSpecifier.param(s: AbstractDeclarator) =
     ParameterDeclaration(this, s).zeroRange()
@@ -146,11 +146,11 @@ internal infix fun DeclarationSpecifier.param(s: NamedDeclarator) =
     ParameterDeclaration(this, s).zeroRange()
 
 internal infix fun DeclarationSpecifier.withParams(params: List<ParameterDeclaration>) =
-    this param
-        (AbstractDeclarator(emptyList(), emptyList()).withParams(params) as AbstractDeclarator)
+    this param (AbstractDeclarator(emptyList(), emptyList()).zeroRange().withParams(params)
+        as AbstractDeclarator)
 
 internal fun DeclarationSpecifier.toParam() =
-    this param AbstractDeclarator(emptyList(), emptyList())
+    this param AbstractDeclarator(emptyList(), emptyList()).zeroRange()
 
 internal fun Declarator.withParams(params: List<ParameterDeclaration>,
                                    variadic: Boolean): Declarator {
@@ -164,7 +164,7 @@ internal fun Declarator.withParams(params: List<ParameterDeclaration>,
     NamedDeclarator(name, indirection, suffixes + ParameterTypeList(params, scope, variadic))
   } else {
     AbstractDeclarator(indirection, suffixes + ParameterTypeList(params, scope, variadic))
-  }
+  }.zeroRange()
 }
 
 internal infix fun Declarator.withParams(params: List<ParameterDeclaration>) =
@@ -187,7 +187,7 @@ internal infix fun Pair<DeclarationSpecifier, Declarator>.body(s: Statement): Fu
   ptl.scope.idents += s.scope.idents
   ptl.scope.labels += s.scope.labels
   ptl.scope.tagNames += s.scope.tagNames
-  return FunctionDefinition(first, second, CompoundStatement(s.items, ptl.scope))
+  return FunctionDefinition(first, second, CompoundStatement(s.items, ptl.scope).zeroRange())
 }
 
 internal fun ifSt(e: Expression, success: () -> Statement) = IfStatement(e, success(), null)
@@ -298,9 +298,11 @@ internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this)
 internal infix fun String.bitSize(expr: Expression) = StructMember(nameDecl(this), expr)
 internal infix fun String.bitSize(it: Long) = this bitSize int(it)
 
-internal fun typedef(ds: DeclarationSpecifier,
-                     decl: NamedDeclarator): Pair<DeclarationSpecifier, DeclarationSpecifier> {
-  val tdSpec = ds.copy(storageClass = Keywords.TYPEDEF.kw)
+internal fun typedef(
+    ds: DeclarationSpecifier,
+    decl: NamedDeclarator
+): Pair<DeclarationSpecifier, DeclarationSpecifier> {
+  val tdSpec = ds.copy(storageClass = Keywords.TYPEDEF.kw).zeroRange()
   val ref = DeclarationSpecifier(
       typeSpec = TypedefNameSpecifier(decl.name, TypedefName(tdSpec, decl)))
   return tdSpec to ref
@@ -309,17 +311,17 @@ internal fun typedef(ds: DeclarationSpecifier,
 internal operator fun <T> IdentifierNode.get(arraySize: T): NamedDeclarator {
   val e = parseDSLElement(arraySize)
   require(e is ExprConstantNode)
-  return NamedDeclarator(this, emptyList(), listOf(ConstantSize(e)))
+  return NamedDeclarator(this, emptyList(), listOf(ConstantSize(e))).zeroRange()
 }
 
 internal operator fun <T> NamedDeclarator.get(arraySize: T): NamedDeclarator {
   val e = parseDSLElement(arraySize)
   val size = if (e is ExprConstantNode) ConstantSize(e) else ExpressionSize(e)
-  return NamedDeclarator(name, indirection, suffixes + size)
+  return NamedDeclarator(name, indirection, suffixes + size).zeroRange()
 }
 
 internal operator fun NamedDeclarator.get(noSize: NoSize): NamedDeclarator {
-  return NamedDeclarator(name, indirection, suffixes + noSize)
+  return NamedDeclarator(name, indirection, suffixes + noSize).zeroRange()
 }
 
 internal operator fun <T> TypedIdentifier.get(it: T): ArraySubscript {

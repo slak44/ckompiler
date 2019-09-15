@@ -113,8 +113,14 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     }
     if (nested is ErrorNode) return@tokenContext error<ErrorDeclarator>()
     nested as NamedDeclarator
-    return@tokenContext NamedDeclarator(nested.name,
-        pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
+    return@tokenContext NamedDeclarator(
+        nested.name,
+        pointers + nested.indirection,
+        nested.suffixes + parseSuffixes(it.size)
+    ).also { d ->
+      val lastTok = d.suffixes.lastOrNull() ?: nested
+      d.withRange(declStartTok..lastTok)
+    }
   }
 
   /**
