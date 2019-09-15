@@ -9,12 +9,13 @@ import java.util.*
 private val logger = LogManager.getLogger()
 
 /** An instance of a [FunctionDefinition]'s control flow graph. */
-class CFG(val f: FunctionDefinition,
-          private val targetData: MachineTargetData,
-          srcFileName: SourceFileName,
-          srcText: String,
-          forceReturnZero: Boolean,
-          forceAllNodes: Boolean
+class CFG(
+    val f: FunctionDefinition,
+    private val targetData: MachineTargetData,
+    srcFileName: SourceFileName,
+    srcText: String,
+    forceReturnZero: Boolean,
+    forceAllNodes: Boolean
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(isRoot = true, targetData = targetData)
   /** Raw set of nodes as obtained from [graph]. */
@@ -50,33 +51,7 @@ class CFG(val f: FunctionDefinition,
       nodes = filterReachable(allNodes)
     }
 
-    nodes.filterNot(BasicBlock::isTerminated).forEach {
-      // For some functions (read: for main), it is desirable to return 0 if there are no explicit
-      // returns found; so don't print diagnostics and add the relevant IR
-      // If blocks are unterminated, and the function isn't void, the function is missing returns
-      if (f.functionType.returnType != VoidType && !forceReturnZero) diagnostic {
-        id = DiagnosticId.CONTROL_END_OF_NON_VOID
-        formatArgs(f.name, f.functionType.returnType.toString())
-        column(f.range.last)
-      }
-      // C standard: 5.1.2.2.3
-      val ret = if (forceReturnZero) {
-        val ctx = IRLoweringContext(it.irContext)
-        ctx.buildIR(IntegerConstantNode(0).withRange(object : SourcedRange {
-          override val sourceFileName = f.sourceFileName
-          override val sourceText = "0"
-          override val range = 0..0
-          override val expandedName: String? = null
-          override val expandedFrom: SourcedRange? = null
-        }))
-        synthCount++
-        ctx
-      } else {
-        null
-      }
-      // Either way, terminate the blocks with a fake return
-      it.terminator = ImpossibleJump(newBlock(), returned = ret)
-    }
+    handleUnterminatedBlocks(forceReturnZero)
 
     postOrderNodes = postOrderNodes(startBlock, nodes)
 
@@ -97,6 +72,36 @@ class CFG(val f: FunctionDefinition,
     val block = BasicBlock(isRoot = false, targetData = targetData)
     allNodes += block
     return block
+  }
+
+  private fun handleUnterminatedBlocks(
+      forceReturnZero: Boolean
+  ) = nodes.filterNot(BasicBlock::isTerminated).forEach {
+    // For some functions (read: for main), it is desirable to return 0 if there are no explicit
+    // returns found; so don't print diagnostics and add the relevant IR
+    // If blocks are unterminated, and the function isn't void, the function is missing returns
+    if (f.functionType.returnType != VoidType && !forceReturnZero) diagnostic {
+      id = DiagnosticId.CONTROL_END_OF_NON_VOID
+      formatArgs(f.name, f.functionType.returnType.toString())
+      column(f.range.last)
+    }
+    // C standard: 5.1.2.2.3
+    val ret = if (forceReturnZero) {
+      val ctx = IRLoweringContext(it.irContext)
+      ctx.buildIR(IntegerConstantNode(0).withRange(object : SourcedRange {
+        override val sourceFileName = f.sourceFileName
+        override val sourceText = "0"
+        override val range = 0..0
+        override val expandedName: String? = null
+        override val expandedFrom: SourcedRange? = null
+      }))
+      synthCount++
+      ctx
+    } else {
+      null
+    }
+    // Either way, terminate the blocks with a fake return
+    it.terminator = ImpossibleJump(newBlock(), returned = ret)
   }
 }
 
