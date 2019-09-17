@@ -54,7 +54,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
 
   /**
    * This function allows an "empty" abstract declarator, because `type-name` contains an optional
-   * `abstract-declarator`, and that is the primary (only?) use case for this function.
+   * `abstract-declarator`, and that is the primary use case for this function.
    *
    * Pass true to [allowName] to permit parsing an identifier as well, if it appears (will behave
    * like [parseNamedDeclarator], but with no errors if there is no such identifier).
@@ -63,25 +63,23 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    *
    * C standard: 6.7.7.0.1
    */
-  private fun parseAbstractDeclarator(endIdx: Int,
-                                      allowName: Boolean): Declarator = tokenContext(endIdx) {
-    if (it.isEmpty()) {
-      // The range is intentionally missing, but the callers should know not to use it or add it
-      // themselves
-      return@tokenContext AbstractDeclarator(emptyList(), emptyList())
-    }
+  private fun parseAbstractDeclarator(
+      endIdx: Int,
+      allowName: Boolean
+  ): Declarator = tokenContext(endIdx) {
+    if (it.isEmpty()) return@tokenContext AbstractDeclarator.blank()
     val startTok = current()
     val pointers = parsePointer(it.size)
     // Some pointers and nothing else is a valid abstract declarator
     if (isEaten()) {
-      return@tokenContext AbstractDeclarator(pointers, emptyList())
+      return@tokenContext AbstractDeclarator.base(pointers, emptyList())
           .withRange(startTok..safeToken(0))
     }
     // This fast path is here because parseNestedDeclarator thinks "()" is an error, and it isn't
     if (tokensLeft >= 2 &&
         current().asPunct() == Punctuators.LPAREN &&
         relative(1).asPunct() == Punctuators.RPAREN) {
-      return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
+      return@tokenContext AbstractDeclarator.base(pointers, parseSuffixes(it.size))
           .withRange(startTok..safeToken(0))
     }
     val nested = parseNestedDeclarator<AbstractDeclarator>(allowName)
@@ -90,23 +88,59 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       if (allowName && isNotEaten() && current() is Identifier) {
         val name = IdentifierNode.from(current())
         eat() // The identifier token
-        return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size))
+        return@tokenContext NamedDeclarator.base(name, pointers, parseSuffixes(it.size))
             .withRange(startTok..safeToken(0))
       }
-      return@tokenContext AbstractDeclarator(pointers, parseSuffixes(it.size))
+      return@tokenContext AbstractDeclarator.base(pointers, parseSuffixes(it.size))
           .withRange(startTok..safeToken(0))
     }
-    if (allowName && nested is NamedDeclarator) {
-      return@tokenContext NamedDeclarator(nested.name,
-          pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
-          .withRange(startTok..safeToken(0))
-    }
-    return@tokenContext AbstractDeclarator(
-        pointers + nested.indirection, nested.suffixes + parseSuffixes(it.size))
-        .withRange(startTok..safeToken(0))
+    val ind = nested.indirection + listOf(pointers)
+    val suf = nested.suffixes + listOf(parseSuffixes(it.size))
+    return@tokenContext if (allowName && nested is NamedDeclarator) {
+      NamedDeclarator(nested.name, ind, suf)
+    } else {
+      AbstractDeclarator(ind, suf)
+    }.withRange(startTok..safeToken(0))
   }
 
-  /** C standard: 6.7.6.0.1 */
+  /**
+   * Parsing declarators gets very complicated very fast when nested declarators come into play. A
+   * typical nested declaration looks like:
+   * ```
+   * int * (*f(int x))(double y)
+   * ^^^ declaration specifiers
+   * int * (*f(int x))(double y)
+   *       ^^^^^^^^^^^ nested declarator
+   * int * (*f(int x))(double y)
+   *                  ^^^^^^^^^^ declarator suffix for non-nested declarator
+   * int * (*f(int x))(double y)
+   *          ^^^^^^^ declarator suffix for nested declarator
+   * int * (*f(int x))(double y)
+   *     ^ indirection that "belongs" to the declaration specifiers (from "int" to "pointer to int")
+   * int * (*f(int x))(double y)
+   *        ^ indirection that "belongs" to the declarator suffix
+   *          (from "function" type to "pointer to function" type)
+   * int * (*f(int x))(double y)
+   *         ^ designator for the resulting declaration (ie the name of the function)
+   * ```
+   *
+   * The example declaration declares a function called "f", that takes one int parameter called
+   * "x", and returns a pointer to a function that also takes one parameter, a double "y", and
+   * returns a pointer to an int.
+   *
+   * Indirection binds in reverse order of suffixes: the first indirection binds to the last suffix,
+   * and the last indirection binds to the first suffix. This reflects the declarator nesting.
+   *
+   * Dereferencing the int pointer returned by calling the returned function pointer, in one
+   * expression, looks like this:
+   * ```
+   * int result = *(f(1)(2.0));
+   * ```
+   *
+   * Yes, this is why typedefs exist.
+   *
+   * C standard: 6.7.6.0.1
+   */
   protected fun parseNamedDeclarator(endIdx: Int): Declarator = tokenContext(endIdx) {
     fun emitDiagnostic(data: Any): ErrorDeclarator {
       diagnostic {
@@ -124,19 +158,17 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       val nameTok = current() as? Identifier ?: return@tokenContext emitDiagnostic(safeToken(0))
       eat() // The identifier token
       val name = IdentifierNode.from(nameTok)
-      return@tokenContext NamedDeclarator(name, pointers, parseSuffixes(it.size)).also { d ->
-        val lastTok = d.suffixes.lastOrNull() ?: nameTok
+      return@tokenContext NamedDeclarator.base(name, pointers, parseSuffixes(it.size)).also { d ->
+        val lastTok = d.suffixes.lastOrNull()?.lastOrNull() ?: nameTok
         d.withRange(declStartTok..lastTok)
       }
     }
     if (nested is ErrorNode) return@tokenContext error<ErrorDeclarator>()
     nested as NamedDeclarator
-    return@tokenContext NamedDeclarator(
-        nested.name,
-        pointers + nested.indirection,
-        nested.suffixes + parseSuffixes(it.size)
-    ).also { d ->
-      val lastTok = d.suffixes.lastOrNull() ?: nested
+    val ind = nested.indirection + listOf(pointers)
+    val suf = nested.suffixes + listOf(parseSuffixes(it.size))
+    return@tokenContext NamedDeclarator(nested.name, ind, suf).also { d ->
+      val lastTok = d.suffixes.lastOrNull()?.lastOrNull() ?: nested
       d.withRange(declStartTok..lastTok)
     }
   }
@@ -151,7 +183,8 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    * @return a [NamedDeclarator], [ErrorDeclarator] on error, null if there is no nesting
    */
   private inline fun <reified T : Declarator> parseNestedDeclarator(
-      allowName: Boolean): Declarator? {
+      allowName: Boolean
+  ): Declarator? {
     if (current().asPunct() != Punctuators.LPAREN) return null
     val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)
     if (end == -1) return error<ErrorDeclarator>()
@@ -182,7 +215,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    * @return a list, whose length is equal to the level of indirection in the declarator, and where
    * every element is the `type-qualifier-list` associated to that specific level of indirection
    */
-  private fun parsePointer(endIdx: Int): List<TypeQualifierList> = tokenContext(endIdx) {
+  private fun parsePointer(endIdx: Int): Indirection = tokenContext(endIdx) {
     if (isEaten() || current().asPunct() != Punctuators.STAR) return@tokenContext emptyList()
     val indirectionList = mutableListOf<TypeQualifierList>()
     var currentIdx = 0

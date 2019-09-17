@@ -64,15 +64,15 @@ internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
 internal fun FunctionDefinition.toRef() =
     nameRef(name, PointerType(functionType, emptyList(), isStorageRegister = false))
 
-internal fun nameDecl(s: String) = NamedDeclarator(name(s), listOf(), emptyList()).zeroRange()
+internal fun nameDecl(s: String) =
+    NamedDeclarator.base(name(s), emptyList(), emptyList()).zeroRange()
 
-internal fun ptr(d: Declarator) =
-    NamedDeclarator(d.name, d.indirection + listOf(listOf()), d.suffixes).zeroRange()
+internal fun ptr(d: Declarator) = d.asPtr()
 
 internal fun ptr(s: String) = ptr(nameDecl(s))
 
 internal fun String.withPtrs(vararg q: TypeQualifierList) =
-    NamedDeclarator(name(this), q.asList(), emptyList()).zeroRange()
+    NamedDeclarator.base(name(this), q.asList(), emptyList()).zeroRange()
 
 internal infix fun <T> String.assign(it: T) =
     nameDecl(this) to ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct)
@@ -143,26 +143,60 @@ internal infix fun DeclarationSpecifier.param(s: String) =
     ParameterDeclaration(this, nameDecl(s)).zeroRange()
 
 internal infix fun DeclarationSpecifier.withParams(params: List<ParameterDeclaration>) =
-    this param (AbstractDeclarator(emptyList(), emptyList()).zeroRange().withParams(params)
-        as AbstractDeclarator)
+    this param AbstractDeclarator.blank().withParams(params)
 
 internal fun DeclarationSpecifier.toParam() =
-    this param AbstractDeclarator(emptyList(), emptyList()).zeroRange()
+    this param AbstractDeclarator.blank().zeroRange()
 
-internal fun Declarator.withParams(params: List<ParameterDeclaration>,
-                                   variadic: Boolean): Declarator {
+private fun Declarator.addToTier(quals: TypeQualifierList?, suffix: DeclaratorSuffix?): Declarator {
+  val lastInds = (indirection.lastOrNull() ?: emptyList()).toMutableList()
+  if (quals != null) lastInds += listOf(quals)
+  val lastSufs = (suffixes.lastOrNull() ?: emptyList()).toMutableList()
+  if (suffix != null) lastSufs += suffix
+  val inds = indirection.dropLast(1) + listOf(lastInds)
+  val sufs = suffixes.dropLast(1) + listOf(lastSufs)
+  return if (this is NamedDeclarator) {
+    NamedDeclarator(name, inds, sufs)
+  } else {
+    AbstractDeclarator(inds, sufs)
+  }.zeroRange()
+}
+
+private fun Declarator.newTier(quals: TypeQualifierList?, suffix: DeclaratorSuffix?): Declarator {
+  val inds =
+      if (quals == null) indirection + listOf(listOf()) else indirection + listOf(listOf(quals))
+  val sufs = if (suffix == null) suffixes + listOf(listOf()) else suffixes + listOf(listOf(suffix))
+  return if (this is NamedDeclarator) {
+    NamedDeclarator(name, inds, sufs)
+  } else {
+    AbstractDeclarator(inds, sufs)
+  }.zeroRange()
+}
+
+private fun Declarator.asPtr() = addToTier(emptyList(), null)
+
+private fun Declarator.withSuffix(suffix: DeclaratorSuffix) = addToTier(null, suffix)
+
+private fun ptlFrom(params: List<ParameterDeclaration>, variadic: Boolean): ParameterTypeList {
   val idents = params.mapNotNullTo(mutableListOf()) {
     if (it.declarator !is NamedDeclarator) return@mapNotNullTo null
     @Suppress("USELESS_CAST") // Hint, it's not useless
     nameRef(it.declarator.name.name, typeNameOf(it.declSpec, it.declarator)) as OrdinaryIdentifier
   }
   val scope = LexicalScope(idents = idents)
-  return if (this is NamedDeclarator) {
-    NamedDeclarator(name, indirection, suffixes + ParameterTypeList(params, scope, variadic))
-  } else {
-    AbstractDeclarator(indirection, suffixes + ParameterTypeList(params, scope, variadic))
-  }.zeroRange()
+  return ParameterTypeList(params, scope, variadic)
 }
+
+internal fun Declarator.withExtraParams(
+    params: List<ParameterDeclaration>,
+    variadic: Boolean
+): Declarator = newTier(null, ptlFrom(params, variadic))
+
+internal infix fun Declarator.withExtraParams(params: List<ParameterDeclaration>) =
+    withExtraParams(params, false)
+
+internal fun Declarator.withParams(params: List<ParameterDeclaration>, variadic: Boolean) =
+    withSuffix(ptlFrom(params, variadic))
 
 internal infix fun Declarator.withParams(params: List<ParameterDeclaration>) =
     withParams(params, false)
@@ -308,17 +342,26 @@ internal fun typedef(
 internal operator fun <T> IdentifierNode.get(arraySize: T): NamedDeclarator {
   val e = parseDSLElement(arraySize)
   require(e is ExprConstantNode)
-  return NamedDeclarator(this, emptyList(), listOf(ConstantSize(e))).zeroRange()
+  return NamedDeclarator(this, emptyList(), listOf(listOf(ConstantSize(e)))).zeroRange()
 }
 
 internal operator fun <T> NamedDeclarator.get(arraySize: T): NamedDeclarator {
   val e = parseDSLElement(arraySize)
   val size = if (e is ExprConstantNode) ConstantSize(e) else ExpressionSize(e)
-  return NamedDeclarator(name, indirection, suffixes + size).zeroRange()
+  return withSuffix(size) as NamedDeclarator
+}
+
+internal object NewTier
+
+internal operator fun <T> Declarator.get(arraySize: T, newTier: NewTier): NamedDeclarator {
+  newTier === newTier // Suppress was not working
+  val e = parseDSLElement(arraySize)
+  val size = if (e is ExprConstantNode) ConstantSize(e) else ExpressionSize(e)
+  return newTier(null, size) as NamedDeclarator
 }
 
 internal operator fun NamedDeclarator.get(noSize: NoSize): NamedDeclarator {
-  return NamedDeclarator(name, indirection, suffixes + noSize).zeroRange()
+  return withSuffix(noSize) as NamedDeclarator
 }
 
 internal operator fun <T> TypedIdentifier.get(it: T): ArraySubscript {

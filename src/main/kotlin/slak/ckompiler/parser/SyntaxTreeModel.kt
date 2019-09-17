@@ -481,16 +481,6 @@ data class ParameterDeclaration(
   override fun toString() = "$declSpec $declarator"
 }
 
-typealias TypeQualifierList = List<Keyword>
-
-@JvmName("TypeQualifierList#stringify")
-fun TypeQualifierList.stringify() = joinToString(" ") { (value) -> value.keyword }
-
-@JvmName("List_TypeQualifierList_#stringify")
-fun List<TypeQualifierList>.stringify() = joinToString { '*' + it.stringify() }
-
-operator fun TypeQualifierList.contains(k: Keywords): Boolean = k in map { it.value }
-
 data class IdentifierNode(val name: String) : ASTNode(), Terminal {
   constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)
 
@@ -506,43 +496,97 @@ data class IdentifierNode(val name: String) : ASTNode(), Terminal {
   }
 }
 
+/** C standard: 6.7.6 */
+typealias TypeQualifierList = List<Keyword>
+
+/**
+ * Represents what the standard labels `pointer` in the syntax.
+ *
+ * C standard: 6.7.6
+ */
+typealias Indirection = List<TypeQualifierList>
+
+@JvmName("TypeQualifierList#stringify")
+fun TypeQualifierList.stringify() = joinToString(" ") { (value) -> value.keyword }
+
+@JvmName("Indirection#stringify")
+fun Indirection.stringify() = joinToString { '*' + it.stringify() }
+
+operator fun TypeQualifierList.contains(k: Keywords): Boolean = k in map { it.value }
+
+typealias DeclaratorSuffixTier = List<DeclaratorSuffix>
+
+/**
+ * Common superclass for "declarators". This exists in an effort to unify what the standard calls
+ * `declarator` and `abstract-declarator`.
+ */
 sealed class Declarator : ASTNode() {
-  abstract val indirection: List<TypeQualifierList>
-  abstract val suffixes: List<DeclaratorSuffix>
+  abstract val indirection: List<Indirection>
+  abstract val suffixes: List<DeclaratorSuffixTier>
 
   /**
    * A declarator that consists of no tokens. It is not only valid grammar, it can actually occur in
    * parameter declarations. Yes, it is ridiculous.
+   *
+   * The token range for these declarators is intentionally missing. Callers should know not to use
+   * it or add it themselves.
    */
   fun isBlank() = this is AbstractDeclarator && indirection.isEmpty() && suffixes.isEmpty()
 
-  fun isFunction() = suffixes.isNotEmpty() && suffixes[0] is ParameterTypeList
-  fun isArray() = suffixes.isNotEmpty() && suffixes[0] is ArrayTypeSize
+  private fun hasSuffix() = suffixes.isNotEmpty() && suffixes[0].isNotEmpty()
 
-  fun getFunctionTypeList(): ParameterTypeList = suffixes[0] as ParameterTypeList
-  fun getArrayTypeSize(): ArrayTypeSize = suffixes[0] as ArrayTypeSize
+  fun isFunction() = hasSuffix() && suffixes[0][0] is ParameterTypeList
+  fun isArray() = hasSuffix() && suffixes[0][0] is ArrayTypeSize
+
+  fun getFunctionTypeList(): ParameterTypeList = suffixes[0][0] as ParameterTypeList
+  fun getArrayTypeSize(): ArrayTypeSize = suffixes[0][0] as ArrayTypeSize
 }
 
 /** C standard: 6.7.6 */
-data class NamedDeclarator(val name: IdentifierNode,
-                           override val indirection: List<TypeQualifierList>,
-                           override val suffixes: List<DeclaratorSuffix>) : Declarator() {
+data class NamedDeclarator(
+    val name: IdentifierNode,
+    override val indirection: List<Indirection>,
+    override val suffixes: List<DeclaratorSuffixTier>
+) : Declarator() {
   override fun toString(): String {
-    val suffixesStr = suffixes.joinToString("")
-    return "${indirection.stringify()}$name$suffixesStr"
+    val indStr = indirection.joinToString("", prefix = "(") { it.stringify() }
+    val suffixesStr = suffixes.joinToString("", postfix = ")") { it.joinToString("") }
+    val canTrim = indirection.size == 1 &&
+        indirection[0].isEmpty() &&
+        suffixes.size == 1 &&
+        suffixes[0].isEmpty()
+    return if (canTrim) name.name else "$indStr$name$suffixesStr"
+  }
+
+  companion object {
+    fun base(name: IdentifierNode, indirection: Indirection, suffixes: List<DeclaratorSuffix>) =
+        NamedDeclarator(name, listOf(indirection), listOf(suffixes))
   }
 }
 
 /** C standard: 6.7.7.0.1 */
-data class AbstractDeclarator(override val indirection: List<TypeQualifierList>,
-                              override val suffixes: List<DeclaratorSuffix>) : Declarator() {
-  override fun toString() = "(${indirection.stringify()}) $suffixes"
+data class AbstractDeclarator(
+    override val indirection: List<Indirection>,
+    override val suffixes: List<DeclaratorSuffixTier>
+) : Declarator() {
+  override fun toString(): String {
+    // Basically abuse NamedDeclarator.toString
+    return NamedDeclarator(IdentifierNode(" "), indirection, suffixes).toString()
+  }
+
+  companion object {
+    fun base(indirection: Indirection, suffixes: DeclaratorSuffixTier) =
+        AbstractDeclarator(listOf(indirection), listOf(suffixes))
+
+    /** @see Declarator.isBlank */
+    fun blank() = AbstractDeclarator(emptyList(), emptyList())
+  }
 }
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl {
-  override val suffixes = emptyList<DeclaratorSuffix>()
-  override val indirection = emptyList<TypeQualifierList>()
+  override val suffixes = emptyList<DeclaratorSuffixTier>()
+  override val indirection = emptyList<Indirection>()
 }
 
 // FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
@@ -588,7 +632,7 @@ sealed class ConstantArraySize : ArrayTypeSize() {
  * 3. If on a local declarator, it's an error
  */
 object NoSize : ArrayTypeSize() {
-  override fun toString() = ""
+  override fun toString() = "[]"
 }
 
 /**
@@ -602,7 +646,7 @@ object NoSize : ArrayTypeSize() {
  */
 data class UnconfinedVariableSize(val typeQuals: TypeQualifierList,
                                   val vlaStar: Punctuator) : VariableArraySize() {
-  override fun toString() = "${typeQuals.stringify()} *"
+  override fun toString() = "[${typeQuals.stringify()} *]"
 }
 
 /**
@@ -627,7 +671,7 @@ data class FunctionParameterSize(val typeQuals: TypeQualifierList,
 
   override fun toString(): String {
     val exprStr = if (expr == null) "" else " $expr"
-    return "${if (isStatic) "static " else ""}${typeQuals.stringify()}$exprStr"
+    return "[${if (isStatic) "static " else ""}${typeQuals.stringify()}$exprStr]"
   }
 }
 
@@ -645,7 +689,7 @@ data class FunctionParameterConstantSize(
     override val size: ExprConstantNode
 ) : ConstantArraySize() {
   override fun toString(): String {
-    return "${if (isStatic) "static " else ""}${typeQuals.stringify()}$size"
+    return "[${if (isStatic) "static " else ""}${typeQuals.stringify()}$size]"
   }
 }
 
@@ -662,7 +706,7 @@ data class ExpressionSize(val expr: Expression) : VariableArraySize() {
  * @param size result of integer constant expression
  */
 data class ConstantSize(override val size: ExprConstantNode) : ConstantArraySize() {
-  override fun toString() = "$size"
+  override fun toString() = "[$size]"
 }
 
 /** C standard: A.2.4 */
@@ -673,8 +717,9 @@ sealed class ExternalDeclaration : ASTNode()
  *
  * C standard: A.2.2
  */
-data class Declaration(val declSpecs: DeclarationSpecifier,
-                       val declaratorList: List<Pair<Declarator, Initializer?>>
+data class Declaration(
+    val declSpecs: DeclarationSpecifier,
+    val declaratorList: List<Pair<Declarator, Initializer?>>
 ) : ExternalDeclaration() {
 
   private var lateIdents: Set<TypedIdentifier>? = null
@@ -700,15 +745,11 @@ data class Declaration(val declSpecs: DeclarationSpecifier,
   }
 
   override fun toString(): String {
-    val tIdents = declaratorList.map {
-      TypedIdentifier(declSpecs, it.first as NamedDeclarator)
+    val declStrs = declaratorList.joinToString("", prefix = "\t", postfix = ";\n") { (decl, init) ->
+      val initStr = if (init == null) "" else " = $init"
+      "$declSpecs $decl$initStr"
     }
-    val idents = tIdents.zip(declaratorList.map { it.second })
-    val nameAndInits = idents.joinToString(", ") {
-      val initStr = if (it.second == null) "" else " = ${it.second}"
-      "${it.first.name}$initStr"
-    }
-    return "Declaration(${idents.first().first.type} $nameAndInits)"
+    return "Declaration {\n$declStrs}"
   }
 }
 

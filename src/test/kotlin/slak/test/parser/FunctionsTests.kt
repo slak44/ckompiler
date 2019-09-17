@@ -1,6 +1,5 @@
 package slak.test.parser
 
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.AbstractDeclarator
@@ -199,36 +198,53 @@ class FunctionsTests {
     f assertEquals p.root.decls[0]
   }
 
-  @Disabled("declarator parsing temporarily broken")
   @Test
   fun `Function Prototype Return Pointer To Function`() {
     val p = prepareCode("int (*f(int x))(double y);", source)
     p.assertNoDiagnostics()
-    val f =
-        int declare ptr("f" withParams listOf(int param "x") withParams listOf(double param "y"))
+    val f = int declare (ptr("f" withParams listOf(int param "x"))
+        withExtraParams listOf(double param "y"))
     f assertEquals p.root.decls[0]
   }
 
-  @Disabled("declarator parsing temporarily broken")
+  @Test
+  fun `Function Prototype Return Pointer To Function That Also Returns Pointer`() {
+    val p = prepareCode("int * (*f(int x))(double y);", source)
+    p.assertNoDiagnostics()
+    val f =
+        int declare ptr(ptr("f") withParams listOf(int param "x")
+            withExtraParams listOf(double param "y"))
+    f assertEquals p.root.decls[0]
+  }
+
   @Test
   fun `Function Prototype Return Nested Pointer To Function`() {
     val p = prepareCode("int (*(*f(int x))(int y))(int z);", source)
     p.assertNoDiagnostics()
-    val f = int declare ptr("f" withParams listOf(int param "x")
-        withParams listOf(int param "y") withParams listOf(int param "z"))
+    val f = int declare (ptr(ptr("f" withParams listOf(int param "x"))
+        withExtraParams listOf(int param "y")) withExtraParams listOf(int param "z"))
     f assertEquals p.root.decls[0]
   }
 
-  @Disabled("declarator parsing temporarily broken")
   @Test
   fun `Function Prototype Return Pointer To Function Complex`() {
     val p = prepareCode("int (*fpfi(int (*)(long), int))(int, int);", source)
     p.assertNoDiagnostics()
-    val innerFun = int param (AbstractDeclarator(listOf(listOf()), emptyList())
-        withParams listOf(long.toParam()))
+    val innerFun =
+        int param (ptr(AbstractDeclarator.blank()) withExtraParams listOf(long.toParam()))
     val f =
         int declare (ptr("fpfi" withParams listOf(innerFun, int.toParam()))
-            withParams listOf(int.toParam(), int.toParam()))
+            withExtraParams listOf(int.toParam(), int.toParam()))
+    f assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Function Prototype Ridiculous`() {
+    val p = prepareCode("int (*(*(*f(int x))(int y))[3])(double z);", source)
+    p.assertNoDiagnostics()
+    val decl3x =
+        ptr(ptr("f" withParams listOf(int param "x")) withExtraParams listOf(int param "y"))
+    val f = int declare (ptr(decl3x[3, NewTier]) withExtraParams listOf(double param "z"))
     f assertEquals p.root.decls[0]
   }
 

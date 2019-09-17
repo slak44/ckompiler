@@ -263,8 +263,9 @@ class DeclarationTests {
     assert(ptl.params[0].declarator is NamedDeclarator)
     val decl = ptl.params[0].declarator
     assertEquals("array", decl.name.name)
-    assertEquals(emptyList(), decl.indirection)
-    assertEquals(listOf(NoSize), decl.suffixes)
+    // One tier, empty indirection
+    assertEquals(listOf(emptyList()), decl.indirection)
+    assertEquals(NoSize, decl.getArrayTypeSize())
   }
 
   @ParameterizedTest

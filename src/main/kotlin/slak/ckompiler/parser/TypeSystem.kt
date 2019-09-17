@@ -10,7 +10,7 @@ import slak.ckompiler.parser.UnaryOperators.*
 
 private val logger = LogManager.getLogger()
 
-fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
+private fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
   val tagName = if (tagSpecifier.isAnonymous) null else tagSpecifier.tagIdent.name
 //  val tagDef = if (tagSpecifier.isAnonymous) null else searchTag(tagSpecifier.tagIdent)
   // FIXME: How do we deal with incomplete struct/union types?
@@ -36,34 +36,31 @@ fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
   }
 }
 
-fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
-  if (decl is ErrorDeclarator || specQuals.isBlank()) return ErrorType
-  val isStorageRegister = specQuals.storageClass?.value == Keywords.REGISTER
-  // Functions
-  if (decl.isFunction()) {
-    val ptl = decl.getFunctionTypeList()
-    val paramTypes = ptl.params.map { typeNameOf(it.declSpec, it.declarator) }
-    val retDecl = AbstractDeclarator(decl.indirection, decl.suffixes.drop(1)).withRange(decl)
-    val retType = typeNameOf(specQuals, retDecl)
-    return FunctionType(retType, paramTypes, ptl.variadic)
-  }
-  // Pointers
-  if (decl.indirection.isNotEmpty()) {
-    val referencedType = typeNameOf(specQuals, AbstractDeclarator(emptyList(), decl.suffixes))
-    val ind = decl.indirection.dropLast(1).fold(referencedType) { type, curr ->
-      PointerType(type, curr, false)
+private fun resolveTypeSuffixes(outerType: TypeName, sufs: DeclaratorSuffixTier): TypeName {
+  return sufs.foldRight(outerType) { suffix, currentType ->
+    when (suffix) {
+      is ParameterTypeList -> {
+        val paramTypes = suffix.params.map { typeNameOf(it.declSpec, it.declarator) }
+        FunctionType(currentType, paramTypes, suffix.variadic)
+      }
+      is ArrayTypeSize -> ArrayType(currentType, suffix, outerType.isStorageRegister)
+      is ErrorSuffix -> ErrorType
     }
-    return PointerType(ind, decl.indirection.last(), isStorageRegister)
   }
-  // Structure/Union
+}
+
+private fun resolveTypeIndirection(outerType: TypeName, ind: Indirection): TypeName {
+  if (ind.isEmpty()) return outerType
+  val ptr = ind.dropLast(1).fold(outerType) { type, typeQuals ->
+    PointerType(type, typeQuals, false)
+  }
+  return PointerType(ptr, ind.last(), outerType.isStorageRegister)
+}
+
+private fun typeNameOfBase(specQuals: DeclarationSpecifier): TypeName {
+  // FIXME: structure/union types are probably horrifyingly broken
   if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)
-  // Arrays
-  if (decl.isArray()) {
-    val size = decl.getArrayTypeSize()
-    val elemDecl = AbstractDeclarator(emptyList(), decl.suffixes.drop(1)).withRange(decl)
-    val elemType = typeNameOf(specQuals, elemDecl)
-    return ArrayType(elemType, size, isStorageRegister)
-  }
+  val isStorageRegister = specQuals.storageClass?.value == Keywords.REGISTER
   val unqualified = when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
     is EnumSpecifier -> TODO("enums not implemented yet")
@@ -92,6 +89,16 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
   } else {
     unqualified
   }
+}
+
+fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
+  if (decl is ErrorDeclarator || specQuals.isBlank()) return ErrorType
+  require(decl.indirection.size == decl.suffixes.size) { "Declarator size mismatch" }
+  return decl.indirection
+      .zip(decl.suffixes)
+      .foldRight(typeNameOfBase(specQuals)) { (ind, sufs), outerType ->
+        resolveTypeSuffixes(resolveTypeIndirection(outerType, ind), sufs)
+      }
 }
 
 /**
