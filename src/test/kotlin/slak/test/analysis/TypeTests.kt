@@ -392,6 +392,22 @@ class TypeTests {
   }
 
   @Test
+  fun `Dereferencing Array Is Fine`() {
+    val p = prepareCode("""
+      int main() {
+        int vec[20];
+        *vec;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val vec = nameRef("vec", PointerType(SignedIntType, emptyList(), isStorageRegister = false))
+    int func ("main" withParams emptyList()) body compoundOf(
+        int declare nameDecl("vec")[20],
+        UnaryOperators.DEREF[vec]
+    ) assertEquals p.root.decls[0]
+  }
+
+  @Test
   fun `Taking Address Of Rvalue Is Not Allowed`() {
     val p = prepareCode("""
       int main() {
