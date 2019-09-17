@@ -308,7 +308,7 @@ int main() {
 }
 ```
 
-produces the following graph  
+produces the following graph
 <p align="center"><img src="readme-resources/graph-example.png" alt="Graph Example"/></p>
 
 ###### SSA form
