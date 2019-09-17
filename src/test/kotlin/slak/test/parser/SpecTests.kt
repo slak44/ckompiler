@@ -393,7 +393,7 @@ class SpecTests {
         returnSt(9)
     )
     funcImpl assertEquals p.root.decls[1]
-    val ptrType = PointerType(typeNameOf(myFun, myFuncDecl), emptyList(), isStorageRegister = false)
+    val ptrType = PointerType(typeNameOf(myFun, myFuncDecl), emptyList())
     val fptrRef = nameRef("fptr", ptrType)
     int func ("main" withParams emptyList()) body compoundOf(
         myFun declare (ptr("fptr") assign UnaryOperators.REF[funcImpl.toRef()]),

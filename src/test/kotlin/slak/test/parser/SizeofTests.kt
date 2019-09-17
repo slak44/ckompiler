@@ -131,8 +131,7 @@ class SizeofTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val v =
-        nameRef("v", ArrayType(SignedIntType, ConstantSize(int(20)), isStorageRegister = false))
+    val v = nameRef("v", ArrayType(SignedIntType, ConstantSize(int(20))))
     int func ("main" withParams emptyList()) body compoundOf(
         int declare nameDecl("v")[20],
         sizeOf(v)

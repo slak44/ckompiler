@@ -69,8 +69,7 @@ class ConstantFoldingTests {
 
   @Test
   fun `Fold In Subscripts`() {
-    val array = nameRef("array",
-        ArrayType(SignedIntType, ConstantSize(int(4)), isStorageRegister = false))
+    val array = nameRef("array", ArrayType(SignedIntType, ConstantSize(int(4))))
     assertEquals(array[2], td.doConstantFolding(array[1 add 1]))
   }
 

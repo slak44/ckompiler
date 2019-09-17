@@ -54,15 +54,14 @@ internal val constChar = DeclarationSpecifier(
     typeQualifiers = const
 ).zeroRange()
 
-internal fun const(type: UnqualifiedTypeName) =
-    QualifiedType(type, const, isStorageRegister = false)
+internal fun const(type: UnqualifiedTypeName) = QualifiedType(type, const)
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = kotlin.test.assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).zeroRange()
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
 internal fun FunctionDefinition.toRef() =
-    nameRef(name, PointerType(functionType, emptyList(), isStorageRegister = false))
+    nameRef(name, PointerType(functionType, emptyList()))
 
 internal fun nameDecl(s: String) =
     NamedDeclarator.base(name(s), emptyList(), emptyList()).zeroRange()

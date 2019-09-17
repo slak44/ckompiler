@@ -179,7 +179,7 @@ sealed class TypeName {
 data class QualifiedType(
     val unqualified: UnqualifiedTypeName,
     override val typeQuals: TypeQualifierList,
-    override val isStorageRegister: Boolean
+    override val isStorageRegister: Boolean = false
 ) : TypeName() {
   override fun toString(): String {
     val typeQualStr = if (typeQuals.isEmpty()) "" else (typeQuals.stringify() + " ")
@@ -214,7 +214,7 @@ data class FunctionType(
 data class PointerType(
     val referencedType: TypeName,
     override val typeQuals: TypeQualifierList,
-    override val isStorageRegister: Boolean
+    override val isStorageRegister: Boolean = false
 ) : TypeName() {
   constructor(
       referencedType: TypeName,
@@ -238,7 +238,7 @@ data class PointerType(
 data class ArrayType(
     val elementType: TypeName,
     val size: ArrayTypeSize,
-    override val isStorageRegister: Boolean
+    override val isStorageRegister: Boolean = false
 ) : TypeName() {
   /**
    * Arrays can't be qualified, only their element.
@@ -580,17 +580,17 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
   }
   REF -> when (target) {
     is ErrorType -> ErrorType
-    is ArrayType -> PointerType(target.elementType, emptyList(), isStorageRegister = false)
+    is ArrayType -> PointerType(target.elementType, emptyList())
     is PointerType -> {
       val original = target.decayedFrom
       if (original != null) {
         // & is an exception to these implicit conversions, so don't nest pointer types
-        PointerType(original, target.typeQuals, isStorageRegister = false)
+        PointerType(original, target.typeQuals)
       } else {
-        PointerType(target, emptyList(), isStorageRegister = false)
+        PointerType(target, emptyList())
       }
     }
-    else -> PointerType(target, emptyList(), isStorageRegister = false)
+    else -> PointerType(target, emptyList())
   }
   DEREF -> {
     val normed = target.normalize()
@@ -908,7 +908,7 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
     val successRef = successType.elementType
     val failRef = failureType.elementType
     return if (successRef != failRef) ErrorType
-    else PointerType(successRef, emptyList(), isStorageRegister = false)
+    else PointerType(successRef, emptyList())
   }
   return ErrorType
 }
