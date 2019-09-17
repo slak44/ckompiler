@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.parser.DoubleType
 import slak.ckompiler.parser.SignedIntType
+import slak.ckompiler.parser.UnaryOperators
 import slak.test.*
 
 class FunctionCallTests {
@@ -165,5 +167,23 @@ class FunctionCallTests {
       int a = $funCallStr;
     """.trimIndent(), source)
     assert(DiagnosticId.EXPECTED_EXPR in p.diags.ids)
+  }
+
+  @Test
+  fun `Call Ridiculous Prototype`() {
+    val p = prepareCode("""
+      int (*(*(*f(int x))(int y))[3])(double z);
+      int main() {
+        (*(f(1)(2)[0]))(3);
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val decl3x =
+        ptr(ptr("f" withParams listOf(int param "x")) withExtraParams listOf(int param "y"))
+    val f = int declare (ptr(decl3x[3, NewTier]) withExtraParams listOf(double param "z"))
+    f assertEquals p.root.decls[0]
+    int func ("main" withParams emptyList()) body compoundOf(
+        UnaryOperators.DEREF[(fnPtrOf(f)(1)(2)[0])](DoubleType.cast(3))
+    ) assertEquals p.root.decls[1]
   }
 }

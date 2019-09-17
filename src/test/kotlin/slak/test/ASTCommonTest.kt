@@ -339,6 +339,16 @@ internal fun typedef(
   return tdSpec to ref
 }
 
+internal operator fun <T> Expression.get(arraySize: T): Expression {
+  val e = parseDSLElement(arraySize)
+  require(e is ExprConstantNode)
+  require(type is PointerType || type is ArrayType)
+  val innerType =
+      if (type is PointerType) (type as PointerType).referencedType
+      else (type as ArrayType).elementType
+  return ArraySubscript(this, e, innerType)
+}
+
 internal operator fun <T> IdentifierNode.get(arraySize: T): NamedDeclarator {
   val e = parseDSLElement(arraySize)
   require(e is ExprConstantNode)

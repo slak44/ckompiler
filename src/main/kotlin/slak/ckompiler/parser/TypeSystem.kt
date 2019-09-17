@@ -593,7 +593,8 @@ fun UnaryOperators.applyTo(target: TypeName): TypeName = when (this) {
     else -> PointerType(target, emptyList(), isStorageRegister = false)
   }
   DEREF -> {
-    if (target !is PointerType) ErrorType else target.referencedType
+    val normed = target.normalize()
+    if (normed !is PointerType) ErrorType else normed.referencedType
   }
 }
 
