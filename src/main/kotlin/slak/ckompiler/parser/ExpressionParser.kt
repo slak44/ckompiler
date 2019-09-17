@@ -322,8 +322,7 @@ class ExpressionParser(
         .withRange(realSubscripted..endParenTok)
   }
 
-  // FIXME: implement initializer-lists (6.5.2)
-  private fun parsePostfixExpression(baseExpr: Expression?): Expression? = when {
+  private fun parseOnePostfixExpression(baseExpr: Expression?): Expression? = when {
     isEaten() || baseExpr == null -> baseExpr
     current().asPunct() == Punctuators.LSQPAREN -> parseSubscript(baseExpr)
     current().asPunct() == Punctuators.LPAREN -> parseFunctionCall(baseExpr)
@@ -340,6 +339,17 @@ class ExpressionParser(
       IncDecOperation(baseExpr, isDecrement = c == Punctuators.DEC, isPostfix = true).withRange(r)
     }
     else -> baseExpr
+  }
+
+  private fun parsePostfixExpression(baseExpr: Expression?): Expression? {
+    // FIXME: implement initializer-lists (6.5.2)
+    var final = baseExpr
+    while (isNotEaten()) {
+      val next = parseOnePostfixExpression(final)
+      if (final === next) break
+      final = next
+    }
+    return final
   }
 
   /** C standard: 6.5.3.1 */
