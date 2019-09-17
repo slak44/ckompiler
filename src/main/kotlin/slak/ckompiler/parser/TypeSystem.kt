@@ -247,7 +247,7 @@ data class ArrayType(
    */
   override val typeQuals: TypeQualifierList = emptyList()
 
-  override fun toString() = "${if (isStorageRegister) "register " else ""}$elementType[$size]"
+  override fun toString() = "${if (isStorageRegister) "register " else ""}$elementType$size"
 }
 
 // FIXME: implement these too
