@@ -13,6 +13,21 @@ JUnit tests can be found in the `slak.test` package, in `src/test/kotlin`.
 Also see what was chosen for some
 [implementation defined/undefined behaviours][impl_defs].
 
+## The CLI
+
+For an extensive list of options, run `ckompiler --help`.
+
+The command line interface is intended to emulate `gcc`/`clang` where possible.
+Many common flags like `-o`, `-c`, `-D`, `-I`, `-l` do exactly what
+they're expected to do.
+
+The CLI also supports various debugging options, such as the
+`--cfg-mode`-related opts, or the `--print-asm-comm` flag.
+
+The argument parsing is done using [kotlinx.cli][kotlinxcli], along with a bunch
+of custom extensions that can be found in [CLIExtensions.kt][cli_exts]. The
+actual code that powers the command line can be found in the [CLI][cli] class.
+
 ## Overview of implementation details
 
 The compiler is mostly implemented as a processing pipeline of immutable data
@@ -440,6 +455,8 @@ especially to the C standard.
 [nasm_gen]:
 ./src/main/kotlin/slak/ckompiler/backend/nasm_x86_64/NasmGenerator.kt
 [diags]: ./src/main/kotlin/slak/ckompiler/Diagnostics.kt
+[cli]: ./src/main/kotlin/slak/ckompiler/CLI.kt
+[cli_exts]: ./src/main/kotlin/slak/ckompiler/CLIExtensions.kt
 [cfg_graphviz_create]: ./src/main/kotlin/slak/ckompiler/analysis/CFGGraphviz.kt
 [ssa]: https://en.wikipedia.org/wiki/Static_single_assignment_form
 [graphviz]: https://www.graphviz.org/
@@ -456,3 +473,4 @@ https://en.wikipedia.org/wiki/X86_calling_conventions#x86-64_calling_conventions
 [prec_climb]:
 https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
 [std_draft]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
+[kotlinxcli]: https://github.com/Kotlin/kotlinx.cli
