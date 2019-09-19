@@ -27,7 +27,8 @@ interface IDeclarationParser : IDeclaratorParser {
    * is no declarator, it will be [Optional.empty]
    */
   fun preParseDeclarator(
-      validationRules: SpecValidationRules): Pair<DeclarationSpecifier, Optional<Declarator>?>
+      validationRules: SpecValidationRules
+  ): Pair<DeclarationSpecifier, Optional<Declarator>?>
 
   /**
    * Parses a declaration where the [DeclarationSpecifier] and the first [Declarator] are already
@@ -42,11 +43,9 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
     DeclaratorParser(parenMatcher, scopeHandler), IDeclarationParser {
 
   override fun preParseDeclarator(
-      validationRules: SpecValidationRules): Pair<DeclarationSpecifier, Optional<Declarator>?> {
+      validationRules: SpecValidationRules
+  ): Pair<DeclarationSpecifier, Optional<Declarator>?> {
     val declSpec = specParser.parseDeclSpecifiers(validationRules)
-    if (declSpec.isTag() && !(declSpec.typeSpec as TagSpecifier).isAnonymous) {
-      createTag(declSpec.typeSpec)
-    }
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
       eat() // The ';'

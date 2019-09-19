@@ -256,7 +256,9 @@ internal fun <T> List<T>.compound(scope: LexicalScope? = null) = CompoundStateme
       is Statement -> {
         // Do nothing intentionally
       }
-      is TagSpecifier -> tagNames += it
+      is TagSpecifier -> {
+        if (it.name != null) tagNames[it.name!!] = it
+      }
       else -> throw IllegalArgumentException("Bad type")
     }
   }
@@ -306,7 +308,9 @@ internal fun <T> switch(onExpr: T, statement: Statement) =
 
 internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
-internal inline fun <reified T> struct(name: String?, decls: List<T>): StructDefinition {
+internal fun struct(name: String) = TagNameSpecifier(name(name), Keywords.STRUCT.kw).toSpec()
+
+internal inline fun <reified T> struct(name: String?, decls: List<T>): TagDefinitionSpecifier {
   val d = decls.map {
     when (T::class) {
       StructDeclaration::class -> it as StructDeclaration
@@ -319,8 +323,7 @@ internal inline fun <reified T> struct(name: String?, decls: List<T>): StructDef
       else -> throw IllegalArgumentException("Bad decls in struct")
     }
   }
-  return StructDefinition(
-      name = name?.let { name(it) }, decls = d, tagKindKeyword = Keywords.STRUCT.kw)
+  return TagDefinitionSpecifier(name?.let { name(it) }, d, Keywords.STRUCT.kw)
 }
 
 internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this)

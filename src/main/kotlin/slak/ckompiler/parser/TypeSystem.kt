@@ -10,29 +10,18 @@ import slak.ckompiler.parser.UnaryOperators.*
 
 private val logger = LogManager.getLogger()
 
-private fun typeNameOfTag(tagSpecifier: TagSpecifier): TypeName {
-  val tagName = if (tagSpecifier.isAnonymous) null else tagSpecifier.tagIdent.name
-//  val tagDef = if (tagSpecifier.isAnonymous) null else searchTag(tagSpecifier.tagIdent)
-  // FIXME: How do we deal with incomplete struct/union types?
-  val tagDef: TagSpecifier? = null // FIXME: ???
-  // The tag type differs, so error
-  if (tagDef != null && tagDef.tagKindKeyword != tagSpecifier.tagKindKeyword) return ErrorType
-  val tagMembers = when (tagDef) {
-    is StructDefinition -> tagDef.decls
-    is UnionDefinition -> tagDef.decls
-    else -> null
-  }?.flatMap { it.declaratorList.map { (declarator, _) -> typeNameOf(it.declSpecs, declarator) } }
-  return when (tagSpecifier) {
-    is StructNameSpecifier -> StructureType(tagName, tagMembers)
-    is UnionNameSpecifier -> UnionType(tagName, tagMembers)
-    is StructDefinition -> {
-      if (tagMembers != null) ErrorType
-      else StructureType(tagName, tagMembers)
-    }
-    is UnionDefinition -> {
-      if (tagMembers != null) ErrorType
-      else UnionType(tagName, tagMembers)
-    }
+private fun typeNameOfTag(tagSpecifier: TagSpecifier): TagType {
+  if (tagSpecifier is EnumSpecifier) TODO("implement enums")
+  require(tagSpecifier is TagDefinitionSpecifier || tagSpecifier is TagNameSpecifier)
+  // This breaks down declarations with multiple declarators in them
+  // For the TypeName, we don't care about that syntactic detail
+  val memberTypes = (tagSpecifier as? TagDefinitionSpecifier)?.decls?.flatMap {
+    it.declaratorList.map { (declarator, _) -> typeNameOf(it.declSpecs, declarator) }
+  }
+  return if (tagSpecifier.kind.value == Keywords.STRUCT) {
+    StructureType(tagSpecifier.name, memberTypes)
+  } else {
+    UnionType(tagSpecifier.name, memberTypes)
   }
 }
 
@@ -63,7 +52,6 @@ private fun typeNameOfBase(specQuals: DeclarationSpecifier): TypeName {
   val isStorageRegister = specQuals.storageClass?.value == Keywords.REGISTER
   val unqualified = when (specQuals.typeSpec) {
     null, is TagSpecifier -> ErrorType
-    is EnumSpecifier -> TODO("enums not implemented yet")
     is VoidTypeSpec -> VoidType
     is Bool -> BooleanType
     is Signed, is IntType, is SignedInt -> SignedIntType
@@ -127,12 +115,10 @@ sealed class TypeName {
   fun isScalar(): Boolean = unqualify() is ArithmeticType || this is PointerType
 
   /**
-   * FIXME: check for incomplete struct/union types; they are currently not even represented
-   *
    * C standard: 6.2.5.0.1
    */
   fun isCompleteObjectType() = this !is FunctionType && unqualify() !is VoidType &&
-      (this as? ArrayType)?.size !is NoSize
+      (this as? ArrayType)?.size !is NoSize && (unqualify() as? TagType)?.isComplete != false
 
   /**
    * System V ABI: 3.2.3, page 17
@@ -278,18 +264,33 @@ object ErrorType : UnqualifiedTypeName() {
   override fun toString() = "<error type>"
 }
 
-data class StructureType(val name: String?, val members: List<TypeName>?) : UnqualifiedTypeName() {
+sealed class TagType : UnqualifiedTypeName() {
+  abstract val name: IdentifierNode?
+  abstract val isComplete: Boolean
+  abstract val kind: String
+
   override fun toString(): String {
     val nameStr = if (name == null) "" else "$name "
-    return "struct $nameStr{...}"
+    return "$kind $nameStr{...}"
   }
 }
 
-data class UnionType(val name: String?, val optionTypes: List<TypeName>?) : UnqualifiedTypeName() {
-  override fun toString(): String {
-    val nameStr = if (name == null) "" else "$name "
-    return "union $nameStr{...}"
-  }
+data class StructureType(
+    override val name: IdentifierNode?,
+    val members: List<TypeName>?
+) : TagType() {
+  override val isComplete = members != null
+  override val kind = "struct"
+  override fun toString() = super.toString()
+}
+
+data class UnionType(
+    override val name: IdentifierNode?,
+    val optionTypes: List<TypeName>?
+) : TagType() {
+  override val isComplete = optionTypes != null
+  override val kind = "union"
+  override fun toString() = super.toString()
 }
 
 sealed class BasicType : UnqualifiedTypeName()

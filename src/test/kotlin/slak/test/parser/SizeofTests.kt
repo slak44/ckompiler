@@ -101,7 +101,6 @@ class SizeofTests {
     ) assertEquals p.root.decls[0]
   }
 
-  @Disabled("have to deal with incomplete structs in type system first")
   @Test
   fun `Sizeof Incomplete Type`() {
     val p = prepareCode("struct x; int a = sizeof(struct x);", source)

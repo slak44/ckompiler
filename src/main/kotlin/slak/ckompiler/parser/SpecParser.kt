@@ -36,7 +36,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
       formatArgs(it.threadLocal!!.value.keyword, "for loop initializer")
       errorOn(it.threadLocal)
     }
-    if (it.typeSpec is StructDefinition || it.typeSpec is UnionDefinition) diagnostic {
+    if (it.typeSpec is TagDefinitionSpecifier) diagnostic {
       id = DiagnosticId.FOR_INIT_NON_LOCAL
       errorOn(it)
     }
@@ -255,13 +255,12 @@ class SpecParser(declaratorParser: DeclaratorParser) :
   }
 
   /**
-   * Parses `struct-or-union-specifier`.
+   * Parses `struct-or-union-specifier`. Returns [IScopeHandler.createTag] of the parsed specifier.
    *
    * C standard: 6.7.2.1
    */
-  private fun parseStructUnion(): TypeSpecifier? {
+  private fun parseStructUnion(): TagSpecifier? {
     val tagKindKeyword = current() as Keyword
-    val isUnion = current().asKeyword() == Keywords.UNION
     eat() // struct or union
     val name = if (current() is Identifier) IdentifierNode.from(current()) else null
     if (name != null) eat() // The identifier
@@ -277,8 +276,7 @@ class SpecParser(declaratorParser: DeclaratorParser) :
         }
         return null
       }
-      return if (isUnion) UnionNameSpecifier(name, tagKindKeyword)
-      else StructNameSpecifier(name, tagKindKeyword)
+      return createTag(TagNameSpecifier(name, tagKindKeyword))
     }
     val endIdx = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
     eat() // The {
@@ -308,12 +306,11 @@ class SpecParser(declaratorParser: DeclaratorParser) :
     if (isEaten()) {
       diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
-        formatArgs(if (isUnion) "union" else "struct")
+        formatArgs(tagKindKeyword.value.keyword)
         column(colPastTheEnd(0))
       }
     }
-    return if (isUnion) UnionDefinition(name, declarations, tagKindKeyword)
-    else StructDefinition(name, declarations, tagKindKeyword)
+    return createTag(TagDefinitionSpecifier(name, declarations, tagKindKeyword))
   }
 
   /**

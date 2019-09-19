@@ -157,15 +157,14 @@ class SpecTests {
   @Test
   fun `Struct Declaration`() {
     val p = prepareCode("struct x a = 1;", source)
-    p.assertNoDiagnostics()
-    assertEquals(StructNameSpecifier(name("x"), tagKindKeyword = Keywords.STRUCT.kw),
-        (p.root.decls[0] as Declaration).declSpecs.typeSpec)
+    p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
+    assertEquals(struct("x").typeSpec, (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }
 
   @Test
   fun `Struct Must Define`() {
     val p = prepareCode("auto struct const;", source)
-    assert(p.diags.ids.contains(DiagnosticId.ANON_STRUCT_MUST_DEFINE))
+    assert(DiagnosticId.ANON_STRUCT_MUST_DEFINE in p.diags.ids)
   }
 
   @Test
@@ -259,7 +258,7 @@ class SpecTests {
   @Test
   fun `Struct Name Specifier Is Incompatible`() {
     val p = prepareCode("struct vec2 int thing;", source)
-    p.assertDiags(DiagnosticId.INCOMPATIBLE_DECL_SPEC)
+    assert(DiagnosticId.INCOMPATIBLE_DECL_SPEC in p.diags.ids)
   }
 
   @Test

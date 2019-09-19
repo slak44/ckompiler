@@ -9,53 +9,51 @@ import slak.ckompiler.lexer.Keywords
  */
 sealed class TypeSpecifier
 
-data class EnumSpecifier(val name: IdentifierNode) : TypeSpecifier()
-
 data class TypedefNameSpecifier(val name: IdentifierNode,
                                 val typedefName: TypedefName) : TypeSpecifier() {
   override fun toString() = "${name.name} (aka ${typedefName.typedefedToString()})"
 }
 
-// FIXME: if a declaration has an incomplete type that never gets completed, print a diagnostic
+/**
+ * FIXME: if a declaration has an incomplete type that never gets completed, print a diagnostic
+ *
+ * C standard: 6.7.2.1, 6.7.2.3
+ */
 sealed class TagSpecifier : TypeSpecifier() {
-  abstract val isCompleteType: Boolean
-  abstract val isAnonymous: Boolean
-  abstract val tagIdent: IdentifierNode
-  abstract val tagKindKeyword: Keyword
+  abstract val name: IdentifierNode?
+  /**
+   * Must be [Keywords.STRUCT] or [Keywords.UNION] or [Keywords.ENUM].
+   */
+  abstract val kind: Keyword
 }
 
-data class StructNameSpecifier(val name: IdentifierNode,
-                               override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = false
-  override val isAnonymous = false
-  override val tagIdent = name
-  override fun toString() = "struct ${name.name}"
+data class EnumSpecifier(
+    override val name: IdentifierNode?,
+    val enumerators: List<Enumerator>?,
+    override val kind: Keyword
+) : TagSpecifier() {
+  override fun toString(): String {
+    val name = if (name != null) "${name.name} " else ""
+    return "enum $name"
+  }
 }
 
-data class UnionNameSpecifier(val name: IdentifierNode,
-                              override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = false
-  override val isAnonymous = false
-  override val tagIdent = name
-  override fun toString() = "union ${name.name}"
+data class TagDefinitionSpecifier(
+    override val name: IdentifierNode?,
+    val decls: List<StructDeclaration>,
+    override val kind: Keyword
+) : TagSpecifier() {
+  override fun toString(): String {
+    val name = if (name != null) "${name.name} " else ""
+    return "${kind.value.keyword} $name{...}"
+  }
 }
 
-data class StructDefinition(val name: IdentifierNode?,
-                            val decls: List<StructDeclaration>,
-                            override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = true
-  override val isAnonymous get() = name == null
-  override val tagIdent: IdentifierNode get() = name!!
-  override fun toString() = "struct ${if (name != null) "${name.name} " else ""}{...}"
-}
-
-data class UnionDefinition(val name: IdentifierNode?,
-                           val decls: List<StructDeclaration>,
-                           override val tagKindKeyword: Keyword) : TagSpecifier() {
-  override val isCompleteType = true
-  override val isAnonymous get() = name == null
-  override val tagIdent: IdentifierNode get() = name!!
-  override fun toString() = "union ${if (name != null) "${name.name} " else ""}{...}"
+data class TagNameSpecifier(
+    override val name: IdentifierNode,
+    override val kind: Keyword
+) : TagSpecifier() {
+  override fun toString() = "${kind.value.keyword} ${name.name}"
 }
 
 sealed class BasicTypeSpecifier(val first: Keyword) : TypeSpecifier() {

@@ -586,4 +586,11 @@ class TypeTests {
         returnSt(strLit("asdf") equals strLit("asdf"))
     ) assertEquals p.root.decls[0]
   }
+
+  @Test
+  fun `Struct Pointer Is Complete Type, Even For New Types`() {
+    val p = prepareCode("struct y *ptr;", source)
+    p.assertNoDiagnostics()
+    struct("y") declare ptr("ptr") assertEquals p.root.decls[0]
+  }
 }

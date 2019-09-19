@@ -414,23 +414,21 @@ data class StringLiteralNode(val string: String,
 
 /**
  * Stores declaration specifiers that come before declarators.
+ *
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
-data class DeclarationSpecifier(val storageClass: Keyword? = null,
-                                val threadLocal: Keyword? = null,
-                                val typeQualifiers: List<Keyword> = emptyList(),
-                                val functionSpecs: List<Keyword> = emptyList(),
-                                val typeSpec: TypeSpecifier? = null) : ASTNode() {
+data class DeclarationSpecifier(
+    val storageClass: Keyword? = null,
+    val threadLocal: Keyword? = null,
+    val typeQualifiers: List<Keyword> = emptyList(),
+    val functionSpecs: List<Keyword> = emptyList(),
+    val typeSpec: TypeSpecifier? = null
+) : ASTNode() {
 
   /** @return true if no specifiers were found */
   fun isBlank() = !hasStorageClass() && !isThreadLocal() && typeQualifiers.isEmpty() &&
       functionSpecs.isEmpty() && typeSpec == null
 
-  /**
-   * C standard: 6.7.2.1, 6.7.2.3
-   * @return true if this [DeclarationSpecifier] is sufficient by itself, and does not necessarily
-   * need declarators after it
-   */
   fun isTag() = typeSpec is TagSpecifier
 
   fun isThreadLocal() = threadLocal != null
@@ -607,8 +605,12 @@ data class ExpressionInitializer(
 
 data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode()
 
-data class StructDeclaration(val declSpecs: DeclarationSpecifier,
-                             val declaratorList: List<StructMember>) : ASTNode()
+data class StructDeclaration(
+    val declSpecs: DeclarationSpecifier,
+    val declaratorList: List<StructMember>
+) : ASTNode()
+
+data class Enumerator(val name: IdentifierNode, val value: IntegerConstantNode?) : ASTNode()
 
 /**
  * Contains the size of an array type.

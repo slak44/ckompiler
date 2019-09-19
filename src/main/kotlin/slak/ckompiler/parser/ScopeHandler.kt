@@ -1,7 +1,9 @@
 package slak.ckompiler.parser
 
-import org.apache.logging.log4j.LogManager
-import slak.ckompiler.*
+import slak.ckompiler.DebugHandler
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.IDebugHandler
+import slak.ckompiler.SourcedRange
 import java.util.*
 
 /**
@@ -56,18 +58,19 @@ interface OrdinaryIdentifier : SourcedRange {
  *
  * C standard: 6.2.1, 6.2.3.0.1
  */
-class LexicalScope(val parentScope: LexicalScope? = null,
-                   val tagNames: MutableList<TagSpecifier> = mutableListOf(),
-                   val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
-                   val labels: MutableList<IdentifierNode> = mutableListOf()) {
-
+class LexicalScope(
+    val parentScope: LexicalScope? = null,
+    val tagNames: MutableMap<IdentifierNode, TagSpecifier> = mutableMapOf(),
+    val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
+    val labels: MutableList<IdentifierNode> = mutableListOf()
+) {
   override fun toString(): String {
     val identStr = idents.filter { it !is TypedefName }.joinToString(", ") { it.name }
     val labelStr = labels.joinToString(", ") { it.name }
     val typedefStr = idents.mapNotNull { it as? TypedefName }
         .joinToString(", ") { "typedef ${it.typedefedToString()}" }
-    val tags = tagNames
-        .joinToString(", ") { "${it.tagKindKeyword.value.keyword} ${it.tagIdent.name}" }
+    val tags = tagNames.entries
+        .joinToString(", ") { "${it.value.kind} ${it.key}" }
     return "LexicalScope(" +
         "idents=[$identStr], labels=[$labelStr], typedefs=[$typedefStr], tags=[$tags])"
   }
@@ -133,14 +136,18 @@ interface IScopeHandler : IdentSearchable {
   fun newLabel(labelIdent: IdentifierNode)
 
   /**
-   * Adds a tag to the current scope. If one already exists, and:
+   * If [TagSpecifier.name] is null (ie the tag is anonymous), [tag] is immediately returned.
+   *
+   * If not, this function adds a tag to the current scope. If one already exists, and:
    * 1. The tag type differs, a diagnostic is printed.
    * 2. The new type is incomplete, nothing happens.
    * 3. The existing type is incomplete and the new type is complete, the old type is replaced.
    * 4. Both types are complete, a diagnostic is printed.
-   * @param tag an error is thrown if [TagSpecifier.isAnonymous] is true
+   *
+   * Returns the [TagSpecifier] of a previous definition of this specifier. Returns [tag] otherwise,
+   * even if diagnostics were printed.
    */
-  fun createTag(tag: TagSpecifier)
+  fun createTag(tag: TagSpecifier): TagSpecifier
 
   /**
    * Searches all the scopes for the tag with the given name.
@@ -172,53 +179,58 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
   override fun <R> scoped(block: LexicalScope.() -> R): R =
       LexicalScope(scopeStack.peek()).withScope(block)
 
-  override fun createTag(tag: TagSpecifier) {
-    if (tag.isAnonymous) {
-      logger.throwICE("Cannot store the tag name of an anonymous tag specifier") { "tag: $tag" }
-    }
+  override fun createTag(tag: TagSpecifier): TagSpecifier {
+    val name = tag.name ?: return tag
     val names = scopeStack.peek().tagNames
-    val foundTag = names.firstOrNull { it.tagIdent.name == tag.tagIdent.name }
+    val foundTag = names[name]
     when {
-      foundTag == null -> names += tag
-      tag.tagKindKeyword.value != foundTag.tagKindKeyword.value -> {
+      foundTag == null -> names[name] = tag
+      tag.kind != foundTag.kind -> {
         diagnostic {
           id = DiagnosticId.TAG_MISMATCH
-          formatArgs(tag.tagIdent.name)
-          errorOn(tag.tagKindKeyword)
+          formatArgs(name.name)
+          errorOn(tag.kind)
         }
         diagnostic {
           id = DiagnosticId.TAG_MISMATCH_PREVIOUS
-          errorOn(foundTag.tagIdent)
+          errorOn(foundTag.name!!)
         }
       }
-      !tag.isCompleteType -> {
+      tag !is TagDefinitionSpecifier -> {
         // Do nothing intentionally
+        // This is the case where we already have a definition, and we encounter stuff like
+        // "struct person p;"
+        return foundTag
       }
-      !foundTag.isCompleteType && tag.isCompleteType -> {
-        names -= foundTag
-        names += tag
+      foundTag !is TagDefinitionSpecifier -> {
+        names[name] = tag
       }
-      foundTag.isCompleteType && tag.isCompleteType -> {
+      else -> {
         diagnostic {
           id = DiagnosticId.REDEFINITION
-          formatArgs(tag.tagIdent.name)
-          errorOn(tag.tagIdent)
+          formatArgs(name.name)
+          errorOn(name)
         }
         diagnostic {
           id = DiagnosticId.REDEFINITION_PREVIOUS
-          errorOn(foundTag.tagIdent)
+          errorOn(foundTag.name!!)
         }
       }
     }
+    return tag
   }
 
   override fun newIdentifier(id: OrdinaryIdentifier) {
     val idents = scopeStack.peek().idents
-    // FIXME: we really should know more data about these idents, like symbol type (func/var)
     val found = idents.firstOrNull { it.name == id.name }
     // FIXME: this can be used to maybe give a diagnostic about name shadowing
     // val isShadowed = scopeStack.peek().idents.any { it.name == id.name }
     if (found == null) {
+      if (id !is TypedefName && !id.type.isCompleteObjectType()) diagnostic {
+        this.id = DiagnosticId.VARIABLE_TYPE_INCOMPLETE
+        formatArgs(id.type.toString())
+        errorOn(id)
+      }
       idents += id
       return
     }
@@ -293,14 +305,10 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
 
   override fun searchTag(target: IdentifierNode): TagSpecifier? {
     scopeStack.forEach {
-      val idx = it.tagNames.indexOfFirst { tag -> tag.tagIdent.name == target.name }
-      if (idx != -1) return it.tagNames[idx]
+      val tag = it.tagNames[target]
+      if (tag != null) return@searchTag tag
     }
     return null
-  }
-
-  companion object {
-    private val logger = LogManager.getLogger()
   }
 }
 
