@@ -62,6 +62,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXPECTED_STATEMENT(ERROR, "Expected statement"),
   EXPECTED_RPAREN_AFTER_VARIADIC(ERROR, "Expected ')' after variadic '...'"),
   EXPECTED_PARAM_DECL(ERROR, "Expected parameter declarator"),
+  EXPECTED_ENUM_INIT(ERROR, "Expected '= constant-expression' or end of enumerator list"),
   UNEXPECTED_SWITCH_LABEL(ERROR, "Unexpected '%s' label outside switch statement"),
   TRANSLATION_UNIT_NEEDS_DECL(WARNING,
       "ISO C requires a translation unit to contain at least one declaration"),
@@ -122,7 +123,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // Implementations are allowed to not support complex numbers
   UNSUPPORTED_COMPLEX(ERROR, "_Complex is not supported by this implementation"),
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
-  ANON_STRUCT_MUST_DEFINE(ERROR, "Declaration of anonymous struct must be a definition"),
+  ANON_TAG_MUST_DEFINE(ERROR, "Declaration of anonymous '%s' must be a definition"),
+  ENUM_IS_EMPTY(ERROR, "Empty enum not allowed"),
   SPEC_NOT_ALLOWED(ERROR, "Type name does not allow %s to be specified"),
   MISSING_DECLARATIONS(WARNING, "Declaration does not declare anything"),
   PARAM_BEFORE_VARIADIC(ERROR, "ISO C requires a named parameter before '...'"),
@@ -143,6 +145,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   USE_UNDECLARED(ERROR, "Use of undeclared identifier '%s'"),
   UNEXPECTED_TYPEDEF_USE(ERROR,
       "Unexpected type name '%s' (aka '%s'); expected primary expression"),
+  USE_ENUM_UNDEFINED(ERROR, "Cannot use enum '%s' without previous definition"),
 
   // Analysis
   UNREACHABLE_CODE(WARNING, "Code will never be executed"),

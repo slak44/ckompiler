@@ -6,6 +6,7 @@ import slak.ckompiler.SourcedRange
 import slak.ckompiler.analysis.IdCounter
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.Expression.ValueType.*
+import slak.ckompiler.rangeTo
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
@@ -614,7 +615,22 @@ data class StructDeclaration(
     val declaratorList: List<StructMember>
 ) : ASTNode()
 
-data class Enumerator(val name: IdentifierNode, val value: IntegerConstantNode?) : ASTNode()
+/**
+ * C standard: 6.7.2.2, 6.7.2.3
+ */
+data class Enumerator(
+    val ident: IdentifierNode,
+    val value: ExprConstantNode?
+) : ASTNode(), OrdinaryIdentifier {
+  override val name = ident.name
+  override val kindName = "enumeration constant"
+  // FIXME: hardcoded enum type to int
+  override val type = SignedIntType
+
+  init {
+    withRange(ident..(value ?: ident))
+  }
+}
 
 /**
  * Contains the size of an array type.

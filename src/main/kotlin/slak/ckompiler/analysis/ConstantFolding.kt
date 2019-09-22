@@ -7,7 +7,7 @@ import slak.ckompiler.parser.*
  * Run this AFTER [sequentialize]. This assumes that stuff like assignments and increment were
  * hoisted out of their expressions.
  *
- * FIXME: constant propagation
+ * FIXME: constant propagation & deal with enum constants
  */
 fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (expr) {
   is ExprConstantNode -> expr

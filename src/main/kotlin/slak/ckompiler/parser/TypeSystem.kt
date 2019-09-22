@@ -10,12 +10,15 @@ import slak.ckompiler.parser.UnaryOperators.*
 
 private val logger = LogManager.getLogger()
 
-private fun typeNameOfTag(tagSpecifier: TagSpecifier): TagType {
-  if (tagSpecifier is EnumSpecifier) TODO("implement enums")
-  require(tagSpecifier is TagDefinitionSpecifier || tagSpecifier is TagNameSpecifier)
+private fun typeNameOfTag(tagSpecifier: TagSpecifier): UnqualifiedTypeName {
+  if (tagSpecifier is EnumSpecifier) {
+    // FIXME: hardcoded enum constant type, see Enumerator in SyntaxTreeModel
+    return SignedIntType
+  }
+  require(tagSpecifier is StructUnionDefinitionSpecifier || tagSpecifier is TagNameSpecifier)
   // This breaks down declarations with multiple declarators in them
   // For the TypeName, we don't care about that syntactic detail
-  val memberTypes = (tagSpecifier as? TagDefinitionSpecifier)?.decls?.flatMap {
+  val memberTypes = (tagSpecifier as? StructUnionDefinitionSpecifier)?.decls?.flatMap {
     it.declaratorList.map { (declarator, _) -> typeNameOf(it.declSpecs, declarator) }
   }
   return if (tagSpecifier.kind.value == Keywords.STRUCT) {

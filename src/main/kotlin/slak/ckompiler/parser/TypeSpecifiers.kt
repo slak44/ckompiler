@@ -40,7 +40,7 @@ data class EnumSpecifier(
   }
 }
 
-data class TagDefinitionSpecifier(
+data class StructUnionDefinitionSpecifier(
     override val name: IdentifierNode?,
     val decls: List<StructDeclaration>,
     override val kind: Keyword

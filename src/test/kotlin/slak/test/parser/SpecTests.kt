@@ -1,6 +1,8 @@
 package slak.test.parser
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
@@ -164,7 +166,7 @@ class SpecTests {
   @Test
   fun `Struct Must Define`() {
     val p = prepareCode("auto struct const;", source)
-    assert(DiagnosticId.ANON_STRUCT_MUST_DEFINE in p.diags.ids)
+    assert(DiagnosticId.ANON_TAG_MUST_DEFINE in p.diags.ids)
   }
 
   @Test
@@ -282,6 +284,110 @@ class SpecTests {
       struct {double a, b; int;} struct1;
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.MISSING_DECLARATIONS)
+  }
+
+  @Test
+  fun `Enum Simple`() {
+    val p = prepareCode("""
+      enum testing {TEST1, TEST2} testValue;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val enum = enum("testing", listOf("TEST1", "TEST2"))
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum Dangling Comma Is Valid`() {
+    val p = prepareCode("""
+      enum testing {TEST1, TEST2, } testValue;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val enum = enum("testing", listOf("TEST1", "TEST2"))
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum Starting With Comma`() {
+    val p = prepareCode("""
+      enum testing {, TEST2 } testValue;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT)
+    enum("testing", listOf("TEST2")).toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum Missing Enumerator Inside`() {
+    val p = prepareCode("""
+      enum testing {TEST1, , TEST2 } testValue;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_IDENT)
+    val enum = enum("testing", listOf("TEST1", "TEST2"))
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum Anonymous`() {
+    val p = prepareCode("""
+      enum {TEST1, TEST2} testValue;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val enum = enum(null, listOf("TEST1", "TEST2"))
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum Just Values`() {
+    val p = prepareCode("""
+      enum {TEST1, TEST2};
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL)
+  }
+
+  @Test
+  fun `Enum With Init Value`() {
+    val p = prepareCode("""
+      enum testing { TEST = 1234 } testValue;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val enum = enum("testing", listOf("TEST" withEnumConst 1234))
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum With Multiple Inits`() {
+    val p = prepareCode("""
+      enum testing { TEST = 1234, ASDFG, FOO = 2222 } testValue;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val enum = enum("testing", listOf("TEST" withEnumConst 1234, "ASDFG", "FOO" withEnumConst 2222))
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum Missing = In Init`() {
+    val p = prepareCode("""
+      enum testing { TEST 1234 } testValue;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_ENUM_INIT, DiagnosticId.ENUM_IS_EMPTY)
+    val enum = enum("testing", emptyList<String>())
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Enum Missing Init Expr`() {
+    val p = prepareCode("""
+      enum testing { TEST = } testValue;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
+    val enum = enum("testing", listOf("TEST" withEnumConst ErrorExpression().zeroRange()))
+    enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["enum bla {};", "enum {};", "enum bla {} name;"])
+  fun `Enum Can't Be Empty`(enum: String) {
+    val p = prepareCode(enum, source)
+    p.assertDiags(DiagnosticId.ENUM_IS_EMPTY)
   }
 
   @Test

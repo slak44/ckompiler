@@ -1,6 +1,8 @@
 package slak.test.parser
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -223,13 +225,38 @@ class ScopeTests {
     p.assertNoDiagnostics()
   }
 
-  @Test
-  fun `Tag Redefinition`() {
+  @ParameterizedTest
+  @ValueSource(strings = [
+    "union my_type {int x,y;};",
+    "struct str {float a;};",
+    "enum test { A, B, C };"
+  ])
+  fun `Tag Redefinition`(tagStr: String) {
     val p = prepareCode("""
-      union my_type {int x,y;};
-      union my_type {int x,y;};
+      $tagStr
+      $tagStr
     """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS)
+    // For the enum one, diags are printed for the enum AND the constants
+    assertEquals(listOf(DiagnosticId.REDEFINITION, DiagnosticId.REDEFINITION_PREVIOUS),
+        p.diags.ids.distinct())
+  }
+
+  @Test
+  fun `Enum Used Undefined`() {
+    val p = prepareCode("""
+      enum testing testValue;
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.USE_ENUM_UNDEFINED, DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
+  }
+
+  @Test
+  fun `Enum Values Used Are Correct In Scope`() {
+    val p = prepareCode("""
+      enum color { RED, GREEN, BLUE };
+      enum color b = RED;
+      int c = BLUE;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
   }
 
   @Test

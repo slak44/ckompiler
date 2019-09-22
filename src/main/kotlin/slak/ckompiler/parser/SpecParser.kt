@@ -36,7 +36,7 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
       formatArgs(it.threadLocal!!.value.keyword, "for loop initializer")
       errorOn(it.threadLocal)
     }
-    if (it.typeSpec is TagDefinitionSpecifier) diagnostic {
+    if (it.typeSpec is StructUnionDefinitionSpecifier) diagnostic {
       id = DiagnosticId.FOR_INIT_NON_LOCAL
       errorOn(it)
     }
@@ -120,13 +120,13 @@ enum class SpecValidationRules(inline val validate: SpecParser.(ds: DeclarationS
   });
 }
 
-class SpecParser(declaratorParser: DeclaratorParser) :
+class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExprParser) :
     ISpecParser,
-    IDebugHandler by declaratorParser,
     ITokenHandler by declaratorParser,
     IParenMatcher by declaratorParser,
     IScopeHandler by declaratorParser,
-    IDeclaratorParser by declaratorParser {
+    IDeclaratorParser by declaratorParser,
+    IConstantExprParser by enumInitParser {
 
   private fun diagDuplicate(last: Keyword) = diagnostic {
     id = DiagnosticId.DUPLICATE_DECL_SPEC
@@ -255,23 +255,116 @@ class SpecParser(declaratorParser: DeclaratorParser) :
   }
 
   /**
-   * Parses `struct-or-union-specifier`. Returns [IScopeHandler.createTag] of the parsed specifier.
+   * Parse one `enumerator`. Return null if it was not found or is an error.
+   *
+   * C standard: 6.7.2.2, 6.4.4.3
+   */
+  private fun parseEnumerator(endIdx: Int): Enumerator? = tokenContext(endIdx) {
+    if (current() !is Identifier) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_IDENT
+        errorOn(safeToken(0))
+      }
+      eatUntil(tokenCount)
+      return@tokenContext null
+    }
+    val name = IdentifierNode.from(current())
+    eat() // The identifier
+    // This is when there is no enumeration constant value
+    if (isEaten()) return@tokenContext Enumerator(name, null)
+    if (current().asPunct() != Punctuators.ASSIGN) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_ENUM_INIT
+        errorOn(current())
+      }
+      eatUntil(tokenCount)
+      return@tokenContext null
+    }
+    eat() // The '='
+    // FIXME: warn if the constant exceeds range of int (6.7.2.2.0.2)
+    return@tokenContext Enumerator(name, parseConstant(tokenCount))
+  }
+
+  /**
+   * Parses `enumerator-list`. Also allows a dangling comma at the end of the list, and eats it.
+   *
+   * C standard: 6.7.2.2
+   */
+  private fun parseEnumeratorList(endIdx: Int): List<Enumerator> = tokenContext(endIdx) {
+    val enumerators = mutableListOf<Enumerator>()
+    while (isNotEaten()) {
+      val currentElemEnd = firstOutsideParens(
+          Punctuators.COMMA, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = true)
+      // First thing is comma, complain
+      if (currentElemEnd == currentIdx) {
+        eat() // The ','
+        diagnostic {
+          id = DiagnosticId.EXPECTED_IDENT
+          errorOn(safeToken(0))
+        }
+        continue
+      }
+      parseEnumerator(currentElemEnd)?.let { enumerators += it }
+      if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
+        // Expected case; found comma that separates enumerators
+        eat()
+        if (isNotEaten()) continue
+        // If the comma was the last token, it was a dangling comma, and we just eat it and move on
+        break
+      }
+    }
+    return@tokenContext enumerators
+  }
+
+  /**
+   * Parses `struct-declaration-list`.
    *
    * C standard: 6.7.2.1
    */
-  private fun parseStructUnion(): TagSpecifier? {
+  private fun parseStructDeclarations(endIdx: Int): List<StructDeclaration> = tokenContext(endIdx) {
+    val declarations = mutableListOf<StructDeclaration>()
+    while (isNotEaten()) {
+      val specQualList = parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
+      if (specQualList.isBlank()) {
+        continue
+      }
+      if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
+        eat() // The ';'
+        if (specQualList.isTag()) {
+          declarations += StructDeclaration(specQualList, emptyList())
+        } else {
+          diagnostic {
+            id = DiagnosticId.MISSING_DECLARATIONS
+            errorOn(safeToken(0))
+          }
+        }
+      } else {
+        declarations += StructDeclaration(specQualList, parseStructDeclaratorList())
+      }
+    }
+    return@tokenContext declarations
+  }
+
+  /**
+   * Parses tag specifiers.
+   *
+   * Returns [IScopeHandler.createTag] of the parsed specifier.
+   */
+  private fun parseTag(): TagSpecifier? {
     val tagKindKeyword = current() as Keyword
-    eat() // struct or union
+    eat() // struct or union or enum
     val name = if (current() is Identifier) IdentifierNode.from(current()) else null
     if (name != null) eat() // The identifier
     if (isEaten() || current().asPunct() != Punctuators.LBRACKET) {
       // This is the case where it's just a type specifier
       // Like "struct person p;"
+      // Or like "enum color colorFromInt(int value);"
       // This means `name` can't be null, because the declaration of an anonymous struct must
       // be a definition, and since we have no bracket, it isn't one
       if (name == null) {
         diagnostic {
-          id = DiagnosticId.ANON_STRUCT_MUST_DEFINE
+          id = DiagnosticId.ANON_TAG_MUST_DEFINE
+          formatArgs(tagKindKeyword.value.keyword)
           errorOn(tagKindKeyword)
         }
         return null
@@ -280,37 +373,25 @@ class SpecParser(declaratorParser: DeclaratorParser) :
     }
     val endIdx = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
     eat() // The {
-    val declarations = mutableListOf<StructDeclaration>()
-    tokenContext(endIdx) {
-      while (isNotEaten()) {
-        val specQualList = parseDeclSpecifiers(SpecValidationRules.SPECIFIER_QUALIFIER)
-        if (specQualList.isBlank()) {
-          continue
-        }
-        if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
-          eat() // The ';'
-          if (specQualList.isTag()) {
-            declarations += StructDeclaration(specQualList, emptyList())
-          } else {
-            diagnostic {
-              id = DiagnosticId.MISSING_DECLARATIONS
-              errorOn(safeToken(0))
-            }
-          }
-        } else {
-          declarations += StructDeclaration(specQualList, parseStructDeclaratorList())
-        }
+    val tag = if (tagKindKeyword.value in arrayOf(Keywords.STRUCT, Keywords.UNION)) {
+      val decls = parseStructDeclarations(endIdx)
+      createTag(StructUnionDefinitionSpecifier(name, decls, tagKindKeyword))
+    } else {
+      val enumerators = parseEnumeratorList(endIdx)
+      if (enumerators.isEmpty()) diagnostic {
+        id = DiagnosticId.ENUM_IS_EMPTY
+        if (name != null) errorOn(name)
+        else errorOn(tagKindKeyword)
       }
+      createTag(EnumSpecifier(name, enumerators, tagKindKeyword))
     }
     eat() // The }
-    if (isEaten()) {
-      diagnostic {
-        id = DiagnosticId.EXPECTED_SEMI_AFTER
-        formatArgs(tagKindKeyword.value.keyword)
-        column(colPastTheEnd(0))
-      }
+    if (isEaten()) diagnostic {
+      id = DiagnosticId.EXPECTED_SEMI_AFTER
+      formatArgs(tagKindKeyword.value.keyword)
+      column(colPastTheEnd(0))
     }
-    return createTag(TagDefinitionSpecifier(name, declarations, tagKindKeyword))
+    return tag
   }
 
   /**
@@ -381,9 +462,9 @@ class SpecParser(declaratorParser: DeclaratorParser) :
           id = DiagnosticId.UNSUPPORTED_COMPLEX
           errorOn(safeToken(0))
         }
-        Keywords.STRUCT, Keywords.UNION -> {
+        Keywords.ENUM, Keywords.STRUCT, Keywords.UNION -> {
           if (typeSpecifier != null) diagIncompat(typeSpecifier.toString(), tok)
-          parseStructUnion()?.also { typeSpecifier = it }
+          parseTag()?.also { typeSpecifier = it }
           // The function deals with eating, so the eat() below should be skipped
           continue@specLoop
         }

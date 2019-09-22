@@ -4,6 +4,7 @@ import slak.ckompiler.DebugHandler
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.SourcedRange
+import slak.ckompiler.lexer.Keywords
 import java.util.*
 
 /**
@@ -144,6 +145,10 @@ interface IScopeHandler : IdentSearchable {
    * 3. The existing type is incomplete and the new type is complete, the old type is replaced.
    * 4. Both types are complete, a diagnostic is printed.
    *
+   * At (2), for enum tags, an incomplete type is disallowed without a previous complete one.
+   *
+   * Enum tags also add their enumerators to the current scope.
+   *
    * Returns the [TagSpecifier] of a previous definition of this specifier. Returns [tag] otherwise,
    * even if diagnostics were printed.
    */
@@ -183,7 +188,17 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     val name = tag.name ?: return tag
     val names = scopeStack.peek().tagNames
     val foundTag = names[name]
+    // Add enum constants to scope, if required
+    for (enumerator in (tag as? EnumSpecifier)?.enumerators ?: emptyList()) {
+      newIdentifier(enumerator)
+    }
     when {
+      (tag is TagNameSpecifier && tag.kind.value == Keywords.ENUM) &&
+          foundTag == null -> diagnostic {
+        id = DiagnosticId.USE_ENUM_UNDEFINED
+        formatArgs(name.name)
+        errorOn(name)
+      }
       foundTag == null -> names[name] = tag
       tag.kind != foundTag.kind -> {
         diagnostic {
@@ -196,13 +211,13 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
           errorOn(foundTag.name!!)
         }
       }
-      tag !is TagDefinitionSpecifier -> {
+      tag is TagNameSpecifier -> {
         // Do nothing intentionally
         // This is the case where we already have a definition, and we encounter stuff like
         // "struct person p;"
         return foundTag
       }
-      foundTag !is TagDefinitionSpecifier -> {
+      foundTag is TagNameSpecifier -> {
         names[name] = tag
       }
       else -> {

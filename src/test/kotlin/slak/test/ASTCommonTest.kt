@@ -316,7 +316,10 @@ internal fun goto(s: String) = GotoStatement(IdentifierNode(s))
 
 internal fun struct(name: String) = TagNameSpecifier(name(name), Keywords.STRUCT.kw).toSpec()
 
-internal inline fun <reified T> struct(name: String?, decls: List<T>): TagDefinitionSpecifier {
+internal inline fun <reified T> struct(
+    name: String?,
+    decls: List<T>
+): StructUnionDefinitionSpecifier {
   val d = decls.map {
     when (T::class) {
       StructDeclaration::class -> it as StructDeclaration
@@ -329,7 +332,21 @@ internal inline fun <reified T> struct(name: String?, decls: List<T>): TagDefini
       else -> throw IllegalArgumentException("Bad decls in struct")
     }
   }
-  return TagDefinitionSpecifier(name?.let { name(it) }, d, Keywords.STRUCT.kw)
+  return StructUnionDefinitionSpecifier(name?.let { name(it) }, d, Keywords.STRUCT.kw)
+}
+
+internal infix fun <T> String.withEnumConst(int: T) =
+    Enumerator(name(this), parseDSLElement(int) as ExprConstantNode)
+
+internal fun <T> enum(tagName: String?, enumerators: List<T>): EnumSpecifier {
+  val realEnums = enumerators.map {
+    when (it) {
+      is String -> Enumerator(name(it), null)
+      is Enumerator -> it
+      else -> throw IllegalArgumentException("Bad enumerator type")
+    }
+  }
+  return EnumSpecifier(tagName?.let(::name), realEnums, Keywords.ENUM.kw)
 }
 
 internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this)
