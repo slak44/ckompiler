@@ -391,8 +391,10 @@ data class FloatingConstantNode(
  *
  * C standard: 6.4.4.4.0.10
  */
-data class CharacterConstantNode(val char: Int,
-                                 val encoding: CharEncoding) : ExprConstantNode() {
+data class CharacterConstantNode(
+    val char: Int,
+    val encoding: CharEncoding
+) : ExprConstantNode() {
   override val type = UnsignedIntType
 
   override fun toString() = "${encoding.prefix}'${char.toChar()}'"
@@ -402,8 +404,10 @@ data class CharacterConstantNode(val char: Int,
  * FIXME: UTF-8 handling. Array size is not string.length
  * FIXME: wchar_t & friends should have more specific element type
  */
-data class StringLiteralNode(val string: String,
-                             val encoding: StringEncoding) : ExprConstantNode() {
+data class StringLiteralNode(
+    val string: String,
+    val encoding: StringEncoding
+) : ExprConstantNode() {
   override val type = ArrayType(when (encoding) {
     StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
     else -> UnsignedLongLongType
@@ -646,8 +650,10 @@ object NoSize : ArrayTypeSize() {
  * @param typeQuals the `type-qualifier`s before the *: `int v[const *];`
  * @param vlaStar (diagnostic data) the * in the square brackets: `int v[*];`
  */
-data class UnconfinedVariableSize(val typeQuals: TypeQualifierList,
-                                  val vlaStar: Punctuator) : VariableArraySize() {
+data class UnconfinedVariableSize(
+    val typeQuals: TypeQualifierList,
+    val vlaStar: Punctuator
+) : VariableArraySize() {
   override fun toString() = "[${typeQuals.stringify()} *]"
 }
 
@@ -661,9 +667,11 @@ data class UnconfinedVariableSize(val typeQuals: TypeQualifierList,
  * @param typeQuals the `type-qualifier`s between the square brackets
  * @param isStatic if the keyword "static" appears between the square brackets
  */
-data class FunctionParameterSize(val typeQuals: TypeQualifierList,
-                                 val isStatic: Boolean,
-                                 val expr: Expression?) : VariableArraySize() {
+data class FunctionParameterSize(
+    val typeQuals: TypeQualifierList,
+    val isStatic: Boolean,
+    val expr: Expression?
+) : VariableArraySize() {
   init {
     if (isStatic && expr == null) logger.throwICE("Array size, static without expr") { this }
     if (expr == null && typeQuals.isEmpty()) {
@@ -756,10 +764,12 @@ data class Declaration(
 }
 
 /** C standard: A.2.4 */
-data class FunctionDefinition(val funcIdent: TypedIdentifier,
-                              val functionType: FunctionType,
-                              val parameters: List<TypedIdentifier>,
-                              val compoundStatement: Statement) : ExternalDeclaration() {
+data class FunctionDefinition(
+    val funcIdent: TypedIdentifier,
+    val functionType: FunctionType,
+    val parameters: List<TypedIdentifier>,
+    val compoundStatement: Statement
+) : ExternalDeclaration() {
   val name = funcIdent.name
   val block get() = compoundStatement as CompoundStatement
 
@@ -874,11 +884,13 @@ data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
 }
 
 /** C standard: 6.8.5.3 */
-data class ForStatement(val init: ForInitializer,
-                        val cond: Expression?,
-                        val loopEnd: Expression?,
-                        val loopable: Statement,
-                        val scope: LexicalScope) : Statement()
+data class ForStatement(
+    val init: ForInitializer,
+    val cond: Expression?,
+    val loopEnd: Expression?,
+    val loopable: Statement,
+    val scope: LexicalScope
+) : Statement()
 
 /** C standard: 6.8.6.2 */
 class ContinueStatement : Statement(), Terminal, StringClassName by StringClassNameImpl

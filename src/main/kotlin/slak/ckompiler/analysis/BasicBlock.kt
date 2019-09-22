@@ -26,8 +26,10 @@ class IdCounter {
  * [incoming] stores the blocks that [target] can come from (ie the list of versions that the φ has
  * to choose from).
  */
-data class PhiFunction(val target: ComputeReference,
-                       val incoming: MutableMap<BasicBlock, ComputeReference>) {
+data class PhiFunction(
+    val target: ComputeReference,
+    val incoming: MutableMap<BasicBlock, ComputeReference>
+) {
   override fun toString() = "$target = φ(${incoming.entries.joinToString(", ") {
     "n${it.key.hashCode()} v${it.value.version}"
   }})"

@@ -72,8 +72,10 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
     return declSpec to declarator
   }
 
-  override fun parseDeclaration(declSpec: DeclarationSpecifier,
-                                declarator: Declarator?): Declaration {
+  override fun parseDeclaration(
+      declSpec: DeclarationSpecifier,
+      declarator: Declarator?
+  ): Declaration {
     val declList = parseInitDeclaratorList(declSpec, declarator)
     declList.forEach { checkArrayType(declSpec, it.first) }
     val start = if (declSpec.isBlank()) safeToken(0) else declSpec
@@ -121,8 +123,10 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
    * pre-parsed
    * @return the list of comma-separated declarators
    */
-  private fun parseInitDeclaratorList(ds: DeclarationSpecifier, firstDecl: Declarator? = null):
-      List<Pair<Declarator, Initializer?>> {
+  private fun parseInitDeclaratorList(
+      ds: DeclarationSpecifier,
+      firstDecl: Declarator? = null
+  ): List<Pair<Declarator, Initializer?>> {
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       eat()

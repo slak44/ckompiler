@@ -33,8 +33,10 @@ interface ITextSourceHandler {
  * Handles a string that is being currently parsed. Remembers how much was parsed, how much is left,
  * and allows advancing through the text.
  */
-class TextSourceHandler(override val originalSource: String,
-                        override val srcFileName: SourceFileName) : ITextSourceHandler {
+class TextSourceHandler(
+    override val originalSource: String,
+    override val srcFileName: SourceFileName
+) : ITextSourceHandler {
   override var currentSrc: String = originalSource
   override var currentOffset: Int = 0
 

@@ -10,14 +10,16 @@ import java.util.regex.Pattern
  *
  * C standard: 5.1.1.2
  */
-class Preprocessor(sourceText: String,
-                   srcFileName: SourceFileName,
-                   targetData: MachineTargetData,
-                   currentDir: File,
-                   cliDefines: CLIDefines = emptyMap(),
-                   initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
-                   includePaths: IncludePaths = IncludePaths.defaultPaths,
-                   ignoreTrigraphs: Boolean = false) {
+class Preprocessor(
+    sourceText: String,
+    srcFileName: SourceFileName,
+    targetData: MachineTargetData,
+    currentDir: File,
+    cliDefines: CLIDefines = emptyMap(),
+    initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
+    includePaths: IncludePaths = IncludePaths.defaultPaths,
+    ignoreTrigraphs: Boolean = false
+) {
 
   private val debugHandler: DebugHandler
   val diags get() = debugHandler.diags
@@ -123,9 +125,11 @@ private val trigraphPattern = Pattern.compile("(" +
  *
  * C standard: 5.1.1.2.0.1.1, 5.1.1.2.0.1.2, 5.2.1.1
  */
-fun translationPhase1And2(ignoreTrigraphs: Boolean,
-                          source: String,
-                          srcFileName: SourceFileName): Pair<String, List<Diagnostic>> {
+fun translationPhase1And2(
+    ignoreTrigraphs: Boolean,
+    source: String,
+    srcFileName: SourceFileName
+): Pair<String, List<Diagnostic>> {
   val dh = DebugHandler("Trigraphs", srcFileName, source)
   val matcher = trigraphPattern.matcher(source)
   val sb = StringBuilder()

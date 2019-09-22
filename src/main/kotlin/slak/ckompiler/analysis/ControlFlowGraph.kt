@@ -111,17 +111,21 @@ class CFG(
  *
  * @see VariableRenamer.reachingDefs
  */
-data class ReachingDef(val variable: ComputeReference,
-                       val definedIn: BasicBlock,
-                       val definitionIdx: Int)
+data class ReachingDef(
+    val variable: ComputeReference,
+    val definedIn: BasicBlock,
+    val definitionIdx: Int
+)
 
 /**
  * Holds state required for SSA phase 2.
  * @see VariableRenamer.variableRenaming
  */
-private class VariableRenamer(val doms: DominatorList,
-                              val startBlock: BasicBlock,
-                              nodes: Set<BasicBlock>) {
+private class VariableRenamer(
+    val doms: DominatorList,
+    val startBlock: BasicBlock,
+    nodes: Set<BasicBlock>
+) {
   /** Returns [BasicBlock]s by doing a pre-order traversal of the dominator tree. */
   private val domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
 
@@ -298,10 +302,12 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Debug trace for variable usage renames.
    */
-  private fun traceVarUsageRename(bb: BasicBlock,
-                                  oldReachingVar: ComputeReference?,
-                                  v: ComputeReference,
-                                  isInPhi: Boolean = false) {
+  private fun traceVarUsageRename(
+      bb: BasicBlock,
+      oldReachingVar: ComputeReference?,
+      v: ComputeReference,
+      isInPhi: Boolean = false
+  ) {
     if (v.tid.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
@@ -320,9 +326,11 @@ private class VariableRenamer(val doms: DominatorList,
   /**
    * Debug trace for variable definition renames.
    */
-  private fun traceVarDefinitionRename(bb: BasicBlock,
-                                       def: ComputeReference,
-                                       vPrime: ComputeReference) {
+  private fun traceVarDefinitionRename(
+      bb: BasicBlock,
+      def: ComputeReference,
+      vPrime: ComputeReference
+  ) {
     if (def.tid.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingVar = def.reachingDef?.variable
       val oldReachingStr =

@@ -47,7 +47,6 @@ private fun resolveTypeIndirection(outerType: TypeName, ind: Indirection): TypeN
 }
 
 private fun typeNameOfBase(specQuals: DeclarationSpecifier): TypeName {
-  // FIXME: structure/union types are probably horrifyingly broken
   if (specQuals.isTag()) return typeNameOfTag(specQuals.typeSpec as TagSpecifier)
   val isStorageRegister = specQuals.storageClass?.value == Keywords.REGISTER
   val unqualified = when (specQuals.typeSpec) {

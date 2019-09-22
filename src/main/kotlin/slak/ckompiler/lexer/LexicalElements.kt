@@ -184,10 +184,12 @@ private val simpleEscapeSequences = mapOf(
  *
  * C standard: A.1.5, A.1.6, 6.4.4.4, 6.4.5
  */
-fun IDebugHandler.charSequence(s: String,
-                               currentOffset: Int,
-                               quoteChar: Char,
-                               prefixLength: Int): Pair<String, Int> {
+fun IDebugHandler.charSequence(
+    s: String,
+    currentOffset: Int,
+    quoteChar: Char,
+    prefixLength: Int
+): Pair<String, Int> {
   val noPrefix = s.drop(1 + prefixLength)
   var idx = 0
   var charSeq = ""
@@ -271,9 +273,11 @@ fun IDebugHandler.characterConstant(s: String, currentOffset: Int): CharLiteral?
  * @param nrLength the length of the float constant before the suffix
  * @see FloatingSuffix
  */
-private fun IDebugHandler.floatingSuffix(s: String,
-                                         currentOffset: Int,
-                                         nrLength: Int): FloatingSuffix? = when {
+private fun IDebugHandler.floatingSuffix(
+    s: String,
+    currentOffset: Int,
+    nrLength: Int
+): FloatingSuffix? = when {
   s.isEmpty() -> FloatingSuffix.NONE
   // Float looks like 123. or 123.23
   s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE
@@ -367,9 +371,11 @@ fun IDebugHandler.floatingConstant(s: String, currentOffset: Int): LexicalToken?
  * @param nrLength the length of the int constant before the suffix
  * @see IntegralSuffix
  */
-private fun IDebugHandler.integerSuffix(s: String,
-                                        currentOffset: Int,
-                                        nrLength: Int): IntegralSuffix {
+private fun IDebugHandler.integerSuffix(
+    s: String,
+    currentOffset: Int,
+    nrLength: Int
+): IntegralSuffix {
   if (s.isEmpty()) return IntegralSuffix.NONE
   val t = s.toUpperCase()
   val suffix = when {

@@ -14,32 +14,40 @@ import kotlin.test.assertNotNull
  * Tests that diagnostics report the correct position of the error in the source code.
  */
 class DiagnosticTests {
-  private fun List<Diagnostic>.assertDiagCaret(diagNr: Int,
-                                               line: Int? = null,
-                                               col: Int? = null,
-                                               colCount: Int? = null) {
+  private fun List<Diagnostic>.assertDiagCaret(
+      diagNr: Int,
+      line: Int? = null,
+      col: Int? = null,
+      colCount: Int? = null
+  ) {
     assertDiagSourceCol(diagNr, 0, line, col, colCount)
   }
 
-  private fun Diagnostic.assertDiagCaret(line: Int? = null,
-                                         col: Int? = null,
-                                         colCount: Int? = null) {
+  private fun Diagnostic.assertDiagCaret(
+      line: Int? = null,
+      col: Int? = null,
+      colCount: Int? = null
+  ) {
     assertDiagSourceCol(0, line, col, colCount)
   }
 
-  private fun List<Diagnostic>.assertDiagSourceCol(diagNr: Int,
-                                                   sourceColIdx: Int,
-                                                   line: Int? = null,
-                                                   col: Int? = null,
-                                                   colCount: Int? = null) {
+  private fun List<Diagnostic>.assertDiagSourceCol(
+      diagNr: Int,
+      sourceColIdx: Int,
+      line: Int? = null,
+      col: Int? = null,
+      colCount: Int? = null
+  ) {
     assert(diagNr in 0 until size)
     this[diagNr].assertDiagSourceCol(sourceColIdx, line, col, colCount)
   }
 
-  private fun Diagnostic.assertDiagSourceCol(sourceColIdx: Int,
-                                             line: Int? = null,
-                                             col: Int? = null,
-                                             colCount: Int? = null) {
+  private fun Diagnostic.assertDiagSourceCol(
+      sourceColIdx: Int,
+      line: Int? = null,
+      col: Int? = null,
+      colCount: Int? = null
+  ) {
     val (errLine, errCol, _) = dataFor(sourceColumns[sourceColIdx])
     line?.let { assertEquals(line, errLine) }
     col?.let { assertEquals(col, errCol) }

@@ -18,9 +18,11 @@ private val logger = LogManager.getLogger()
  *
  * [remaining] acts as a sequence point for the other 2 lists.
  */
-data class SequentialExpression(val before: List<Expression>,
-                                val remaining: Expression,
-                                val after: List<Expression>) {
+data class SequentialExpression(
+    val before: List<Expression>,
+    val remaining: Expression,
+    val after: List<Expression>
+) {
   operator fun iterator(): Iterator<Expression> = iterator {
     yieldAll(before.iterator())
     yield(remaining)

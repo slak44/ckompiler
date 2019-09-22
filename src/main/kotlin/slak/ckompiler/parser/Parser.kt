@@ -71,9 +71,10 @@ class Parser(
  *
  * C standard: A.2.4, 6.9
  */
-private class TranslationUnitParser(private val specParser: SpecParser,
-                                    statementParser: StatementParser) :
-    IDebugHandler by statementParser,
+private class TranslationUnitParser(
+    private val specParser: SpecParser,
+    statementParser: StatementParser
+) : IDebugHandler by statementParser,
     ITokenHandler by statementParser,
     IScopeHandler by statementParser,
     ISpecParser by specParser,
@@ -104,8 +105,10 @@ private class TranslationUnitParser(private val specParser: SpecParser,
    * @param funDecl pre-parsed function declarator
    * @return the [FunctionDefinition]
    */
-  private fun parseFunctionDefinition(declSpec: DeclarationSpecifier,
-                                      funDecl: Declarator): FunctionDefinition {
+  private fun parseFunctionDefinition(
+      declSpec: DeclarationSpecifier,
+      funDecl: Declarator
+  ): FunctionDefinition {
     if (!funDecl.isFunction()) logger.throwICE("Not a function declarator") { funDecl }
     if (funDecl !is NamedDeclarator) logger.throwICE("Function definition without name") { funDecl }
     val funTid = TypedIdentifier(declSpec, funDecl)

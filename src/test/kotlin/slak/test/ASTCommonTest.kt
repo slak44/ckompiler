@@ -269,10 +269,12 @@ internal fun whileSt(e: Expression, loopable: Statement) = WhileStatement(e, loo
 internal fun whileSt(e: Expression, loopable: () -> Statement) = whileSt(e, loopable())
 internal infix fun Statement.asDoWhile(cond: Expression) = DoWhileStatement(cond, this)
 
-internal fun forSt(e: ForInitializer,
-                   cond: Expression?,
-                   cont: Expression?,
-                   loopable: Statement): ForStatement {
+internal fun forSt(
+    e: ForInitializer,
+    cond: Expression?,
+    cont: Expression?,
+    loopable: Statement
+): ForStatement {
   val scope = LexicalScope()
   if (e is DeclarationInitializer) {
     scope.idents += declsToTypeIdents(e.value)
@@ -280,17 +282,21 @@ internal fun forSt(e: ForInitializer,
   return ForStatement(e, cond, cont, loopable, scope)
 }
 
-internal fun forSt(e: Expression,
-                   cond: Expression?,
-                   cont: Expression?,
-                   loopable: Statement): ForStatement {
+internal fun forSt(
+    e: Expression,
+    cond: Expression?,
+    cont: Expression?,
+    loopable: Statement
+): ForStatement {
   return ForStatement(ForExpressionInitializer(e.zeroRange()), cond, cont, loopable, LexicalScope())
 }
 
-internal fun forSt(e: Declaration,
-                   cond: Expression?,
-                   cont: Expression?,
-                   loopable: Statement): ForStatement {
+internal fun forSt(
+    e: Declaration,
+    cond: Expression?,
+    cont: Expression?,
+    loopable: Statement
+): ForStatement {
   val scope = LexicalScope()
   scope.idents += declsToTypeIdents(e)
   return ForStatement(DeclarationInitializer(e.zeroRange()), cond, cont, loopable, scope)

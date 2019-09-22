@@ -47,9 +47,11 @@ private fun Int.toHex() = "${if (sign == -1) "-" else ""}0x${absoluteValue.toStr
 /**
  * Data used while generating a function from a [cfg].
  */
-private data class FunctionGenContext(val variableRefs: MutableMap<TypedIdentifier, Int>,
-                                      val wasBlockGenerated: BitSet,
-                                      val cfg: CFG) {
+private data class FunctionGenContext(
+    val variableRefs: MutableMap<TypedIdentifier, Int>,
+    val wasBlockGenerated: BitSet,
+    val cfg: CFG
+) {
   var stackAlignmentCounter = 0
 
   val retLabel = ".return_${cfg.f.name}"

@@ -207,9 +207,11 @@ private data class ClonedSourcedRange(
     override val expandedFrom: SourcedRange?
 ) : SourcedRange
 
-private fun combineSources(combinedRange: IntRange,
-                           src1: SourcedRange,
-                           src2: SourcedRange): SourcedRange = when {
+private fun combineSources(
+    combinedRange: IntRange,
+    src1: SourcedRange,
+    src2: SourcedRange
+): SourcedRange = when {
   src1.sourceFileName == null -> {
     ClonedSourcedRange(
         src2.sourceFileName, src2.sourceText, combinedRange, src2.expandedName, src2.expandedFrom)
@@ -302,12 +304,14 @@ data class Diagnostic(
     val expandedDiags = sourceColumns
         .asSequence()
         .filter { it.expandedFrom != null }
-        .map { Diagnostic(
-            DiagnosticId.EXPANDED_FROM,
-            listOf(it.expandedName!!),
-            listOf(it.expandedFrom!!),
-            origin
-        ) }
+        .map {
+          Diagnostic(
+              DiagnosticId.EXPANDED_FROM,
+              listOf(it.expandedName!!),
+              listOf(it.expandedFrom!!),
+              origin
+          )
+        }
         .joinToString("\n") { it.printable }
         .let { if (it.isNotEmpty()) "\n$it" else it }
     return@lazy "$firstLine\n$lineText\n${color.green(caretLine)}$expandedDiags"
@@ -375,9 +379,11 @@ interface IDebugHandler {
  * This class handles [Diagnostic]s for a particular source (eg [slak.ckompiler.parser.Parser]).
  * It is intended for use with delegation via [IDebugHandler].
  */
-class DebugHandler(private val diagSource: String,
-                   private val srcFileName: SourceFileName,
-                   private val srcText: String) : IDebugHandler {
+class DebugHandler(
+    private val diagSource: String,
+    private val srcFileName: SourceFileName,
+    private val srcText: String
+) : IDebugHandler {
   override val diags = mutableListOf<Diagnostic>()
 
   override fun includeNestedDiags(diags: List<Diagnostic>) {
@@ -424,8 +430,10 @@ inline fun Logger.throwICE(ice: InternalCompilerError, crossinline msg: () -> An
   throw ice
 }
 
-inline fun Logger.throwICE(iceMessage: String,
-                           cause: Throwable, crossinline msg: () -> Any?): Nothing {
+inline fun Logger.throwICE(
+    iceMessage: String,
+    cause: Throwable, crossinline msg: () -> Any?
+): Nothing {
   throwICE(InternalCompilerError(iceMessage, cause), msg)
 }
 

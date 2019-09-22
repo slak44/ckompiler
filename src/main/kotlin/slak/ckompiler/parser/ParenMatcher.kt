@@ -19,21 +19,25 @@ interface IParenMatcher {
    * get balanced (and [stopAtSemi] is true), the size of the token stack if there were no parens,
    * or the context idx of the rightmost paren otherwise
    */
-  fun findParenMatch(lparen: Punctuators,
-                     rparen: Punctuators,
-                     startIdx: Int = -1,
-                     disableDiags: Boolean = false,
-                     stopAtSemi: Boolean = true): Int
+  fun findParenMatch(
+      lparen: Punctuators,
+      rparen: Punctuators,
+      startIdx: Int = -1,
+      disableDiags: Boolean = false,
+      stopAtSemi: Boolean = true
+  ): Int
 
   /**
    * [findParenMatch] for [Keywords].
    * @see findParenMatch
    */
-  fun findKeywordMatch(begin: Keywords,
-                       end: Keywords,
-                       startIdx: Int = -1,
-                       disableDiags: Boolean = false,
-                       stopAtSemi: Boolean = true): Int
+  fun findKeywordMatch(
+      begin: Keywords,
+      end: Keywords,
+      startIdx: Int = -1,
+      disableDiags: Boolean = false,
+      stopAtSemi: Boolean = true
+  ): Int
 
   /**
    * Gets the index of [target]'s first appearance, but ignore the ones found between parens.
@@ -42,14 +46,18 @@ interface IParenMatcher {
    * in initializers. So, we want to ignore the commas found in parens, and get the first one after.
    * @return the index of [target], or [TokenHandler.tokenCount] if none was found
    */
-  fun firstOutsideParens(target: Punctuators,
-                         lparen: Punctuators,
-                         rparen: Punctuators,
-                         stopAtSemi: Boolean): Int
+  fun firstOutsideParens(
+      target: Punctuators,
+      lparen: Punctuators,
+      rparen: Punctuators,
+      stopAtSemi: Boolean
+  ): Int
 }
 
 class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
-    IParenMatcher, IDebugHandler by debugHandler, ITokenHandler by tokenHandler {
+    IParenMatcher,
+    IDebugHandler by debugHandler,
+    ITokenHandler by tokenHandler {
 
   /**
    * Generalization of [findParenMatch]. Even though that function calls through to this
@@ -58,11 +66,13 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
    * @see findParenMatch
    * @see findKeywordMatch
    */
-  private inline fun <reified T, E> findMatch(start: E,
-                                              final: E,
-                                              startIdx: Int,
-                                              disableDiags: Boolean,
-                                              stopAtSemi: Boolean): Int
+  private inline fun <reified T, E> findMatch(
+      start: E,
+      final: E,
+      startIdx: Int,
+      disableDiags: Boolean,
+      stopAtSemi: Boolean
+  ): Int
       where T : StaticToken, E : StaticTokenEnum {
     var hasParens = false
     var stack = 0
@@ -117,24 +127,30 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
     return end
   }
 
-  override fun findParenMatch(lparen: Punctuators,
-                              rparen: Punctuators,
-                              startIdx: Int,
-                              disableDiags: Boolean,
-                              stopAtSemi: Boolean) =
+  override fun findParenMatch(
+      lparen: Punctuators,
+      rparen: Punctuators,
+      startIdx: Int,
+      disableDiags: Boolean,
+      stopAtSemi: Boolean
+  ) =
       findMatch<Punctuator, Punctuators>(lparen, rparen, startIdx, disableDiags, stopAtSemi)
 
-  override fun findKeywordMatch(begin: Keywords,
-                                end: Keywords,
-                                startIdx: Int,
-                                disableDiags: Boolean,
-                                stopAtSemi: Boolean) =
+  override fun findKeywordMatch(
+      begin: Keywords,
+      end: Keywords,
+      startIdx: Int,
+      disableDiags: Boolean,
+      stopAtSemi: Boolean
+  ) =
       findMatch<Keyword, Keywords>(begin, end, startIdx, disableDiags, stopAtSemi)
 
-  override fun firstOutsideParens(target: Punctuators,
-                                  lparen: Punctuators,
-                                  rparen: Punctuators,
-                                  stopAtSemi: Boolean): Int {
+  override fun firstOutsideParens(
+      target: Punctuators,
+      lparen: Punctuators,
+      rparen: Punctuators,
+      stopAtSemi: Boolean
+  ): Int {
     val firstThingIdx = indexOfFirst(target, lparen)
     val parenEndIdx = findParenMatch(
         lparen = lparen,

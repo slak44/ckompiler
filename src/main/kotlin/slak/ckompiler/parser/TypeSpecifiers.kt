@@ -9,8 +9,10 @@ import slak.ckompiler.lexer.Keywords
  */
 sealed class TypeSpecifier
 
-data class TypedefNameSpecifier(val name: IdentifierNode,
-                                val typedefName: TypedefName) : TypeSpecifier() {
+data class TypedefNameSpecifier(
+    val name: IdentifierNode,
+    val typedefName: TypedefName
+) : TypeSpecifier() {
   override fun toString() = "${name.name} (aka ${typedefName.typedefedToString()})"
 }
 

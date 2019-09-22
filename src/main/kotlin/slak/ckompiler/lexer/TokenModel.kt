@@ -113,10 +113,12 @@ data class Exponent(val exponent: String, val exponentSign: Char? = null) {
   override fun toString() = "E${exponentSign ?: "_"}$exponent"
 }
 
-data class FloatingConstant(val f: String,
-                            val suffix: FloatingSuffix,
-                            val radix: Radix,
-                            val exponent: Exponent? = null) :
+data class FloatingConstant(
+    val f: String,
+    val suffix: FloatingSuffix,
+    val radix: Radix,
+    val exponent: Exponent? = null
+) :
     LexicalToken(radix.prefixLength + f.length + suffix.length + (exponent?.length ?: 0)) {
   init {
     if (radix == Radix.OCTAL) logger.throwICE("Octal floating constants are not supported")
