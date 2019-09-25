@@ -12,6 +12,13 @@ import kotlin.test.assertEquals
 
 class TagTests {
   @Test
+  fun `Struct Keyword With Arrow Afterwords In Function`() {
+    val p = prepareCode("int main() {struct -> a;}", source)
+    // This ridiculous syntax produces ridiculous diagnostics
+    assert(p.diags.isNotEmpty())
+  }
+
+  @Test
   fun `Struct Declaration`() {
     val p = prepareCode("struct x a = 1;", source)
     p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)

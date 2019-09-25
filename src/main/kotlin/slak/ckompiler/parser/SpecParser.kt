@@ -368,7 +368,8 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
           errorOn(tagKindKeyword)
         }
         eatToSemi()
-        return null
+        // Create fake tag to avoid a blank declaration specifier
+        return TagNameSpecifier(IdentifierNode(""), tagKindKeyword)
       }
       return createTag(TagNameSpecifier(name, tagKindKeyword))
     }
