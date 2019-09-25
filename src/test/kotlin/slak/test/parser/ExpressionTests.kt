@@ -148,92 +148,6 @@ class ExpressionTests {
   }
 
   @Test
-  fun `Subscript Unmatched Parens`() {
-    val p = prepareCode("int main() {int a[12]; a[2;}", source)
-    p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
-  }
-
-  @Test
-  fun `Subscript Empty`() {
-    val p = prepareCode("int main() {int a[12]; a[];}", source)
-    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = ["main[1]", "1[main]", "main[main]", "(*&main)[1]"])
-  fun `Subscripts Of Function Must Fail`(subscriptToTest: String) {
-    val p = prepareCode("int main() {$subscriptToTest;}", source)
-    p.assertDiags(DiagnosticId.SUBSCRIPT_OF_FUNCTION)
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = [
-    "v[1]", "v[-12]", "v['a']", "v[0]", "v[12L]", "v[1U]", "v[23ULL]", "v[35LL]"])
-  fun `Valid Subscripts`(subscriptToTest: String) {
-    val p = prepareCode("int main() {int v[123];$subscriptToTest;}", source)
-    p.assertNoDiagnostics()
-    assert(p.root.decls[0].fn.block.items[1].st is ArraySubscript)
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = ["v[v]", "v[main]", "v[\"sdfghsr\"]", "v[&main]"])
-  fun `Subscripts That Are Not Integers`(subscriptToTest: String) {
-    val p = prepareCode("int main() {int v[123];$subscriptToTest;}", source)
-    p.assertDiags(DiagnosticId.SUBSCRIPT_NOT_INTEGRAL)
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = ["123[123]", "1.2[123]", "123[1.2]", "'a'[123]"])
-  fun `Not Subscriptable`(subscriptToTest: String) {
-    val p = prepareCode("int main() {$subscriptToTest;}", source)
-    p.assertDiags(DiagnosticId.INVALID_SUBSCRIPTED)
-  }
-
-  @Test
-  fun `Subscripts Are Char`() {
-    val p = prepareCode("""
-      int main() {
-        char c = 'b';
-        int v[200];
-        v[c];
-      }
-    """.trimIndent(), source)
-    p.assertDiags(DiagnosticId.SUBSCRIPT_TYPE_CHAR)
-  }
-
-  @Test
-  fun `Simple Cast Expression`() {
-    val p = prepareCode("int a = 1; unsigned int b = (unsigned) a;", source)
-    p.assertNoDiagnostics()
-    uInt declare ("b" assign UnsignedIntType.cast(nameRef("a", SignedIntType))) assertEquals
-        p.root.decls[1]
-  }
-
-  @Test
-  fun `Void Cast Expression`() {
-    val p = prepareCode("int main() {(void) (1 + 1);}", source)
-    p.assertNoDiagnostics()
-    val cast = assertNotNull(p.root.decls[0].fn.block.items[0].st as? CastExpression)
-    assert(cast.type is VoidType)
-  }
-
-  @Test
-  fun `Can't Cast To Non-Scalar`() {
-    val p = prepareCode("struct vec2 {int x,y;}; int main() {(struct vec2) (1 + 1);}", source)
-    p.assertDiags(DiagnosticId.INVALID_CAST_TYPE)
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = [
-    "float f = 2.0; (int*) f",
-    "int a = 1; (float) (&a)"
-  ])
-  fun `Can't Cast Between Pointers And Floats`(cast: String) {
-    val p = prepareCode("int main() {$cast;}", source)
-    p.assertDiags(DiagnosticId.POINTER_FLOAT_CAST)
-  }
-
-  @Test
   fun `More Parens Closed Than Opened`() {
     val p = prepareCode("int a = (1 + 2));", source)
     // This can create bullshit diags, so just check it didn't succeed
@@ -296,6 +210,98 @@ class ExpressionTests {
       p.assertNoDiagnostics()
       val badAssignment = nameRef("a", SignedIntType) assign 3
       int declare ("a" assign 1.qmark(2, badAssignment)) assertEquals p.root.decls[0]
+    }
+  }
+
+  @Nested
+  inner class ArraySubscriptTests {
+    @Test
+    fun `Subscript Unmatched Parens`() {
+      val p = prepareCode("int main() {int a[12]; a[2;}", source)
+      p.assertDiags(DiagnosticId.UNMATCHED_PAREN, DiagnosticId.MATCH_PAREN_TARGET)
+    }
+
+    @Test
+    fun `Subscript Empty`() {
+      val p = prepareCode("int main() {int a[12]; a[];}", source)
+      p.assertDiags(DiagnosticId.EXPECTED_EXPR)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["main[1]", "1[main]", "main[main]", "(*&main)[1]"])
+    fun `Subscripts Of Function Must Fail`(subscriptToTest: String) {
+      val p = prepareCode("int main() {$subscriptToTest;}", source)
+      p.assertDiags(DiagnosticId.SUBSCRIPT_OF_FUNCTION)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+      "v[1]", "v[-12]", "v['a']", "v[0]", "v[12L]", "v[1U]", "v[23ULL]", "v[35LL]"])
+    fun `Valid Subscripts`(subscriptToTest: String) {
+      val p = prepareCode("int main() {int v[123];$subscriptToTest;}", source)
+      p.assertNoDiagnostics()
+      assert(p.root.decls[0].fn.block.items[1].st is ArraySubscript)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["v[v]", "v[main]", "v[\"sdfghsr\"]", "v[&main]"])
+    fun `Subscripts That Are Not Integers`(subscriptToTest: String) {
+      val p = prepareCode("int main() {int v[123];$subscriptToTest;}", source)
+      p.assertDiags(DiagnosticId.SUBSCRIPT_NOT_INTEGRAL)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["123[123]", "1.2[123]", "123[1.2]", "'a'[123]"])
+    fun `Not Subscriptable`(subscriptToTest: String) {
+      val p = prepareCode("int main() {$subscriptToTest;}", source)
+      p.assertDiags(DiagnosticId.INVALID_SUBSCRIPTED)
+    }
+
+    @Test
+    fun `Subscripts Are Char`() {
+      val p = prepareCode("""
+      int main() {
+        char c = 'b';
+        int v[200];
+        v[c];
+      }
+    """.trimIndent(), source)
+      p.assertDiags(DiagnosticId.SUBSCRIPT_TYPE_CHAR)
+    }
+  }
+
+  @Nested
+  inner class CastOperatorTests {
+    @Test
+    fun `Simple Cast Expression`() {
+      val p = prepareCode("int a = 1; unsigned int b = (unsigned) a;", source)
+      p.assertNoDiagnostics()
+      uInt declare ("b" assign UnsignedIntType.cast(nameRef("a", SignedIntType))) assertEquals
+          p.root.decls[1]
+    }
+
+    @Test
+    fun `Void Cast Expression`() {
+      val p = prepareCode("int main() {(void) (1 + 1);}", source)
+      p.assertNoDiagnostics()
+      val cast = assertNotNull(p.root.decls[0].fn.block.items[0].st as? CastExpression)
+      assert(cast.type is VoidType)
+    }
+
+    @Test
+    fun `Can't Cast To Non-Scalar`() {
+      val p = prepareCode("struct vec2 {int x,y;}; int main() {(struct vec2) (1 + 1);}", source)
+      p.assertDiags(DiagnosticId.INVALID_CAST_TYPE)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+      "float f = 2.0; (int*) f",
+      "int a = 1; (float) (&a)"
+    ])
+    fun `Can't Cast Between Pointers And Floats`(cast: String) {
+      val p = prepareCode("int main() {$cast;}", source)
+      p.assertDiags(DiagnosticId.POINTER_FLOAT_CAST)
     }
   }
 }
