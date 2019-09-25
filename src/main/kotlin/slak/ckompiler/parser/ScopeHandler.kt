@@ -188,6 +188,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
     val name = tag.name ?: return tag
     val names = scopeStack.peek().tagNames
     val foundTag = names[name]
+    val previousDef = searchTag(name)
     // Add enum constants to scope, if required
     for (enumerator in (tag as? EnumSpecifier)?.enumerators ?: emptyList()) {
       newIdentifier(enumerator)
@@ -199,6 +200,9 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
         formatArgs(name.name)
         errorOn(name)
       }
+      // This is the case where we already have a definition somewhere, and we encounter stuff like
+      // "struct person p;"
+      foundTag == null && previousDef != null -> return previousDef
       foundTag == null -> names[name] = tag
       tag.kind != foundTag.kind -> {
         diagnostic {
@@ -212,9 +216,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
         }
       }
       tag is TagNameSpecifier -> {
-        // Do nothing intentionally
-        // This is the case where we already have a definition, and we encounter stuff like
-        // "struct person p;"
+        // Definition found in scope even
         return foundTag
       }
       foundTag is TagNameSpecifier -> {
