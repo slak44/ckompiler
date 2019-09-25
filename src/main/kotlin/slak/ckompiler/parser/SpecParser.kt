@@ -367,6 +367,7 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
           formatArgs(tagKindKeyword.value.keyword)
           errorOn(tagKindKeyword)
         }
+        eatToSemi()
         return null
       }
       return createTag(TagNameSpecifier(name, tagKindKeyword))
