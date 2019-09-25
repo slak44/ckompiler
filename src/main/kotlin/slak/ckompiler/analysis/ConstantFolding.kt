@@ -8,6 +8,10 @@ import slak.ckompiler.parser.*
  * hoisted out of their expressions.
  *
  * FIXME: constant propagation & deal with enum constants
+ *
+ * FIXME: constant folding on IncDecOperation/MemberAccessExpression
+ *
+ * FIXME: completely fold ArraySubscript/FunctionCall/TernaryConditional if constant
  */
 fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (expr) {
   is ExprConstantNode -> expr
@@ -53,4 +57,5 @@ fun MachineTargetData.doConstantFolding(expr: Expression): Expression = when (ex
   ).withRange(expr)
   is TypedIdentifier -> expr
   is IncDecOperation -> expr
+  is MemberAccessExpression -> expr
 }

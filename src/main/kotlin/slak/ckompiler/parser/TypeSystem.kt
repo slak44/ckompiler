@@ -19,8 +19,10 @@ private fun typeNameOfTag(tagSpecifier: TagSpecifier): UnqualifiedTypeName {
   // This breaks down declarations with multiple declarators in them
   // For the TypeName, we don't care about that syntactic detail
   val memberTypes = (tagSpecifier as? StructUnionDefinitionSpecifier)?.decls?.flatMap {
-    it.declaratorList.map { (declarator, _) -> typeNameOf(it.declSpecs, declarator) }
-  }
+    it.declaratorList.map { (declarator, _) ->
+      declarator.name to typeNameOf(it.declSpecs, declarator)
+    }
+  }?.toMap()
   return if (tagSpecifier.kind.value == Keywords.STRUCT) {
     StructureType(tagSpecifier.name, memberTypes)
   } else {
@@ -266,8 +268,13 @@ object ErrorType : UnqualifiedTypeName() {
   override fun toString() = "<error type>"
 }
 
+/**
+ * Tag types only represent structs and unions; enums have some integer type, and are not explicitly
+ * represented here.
+ */
 sealed class TagType : UnqualifiedTypeName() {
   abstract val name: IdentifierNode?
+  abstract val members: Map<IdentifierNode, TypeName>?
   abstract val isComplete: Boolean
   abstract val kind: String
 
@@ -279,7 +286,7 @@ sealed class TagType : UnqualifiedTypeName() {
 
 data class StructureType(
     override val name: IdentifierNode?,
-    val members: List<TypeName>?
+    override val members: Map<IdentifierNode, TypeName>?
 ) : TagType() {
   override val isComplete = members != null
   override val kind = "struct"
@@ -288,9 +295,9 @@ data class StructureType(
 
 data class UnionType(
     override val name: IdentifierNode?,
-    val optionTypes: List<TypeName>?
+    override val members: Map<IdentifierNode, TypeName>?
 ) : TagType() {
-  override val isComplete = optionTypes != null
+  override val isComplete = members != null
   override val kind = "union"
   override fun toString() = super.toString()
 }

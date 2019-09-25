@@ -148,6 +148,25 @@ class ErrorExpression : ExprConstantNode(), ErrorNode by ErrorNodeImpl {
 }
 
 /**
+ * C standard: 6.3.2.1.0.1
+ */
+private fun valueTypeOf(type: TypeName): Expression.ValueType {
+  val isArrayPtr = type is PointerType && type.decayedFrom is ArrayType
+  return if (type is PointerType && type.decayedFrom is FunctionType) {
+    // Function designators are lvalues
+    LVALUE
+  } else if (type is QualifiedType && Keywords.CONST in type.typeQuals) {
+    // Const-qualification means it's not modifiable
+    LVALUE
+  } else if (type.isCompleteObjectType() && !isArrayPtr) {
+    MODIFIABLE_LVALUE
+  } else {
+    // FIXME: is everything else an lvalue?
+    LVALUE
+  }
+}
+
+/**
  * Like [IdentifierNode], but with an attached [TypeName].
  *
  * A [TypedIdentifier] should be "unique", in that for each variable in a function, all uses of it
@@ -167,31 +186,12 @@ data class TypedIdentifier(
     withRange(decl.name)
   }
 
-  override val valueType: ValueType
+  override val valueType = valueTypeOf(type)
 
   var id = varCounter()
     private set
 
   override val kindName = "variable"
-
-  /**
-   * C standard: 6.3.2.1.0.1
-   */
-  init {
-    val isArrayPtr = type is PointerType && type.decayedFrom is ArrayType
-    valueType = if (type is PointerType && type.decayedFrom is FunctionType) {
-      // Function designators are lvalues
-      LVALUE
-    } else if (type is QualifiedType && Keywords.CONST in type.typeQuals) {
-      // Const-qualification means it's not modifiable
-      LVALUE
-    } else if (type.isCompleteObjectType() && !isArrayPtr) {
-      MODIFIABLE_LVALUE
-    } else {
-      // FIXME: is everything else an lvalue?
-      LVALUE
-    }
-  }
 
   /**
    * Makes a copy of this [TypedIdentifier], that has the same [id].
@@ -301,6 +301,28 @@ data class IncDecOperation(
    * C standard: 6.5.16.0.3, 6.5.2.4.0.2
    */
   override val valueType = RVALUE
+}
+
+/**
+ * Represents `a.b` and `a->b`.
+ */
+data class MemberAccessExpression(
+    val target: Expression,
+    val accessOperator: Punctuator,
+    val memberName: IdentifierNode,
+    override val type: TypeName
+) : Expression() {
+  /**
+   * FIXME: this is semi-broken for a variety of reasons
+   *
+   * C standard: 6.5.2.3.0.3, 6.5.2.3.0.4
+   */
+  override val valueType: ValueType
+    get() = when (accessOperator.pct) {
+      Punctuators.DOT -> if (target.valueType != RVALUE) valueTypeOf(target.type) else RVALUE
+      Punctuators.ARROW -> valueTypeOf(target.type)
+      else -> logger.throwICE("Illegal punctuator used as member access operator")
+    }
 }
 
 /** Represents a binary operation in an expression. */

@@ -304,4 +304,120 @@ class ExpressionTests {
       p.assertDiags(DiagnosticId.POINTER_FLOAT_CAST)
     }
   }
+
+  @Nested
+  inner class MemberAccessTests {
+    @ParameterizedTest
+    @ValueSource(strings = [
+      "u . 1;", "u. 1;", "u. 1.1;", "u..;", "u->.;", "u.->;", "u.#;", "u.,;", "u.&;", "u.sizeof;"
+    ])
+    fun `Expect Identifier After Punctuator`(accessStr: String) {
+      val p = prepareCode("""
+        struct vec2 {int x, y;};
+        int main() {
+          struct vec2 u;
+          $accessStr
+        }
+      """.trimIndent(), source)
+      p.assertDiags(DiagnosticId.EXPECTED_IDENT)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+      "1 -> a;", "2.0 -> a;", "(1 + 1) -> a;", "-1 -> a;"
+    ])
+    fun `Expect Pointer Type For Arrow Operator`(accessStr: String) {
+      val p = prepareCode("int main() {$accessStr}", source)
+      p.assertDiags(DiagnosticId.MEMBER_REFERENCE_NOT_PTR)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+      "1 . a;", "2.0 . a;", "(1 + 1) . a;", "-1 . a;"
+    ])
+    fun `Expect Member Base To Be Tag`(accessStr: String) {
+      val p = prepareCode("int main() {$accessStr}", source)
+      p.assertDiags(DiagnosticId.MEMBER_BASE_NOT_TAG)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+      "u.a;", "u.u;", "u.v;", "u.xy;", "u.vec2;"
+    ])
+    fun `Member Name Must Exist`(accessStr: String) {
+      val p = prepareCode("""
+        struct vec2 {int x, y;};
+        int main() {
+          struct vec2 u;
+          $accessStr
+        }
+      """.trimIndent(), source)
+      p.assertDiags(DiagnosticId.MEMBER_NAME_NOT_FOUND)
+    }
+
+    @Test
+    fun `Member Name Must Exist For Anon Struct`() {
+      val p = prepareCode("""
+        int main() {
+          struct {int x,y;} u;
+          u.asdf;
+        }
+      """.trimIndent(), source)
+      p.assertDiags(DiagnosticId.MEMBER_NAME_NOT_FOUND)
+    }
+
+    @Test
+    fun `Regular Struct Member Access`() {
+      val p = prepareCode("""
+        struct vec2 {int x, y;};
+        int main() {
+          struct vec2 u;
+          u.x;
+        }
+      """.trimIndent(), source)
+      p.assertNoDiagnostics()
+      val vec2 = struct("vec2", listOf(int declare listOf("x", "y"))).toSpec()
+      val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
+      int func ("main" withParams emptyList()) body compoundOf(
+          vec2 declare "u",
+          u dot nameRef("x", SignedIntType)
+      ) assertEquals p.root.decls[0]
+    }
+
+    @Test
+    fun `Regular Struct Member Access Returns Modifiable Lvalue`() {
+      val p = prepareCode("""
+        struct vec2 {int x, y;};
+        int main() {
+          struct vec2 u;
+          u.x = 5;
+        }
+      """.trimIndent(), source)
+      p.assertNoDiagnostics()
+      val vec2 = struct("vec2", listOf(int declare listOf("x", "y"))).toSpec()
+      val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
+      int func ("main" withParams emptyList()) body compoundOf(
+          vec2 declare "u",
+          u dot nameRef("x", SignedIntType) assign 5
+      ) assertEquals p.root.decls[0]
+    }
+
+    @Test
+    fun `Struct Member Access To Expr`() {
+      val p = prepareCode("""
+        struct vec2 {int x, y;};
+        int main() {
+          struct vec2 u;
+          (&u)->x;
+        }
+      """.trimIndent(), source)
+      p.assertNoDiagnostics()
+      val vec2 = struct("vec2", listOf(int declare listOf("x", "y"))).toSpec()
+      val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
+      int func ("main" withParams emptyList()) body compoundOf(
+          vec2 declare "u",
+          UnaryOperators.REF[u] arrow nameRef("x", SignedIntType)
+      ) assertEquals p.root.decls[0]
+    }
+  }
 }

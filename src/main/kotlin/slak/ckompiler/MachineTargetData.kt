@@ -89,8 +89,8 @@ data class MachineTargetData(
       size * sizeOf(type.elementType)
     }
     is BitfieldType -> TODO()
-    is StructureType -> type.members?.sumBy(::sizeOf) ?: 0
-    is UnionType -> type.optionTypes?.maxBy(::sizeOf)?.let(::sizeOf) ?: 0
+    is StructureType -> type.members?.values?.sumBy(::sizeOf) ?: 0
+    is UnionType -> type.members?.values?.maxBy(::sizeOf)?.let(::sizeOf) ?: 0
     SignedCharType, UnsignedCharType -> 1
     SignedShortType, UnsignedShortType -> shortSizeBytes
     SignedIntType, UnsignedIntType -> intSizeBytes

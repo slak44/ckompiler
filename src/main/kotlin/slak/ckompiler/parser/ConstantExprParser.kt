@@ -71,7 +71,7 @@ class ConstantExprParser(
       diags: MutableList<Diagnostic>,
       expr: Expression
   ): ExprConstantNode = when (expr) {
-    is TernaryConditional -> TODO("deal with this")
+    is TernaryConditional, is MemberAccessExpression -> TODO("deal with this")
     is ErrorExpression, is VoidExpression,
     is IntegerConstantNode, is CharacterConstantNode -> expr as ExprConstantNode
     is FunctionCall, is ArraySubscript,

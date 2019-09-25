@@ -380,6 +380,7 @@ class IRLoweringContext {
     is FloatingConstantNode -> ComputeFloat(folded)
     is CharacterConstantNode -> ComputeChar(folded)
     is StringLiteralNode -> ComputeString(folded)
+    is MemberAccessExpression -> TODO()
   }
 
   /**

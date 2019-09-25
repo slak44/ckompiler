@@ -322,15 +322,67 @@ class ExpressionParser(
         .withRange(realSubscripted..endParenTok)
   }
 
+  /**
+   * C standard: 6.5.2.3
+   */
+  private fun parseMemberAccess(baseExpr: Expression): Expression {
+    val accessOp = current() as Punctuator
+    eat() // The . or ->
+    if (isEaten() || current() !is Identifier) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_IDENT
+        errorOn(safeToken(0))
+      }
+      eatToSemi()
+      return error<ErrorExpression>()
+    }
+    val ident = IdentifierNode.from(current())
+    eat() // The identifier
+    val lhsType = baseExpr.type.unqualify()
+    if (accessOp.pct == Punctuators.ARROW && lhsType !is PointerType) {
+      diagnostic {
+        id = DiagnosticId.MEMBER_REFERENCE_NOT_PTR
+        formatArgs(baseExpr.type.toString())
+        errorOn(baseExpr)
+        errorOn(accessOp)
+      }
+      return error<ErrorExpression>()
+    }
+    val baseOperandType =
+        if (accessOp.pct == Punctuators.ARROW) (lhsType as PointerType).referencedType
+        else lhsType
+    val baseUnqual = baseOperandType.unqualify()
+    if (baseUnqual !is TagType) {
+      diagnostic {
+        id = DiagnosticId.MEMBER_BASE_NOT_TAG
+        formatArgs(ident.name, baseOperandType.toString())
+        errorOn(baseExpr)
+        errorOn(accessOp)
+      }
+      return error<ErrorExpression>()
+    }
+    // If the members are null, something is bad in either spec parser or scope handing for tags
+    val memberType = requireNotNull(baseUnqual.members)[ident]
+    if (memberType == null) {
+      diagnostic {
+        id = DiagnosticId.MEMBER_NAME_NOT_FOUND
+        formatArgs(ident.name, baseUnqual.toString())
+        errorOn(ident)
+        errorOn(baseExpr)
+      }
+      return error<ErrorExpression>()
+    }
+    // FIXME: 6.5.2.3.0.1, 6.5.2.3.0.2
+    //   qualify member type with lhs qualifiers
+    return MemberAccessExpression(baseExpr, accessOp, ident, memberType).withRange(baseExpr..ident)
+  }
+
   private fun parseOnePostfixExpression(baseExpr: Expression?): Expression? = when {
     isEaten() || baseExpr == null -> baseExpr
     current().asPunct() == Punctuators.LSQPAREN -> parseSubscript(baseExpr)
     current().asPunct() == Punctuators.LPAREN -> parseFunctionCall(baseExpr)
-    current().asPunct() == Punctuators.DOT -> {
-      TODO("implement direct struct/union access operator")
-    }
-    current().asPunct() == Punctuators.ARROW -> {
-      TODO("implement indirect struct/union access operator")
+    current().asPunct() == Punctuators.DOT || current().asPunct() == Punctuators.ARROW -> {
+      parseMemberAccess(baseExpr)
     }
     current().asPunct() == Punctuators.INC || current().asPunct() == Punctuators.DEC -> {
       val c = current().asPunct()

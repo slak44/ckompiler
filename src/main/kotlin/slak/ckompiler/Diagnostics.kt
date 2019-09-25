@@ -114,6 +114,9 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ADDRESS_REQUIRES_LVALUE(ERROR, "Taking address of rvalue of type '%s'"),
   SWITCH_COND_IS_BOOL(WARNING, "Switch condition has boolean type"),
   VARIABLE_TYPE_INCOMPLETE(ERROR, "Declaring variable of incomplete type '%s'"),
+  MEMBER_REFERENCE_NOT_PTR(ERROR, "Member reference type '%s' is not a pointer"),
+  MEMBER_BASE_NOT_TAG(ERROR, "Attempt to access member '%s' in non-struct non-union type '%s'"),
+  MEMBER_NAME_NOT_FOUND(ERROR, "No such member '%s' in '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

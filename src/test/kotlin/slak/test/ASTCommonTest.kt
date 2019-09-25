@@ -335,6 +335,14 @@ internal inline fun <reified T> struct(
   return StructUnionDefinitionSpecifier(name?.let { name(it) }, d, Keywords.STRUCT.kw)
 }
 
+internal infix fun Expression.dot(tid: TypedIdentifier): MemberAccessExpression {
+  return MemberAccessExpression(this, Punctuators.DOT.pct, name(tid.name), tid.type).zeroRange()
+}
+
+internal infix fun Expression.arrow(tid: TypedIdentifier): MemberAccessExpression {
+  return MemberAccessExpression(this, Punctuators.ARROW.pct, name(tid.name), tid.type).zeroRange()
+}
+
 internal infix fun <T> String.withEnumConst(int: T) =
     Enumerator(name(this), parseDSLElement(int) as ExprConstantNode)
 

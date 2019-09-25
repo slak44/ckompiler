@@ -148,6 +148,7 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     // Do nothing. These do not pose the problem of being sequenced before or after.
     e
   }
+  is MemberAccessExpression -> TODO()
 }
 
 /**
