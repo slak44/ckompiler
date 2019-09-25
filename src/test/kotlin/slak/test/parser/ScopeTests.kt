@@ -225,6 +225,32 @@ class ScopeTests {
     p.assertNoDiagnostics()
   }
 
+  @Test
+  fun `Tag Is Complete After Definition`() {
+    val p = prepareCode("""
+      struct vec2 {double x, y;};
+      struct vec2 u;
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val vec2 = struct("vec2", listOf(double declare listOf("x", "y"))).toSpec()
+    vec2 declare "u" assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Complete Tag Used In Inner Scope`() {
+    val p = prepareCode("""
+      struct vec2 {double x, y;};
+      int main() {
+        struct vec2 u;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val vec2 = struct("vec2", listOf(double declare listOf("x", "y"))).toSpec()
+    int func ("main" withParams emptyList()) body compoundOf(
+        vec2 declare "u"
+    ) assertEquals p.root.decls[0]
+  }
+
   @ParameterizedTest
   @ValueSource(strings = [
     "union my_type {int x,y;};",
