@@ -570,8 +570,6 @@ class PPParser(
   /**
    * Error directives. Technically the things in it have to be valid pp-tokens, but like clang and
    * gcc we accept any text between "error" and the newline.
-   *
-   * FIXME: swallow diagnostics from the tokens in this directive
    */
   private fun error(): Boolean {
     val tok = current()
