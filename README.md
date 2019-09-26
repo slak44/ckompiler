@@ -502,7 +502,7 @@ especially to the C standard.
 [cfg]: ./src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt
 [const_fold]: ./src/main/kotlin/slak/ckompiler/analysis/ConstantFolding.kt
 [nasm_gen]:
-./src/main/kotlin/slak/ckompiler/backend/nasm_x86_64/NasmGenerator.kt
+./src/main/kotlin/slak/ckompiler/backend/nasm/NasmGenerator.kt
 [diags]: ./src/main/kotlin/slak/ckompiler/Diagnostics.kt
 [cli]: ./src/main/kotlin/slak/ckompiler/CLI.kt
 [cli_exts]: ./src/main/kotlin/slak/ckompiler/CLIExtensions.kt
