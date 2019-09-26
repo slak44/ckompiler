@@ -104,40 +104,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
   }
 
   /**
-   * Parsing declarators gets very complicated very fast when nested declarators come into play. A
-   * typical nested declaration looks like:
-   * ```
-   * int * (*f(int x))(double y)
-   * ^^^ declaration specifiers
-   * int * (*f(int x))(double y)
-   *       ^^^^^^^^^^^ nested declarator
-   * int * (*f(int x))(double y)
-   *                  ^^^^^^^^^^ declarator suffix for non-nested declarator
-   * int * (*f(int x))(double y)
-   *          ^^^^^^^ declarator suffix for nested declarator
-   * int * (*f(int x))(double y)
-   *     ^ indirection that "belongs" to the declaration specifiers (from "int" to "pointer to int")
-   * int * (*f(int x))(double y)
-   *        ^ indirection that "belongs" to the declarator suffix
-   *          (from "function" type to "pointer to function" type)
-   * int * (*f(int x))(double y)
-   *         ^ designator for the resulting declaration (ie the name of the function)
-   * ```
-   *
-   * The example declaration declares a function called "f", that takes one int parameter called
-   * "x", and returns a pointer to a function that also takes one parameter, a double "y", and
-   * returns a pointer to an int.
-   *
-   * Indirection binds in reverse order of suffixes: the first indirection binds to the last suffix,
-   * and the last indirection binds to the first suffix. This reflects the declarator nesting.
-   *
-   * Dereferencing the int pointer returned by calling the returned function pointer, in one
-   * expression, looks like this:
-   * ```
-   * int result = *(f(1)(2.0));
-   * ```
-   *
-   * Yes, this is why typedefs exist.
+   * See `README.md` for more info.
    *
    * C standard: 6.7.6.0.1
    */
