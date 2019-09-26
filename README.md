@@ -132,7 +132,7 @@ multiple ranges into one, like in this example from the parser:
 sizeOf..tokenAt(rParenIdx)
 ```
 The `sizeOf` token and the token returned by `tokenAt(rParenIdx)` are not
-adjacent (think of `sizeof(1 + 1)`), but this overload allows the parser to
+adjacent (think of `sizeof(int)`), but this overload allows the parser to
 trivially create a compound `SourcedRange` to cover the entire sizeof
 expression.
 
@@ -175,22 +175,28 @@ diagnostics.
 ###### Compiler Errors
 
 For actual issues in the compiler, we use logging (via [Log4j 2][log4j2]), the
-`InternalCompilerError` class, and the `throwICE` extension methods on logger
-instances. An instance of ICE being thrown means invariants were violated,
-"impossible" situations occurred, or misuse of an API was encountered. As a
-result, these exceptions should not be caught anywhere: it is desirable for the
-application to crash if someone threw an ICE. Every ICE is an unfixed bug in the
-compiler.
+`InternalCompilerError` class, the `throwICE` extension methods on logger
+instances, and Kotlin's stdlib functions from `Preconditions.kt`. Instances of
+ICE, `IllegalArgumentException` or `IllegalStateException` being thrown means
+invariants were violated, "impossible" situations occurred, or misuse of an API
+was encountered. As a result, these exceptions should not be caught anywhere: it
+is desirable for the application to crash if someone threw an ICE. Any one of
+these exceptions being thrown is an unfixed bug in the compiler.
 
 Since the compiler is still a work in progress, there are many features/code
 paths that are not yet implemented. They generally do not throw ICEs, rather
-they use `kotlin.NotImplementedError` created by the `TODO` function.
+they use `NotImplementedError`s created by the `TODO` function.
 
 ### The `ITokenHandler` Interface
 
 This interface allows a user to interact with a list of `LexicalToken`s. It
 provides functions to process a token, move past it to the next one, search for
 the first token to meet a condition, or easily get debug data.
+
+The terminology used in this interface's methods relates to "eating" tokens.
+Eating a token means it was processed, consumed, or dealt with in some way, and
+further calls to the `current` function will return the next available token. As
+expected, `isEaten` returns true if there are no more tokens left.
 
 By far the most interesting feature, however, is the `tokenContext` function.
 One of the most common operations when parsing is having to create a
