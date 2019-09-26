@@ -68,18 +68,21 @@ Since the `DeclarationParser` implements some of those interfaces itself,
 
 This approach has several advantages:
 
-1. Components are forced to be written against the exposed interfaces, allowing
-   implementation details to be hidden in the concrete classes (better
-   encapsulation).
-2. The dependencies between components are made explicit; for example, a
+1. Components are forced to be written against the exposed interfaces 
+   (dependency inversion principle), allowing implementation details to be
+   hidden in the concrete classes (single responsibility principle).
+2. The individual interfaces are simple compared to a monolith approach, where
+   every component would have access to every other component (interface
+   segregation principle).
+3. The dependencies between components are made explicit; for example, a 
    `ScopeHandler` has no business using a `ControlKeywordParser`. Requiring
    manual delegation helps prevent accidental coupling.
-3. The syntax is clean: there is usually no need to write `component.doThing()`,
-   rather `doThing()` can be called directly. This is most obvious for parser
-   components using `ITokenHandler`, since they have lots (hundreds) of calls to
-   functions like `current`, `eat`, `isEaten` or `tokenContext`, and without
-   delegation, they'd end up polluting the source with `tokenHandler.current()`
-   everywhere.
+4. The delegate syntax is clean: there is usually no need to write
+   `component.doThing()`, rather `doThing()` can be called directly. This is
+   most obvious for parser components using `ITokenHandler`, since they have
+   lots (hundreds) of calls to functions like `current`, `eat`, `isEaten` or
+   `tokenContext`. Without delegation, they'd end up polluting the source with
+   `tokenHandler.current()` everywhere, which is not great for readability.
 
 ### Errors
 
@@ -368,7 +371,7 @@ The `CFG` class is also responsible for converting the code in its nodes to a
    The edges are collapsed such that the control flow the graph represents is
    unchanged. This is done in a loop until no more collapsing can be done;
    removing an empty block may also allow us to remove a previously
-   un-removeable block (this case is in the example above, with the two blocks
+   un-removable block (this case is in the example above, with the two blocks
    that come after the return).
    
    See `collapseEmptyBlocks` in [ControlFlowGraph.kt][cfg], and
