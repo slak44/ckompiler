@@ -119,9 +119,9 @@ class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceF
     currentWhitespace.clear()
     dropChars(token.consumedChars)
 
-    // Deal with error directives to avoid spurious diagnostics
+    // Deal with error/pragma directives to avoid spurious diagnostics
     if (ppTokens.size >= 2 &&
-        ppTokens[ppTokens.size - 1] == Identifier("error") &&
+        ppTokens[ppTokens.size - 1] in arrayOf(Identifier("error"), Identifier("pragma")) &&
         ppTokens[ppTokens.size - 2] == Punctuator(Punctuators.HASH)) {
       val errorMessage = dropCharsWhile { it != '\n' }
       if (errorMessage.isNotEmpty()) {

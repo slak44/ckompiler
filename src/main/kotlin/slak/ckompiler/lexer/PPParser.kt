@@ -590,10 +590,23 @@ class PPParser(
   }
 
   /**
-   * FIXME: pragma directives
+   * C standard: 6.10.6
    */
   private fun pragma(): Boolean {
-    return false
+    val tok = current()
+    if (tok !is Identifier || tok.name != "pragma") return false
+    eat() // pragma
+    // We make sure in the lexer that the entire pragma is an identifier
+    val diagnosticToken = safeToken(0)
+    val pragma = if (isEaten()) "" else (current() as Identifier).name
+    eat() // The pragma text, if present
+    // FIXME: add real pragmas, deal with STDC ones
+    pragma === pragma
+    diagnostic {
+      id = DiagnosticId.PRAGMA_IGNORED
+      errorOn(diagnosticToken)
+    }
+    return true
   }
 
   private fun invalidIfSectionDirectives(): Boolean {

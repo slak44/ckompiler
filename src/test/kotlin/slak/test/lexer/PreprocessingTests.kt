@@ -167,4 +167,13 @@ class PreprocessingTests {
     l.assertDiags(DiagnosticId.INVALID_PP_DIRECTIVE)
     assert(l.tokens.isEmpty())
   }
+
+  @ParameterizedTest
+  @EmptySource
+  @ValueSource(strings = [
+    "\n", "  \n", " fsdhsgasd", "#", "?", " 123"
+  ])
+  fun `Ignored Pragmas`(string: String) {
+    assertPPDiagnostic("#pragma$string", source, DiagnosticId.PRAGMA_IGNORED)
+  }
 }

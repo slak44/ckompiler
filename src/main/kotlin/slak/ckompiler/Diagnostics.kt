@@ -44,6 +44,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ELIF_NO_CONDITION(ERROR, "#elif condition missing"),
   INVALID_LITERAL_IN_PP(ERROR, "Invalid %s literal in preprocessor expression"),
   NOT_DEFINED_IS_0(WARNING, "'%s' is not defined, evaluates to 0"),
+  PRAGMA_IGNORED(WARNING, "Pragma ignored"),
 
   // Parser
   EXPECTED_EXPR(ERROR, "Expected expression"),
