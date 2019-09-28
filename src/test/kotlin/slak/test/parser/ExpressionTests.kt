@@ -187,7 +187,7 @@ class ExpressionTests {
       val p = prepareCode("const char* s = 1 ? \"foo\" : \"barbaz\";", source)
       p.assertNoDiagnostics()
       val ternary = 1.qmark(strLit("foo"), strLit("barbaz"))
-      constChar declare (ptr("s") assign ternary) assertEquals p.root.decls[0]
+      const + char declare (ptr("s") assign ternary) assertEquals p.root.decls[0]
     }
 
     @Test

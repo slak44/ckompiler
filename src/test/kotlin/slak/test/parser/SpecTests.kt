@@ -2,7 +2,6 @@ package slak.test.parser
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
@@ -35,11 +34,7 @@ class SpecTests {
   fun `Multiple Declaration Specifiers`() {
     val p = prepareCode("const static int a;", source)
     p.assertNoDiagnostics()
-    val spec = DeclarationSpecifier(
-        typeQualifiers = listOf(Keywords.CONST.kw),
-        storageClass = Keywords.STATIC.kw,
-        typeSpec = IntType(Keywords.INT.kw))
-    assertEquals(listOf(spec declare "a"), p.root.decls)
+    const + (static + int) declare "a" assertEquals p.root.decls[0]
   }
 
   @Test
@@ -202,10 +197,9 @@ class SpecTests {
       special_int x = 213;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val (typedef, specialIntType) =
-        typedef(uInt.copy(typeQualifiers = const), nameDecl("special_int"))
+    val (typedef, specialIntType) = typedef(const + uInt, nameDecl("special_int"))
     typedef declare "special_int" assertEquals p.root.decls[0]
-    specialIntType declare ("x" assign const(UnsignedIntType).cast(213)) assertEquals
+    specialIntType declare ("x" assign (const + UnsignedIntType).cast(213)) assertEquals
         p.root.decls[1]
   }
 
@@ -262,7 +256,7 @@ class SpecTests {
         returnSt(9)
     )
     funcImpl assertEquals p.root.decls[1]
-    val ptrType = PointerType(typeNameOf(myFun, myFuncDecl), emptyList())
+    val ptrType = ptr(typeNameOf(myFun, myFuncDecl))
     val fptrRef = nameRef("fptr", ptrType)
     int func ("main" withParams emptyList()) body compoundOf(
         myFun declare (ptr("fptr") assign UnaryOperators.REF[funcImpl.toRef()]),

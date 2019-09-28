@@ -31,6 +31,9 @@ internal fun long(i: Long) = IntegerConstantNode(i, IntegralSuffix.LONG).zeroRan
 internal fun float(f: Double) = FloatingConstantNode(f, FloatingSuffix.FLOAT).zeroRange()
 internal fun double(f: Double) = FloatingConstantNode(f, FloatingSuffix.NONE).zeroRange()
 
+internal val static: Keyword = Keywords.STATIC.kw
+internal val register: Keyword = Keywords.REGISTER.kw
+
 internal val const: TypeQualifierList = listOf(Keywords.CONST.kw)
 
 internal val void = DeclarationSpecifier(typeSpec = VoidTypeSpec(Keywords.VOID.kw)).zeroRange()
@@ -49,19 +52,23 @@ internal val uLongLong =
 internal val longDouble = DeclarationSpecifier(typeSpec = LongDouble(Keywords.LONG.kw)).zeroRange()
 internal val signedChar =
     DeclarationSpecifier(typeSpec = SignedChar(Keywords.SIGNED.kw)).zeroRange()
-internal val constChar = DeclarationSpecifier(
-    typeSpec = Char(Keywords.CHAR.kw),
-    typeQualifiers = const
-).zeroRange()
+internal val char = DeclarationSpecifier(typeSpec = Char(Keywords.CHAR.kw)).zeroRange()
 
-internal fun const(type: UnqualifiedTypeName) = QualifiedType(type, const)
+internal operator fun TypeQualifierList.plus(ds: DeclarationSpecifier) =
+    ds.copy(typeQualifiers = this).zeroRange()
+
+internal operator fun Keyword.plus(ds: DeclarationSpecifier) =
+    ds.copy(storageClass = this).zeroRange()
+
+internal operator fun TypeQualifierList.plus(type: UnqualifiedTypeName) = QualifiedType(type, this)
+
+internal fun ptr(type: TypeName) = PointerType(type, emptyList())
 
 internal infix fun ASTNode.assertEquals(rhs: ASTNode) = kotlin.test.assertEquals(this, rhs)
 
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).zeroRange()
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
-internal fun FunctionDefinition.toRef() =
-    nameRef(name, PointerType(functionType, emptyList()))
+internal fun FunctionDefinition.toRef() = nameRef(name, ptr(functionType))
 
 internal fun nameDecl(s: String) =
     NamedDeclarator.base(name(s), emptyList(), emptyList()).zeroRange()
@@ -361,7 +368,7 @@ internal fun <T> enum(tagName: String?, vararg enumerators: T): EnumSpecifier {
   return EnumSpecifier(tagName?.let(::name), realEnums, Keywords.ENUM.kw)
 }
 
-internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this)
+internal fun TagSpecifier.toSpec() = DeclarationSpecifier(typeSpec = this).zeroRange()
 
 internal infix fun String.bitSize(expr: Expression) = StructMember(nameDecl(this), expr)
 internal infix fun String.bitSize(it: Long) = this bitSize int(it)

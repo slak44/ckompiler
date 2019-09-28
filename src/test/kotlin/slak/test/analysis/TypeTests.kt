@@ -175,7 +175,7 @@ class TypeTests {
     p.assertNoDiagnostics()
     val d = int proto (ptr("f") withParams listOf(int.toParam()))
     d assertEquals p.root.decls[0]
-    val fType = FunctionType(PointerType(SignedIntType, emptyList(), false), listOf(SignedIntType))
+    val fType = FunctionType(ptr(SignedIntType), listOf(SignedIntType))
     assertEquals(fType, typeNameOf(d.declSpecs, d.declaratorList[0].first))
   }
 
@@ -353,7 +353,7 @@ class TypeTests {
     val (typedef, mf) = typedef(int, "mf" withParams emptyList())
     typedef proto "mf" assertEquals p.root.decls[0]
     val fnType = FunctionType(SignedIntType, emptyList())
-    val main = nameRef("main", PointerType(fnType, emptyList()))
+    val main = nameRef("main", ptr(fnType))
     int func ("main" withParams emptyList()) body compoundOf(
         mf declare (ptr("asdf") assign main)
     ) assertEquals p.root.decls[1]
@@ -384,7 +384,7 @@ class TypeTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val vec = nameRef("vec", PointerType(SignedIntType, emptyList()))
+    val vec = nameRef("vec", ptr(SignedIntType))
     int func ("main" withParams emptyList()) body compoundOf(
         int declare nameDecl("vec")[20],
         int declare (ptr("p") assign vec)
@@ -400,7 +400,7 @@ class TypeTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val vec = nameRef("vec", PointerType(SignedIntType, emptyList()))
+    val vec = nameRef("vec", ptr(SignedIntType))
     int func ("main" withParams emptyList()) body compoundOf(
         int declare nameDecl("vec")[20],
         UnaryOperators.DEREF[vec]
@@ -432,7 +432,7 @@ class TypeTests {
     val aType = QualifiedType(SignedIntType, emptyList(), isStorageRegister = true)
     val a = nameRef("a", aType)
     int func ("main" withParams emptyList()) body compoundOf(
-        int.copy(storageClass = Keywords.REGISTER.kw) declare "a",
+        register + int declare "a",
         int declare (ptr("p") assign UnaryOperators.REF[a])
     ) assertEquals p.root.decls[0]
   }
@@ -450,7 +450,7 @@ class TypeTests {
     val arrType = ArrayType(qualElemType, ConstantSize(int(20)), isStorageRegister = true)
     val vec = nameRef("vec", PointerType(qualElemType, emptyList(), arrType))
     int func ("main" withParams emptyList()) body compoundOf(
-        int.copy(storageClass = Keywords.REGISTER.kw) declare nameDecl("vec")[20],
+        register + int declare nameDecl("vec")[20],
         int declare (ptr("p") assign UnaryOperators.REF[vec])
     ) assertEquals p.root.decls[0]
   }
@@ -468,7 +468,7 @@ class TypeTests {
     val qualElemType = QualifiedType(SignedIntType, emptyList(), isStorageRegister = true)
     val vec = nameRef("vec", PointerType(qualElemType, emptyList(), arrType))
     int func ("main" withParams emptyList()) body compoundOf(
-        int.copy(storageClass = Keywords.REGISTER.kw) declare nameDecl("vec")[20],
+        register + int declare nameDecl("vec")[20],
         int declare (ptr("p") assign vec)
     ) assertEquals p.root.decls[0]
   }
@@ -497,9 +497,9 @@ class TypeTests {
       }
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.CONST_QUALIFIED_NOT_ASSIGNABLE)
-    val a = nameRef("a", QualifiedType(SignedIntType, const))
+    val a = nameRef("a", const + SignedIntType)
     int func ("main" withParams emptyList()) body compoundOf(
-        int.copy(typeQualifiers = const) declare ("a" assign 2),
+        const + int declare ("a" assign 2),
         a assign 3
     ) assertEquals p.root.decls[0]
   }
@@ -513,13 +513,12 @@ class TypeTests {
         *b = 3;
       }
     """.trimIndent(), source)
-    val constInt = QualifiedType(SignedIntType, const)
-    val a = nameRef("a", constInt)
-    val b = nameRef("b", PointerType(constInt, emptyList()))
+    val a = nameRef("a", const + SignedIntType)
+    val b = nameRef("b", PointerType(const + SignedIntType, emptyList()))
     p.assertDiags(DiagnosticId.CONST_QUALIFIED_NOT_ASSIGNABLE)
     int func ("main" withParams emptyList()) body compoundOf(
-        int.copy(typeQualifiers = const) declare ("a" assign 2),
-        int.copy(typeQualifiers = const) declare (ptr("b") assign UnaryOperators.REF[a]),
+        const + int declare ("a" assign 2),
+        const + int declare (ptr("b") assign UnaryOperators.REF[a]),
         UnaryOperators.DEREF[b] assign 3
     ) assertEquals p.root.decls[0]
   }
@@ -535,12 +534,11 @@ class TypeTests {
     """.trimIndent(), source)
     val x = nameRef("x", SignedIntType)
     val y = nameRef("y", SignedIntType)
-    val constInt = QualifiedType(SignedIntType, const)
-    val b = nameRef("b", PointerType(constInt, emptyList()))
+    val b = nameRef("b", PointerType(const + SignedIntType, emptyList()))
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
         int declare listOf("x" assign 2, "y" assign 5),
-        int.copy(typeQualifiers = const) declare (ptr("b") assign UnaryOperators.REF[x]),
+        const + int declare (ptr("b") assign UnaryOperators.REF[x]),
         b assign UnaryOperators.REF[y]
     ) assertEquals p.root.decls[0]
   }
@@ -554,7 +552,7 @@ class TypeTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
-        int.copy(typeQualifiers = const) declare ("a" assign (2 add 2))
+        const + int declare ("a" assign (2 add 2))
     ) assertEquals p.root.decls[0]
   }
 
@@ -570,7 +568,7 @@ class TypeTests {
     val b = nameRef("b", SignedIntType)
     int func ("main" withParams emptyList()) body compoundOf(
         int declare ("b" assign 873),
-        int.copy(typeQualifiers = const) declare ("a" assign (b add 2))
+        const + int declare ("a" assign (b add 2))
     ) assertEquals p.root.decls[0]
   }
 

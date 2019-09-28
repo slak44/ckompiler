@@ -158,7 +158,7 @@ class FunctionsTests {
     val p = prepareCode("int* f(int a) {return (int*)0;}", source)
     p.assertNoDiagnostics()
     int func (ptr("f") withParams listOf(int param "a")) body compoundOf(
-        returnSt(PointerType(SignedIntType, emptyList(), false).cast(0))
+        returnSt(ptr(SignedIntType).cast(0))
     ) assertEquals p.root.decls[0]
   }
 
