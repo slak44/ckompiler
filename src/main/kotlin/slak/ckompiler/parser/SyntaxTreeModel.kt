@@ -866,9 +866,11 @@ data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope
 }
 
 /** C standard: 6.8.4.1 */
-data class IfStatement(val cond: Expression,
-                       val success: Statement,
-                       val failure: Statement?) : Statement()
+data class IfStatement(
+    val cond: Expression,
+    val success: Statement,
+    val failure: Statement?
+) : Statement()
 
 /** C standard: 6.8.4.2 */
 data class SwitchStatement(val controllingExpr: Expression, val statement: Statement) : Statement()
