@@ -346,7 +346,11 @@ internal infix fun Expression.arrow(tid: TypedIdentifier): MemberAccessExpressio
 internal infix fun <T> String.withEnumConst(int: T) =
     Enumerator(name(this), parseDSLElement(int) as ExprConstantNode)
 
-internal fun <T> enum(tagName: String?, enumerators: List<T>): EnumSpecifier {
+internal fun enum(tagName: String?): EnumSpecifier {
+  return EnumSpecifier(tagName?.let(::name), emptyList(), Keywords.ENUM.kw)
+}
+
+internal fun <T> enum(tagName: String?, vararg enumerators: T): EnumSpecifier {
   val realEnums = enumerators.map {
     when (it) {
       is String -> Enumerator(name(it), null)

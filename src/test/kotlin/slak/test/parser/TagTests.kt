@@ -154,7 +154,7 @@ class TagTests {
       enum testing {TEST1, TEST2} testValue;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val enum = enum("testing", listOf("TEST1", "TEST2"))
+    val enum = enum("testing", "TEST1", "TEST2")
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
@@ -164,7 +164,7 @@ class TagTests {
       enum testing {TEST1, TEST2, } testValue;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val enum = enum("testing", listOf("TEST1", "TEST2"))
+    val enum = enum("testing", "TEST1", "TEST2")
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
@@ -174,7 +174,7 @@ class TagTests {
       enum testing {, TEST2 } testValue;
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.EXPECTED_IDENT)
-    enum("testing", listOf("TEST2")).toSpec() declare "testValue" assertEquals p.root.decls[0]
+    enum("testing", "TEST2").toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
   @Test
@@ -183,7 +183,7 @@ class TagTests {
       enum testing {TEST1, , TEST2 } testValue;
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.EXPECTED_IDENT)
-    val enum = enum("testing", listOf("TEST1", "TEST2"))
+    val enum = enum("testing", "TEST1", "TEST2")
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
@@ -193,7 +193,7 @@ class TagTests {
       enum {TEST1, TEST2} testValue;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val enum = enum(null, listOf("TEST1", "TEST2"))
+    val enum = enum(null, "TEST1", "TEST2")
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
@@ -211,7 +211,7 @@ class TagTests {
       enum testing { TEST = 1234 } testValue;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val enum = enum("testing", listOf("TEST" withEnumConst 1234))
+    val enum = enum("testing", "TEST" withEnumConst 1234)
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
@@ -221,7 +221,7 @@ class TagTests {
       enum testing { TEST = 1234, ASDFG, FOO = 2222 } testValue;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val enum = enum("testing", listOf("TEST" withEnumConst 1234, "ASDFG", "FOO" withEnumConst 2222))
+    val enum = enum("testing", "TEST" withEnumConst 1234, "ASDFG", "FOO" withEnumConst 2222)
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
@@ -231,7 +231,7 @@ class TagTests {
       enum testing { TEST 1234 } testValue;
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.EXPECTED_ENUM_INIT, DiagnosticId.ENUM_IS_EMPTY)
-    val enum = enum("testing", emptyList<String>())
+    val enum = enum("testing")
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
@@ -241,7 +241,7 @@ class TagTests {
       enum testing { TEST = } testValue;
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.EXPECTED_EXPR)
-    val enum = enum("testing", listOf("TEST" withEnumConst ErrorExpression().zeroRange()))
+    val enum = enum("testing", "TEST" withEnumConst ErrorExpression().zeroRange())
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 
