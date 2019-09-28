@@ -7,7 +7,6 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.ErrorExpression
 import slak.test.*
-import slak.test.source
 import kotlin.test.assertEquals
 
 class TagTests {

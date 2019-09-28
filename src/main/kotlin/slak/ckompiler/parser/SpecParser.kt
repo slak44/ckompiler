@@ -1,8 +1,11 @@
 package slak.ckompiler.parser
 
 import org.apache.logging.log4j.LogManager
-import slak.ckompiler.*
+import slak.ckompiler.DiagnosticId
+import slak.ckompiler.ITokenHandler
 import slak.ckompiler.lexer.*
+import slak.ckompiler.rangeTo
+import slak.ckompiler.throwICE
 
 interface ISpecParser {
   /** C standard: A.2.2, 6.7 */

@@ -1,12 +1,9 @@
 package slak.test.parser
 
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
-import slak.test.source
-import slak.test.withParams
 
 class SizeofTests {
   @Test

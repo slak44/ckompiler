@@ -5,9 +5,11 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.Expression
+import slak.ckompiler.parser.FunctionType
+import slak.ckompiler.parser.PointerType
+import slak.ckompiler.parser.VoidType
 import slak.test.*
-import slak.test.source
 
 class ReturnStatementTests {
   @Test

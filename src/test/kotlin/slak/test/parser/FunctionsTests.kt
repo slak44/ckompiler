@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.AbstractDeclarator
 import slak.ckompiler.parser.ErrorStatement
-import slak.ckompiler.parser.PointerType
 import slak.ckompiler.parser.SignedIntType
 import slak.test.*
 import kotlin.test.assertEquals
