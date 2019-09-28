@@ -154,6 +154,25 @@ class ExpressionTests {
     assert(p.diags.isNotEmpty())
   }
 
+  @Test
+  fun `Enum Value Usage`() {
+    val p = prepareCode("""
+      enum color {RED, GREEN, BLUE};
+      int main() {
+        enum color c1 = RED;
+        enum color c2 = GREEN;
+        enum color c3 = c1;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics()
+    val color = enum("color", "RED", "GREEN", "BLUE").toSpec()
+    int func ("main" withParams emptyList()) body compoundOf(
+        color declare ("c1" assign nameRef("RED", SignedIntType)),
+        color declare ("c2" assign nameRef("GREEN", SignedIntType)),
+        color declare ("c3" assign nameRef("c1", SignedIntType))
+    ) assertEquals p.root.decls[0]
+  }
+
   @Nested
   inner class TernaryTests {
     @Test
