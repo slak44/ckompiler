@@ -395,7 +395,7 @@ class ExpressionTests {
         }
       """.trimIndent(), source)
       p.assertNoDiagnostics()
-      val vec2 = struct("vec2", listOf(int declare listOf("x", "y"))).toSpec()
+      val vec2 = struct("vec2", int declare listOf("x", "y")).toSpec()
       val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
       int func ("main" withParams emptyList()) body compoundOf(
           vec2 declare "u",
@@ -413,7 +413,7 @@ class ExpressionTests {
         }
       """.trimIndent(), source)
       p.assertNoDiagnostics()
-      val vec2 = struct("vec2", listOf(int declare listOf("x", "y"))).toSpec()
+      val vec2 = struct("vec2", int declare listOf("x", "y")).toSpec()
       val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
       int func ("main" withParams emptyList()) body compoundOf(
           vec2 declare "u",
@@ -431,7 +431,7 @@ class ExpressionTests {
         }
       """.trimIndent(), source)
       p.assertNoDiagnostics()
-      val vec2 = struct("vec2", listOf(int declare listOf("x", "y"))).toSpec()
+      val vec2 = struct("vec2", int declare listOf("x", "y")).toSpec()
       val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
       int func ("main" withParams emptyList()) body compoundOf(
           vec2 declare "u",

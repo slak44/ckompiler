@@ -79,7 +79,7 @@ class TypeTests {
       }
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.INVALID_ARGS_TERNARY)
-    val struct = struct("vec2", listOf(int declare listOf("x", "y")))
+    val struct = struct("vec2", int declare listOf("x", "y"))
     struct.toSpec() declare "v1" assertEquals p.root.decls[0]
     int func ("main" withParams emptyList()) body compoundOf(
         1.qmark(22, nameRef("v1", typeNameOf(struct.toSpec(), nameDecl("v1"))))

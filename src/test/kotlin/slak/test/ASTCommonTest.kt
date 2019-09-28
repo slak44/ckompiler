@@ -318,7 +318,7 @@ internal fun struct(name: String) = TagNameSpecifier(name(name), Keywords.STRUCT
 
 internal inline fun <reified T> struct(
     name: String?,
-    decls: List<T>
+    vararg decls: T
 ): StructUnionDefinitionSpecifier {
   val d = decls.map {
     when (T::class) {

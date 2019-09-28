@@ -127,7 +127,7 @@ class ReturnStatementTests {
       }
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.RET_TYPE_MISMATCH)
-    val s = struct(null, listOf(float declare listOf("x", "y"))).toSpec()
+    val s = struct(null, float declare listOf("x", "y")).toSpec()
     s func "f" body compoundOf(
         returnSt(float(5.7))
     ) assertEquals p.root.decls[0]

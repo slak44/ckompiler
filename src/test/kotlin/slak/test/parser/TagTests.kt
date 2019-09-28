@@ -35,9 +35,9 @@ class TagTests {
   fun `Struct Simple`() {
     val p = prepareCode("struct vec2 {int x, y;} a;", source)
     p.assertNoDiagnostics()
-    val structDef = struct("vec2", listOf(
+    val structDef = struct("vec2",
         int declare listOf("x", "y")
-    ))
+    )
     assertEquals(structDef, (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }
 
@@ -74,9 +74,9 @@ class TagTests {
   fun `Struct Definition With Declarators After`() {
     val p = prepareCode("struct vec2 {int x, y;} v1, v2, v3;", source)
     p.assertNoDiagnostics()
-    val vec2 = struct("vec2", listOf(
+    val vec2 = struct("vec2",
         int declare listOf("x", "y")
-    )).toSpec()
+    ).toSpec()
     vec2 declare listOf("v1", "v2", "v3") assertEquals p.root.decls[0]
   }
 
@@ -90,20 +90,20 @@ class TagTests {
       } out;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    struct("outer", listOf(
-        struct("inner", listOf(
+    struct("outer",
+        struct("inner",
             int declare listOf("x", "y")
-        )).toSpec() declare listOf("in1", "in2")
-    )).toSpec() declare "out" assertEquals p.root.decls[0]
+        ).toSpec() declare listOf("in1", "in2")
+    ).toSpec() declare "out" assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Struct Bits`() {
     val p = prepareCode("struct vec2 {int x : 16, y : 20;} a;", source)
     p.assertNoDiagnostics()
-    val structDef = struct("vec2", listOf(
+    val structDef = struct("vec2",
         int declare listOf("x" bitSize 16, "y" bitSize 20)
-    ))
+    )
     assertEquals(structDef, (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }
 

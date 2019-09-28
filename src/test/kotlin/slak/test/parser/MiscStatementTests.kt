@@ -163,7 +163,7 @@ class MiscStatementTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int func "main" body compoundOf(
-        struct("vec", listOf(int declare listOf("x", "y")))
+        struct("vec", int declare listOf("x", "y"))
     ) assertEquals p.root.decls[0]
   }
 }

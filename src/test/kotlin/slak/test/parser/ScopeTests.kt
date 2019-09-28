@@ -232,7 +232,7 @@ class ScopeTests {
       struct vec2 u;
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val vec2 = struct("vec2", listOf(double declare listOf("x", "y"))).toSpec()
+    val vec2 = struct("vec2", double declare listOf("x", "y")).toSpec()
     vec2 declare "u" assertEquals p.root.decls[0]
   }
 
@@ -245,7 +245,7 @@ class ScopeTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val vec2 = struct("vec2", listOf(double declare listOf("x", "y"))).toSpec()
+    val vec2 = struct("vec2", double declare listOf("x", "y")).toSpec()
     int func ("main" withParams emptyList()) body compoundOf(
         vec2 declare "u"
     ) assertEquals p.root.decls[0]
