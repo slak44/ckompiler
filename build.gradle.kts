@@ -81,7 +81,8 @@ publishing {
       url = uri("https://maven.pkg.github.com/slak44")
       credentials {
         username = "slak44"
-        password = File(projectDir, "publish-token").readText().trim()
+        val file = File(projectDir, "publish-token")
+        password = if (file.exists()) file.readText().trim() else ""
       }
     }
   }
