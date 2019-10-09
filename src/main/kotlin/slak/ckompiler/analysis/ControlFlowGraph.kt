@@ -11,13 +11,13 @@ private val logger = LogManager.getLogger()
 /** An instance of a [FunctionDefinition]'s control flow graph. */
 class CFG(
     val f: FunctionDefinition,
-    private val targetData: MachineTargetData,
+    val targetData: MachineTargetData,
     srcFileName: SourceFileName,
     srcText: String,
     forceReturnZero: Boolean,
     forceAllNodes: Boolean
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
-  val startBlock = BasicBlock(isRoot = true, targetData = targetData)
+  val startBlock = BasicBlock(isRoot = true)
   /** Raw set of nodes as obtained from [graph]. */
   val allNodes = mutableSetOf(startBlock)
   /** Filtered set of nodes that only contains reachable, non-empty nodes. */
@@ -30,7 +30,7 @@ class CFG(
    */
   val doms: DominatorList
   /**
-   * List of [ComputeReference] used in this function, with definition locations.
+   * List of [Variable] used in this function, with definition locations.
    *
    * A "definition" of a variable is assignment to that variable. We consider a definition to be a
    * property of the block it's in; as a result, we can ignore *where* in the block it was defined.
@@ -38,17 +38,15 @@ class CFG(
    *
    * @see insertPhiFunctions
    */
-  val definitions = mutableMapOf<ComputeReference, MutableSet<BasicBlock>>()
-  // FIXME: Tentative number of synthetic vars in this block. Is it really useful?
-  var synthCount = 0
+  val definitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
 
   init {
     graph(this)
-    if (forceAllNodes) {
-      nodes = allNodes
+    nodes = if (forceAllNodes) {
+      allNodes
     } else {
       collapseEmptyBlocks(allNodes)
-      nodes = filterReachable(allNodes)
+      filterReachable(allNodes)
     }
 
     handleUnterminatedBlocks(forceReturnZero)
@@ -69,7 +67,7 @@ class CFG(
   }
 
   fun newBlock(): BasicBlock {
-    val block = BasicBlock(isRoot = false, targetData = targetData)
+    val block = BasicBlock(isRoot = false)
     allNodes += block
     return block
   }
@@ -86,36 +84,23 @@ class CFG(
       column(f.range.last)
     }
     // C standard: 5.1.2.2.3
+    val fakeZero = IntegerConstantNode(0).withRange(object : SourcedRange {
+      override val sourceFileName = f.sourceFileName
+      override val sourceText = "0"
+      override val range = 0..0
+      override val expandedName: String? = null
+      override val expandedFrom: SourcedRange? = null
+    })
     val ret = if (forceReturnZero) {
-      val ctx = IRLoweringContext(it.irContext)
-      ctx.buildIR(IntegerConstantNode(0).withRange(object : SourcedRange {
-        override val sourceFileName = f.sourceFileName
-        override val sourceText = "0"
-        override val range = 0..0
-        override val expandedName: String? = null
-        override val expandedFrom: SourcedRange? = null
-      }))
-      synthCount++
-      ctx
+      val fakeRegister = VirtualRegister(definitions.size, SignedIntType)
+      listOf(ConstantRegisterInstr(fakeRegister, IntConstant(fakeZero)))
     } else {
       null
     }
     // Either way, terminate the blocks with a fake return
-    it.terminator = ImpossibleJump(newBlock(), returned = ret)
+    it.terminator = ImpossibleJump(newBlock(), returned = ret, src = fakeZero)
   }
 }
-
-/**
- * The [variable] definition that reaches a point in the CFG, along with information about where it
- * was defined. If [definitionIdx] is -1, the definition occurred in a φ-function.
- *
- * @see VariableRenamer.reachingDefs
- */
-data class ReachingDef(
-    val variable: ComputeReference,
-    val definedIn: BasicBlock,
-    val definitionIdx: Int
-)
 
 /**
  * Holds state required for SSA phase 2.
@@ -135,32 +120,33 @@ private class VariableRenamer(
    */
   private val latestVersions = mutableMapOf<Int, Int>().withDefault { 0 }
   /** @see latestVersions */
-  private var ComputeReference.latestVersion: Int
+  private var Variable.latestVersion: Int
     get() = latestVersions.getValue(tid.id)
     set(value) {
       latestVersions[tid.id] = value
     }
   /**
-   * Maps each variable to a [ReachingDef] (maps a variable's id/version pair to [ReachingDef]).
+   * Maps each variable to a [ReachingDefinition] (maps a variable's id/version pair to
+   * [ReachingDefinition]).
    *
    * See section 3.1.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
-   * @see ReachingDef
-   * @see ComputeReference.reachingDef
+   * @see ReachingDefinition
+   * @see Variable.reachingDef
    * @see variableRenaming
    */
-  private val reachingDefs = mutableMapOf<Pair<Int, Int>, ReachingDef?>()
+  private val reachingDefs = mutableMapOf<Pair<Int, Int>, ReachingDefinition?>()
   /**
    * Provides access to [reachingDefs] using property extension syntax (to resemble the original
    * algorithm).
    * @see variableRenaming
    */
-  private var ComputeReference.reachingDef: ReachingDef?
+  private var Variable.reachingDef: ReachingDefinition?
     get() = reachingDefs[tid.id to version]
     set(value) {
       reachingDefs[tid.id to version] = value
     }
-  /** @see ComputeReference.reachingDef */
-  private var ReachingDef.reachingDef: ReachingDef?
+  /** @see Variable.reachingDef */
+  private var ReachingDefinition.reachingDef: ReachingDefinition?
     get() = reachingDefs[variable.tid.id to variable.version]
     set(value) {
       reachingDefs[variable.tid.id to variable.version] = value
@@ -169,47 +155,7 @@ private class VariableRenamer(
   /**
    * Creates a new version of a variable. Updates [latestVersions].
    */
-  private fun ComputeReference.newVersion(): ComputeReference {
-    val new = copy()
-    new.version = ++new.latestVersion
-    return new
-  }
-
-  /**
-   * Finds all uses of all variables in the given [Call].
-   */
-  private fun findCallUsage(call: Call): List<ComputeReference> {
-    val list = mutableListOf<ComputeReference>()
-    list += findVariableUsage(call.functionPointer)
-    for (arg in call.args) list += findVariableUsage(arg)
-    return list
-  }
-
-  /**
-   * Finds all uses of all variables in the given compute expression.
-   */
-  private fun findVariableUsage(e: ComputeExpression): List<ComputeReference> = when (e) {
-    is ComputeInteger, is ComputeFloat, is ComputeChar, is ComputeString -> emptyList()
-    is ComputeReference -> listOf(e)
-    is BinaryComputation -> findVariableUsage(e.lhs) + findVariableUsage(e.rhs)
-    is UnaryComputation -> findVariableUsage(e.operand)
-    is CastComputation -> findVariableUsage(e.operand)
-    is Call -> findCallUsage(e)
-  }
-
-  /**
-   * Finds all uses of all variables in the given expression.
-   */
-  private fun findVariableUsage(e: IRExpression): List<ComputeReference> {
-    val uses = mutableListOf<ComputeReference>()
-    when (e) {
-      is Store -> uses += findVariableUsage(e.data)
-      is ComputeReference -> uses += e
-      is Call -> uses += findCallUsage(e)
-      else -> logger.throwICE("Illegal IRExpression implementor")
-    }
-    return uses
-  }
+  private fun Variable.newVersion(): Variable = copy(++latestVersion)
 
   /**
    * If [other] dominates [this], return true.
@@ -228,7 +174,7 @@ private class VariableRenamer(
   /**
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
-  private fun ReachingDef.dominates(block: BasicBlock, instrIdx: Int): Boolean {
+  private fun ReachingDefinition.dominates(block: BasicBlock, instrIdx: Int): Boolean {
     return if (definedIn == block) {
       if (definitionIdx == -1 && instrIdx == -1) {
         logger.throwICE("Multiple phi functions for same variable in the same block") {
@@ -244,7 +190,7 @@ private class VariableRenamer(
   /**
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
-  private fun updateReachingDef(v: ComputeReference, block: BasicBlock, instrIdx: Int) {
+  private fun updateReachingDef(v: Variable, block: BasicBlock, instrIdx: Int) {
     var r = v.reachingDef
     while (!(r == null || r.dominates(block, instrIdx))) {
       r = r.reachingDef
@@ -255,11 +201,11 @@ private class VariableRenamer(
   /**
    * Does the renaming for a variable definition.
    */
-  private fun handleDef(bb: BasicBlock, def: ComputeReference, instrIdx: Int) {
+  private fun handleDef(bb: BasicBlock, def: Variable, instrIdx: Int) {
     val oldReachingDef = def.reachingDef
     updateReachingDef(def, bb, instrIdx)
     val vPrime = def.newVersion()
-    val reachingToPrime = ReachingDef(vPrime, bb, instrIdx)
+    val reachingToPrime = ReachingDefinition(vPrime, bb, instrIdx)
     def.reachingDef = reachingToPrime
     def.replaceWith(reachingToPrime)
     vPrime.reachingDef = oldReachingDef
@@ -270,22 +216,23 @@ private class VariableRenamer(
   private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
     for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
     for ((idx, i) in BB.instructions.withIndex()) {
-      val def = if (i is Store && !i.isSynthetic) i.target else null
-      for (v in findVariableUsage(i)) {
-        val oldReachingVar = v.reachingDef?.variable
-        updateReachingDef(v, BB, idx)
-        v.replaceWith(v.reachingDef)
-        traceVarUsageRename(BB, oldReachingVar, v)
+      val def = if (i is VarStoreInstr) i.target else null
+      if (i is LoadInstr) {
+        val variable = i.target
+        val oldReachingVar = variable.reachingDef?.variable
+        updateReachingDef(variable, BB, idx)
+        variable.replaceWith(variable.reachingDef)
+        traceVarUsageRename(BB, oldReachingVar, variable)
       }
       if (def == null) continue
       handleDef(BB, def, idx)
     }
     for (succ in BB.successors) for ((_, incoming) in succ.phiFunctions) {
-      // FIXME: incomplete
-      val oldReachingVar = incoming[BB]!!.reachingDef?.variable
-      updateReachingDef(incoming[BB]!!, BB, Int.MAX_VALUE)
-      incoming[BB]!!.replaceWith(incoming[BB]!!.reachingDef)
-      traceVarUsageRename(succ, oldReachingVar, incoming[BB]!!, isInPhi = true)
+      // FIXME: incomplete?
+      val oldReachingVar = incoming.getValue(BB).reachingDef?.variable
+      updateReachingDef(incoming.getValue(BB), BB, Int.MAX_VALUE)
+      incoming.getValue(BB).replaceWith(incoming.getValue(BB).reachingDef)
+      traceVarUsageRename(succ, oldReachingVar, incoming.getValue(BB), isInPhi = true)
     }
   }
 
@@ -304,8 +251,8 @@ private class VariableRenamer(
    */
   private fun traceVarUsageRename(
       bb: BasicBlock,
-      oldReachingVar: ComputeReference?,
-      v: ComputeReference,
+      oldReachingVar: Variable?,
+      v: Variable,
       isInPhi: Boolean = false
   ) {
     if (v.tid.name == "x") logger.trace(varRenamesTrace) {
@@ -328,8 +275,8 @@ private class VariableRenamer(
    */
   private fun traceVarDefinitionRename(
       bb: BasicBlock,
-      def: ComputeReference,
-      vPrime: ComputeReference
+      def: Variable,
+      vPrime: Variable
   ) {
     if (def.tid.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingVar = def.reachingDef?.variable
@@ -354,17 +301,19 @@ private class VariableRenamer(
  *
  * See Algorithm 3.1 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
  */
-private fun insertPhiFunctions(definitions: Map<ComputeReference, MutableSet<BasicBlock>>) {
+@Suppress("NestedBlockDepth")
+private fun insertPhiFunctions(definitions: Map<Variable, MutableSet<BasicBlock>>) {
   for ((v, defsV) in definitions) {
     val f = mutableSetOf<BasicBlock>()
     // We already store the basic blocks as a set, so just make a copy
+    @Suppress("SpreadOperator")
     val w = mutableSetOf(*defsV.toTypedArray())
     while (w.isNotEmpty()) {
       val x = w.first()
       w -= x
       for (y in x.dominanceFrontier) {
         if (y !in f) {
-          y.phiFunctions += PhiFunction(v.copy(), y.preds.associateWith { v.copy() }.toMutableMap())
+          y.phiFunctions += PhiInstr(v.copy(0), y.preds.associateWith { v.copy(0) })
           f += y
           if (y !in defsV) w += y
         }
@@ -511,7 +460,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
     visited += node
     nodesImpl -= node
     for (succ in node.successors) succ.preds -= node
-    for (deadCode in node.irContext.src.filterNot { it is Terminal }) diagnostic {
+    for (deadCode in node.src.filterNot { it is Terminal }) diagnostic {
       id = DiagnosticId.UNREACHABLE_CODE
       errorOn(deadCode)
     }
@@ -520,6 +469,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
 }
 
 /** Apply [BasicBlock.collapseEmptyPreds] on an entire graph ([nodes]). */
+@Suppress("ControlFlowWithEmptyBody")
 private fun collapseEmptyBlocks(nodes: Set<BasicBlock>) {
   val collapseCandidates = LinkedList(nodes)
   val visited = mutableSetOf<BasicBlock>()

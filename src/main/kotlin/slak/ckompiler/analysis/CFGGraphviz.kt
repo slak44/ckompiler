@@ -1,6 +1,7 @@
 package slak.ckompiler.analysis
 
 import slak.ckompiler.analysis.GraphvizColors.*
+import slak.ckompiler.parser.Expression
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,
@@ -68,11 +69,14 @@ enum class CodePrintingMethods {
   SOURCE_SUBSTRING, EXPRESSION_TO_STRING, IR_EXPRESSION_TO_STRING
 }
 
-private fun IRLoweringContext.joinToString(sourceCode: String, print: CodePrintingMethods): String {
+private fun Pair<List<IRInstruction>, List<Expression>>.joinToString(
+    sourceCode: String,
+    print: CodePrintingMethods
+): String {
   return if (print == CodePrintingMethods.IR_EXPRESSION_TO_STRING) {
-    ir.joinToString("\n")
+    first.joinToString("\n")
   } else {
-    src.joinToString("\n") {
+    second.joinToString("\n") {
       when (print) {
         CodePrintingMethods.SOURCE_SUBSTRING -> {
           (it.sourceText ?: sourceCode).substring(it.range).trim()
@@ -118,13 +122,14 @@ fun createGraphviz(
     } else {
       ""
     }
-    val rawCode = it.irContext.joinToString(sourceCode, print)
+    val rawCode = (it.ir to it.src).joinToString(sourceCode, print)
 
-    val cond = (it.terminator as? CondJump)?.cond?.let { context ->
-      "\n${context.joinToString(sourceCode, print)} ?"
+    val cond = (it.terminator as? CondJump)?.let { (cond, src) ->
+      "\n${(cond to listOf(src)).joinToString(sourceCode, print)} ?"
     } ?: ""
-    val ret = (it.terminator as? ImpossibleJump)?.returned?.let { context ->
-      "\nreturn ${context.joinToString(sourceCode, print)};"
+    val ret = (it.terminator as? ImpossibleJump)?.let { (_, returned, src) ->
+      if (returned == null) ""
+      else "\nreturn ${(returned to listOf(src!!)).joinToString(sourceCode, print)};"
     } ?: ""
 
     val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret

@@ -14,7 +14,7 @@ class CFGTests {
   @Test
   fun `CFG Creation Doesn't Fail`() {
     val cfg = prepareCFG(resource("cfg/cfgTest.c"), source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
@@ -22,7 +22,7 @@ class CFGTests {
   fun `Graphviz CFG Creation Doesn't Fail`() {
     val text = resource("cfg/cfgTest.c").readText()
     val cfg = prepareCFG(text, source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
     createGraphviz(cfg, text, reachableOnly = false, print = CodePrintingMethods.SOURCE_SUBSTRING)
   }
@@ -30,14 +30,14 @@ class CFGTests {
   @Test
   fun `Break And Continue`() {
     val cfg = prepareCFG(resource("loops/controlKeywordsTest.c"), source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `While Loop`() {
     val cfg = prepareCFG(resource("loops/whileLoopTest.c"), source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     // Start block jumps to loop header
     assert(cfg.startBlock.terminator is UncondJump)
     val loopHeader = cfg.startBlock.terminator.successors[0]
@@ -52,7 +52,7 @@ class CFGTests {
   @Test
   fun `Do While Loop`() {
     val cfg = prepareCFG(resource("loops/doWhileLoopTest.c"), source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     // Start block jumps to loop block
     assert(cfg.startBlock.terminator is UncondJump)
     val loopBlock = cfg.startBlock.terminator.successors[0]
@@ -66,14 +66,14 @@ class CFGTests {
   @Test
   fun `For Loop`() {
     val cfg = prepareCFG(resource("loops/forLoopTest.c"), source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Early Return In Function`() {
     val cfg = prepareCFG(resource("cfg/earlyReturnTest.c"), source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 

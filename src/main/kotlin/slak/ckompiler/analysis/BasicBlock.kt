@@ -1,7 +1,6 @@
 package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
-import slak.ckompiler.MachineTargetData
 import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
@@ -22,20 +21,6 @@ class IdCounter {
 }
 
 /**
- * A φ-function that's part of a [BasicBlock]. [target] is the original pre-SSA variable, while
- * [incoming] stores the blocks that [target] can come from (ie the list of versions that the φ has
- * to choose from).
- */
-data class PhiFunction(
-    val target: ComputeReference,
-    val incoming: MutableMap<BasicBlock, ComputeReference>
-) {
-  override fun toString() = "$target = φ(${incoming.entries.joinToString(", ") {
-    "n${it.key.hashCode()} v${it.value.version}"
-  }})"
-}
-
-/**
  * Instances represent terminators for [BasicBlock]s.
  */
 sealed class Jump {
@@ -45,9 +30,14 @@ sealed class Jump {
   abstract val successors: List<BasicBlock>
 }
 
-/** If [cond] is true, jump to [target], otherwise jump to [other]. */
+/**
+ * If [cond] is true, jump to [target], otherwise jump to [other].
+ *
+ * @param src debug range for [cond]
+ */
 data class CondJump(
-    val cond: IRLoweringContext,
+    val cond: List<IRInstruction>,
+    val src: Expression,
     val target: BasicBlock,
     val other: BasicBlock
 ) : Jump() {
@@ -55,9 +45,14 @@ data class CondJump(
   override fun toString() = "CondJump<${target.hashCode()}, ${other.hashCode()}>$cond"
 }
 
-/** Select jump target from [options] based on [cond], or pick [default] otherwise. */
+/**
+ * Select jump target from [options] based on [cond], or pick [default] otherwise.
+ *
+ * @param src debug range for [cond]
+ */
 data class SelectJump(
-    val cond: IRLoweringContext,
+    val cond: List<IRInstruction>,
+    val src: Expression,
     val options: Map<ExprConstantNode, BasicBlock>,
     val default: BasicBlock
 ) : Jump() {
@@ -77,8 +72,14 @@ data class UncondJump(val target: BasicBlock) : Jump() {
 /**
  * A so-called "impossible edge" of the CFG. Similar to [UncondJump], but will never be traversed.
  * It is created by [ReturnStatement].
+ *
+ * @param src debug range for [returned] (is null if [returned] is null)
  */
-data class ImpossibleJump(val target: BasicBlock, val returned: IRLoweringContext?) : Jump() {
+data class ImpossibleJump(
+    val target: BasicBlock,
+    val returned: List<IRInstruction>?,
+    val src: Expression?
+) : Jump() {
   override val successors = emptyList<BasicBlock>()
   override fun toString() = "ImpossibleJump($returned)"
 }
@@ -104,15 +105,19 @@ object MissingJump : Jump() {
  *
  * FIXME: a lot of things in here should not be mutable
  */
-class BasicBlock(val isRoot: Boolean = false, targetData: MachineTargetData) {
+class BasicBlock(val isRoot: Boolean = false) {
   /**
    * List of SSA φ-functions at the start of this block.
    */
-  val phiFunctions = mutableListOf<PhiFunction>()
+  val phiFunctions = mutableListOf<PhiInstr>()
   /**
    * Contains this block's IR expression list.
    */
-  val irContext = IRLoweringContext(targetData)
+  val ir = mutableListOf<IRInstruction>()
+  /**
+   * Debug ranges of the original source code. May not map to [ir].
+   */
+  val src = mutableListOf<Expression>()
   /**
    * Unique for each basic block. No other guarantees are provided about this value; it is opaque.
    *
@@ -168,14 +173,14 @@ class BasicBlock(val isRoot: Boolean = false, targetData: MachineTargetData) {
    */
   val instructions
     get() = iterator {
-      yieldAll(irContext.ir)
-      (terminator as? CondJump)?.cond?.let { yieldAll(it.ir) }
-      (terminator as? ImpossibleJump)?.returned?.let { yieldAll(it.ir) }
+      yieldAll(ir)
+      (terminator as? CondJump)?.cond?.let { yieldAll(it) }
+      (terminator as? ImpossibleJump)?.returned?.let { yieldAll(it) }
     }
 
   fun isTerminated() = terminator !is MissingJump
 
-  fun isEmpty() = irContext.ir.isEmpty() && terminator !is CondJump
+  fun isEmpty() = !instructions.hasNext()
 
   /** Returns whether or not this block is reachable from its [preds]. */
   fun isReachable(): Boolean {
@@ -206,10 +211,13 @@ class BasicBlock(val isRoot: Boolean = false, targetData: MachineTargetData) {
             emptyBlockPred.terminator = UncondJump(this)
             preds += emptyBlockPred
           }
-          is ImpossibleJump -> emptyBlockPred.terminator = ImpossibleJump(this, oldTerm.returned)
+          is ImpossibleJump -> {
+            emptyBlockPred.terminator = ImpossibleJump(this, oldTerm.returned, oldTerm.src)
+          }
           is CondJump -> {
             emptyBlockPred.terminator = CondJump(
                 oldTerm.cond,
+                oldTerm.src,
                 if (oldTerm.target == emptyBlock) this else oldTerm.target,
                 if (oldTerm.other == emptyBlock) this else oldTerm.other
             )
@@ -241,7 +249,7 @@ class BasicBlock(val isRoot: Boolean = false, targetData: MachineTargetData) {
   override fun hashCode() = nodeId
 
   override fun toString() =
-      "BasicBlock<$nodeId/$postOrderId>(${irContext.ir.joinToString(";")}, $terminator)"
+      "BasicBlock<id$nodeId/post$postOrderId>(${terminator.javaClass.simpleName})"
 
   companion object {
     private val nodeCounter = IdCounter()

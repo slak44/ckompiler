@@ -29,7 +29,7 @@ class DCETests {
         int dead = 265;
       }
     """.trimIndent(), source)
-    assert(cfg.startBlock.irContext.src.isNotEmpty())
+    assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.terminator is CondJump)
     cfg.assertDiags(DiagnosticId.UNREACHABLE_CODE)
   }

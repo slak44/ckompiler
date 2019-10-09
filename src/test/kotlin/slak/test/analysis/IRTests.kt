@@ -1,10 +1,6 @@
 package slak.test.analysis
 
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import slak.ckompiler.DebugHandler
-import slak.ckompiler.Diagnostic
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.Expression
@@ -13,73 +9,43 @@ import slak.test.*
 import kotlin.test.assertEquals
 
 class IRTests {
-  private lateinit var debugHandler: DebugHandler
+  private fun createIR(vararg exprs: Expression) =
+      createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter())
 
-  @BeforeEach
-  fun prepareHandler() {
-    debugHandler = DebugHandler("IRTests", "<none>", "")
-  }
-
-  @AfterEach
-  fun printDiags() {
-    debugHandler.diags.forEach(Diagnostic::print)
-    println()
-  }
-
-  private fun List<Expression>.toIRList(): List<IRExpression> {
-    val context = IRLoweringContext(MachineTargetData.x64, enableFolding = false)
-    forEach(context::buildIR)
-    return context.ir
-  }
-
-  private fun List<IRExpression>.print() = println(joinToString("\n"))
-
-  private fun List<IRExpression>.assertSSAForTemporaries() {
-    val syntheticStores = filter { it is Store && it.isSynthetic }
-    val temporaries = syntheticStores.map { (it as Store).target }
-    // All synthetic assignment targets should be different variables
-    assertEquals(temporaries, temporaries.distinct())
+  @Test
+  fun `IR With Int Constants`() {
+    val ir = createIR(1 add (2 mul 3) sub 5)
+    val registerIds = mutableListOf<Int>()
+    for (i in ir) {
+      require(i is IntegralInstruction)
+      registerIds += i.result.id
+    }
+    // No virtual register is stored to twice
+    assert(registerIds.distinct() == registerIds)
   }
 
   @Test
-  fun `Basic Expression`() {
-    val expr = 1 add (23 mul 70)
-    val ir = listOf(expr).toIRList()
-    ir.print()
-    ir.assertSSAForTemporaries()
-    // This is separated into 2 operations, and stored in 2 temporaries
-    assertEquals(2, ir.size)
-    assert(ir[0] is Store)
-    assert(ir[1] is Store)
+  fun `IR Variable Store`() {
+    val ir = createIR(nameRef("a", SignedIntType) assign (1 add (2 mul 3) sub 5))
+    val registerIds = mutableListOf<Int>()
+    for (i in ir.dropLast(1)) {
+      require(i is ResultInstruction)
+      registerIds += i.result.id
+    }
+    // No virtual register is stored to twice
+    assert(registerIds.distinct() == registerIds)
+    val last = ir.last()
+    require(last is VarStoreInstr)
+    assertEquals("a", last.target.tid.name)
+    assertEquals(SignedIntType, last.target.tid.type)
   }
 
   @Test
-  fun `Simple Assignment`() {
-    val x = nameRef("x", SignedIntType)
-    val expr = x assign 1
-    val ir = listOf(expr).toIRList()
-    ir.print()
-    ir.assertSSAForTemporaries()
-    // This should not do much
-    assertEquals(listOf(Store(
-        ComputeReference(x, isSynthetic = false),
-        ComputeInteger(int(1)),
-        isSynthetic = false
-    )), ir)
-  }
-
-  @Test
-  fun `Sequentialized Expression`() {
-    val x = nameRef("x", SignedIntType)
-    val y = nameRef("y", SignedIntType)
-    val exprs = listOf(
-        x plusAssign (123 add y),
-        prefixInc(y)
-    )
-    val seq = exprs.map(debugHandler::sequentialize).flatMap(SequentialExpression::toList)
-    val ir = seq.toIRList()
-    ir.print()
-    ir.assertSSAForTemporaries()
-    // FIXME: incomplete
+  fun `IR Variable Load`() {
+    val ir = createIR(nameRef("a", SignedIntType) add 5)
+    val load = ir[0]
+    require(load is LoadInstr)
+    assertEquals("a", load.target.tid.name)
+    assertEquals(SignedIntType, load.target.tid.type)
   }
 }

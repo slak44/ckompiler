@@ -106,6 +106,26 @@ private fun SequentializationContext.seqLogicalOr(e: BinaryExpression): Expressi
   )
 }
 
+/**
+ * Fold certain no-ops.
+ *
+ * C standard: 6.5.3.2.0.3
+ */
+private fun foldUnary(e: UnaryExpression): Expression = when {
+  // Other unary ops are not "interesting"
+  e.op != UnaryOperators.REF -> e
+  // Fold &*a into just a
+  e.operand is UnaryExpression && e.operand.op == UnaryOperators.DEREF -> e.operand.operand
+  // Fold &v[20] into v + 20
+  e.operand is ArraySubscript -> BinaryExpression(
+      BinaryOperators.ADD,
+      e.operand.subscripted,
+      e.operand.subscript,
+      e.operand.subscripted.type.normalize()
+  ).withRange(e)
+  else -> e
+}
+
 /** Recursive case of [sequentialize]. */
 private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
@@ -142,7 +162,8 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     sequencedBefore += fakeAssignment.withRange(e)
     fakeAssignable
   }
-  is CastExpression, is ArraySubscript, is UnaryExpression,
+  is UnaryExpression -> foldUnary(e)
+  is CastExpression, is ArraySubscript,
   is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
   is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
     // Do nothing. These do not pose the problem of being sequenced before or after.
