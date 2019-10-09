@@ -249,20 +249,22 @@ Parsing declarators gets very complicated very fast when nested declarators come
 into play. A typical declaration with nested declarators looks like:
 ```
 int * (*f(int x))(double y)
-^^^ declaration specifiers
+^^^                         declaration specifiers
 int * (*f(int x))(double y)
-      ^^^^^^^^^^^ nested declarator
+      ^^^^^^^^^^^           nested declarator
 int * (*f(int x))(double y)
                  ^^^^^^^^^^ declarator suffix for non-nested declarator
 int * (*f(int x))(double y)
-         ^^^^^^^ declarator suffix for nested declarator
+         ^^^^^^^            declarator suffix for nested declarator
 int * (*f(int x))(double y)
-    ^ indirection that "belongs" to the declaration specifiers (from "int" to "pointer to int")
+    ^                       indirection that "belongs" to the declaration specifiers
+                            (from "int" to "pointer to int")
 int * (*f(int x))(double y)
-       ^ indirection that "belongs" to the declarator suffix
-         (from "function" type to "pointer to function" type)
+       ^                    indirection that "belongs" to the declarator suffix
+                            (from "function" type to "pointer to function" type)
 int * (*f(int x))(double y)
-        ^ designator for the resulting declaration (ie the name of the function)
+        ^                   designator for the resulting declaration
+                            (ie the name of the function)
 ```
 
 The example declaration declares a function called `f`, that takes one int
