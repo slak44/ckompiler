@@ -45,6 +45,9 @@ private fun SequentializationContext.makeAssignmentTarget(
     modified: Expression,
     modExpr: Expression
 ): Expression {
+  require(modified.valueType != Expression.ValueType.RVALUE) {
+    "Assignment target can't be an rvalue"
+  }
   return if (modified is TypedIdentifier) {
     modifications.getOrPut(modified, ::mutableListOf).add(modExpr)
     modified.copy().withRange(modified)
