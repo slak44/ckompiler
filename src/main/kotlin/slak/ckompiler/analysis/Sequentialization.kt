@@ -136,6 +136,9 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
   is FunctionCall -> {
     FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e)
   }
+  is MemberAccessExpression -> {
+    e.copy(target = seqImpl(e.target).withRange(e.target))
+  }
   is IncDecOperation -> {
     val incDecTarget = makeAssignmentTarget(e.expr, e)
     val op = if (e.isDecrement) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
@@ -172,7 +175,6 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     // Do nothing. These do not pose the problem of being sequenced before or after.
     e
   }
-  is MemberAccessExpression -> TODO()
 }
 
 /**

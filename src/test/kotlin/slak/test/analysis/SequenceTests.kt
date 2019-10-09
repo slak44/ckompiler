@@ -194,4 +194,29 @@ class SequenceTests {
     assertEquals(listOf(remaining assign (x equals 1).qmark(1, y equals 1)), sequencedBefore)
     assert(sequencedAfter.isEmpty())
   }
+
+  @Test
+  fun `Basic Member Access Is Unchanged`() {
+    val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
+    val vec2Type = typeNameOf(vec2, AbstractDeclarator.blank())
+    val expr = nameRef("v", vec2Type) dot nameRef("x", SignedIntType)
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assert(sequencedBefore.isEmpty())
+    assert(sequencedAfter.isEmpty())
+    assertEquals(expr, remaining)
+  }
+
+  @Test
+  fun `Extract Assignment From Member Access`() {
+    val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
+    val vec2Type = typeNameOf(vec2, AbstractDeclarator.blank())
+    val assignment = nameRef("v", vec2Type) assign nameRef("u", vec2Type)
+    val expr = assignment dot nameRef("x", SignedIntType)
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assert(sequencedAfter.isEmpty())
+    assertEquals(listOf(assignment), sequencedBefore)
+    assertEquals(nameRef("v", vec2Type) dot nameRef("x", SignedIntType), remaining)
+  }
 }
