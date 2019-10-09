@@ -95,7 +95,7 @@ All of the relevant code can be found in the [Diagnostics.kt][diags] file.
 ###### Diagnostics
 
 Diagnostics are handled by the `DebugHandler` class (and its corresponding
-interface, `IDebugHandler`.
+interface, `IDebugHandler`).
 
 Printed diagnostics look like this:
 
