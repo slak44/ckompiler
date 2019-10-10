@@ -70,9 +70,8 @@ data class LoadInstr(
 }
 
 /**
- * Modifies [operand] to have the type specified by [castTo].
- *
- * FIXME: how to handle non-structural casts? merge into one class, or multiple?
+ * Modifies [operand] to have the type specified by [castTo]. May fail if the specified conversion
+ * is impossible.
  */
 data class StructuralCast(
     override val result: VirtualRegister,
@@ -80,6 +79,18 @@ data class StructuralCast(
     val operand: IRValue
 ) : ResultInstruction() {
   override fun toString() = "$result = cast $operand to $castTo"
+}
+
+/**
+ * Reinterprets [operand]'s data as another type. Basically changes the type without touching the
+ * data in memory.
+ */
+data class ReinterpretCast(
+    override val result: VirtualRegister,
+    val castTo: TypeName,
+    val operand: IRValue
+) : ResultInstruction() {
+  override fun toString() = "$result = reinterpret $operand as $castTo"
 }
 
 /**
@@ -96,13 +107,13 @@ data class AddressOfVar(
 }
 
 /**
- * FIXME: ???
+ * Maps to the unary & operator as applied to an lvalue other than an identifier.
  */
-data class AddressOfPtr(
+data class AddressOf(
     override val result: VirtualRegister,
-    val ptr: IRValue
+    val expr: IRValue
 ) : ResultInstruction() {
-  override fun toString() = TODO()
+  override fun toString() = "$result = addressof ($expr)"
 }
 
 /**
@@ -136,15 +147,6 @@ data class IndirectCall(
 ) : ResultInstruction() {
   override fun toString() = "$result = call *($callable) with args ${args.joinToString(", ")}"
 }
-
-/**
- * FIXME: validate types of args
- */
-data class OffsetTo(
-    override val result: VirtualRegister,
-    val ptr: IRValue,
-    val offset: IRValue
-) : ResultInstruction()
 
 /**
  * Lists possible comparison orders for arithmetic types.

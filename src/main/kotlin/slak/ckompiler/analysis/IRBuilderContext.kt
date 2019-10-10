@@ -2,6 +2,7 @@ package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.MachineTargetData
+import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
@@ -10,7 +11,10 @@ private val logger = LogManager.getLogger()
 /**
  * @param registerIds per-function virtual register counter
  */
-private class IRBuilderContext(private val registerIds: IdCounter) {
+private class IRBuilderContext(
+    val machineTargetData: MachineTargetData,
+    private val registerIds: IdCounter
+) {
   val instructions = mutableListOf<IRInstruction>()
 
   fun newRegister(type: TypeName) = VirtualRegister(registerIds(), type)
@@ -21,20 +25,25 @@ private fun IRBuilderContext.buildCast(expr: CastExpression): ResultInstruction 
 }
 
 /**
+ * C standard: 6.5.3.2
+ */
+private fun IRBuilderContext.buildAddressOf(expr: Expression): ResultInstruction {
+  val res = newRegister(PointerType(expr.type, emptyList()))
+  // The constant folder deals with all the LVALUEs
+  return if (expr is TypedIdentifier) {
+    AddressOfVar(res, Variable(expr))
+  } else {
+    val ptr = buildOperand(expr)
+    require(ptr.type.unqualify() is PointerType)
+    AddressOf(res, ptr)
+  }
+}
+
+/**
  * C standard: 6.5.3.3, 6.5.3.2
  */
 private fun IRBuilderContext.buildUnary(expr: UnaryExpression): ResultInstruction = when (expr.op) {
-  UnaryOperators.REF -> {
-    val res = newRegister(expr.type)
-    // The constant folder deals with all the LVALUEs
-    if (expr.operand is TypedIdentifier) {
-      AddressOfVar(res, Variable(expr.operand))
-    } else {
-      val ptr = buildOperand(expr.operand)
-      require(ptr.type.unqualify() is PointerType)
-      AddressOfPtr(res, ptr)
-    }
-  }
+  UnaryOperators.REF -> buildAddressOf(expr.operand)
   UnaryOperators.DEREF -> {
     val ptr = buildOperand(expr.operand)
     require(ptr.type.unqualify() is PointerType)
@@ -169,12 +178,109 @@ private fun IRBuilderContext.buildAssignment(expr: BinaryExpression) {
   require(expr.lhs.valueType != Expression.ValueType.RVALUE)
   instructions += when (expr.lhs) {
     is TypedIdentifier -> VarStoreInstr(Variable(expr.lhs), value)
-    is ArraySubscript -> DataStoreInstr(buildOperand(expr.lhs), value)
     is UnaryExpression -> {
       require(expr.lhs.op == UnaryOperators.DEREF)
       DataStoreInstr(buildOperand(expr.lhs), value)
     }
+    is ArraySubscript -> {
+      val target = buildPtrOffset(
+          buildOperand(expr.lhs.subscripted),
+          buildOperand(expr.lhs.subscript),
+          PointerType(expr.type, emptyList())
+      )
+      DataStoreInstr(target, value)
+    }
+    is MemberAccessExpression -> {
+      val target = buildMemberPtrAccess(expr.lhs)
+      DataStoreInstr(target, value)
+    }
     else -> logger.throwICE("Unhandled lvalue")
+  }
+}
+
+private fun IRBuilderContext.buildPtrOffset(
+    base: IRValue,
+    offset: IRValue,
+    resPtrType: TypeName
+): VirtualRegister {
+  require(resPtrType is PointerType)
+  val baseType = base.type.unqualify().normalize()
+  require(baseType is PointerType)
+  val offsetTo = IntBinary(newRegister(baseType), IntegralBinaryOps.ADD, base, offset)
+  instructions += offsetTo
+  val typedPtr = ReinterpretCast(newRegister(resPtrType), resPtrType, offsetTo.result)
+  instructions += typedPtr
+  return typedPtr.result
+}
+
+private fun IRBuilderContext.buildOffset(
+    base: IRValue,
+    offset: IRValue,
+    resType: TypeName
+): VirtualRegister {
+  val offsetPtr = buildPtrOffset(base, offset, PointerType(resType, emptyList()))
+  val deref = ValueOf(newRegister(resType), offsetPtr)
+  instructions += deref
+  return deref.result
+}
+
+private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression): VirtualRegister {
+  val unqualType = expr.target.type.unqualify()
+  val (base, tagType) = if (unqualType is PointerType) {
+    require(unqualType.referencedType is TagType)
+    check(expr.accessOperator.pct == Punctuators.ARROW)
+    buildOperand(expr.target) to unqualType.referencedType
+  } else {
+    require(unqualType is TagType)
+    check(expr.accessOperator.pct == Punctuators.DOT)
+    val addrOf = buildAddressOf(expr.target)
+    instructions += addrOf
+    addrOf.result to unqualType
+  }
+  return when (tagType) {
+    is StructureType -> {
+      val offset = machineTargetData.offsetOf(tagType, expr.memberName)
+      val offsetCt = IntConstant(offset.toLong(), machineTargetData.ptrDiffType)
+      val memberPtrType = PointerType(expr.type, emptyList())
+      buildPtrOffset(base, offsetCt, memberPtrType)
+    }
+    is UnionType -> {
+      val ptrToType = PointerType(expr.type, emptyList())
+      val cast = ReinterpretCast(newRegister(ptrToType), ptrToType, base)
+      instructions += cast
+      cast.result
+    }
+  }
+}
+
+private fun IRBuilderContext.buildMemberAccess(expr: MemberAccessExpression): VirtualRegister {
+  val unqualType = expr.target.type.unqualify()
+  val (base, tagType) = if (unqualType is PointerType) {
+    require(unqualType.referencedType is TagType)
+    check(expr.accessOperator.pct == Punctuators.ARROW)
+    buildOperand(expr.target) to unqualType.referencedType
+  } else {
+    require(unqualType is TagType)
+    check(expr.accessOperator.pct == Punctuators.DOT)
+    when (unqualType) {
+      is StructureType -> {
+        val addrOf = buildAddressOf(expr.target)
+        instructions += addrOf
+        addrOf.result to unqualType
+      }
+      is UnionType -> buildOperand(expr.target) to unqualType
+    }
+  }
+  return when (tagType) {
+    is StructureType -> {
+      val offset = machineTargetData.offsetOf(tagType, expr.memberName)
+      buildOffset(base, IntConstant(offset.toLong(), machineTargetData.ptrDiffType), expr.type)
+    }
+    is UnionType -> {
+      val cast = ReinterpretCast(newRegister(expr.type), expr.type, base)
+      instructions += cast
+      cast.result
+    }
   }
 }
 
@@ -218,8 +324,10 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
     instructions += functionCall
     functionCall.result
   }
-  is MemberAccessExpression -> TODO()
-  is ArraySubscript -> TODO()
+  is MemberAccessExpression -> buildMemberAccess(expr)
+  is ArraySubscript -> {
+    buildOffset(buildOperand(expr.subscripted), buildOperand(expr.subscript), expr.type)
+  }
   is TypedIdentifier -> {
     val load = LoadInstr(newRegister(expr.type), Variable(expr))
     instructions += load
@@ -240,7 +348,7 @@ fun createInstructions(
     targetData: MachineTargetData,
     registerIds: IdCounter
 ): List<IRInstruction> {
-  val builder = IRBuilderContext(registerIds)
+  val builder = IRBuilderContext(targetData, registerIds)
   for (expr in exprs) {
     val folded = targetData.doConstantFolding(expr)
     builder.buildOperand(folded)

@@ -326,6 +326,17 @@ internal fun struct(name: String) = TagNameSpecifier(name(name), Keywords.STRUCT
 internal inline fun <reified T> struct(
     name: String?,
     vararg decls: T
+): StructUnionDefinitionSpecifier = structUnion(Keywords.STRUCT.kw, name, *decls)
+
+internal inline fun <reified T> union(
+    name: String?,
+    vararg decls: T
+): StructUnionDefinitionSpecifier = structUnion(Keywords.UNION.kw, name, *decls)
+
+private inline fun <reified T> structUnion(
+    keyword: Keyword,
+    name: String?,
+    vararg decls: T
 ): StructUnionDefinitionSpecifier {
   val d = decls.map {
     when (T::class) {
@@ -339,7 +350,7 @@ internal inline fun <reified T> struct(
       else -> throw IllegalArgumentException("Bad decls in struct")
     }
   }
-  return StructUnionDefinitionSpecifier(name?.let { name(it) }, d, Keywords.STRUCT.kw)
+  return StructUnionDefinitionSpecifier(name?.let { name(it) }, d, keyword)
 }
 
 internal infix fun Expression.dot(tid: TypedIdentifier): MemberAccessExpression {

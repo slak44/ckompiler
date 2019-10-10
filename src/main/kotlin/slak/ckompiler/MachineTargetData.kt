@@ -103,8 +103,12 @@ data class MachineTargetData(
     VoidType -> throw IllegalArgumentException("Trying to get size of void type")
   }
 
-  /** @see sizeOf */
-  fun sizeOf(tid: TypedIdentifier) = sizeOf(tid.type)
+  // FIXME: handle struct memory layouts better
+  //   this is just brute force
+  fun offsetOf(tagType: StructureType, member: IdentifierNode): Int {
+    val members = requireNotNull(tagType.members)
+    return members.entries.asSequence().takeWhile { it.key != member }.sumBy { sizeOf(it.value) }
+  }
 
   companion object {
     val x64 = MachineTargetData(
