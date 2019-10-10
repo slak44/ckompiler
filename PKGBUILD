@@ -1,10 +1,10 @@
-# Maintainer: Stefan Silviu <stefan.silviu.alexandru@gmail.com>
+# Maintainer: Stefan Silviu Alexandru <stefan.silviu.alexandru@gmail.com>
 pkgname=ckompiler
 pkgver=SNAPSHOT2
-pkgrel=1
+pkgrel=2
 pkgdesc='A C11 compiler written in Kotlin'
 arch=('any')
-url='https://github.com/slak44'
+url='https://github.com/slak44/ckompiler'
 license=('MIT')
 depends=('java-environment')
 optdepends=('nasm: for assembling compiled files'
