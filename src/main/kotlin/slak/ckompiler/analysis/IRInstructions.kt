@@ -307,7 +307,7 @@ data class FltConstant(val value: Double, override val type: TypeName) : Constan
 data class StrConstant(val value: String, override val type: TypeName) : ConstantValue() {
   constructor(str: StringLiteralNode) : this(str.string, str.type)
 
-  override val name = "\"$value\""
+  override val name = "\"${value.replace("\n", "\\n")}\""
   override fun toString() = name
 }
 
