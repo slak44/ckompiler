@@ -331,8 +331,8 @@ except for `Expression` subclasses (with certain exceptions that are also
 removed, namely `TernaryConditional`).
 
 Those linear pieces of code are represented as a `List<Expression>`, and are
-transformed to the simple IR (`List<IRExpression>`) while creating the graph
-(see [sequentialize][seq] and [IRLoweringContext][ir]).
+transformed to the simple IR (`List<IRInstruction>`) while creating the graph
+(see [sequentialize][seq] and [createInstructions][ir]).
 
 Constant folding is also applied to the expressions during this process (see
 [ConstantFolding.kt][const_fold]).
@@ -420,10 +420,10 @@ relatively uncomplicated process if dominance is precomputed. See
 
 The second phase does the bulk of the work: renaming every use and definition of
 every variable. A lot of state is tracked to enable this process (see the
-`ReachingDef` and `VariableRenamer` classes in [ControlFlowGraph.kt][cfg]). The
-"renaming" is done by simply annotating variables with a "version" property.
-"Newer" versions' definitions are strictly dominated by "older" versions'
-definitions.
+`ReachingDefinition` and `VariableRenamer` classes in
+[ControlFlowGraph.kt][cfg]). The "renaming" is done by simply annotating
+variables with a "version" property. "Newer" versions' definitions are strictly
+dominated by "older" versions' definitions.
 
 Once this work is completed, the code is now in SSA form.
 
@@ -506,7 +506,7 @@ especially to the C standard.
 [ast_graphing]: ./src/main/kotlin/slak/ckompiler/analysis/ASTGraphing.kt
 [bb]: ./src/main/kotlin/slak/ckompiler/analysis/BasicBlock.kt
 [seq]: ./src/main/kotlin/slak/ckompiler/analysis/Sequentialization.kt
-[ir]: ./src/main/kotlin/slak/ckompiler/analysis/IRLowering.kt
+[ir]: ./src/main/kotlin/slak/ckompiler/analysis/IRBuilderContext.kt
 [cfg]: ./src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt
 [const_fold]: ./src/main/kotlin/slak/ckompiler/analysis/ConstantFolding.kt
 [nasm_gen]:
