@@ -1,0 +1,94 @@
+digraph pipeline {
+  graph[bgcolor="#3C3F41FF"];
+  node[fontcolor="#CCCCCCFF",color="#CCCCCCFF"];
+  edge[color="#CCCCCCFF",fontcolor="#CCCCCCFF"];
+
+  cliOptions[label="CLI Options:\nInclude Paths\nCLI Defines"];
+  source[label=<Source Code<br/><font point-size="14" face="monospace">String</font>>];
+  targetData1[label=<<font point-size="14" face="monospace">MachineTargetData</font>:<br/>Target-Dependent Macro Defines>];
+  targetData2[label=<<font point-size="14" face="monospace">MachineTargetData</font>:<br/>Type Sizes<br/>Struct Member Offsets>];
+  lexer[label=<Lexer<br/><font point-size="14" face="monospace">Lexer</font>>,shape=box]
+  tokenList[label=<Token List<br/><font point-size="14" face="monospace">List&lt;LexicalToken&gt;</font>>];
+  whitespaceList[label=<Whitespace Data<br/><font point-size="14" face="monospace">List&lt;String&gt;</font>>];
+  trPhase1And2[label=<Translation Phases 1 And 2<br/><font point-size="14" face="monospace">String</font>>,shape=box];
+  ppParser[label=<Parser<br/><font point-size="14" face="monospace">PPParser</font>>,shape=box];
+  ppTokens[label=<Preprocessed Token List<br/><font point-size="14" face="monospace">List&lt;LexicalToken&gt;</font>>];
+  parser[label=<Parser<br/><font point-size="14" face="monospace">Parser</font>>,shape=box];
+  ast[label=<Abstract Syntax Tree<br/><font point-size="14" face="monospace">ASTNode</font>>];
+  graphing[label=<AST Graphing<br/><font point-size="14" face="monospace">ASTGraphing#graph</font>>,shape=box];
+  definitions[label=<Definitions<br/><font point-size="14" face="monospace">Map&lt;Variable, Set&lt;BasicBlock&gt;&gt;</font>>];
+  cfg[label=<Control Flow Graph<br/><font point-size="14" face="monospace">ControlFlowGraph</font>>];
+  basicBlockContent[label=<Basic Block Expressions<br/><font point-size="14" face="monospace">List&lt;Expression&gt;</font>>];
+  seq[label="Expression Sequnetialization",shape=box];
+  seqExprs[label=<Sequentialized Expressions<br/><font point-size="14" face="monospace">SequentialExpression</font>>];
+  irBuilder[label=<IR Conversion (and constant folding)<br/><font point-size="14" face="monospace">List&lt;IRInstruction&gt;</font>>,shape=box];
+  bbTransforms[label="Graph Transforms (DCE, simplifications)",shape=box];
+  cfgNodes[label="Initial Processed CFG"];
+  domFrontier[label="Compute Dominator Tree & Dominance Frontiers",shape=box];
+  phiInsertion[label="φ-Function Insertion",shape=box];
+  variableRename[label="Variable Renaming",shape=box];
+  ssaFormCFG[label="CFG With IR In Pruned SSA Form"];
+  codeGenerator[label=<Code Generator<br/><font point-size="14" face="monospace">NasmGenerator</font>>,shape=box];
+  nasmCode[label=<NASM Source<br/><font point-size="14" face="monospace">String</font>>];
+  assembler[label="NASM"];
+
+  source -> trPhase1And2 -> lexer;
+
+  lexer -> tokenList -> ppParser;
+  lexer -> whitespaceList -> ppParser;
+
+  targetData1 -> ppParser;
+  cliOptions -> ppParser;
+
+  ppParser -> ppTokens -> parser -> ast -> graphing;
+
+  graphing -> {cfg, definitions, basicBlockContent};
+
+  basicBlockContent -> seq -> seqExprs -> irBuilder;
+
+  targetData2 -> irBuilder;
+
+  irBuilder -> cfg -> bbTransforms -> cfgNodes -> domFrontier;
+
+  {definitions, domFrontier} -> phiInsertion;
+
+  phiInsertion -> variableRename -> ssaFormCFG -> codeGenerator -> nasmCode -> assembler;
+
+  subgraph cluster_preprocessor {
+    trPhase1And2; ppParser; ppTokens;
+    subgraph cluster_lex {
+      tokenList; lexer; whitespaceList;
+      label=<<font color="#CCCCCCFF" point-size="20">Lexical Analysis</font>>;
+      labeljust="right";
+      color="red";
+    }
+    label=<<font color="#CCCCCCFF" point-size="20">Preprocessor</font>>;
+    labeljust="right";
+    color="blue";
+  }
+  subgraph cluster_parser {
+    parser; ast;
+    label=<<font color="#CCCCCCFF" point-size="20">Syntactic/Semantic Analysis</font>>;
+    labeljust="right";
+    color="green";
+  }
+  subgraph cluster_analysis {
+    graphing; cfg; bbTransforms; definitions; cfgNodes; seq; basicBlockContent; seqExprs;
+    irBuilder;
+    subgraph cluster_ssa {
+      domFrontier; phiInsertion; variableRename; ssaFormCFG;
+      label=<<font color="#CCCCCCFF" point-size="20">SSA Construction</font>>;
+      labeljust="right";
+      color="violet";
+    }
+    label=<<font color="#CCCCCCFF" point-size="20">Middle-End</font>>;
+    labeljust="right";
+    color="orange";
+  }
+  subgraph cluster_backend {
+    codeGenerator; nasmCode;
+    label=<<font color="#CCCCCCFF" point-size="20">Backend</font>>;
+    labeljust="right";
+    color="cyan";
+  }
+}

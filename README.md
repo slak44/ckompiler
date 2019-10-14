@@ -33,6 +33,12 @@ actual code that powers the command line can be found in the [CLI][cli] class.
 The compiler is mostly implemented as a processing pipeline of immutable data
 structures.
 
+The following graph shows the path code takes through the compiler, from the
+source code to the output assembly:
+<p align="center"><img src="readme-resources/compiler-pipeline.png" alt="Compiler Pipeline"/></p>
+
+[(graph source)](readme-resources/compiler-pipeline.dot)
+
 ### Interfaces And Delegation
 
 Many components in the compiler are decoupled: they exist as concrete classes
