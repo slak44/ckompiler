@@ -41,9 +41,11 @@ private fun isVariableUsed(e: Expression, tid: TypedIdentifier): Boolean = when 
   is FunctionCall -> e.args.any { isVariableUsed(it, tid) }
   is UnaryExpression -> isVariableUsed(e.operand, tid)
   is MemberAccessExpression -> isVariableUsed(e.target, tid)
-  is BinaryExpression -> isVariableUsed(e.lhs, tid) || isVariableUsed(e.rhs, tid)
   is ArraySubscript -> isVariableUsed(e.subscripted, tid) || isVariableUsed(e.subscript, tid)
   is CastExpression -> isVariableUsed(e.target, tid)
+  is BinaryExpression -> {
+    (e.op != BinaryOperators.ASSIGN && isVariableUsed(e.lhs, tid)) || isVariableUsed(e.rhs, tid)
+  }
 }
 
 /**
@@ -63,5 +65,5 @@ private fun liveRangeOf(v: Variable, block: BasicBlock): IntRange {
     }
   }
   val end = block.src.indexOfLast { isVariableUsed(it, v.tid) }
-  return start..end
+  return (start + 1)..end
 }
