@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
+import slak.ckompiler.analysis.findInterferenceIn
 import slak.ckompiler.backend.nasm.NasmGenerator
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
@@ -96,6 +97,8 @@ class CLI(private val stdinStream: InputStream) :
   private val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
   private val isCFGOnly by cli.flagArgument("--cfg-mode",
       "Create the program's control flow graph only, don't compile")
+  private val isInterferenceOnly by cli.flagArgument("--interference-mode",
+      "Print variable live-range interference in a function, don't compile")
   private val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   private val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
 
@@ -196,6 +199,13 @@ class CLI(private val stdinStream: InputStream) :
       "Force displaying the entire control flow graph")
   private val forceUnreachable by cli.flagArgument("--force-unreachable",
       "Force displaying of unreachable basic blocks and impossible edges")
+
+  init {
+    cli.helpGroup("Interference options (require --interference-mode)")
+  }
+
+  private val interferenceFuncName by cli.flagValueArgument("--interference-function", "FUNC_NAME",
+      "Choose which function to print variable interference for", initialValue = "main")
 
   init {
     cli.helpGroup("Compiler debug options")
@@ -306,6 +316,18 @@ class CLI(private val stdinStream: InputStream) :
 
   private fun List<Diagnostic>.errors() = filter { it.id.kind == DiagnosticKind.ERROR }
 
+  private fun List<FunctionDefinition>.findNamedFunction(funcName: String): FunctionDefinition? {
+    val function = firstOrNull { it.name == funcName }
+    if (function == null) {
+      diagnostic {
+        id = DiagnosticId.CFG_NO_SUCH_FUNCTION
+        formatArgs(funcName)
+      }
+      return null
+    }
+    return function
+  }
+
   private var executionFailed = false
 
   private fun compile(
@@ -344,15 +366,32 @@ class CLI(private val stdinStream: InputStream) :
 
     val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
-    if (isCFGOnly) {
-      val function = allFuncs.firstOrNull { it.name == targetFunction }
-      if (function == null) {
-        diagnostic {
-          id = DiagnosticId.CFG_NO_SUCH_FUNCTION
-          formatArgs(targetFunction)
-        }
-        return null
+    if (isInterferenceOnly) {
+      val function = allFuncs.findNamedFunction(interferenceFuncName) ?: return null
+      val cfg = CFG(
+          f = function,
+          targetData = MachineTargetData.x64,
+          srcFileName = relPath,
+          srcText = text,
+          forceAllNodes = false,
+          forceReturnZero = function.name == "main"
+      )
+      val sb = StringBuilder()
+      sb.appendln("Interferences in ${function.name}:")
+      for ((var1, var2) in findInterferenceIn(cfg)) {
+        val var1Str = "${var1.tid.type} ${var1.tid.name} ${var1.tid.id}"
+        val var2Str = "${var2.tid.type} ${var2.tid.name} ${var2.tid.id}"
+        sb.append(var1Str)
+        sb.append(" interferes with ")
+        sb.append(var2Str)
+        sb.appendln()
       }
+      println(sb.toString())
+      return null
+    }
+
+    if (isCFGOnly) {
+      val function = allFuncs.findNamedFunction(targetFunction) ?: return null
       val cfg = CFG(
           f = function,
           targetData = MachineTargetData.x64,
@@ -453,7 +492,8 @@ class CLI(private val stdinStream: InputStream) :
       id = DiagnosticId.NO_INPUT_FILES
       executionFailed = true
     }
-    val isNotLinking = isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly
+    val isNotLinking =
+        isInterferenceOnly || isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly
     if (output.isPresent && isNotLinking && sourceCount > 1) {
       diagnostic { id = DiagnosticId.MULTIPLE_FILES_PARTIAL }
       return ExitCodes.EXECUTION_FAILED
