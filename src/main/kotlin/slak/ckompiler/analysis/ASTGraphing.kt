@@ -9,7 +9,7 @@ private val logger = LogManager.getLogger()
 
 fun graph(cfg: CFG) {
   for (p in cfg.f.parameters) {
-    cfg.definitions[Variable(p)] = mutableSetOf()
+    cfg.definitions[Variable(p)] = mutableSetOf(cfg.startBlock)
   }
   GraphingContext(root = cfg, registerIds = IdCounter()).graphCompound(cfg.startBlock, cfg.f.block)
   for (block in cfg.allNodes) {
