@@ -263,15 +263,20 @@ data class FltNeg(
 }
 
 /**
- * Represents an operand to an IR instruction.
+ * Unified superclass for [VirtualRegister]s, [ConstantValue]s, and [Variable]s.
  */
-sealed class IRValue {
+sealed class DataReference {
   /**
    * This label exists for debugging purposes.
    */
   abstract val name: String
   abstract val type: TypeName
 }
+
+/**
+ * Represents an operand to an IR instruction.
+ */
+sealed class IRValue : DataReference()
 
 typealias RegisterId = Int
 
@@ -330,7 +335,10 @@ data class ReachingDefinition(
  * and a pass does the virtual register replacement.
  * @see ReachingDefinition
  */
-class Variable(val tid: TypedIdentifier) {
+class Variable(val tid: TypedIdentifier) : DataReference() {
+  override val name = tid.name
+  override val type = tid.type
+
   var version = 0
     private set
 
