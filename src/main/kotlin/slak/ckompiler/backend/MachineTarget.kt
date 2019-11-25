@@ -52,21 +52,27 @@ interface MachineTarget {
   val targetName: String
   val registers: List<MachineRegister>
 
-  fun registerByName(name: String): MachineRegister {
-    return registers.first { reg ->
-      reg.regName == name || name in reg.aliases.map { it.first }
-    }
-  }
-
   fun expandMacroFor(i: IRInstruction): MachineInstruction
 
-  fun instructionSelection(cfg: CFG): List<Label> {
-    return cfg.allNodes.map(this::expander)
-  }
+  fun genFunctionPrologue(labels: List<Label>): List<MachineInstruction>
+  fun genFunctionEpilogue(labels: List<Label>): List<MachineInstruction>
+}
 
-  private fun expander(bb: BasicBlock): Label {
-    return Label(bb, bb.instructions.asSequence().map(::expandMacroFor).toList())
+fun MachineTarget.registerByName(name: String): MachineRegister {
+  return registers.first { reg ->
+    reg.regName == name || name in reg.aliases.map { it.first }
   }
+}
+
+fun MachineTarget.instructionSelection(cfg: CFG): List<Label> {
+  return cfg.allNodes.map {
+    Label(it, it.instructions.asSequence().map(::expandMacroFor).toList())
+  }
+}
+
+fun MachineTarget.instructionScheduling(labels: List<Label>): List<Label> {
+  // FIXME: deal with this sometime
+  return labels
 }
 
 data class Label(val bb: BasicBlock, val instructions: List<MachineInstruction>)

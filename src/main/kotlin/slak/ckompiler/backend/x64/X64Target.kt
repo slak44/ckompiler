@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.x64
 
 import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.Label
 import slak.ckompiler.backend.MachineInstruction
 import slak.ckompiler.backend.MachineTarget
 
@@ -18,7 +19,11 @@ object X64Target : MachineTarget {
     is NamedCall -> TODO()
     is IndirectCall -> TODO()
     is IntBinary -> when (i.op) {
-      IntegralBinaryOps.ADD -> add.match(i.lhs, i.rhs)
+      IntegralBinaryOps.ADD -> when (i.result) {
+        i.lhs -> add.match(i.lhs, i.rhs)
+        i.rhs -> add.match(i.rhs, i.lhs)
+        else -> TODO("move one operand to result register, and then match the add")
+      }
       IntegralBinaryOps.SUB -> TODO()
       IntegralBinaryOps.MUL -> TODO()
       IntegralBinaryOps.DIV -> TODO()
@@ -39,5 +44,13 @@ object X64Target : MachineTarget {
     is ConstantRegisterInstr -> TODO()
     is VarStoreInstr -> TODO()
     is DataStoreInstr -> TODO()
+  }
+
+  override fun genFunctionPrologue(labels: List<Label>): List<MachineInstruction> {
+    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+  }
+
+  override fun genFunctionEpilogue(labels: List<Label>): List<MachineInstruction> {
+    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
   }
 }

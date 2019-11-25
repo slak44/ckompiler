@@ -21,19 +21,19 @@ interface Operand {
 }
 
 enum class ModRM(val type: OperandType, override val size: Int) : Operand {
-  RM8(OperandType.REG_OR_MEM, 8),
-  RM16(OperandType.REG_OR_MEM, 16),
-  RM32(OperandType.REG_OR_MEM, 32),
-  RM64(OperandType.REG_OR_MEM, 64),
+  RM8(OperandType.REG_OR_MEM, 1),
+  RM16(OperandType.REG_OR_MEM, 2),
+  RM32(OperandType.REG_OR_MEM, 4),
+  RM64(OperandType.REG_OR_MEM, 8),
 
-  R8(OperandType.REGISTER, 8),
-  R16(OperandType.REGISTER, 16),
-  R32(OperandType.REGISTER, 32),
-  R64(OperandType.REGISTER, 64)
+  R8(OperandType.REGISTER, 1),
+  R16(OperandType.REGISTER, 2),
+  R32(OperandType.REGISTER, 4),
+  R64(OperandType.REGISTER, 8)
 }
 
 enum class Imm(override val size: Int) : Operand {
-  IMM8(8), IMM16(16), IMM32(32), IMM64(64)
+  IMM8(1), IMM16(2), IMM32(4), IMM64(8)
 }
 
 data class Register(val register: MachineRegister) : Operand {
