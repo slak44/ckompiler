@@ -20,14 +20,22 @@ sealed class ResultInstruction : IRInstruction() {
 }
 
 /**
+ * An [IRInstruction] that modifies the [target] value.
+ */
+sealed class SideEffectInstruction : IRInstruction() {
+  abstract val target: IRValue
+}
+
+/**
  * A φ-function for a particular variable. [incoming] stores the list of versions that the φ has
  * to choose from; that is, it stores which values come from which predecessor [BasicBlock].
  */
 data class PhiInstr(
     val variable: Variable,
     val incoming: Map<BasicBlock, Variable>
-) : IRInstruction() {
-  override fun toString() = "$variable = φ(${incoming.entries.joinToString(", ") {
+) : SideEffectInstruction() {
+  override val target get() = variable
+  override fun toString() = "store *($variable) = φ(${incoming.entries.joinToString(", ") {
     "n${it.key.hashCode()} v${it.value.version}"
   }})"
 }
@@ -37,7 +45,7 @@ data class PhiInstr(
  *
  * [target]'s type must be [PointerType].
  */
-data class StoreInstr(val target: IRValue, val value: IRValue) : IRInstruction() {
+data class StoreInstr(override val target: IRValue, val value: IRValue) : SideEffectInstruction() {
   override fun toString() = "store *($target) = $value"
 }
 
@@ -244,7 +252,7 @@ typealias RegisterId = Int
 
 /**
  * A virtual register where an [IRInstruction]'s result is stored. These registers abide by SSA, so
- * they are only written to once.
+ * they are only written to once. They also cannot escape the [BasicBlock] they're declared in.
  */
 data class VirtualRegister(
     val id: RegisterId,

@@ -176,7 +176,7 @@ private class VariableRenamer(
    */
   private fun ReachingDefinition.dominates(block: BasicBlock, instrIdx: Int): Boolean {
     return if (definedIn == block) {
-      if (definitionIdx == -1 && instrIdx == -1) {
+      if (definitionIdx == instrIdx && instrIdx < block.phiFunctions.size) {
         logger.throwICE("Multiple phi functions for same variable in the same block") {
           "$this dominates $block $instrIdx"
         }
@@ -214,9 +214,8 @@ private class VariableRenamer(
 
   /** @see variableRenaming */
   private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
-    for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
     for ((idx, i) in BB.instructions.withIndex()) {
-      val def = if (i is StoreInstr) i.target else null
+      val def = if (i is SideEffectInstruction) i.target else null
       if (i is LoadInstr) {
         val variable = i.target as? Variable ?: continue
         val oldReachingVar = variable.reachingDef?.variable

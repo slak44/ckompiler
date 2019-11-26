@@ -107,7 +107,7 @@ object MissingJump : Jump() {
  */
 class BasicBlock(val isRoot: Boolean = false) {
   /**
-   * List of SSA φ-functions at the start of this block.
+   * List of SSA φ-functions at the start of this block. Basically a prefix to [ir].
    */
   val phiFunctions = mutableListOf<PhiInstr>()
   /**
@@ -168,11 +168,12 @@ class BasicBlock(val isRoot: Boolean = false) {
       }
     }
   /**
-   * Allows iteration over this [BasicBlock]'s IR, including [CondJump.cond] and
+   * Allows iteration over this [BasicBlock]'s IR, including φs, [CondJump.cond] and
    * [ImpossibleJump.returned], if they're available.
    */
   val instructions
     get() = iterator {
+      yieldAll(phiFunctions)
       yieldAll(ir)
       (terminator as? CondJump)?.cond?.let { yieldAll(it) }
       (terminator as? ImpossibleJump)?.returned?.let { yieldAll(it) }

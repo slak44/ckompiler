@@ -8,31 +8,25 @@ import slak.test.*
 import kotlin.test.assertEquals
 
 class IRTests {
-  private fun createIR(vararg exprs: Expression) =
-      createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter())
+  private fun createIR(vararg exprs: Expression): List<IRInstruction> {
+    val instrs = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter())
+    val registerIds = instrs.filterIsInstance(ResultInstruction::class.java).map { it.result.id }
+    // No virtual register is stored to twice
+    assert(registerIds.distinct() == registerIds)
+    return instrs
+  }
 
   @Test
   fun `IR With Int Constants`() {
     val ir = createIR(1 add (2 mul 3) sub 5)
-    val registerIds = mutableListOf<Int>()
     for (i in ir) {
       check(i is IntegralInstruction)
-      registerIds += i.result.id
     }
-    // No virtual register is stored to twice
-    assert(registerIds.distinct() == registerIds)
   }
 
   @Test
   fun `IR Variable Store`() {
     val ir = createIR(nameRef("a", SignedIntType) assign (1 add (2 mul 3) sub 5))
-    val registerIds = mutableListOf<Int>()
-    for (i in ir.dropLast(1)) {
-      check(i is ResultInstruction)
-      registerIds += i.result.id
-    }
-    // No virtual register is stored to twice
-    assert(registerIds.distinct() == registerIds)
     val last = ir.last()
     check(last is StoreInstr)
     assertEquals(nameRef("a", SignedIntType), (last.target as Variable).tid)
