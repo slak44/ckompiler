@@ -14,7 +14,7 @@ fun graph(cfg: CFG) {
   GraphingContext(root = cfg, registerIds = IdCounter()).graphCompound(cfg.startBlock, cfg.f.block)
   for (block in cfg.allNodes) {
     for (instr in block.instructions) {
-      if (instr !is VarStoreInstr) continue
+      if (instr !is StoreInstr || instr.target !is Variable) continue
       cfg.addDefinition(block, instr.target)
     }
   }

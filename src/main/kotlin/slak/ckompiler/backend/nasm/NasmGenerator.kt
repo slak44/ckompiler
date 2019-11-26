@@ -166,13 +166,13 @@ class NasmGenerator(
     // FIXME: number 8 is magic here
     // FIXME: use correct sizes for values, not just 8
     // FIXME: the *4 are the 4 pushes above
-    var rbpOffset = -8 - 8 * 4
-    for ((ref) in cfg.definitions) {
-      emit("; ${ref.tid.name} at ${rbpOffset.toHex()}")
-      // FIXME: they're not all required to go on the stack
-      variableRefs[ref.tid] = rbpOffset
-      rbpOffset -= 8
-    }
+//    var rbpOffset = -8 - 8 * 4
+//    for ((ref) in cfg.definitions) {
+//      emit("; ${ref.tid.name} at ${rbpOffset.toHex()}")
+//      // FIXME: they're not all required to go on the stack
+//      variableRefs[ref.tid] = rbpOffset
+//      rbpOffset -= 8
+//    }
 //    for (idx in 0 until cfg.synthCount) {
 //      emit("; $idx at ${rbpOffset.toHex()}")
 //      synthRefs[idx] = "[rbp${rbpOffset.toHex()}]"

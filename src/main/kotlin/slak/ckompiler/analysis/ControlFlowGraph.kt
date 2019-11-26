@@ -121,9 +121,9 @@ private class VariableRenamer(
   private val latestVersions = mutableMapOf<Int, Int>().withDefault { 0 }
   /** @see latestVersions */
   private var Variable.latestVersion: Int
-    get() = latestVersions.getValue(tid.id)
+    get() = latestVersions.getValue(id)
     set(value) {
-      latestVersions[tid.id] = value
+      latestVersions[id] = value
     }
   /**
    * Maps each variable to a [ReachingDefinition] (maps a variable's id/version pair to
@@ -141,15 +141,15 @@ private class VariableRenamer(
    * @see variableRenaming
    */
   private var Variable.reachingDef: ReachingDefinition?
-    get() = reachingDefs[tid.id to version]
+    get() = reachingDefs[id to version]
     set(value) {
-      reachingDefs[tid.id to version] = value
+      reachingDefs[id to version] = value
     }
   /** @see Variable.reachingDef */
   private var ReachingDefinition.reachingDef: ReachingDefinition?
-    get() = reachingDefs[variable.tid.id to variable.version]
+    get() = reachingDefs[variable.id to variable.version]
     set(value) {
-      reachingDefs[variable.tid.id to variable.version] = value
+      reachingDefs[variable.id to variable.version] = value
     }
 
   /**
@@ -216,15 +216,15 @@ private class VariableRenamer(
   private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
     for ((def) in BB.phiFunctions) handleDef(BB, def, -1)
     for ((idx, i) in BB.instructions.withIndex()) {
-      val def = if (i is VarStoreInstr) i.target else null
+      val def = if (i is StoreInstr) i.target else null
       if (i is LoadInstr) {
-        val variable = i.target
+        val variable = i.target as? Variable ?: continue
         val oldReachingVar = variable.reachingDef?.variable
         updateReachingDef(variable, BB, idx)
         variable.replaceWith(variable.reachingDef)
         traceVarUsageRename(BB, oldReachingVar, variable)
       }
-      if (def == null) continue
+      if (def == null || def !is Variable) continue
       handleDef(BB, def, idx)
     }
     for (succ in BB.successors) for ((_, incoming) in succ.phiFunctions) {
@@ -255,15 +255,15 @@ private class VariableRenamer(
       v: Variable,
       isInPhi: Boolean = false
   ) {
-    if (v.tid.name == "x") logger.trace(varRenamesTrace) {
+    if (v.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingStr =
-          if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
+          if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
       val newReachingStr =
           if (v.reachingDef == null) "⊥"
-          else "${v.reachingDef!!.variable.tid.name}${v.reachingDef!!.variable.version}"
+          else "${v.reachingDef!!.variable.name}${v.reachingDef!!.variable.version}"
       listOf(
           "${bb.hashCode()}",
-          "${if (isInPhi) " " else ""}${v.tid.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
+          "${if (isInPhi) " " else ""}${v.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
               .padStart(TRACE_COL2_LENGTH, ' '),
           "$oldReachingStr updated into $newReachingStr"
       ).joinToString(" | ").toObjectMessage()
@@ -278,14 +278,14 @@ private class VariableRenamer(
       def: Variable,
       vPrime: Variable
   ) {
-    if (def.tid.name == "x") logger.trace(varRenamesTrace) {
+    if (def.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingVar = def.reachingDef?.variable
       val oldReachingStr =
-          if (oldReachingVar == null) "⊥" else "${oldReachingVar.tid.name}${oldReachingVar.version}"
+          if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
       listOf(
           "${bb.hashCode()}",
-          "def ${def.tid.name}${def.version}".padEnd(TRACE_COL2_LENGTH, ' '),
-          "$oldReachingStr then ${vPrime.tid.name}${vPrime.version}"
+          "def ${def.name}${def.version}".padEnd(TRACE_COL2_LENGTH, ' '),
+          "$oldReachingStr then ${vPrime.name}${vPrime.version}"
       ).joinToString(" | ").toObjectMessage()
     }
   }

@@ -13,9 +13,6 @@ object X64Target : MachineTarget {
     is LoadInstr -> mov.match(i.result, i.target)
     is StructuralCast -> TODO()
     is ReinterpretCast -> TODO()
-    is AddressOfVar -> TODO()
-    is AddressOf -> TODO()
-    is ValueOf -> TODO()
     is NamedCall -> TODO()
     is IndirectCall -> TODO()
     is IntBinary -> when (i.op) {
@@ -42,8 +39,7 @@ object X64Target : MachineTarget {
     is FltNeg -> TODO()
     is PhiInstr -> TODO()
     is ConstantRegisterInstr -> TODO()
-    is VarStoreInstr -> TODO()
-    is DataStoreInstr -> TODO()
+    is StoreInstr -> TODO()
   }
 
   override fun genFunctionPrologue(labels: List<Label>): List<MachineInstruction> {

@@ -25,17 +25,18 @@ private fun IRBuilderContext.buildCast(expr: CastExpression): ResultInstruction 
 }
 
 /**
+ * Returns a pointer to the given expression. ([IRValue.type] will be [PointerType])
+ *
  * C standard: 6.5.3.2
  */
-private fun IRBuilderContext.buildAddressOf(expr: Expression): ResultInstruction {
-  val res = newRegister(PointerType(expr.type, emptyList()))
+private fun IRBuilderContext.buildAddressOf(expr: Expression): IRValue {
   // The constant folder deals with all the LVALUEs
   return if (expr is TypedIdentifier) {
-    AddressOfVar(res, Variable(expr))
+    Variable(expr)
   } else {
     val ptr = buildOperand(expr)
-    require(ptr.type.unqualify() is PointerType)
-    AddressOf(res, ptr)
+    require(ptr.type.unqualify() is PointerType) { "Result of address of (&) must be pointer" }
+    ptr
   }
 }
 
@@ -43,11 +44,10 @@ private fun IRBuilderContext.buildAddressOf(expr: Expression): ResultInstruction
  * C standard: 6.5.3.3, 6.5.3.2
  */
 private fun IRBuilderContext.buildUnary(expr: UnaryExpression): ResultInstruction = when (expr.op) {
-  UnaryOperators.REF -> buildAddressOf(expr.operand)
   UnaryOperators.DEREF -> {
     val ptr = buildOperand(expr.operand)
     require(ptr.type.unqualify() is PointerType)
-    ValueOf(newRegister(ptr.type), ptr)
+    LoadInstr(newRegister(ptr.type), ptr)
   }
   UnaryOperators.NOT -> {
     require(expr.operand.type.isScalar())
@@ -75,6 +75,7 @@ private fun IRBuilderContext.buildUnary(expr: UnaryExpression): ResultInstructio
       else -> logger.throwICE("Impossible branch, checked above")
     }
   }
+  UnaryOperators.REF,
   UnaryOperators.PLUS -> logger.throwICE("Impossible branch, checked in caller")
 }
 
@@ -177,10 +178,10 @@ private fun IRBuilderContext.buildAssignment(expr: BinaryExpression) {
   val value = buildOperand(expr.rhs)
   require(expr.lhs.valueType != Expression.ValueType.RVALUE)
   instructions += when (expr.lhs) {
-    is TypedIdentifier -> VarStoreInstr(Variable(expr.lhs), value)
+    is TypedIdentifier -> StoreInstr(Variable(expr.lhs), value)
     is UnaryExpression -> {
       require(expr.lhs.op == UnaryOperators.DEREF)
-      DataStoreInstr(buildOperand(expr.lhs), value)
+      StoreInstr(buildOperand(expr.lhs), value)
     }
     is ArraySubscript -> {
       val target = buildPtrOffset(
@@ -188,11 +189,11 @@ private fun IRBuilderContext.buildAssignment(expr: BinaryExpression) {
           buildOperand(expr.lhs.subscript),
           PointerType(expr.type, emptyList())
       )
-      DataStoreInstr(target, value)
+      StoreInstr(target, value)
     }
     is MemberAccessExpression -> {
       val target = buildMemberPtrAccess(expr.lhs)
-      DataStoreInstr(target, value)
+      StoreInstr(target, value)
     }
     else -> logger.throwICE("Unhandled lvalue")
   }
@@ -219,7 +220,7 @@ private fun IRBuilderContext.buildOffset(
     resType: TypeName
 ): VirtualRegister {
   val offsetPtr = buildPtrOffset(base, offset, PointerType(resType, emptyList()))
-  val deref = ValueOf(newRegister(resType), offsetPtr)
+  val deref = LoadInstr(newRegister(resType), offsetPtr)
   instructions += deref
   return deref.result
 }
@@ -234,8 +235,7 @@ private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression):
     require(unqualType is TagType)
     check(expr.accessOperator.pct == Punctuators.DOT)
     val addrOf = buildAddressOf(expr.target)
-    instructions += addrOf
-    addrOf.result to unqualType
+    addrOf to unqualType
   }
   return when (tagType) {
     is StructureType -> {
@@ -263,11 +263,7 @@ private fun IRBuilderContext.buildMemberAccess(expr: MemberAccessExpression): Vi
     require(unqualType is TagType)
     check(expr.accessOperator.pct == Punctuators.DOT)
     when (unqualType) {
-      is StructureType -> {
-        val addrOf = buildAddressOf(expr.target)
-        instructions += addrOf
-        addrOf.result to unqualType
-      }
+      is StructureType -> buildAddressOf(expr.target) to unqualType
       is UnionType -> buildOperand(expr.target) to unqualType
     }
   }
@@ -293,11 +289,12 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
   is SizeofTypeName -> logger.throwICE("SizeofTypeName was removed")
   is VoidExpression -> logger.throwICE("VoidExpression was removed")
   is IncDecOperation -> logger.throwICE("IncDecOperation was removed")
-  is UnaryExpression -> {
+  is UnaryExpression -> when (expr.op) {
     // Get rid of this no-op
-    if (expr.op == UnaryOperators.PLUS) {
-      buildOperand(expr.operand)
-    } else {
+    UnaryOperators.PLUS -> buildOperand(expr.operand)
+    // This is much easier to deal with directly
+    UnaryOperators.REF -> buildAddressOf(expr.operand)
+    else -> {
       val unary = buildUnary(expr)
       instructions += unary
       unary.result

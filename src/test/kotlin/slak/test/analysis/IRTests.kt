@@ -34,8 +34,8 @@ class IRTests {
     // No virtual register is stored to twice
     assert(registerIds.distinct() == registerIds)
     val last = ir.last()
-    check(last is VarStoreInstr)
-    assertEquals(nameRef("a", SignedIntType), last.target.tid)
+    check(last is StoreInstr)
+    assertEquals(nameRef("a", SignedIntType), (last.target as Variable).tid)
   }
 
   @Test
@@ -43,7 +43,7 @@ class IRTests {
     val ir = createIR(nameRef("a", SignedIntType) add 5)
     val load = ir[0]
     check(load is LoadInstr)
-    assertEquals(nameRef("a", SignedIntType), load.target.tid)
+    assertEquals(nameRef("a", SignedIntType), (load.target as Variable).tid)
   }
 
   @Test
@@ -58,7 +58,7 @@ class IRTests {
     assertEquals(2L, offset.value)
     check(ir[2] is ReinterpretCast)
     val deref = ir[3]
-    check(deref is ValueOf)
+    check(deref is LoadInstr)
     assertEquals(arrayType.elementType, deref.result.type)
   }
 
@@ -67,11 +67,27 @@ class IRTests {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(nameRef("v", arrayType)[2] assign 55)
     val store = ir[3]
-    check(store is DataStoreInstr)
-    assertEquals(ptr(SignedIntType), store.ptr.type)
+    check(store is StoreInstr)
+    assertEquals(ptr(SignedIntType), store.target.type)
     val const = store.value
     check(const is IntConstant)
     assertEquals(55L, const.value)
+  }
+
+  @Test
+  fun `IR Address Of Array Subscript`() {
+    val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
+    val ir = createIR(UnaryOperators.REF[nameRef("v", arrayType)[2]])
+    val ptrAdd = ir[0]
+    check(ptrAdd is IntBinary)
+    assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
+    val offset = ptrAdd.rhs
+    check(offset is IntConstant)
+    assertEquals(2L, offset.value)
+    check(ir[1] is ReinterpretCast)
+    val deref = ir[2]
+    check(deref is LoadInstr)
+    assertEquals(arrayType.elementType, deref.result.type)
   }
 
   @Test
@@ -87,7 +103,7 @@ class IRTests {
     assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
     check(ir[2] is ReinterpretCast)
     val deref = ir[3]
-    check(deref is ValueOf)
+    check(deref is LoadInstr)
     assertEquals(SignedIntType, deref.result.type)
   }
 
@@ -96,18 +112,18 @@ class IRTests {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", structType) dot nameRef("y", SignedIntType))
-    val addressOfStruct = ir[0]
-    check(addressOfStruct is AddressOfVar)
-    assertEquals(nameRef("u", structType), addressOfStruct.variable.tid)
-    val ptrAdd = ir[1]
+    val ptrAdd = ir[0]
     check(ptrAdd is IntBinary)
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
+    val base = ptrAdd.lhs
+    check(base is Variable)
+    assertEquals(nameRef("u", structType), base.tid)
     val offset = ptrAdd.rhs
     check(offset is IntConstant)
     assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
-    check(ir[2] is ReinterpretCast)
-    val deref = ir[3]
-    check(deref is ValueOf)
+    check(ir[1] is ReinterpretCast)
+    val deref = ir[2]
+    check(deref is LoadInstr)
     assertEquals(SignedIntType, deref.result.type)
   }
 
@@ -117,9 +133,9 @@ class IRTests {
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val member = nameRef("u", structType) dot nameRef("y", SignedIntType)
     val ir = createIR(member assign 42)
-    val store = ir[3]
-    check(store is DataStoreInstr)
-    assertEquals(ptr(SignedIntType), store.ptr.type)
+    val store = ir[2]
+    check(store is StoreInstr)
+    assertEquals(ptr(SignedIntType), store.target.type)
     val const = store.value
     check(const is IntConstant)
     assertEquals(42L, const.value)
@@ -142,9 +158,9 @@ class IRTests {
     val unionType = typeNameOf(unionSpec, AbstractDeclarator.blank())
     val member = nameRef("u", unionType) dot nameRef("y", SignedIntType)
     val ir = createIR(member assign 42)
-    val store = ir[2]
-    check(store is DataStoreInstr)
-    assertEquals(ptr(SignedIntType), store.ptr.type)
+    val store = ir[1]
+    check(store is StoreInstr)
+    assertEquals(ptr(SignedIntType), store.target.type)
     val const = store.value
     check(const is IntConstant)
     assertEquals(42L, const.value)

@@ -54,7 +54,7 @@ class SSATests {
   fun `Correct Definition Tracking Test`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
     for ((key, value) in cfg.definitions) {
-      println("$key (${key.tid.id}) defined in \n\t${value.joinToString("\n\t")}")
+      println("$key (${key.id}) defined in \n\t${value.joinToString("\n\t")}")
     }
     val realDefs = cfg.definitions
     assertEquals(3, realDefs.size)
@@ -71,7 +71,7 @@ class SSATests {
       println("$node φ-functions: \n\t${node.phiFunctions.joinToString("\n\t")}")
     }
     fun phis(id: Int) = cfg.nodes.first { it.postOrderId == id }.phiFunctions
-    fun List<PhiInstr>.x() = firstOrNull { it.variable.tid.name == "x" }
+    fun List<PhiInstr>.x() = firstOrNull { it.variable.name == "x" }
     for (i in listOf(4, 0, 1)) assertNotNull(phis(i).x())
     for (i in listOf(5, 2, 3)) assertNull(phis(i).x())
   }
@@ -80,13 +80,14 @@ class SSATests {
   fun `Variable Renaming`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
 
-    fun getLoadTarget(list: List<IRInstruction>?, at: Int) = (list?.get(at) as? LoadInstr)?.target
+    fun getLoadTarget(list: List<IRInstruction>?, at: Int) =
+        (list?.get(at) as? LoadInstr)?.target as? Variable
     fun BasicBlock.getLoadTarget(at: Int) = getLoadTarget(ir, at)
     fun condVarOf(b: BasicBlock) = getLoadTarget((b.terminator as? CondJump)?.cond, 0)
     infix fun String.ver(version: Int) = this to version
     fun assertVarState(expected: Pair<String, Int>, actual: Variable?) {
       assertNotNull(actual)
-      assertEquals(expected.first, actual.tid.name)
+      assertEquals(expected.first, actual.name)
       assertEquals(expected.second, actual.version)
     }
 

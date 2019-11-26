@@ -70,7 +70,7 @@ private fun ICBuilder.instr(encoding: List<AccessType>, vararg operands: Operand
   instructions += X64InstrTemplate(name, operands.toList(), encoding)
 }
 
-private infix fun Operand.compatibleWith(ref: DataReference): Boolean {
+private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (MachineTargetData.x64.sizeOf(ref.type) != size) return false
   return when (ref) {
     is Variable -> {
@@ -86,7 +86,7 @@ private infix fun Operand.compatibleWith(ref: DataReference): Boolean {
   }
 }
 
-fun List<X64InstrTemplate>.match(vararg operands: DataReference): MachineInstruction {
+fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   val instr = firstOrNull {
     it.operands.size == operands.size &&
         operands.zip(it.operands).all { (ref, targetOperand) -> targetOperand compatibleWith ref }

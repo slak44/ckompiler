@@ -1,9 +1,6 @@
 package slak.ckompiler.backend
 
-import slak.ckompiler.analysis.BasicBlock
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.DataReference
-import slak.ckompiler.analysis.IRInstruction
+import slak.ckompiler.analysis.*
 
 interface MachineRegisterClass {
   val id: Int
@@ -46,7 +43,7 @@ inline fun <T : MachineRegister> MutableList<T>.ofClass(
 
 interface InstructionTemplate
 
-data class MachineInstruction(val template: InstructionTemplate, val operands: List<DataReference>)
+data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>)
 
 interface MachineTarget {
   val targetName: String

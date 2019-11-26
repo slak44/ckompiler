@@ -20,7 +20,7 @@ sealed class ResultInstruction : IRInstruction() {
 }
 
 /**
- * A φ-function that's part of a [BasicBlock]. [incoming] stores the list of versions that the φ has
+ * A φ-function for a particular variable. [incoming] stores the list of versions that the φ has
  * to choose from; that is, it stores which values come from which predecessor [BasicBlock].
  */
 data class PhiInstr(
@@ -33,17 +33,12 @@ data class PhiInstr(
 }
 
 /**
- * Stores a [value] to a memory [target].
+ * Stores a [value] to a memory location specified by [target].
+ *
+ * [target]'s type must be [PointerType].
  */
-data class VarStoreInstr(val target: Variable, val value: IRValue) : IRInstruction() {
-  override fun toString() = "store $target = $value"
-}
-
-/**
- * Stores a [value] to a memory location specified by [ptr].
- */
-data class DataStoreInstr(val ptr: IRValue, val value: IRValue) : IRInstruction() {
-  override fun toString() = "store *($ptr) = $value"
+data class StoreInstr(val target: IRValue, val value: IRValue) : IRInstruction() {
+  override fun toString() = "store *($target) = $value"
 }
 
 /**
@@ -61,10 +56,12 @@ data class ConstantRegisterInstr(
 
 /**
  * Loads the value from the specified memory [target].
+ *
+ * [target]'s type must be [PointerType].
  */
 data class LoadInstr(
     override val result: VirtualRegister,
-    val target: Variable
+    val target: IRValue
 ) : ResultInstruction() {
   override fun toString() = "$result = load $target"
 }
@@ -91,36 +88,6 @@ data class ReinterpretCast(
     val operand: IRValue
 ) : ResultInstruction() {
   override fun toString() = "$result = reinterpret $operand as $castTo"
-}
-
-/**
- * Maps to the unary & operator as applied to an identifier.
- *
- * This prevents transforming the [variable] to a [VirtualRegister]; it will always be stored and
- * loaded from memory when necessary.
- */
-data class AddressOfVar(
-    override val result: VirtualRegister,
-    val variable: Variable
-) : ResultInstruction() {
-  override fun toString() = "$result = addressof $variable"
-}
-
-/**
- * Maps to the unary & operator as applied to an lvalue other than an identifier.
- */
-data class AddressOf(
-    override val result: VirtualRegister,
-    val expr: IRValue
-) : ResultInstruction() {
-  override fun toString() = "$result = addressof ($expr)"
-}
-
-/**
- * Maps to the unary * operator.
- */
-data class ValueOf(override val result: VirtualRegister, val ptr: IRValue) : ResultInstruction() {
-  override fun toString() = "$result = dereference $ptr"
 }
 
 /**
@@ -263,20 +230,15 @@ data class FltNeg(
 }
 
 /**
- * Unified superclass for [VirtualRegister]s, [ConstantValue]s, and [Variable]s.
+ * Represents an operand to an IR instruction.
  */
-sealed class DataReference {
+sealed class IRValue {
   /**
    * This label exists for debugging purposes.
    */
   abstract val name: String
   abstract val type: TypeName
 }
-
-/**
- * Represents an operand to an IR instruction.
- */
-sealed class IRValue : DataReference()
 
 typealias RegisterId = Int
 
@@ -329,15 +291,18 @@ data class ReachingDefinition(
 )
 
 /**
- * Wraps a [tid], adds [version]. Represents a non-SSA value in the IR: stores and loads operate on
- * [Variable]s. These values are stored in memory, and SSA conversion tries to convert these to
- * [VirtualRegister]s. The [version] starts as 0, the variable renaming process updates that value,
- * and a pass does the virtual register replacement.
+ * Wraps a [tid], adds [version]. Represents state that is mutable between [BasicBlock]s. Its type
+ * is a pointer to whatever type the [tid] has.
+ *
+ * The [version] starts as 0, and the variable renaming process updates that value. Versioned
+ * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-class Variable(val tid: TypedIdentifier) : DataReference() {
+class Variable(val tid: TypedIdentifier) : IRValue() {
+  val id = tid.id
+
   override val name = tid.name
-  override val type = tid.type
+  override val type = PointerType(tid.type, emptyList())
 
   var version = 0
     private set
