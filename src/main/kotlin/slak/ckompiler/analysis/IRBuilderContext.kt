@@ -348,7 +348,10 @@ fun createInstructions(
   val builder = IRBuilderContext(targetData, registerIds)
   for (expr in exprs) {
     val folded = targetData.doConstantFolding(expr)
-    builder.buildOperand(folded)
+    val lastValue = builder.buildOperand(folded)
+    if (lastValue is ConstantValue) {
+      builder.instructions += ConstantRegisterInstr(builder.newRegister(lastValue.type), lastValue)
+    }
   }
   return builder.instructions
 }

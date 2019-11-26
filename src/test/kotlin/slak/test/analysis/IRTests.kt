@@ -20,7 +20,7 @@ class IRTests {
   fun `IR With Int Constants`() {
     val ir = createIR(1 add (2 mul 3) sub 5)
     for (i in ir) {
-      check(i is IntegralInstruction)
+      check(i is IntegralInstruction || i is ConstantRegisterInstr)
     }
   }
 
