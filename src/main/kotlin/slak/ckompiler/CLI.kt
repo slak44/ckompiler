@@ -379,8 +379,8 @@ class CLI(private val stdinStream: InputStream) :
       val sb = StringBuilder()
       sb.appendln("Interferences in ${function.name}:")
       for ((var1, var2) in findInterferenceIn(cfg)) {
-        val var1Str = "${var1.type.referencedType} ${var1.name} ${var1.id}"
-        val var2Str = "${var2.type.referencedType} ${var2.name} ${var2.id}"
+        val var1Str = "${var1.type} ${var1.name} ${var1.id}"
+        val var2Str = "${var2.type} ${var2.name} ${var2.id}"
         sb.append(var1Str)
         sb.append(" interferes with ")
         sb.append(var2Str)

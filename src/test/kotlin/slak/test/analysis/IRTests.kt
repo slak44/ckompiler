@@ -72,16 +72,15 @@ class IRTests {
   fun `IR Address Of Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(UnaryOperators.REF[nameRef("v", arrayType)[2]])
-    val ptrAdd = ir[0]
+    val ptrAdd = ir[1]
     check(ptrAdd is IntBinary)
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
     val offset = ptrAdd.rhs
     check(offset is IntConstant)
     assertEquals(2L, offset.value)
-    check(ir[1] is ReinterpretCast)
-    val deref = ir[2]
-    check(deref is LoadInstr)
-    assertEquals(arrayType.elementType, deref.result.type)
+    val cast = ir[2]
+    check(cast is ReinterpretCast)
+    assertEquals(ptr(SignedIntType), cast.castTo)
   }
 
   @Test
@@ -111,7 +110,7 @@ class IRTests {
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
     val base = ptrAdd.lhs
     check(base is Variable)
-    assertEquals(nameRef("u", structType), base.tid)
+    assertEquals(nameRef("u", ptr(structType)), base.tid)
     val offset = ptrAdd.rhs
     check(offset is IntConstant)
     assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)

@@ -25,22 +25,6 @@ private fun IRBuilderContext.buildCast(expr: CastExpression): ResultInstruction 
 }
 
 /**
- * Returns a pointer to the given expression. ([IRValue.type] will be [PointerType])
- *
- * C standard: 6.5.3.2
- */
-private fun IRBuilderContext.buildAddressOf(expr: Expression): IRValue {
-  // The constant folder deals with all the LVALUEs
-  return if (expr is TypedIdentifier) {
-    Variable(expr)
-  } else {
-    val ptr = buildOperand(expr)
-    require(ptr.type.unqualify() is PointerType) { "Result of address of (&) must be pointer" }
-    ptr
-  }
-}
-
-/**
  * C standard: 6.5.3.3, 6.5.3.2
  */
 private fun IRBuilderContext.buildUnary(expr: UnaryExpression): ResultInstruction = when (expr.op) {
@@ -174,29 +158,34 @@ private fun IRBuilderContext.buildFunctionCall(expr: FunctionCall): ResultInstru
   }
 }
 
+/**
+ * Returns a pointer to the LVALUE expression of the argument.
+ *
+ * C standard: 6.5.3.2
+ */
+private fun IRBuilderContext.buildLvaluePtr(lvalue: Expression): IRValue = when (lvalue) {
+  is TypedIdentifier -> Variable(lvalue).asPointer()
+  is ArraySubscript -> buildPtrOffset(
+      buildOperand(lvalue.subscripted),
+      buildOperand(lvalue.subscript),
+      PointerType(lvalue.type, emptyList())
+  )
+  is MemberAccessExpression -> buildMemberPtrAccess(lvalue)
+  else -> logger.throwICE("Unhandled lvalue")
+}
+
 private fun IRBuilderContext.buildAssignment(expr: BinaryExpression) {
   val value = buildOperand(expr.rhs)
   require(expr.lhs.valueType != Expression.ValueType.RVALUE)
-  instructions += when (expr.lhs) {
-    is TypedIdentifier -> StoreInstr(Variable(expr.lhs), value)
+  val storeTarget = when (expr.lhs) {
+    is TypedIdentifier -> Variable(expr.lhs)
     is UnaryExpression -> {
       require(expr.lhs.op == UnaryOperators.DEREF)
-      StoreInstr(buildOperand(expr.lhs), value)
+      buildOperand(expr.lhs)
     }
-    is ArraySubscript -> {
-      val target = buildPtrOffset(
-          buildOperand(expr.lhs.subscripted),
-          buildOperand(expr.lhs.subscript),
-          PointerType(expr.type, emptyList())
-      )
-      StoreInstr(target, value)
-    }
-    is MemberAccessExpression -> {
-      val target = buildMemberPtrAccess(expr.lhs)
-      StoreInstr(target, value)
-    }
-    else -> logger.throwICE("Unhandled lvalue")
+    else -> buildLvaluePtr(expr.lhs)
   }
+  instructions += StoreInstr(storeTarget, value)
 }
 
 private fun IRBuilderContext.buildPtrOffset(
@@ -225,6 +214,9 @@ private fun IRBuilderContext.buildOffset(
   return deref.result
 }
 
+/**
+ * Returns a register with a pointer to the target member.
+ */
 private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression): VirtualRegister {
   val unqualType = expr.target.type.unqualify()
   val (base, tagType) = if (unqualType is PointerType) {
@@ -234,7 +226,7 @@ private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression):
   } else {
     require(unqualType is TagType)
     check(expr.accessOperator.pct == Punctuators.DOT)
-    val addrOf = buildAddressOf(expr.target)
+    val addrOf = buildLvaluePtr(expr.target)
     addrOf to unqualType
   }
   return when (tagType) {
@@ -263,7 +255,7 @@ private fun IRBuilderContext.buildMemberAccess(expr: MemberAccessExpression): Vi
     require(unqualType is TagType)
     check(expr.accessOperator.pct == Punctuators.DOT)
     when (unqualType) {
-      is StructureType -> buildAddressOf(expr.target) to unqualType
+      is StructureType -> buildLvaluePtr(expr.target) to unqualType
       is UnionType -> buildOperand(expr.target) to unqualType
     }
   }
@@ -293,7 +285,7 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
     // Get rid of this no-op
     UnaryOperators.PLUS -> buildOperand(expr.operand)
     // This is much easier to deal with directly
-    UnaryOperators.REF -> buildAddressOf(expr.operand)
+    UnaryOperators.REF -> buildLvaluePtr(expr.operand)
     else -> {
       val unary = buildUnary(expr)
       instructions += unary

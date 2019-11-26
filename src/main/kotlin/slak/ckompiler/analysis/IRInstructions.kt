@@ -43,7 +43,7 @@ data class PhiInstr(
 /**
  * Stores a [value] to a memory location specified by [target].
  *
- * [target]'s type must be [PointerType].
+ * [target]'s type must be [PointerType], or the [target] must be a [Variable].
  */
 data class StoreInstr(override val target: IRValue, val value: IRValue) : SideEffectInstruction() {
   override fun toString() = "store *($target) = $value"
@@ -288,7 +288,7 @@ data class StrConstant(val value: String, override val type: TypeName) : Constan
 
 /**
  * The [variable] definition that reaches a point in the CFG, along with information about where it
- * was defined. If [definitionIdx] is -1, the definition occurred in a φ-function.
+ * was defined.
  *
  * @see VariableRenamer.reachingDefs
  */
@@ -299,21 +299,26 @@ data class ReachingDefinition(
 )
 
 /**
- * Wraps a [tid], adds [version]. Represents state that is mutable between [BasicBlock]s. Its type
- * is a pointer to whatever type the [tid] has.
+ * Wraps a [tid], adds [version]. Represents state that is mutable between [BasicBlock]s.
  *
  * The [version] starts as 0, and the variable renaming process updates that value. Versioned
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
 class Variable(val tid: TypedIdentifier) : IRValue() {
-  val id = tid.id
+  val id get() = tid.id
 
-  override val name = tid.name
-  override val type = PointerType(tid.type, emptyList())
+  override val name get() = tid.name
+  override val type get() = tid.type
 
   var version = 0
     private set
+
+  fun asPointer(): Variable {
+    val v = Variable(tid.copy(type = PointerType(tid.type, emptyList())))
+    v.version = version
+    return v
+  }
 
   fun copy(version: Int): Variable {
     val v = Variable(tid)
