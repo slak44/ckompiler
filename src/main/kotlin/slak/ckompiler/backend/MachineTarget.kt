@@ -49,7 +49,19 @@ interface MachineTarget {
   val targetName: String
   val registers: List<MachineRegister>
 
-  fun expandMacroFor(i: IRInstruction): MachineInstruction
+  /**
+   * Instruction selection for one [IRInstruction].
+   */
+  fun expandMacroFor(i: IRInstruction): List<MachineInstruction>
+
+  /**
+   * Runs a pass over a [BasicBlock], and possibly mutates the IR in it.
+   *
+   * Useful for stuff like SSA destruction.
+   *
+   * Is executed before instruction selection, that is, before [expandMacroFor] is called.
+   */
+  fun localIRTransform(bb: BasicBlock)
 
   fun genFunctionPrologue(labels: List<Label>): List<MachineInstruction>
   fun genFunctionEpilogue(labels: List<Label>): List<MachineInstruction>
@@ -62,9 +74,15 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
 }
 
 fun MachineTarget.instructionSelection(cfg: CFG): List<Label> {
-  return cfg.allNodes.map {
-    Label(it, it.instructions.asSequence().map(::expandMacroFor).toList())
-  }
+  return cfg.allNodes
+      .onEach(::localIRTransform)
+      .map { block ->
+        Label(block, block.instructions
+            .asSequence()
+            .flatMap { expandMacroFor(it).asSequence() }
+            .toList()
+        )
+      }
 }
 
 fun MachineTarget.instructionScheduling(labels: List<Label>): List<Label> {
