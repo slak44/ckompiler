@@ -1,19 +1,19 @@
 package slak.ckompiler.backend.x64
 
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.ConstantValue
+import slak.ckompiler.analysis.IRValue
+import slak.ckompiler.analysis.Variable
+import slak.ckompiler.analysis.VirtualRegister
 import slak.ckompiler.backend.InstructionTemplate
 import slak.ckompiler.backend.MachineInstruction
 import slak.ckompiler.backend.MachineRegister
+import slak.ckompiler.backend.VariableUse
 import slak.ckompiler.backend.x64.Imm.*
 import slak.ckompiler.backend.x64.ModRM.*
 
 enum class OperandType {
   REGISTER, MEMORY, REG_OR_MEM
-}
-
-enum class AccessType {
-  READ, WRITE, READ_WRITE
 }
 
 interface Operand {
@@ -43,7 +43,7 @@ data class Register(val register: MachineRegister) : Operand {
 data class X64InstrTemplate(
     override val name: String,
     val operands: List<Operand>,
-    val encoding: List<AccessType>,
+    override val operandUse: List<VariableUse>,
     val implicitOperands: List<MachineRegister> = emptyList(),
     val implicitResults: List<MachineRegister> = emptyList()
 ) : InstructionTemplate
@@ -51,23 +51,23 @@ data class X64InstrTemplate(
 private class ICBuilder(
     val instructions: MutableList<X64InstrTemplate>,
     val name: String,
-    val defaultEncoding: List<AccessType>
+    val defaultUse: List<VariableUse>
 )
 
 private fun instructionClass(
     name: String,
-    defaultEncoding: List<AccessType>,
+    defaultUse: List<VariableUse>,
     block: ICBuilder.() -> Unit
 ): List<X64InstrTemplate> {
-  val builder = ICBuilder(mutableListOf(), name, defaultEncoding)
+  val builder = ICBuilder(mutableListOf(), name, defaultUse)
   builder.block()
   return builder.instructions
 }
 
-private fun ICBuilder.instr(vararg operands: Operand) = instr(defaultEncoding, *operands)
+private fun ICBuilder.instr(vararg operands: Operand) = instr(defaultUse, *operands)
 
-private fun ICBuilder.instr(encoding: List<AccessType>, vararg operands: Operand) {
-  instructions += X64InstrTemplate(name, operands.toList(), encoding)
+private fun ICBuilder.instr(operandUse: List<VariableUse>, vararg operands: Operand) {
+  instructions += X64InstrTemplate(name, operands.toList(), operandUse)
 }
 
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
@@ -95,7 +95,7 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   return MachineInstruction(instr, operands.toList())
 }
 
-val add = instructionClass("add", listOf(AccessType.READ_WRITE, AccessType.READ)) {
+val add = instructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
   instr(RM8, IMM8)
   instr(RM16, IMM16)
   instr(RM32, IMM32)
@@ -116,7 +116,7 @@ val add = instructionClass("add", listOf(AccessType.READ_WRITE, AccessType.READ)
   instr(R64, RM64)
 }
 
-val mov = instructionClass("mov", listOf(AccessType.WRITE, AccessType.READ)) {
+val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM8, R8)
   instr(RM16, R16)
   instr(RM32, R32)

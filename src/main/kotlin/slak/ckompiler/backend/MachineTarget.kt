@@ -1,7 +1,9 @@
 package slak.ckompiler.backend
 
-import slak.ckompiler.analysis.*
-import java.lang.StringBuilder
+import slak.ckompiler.analysis.BasicBlock
+import slak.ckompiler.analysis.CFG
+import slak.ckompiler.analysis.IRInstruction
+import slak.ckompiler.analysis.IRValue
 
 interface MachineRegisterClass {
   val id: Int
@@ -42,8 +44,13 @@ inline fun <T : MachineRegister> MutableList<T>.ofClass(
   builder.block()
 }
 
+enum class VariableUse {
+  DEF, USE, DEF_USE
+}
+
 interface InstructionTemplate {
   val name: String
+  val operandUse: List<VariableUse>
 }
 
 data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>)
