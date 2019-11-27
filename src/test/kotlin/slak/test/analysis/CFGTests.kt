@@ -116,7 +116,7 @@ class CFGTests {
     assertEquals(cfg.nodes.first { it.terminator is ImpossibleJump }, ret)
     assertEquals(
         cfg.startBlock.successors.sortedBy { it.postOrderId },
-        (l - cfg.startBlock - ret).sortedBy { it!!.postOrderId }
+        (l - cfg.startBlock - ret).sortedBy { it.postOrderId }
     )
   }
 

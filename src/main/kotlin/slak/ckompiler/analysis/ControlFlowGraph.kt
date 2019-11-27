@@ -111,7 +111,7 @@ private class VariableRenamer(
     val startBlock: BasicBlock,
     nodes: Set<BasicBlock>
 ) {
-  /** Returns [BasicBlock]s by doing a pre-order traversal of the dominator tree. */
+  /** @see createDomTreePreOrderSequence */
   private val domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
 
   /**
@@ -321,12 +321,16 @@ private fun insertPhiFunctions(definitions: Map<Variable, MutableSet<BasicBlock>
   }
 }
 
-/** @see VariableRenamer.domTreePreorder */
+/**
+ * Orders [BasicBlock]s by doing a pre-order traversal of the dominator tree.
+ *
+ * The size of [doms], [nodes], and the resulting sequence must be identical.
+ */
 fun createDomTreePreOrderSequence(
     doms: DominatorList,
     root: BasicBlock,
     nodes: Set<BasicBlock>
-) = sequence {
+): Sequence<BasicBlock> = sequence {
   val visited = mutableSetOf<BasicBlock>()
   val stack = Stack<BasicBlock>()
   stack.push(root)
