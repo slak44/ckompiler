@@ -41,7 +41,7 @@ data class Register(val register: MachineRegister) : Operand {
 }
 
 data class X64InstrTemplate(
-    val name: String,
+    override val name: String,
     val operands: List<Operand>,
     val encoding: List<AccessType>,
     val implicitOperands: List<MachineRegister> = emptyList(),

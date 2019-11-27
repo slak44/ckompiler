@@ -1,6 +1,7 @@
 package slak.ckompiler.backend
 
 import slak.ckompiler.analysis.*
+import java.lang.StringBuilder
 
 interface MachineRegisterClass {
   val id: Int
@@ -41,7 +42,9 @@ inline fun <T : MachineRegister> MutableList<T>.ofClass(
   builder.block()
 }
 
-interface InstructionTemplate
+interface InstructionTemplate {
+  val name: String
+}
 
 data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>)
 
@@ -90,4 +93,13 @@ fun MachineTarget.instructionScheduling(labels: List<Label>): List<Label> {
   return labels
 }
 
-data class Label(val bb: BasicBlock, val instructions: List<MachineInstruction>)
+data class Label(val bb: BasicBlock, val instructions: List<MachineInstruction>) {
+  override fun toString(): String {
+    var str = "Label[bb=$bb"
+    str += instructions.joinToString(separator = "\n\t", prefix = "\n\t", postfix = "\n") {
+      "${it.template.name} " + it.operands.joinToString(", ")
+    }
+    str += "]"
+    return str
+  }
+}
