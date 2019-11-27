@@ -74,7 +74,7 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
 }
 
 fun MachineTarget.instructionSelection(cfg: CFG): List<Label> {
-  return cfg.allNodes
+  return cfg.nodes
       .onEach(::localIRTransform)
       .map { block ->
         Label(block, block.instructions
