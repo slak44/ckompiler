@@ -5,6 +5,8 @@ import slak.ckompiler.parser.*
 /**
  * Machine and ISA-dependent information. Used to generate stuff like stdint/stddef, for sizeof, or
  * for codegen.
+ *
+ * FIXME: handle alignment requirements
  */
 data class MachineTargetData(
     val ptrSizeBytes: Int,

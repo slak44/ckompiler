@@ -5,7 +5,7 @@ import slak.ckompiler.analysis.IntBinary
 import slak.ckompiler.analysis.IntConstant
 import slak.ckompiler.analysis.IntegralBinaryOps
 import slak.ckompiler.analysis.VirtualRegister
-import slak.ckompiler.backend.instructionSelection
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.Imm
 import slak.ckompiler.backend.x64.ModRM
 import slak.ckompiler.backend.x64.X64InstrTemplate
@@ -16,6 +16,7 @@ import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 class X64Tests {
   @Test
@@ -38,9 +39,9 @@ class X64Tests {
   @Test
   fun `Instruction Selection On CFG`() {
     val cfg = prepareCFG(resource("addsAndMovs.c"), source)
-    val labels = X64Target.instructionSelection(cfg)
-    for (label in labels) {
-      println(label)
+    val iselLists = X64Target.instructionSelection(cfg)
+    for (list in iselLists) {
+      println(list.value.stringify())
     }
   }
 }

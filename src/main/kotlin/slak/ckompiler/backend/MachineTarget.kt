@@ -1,13 +1,20 @@
 package slak.ckompiler.backend
 
-import slak.ckompiler.analysis.BasicBlock
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.IRInstruction
-import slak.ckompiler.analysis.IRValue
+import slak.ckompiler.MachineTargetData
+import slak.ckompiler.analysis.*
+import slak.ckompiler.parser.TypeName
 
 interface MachineRegisterClass {
   val id: Int
   val displayName: String
+}
+
+/**
+ * A generic "register" class used as a placeholder for values that do not fit in any registers.
+ */
+object ForcedSpill : MachineRegisterClass {
+  override val id = -1
+  override val displayName = "<forced spill>"
 }
 
 /**
@@ -55,9 +62,18 @@ interface InstructionTemplate {
 
 data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>)
 
+fun List<MachineInstruction>.stringify(): String {
+  return joinToString(separator = "\n", prefix = "\n", postfix = "\n") {
+    "${it.template.name} " + it.operands.joinToString(", ")
+  }
+}
+
 interface MachineTarget {
+  val machineTargetData: MachineTargetData
   val targetName: String
   val registers: List<MachineRegister>
+
+  fun registerClassOf(type: TypeName): MachineRegisterClass
 
   /**
    * Instruction selection for one [IRInstruction].
@@ -73,8 +89,8 @@ interface MachineTarget {
    */
   fun localIRTransform(bb: BasicBlock)
 
-  fun genFunctionPrologue(labels: List<Label>): List<MachineInstruction>
-  fun genFunctionEpilogue(labels: List<Label>): List<MachineInstruction>
+  fun genFunctionPrologue(lists: ISelMap): List<MachineInstruction>
+  fun genFunctionEpilogue(lists: ISelMap): List<MachineInstruction>
 }
 
 fun MachineTarget.registerByName(name: String): MachineRegister {
@@ -83,30 +99,26 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
   }
 }
 
-fun MachineTarget.instructionSelection(cfg: CFG): List<Label> {
+/**
+ * [BasicBlock]s and the [MachineInstruction]s created from the [BasicBlock.instructions].
+ *
+ * @see MachineTarget.instructionSelection
+ */
+typealias ISelMap = Map<BasicBlock, List<MachineInstruction>>
+
+fun MachineTarget.instructionSelection(cfg: CFG): ISelMap {
   return cfg.nodes
       .onEach(::localIRTransform)
-      .map { block ->
-        Label(block, block.instructions
+      .associateWith { block ->
+        block.instructions
             .asSequence()
+            .filter { it !is PhiInstr }
             .flatMap { expandMacroFor(it).asSequence() }
             .toList()
-        )
       }
 }
 
-fun MachineTarget.instructionScheduling(labels: List<Label>): List<Label> {
+fun MachineTarget.instructionScheduling(lists: ISelMap): ISelMap {
   // FIXME: deal with this sometime
-  return labels
-}
-
-data class Label(val bb: BasicBlock, val instructions: List<MachineInstruction>) {
-  override fun toString(): String {
-    var str = "Label[bb=$bb"
-    str += instructions.joinToString(separator = "\n\t", prefix = "\n\t", postfix = "\n") {
-      "${it.template.name} " + it.operands.joinToString(", ")
-    }
-    str += "]"
-    return str
-  }
+  return lists
 }

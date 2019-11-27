@@ -248,6 +248,14 @@ sealed class IRValue {
   abstract val type: TypeName
 }
 
+/**
+ * Spilled virtual. Represents an abstract memory location (probably on the stack).
+ */
+data class MemoryReference(val id: Int, override val type: TypeName) : IRValue() {
+  override val name = "memory ref$id"
+  override fun toString() = name
+}
+
 typealias RegisterId = Int
 
 /**

@@ -1,13 +1,32 @@
 package slak.ckompiler.backend.x64
 
+import org.apache.logging.log4j.LogManager
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.Label
-import slak.ckompiler.backend.MachineInstruction
-import slak.ckompiler.backend.MachineTarget
+import slak.ckompiler.backend.*
+import slak.ckompiler.parser.*
+import slak.ckompiler.throwICE
+import java.lang.IllegalStateException
 
 object X64Target : MachineTarget {
+  private val logger = LogManager.getLogger()
+
+  override val machineTargetData = MachineTargetData.x64
   override val targetName = "x64"
   override val registers = x64Registers
+
+  override fun registerClassOf(type: TypeName): MachineRegisterClass = when (type) {
+    VoidType, ErrorType -> logger.throwICE("ErrorType cannot make it to codegen")
+    is BitfieldType -> TODO("no idea what to do with this")
+    is QualifiedType -> registerClassOf(type.unqualified)
+    is ArrayType, is FunctionType -> registerClassOf(type.normalize())
+    is PointerType -> X64RegisterClass.INTEGER
+    is StructureType -> ForcedSpill
+    // FIXME: maybe get each member class and do some magic?
+    is UnionType -> ForcedSpill
+    is IntegralType -> X64RegisterClass.INTEGER
+    is FloatingType -> X64RegisterClass.SSE
+  }
 
   override fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is LoadInstr -> listOf(mov.match(i.result, i.target))
@@ -51,15 +70,13 @@ object X64Target : MachineTarget {
   }
 
   override fun localIRTransform(bb: BasicBlock) {
-    // FIXME: this is a very poor way to "deconstruct" SSA:
-    bb.phiFunctions.clear()
   }
 
-  override fun genFunctionPrologue(labels: List<Label>): List<MachineInstruction> {
+  override fun genFunctionPrologue(lists: ISelMap): List<MachineInstruction> {
     TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
   }
 
-  override fun genFunctionEpilogue(labels: List<Label>): List<MachineInstruction> {
+  override fun genFunctionEpilogue(lists: ISelMap): List<MachineInstruction> {
     TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
   }
 }

@@ -1,10 +1,7 @@
 package slak.ckompiler.backend.x64
 
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.ConstantValue
-import slak.ckompiler.analysis.IRValue
-import slak.ckompiler.analysis.Variable
-import slak.ckompiler.analysis.VirtualRegister
+import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.InstructionTemplate
 import slak.ckompiler.backend.MachineInstruction
 import slak.ckompiler.backend.MachineRegister
@@ -73,10 +70,10 @@ private fun ICBuilder.instr(operandUse: List<VariableUse>, vararg operands: Oper
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (MachineTargetData.x64.sizeOf(ref.type) != size) return false
   return when (ref) {
-    is Variable -> {
+    is MemoryReference -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
-    is VirtualRegister -> {
+    is VirtualRegister, is Variable -> {
       this is Register ||
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
     }
