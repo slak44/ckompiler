@@ -33,25 +33,25 @@ class IRTests {
   }
 
   @Test
-  fun `IR Variable Load`() {
+  fun `IR Variable Use`() {
     val ir = createIR(nameRef("a", SignedIntType) add 5)
     val load = ir[0]
-    check(load is LoadInstr)
-    assertEquals(nameRef("a", SignedIntType), (load.target as Variable).tid)
+    check(load is IntBinary)
+    assertEquals(nameRef("a", SignedIntType), (load.lhs as Variable).tid)
   }
 
   @Test
   fun `IR Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(nameRef("v", arrayType)[2])
-    val ptrAdd = ir[1]
+    val ptrAdd = ir[0]
     check(ptrAdd is IntBinary)
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
     val offset = ptrAdd.rhs
     check(offset is IntConstant)
     assertEquals(2L, offset.value)
-    check(ir[2] is ReinterpretCast)
-    val deref = ir[3]
+    check(ir[1] is ReinterpretCast)
+    val deref = ir[2]
     check(deref is LoadInstr)
     assertEquals(arrayType.elementType, deref.result.type)
   }
@@ -60,7 +60,7 @@ class IRTests {
   fun `IR Store To Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(nameRef("v", arrayType)[2] assign 55)
-    val store = ir[3]
+    val store = ir.last()
     check(store is StoreInstr)
     assertEquals(ptr(SignedIntType), store.target.type)
     val const = store.value
@@ -72,13 +72,13 @@ class IRTests {
   fun `IR Address Of Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(UnaryOperators.REF[nameRef("v", arrayType)[2]])
-    val ptrAdd = ir[1]
+    val ptrAdd = ir[0]
     check(ptrAdd is IntBinary)
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
     val offset = ptrAdd.rhs
     check(offset is IntConstant)
     assertEquals(2L, offset.value)
-    val cast = ir[2]
+    val cast = ir[1]
     check(cast is ReinterpretCast)
     assertEquals(ptr(SignedIntType), cast.castTo)
   }
@@ -88,14 +88,14 @@ class IRTests {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", ptr(structType)) arrow nameRef("y", SignedIntType))
-    val ptrAdd = ir[1]
+    val ptrAdd = ir[0]
     check(ptrAdd is IntBinary)
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
     val offset = ptrAdd.rhs
     check(offset is IntConstant)
     assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
-    check(ir[2] is ReinterpretCast)
-    val deref = ir[3]
+    check(ir[1] is ReinterpretCast)
+    val deref = ir[2]
     check(deref is LoadInstr)
     assertEquals(SignedIntType, deref.result.type)
   }
@@ -139,7 +139,7 @@ class IRTests {
     val unionSpec = union("name", int declare "x", double declare "y").toSpec()
     val unionType = typeNameOf(unionSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", unionType) dot nameRef("y", DoubleType))
-    val castToTargetType = ir[1]
+    val castToTargetType = ir[0]
     check(castToTargetType is ReinterpretCast)
     assertEquals(unionType, castToTargetType.operand.type)
     assertEquals(DoubleType, castToTargetType.castTo)

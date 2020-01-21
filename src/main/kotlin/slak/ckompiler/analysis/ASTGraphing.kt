@@ -11,7 +11,7 @@ fun graph(cfg: CFG) {
   for (p in cfg.f.parameters) {
     cfg.definitions[Variable(p)] = mutableSetOf(cfg.startBlock)
   }
-  GraphingContext(root = cfg, registerIds = IdCounter()).graphCompound(cfg.startBlock, cfg.f.block)
+  GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
   for (block in cfg.allNodes) {
     for (instr in block.instructions) {
       if (instr !is StoreInstr || instr.target !is Variable) continue
@@ -30,7 +30,6 @@ fun graph(cfg: CFG) {
  */
 private data class GraphingContext(
     val root: CFG,
-    val registerIds: IdCounter,
     val currentLoopBlock: BasicBlock? = null,
     val afterBlock: BasicBlock? = null,
     val cases: MutableMap<ExprConstantNode, BasicBlock> = mutableMapOf(),
@@ -102,14 +101,13 @@ private fun GraphingContext.transformInitializer(
     val convertedInit = convertToCommon(commonType, init.expr)
     val initAssign = BinaryExpression(BinaryOperators.ASSIGN, ident.tid, convertedInit, exprType)
         .withRange(ident.tid..init.expr)
-    graphExprRegular(root, registerIds, current, initAssign)
+    graphExprRegular(root, current, initAssign)
   }
 //  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
 
 private fun processExpression(
     root: CFG,
-    registerIds: IdCounter,
     current: BasicBlock,
     expr: Expression
 ): Pair<BasicBlock, List<Expression>> {
@@ -118,19 +116,19 @@ private fun processExpression(
     it is BinaryExpression && it.op == BinaryOperators.ASSIGN && it.rhs is TernaryConditional
   }.map { it as BinaryExpression }
   val resBlock = ternaries.fold(current) { block, (_, lhs, rhs) ->
-    graphTernary(root, registerIds, block, lhs as TypedIdentifier, rhs as TernaryConditional)
+    graphTernary(root, block, lhs as TypedIdentifier, rhs as TernaryConditional)
   }
   return resBlock to sequential - ternaries
 }
 
 private fun graphExprRegular(
     root: CFG,
-    registerIds: IdCounter,
     current: BasicBlock,
     expr: Expression
 ): BasicBlock {
-  val (nextBlock, exprs) = processExpression(root, registerIds, current, expr)
-  val instrs = createInstructions(exprs.filterNot { it is Terminal }, root.targetData, registerIds)
+  val (nextBlock, exprs) = processExpression(root, current, expr)
+  val instrs =
+      createInstructions(exprs.filterNot { it is Terminal }, root.targetData, root.registerIds)
   nextBlock.ir += instrs
   nextBlock.src += exprs
   return nextBlock
@@ -138,19 +136,17 @@ private fun graphExprRegular(
 
 private fun graphExprTerm(
     root: CFG,
-    registerIds: IdCounter,
     current: BasicBlock,
     cond: Expression
 ): Pair<BasicBlock, List<IRInstruction>> {
-  val (nextBlock, exprs) = processExpression(root, registerIds, current, cond)
-  val instrs = createInstructions(exprs, root.targetData, registerIds)
+  val (nextBlock, exprs) = processExpression(root, current, cond)
+  val instrs = createInstructions(exprs, root.targetData, root.registerIds)
   nextBlock.src += exprs
   return nextBlock to instrs
 }
 
 private fun graphTernary(
     root: CFG,
-    registerIds: IdCounter,
     current: BasicBlock,
     target: TypedIdentifier,
     ternary: TernaryConditional
@@ -160,14 +156,14 @@ private fun graphTernary(
 
   val assignTrue = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.success, target.type)
       .withRange(ternary.success)
-  val ifNext = graphExprRegular(root, registerIds, ifBlock, assignTrue)
+  val ifNext = graphExprRegular(root, ifBlock, assignTrue)
 
   val assignFalse = BinaryExpression(BinaryOperators.ASSIGN, target, ternary.failure, target.type)
       .withRange(ternary.failure)
-  val elseNext = graphExprRegular(root, registerIds, elseBlock, assignFalse)
+  val elseNext = graphExprRegular(root, elseBlock, assignFalse)
 
   val afterIfBlock = root.newBlock()
-  val (currentNext, condIr) = graphExprTerm(root, registerIds, current, ternary.cond)
+  val (currentNext, condIr) = graphExprTerm(root, current, ternary.cond)
   currentNext.terminator = CondJump(condIr, ternary.cond, ifBlock, elseBlock)
 
   ifNext.terminator = UncondJump(afterIfBlock)
@@ -182,7 +178,7 @@ private fun GraphingContext.graphStatement(
 ): BasicBlock = when (s) {
   is ErrorStatement,
   is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
-  is Expression -> graphExprRegular(root, registerIds, current, s)
+  is Expression -> graphExprRegular(root, current, s)
   is Noop -> {
     // Intentionally left empty
     current
@@ -194,7 +190,7 @@ private fun GraphingContext.graphStatement(
     val ifNext = graphStatement(scope, ifBlock, s.success)
     val elseNext = s.failure?.let { graphStatement(scope, elseBlock, it) }
     val afterIfBlock = root.newBlock()
-    val (currentNext, condIr) = graphExprTerm(root, registerIds, current, s.cond)
+    val (currentNext, condIr) = graphExprTerm(root, current, s.cond)
     currentNext.terminator =
         CondJump(condIr, s.cond, ifBlock, if (elseNext != null) elseBlock else afterIfBlock)
     ifNext.terminator = UncondJump(afterIfBlock)
@@ -218,7 +214,7 @@ private fun GraphingContext.graphStatement(
   is SwitchStatement -> {
     val switchAfterBlock = root.newBlock()
     val switchInnerBlock = root.newBlock()
-    val (currentNext, condIr) = graphExprTerm(root, registerIds, current, s.controllingExpr)
+    val (currentNext, condIr) = graphExprTerm(root, current, s.controllingExpr)
     with(copy(
         afterBlock = switchAfterBlock,
         currentDefaultBlock = switchAfterBlock
@@ -236,7 +232,7 @@ private fun GraphingContext.graphStatement(
     val afterLoopBlock = root.newBlock()
     val loopContext = copy(currentLoopBlock = loopBlock, afterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
-    val (loopHeaderNext, condIr) = graphExprTerm(root, registerIds, loopHeader, s.cond)
+    val (loopHeaderNext, condIr) = graphExprTerm(root, loopHeader, s.cond)
     loopHeaderNext.terminator = CondJump(condIr, s.cond, loopBlock, afterLoopBlock)
     current.terminator = UncondJump(loopHeader)
     loopNext.terminator = UncondJump(loopHeader)
@@ -248,7 +244,7 @@ private fun GraphingContext.graphStatement(
     val loopContext = copy(currentLoopBlock = loopBlock, afterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     current.terminator = UncondJump(loopBlock)
-    val (loopNextNext, condIr) = graphExprTerm(root, registerIds, loopNext, s.cond)
+    val (loopNextNext, condIr) = graphExprTerm(root, loopNext, s.cond)
     loopNextNext.terminator = CondJump(condIr, s.cond, loopBlock, afterLoopBlock)
     afterLoopBlock
   }
@@ -270,7 +266,7 @@ private fun GraphingContext.graphStatement(
       // No for condition means unconditional jump to loop block
       loopHeader.terminator = UncondJump(loopBlock)
     } else {
-      val (loopHeaderNext, condIr) = graphExprTerm(root, registerIds, loopHeader, s.cond)
+      val (loopHeaderNext, condIr) = graphExprTerm(root, loopHeader, s.cond)
       loopHeaderNext.terminator = CondJump(condIr, s.cond, loopBlock, afterLoopBlock)
     }
     loopNext.terminator = UncondJump(loopHeader)
@@ -297,7 +293,7 @@ private fun GraphingContext.graphStatement(
     if (s.expr == null) {
       current.terminator = ImpossibleJump(deadCodeBlock, null, null)
     } else {
-      val (currentNext, returnIr) = graphExprTerm(root, registerIds, current, s.expr)
+      val (currentNext, returnIr) = graphExprTerm(root, current, s.expr)
       currentNext.terminator = ImpossibleJump(deadCodeBlock, returnIr, s.expr)
     }
     deadCodeBlock

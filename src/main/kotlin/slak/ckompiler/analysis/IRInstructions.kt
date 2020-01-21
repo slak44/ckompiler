@@ -250,6 +250,8 @@ sealed class IRValue {
 
 /**
  * Spilled virtual. Represents an abstract memory location (probably on the stack).
+ *
+ * [type] is the type of the value, not a pointer to it.
  */
 data class MemoryReference(val id: Int, override val type: TypeName) : IRValue() {
   override val name = "memory ref$id"
@@ -266,7 +268,7 @@ data class VirtualRegister(
     val id: RegisterId,
     override val type: TypeName
 ) : IRValue() {
-  override val name = "reg$id"
+  override val name = "vreg$id"
   override fun toString() = name
 }
 

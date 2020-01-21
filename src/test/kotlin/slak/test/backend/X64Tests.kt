@@ -5,7 +5,9 @@ import slak.ckompiler.analysis.IntBinary
 import slak.ckompiler.analysis.IntConstant
 import slak.ckompiler.analysis.IntegralBinaryOps
 import slak.ckompiler.analysis.VirtualRegister
-import slak.ckompiler.backend.*
+import slak.ckompiler.backend.instructionSelection
+import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.stringify
 import slak.ckompiler.backend.x64.Imm
 import slak.ckompiler.backend.x64.ModRM
 import slak.ckompiler.backend.x64.X64InstrTemplate
@@ -16,7 +18,6 @@ import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 class X64Tests {
   @Test
@@ -43,5 +44,21 @@ class X64Tests {
     for (list in iselLists) {
       println(list.value.stringify())
     }
+  }
+
+  @Test
+  fun `Register Allocation`() {
+    val cfg = prepareCFG(resource("interference.c"), source)
+    val iselLists = X64Target.instructionSelection(cfg)
+    val result = X64Target.regAlloc(cfg, iselLists)
+    for ((block, list) in iselLists) {
+      println(block)
+      println(list.stringify())
+      println()
+    }
+    for ((value, register) in result) {
+      println("allocate $value to $register")
+    }
+    assertEquals(3, result.values.distinct().size)
   }
 }

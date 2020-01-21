@@ -40,6 +40,9 @@ class CFG(
    */
   val definitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
 
+  val memoryIds = IdCounter()
+  val registerIds = IdCounter()
+
   init {
     graph(this)
     nodes = if (forceAllNodes) {
@@ -212,12 +215,47 @@ private class VariableRenamer(
     traceVarDefinitionRename(bb, def, vPrime)
   }
 
+  // FIXME: simplify this disaster
+  private fun findVariableUses(i: IRInstruction): List<Variable> {
+    val vars = mutableListOf<Variable>()
+    when (i) {
+      is ConstantRegisterInstr, is PhiInstr -> {
+        // Do nothing
+      }
+      is LoadInstr -> if (i.target is Variable) vars += i.target
+      is StructuralCast -> if (i.operand is Variable) vars += i.operand
+      is ReinterpretCast -> if (i.operand is Variable) vars += i.operand
+      is NamedCall -> vars += i.args.filterIsInstance(Variable::class.java)
+      is IndirectCall -> vars += i.args.filterIsInstance(Variable::class.java)
+      is IntBinary -> {
+        if (i.lhs is Variable) vars += i.lhs
+        if (i.rhs is Variable) vars += i.rhs
+      }
+      is IntCmp -> {
+        if (i.lhs is Variable) vars += i.lhs
+        if (i.rhs is Variable) vars += i.rhs
+      }
+      is IntInvert -> if (i.operand is Variable) vars += i.operand
+      is IntNeg -> if (i.operand is Variable) vars += i.operand
+      is FltBinary -> {
+        if (i.lhs is Variable) vars += i.lhs
+        if (i.rhs is Variable) vars += i.rhs
+      }
+      is FltCmp -> {
+        if (i.lhs is Variable) vars += i.lhs
+        if (i.rhs is Variable) vars += i.rhs
+      }
+      is FltNeg -> if (i.operand is Variable) vars += i.operand
+      is StoreInstr -> if (i.value is Variable) vars += i.value
+    }
+    return vars
+  }
+
   /** @see variableRenaming */
   private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
     for ((idx, i) in BB.instructions.withIndex()) {
       val def = if (i is SideEffectInstruction) i.target else null
-      if (i is LoadInstr) {
-        val variable = i.target as? Variable ?: continue
+      for (variable in findVariableUses(i)) {
         val oldReachingVar = variable.reachingDef?.variable
         updateReachingDef(variable, BB, idx)
         variable.replaceWith(variable.reachingDef)

@@ -1,30 +1,46 @@
 package slak.ckompiler.backend
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
+import slak.ckompiler.throwICE
 
+private val logger = LogManager.getLogger()
+
+typealias ValueIndex = Int
+
+/**
+ * Maps [IRValue]s to indices.
+ */
 typealias ValueMapping = List<IRValue>
-typealias AdjLists = List<List<Int>>
+
+typealias AdjLists = List<List<ValueIndex>>
+
+data class InterferenceGraph(
+    val source: ISelMap,
+    val adjLists: AdjLists,
+    val valueMapping: ValueMapping
+)
 
 /**
  * Create live ranges for all the values in the program, and create the interference graph.
- *
- * @return the adjacency lists that make up the graph, and the mapping of [IRValue]s to ints
  */
-private fun Sequence<BasicBlock>.interferenceGraph(lists: ISelMap): Pair<ValueMapping, AdjLists> {
-  val defs = mutableMapOf<IRValue, Int>()
-  val uses = mutableMapOf<IRValue, Int>()
+private fun Sequence<BasicBlock>.interferenceGraph(lists: ISelMap): InterferenceGraph {
   val irValCounter = IdCounter()
-  val valueMap = mutableMapOf<IRValue, Int>().withDefault { irValCounter() }
-  val interference = mutableMapOf<Int, MutableList<Int>>().withDefault { mutableListOf() }
+  val valueMap = mutableMapOf<IRValue, ValueIndex>()
+  val interference = mutableMapOf<ValueIndex, MutableList<ValueIndex>>()
   for (block in this) {
+    val defs = mutableMapOf<IRValue, Int>()
+    val uses = mutableMapOf<IRValue, Int>()
     for ((idx, mi) in lists.getValue(block).withIndex()) {
       for ((operand, operandUse) in mi.operands.zip(mi.template.operandUse)) {
         if (operand is ConstantValue) continue
-        if (operandUse == VariableUse.DEF || operandUse == VariableUse.DEF_USE) {
-          defs[operand] = idx
-        }
-        if (operandUse == VariableUse.USE || operandUse == VariableUse.DEF_USE) {
-          uses[operand] = idx
+        when (operandUse) {
+          VariableUse.DEF -> defs[operand] = idx + 1
+          VariableUse.USE -> uses[operand] = idx
+          VariableUse.DEF_USE -> {
+            defs[operand] = idx
+            uses[operand] = idx
+          }
         }
       }
     }
@@ -35,9 +51,14 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: ISelMap): Pair<ValueMa
       uses[variable] = Int.MAX_VALUE
     }
     for (value in defs.keys) {
+      val valueId = irValCounter()
+      valueMap[value] = valueId
+      interference[valueId] = mutableListOf()
+    }
+    for (value in defs.keys) {
       val valueId = valueMap.getValue(value)
       for (otherValue in defs.keys) {
-        if (value === otherValue) continue
+        if (value === otherValue || value !in uses || otherValue !in uses) continue
         val valRange = defs.getValue(value)..uses.getValue(value)
         val otherRange = defs.getValue(otherValue)..uses.getValue(otherValue)
         if (valRange.intersect(otherRange).isNotEmpty()) {
@@ -47,12 +68,10 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: ISelMap): Pair<ValueMa
         }
       }
     }
-    defs.clear()
-    uses.clear()
   }
   val adjLists = interference.entries.sortedBy { it.key }.map { it.value }
   val valueMapping = valueMap.entries.sortedBy { it.value }.map { it.key }
-  return valueMapping to adjLists
+  return InterferenceGraph(lists, adjLists, valueMapping)
 }
 
 private fun MachineTarget.matchValueToRegister(
@@ -68,19 +87,40 @@ private fun MachineTarget.matchValueToRegister(
   }
 }
 
-private fun pickSpill(adjLists: AdjLists, valueMapping: ValueMapping): IRValue {
-  TODO()
+private fun pickSpill(
+    graph: InterferenceGraph,
+    alreadySpilled: List<IRValue>
+): IRValue {
+  // FIXME: this is an initial placeholder implementation
+  return (graph.valueMapping - alreadySpilled).first()
 }
 
-private fun insertSpillCode(target: IRValue, iselLists: ISelMap): ISelMap {
-  TODO()
+private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph): ISelMap {
+  val memoryLoc = MemoryReference(cfg.memoryIds(), target.type)
+  val newMap = mutableMapOf<BasicBlock, List<MachineInstruction>>()
+  for ((_, instrs) in graph.source) {
+    val newInstrs = mutableListOf<MachineInstruction>()
+    for (i in instrs) {
+      val targetIdx = i.operands.indexOf(target)
+      if (targetIdx == -1) {
+        newInstrs += i
+      } else {
+        val newOperands = i.operands.toMutableList()
+        newOperands[targetIdx] = memoryLoc
+        newInstrs += i.copy(operands = newOperands)
+      }
+    }
+  }
+  return newMap
 }
 
 fun MachineTarget.regAlloc(cfg: CFG, iselLists: ISelMap): Map<IRValue, MachineRegister> {
   val seq = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
+  val spilled = mutableListOf<IRValue>()
   var instrs = iselLists
   while (true) {
-    val (valueMapping, adjLists) = seq.interferenceGraph(instrs)
+    val graph = seq.interferenceGraph(instrs)
+    val (_, adjLists, valueMapping) = graph
     val peo = maximumCardinalitySearch(adjLists)
     val coloring = greedyColoring(adjLists, peo, emptyMap()) { node, forbiddenRegisters ->
       matchValueToRegister(valueMapping[node], registers, forbiddenRegisters)
@@ -88,7 +128,11 @@ fun MachineTarget.regAlloc(cfg: CFG, iselLists: ISelMap): Map<IRValue, MachineRe
     if (coloring != null) {
       return coloring.withIndex().associate { (node, register) -> valueMapping[node] to register }
     }
-    val toSpill = pickSpill(adjLists, valueMapping)
-    instrs = insertSpillCode(toSpill, instrs)
+    if (spilled.size == valueMapping.size) {
+      logger.throwICE("Spilled all the values but still can't color the graph")
+    }
+    val toSpill = pickSpill(graph, spilled)
+    spilled += toSpill
+    instrs = insertSpillCode(cfg, toSpill, graph)
   }
 }

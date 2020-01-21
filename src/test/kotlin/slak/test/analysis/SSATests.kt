@@ -80,11 +80,16 @@ class SSATests {
   fun `Variable Renaming`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
 
-    fun getLoadTarget(list: List<IRInstruction>?, at: Int) =
-        (list?.get(at) as? LoadInstr)?.target as? Variable
-    fun BasicBlock.getLoadTarget(at: Int) = getLoadTarget(ir, at)
-    fun condVarOf(b: BasicBlock) = getLoadTarget((b.terminator as? CondJump)?.cond, 0)
+    fun getStoreValue(list: List<IRInstruction>?, at: Int) =
+        (list?.get(at) as? StoreInstr)?.value as? Variable
+
+    fun BasicBlock.getStoreValue(at: Int) = getStoreValue(ir, at)
+
+    fun condVarOf(b: BasicBlock) =
+        ((b.terminator as? CondJump)?.cond?.get(0) as? IntCmp)?.lhs as? Variable
+
     infix fun String.ver(version: Int) = this to version
+
     fun assertVarState(expected: Pair<String, Int>, actual: Variable?) {
       assertNotNull(actual)
       assertEquals(expected.first, actual.name)
@@ -95,18 +100,18 @@ class SSATests {
     assertVarState("x" ver 1, condVarOf(firstBlock))
 
     val blockFail1 = firstBlock.successors[1]
-    assertVarState("x" ver 1, blockFail1.getLoadTarget(0))
-    assertVarState("y" ver 1, blockFail1.getLoadTarget(2))
-    assertVarState("tmp" ver 2, blockFail1.getLoadTarget(4))
+    assertVarState("x" ver 1, blockFail1.getStoreValue(0))
+    assertVarState("y" ver 1, blockFail1.getStoreValue(1))
+    assertVarState("tmp" ver 2, blockFail1.getStoreValue(2))
     assertVarState("x" ver 3, condVarOf(blockFail1))
 
     val blockFail2 = blockFail1.successors[1]
-    assertVarState("x" ver 4, blockFail2.getLoadTarget(0))
-    assertVarState("y" ver 4, blockFail2.getLoadTarget(1))
+    assertVarState("x" ver 4, (blockFail2.ir[0] as? IntBinary)?.lhs as? Variable)
+    assertVarState("y" ver 4, (blockFail2.ir[0] as? IntBinary)?.rhs as? Variable)
     assertVarState("x" ver 5, condVarOf(blockFail2))
 
-    val returnBlock = blockFail2.successors[1]
-    val retVal = getLoadTarget((returnBlock.terminator as? ImpossibleJump)?.returned, 0)
+    val returnBlockImpJmp = blockFail2.successors[1].terminator as? ImpossibleJump
+    val retVal = (returnBlockImpJmp?.returned?.get(0) as? LoadInstr)?.target as? Variable
     assertVarState("x" ver 6, retVal)
   }
 }

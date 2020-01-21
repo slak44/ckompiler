@@ -17,6 +17,11 @@ class X64Register(
     override val aliases: List<RegisterAlias>
 ) : MachineRegister {
   override val id = ids()
+
+  override fun toString(): String {
+    return "register $regName"
+  }
+
   companion object {
     private val ids = IdCounter()
   }

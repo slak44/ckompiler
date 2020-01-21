@@ -63,7 +63,7 @@ interface InstructionTemplate {
 data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>)
 
 fun List<MachineInstruction>.stringify(): String {
-  return joinToString(separator = "\n", prefix = "\n", postfix = "\n") {
+  return joinToString(separator = "\n") {
     "${it.template.name} " + it.operands.joinToString(", ")
   }
 }
