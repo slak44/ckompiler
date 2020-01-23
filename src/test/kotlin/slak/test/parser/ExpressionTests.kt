@@ -169,9 +169,9 @@ class ExpressionTests {
     p.assertNoDiagnostics()
     val color = enum("color", "RED", "GREEN", "BLUE").toSpec()
     int func ("main" withParams emptyList()) body compoundOf(
-        color declare ("c1" assign nameRef("RED", SignedIntType)),
-        color declare ("c2" assign nameRef("GREEN", SignedIntType)),
-        color declare ("c3" assign nameRef("c1", SignedIntType))
+        color declare ("c1" assign intVar("RED")),
+        color declare ("c2" assign intVar("GREEN")),
+        color declare ("c3" assign intVar("c1"))
     ) assertEquals p.root.decls[0]
   }
 
@@ -229,7 +229,7 @@ class ExpressionTests {
     fun `Ternary Bad Assignment`() {
       val p = prepareCode("int a = 1 ? 2 : a = 3;", source)
       p.assertNoDiagnostics()
-      val badAssignment = nameRef("a", SignedIntType) assign 3
+      val badAssignment = intVar("a") assign 3
       int declare ("a" assign 1.qmark(2, badAssignment)) assertEquals p.root.decls[0]
     }
   }
@@ -297,7 +297,7 @@ class ExpressionTests {
     fun `Simple Cast Expression`() {
       val p = prepareCode("int a = 1; unsigned int b = (unsigned) a;", source)
       p.assertNoDiagnostics()
-      uInt declare ("b" assign UnsignedIntType.cast(nameRef("a", SignedIntType))) assertEquals
+      uInt declare ("b" assign UnsignedIntType.cast(intVar("a"))) assertEquals
           p.root.decls[1]
     }
 
@@ -401,7 +401,7 @@ class ExpressionTests {
       val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
       int func ("main" withParams emptyList()) body compoundOf(
           vec2 declare "u",
-          u dot nameRef("x", SignedIntType)
+          u dot intVar("x")
       ) assertEquals p.root.decls[0]
     }
 
@@ -419,7 +419,7 @@ class ExpressionTests {
       val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
       int func ("main" withParams emptyList()) body compoundOf(
           vec2 declare "u",
-          u dot nameRef("x", SignedIntType) assign 5
+          u dot intVar("x") assign 5
       ) assertEquals p.root.decls[0]
     }
 
@@ -437,7 +437,7 @@ class ExpressionTests {
       val u = nameRef("u", typeNameOf(vec2, nameDecl("u")))
       int func ("main" withParams emptyList()) body compoundOf(
           vec2 declare "u",
-          UnaryOperators.REF[u] arrow nameRef("x", SignedIntType)
+          UnaryOperators.REF[u] arrow intVar("x")
       ) assertEquals p.root.decls[0]
     }
   }

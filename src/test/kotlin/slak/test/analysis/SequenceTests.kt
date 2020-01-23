@@ -45,7 +45,7 @@ class SequenceTests {
 
   @Test
   fun `Assignment Is Hoisted`() {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val assignment = x assign (2 add 3)
     val expr = 5 mul assignment
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
@@ -62,7 +62,7 @@ class SequenceTests {
     "LSH_ASSIGN", "RSH_ASSIGN", "AND_ASSIGN", "XOR_ASSIGN", "OR_ASSIGN"
   ])
   fun `Compound Assignments Are Deconstructed`(compoundAssignOp: BinaryOperators) {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val compoundAssignment = x to (2 add 3) with compoundAssignOp
     val expr = 5 mul compoundAssignment
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
@@ -91,7 +91,7 @@ class SequenceTests {
 
   @Test
   fun `Leftover TypedIdentifier Is Cloned After Assignment Hoisting`() {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val assignment = x assign (2 add 3)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(assignment)
     debugHandler.assertNoDiagnostics()
@@ -104,7 +104,7 @@ class SequenceTests {
 
   @Test
   fun `Prefix Increment Is Hoisted`() {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val expr = 5 mul prefixInc(x)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
@@ -115,7 +115,7 @@ class SequenceTests {
 
   @Test
   fun `Leftover TypedIdentifier Is Cloned After Increment Hoisting`() {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val expr = prefixInc(x)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
@@ -128,7 +128,7 @@ class SequenceTests {
 
   @Test
   fun `Postfix Increment Is After`() {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val expr = 5 mul postfixInc(x)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
@@ -139,7 +139,7 @@ class SequenceTests {
 
   @Test
   fun `Multiple Unsequenced Increments`() {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val expr = postfixInc(x) mul postfixInc(x)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertDiags(DiagnosticId.UNSEQUENCED_MODS)
@@ -150,7 +150,7 @@ class SequenceTests {
 
   @Test
   fun `Comma LHS Is Entirely Before`() {
-    val x = nameRef("x", SignedIntType)
+    val x = intVar("x")
     val expr = postfixInc(x) comma 123
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
@@ -161,8 +161,8 @@ class SequenceTests {
 
   @Test
   fun `Ternary Operator`() {
-    val x = nameRef("x", SignedIntType)
-    val y = nameRef("y", SignedIntType)
+    val x = intVar("x")
+    val y = intVar("y")
     val expr = (x sub 3).qmark(y add 2, y add 3)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
@@ -173,8 +173,8 @@ class SequenceTests {
 
   @Test
   fun `Logical AND Is Turned Into Ternary`() {
-    val x = nameRef("x", SignedIntType)
-    val y = nameRef("y", SignedIntType)
+    val x = intVar("x")
+    val y = intVar("y")
     val expr = (x equals 1) land (y equals 1)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
@@ -185,8 +185,8 @@ class SequenceTests {
 
   @Test
   fun `Logical OR Is Turned Into Ternary`() {
-    val x = nameRef("x", SignedIntType)
-    val y = nameRef("y", SignedIntType)
+    val x = intVar("x")
+    val y = intVar("y")
     val expr = (x equals 1) lor (y equals 1)
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
@@ -199,7 +199,7 @@ class SequenceTests {
   fun `Basic Member Access Is Unchanged`() {
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val vec2Type = typeNameOf(vec2, AbstractDeclarator.blank())
-    val expr = nameRef("v", vec2Type) dot nameRef("x", SignedIntType)
+    val expr = nameRef("v", vec2Type) dot intVar("x")
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assert(sequencedBefore.isEmpty())
@@ -212,11 +212,11 @@ class SequenceTests {
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val vec2Type = typeNameOf(vec2, AbstractDeclarator.blank())
     val assignment = nameRef("v", vec2Type) assign nameRef("u", vec2Type)
-    val expr = assignment dot nameRef("x", SignedIntType)
+    val expr = assignment dot intVar("x")
     val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assert(sequencedAfter.isEmpty())
     assertEquals(listOf(assignment), sequencedBefore)
-    assertEquals(nameRef("v", vec2Type) dot nameRef("x", SignedIntType), remaining)
+    assertEquals(nameRef("v", vec2Type) dot intVar("x"), remaining)
   }
 }

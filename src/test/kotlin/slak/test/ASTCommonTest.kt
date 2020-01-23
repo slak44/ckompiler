@@ -69,6 +69,7 @@ internal infix fun ASTNode.assertEquals(rhs: ASTNode) = kotlin.test.assertEquals
 internal fun name(s: String): IdentifierNode = IdentifierNode(s).zeroRange()
 internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
 internal fun FunctionDefinition.toRef() = nameRef(name, ptr(functionType))
+internal fun intVar(s: String) = nameRef(s, SignedIntType)
 
 internal fun nameDecl(s: String) =
     NamedDeclarator.base(name(s), emptyList(), emptyList()).zeroRange()

@@ -26,18 +26,18 @@ class IRTests {
 
   @Test
   fun `IR Variable Store`() {
-    val ir = createIR(nameRef("a", SignedIntType) assign (1 add (2 mul 3) sub 5))
+    val ir = createIR(intVar("a") assign (1 add (2 mul 3) sub 5))
     val last = ir.last()
     check(last is StoreInstr)
-    assertEquals(nameRef("a", SignedIntType), (last.target as Variable).tid)
+    assertEquals(intVar("a"), (last.target as Variable).tid)
   }
 
   @Test
   fun `IR Variable Use`() {
-    val ir = createIR(nameRef("a", SignedIntType) add 5)
+    val ir = createIR(intVar("a") add 5)
     val load = ir[0]
     check(load is IntBinary)
-    assertEquals(nameRef("a", SignedIntType), (load.lhs as Variable).tid)
+    assertEquals(intVar("a"), (load.lhs as Variable).tid)
   }
 
   @Test
@@ -87,7 +87,7 @@ class IRTests {
   fun `IR Member Access With Struct Pointer`() {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
-    val ir = createIR(nameRef("u", ptr(structType)) arrow nameRef("y", SignedIntType))
+    val ir = createIR(nameRef("u", ptr(structType)) arrow intVar("y"))
     val ptrAdd = ir[0]
     check(ptrAdd is IntBinary)
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
@@ -104,7 +104,7 @@ class IRTests {
   fun `IR Member Access Struct Directly`() {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
-    val ir = createIR(nameRef("u", structType) dot nameRef("y", SignedIntType))
+    val ir = createIR(nameRef("u", structType) dot intVar("y"))
     val ptrAdd = ir[0]
     check(ptrAdd is IntBinary)
     assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
@@ -124,7 +124,7 @@ class IRTests {
   fun `IR Store To Struct`() {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
-    val member = nameRef("u", structType) dot nameRef("y", SignedIntType)
+    val member = nameRef("u", structType) dot intVar("y")
     val ir = createIR(member assign 42)
     val store = ir[2]
     check(store is StoreInstr)
@@ -149,7 +149,7 @@ class IRTests {
   fun `IR Store To Union`() {
     val unionSpec = union("name", int declare "x", double declare "y").toSpec()
     val unionType = typeNameOf(unionSpec, AbstractDeclarator.blank())
-    val member = nameRef("u", unionType) dot nameRef("y", SignedIntType)
+    val member = nameRef("u", unionType) dot intVar("y")
     val ir = createIR(member assign 42)
     val store = ir[1]
     check(store is StoreInstr)
@@ -161,9 +161,9 @@ class IRTests {
 
   @Test
   fun `IR Multiple Adds`() {
-    val x = nameRef("x", SignedIntType)
-    val y = nameRef("y", SignedIntType)
-    val z = nameRef("z", SignedIntType)
+    val x = intVar("x")
+    val y = intVar("y")
+    val z = intVar("z")
     val ir = createIR(x add y add z add 1)
     for (i in ir) {
       assert(i is IntBinary)

@@ -81,7 +81,7 @@ class ConstantFoldingTests {
 
   @Test
   fun `Unfoldable Binary Expression`() {
-    val unfoldable = 2 add nameRef("a", SignedIntType)
+    val unfoldable = 2 add intVar("a")
     assertEquals(unfoldable, td.doConstantFolding(unfoldable))
   }
 }

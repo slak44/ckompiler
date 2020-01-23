@@ -112,7 +112,7 @@ class FunctionCallTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     val f = int func ("f" withParams listOf(int param "a", int param "b")) body compoundOf(
-        returnSt(nameRef("a", SignedIntType) add nameRef("b", SignedIntType))
+        returnSt(intVar("a") add intVar("b"))
     )
     f assertEquals p.root.decls[0]
     int func ("main" withParams emptyList()) body compoundOf(

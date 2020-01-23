@@ -168,7 +168,7 @@ class SwitchTests {
         switch(123, compoundOf(
             1 add 1,
             int declare ("a" assign 5),
-            nameRef("a", SignedIntType) plusAssign 4
+            intVar("a") plusAssign 4
         ))
     ) assertEquals p.root.decls[0]
   }
@@ -190,7 +190,7 @@ class SwitchTests {
         switch(123, compoundOf(
             1 add 1,
             int declare ("a" assign 5),
-            nameRef("a", SignedIntType) plusAssign 4,
+            intVar("a") plusAssign 4,
             123.caseLabeled(Noop())
         ))
     ) assertEquals p.root.decls[0]

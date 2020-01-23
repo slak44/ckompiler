@@ -14,7 +14,7 @@ class TypeTests {
   fun `Unary Plus And Minus`() {
     val p = prepareCode("int a = -1; int b = +a;", source)
     p.assertNoDiagnostics()
-    val a = nameRef("a", SignedIntType)
+    val a = intVar("a")
     int declare ("a" assign UnaryOperators.MINUS[1]) assertEquals p.root.decls[0]
     int declare ("b" assign UnaryOperators.PLUS[a]) assertEquals p.root.decls[1]
   }
@@ -91,7 +91,7 @@ class TypeTests {
     p.assertDiags(DiagnosticId.ILLEGAL_CAST_ASSIGNMENT)
     int func ("main" withParams emptyList()) body compoundOf(
         int declare ("x" assign 1),
-        SignedLongType.cast(nameRef("x", SignedIntType)) assign SignedLongType.cast(5)
+        SignedLongType.cast(intVar("x")) assign SignedLongType.cast(5)
     ) assertEquals p.root.decls[0]
   }
 
@@ -101,7 +101,7 @@ class TypeTests {
     p.assertDiags(DiagnosticId.EXPRESSION_NOT_ASSIGNABLE)
     int func ("main" withParams emptyList()) body compoundOf(
         int declare "x",
-        (nameRef("x", SignedIntType) add 2) assign 5
+        (intVar("x") add 2) assign 5
     ) assertEquals p.root.decls[0]
   }
 
@@ -125,7 +125,7 @@ class TypeTests {
     p.assertDiags(DiagnosticId.EXPRESSION_NOT_ASSIGNABLE)
     int func ("main" withParams emptyList()) body compoundOf(
         int declare listOf("x", "y"),
-        1.qmark(nameRef("x", SignedIntType), nameRef("y", SignedIntType)) assign 2
+        1.qmark(intVar("x"), intVar("y")) assign 2
     ) assertEquals p.root.decls[0]
   }
 
@@ -483,7 +483,7 @@ class TypeTests {
     p.assertDiags(DiagnosticId.EXPRESSION_NOT_ASSIGNABLE)
     int func ("main" withParams emptyList()) body compoundOf(
         int declare ("a" assign 2),
-        (nameRef("a", SignedIntType) assign 3) assign 5
+        (intVar("a") assign 3) assign 5
     ) assertEquals p.root.decls[0]
   }
 
@@ -513,7 +513,7 @@ class TypeTests {
       }
     """.trimIndent(), source)
     val a = nameRef("a", const + SignedIntType)
-    val b = nameRef("b", PointerType(const + SignedIntType, emptyList()))
+    val b = nameRef("b", ptr(const + SignedIntType))
     p.assertDiags(DiagnosticId.CONST_QUALIFIED_NOT_ASSIGNABLE)
     int func ("main" withParams emptyList()) body compoundOf(
         const + int declare ("a" assign 2),
@@ -531,8 +531,8 @@ class TypeTests {
         b = &y;
       }
     """.trimIndent(), source)
-    val x = nameRef("x", SignedIntType)
-    val y = nameRef("y", SignedIntType)
+    val x = intVar("x")
+    val y = intVar("y")
     val b = nameRef("b", PointerType(const + SignedIntType, emptyList()))
     p.assertNoDiagnostics()
     int func ("main" withParams emptyList()) body compoundOf(
@@ -564,7 +564,7 @@ class TypeTests {
       }
     """.trimIndent(), source)
     p.assertNoDiagnostics()
-    val b = nameRef("b", SignedIntType)
+    val b = intVar("b")
     int func ("main" withParams emptyList()) body compoundOf(
         int declare ("b" assign 873),
         const + int declare ("a" assign (b add 2))
