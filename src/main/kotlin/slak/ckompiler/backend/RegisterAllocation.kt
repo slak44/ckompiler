@@ -21,6 +21,8 @@ data class InterferenceGraph(
     val valueMapping: ValueMapping
 )
 
+typealias AllocationMap = Map<IRValue, MachineRegister>
+
 /**
  * Create live ranges for all the values in the program, and create the interference graph.
  */
@@ -77,11 +79,12 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: ISelMap): Interference
 private fun MachineTarget.matchValueToRegister(
     value: IRValue,
     registers: List<MachineRegister>,
-    forbidden: List<MachineRegister>
+    forbiddenNeigh: List<MachineRegister>
 ): MachineRegister? {
+  if (value is MemoryReference) return StackSlot(value, machineTargetData)
   val validClass = registerClassOf(value.type)
   val validSize = machineTargetData.sizeOf(value.type)
-  return (registers - forbidden).firstOrNull { candidate ->
+  return (registers - forbidden - forbiddenNeigh).firstOrNull { candidate ->
     candidate.valueClass == validClass &&
         (candidate.sizeBytes == validSize || validSize in candidate.aliases.map { it.second })
   }
@@ -98,7 +101,7 @@ private fun pickSpill(
 private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph): ISelMap {
   val memoryLoc = MemoryReference(cfg.memoryIds(), target.type)
   val newMap = mutableMapOf<BasicBlock, List<MachineInstruction>>()
-  for ((_, instrs) in graph.source) {
+  for ((block, instrs) in graph.source) {
     val newInstrs = mutableListOf<MachineInstruction>()
     for (i in instrs) {
       val targetIdx = i.operands.indexOf(target)
@@ -110,11 +113,12 @@ private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph)
         newInstrs += i.copy(operands = newOperands)
       }
     }
+    newMap[block] = newInstrs
   }
   return newMap
 }
 
-fun MachineTarget.regAlloc(cfg: CFG, iselLists: ISelMap): Map<IRValue, MachineRegister> {
+fun MachineTarget.regAlloc(cfg: CFG, iselLists: ISelMap): Pair<ISelMap, AllocationMap> {
   val seq = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
   val spilled = mutableListOf<IRValue>()
   var instrs = iselLists
@@ -126,7 +130,10 @@ fun MachineTarget.regAlloc(cfg: CFG, iselLists: ISelMap): Map<IRValue, MachineRe
       matchValueToRegister(valueMapping[node], registers, forbiddenRegisters)
     }
     if (coloring != null) {
-      return coloring.withIndex().associate { (node, register) -> valueMapping[node] to register }
+      val allocations = coloring.withIndex().associate { (node, register) ->
+        valueMapping[node] to register
+      }
+      return instrs to allocations
     }
     if (spilled.size == valueMapping.size) {
       logger.throwICE("Spilled all the values but still can't color the graph")

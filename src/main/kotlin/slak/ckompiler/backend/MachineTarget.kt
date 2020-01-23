@@ -10,11 +10,11 @@ interface MachineRegisterClass {
 }
 
 /**
- * A generic "register" class used as a placeholder for values that do not fit in any registers.
+ * A pseudo-register class used for values that have been spilled by the register allocator.
  */
-object ForcedSpill : MachineRegisterClass {
-  override val id = -1
-  override val displayName = "<forced spill>"
+object Memory : MachineRegisterClass {
+  override val id = -2
+  override val displayName = "<stack slot>"
 }
 
 /**
@@ -30,6 +30,19 @@ interface MachineRegister {
   val sizeBytes: Int
   val valueClass: MachineRegisterClass
   val aliases: List<RegisterAlias>
+}
+
+/**
+ * Fake register that's actually a stack slot in the function's frame.
+ */
+class StackSlot(value: MemoryReference, mtd: MachineTargetData) : MachineRegister {
+  override val id = value.id
+  override val regName = value.name
+  override val sizeBytes = mtd.sizeOf(value.type)
+  override val valueClass = Memory
+  override val aliases = emptyList<RegisterAlias>()
+
+  override fun toString() = "stack slot $id"
 }
 
 class RegisterBuilder<T : MachineRegister>(
@@ -72,6 +85,11 @@ interface MachineTarget {
   val machineTargetData: MachineTargetData
   val targetName: String
   val registers: List<MachineRegister>
+
+  /**
+   * Do not consider these when allocating function locals.
+   */
+  val forbidden: List<MachineRegister>
 
   fun registerClassOf(type: TypeName): MachineRegisterClass
 

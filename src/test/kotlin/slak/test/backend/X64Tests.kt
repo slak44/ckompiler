@@ -5,6 +5,7 @@ import slak.ckompiler.analysis.IntBinary
 import slak.ckompiler.analysis.IntConstant
 import slak.ckompiler.analysis.IntegralBinaryOps
 import slak.ckompiler.analysis.VirtualRegister
+import slak.ckompiler.backend.Memory
 import slak.ckompiler.backend.instructionSelection
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.stringify
@@ -49,16 +50,32 @@ class X64Tests {
   @Test
   fun `Register Allocation`() {
     val cfg = prepareCFG(resource("interference.c"), source)
-    val iselLists = X64Target.instructionSelection(cfg)
-    val result = X64Target.regAlloc(cfg, iselLists)
-    for ((block, list) in iselLists) {
+    val (newLists, allocs) = X64Target.regAlloc(cfg, X64Target.instructionSelection(cfg))
+    for ((block, list) in newLists) {
       println(block)
       println(list.stringify())
       println()
     }
-    for ((value, register) in result) {
+    for ((value, register) in allocs) {
       println("allocate $value to $register")
     }
-    assertEquals(3, result.values.distinct().size)
+    assertEquals(3, allocs.values.distinct().size)
+  }
+
+  @Test
+  fun `Register Allocation With Register Pressure`() {
+    val cfg = prepareCFG(resource("highRegisterPressure.c"), source)
+    val (newLists, allocs) = X64Target.regAlloc(cfg, X64Target.instructionSelection(cfg))
+    for ((block, list) in newLists) {
+      println(block)
+      println(list.stringify())
+      println()
+    }
+    for ((value, register) in allocs) {
+      println("allocate $value to $register")
+    }
+    assertEquals(14, allocs.values.filter { it.valueClass != Memory }.distinct().size)
+    val spilled = allocs.entries.filter { it.value.valueClass == Memory }
+    assertEquals(1, spilled.size)
   }
 }

@@ -14,6 +14,8 @@ object X64Target : MachineTarget {
   override val machineTargetData = MachineTargetData.x64
   override val targetName = "x64"
   override val registers = x64Registers
+  // FIXME: make rbp conditional on -fomit-frame-pointer
+  override val forbidden = listOf(registerByName("rsp"), registerByName("rbp"))
 
   override fun registerClassOf(type: TypeName): MachineRegisterClass = when (type) {
     VoidType, ErrorType -> logger.throwICE("ErrorType cannot make it to codegen")
@@ -21,9 +23,9 @@ object X64Target : MachineTarget {
     is QualifiedType -> registerClassOf(type.unqualified)
     is ArrayType, is FunctionType -> registerClassOf(type.normalize())
     is PointerType -> X64RegisterClass.INTEGER
-    is StructureType -> ForcedSpill
+    is StructureType -> Memory
     // FIXME: maybe get each member class and do some magic?
-    is UnionType -> ForcedSpill
+    is UnionType -> Memory
     is IntegralType -> X64RegisterClass.INTEGER
     is FloatingType -> X64RegisterClass.SSE
   }
