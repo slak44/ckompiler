@@ -30,6 +30,8 @@ class X64Tests {
     for ((value, register) in allocation) {
       println("allocate $value to $register")
     }
+    val final = X64Target.applyAllocation(cfg, res)
+    println(final.joinToString("\n", prefix = "\n"))
     return res
   }
 

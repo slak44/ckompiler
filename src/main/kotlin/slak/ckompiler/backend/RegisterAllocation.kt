@@ -23,7 +23,11 @@ data class InterferenceGraph(
 
 typealias AllocationMap = Map<IRValue, MachineRegister>
 
-typealias AllocationResult = Triple<InstructionMap, AllocationMap, List<StackSlot>>
+data class AllocationResult(
+    val partial: InstructionMap,
+    val allocations: AllocationMap,
+    val stackSlots: List<StackSlot>
+)
 
 /**
  * Create live ranges for all the values in the program, and create the interference graph.

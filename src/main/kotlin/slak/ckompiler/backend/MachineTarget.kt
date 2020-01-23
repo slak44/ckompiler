@@ -81,6 +81,10 @@ fun List<MachineInstruction>.stringify(): String {
   }
 }
 
+interface AsmInstruction {
+  val template: InstructionTemplate
+}
+
 interface MachineTarget {
   val machineTargetData: MachineTargetData
   val targetName: String
@@ -98,17 +102,10 @@ interface MachineTarget {
    */
   fun expandMacroFor(i: IRInstruction): List<MachineInstruction>
 
-  /**
-   * Runs a pass over a [BasicBlock], and possibly mutates the IR in it.
-   *
-   * Useful for stuff like SSA destruction.
-   *
-   * Is executed before instruction selection, that is, before [expandMacroFor] is called.
-   */
-  fun localIRTransform(bb: BasicBlock)
+  fun applyAllocation(cfg: CFG, alloc: AllocationResult): List<AsmInstruction>
 
-  fun genFunctionPrologue(lists: InstructionMap): List<MachineInstruction>
-  fun genFunctionEpilogue(lists: InstructionMap): List<MachineInstruction>
+  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
+  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
 }
 
 fun MachineTarget.registerByName(name: String): MachineRegister {
@@ -126,7 +123,6 @@ typealias InstructionMap = Map<BasicBlock, List<MachineInstruction>>
 
 fun MachineTarget.instructionSelection(cfg: CFG): InstructionMap {
   return cfg.nodes
-      .onEach(::localIRTransform)
       .associateWith { block ->
         block.instructions
             .asSequence()
@@ -139,4 +135,8 @@ fun MachineTarget.instructionSelection(cfg: CFG): InstructionMap {
 fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {
   // FIXME: deal with this sometime
   return lists
+}
+
+fun MachineTarget.assembleFunction(cfg: CFG, alloc: AllocationResult): List<AsmInstruction> {
+  return genFunctionPrologue(alloc) + applyAllocation(cfg, alloc) + genFunctionEpilogue(alloc)
 }

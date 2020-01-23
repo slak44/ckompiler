@@ -70,14 +70,38 @@ object X64Target : MachineTarget {
     is PhiInstr -> TODO()
   }
 
-  override fun localIRTransform(bb: BasicBlock) {
+  override fun applyAllocation(cfg: CFG, alloc: AllocationResult): List<X64Instruction> {
+    val (instrs, allocated, stackSlots) = alloc
+    var currentStackOffset = 0
+    val stackOffsets = stackSlots.associateWith {
+      val offset = currentStackOffset
+      currentStackOffset += it.sizeBytes
+      offset
+    }
+    val result = mutableListOf<X64Instruction>()
+    for (block in cfg.postOrderNodes) {
+      for ((template, operands) in instrs.getValue(block)) {
+        require(template is X64InstrTemplate)
+        val ops = operands.map {
+          if (it is ConstantValue) return@map ImmediateValue(it)
+          val machineRegister = allocated.getValue(it)
+          if (machineRegister is StackSlot) {
+            return@map StackValue(machineRegister, stackOffsets.getValue(machineRegister))
+          } else {
+            return@map RegisterValue(machineRegister, machineTargetData.sizeOf(it.type))
+          }
+        }
+        result += X64Instruction(template, ops)
+      }
+    }
+    return result
   }
 
-  override fun genFunctionPrologue(lists: InstructionMap): List<MachineInstruction> {
+  override fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction> {
     TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
   }
 
-  override fun genFunctionEpilogue(lists: InstructionMap): List<MachineInstruction> {
+  override fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction> {
     TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
   }
 }

@@ -2,10 +2,7 @@ package slak.ckompiler.backend.x64
 
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.InstructionTemplate
-import slak.ckompiler.backend.MachineInstruction
-import slak.ckompiler.backend.MachineRegister
-import slak.ckompiler.backend.VariableUse
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.Imm.*
 import slak.ckompiler.backend.x64.ModRM.*
 
@@ -13,6 +10,9 @@ enum class OperandType {
   REGISTER, MEMORY, REG_OR_MEM
 }
 
+/**
+ * Generic operand to an instruction (register reference, memory location, immediate).
+ */
 interface Operand {
   val size: Int
 }
@@ -44,6 +44,30 @@ data class X64InstrTemplate(
     val implicitOperands: List<MachineRegister> = emptyList(),
     val implicitResults: List<MachineRegister> = emptyList()
 ) : InstructionTemplate
+
+sealed class X64Value
+
+data class ImmediateValue(val value: ConstantValue) : X64Value() {
+  override fun toString() = value.toString()
+}
+
+data class RegisterValue(val register: MachineRegister, val size: Int) : X64Value() {
+  override fun toString(): String {
+    if (register.sizeBytes == size) return register.regName
+    return register.aliases.first { it.second == size }.first
+  }
+}
+
+data class StackValue(val stackSlot: StackSlot, val offset: Int) : X64Value() {
+  override fun toString() = "[rbp - ${offset + stackSlot.sizeBytes}]"
+}
+
+data class X64Instruction(
+    override val template: X64InstrTemplate,
+    val operands: List<X64Value>
+) : AsmInstruction {
+  override fun toString() = "${template.name} ${operands.joinToString(", ")}"
+}
 
 private class ICBuilder(
     val instructions: MutableList<X64InstrTemplate>,

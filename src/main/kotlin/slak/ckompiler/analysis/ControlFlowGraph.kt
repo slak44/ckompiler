@@ -23,7 +23,7 @@ class CFG(
   /** Filtered set of nodes that only contains reachable, non-empty nodes. */
   val nodes: Set<BasicBlock>
   /** [nodes], but sorted in post-order. Not a [Sequence] because we will need it in reverse. */
-  private val postOrderNodes: Set<BasicBlock>
+  val postOrderNodes: Set<BasicBlock>
   /**
    * Stores the immediate dominator (IDom) of a particular node.
    * @see findDomFrontiers
