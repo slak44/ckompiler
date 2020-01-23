@@ -71,4 +71,10 @@ class X64Tests {
     val spilled = allocs.entries.filter { it.value.valueClass == Memory }
     assertEquals(1, spilled.size)
   }
+
+  @Test
+  fun `Register Allocation Many Non-Interfering`() {
+    val (_, allocs) = regAlloc("parallelLiveRanges.c")
+    assertEquals(0, allocs.values.filter { it.valueClass == Memory }.size)
+  }
 }
