@@ -158,4 +158,15 @@ class IRTests {
     check(const is IntConstant)
     assertEquals(42L, const.value)
   }
+
+  @Test
+  fun `IR Multiple Adds`() {
+    val x = nameRef("x", SignedIntType)
+    val y = nameRef("y", SignedIntType)
+    val z = nameRef("z", SignedIntType)
+    val ir = createIR(x add y add z add 1)
+    for (i in ir) {
+      assert(i is IntBinary)
+    }
+  }
 }
