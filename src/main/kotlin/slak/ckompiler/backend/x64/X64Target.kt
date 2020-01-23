@@ -6,7 +6,6 @@ import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
-import java.lang.IllegalStateException
 
 object X64Target : MachineTarget {
   private val logger = LogManager.getLogger()
@@ -74,11 +73,11 @@ object X64Target : MachineTarget {
   override fun localIRTransform(bb: BasicBlock) {
   }
 
-  override fun genFunctionPrologue(lists: ISelMap): List<MachineInstruction> {
+  override fun genFunctionPrologue(lists: InstructionMap): List<MachineInstruction> {
     TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
   }
 
-  override fun genFunctionEpilogue(lists: ISelMap): List<MachineInstruction> {
+  override fun genFunctionEpilogue(lists: InstructionMap): List<MachineInstruction> {
     TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
   }
 }

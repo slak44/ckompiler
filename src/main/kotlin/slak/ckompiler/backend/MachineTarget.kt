@@ -107,8 +107,8 @@ interface MachineTarget {
    */
   fun localIRTransform(bb: BasicBlock)
 
-  fun genFunctionPrologue(lists: ISelMap): List<MachineInstruction>
-  fun genFunctionEpilogue(lists: ISelMap): List<MachineInstruction>
+  fun genFunctionPrologue(lists: InstructionMap): List<MachineInstruction>
+  fun genFunctionEpilogue(lists: InstructionMap): List<MachineInstruction>
 }
 
 fun MachineTarget.registerByName(name: String): MachineRegister {
@@ -122,9 +122,9 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
  *
  * @see MachineTarget.instructionSelection
  */
-typealias ISelMap = Map<BasicBlock, List<MachineInstruction>>
+typealias InstructionMap = Map<BasicBlock, List<MachineInstruction>>
 
-fun MachineTarget.instructionSelection(cfg: CFG): ISelMap {
+fun MachineTarget.instructionSelection(cfg: CFG): InstructionMap {
   return cfg.nodes
       .onEach(::localIRTransform)
       .associateWith { block ->
@@ -136,7 +136,7 @@ fun MachineTarget.instructionSelection(cfg: CFG): ISelMap {
       }
 }
 
-fun MachineTarget.instructionScheduling(lists: ISelMap): ISelMap {
+fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {
   // FIXME: deal with this sometime
   return lists
 }

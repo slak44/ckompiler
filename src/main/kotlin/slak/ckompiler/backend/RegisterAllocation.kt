@@ -16,7 +16,7 @@ typealias ValueMapping = List<IRValue>
 typealias AdjLists = List<List<ValueIndex>>
 
 data class InterferenceGraph(
-    val source: ISelMap,
+    val source: InstructionMap,
     val adjLists: AdjLists,
     val valueMapping: ValueMapping
 )
@@ -26,7 +26,7 @@ typealias AllocationMap = Map<IRValue, MachineRegister>
 /**
  * Create live ranges for all the values in the program, and create the interference graph.
  */
-private fun Sequence<BasicBlock>.interferenceGraph(lists: ISelMap): InterferenceGraph {
+private fun Sequence<BasicBlock>.interferenceGraph(lists: InstructionMap): InterferenceGraph {
   val irValCounter = IdCounter()
   val valueMap = mutableMapOf<IRValue, ValueIndex>()
   val interference = mutableMapOf<ValueIndex, MutableList<ValueIndex>>()
@@ -98,7 +98,7 @@ private fun pickSpill(
   return (graph.valueMapping - alreadySpilled).first()
 }
 
-private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph): ISelMap {
+private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph): InstructionMap {
   val memoryLoc = MemoryReference(cfg.memoryIds(), target.type)
   val newMap = mutableMapOf<BasicBlock, List<MachineInstruction>>()
   for ((block, instrs) in graph.source) {
@@ -118,7 +118,7 @@ private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph)
   return newMap
 }
 
-fun MachineTarget.regAlloc(cfg: CFG, iselLists: ISelMap): Pair<ISelMap, AllocationMap> {
+fun MachineTarget.regAlloc(cfg: CFG, iselLists: InstructionMap): Pair<InstructionMap, AllocationMap> {
   val seq = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
   val spilled = mutableListOf<IRValue>()
   var instrs = iselLists
