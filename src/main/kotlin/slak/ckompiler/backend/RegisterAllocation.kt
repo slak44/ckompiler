@@ -118,10 +118,10 @@ private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph)
   return newMap
 }
 
-fun MachineTarget.regAlloc(cfg: CFG, iselLists: InstructionMap): Pair<InstructionMap, AllocationMap> {
+fun MachineTarget.regAlloc(cfg: CFG, instrMap: InstructionMap): Pair<InstructionMap, AllocationMap> {
   val seq = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
   val spilled = mutableListOf<IRValue>()
-  var instrs = iselLists
+  var instrs = instrMap
   while (true) {
     val graph = seq.interferenceGraph(instrs)
     val (_, adjLists, valueMapping) = graph
