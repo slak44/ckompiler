@@ -18,18 +18,19 @@ import slak.test.source
 import kotlin.test.assertEquals
 
 class X64Tests {
-  private fun regAlloc(resourceName: String): Pair<InstructionMap, AllocationMap> {
+  private fun regAlloc(resourceName: String): AllocationResult {
     val cfg = prepareCFG(resource(resourceName), source)
-    val (newLists, allocs) = X64Target.regAlloc(cfg, X64Target.instructionSelection(cfg))
+    val res = X64Target.regAlloc(cfg, X64Target.instructionSelection(cfg))
+    val (newLists, allocation, _) = res
     for ((block, list) in newLists) {
       println(block)
       println(list.stringify())
       println()
     }
-    for ((value, register) in allocs) {
+    for ((value, register) in allocation) {
       println("allocate $value to $register")
     }
-    return newLists to allocs
+    return res
   }
 
   @Test
@@ -66,15 +67,17 @@ class X64Tests {
 
   @Test
   fun `Register Allocation With Register Pressure`() {
-    val (_, allocs) = regAlloc("codegen/highRegisterPressure.c")
+    val (_, allocs, stackSlots) = regAlloc("codegen/highRegisterPressure.c")
     assertEquals(14, allocs.values.filter { it.valueClass != Memory }.distinct().size)
     val spilled = allocs.entries.filter { it.value.valueClass == Memory }
     assertEquals(1, spilled.size)
+    assertEquals(1, stackSlots.size)
   }
 
   @Test
   fun `Register Allocation Many Non-Interfering`() {
-    val (_, allocs) = regAlloc("codegen/parallelLiveRanges.c")
+    val (_, allocs, stackSlots) = regAlloc("codegen/parallelLiveRanges.c")
     assertEquals(0, allocs.values.filter { it.valueClass == Memory }.size)
+    assert(stackSlots.isEmpty())
   }
 }

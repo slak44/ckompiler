@@ -23,6 +23,8 @@ data class InterferenceGraph(
 
 typealias AllocationMap = Map<IRValue, MachineRegister>
 
+typealias AllocationResult = Triple<InstructionMap, AllocationMap, List<StackSlot>>
+
 /**
  * Create live ranges for all the values in the program, and create the interference graph.
  */
@@ -118,22 +120,27 @@ private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph)
   return newMap
 }
 
-fun MachineTarget.regAlloc(cfg: CFG, instrMap: InstructionMap): Pair<InstructionMap, AllocationMap> {
+fun MachineTarget.regAlloc(cfg: CFG, instrMap: InstructionMap): AllocationResult {
   val seq = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
   val spilled = mutableListOf<IRValue>()
   var instrs = instrMap
   while (true) {
+    val stackSlots = mutableListOf<StackSlot>()
     val graph = seq.interferenceGraph(instrs)
     val (_, adjLists, valueMapping) = graph
     val peo = maximumCardinalitySearch(adjLists)
     val coloring = greedyColoring(adjLists, peo, emptyMap()) { node, forbiddenRegisters ->
-      matchValueToRegister(valueMapping[node], registers, forbiddenRegisters)
+      val color = matchValueToRegister(valueMapping[node], registers, forbiddenRegisters)
+      if (color is StackSlot) {
+        stackSlots += color
+      }
+      return@greedyColoring color
     }
     if (coloring != null) {
       val allocations = coloring.withIndex().associate { (node, register) ->
         valueMapping[node] to register
       }
-      return instrs to allocations
+      return AllocationResult(instrs, allocations, stackSlots)
     }
     if (spilled.size == valueMapping.size) {
       logger.throwICE("Spilled all the values but still can't color the graph")
