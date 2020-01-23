@@ -51,7 +51,7 @@ class X64Tests {
 
   @Test
   fun `Instruction Selection On CFG`() {
-    val cfg = prepareCFG(resource("addsAndMovs.c"), source)
+    val cfg = prepareCFG(resource("codegen/addsAndMovs.c"), source)
     val iLists = X64Target.instructionSelection(cfg)
     for (list in iLists) {
       println(list.value.stringify())
@@ -60,13 +60,13 @@ class X64Tests {
 
   @Test
   fun `Register Allocation`() {
-    val (_, allocs) = regAlloc("interference.c")
+    val (_, allocs) = regAlloc("codegen/interference.c")
     assertEquals(3, allocs.values.distinct().size)
   }
 
   @Test
   fun `Register Allocation With Register Pressure`() {
-    val (_, allocs) = regAlloc("highRegisterPressure.c")
+    val (_, allocs) = regAlloc("codegen/highRegisterPressure.c")
     assertEquals(14, allocs.values.filter { it.valueClass != Memory }.distinct().size)
     val spilled = allocs.entries.filter { it.value.valueClass == Memory }
     assertEquals(1, spilled.size)
@@ -74,7 +74,7 @@ class X64Tests {
 
   @Test
   fun `Register Allocation Many Non-Interfering`() {
-    val (_, allocs) = regAlloc("parallelLiveRanges.c")
+    val (_, allocs) = regAlloc("codegen/parallelLiveRanges.c")
     assertEquals(0, allocs.values.filter { it.valueClass == Memory }.size)
   }
 }
