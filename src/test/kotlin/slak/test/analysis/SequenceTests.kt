@@ -138,6 +138,17 @@ class SequenceTests {
   }
 
   @Test
+  fun `Postfix Increment In Relational`() {
+    val x = intVar("x")
+    val expr = 5 equals postfixInc(x)
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assert(sequencedBefore.isEmpty())
+    assertEquals(listOf(x assign (x add 1)), sequencedAfter)
+    assertEquals(5 equals x, remaining)
+  }
+
+  @Test
   fun `Multiple Unsequenced Increments`() {
     val x = intVar("x")
     val expr = postfixInc(x) mul postfixInc(x)
@@ -218,5 +229,29 @@ class SequenceTests {
     assert(sequencedAfter.isEmpty())
     assertEquals(listOf(assignment), sequencedBefore)
     assertEquals(nameRef("v", vec2Type) dot intVar("x"), remaining)
+  }
+
+  @Test
+  fun `Prefix Increment Is Hoisted From Array Subscript`() {
+    val arrayType = ArrayType(SignedIntType, ConstantSize(int(20)))
+    val v = nameRef("v", arrayType)
+    val x = intVar("x")
+    val expr = v[prefixInc(x)]
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assertEquals(v[x], remaining)
+    assertEquals(listOf(x assign (x add 1)), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
+  }
+
+  @Test
+  fun `Prefix Increment Is Hoisted From Cast Expression`() {
+    val x = intVar("x")
+    val expr = SignedLongLongType.cast(prefixInc(x))
+    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assertEquals(SignedLongLongType.cast(x), remaining)
+    assertEquals(listOf(x assign (x add 1)), sequencedBefore)
+    assert(sequencedAfter.isEmpty())
   }
 }

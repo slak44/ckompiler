@@ -133,12 +133,8 @@ private fun foldUnary(e: UnaryExpression): Expression = when {
 private fun SequentializationContext.seqImpl(e: Expression): Expression = when (e) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
   is VoidExpression -> logger.throwICE("VoidExpression was removed")
-  is FunctionCall -> {
-    FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e)
-  }
-  is MemberAccessExpression -> {
-    e.copy(target = seqImpl(e.target).withRange(e.target))
-  }
+  is FunctionCall -> FunctionCall(seqImpl(e.calledExpr), e.args.map(::seqImpl)).withRange(e)
+  is MemberAccessExpression -> e.copy(target = seqImpl(e.target).withRange(e.target))
   is IncDecOperation -> {
     val incDecTarget = makeAssignmentTarget(e.expr, e)
     val op = if (e.isDecrement) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
@@ -169,7 +165,10 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     fakeAssignable
   }
   is UnaryExpression -> foldUnary(e)
-  is CastExpression, is ArraySubscript,
+  is ArraySubscript -> {
+    e.copy(subscripted = seqImpl(e.subscripted), subscript = seqImpl(e.subscript)).withRange(e)
+  }
+  is CastExpression -> e.copy(target = seqImpl(e.target)).withRange(e)
   is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
   is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
     // Do nothing. These do not pose the problem of being sequenced before or after.
