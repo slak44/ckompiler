@@ -116,7 +116,7 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   return MachineInstruction(instr, operands.toList())
 }
 
-val add = instructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
+private val arithmetic: ICBuilder.() -> Unit = {
   instr(RM8, IMM8)
   instr(RM16, IMM16)
   instr(RM32, IMM32)
@@ -135,6 +135,14 @@ val add = instructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE)) 
   instr(R16, RM16)
   instr(R32, RM32)
   instr(R64, RM64)
+}
+
+val add = instructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
+  arithmetic()
+}
+
+val cmp = instructionClass("cmp", listOf(VariableUse.USE, VariableUse.USE)) {
+  arithmetic()
 }
 
 val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {

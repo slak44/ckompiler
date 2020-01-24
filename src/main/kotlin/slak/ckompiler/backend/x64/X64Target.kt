@@ -29,6 +29,23 @@ object X64Target : MachineTarget {
     is FloatingType -> X64RegisterClass.SSE
   }
 
+  private fun matchAdd(i: IntBinary) = when (i.result) {
+    // result = result OP rhs
+    i.lhs -> listOf(add.match(i.lhs, i.rhs))
+    // result = lhs OP result
+    i.rhs -> listOf(add.match(i.rhs, i.lhs))
+    else -> {
+      // Can't have result = imm OP imm
+      require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
+      val nonImm = if (i.lhs is ConstantValue) i.rhs else i.lhs
+      val maybeImm = if (i.lhs === nonImm) i.rhs else i.lhs
+      listOf(
+          mov.match(i.result, nonImm),
+          add.match(i.result, maybeImm)
+      )
+    }
+  }
+
   override fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is LoadInstr -> listOf(mov.match(i.result, i.target))
     is StoreInstr -> listOf(mov.match(i.target, i.value))
@@ -38,19 +55,7 @@ object X64Target : MachineTarget {
     is NamedCall -> TODO()
     is IndirectCall -> TODO()
     is IntBinary -> when (i.op) {
-      IntegralBinaryOps.ADD -> when (i.result) {
-        i.lhs -> listOf(add.match(i.lhs, i.rhs))
-        i.rhs -> listOf(add.match(i.rhs, i.lhs))
-        else -> {
-          require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
-          val nonImm = if (i.lhs is ConstantValue) i.rhs else i.lhs
-          val maybeImm = if (i.lhs === nonImm) i.rhs else i.lhs
-          listOf(
-              mov.match(i.result, nonImm),
-              add.match(i.result, maybeImm)
-          )
-        }
-      }
+      IntegralBinaryOps.ADD -> matchAdd(i)
       IntegralBinaryOps.SUB -> TODO()
       IntegralBinaryOps.MUL -> TODO()
       IntegralBinaryOps.DIV -> TODO()
