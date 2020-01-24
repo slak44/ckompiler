@@ -143,11 +143,11 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     if (e.isPostfix) sequencedAfter += dismantled else sequencedBefore += dismantled
     incDecTarget
   }
-  is BinaryExpression -> when {
-    e.op == BinaryOperators.AND -> seqLogicalAnd(e)
-    e.op == BinaryOperators.OR -> seqLogicalOr(e)
-    e.op in assignmentOps -> handleAssignments(e)
-    e.op == BinaryOperators.COMMA -> {
+  is BinaryExpression -> when (e.op) {
+    BinaryOperators.AND -> seqLogicalAnd(e)
+    BinaryOperators.OR -> seqLogicalOr(e)
+    in assignmentOps -> handleAssignments(e)
+    BinaryOperators.COMMA -> {
       sequencedBefore += sequentialize(e.lhs).toList()
       seqImpl(e.rhs)
     }
