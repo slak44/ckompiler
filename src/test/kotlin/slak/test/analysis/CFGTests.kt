@@ -152,4 +152,11 @@ class CFGTests {
     assertNotNull(option1)
     assertEquals(listOf(option2.value), option1.successors)
   }
+
+  @Test
+  fun `Postfix In Terminator Conditional Has Correct IR Order`() {
+    val cfg = prepareCFG(resource("cfg/postfixInConditional.c"), source)
+    val cond = checkNotNull(cfg.startBlock.terminator as? CondJump)
+    assert(cond.cond.last() is IntCmp)
+  }
 }

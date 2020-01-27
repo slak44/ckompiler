@@ -14,32 +14,29 @@ private val logger = LogManager.getLogger()
  * sequentialized.
  *
  * What remains of the original expression after sequentialization will be the [remaining]
- * expression. The other lists can be empty.
+ * expression. The other list can be empty.
  *
- * [remaining] acts as a sequence point for the other 2 lists.
+ * [remaining] is sequenced AFTER [before].
  */
 data class SequentialExpression(
     val before: List<Expression>,
-    val remaining: Expression,
-    val after: List<Expression>
+    val remaining: Expression
 ) {
   operator fun iterator(): Iterator<Expression> = iterator {
     yieldAll(before.iterator())
     yield(remaining)
-    yieldAll(after.iterator())
   }
 
-  fun toList(): List<Expression> = before + remaining + after
+  fun toList(): List<Expression> = before + remaining
 }
 
 private data class SequentializationContext(
     val sequencedBefore: MutableList<Expression> = mutableListOf(),
-    val sequencedAfter: MutableList<Expression> = mutableListOf(),
     val modifications: MutableMap<TypedIdentifier, MutableList<Expression>> = mutableMapOf(),
     val debugHandler: IDebugHandler
 ) : IDebugHandler by debugHandler
 
-private val ternaryIds = IdCounter()
+private val syntheticIds = IdCounter()
 
 private fun SequentializationContext.makeAssignmentTarget(
     modified: Expression,
@@ -140,8 +137,21 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
     val op = if (e.isDecrement) BinaryOperators.SUB_ASSIGN else BinaryOperators.PLUS_ASSIGN
     // These are equivalent to compound assignments, so reuse that code
     val dismantled = dismantleCompound(op, incDecTarget, IntegerConstantNode(1).withRange(e), e)
-    if (e.isPostfix) sequencedAfter += dismantled else sequencedBefore += dismantled
-    incDecTarget
+    if (e.isPostfix) {
+      // Make copy of pre-inc/dec value
+      val copyBeforeOp = TypedIdentifier("__postfix_copy_${syntheticIds()}", e.type).withRange(e)
+      sequencedBefore += BinaryExpression(
+          BinaryOperators.ASSIGN,
+          copyBeforeOp,
+          incDecTarget,
+          incDecTarget.type
+      ).withRange(e.expr)
+      sequencedBefore += dismantled
+      copyBeforeOp
+    } else {
+      sequencedBefore += dismantled
+      incDecTarget
+    }
   }
   is BinaryExpression -> when (e.op) {
     BinaryOperators.AND -> seqLogicalAnd(e)
@@ -156,7 +166,7 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
   is TernaryConditional -> {
     // This is synthetic, but it must participate in SSA construction, unlike the synthetic
     // temporaries, because unlike them, it is guaranteed to be used in multiple basic blocks
-    val fakeAssignable = TypedIdentifier("__ternary_target_${ternaryIds()}", e.type).withRange(e)
+    val fakeAssignable = TypedIdentifier("__ternary_target_${syntheticIds()}", e.type).withRange(e)
     // Don't sequentialize e.success/e.failure, because one of them will not be executed
     // This is dealt with more in ASTGraphing
     val fakeAssignment =
@@ -187,7 +197,10 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
  * considerations for assignment expressions apply for them too.
  *
  * According to 6.5.2.4.0.2, for postfix ++ and --, updating the value of the operand is sequenced
- * after returning the result, so we are allowed to move the update after the expression.
+ * after returning the result, so we are allowed to move the update after the expression. This is
+ * achieved by making a copy, updating the original value, and replacing the use of the value in the
+ * postfix expression. Things like `int y = x++ + x;` are unsequenced, so we can do this and be
+ * correct.
  *
  * The comma operator is a sequence point (6.5.17), so the lhs expression is sequenced before the
  * rhs. We can simply separate them because lhs is evaluated as a void expression, and can't be used
@@ -213,6 +226,7 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
 fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
   val ctx = SequentializationContext(debugHandler = this)
   val remaining = ctx.seqImpl(expr)
+  // FIXME: unsequenced mod + access is also a problem: x++ + x
   // Take every variable with more than 1 modification and print diagnostics
   for ((variable, modList) in ctx.modifications.filter { it.value.size > 1 }) diagnostic {
     id = DiagnosticId.UNSEQUENCED_MODS
@@ -223,5 +237,5 @@ fun IDebugHandler.sequentialize(expr: Expression): SequentialExpression {
       else -> logger.throwICE("Modification doesn't modify anything") { mod }
     }
   }
-  return SequentialExpression(ctx.sequencedBefore, remaining, ctx.sequencedAfter)
+  return SequentialExpression(ctx.sequencedBefore, remaining)
 }

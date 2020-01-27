@@ -36,10 +36,9 @@ class SequenceTests {
   @Test
   fun `Linear Expression Is Unchanged`() {
     val expr = 1 add 2 mul 6 add sizeOf(1 add 1)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assert(sequencedBefore.isEmpty())
-    assert(sequencedAfter.isEmpty())
     assertEquals(expr, remaining)
   }
 
@@ -48,11 +47,10 @@ class SequenceTests {
     val x = intVar("x")
     val assignment = x assign (2 add 3)
     val expr = 5 mul assignment
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assertEquals(1, sequencedBefore.size)
     assertEquals(assignment, sequencedBefore[0])
-    assert(sequencedAfter.isEmpty())
     assertEquals(5 mul x, remaining)
   }
 
@@ -65,9 +63,8 @@ class SequenceTests {
     val x = intVar("x")
     val compoundAssignment = x to (2 add 3) with compoundAssignOp
     val expr = 5 mul compoundAssignment
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assert(sequencedAfter.isEmpty())
     assertEquals(5 mul x, remaining)
     assertEquals(1, sequencedBefore.size)
     // Check that x += 2 + 3 becomes x = x + (2 + 3), basically
@@ -80,9 +77,8 @@ class SequenceTests {
     val x = nameRef("x", FloatType)
     val y = nameRef("y", DoubleType)
     val expr = x plusAssign (y sub 0.5)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assert(sequencedAfter.isEmpty())
     assertEquals(x, remaining)
     assertEquals(listOf(
         x assign FloatType.cast(DoubleType.cast(x) add (y sub 0.5))
@@ -93,10 +89,9 @@ class SequenceTests {
   fun `Leftover TypedIdentifier Is Cloned After Assignment Hoisting`() {
     val x = intVar("x")
     val assignment = x assign (2 add 3)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(assignment)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(assignment)
     debugHandler.assertNoDiagnostics()
     assertEquals(listOf(assignment), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
     // Equal, but not the same: a copy must have been made
     assertEquals(x, remaining)
     assertNotSame(x, remaining)
@@ -106,10 +101,9 @@ class SequenceTests {
   fun `Prefix Increment Is Hoisted`() {
     val x = intVar("x")
     val expr = 5 mul prefixInc(x)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assertEquals(listOf(x assign (x add 1)), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
     assertEquals(5 mul x, remaining)
   }
 
@@ -117,10 +111,9 @@ class SequenceTests {
   fun `Leftover TypedIdentifier Is Cloned After Increment Hoisting`() {
     val x = intVar("x")
     val expr = prefixInc(x)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assertEquals(listOf(x assign (x add 1)), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
     // Equal, but not the same: a copy must have been made
     assertEquals(x, remaining)
     assertNotSame(x, remaining)
@@ -130,43 +123,39 @@ class SequenceTests {
   fun `Postfix Increment Is After`() {
     val x = intVar("x")
     val expr = 5 mul postfixInc(x)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assert(sequencedBefore.isEmpty())
-    assertEquals(listOf(x assign (x add 1)), sequencedAfter)
-    assertEquals(5 mul x, remaining)
+    assertEquals(x assign (x add 1), sequencedBefore.last())
+    check(remaining is BinaryExpression && remaining.op == BinaryOperators.MUL)
+    remaining.rhs.assertIsSynthetic()
   }
 
   @Test
   fun `Postfix Increment In Relational`() {
     val x = intVar("x")
     val expr = 5 equals postfixInc(x)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assert(sequencedBefore.isEmpty())
-    assertEquals(listOf(x assign (x add 1)), sequencedAfter)
-    assertEquals(5 equals x, remaining)
+    assertEquals(x assign (x add 1), sequencedBefore.last())
+    check(remaining is BinaryExpression && remaining.op == BinaryOperators.EQ)
+    remaining.rhs.assertIsSynthetic()
   }
 
   @Test
   fun `Multiple Unsequenced Increments`() {
     val x = intVar("x")
     val expr = postfixInc(x) mul postfixInc(x)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (_, _) = debugHandler.sequentialize(expr)
     debugHandler.assertDiags(DiagnosticId.UNSEQUENCED_MODS)
-    assert(sequencedBefore.isEmpty())
-    assertEquals(listOf(x assign (x add 1), x assign (x add 1)), sequencedAfter)
-    assertEquals(x mul x, remaining)
   }
 
   @Test
   fun `Comma LHS Is Entirely Before`() {
     val x = intVar("x")
     val expr = postfixInc(x) comma 123
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assertEquals(listOf(x, x assign (x add 1)), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
+    assert(sequencedBefore.isNotEmpty())
     assertEquals(int(123), remaining)
   }
 
@@ -175,11 +164,10 @@ class SequenceTests {
     val x = intVar("x")
     val y = intVar("y")
     val expr = (x sub 3).qmark(y add 2, y add 3)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     remaining.assertIsSynthetic()
     assertEquals(listOf(remaining assign expr), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
   }
 
   @Test
@@ -187,11 +175,10 @@ class SequenceTests {
     val x = intVar("x")
     val y = intVar("y")
     val expr = (x equals 1) land (y equals 1)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     remaining.assertIsSynthetic()
     assertEquals(listOf(remaining assign (x equals 1).qmark(y equals 1, 0)), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
   }
 
   @Test
@@ -199,11 +186,10 @@ class SequenceTests {
     val x = intVar("x")
     val y = intVar("y")
     val expr = (x equals 1) lor (y equals 1)
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     remaining.assertIsSynthetic()
     assertEquals(listOf(remaining assign (x equals 1).qmark(1, y equals 1)), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
   }
 
   @Test
@@ -211,10 +197,9 @@ class SequenceTests {
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val vec2Type = typeNameOf(vec2, AbstractDeclarator.blank())
     val expr = nameRef("v", vec2Type) dot intVar("x")
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assert(sequencedBefore.isEmpty())
-    assert(sequencedAfter.isEmpty())
     assertEquals(expr, remaining)
   }
 
@@ -224,9 +209,8 @@ class SequenceTests {
     val vec2Type = typeNameOf(vec2, AbstractDeclarator.blank())
     val assignment = nameRef("v", vec2Type) assign nameRef("u", vec2Type)
     val expr = assignment dot intVar("x")
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
-    assert(sequencedAfter.isEmpty())
     assertEquals(listOf(assignment), sequencedBefore)
     assertEquals(nameRef("v", vec2Type) dot intVar("x"), remaining)
   }
@@ -237,21 +221,19 @@ class SequenceTests {
     val v = nameRef("v", arrayType)
     val x = intVar("x")
     val expr = v[prefixInc(x)]
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assertEquals(v[x], remaining)
     assertEquals(listOf(x assign (x add 1)), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
   }
 
   @Test
   fun `Prefix Increment Is Hoisted From Cast Expression`() {
     val x = intVar("x")
     val expr = SignedLongLongType.cast(prefixInc(x))
-    val (sequencedBefore, remaining, sequencedAfter) = debugHandler.sequentialize(expr)
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
     debugHandler.assertNoDiagnostics()
     assertEquals(SignedLongLongType.cast(x), remaining)
     assertEquals(listOf(x assign (x add 1)), sequencedBefore)
-    assert(sequencedAfter.isEmpty())
   }
 }
