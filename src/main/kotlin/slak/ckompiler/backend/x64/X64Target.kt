@@ -46,7 +46,65 @@ object X64Target : MachineTarget {
     }
   }
 
-  override fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
+  private fun matchCmp(i: IntCmp): List<MachineInstruction> {
+    val isSigned = i.lhs.type.unqualify() is SignedIntType
+    val setValue = when (i.cmp) {
+      Comparisons.EQUAL -> "sete"
+      Comparisons.NOT_EQUAL -> "setne"
+      Comparisons.LESS_THAN -> if (isSigned) "setl" else "setb"
+      Comparisons.GREATER_THAN -> if (isSigned) "setg" else "seta"
+      Comparisons.LESS_EQUAL -> if (isSigned) "setle" else "setbe"
+      Comparisons.GREATER_EQUAL -> if (isSigned) "setge" else "setae"
+    }
+    return listOf(
+        cmp.match(i.lhs, i.rhs),
+        setcc.getValue(setValue).match(i.result)
+    )
+  }
+
+  override fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction> {
+    val selected = mutableListOf<MachineInstruction>()
+    // FIXME: deal with φ
+    for (irInstr in block.ir) {
+      selected += expandMacroFor(irInstr)
+    }
+    when (block.terminator) {
+      is CondJump -> {
+        val condTerm = block.terminator as CondJump
+        for (irInstr in condTerm.cond.dropLast(1)) {
+          selected += expandMacroFor(irInstr)
+        }
+        when (val l = condTerm.cond.last()) {
+          is IntCmp -> {
+            selected += selectCondJmp(l, JumpTargetConstant(condTerm.target))
+          }
+          is FltCmp -> TODO("floats")
+          else -> TODO("no idea what happens here")
+        }
+      }
+      is SelectJump -> TODO("deal with switches later")
+      is ImpossibleJump -> TODO("return value")
+      is ConstantJump, is UncondJump -> TODO("unconditionally jmp")
+      MissingJump -> logger.throwICE("Incomplete BasicBlock")
+    }
+    return selected
+  }
+
+  private fun selectCondJmp(i: IntCmp, jumpTrue: JumpTargetConstant): MachineInstruction {
+    val isSigned = i.lhs.type.unqualify() is SignedIntType
+    // FIXME: deal with common cases like `!(a > b)` -> jnge/jnae
+    val jmpName = when (i.cmp) {
+      Comparisons.EQUAL -> "je"
+      Comparisons.NOT_EQUAL -> "jne"
+      Comparisons.LESS_THAN -> if (isSigned) "jl" else "jb"
+      Comparisons.GREATER_THAN -> if (isSigned) "jg" else "ja"
+      Comparisons.LESS_EQUAL -> if (isSigned) "jle" else "jbe"
+      Comparisons.GREATER_EQUAL -> if (isSigned) "jge" else "jae"
+    }
+    return jcc.getValue(jmpName).match(jumpTrue)
+  }
+
+  private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is LoadInstr -> listOf(mov.match(i.result, i.target))
     is StoreInstr -> listOf(mov.match(i.target, i.value))
     is ConstantRegisterInstr -> listOf(mov.match(i.result, i.const))
@@ -66,7 +124,7 @@ object X64Target : MachineTarget {
       IntegralBinaryOps.OR -> TODO()
       IntegralBinaryOps.XOR -> TODO()
     }
-    is IntCmp -> TODO()
+    is IntCmp -> matchCmp(i)
     is IntInvert -> TODO()
     is IntNeg -> TODO()
     is FltBinary -> TODO()

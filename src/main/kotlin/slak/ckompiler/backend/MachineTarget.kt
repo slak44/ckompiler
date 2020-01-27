@@ -98,9 +98,9 @@ interface MachineTarget {
   fun registerClassOf(type: TypeName): MachineRegisterClass
 
   /**
-   * Instruction selection for one [IRInstruction].
+   * Instruction selection for the [IRInstruction]s in a [BasicBlock].
    */
-  fun expandMacroFor(i: IRInstruction): List<MachineInstruction>
+  fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction>
 
   fun applyAllocation(cfg: CFG, alloc: AllocationResult): List<AsmInstruction>
 
@@ -122,14 +122,7 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
 typealias InstructionMap = Map<BasicBlock, List<MachineInstruction>>
 
 fun MachineTarget.instructionSelection(cfg: CFG): InstructionMap {
-  return cfg.nodes
-      .associateWith { block ->
-        block.instructions
-            .asSequence()
-            .filter { it !is PhiInstr }
-            .flatMap { expandMacroFor(it).asSequence() }
-            .toList()
-      }
+  return cfg.nodes.associateWith(this::selectBlockInstrs)
 }
 
 fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {

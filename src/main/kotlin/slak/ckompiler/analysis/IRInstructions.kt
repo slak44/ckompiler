@@ -296,6 +296,12 @@ data class StrConstant(val value: String, override val type: TypeName) : Constan
   override fun toString() = name
 }
 
+data class JumpTargetConstant(val target: BasicBlock) : ConstantValue() {
+  override val type = VoidType
+  override val name = target.toString()
+  override fun toString() = name
+}
+
 /**
  * The [variable] definition that reaches a point in the CFG, along with information about where it
  * was defined.

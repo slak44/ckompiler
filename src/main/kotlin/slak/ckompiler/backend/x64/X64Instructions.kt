@@ -11,7 +11,7 @@ enum class OperandType {
 }
 
 /**
- * Generic operand to an instruction (register reference, memory location, immediate).
+ * Generic operand to an instruction (register reference, memory location, immediate, label).
  */
 interface Operand {
   val size: Int
@@ -35,6 +35,10 @@ enum class Imm(override val size: Int) : Operand {
 
 data class Register(val register: MachineRegister) : Operand {
   override val size = register.sizeBytes
+}
+
+object JumpTarget : Operand {
+  override val size = 0
 }
 
 data class X64InstrTemplate(
@@ -92,6 +96,7 @@ private fun ICBuilder.instr(operandUse: List<VariableUse>, vararg operands: Oper
 }
 
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
+  if (this is JumpTarget && ref is JumpTargetConstant) return true
   if (MachineTargetData.x64.sizeOf(ref.type) != size) return false
   return when (ref) {
     is MemoryReference -> {
@@ -112,7 +117,7 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
     it.operands.size == operands.size &&
         operands.zip(it.operands).all { (ref, targetOperand) -> targetOperand compatibleWith ref }
   }
-  checkNotNull(instr) { "Instruction selection failure: match $operands in $this" }
+  checkNotNull(instr) { "Instruction selection failure: match ${operands.toList()} in $this" }
   return MachineInstruction(instr, operands.toList())
 }
 
@@ -165,4 +170,20 @@ val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM16, IMM16)
   instr(RM32, IMM32)
   instr(RM64, IMM32)
+}
+
+val setcc = listOf(
+    "seta", "setae", "setb", "setbe", "setc", "sete", "setg", "setge", "setl",
+    "setle", "setna", "setnae", "setnb", "setnbe", "setnc", "setne", "setng", "setnge", "setnl",
+    "setnle", "setno", "setnp", "setns", "setnz", "seto", "setp", "setpe", "setpo", "sets", "setz"
+).associateWith {
+  instructionClass(it, listOf(VariableUse.USE)) { instr(RM8) }
+}
+
+val jcc = listOf(
+    "ja", "jae", "jb", "jbe", "jc", "jcxz", "jecxz", "jrcxz", "je", "jg", "jge", "jl", "jle", "jna",
+    "jnae", "jnb", "jnbe", "jnc", "jne", "jng", "jnge", "jnl", "jnle", "jno", "jnp", "jns", "jnz",
+    "jo", "jp", "jpe", "jpo", "js", "jz"
+).associateWith {
+  instructionClass(it, listOf(VariableUse.USE)) { instr(JumpTarget) }
 }
