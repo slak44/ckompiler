@@ -187,3 +187,5 @@ val jcc = listOf(
 ).associateWith {
   instructionClass(it, listOf(VariableUse.USE)) { instr(JumpTarget) }
 }
+
+val jmp = instructionClass("jmp", listOf(VariableUse.USE)) { instr(JumpTarget) }

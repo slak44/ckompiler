@@ -68,24 +68,31 @@ object X64Target : MachineTarget {
     for (irInstr in block.ir) {
       selected += expandMacroFor(irInstr)
     }
-    when (block.terminator) {
+    when (val term = block.terminator) {
+      MissingJump -> logger.throwICE("Incomplete BasicBlock")
       is CondJump -> {
-        val condTerm = block.terminator as CondJump
-        for (irInstr in condTerm.cond.dropLast(1)) {
+        for (irInstr in term.cond.dropLast(1)) {
           selected += expandMacroFor(irInstr)
         }
-        when (val l = condTerm.cond.last()) {
+        when (val l = term.cond.last()) {
           is IntCmp -> {
-            selected += selectCondJmp(l, JumpTargetConstant(condTerm.target))
+            selected += selectCondJmp(l, JumpTargetConstant(term.target))
+            selected += jmp.match(JumpTargetConstant(term.other))
           }
           is FltCmp -> TODO("floats")
           else -> TODO("no idea what happens here")
         }
       }
       is SelectJump -> TODO("deal with switches later")
-      is ImpossibleJump -> TODO("return value")
-      is ConstantJump, is UncondJump -> TODO("unconditionally jmp")
-      MissingJump -> logger.throwICE("Incomplete BasicBlock")
+      is UncondJump -> {
+        selected += jmp.match(JumpTargetConstant(term.target))
+      }
+      is ConstantJump -> {
+        selected += jmp.match(JumpTargetConstant(term.target))
+      }
+      is ImpossibleJump -> {
+        TODO("returns")
+      }
     }
     return selected
   }
