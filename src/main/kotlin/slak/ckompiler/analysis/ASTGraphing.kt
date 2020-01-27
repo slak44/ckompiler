@@ -142,7 +142,18 @@ private fun graphExprTerm(
   val (nextBlock, exprs) = processExpression(root, current, cond)
   val instrs = createInstructions(exprs, root.targetData, root.registerIds)
   nextBlock.src += exprs
-  return nextBlock to instrs
+  val l = instrs.last()
+  return if (l !is IntCmp && l !is FltCmp) {
+    val irValue = when (l) {
+      is ResultInstruction -> l.result
+      is SideEffectInstruction -> l.target
+    }
+    val res = VirtualRegister(root.registerIds(), SignedIntType)
+    val zeroCmp = IntCmp(res, irValue, IntConstant(0, irValue.type), Comparisons.NOT_EQUAL)
+    nextBlock to (instrs + zeroCmp)
+  } else {
+    nextBlock to instrs
+  }
 }
 
 private fun graphTernary(

@@ -159,4 +159,15 @@ class CFGTests {
     val cond = checkNotNull(cfg.startBlock.terminator as? CondJump)
     assert(cond.cond.last() is IntCmp)
   }
+
+  @Test
+  fun `Conditional IR Always Ends In Comparison`() {
+    val cfg = prepareCFG(resource("cfg/ifWithVariableCond.c"), source)
+    val term = cfg.startBlock.terminator
+    check(term is CondJump)
+    val cmp = term.cond.last()
+    check(cmp is IntCmp)
+    assert(cmp.lhs !is ConstantValue)
+    assert(cmp.rhs is IntConstant)
+  }
 }
