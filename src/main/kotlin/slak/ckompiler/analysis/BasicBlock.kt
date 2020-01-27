@@ -175,6 +175,7 @@ class BasicBlock(val isRoot: Boolean = false) {
     get() = iterator {
       yieldAll(phiFunctions)
       yieldAll(ir)
+      (terminator as? SelectJump)?.cond?.let { yieldAll(it) }
       (terminator as? CondJump)?.cond?.let { yieldAll(it) }
       (terminator as? ImpossibleJump)?.returned?.let { yieldAll(it) }
     }
