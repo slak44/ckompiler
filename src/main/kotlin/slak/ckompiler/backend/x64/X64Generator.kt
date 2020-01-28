@@ -5,6 +5,7 @@ import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.SignedCharType
 import slak.ckompiler.parser.SignedIntType
+import slak.ckompiler.parser.UnsignedLongType
 import slak.ckompiler.throwICE
 
 class X64Generator(override val cfg: CFG) : TargetFunGenerator {
@@ -197,10 +198,26 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   override fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction> {
-    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    // FIXME: allocate stack space
+    return listOf(
+        push.match(rbp),
+        mov.match(rbp, rsp)
+    ).map {
+      val ops = it.operands.map { op -> RegisterValue(op as PhysicalRegister) }
+      X64Instruction(it.template as X64InstrTemplate, ops)
+    }
   }
 
   override fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction> {
-    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    // FIXME: deallocate stack space
+    return listOf(
+        X64Instruction(leave.first(), emptyList()),
+        X64Instruction(ret.first(), emptyList())
+    )
+  }
+
+  companion object {
+    private val rbp = PhysicalRegister(X64Target.registerByName("rbp"), UnsignedLongType)
+    private val rsp = PhysicalRegister(X64Target.registerByName("rsp"), UnsignedLongType)
   }
 }
