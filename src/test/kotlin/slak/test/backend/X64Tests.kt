@@ -3,7 +3,10 @@ package slak.test.backend
 import org.junit.jupiter.api.Test
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.VirtualRegister
-import slak.ckompiler.backend.*
+import slak.ckompiler.backend.AllocationResult
+import slak.ckompiler.backend.Memory
+import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.stringify
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.setcc
@@ -11,7 +14,6 @@ import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
 import kotlin.test.assertEquals
-import kotlin.test.fail
 
 class X64Tests {
   private fun regAlloc(resourceName: String): AllocationResult {
@@ -28,7 +30,11 @@ class X64Tests {
       println("allocate $value to $register")
     }
     val final = gen.applyAllocation(res)
-    println(final.joinToString("\n", prefix = "\n"))
+    for ((block, list) in final) {
+      println(block)
+      println(list.joinToString("\n", prefix = "\n"))
+      println()
+    }
     return res
   }
 

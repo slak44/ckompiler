@@ -2,6 +2,7 @@ package slak.ckompiler.backend
 
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.x64.X64Instruction
 import slak.ckompiler.parser.TypeName
 
 interface MachineRegisterClass {
@@ -115,7 +116,7 @@ interface TargetFunGenerator {
    */
   fun instructionSelection(): InstructionMap
 
-  fun applyAllocation(alloc: AllocationResult): List<AsmInstruction>
+  fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<AsmInstruction>>
 
   fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
   fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
@@ -145,6 +146,15 @@ fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {
   return lists
 }
 
-fun TargetFunGenerator.assembleFunction(alloc: AllocationResult): List<AsmInstruction> {
-  return genFunctionPrologue(alloc) + applyAllocation(alloc) + genFunctionEpilogue(alloc)
+/**
+ * All the information required to emit a function.
+ */
+typealias EmissileFunction = Pair<TargetFunGenerator, AllocationResult>
+
+interface AsmEmitter {
+  val externals: List<String>
+  val functions: List<EmissileFunction>
+  val mainCfg: EmissileFunction?
+
+  fun emitAsm(): String
 }

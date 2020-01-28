@@ -170,7 +170,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     )
   }
 
-  override fun applyAllocation(alloc: AllocationResult): List<X64Instruction> {
+  override fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<X64Instruction>> {
     val (instrs, allocated, stackSlots) = alloc
     var currentStackOffset = 0
     val stackOffsets = stackSlots.associateWith {
@@ -178,8 +178,9 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       currentStackOffset += it.sizeBytes
       offset
     }
-    val result = mutableListOf<X64Instruction>()
+    val asm = mutableMapOf<BasicBlock, List<X64Instruction>>()
     for (block in cfg.postOrderNodes) {
+      val result = mutableListOf<X64Instruction>()
       for ((template, operands) in instrs.getValue(block)) {
         require(template is X64InstrTemplate)
         val ops = operands.map {
@@ -193,8 +194,10 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         }
         result += X64Instruction(template, ops)
       }
+      asm += block to result
     }
-    return result
+    asm += returnBlock to emptyList()
+    return asm
   }
 
   /**
