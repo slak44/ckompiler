@@ -9,38 +9,10 @@ import slak.ckompiler.throwICE
 class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   private val logger = LogManager.getLogger()
 
-  private fun matchAdd(i: IntBinary) = when (i.result) {
-    // result = result OP rhs
-    i.lhs -> listOf(add.match(i.lhs, i.rhs))
-    // result = lhs OP result
-    i.rhs -> listOf(add.match(i.rhs, i.lhs))
-    else -> {
-      // Can't have result = imm OP imm
-      require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
-      val nonImm = if (i.lhs is ConstantValue) i.rhs else i.lhs
-      val maybeImm = if (i.lhs === nonImm) i.rhs else i.lhs
-      listOf(
-          mov.match(i.result, nonImm),
-          add.match(i.result, maybeImm)
-      )
-    }
-  }
-
-  private fun matchCmp(i: IntCmp): List<MachineInstruction> {
-    val isSigned = i.lhs.type.unqualify() is SignedIntType
-    val setValue = when (i.cmp) {
-      Comparisons.EQUAL -> "sete"
-      Comparisons.NOT_EQUAL -> "setne"
-      Comparisons.LESS_THAN -> if (isSigned) "setl" else "setb"
-      Comparisons.GREATER_THAN -> if (isSigned) "setg" else "seta"
-      Comparisons.LESS_EQUAL -> if (isSigned) "setle" else "setbe"
-      Comparisons.GREATER_EQUAL -> if (isSigned) "setge" else "setae"
-    }
-    return listOf(
-        cmp.match(i.lhs, i.rhs),
-        setcc.getValue(setValue).match(i.result)
-    )
-  }
+  /**
+   * All returns actually jump to this synthetic block, which then really returns from the function.
+   */
+  private val returnBlock = BasicBlock(isRoot = false)
 
   override fun instructionSelection(): InstructionMap {
     return cfg.nodes.associateWith(this::selectBlockInstrs)
@@ -75,7 +47,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         selected += jmp.match(JumpTargetConstant(term.target))
       }
       is ImpossibleJump -> {
-        TODO("returns")
+        selected += jmp.match(JumpTargetConstant(returnBlock))
       }
     }
     return selected
@@ -122,6 +94,39 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is FltCmp -> TODO()
     is FltNeg -> TODO()
     is PhiInstr -> TODO()
+  }
+
+  private fun matchAdd(i: IntBinary) = when (i.result) {
+    // result = result OP rhs
+    i.lhs -> listOf(add.match(i.lhs, i.rhs))
+    // result = lhs OP result
+    i.rhs -> listOf(add.match(i.rhs, i.lhs))
+    else -> {
+      // Can't have result = imm OP imm
+      require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
+      val nonImm = if (i.lhs is ConstantValue) i.rhs else i.lhs
+      val maybeImm = if (i.lhs === nonImm) i.rhs else i.lhs
+      listOf(
+          mov.match(i.result, nonImm),
+          add.match(i.result, maybeImm)
+      )
+    }
+  }
+
+  private fun matchCmp(i: IntCmp): List<MachineInstruction> {
+    val isSigned = i.lhs.type.unqualify() is SignedIntType
+    val setValue = when (i.cmp) {
+      Comparisons.EQUAL -> "sete"
+      Comparisons.NOT_EQUAL -> "setne"
+      Comparisons.LESS_THAN -> if (isSigned) "setl" else "setb"
+      Comparisons.GREATER_THAN -> if (isSigned) "setg" else "seta"
+      Comparisons.LESS_EQUAL -> if (isSigned) "setle" else "setbe"
+      Comparisons.GREATER_EQUAL -> if (isSigned) "setge" else "setae"
+    }
+    return listOf(
+        cmp.match(i.lhs, i.rhs),
+        setcc.getValue(setValue).match(i.result)
+    )
   }
 
   override fun applyAllocation(alloc: AllocationResult): List<X64Instruction> {
