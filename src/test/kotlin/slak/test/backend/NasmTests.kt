@@ -12,7 +12,6 @@ import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-@Disabled("temporary codegen disable")
 class NasmTests {
   private class CompileAndRunBuilder {
     var text: String? = null

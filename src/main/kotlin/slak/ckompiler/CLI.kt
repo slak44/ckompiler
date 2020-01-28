@@ -6,7 +6,10 @@ import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.analysis.findInterferenceIn
-import slak.ckompiler.backend.nasm.NasmGenerator
+import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.x64.NasmEmitter
+import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
@@ -420,8 +423,8 @@ class CLI(private val stdinStream: InputStream) :
     val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
     // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
-    val funcsCfgs = (allFuncs - main).map {
-      CFG(
+    val functionsEmit = (allFuncs - main).map {
+      val cfg = CFG(
           f = it!!,
           targetData = MachineTargetData.x64,
           srcFileName = relPath,
@@ -429,9 +432,13 @@ class CLI(private val stdinStream: InputStream) :
           forceReturnZero = false,
           forceAllNodes = false
       )
+      // FIXME: this is X64 only:
+      val gen = X64Generator(cfg)
+      val selected = gen.instructionSelection()
+      gen to X64Target.regAlloc(cfg, selected)
     }
-    val mainCfg = main?.let {
-      CFG(
+    val mainEmit = main?.let {
+      val cfg = CFG(
           f = it,
           targetData = MachineTargetData.x64,
           srcFileName = relPath,
@@ -439,9 +446,13 @@ class CLI(private val stdinStream: InputStream) :
           forceReturnZero = true,
           forceAllNodes = false
       )
+      // FIXME: this is X64 only:
+      val gen = X64Generator(cfg)
+      val selected = gen.instructionSelection()
+      gen to X64Target.regAlloc(cfg, selected)
     }
 
-    val nasm = NasmGenerator(declNames, funcsCfgs, mainCfg, MachineTargetData.x64).nasm
+    val nasm = NasmEmitter(declNames, functionsEmit, mainEmit).emitAsm()
 
     if (isCompileOnly) {
       val asmFile = fileFrom(output.orElse("$baseName.s"))
