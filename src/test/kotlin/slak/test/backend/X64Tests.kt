@@ -1,13 +1,17 @@
 package slak.test.backend
 
 import org.junit.jupiter.api.Test
+import slak.ckompiler.MachineTargetData
+import slak.ckompiler.analysis.VirtualRegister
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
+import slak.ckompiler.backend.x64.setcc
 import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
 import kotlin.test.assertEquals
+import kotlin.test.fail
 
 class X64Tests {
   private fun regAlloc(resourceName: String): AllocationResult {
@@ -44,9 +48,13 @@ class X64Tests {
   }
 
   @Test
-  fun `Register Allocation With Varying Sizes`() {
-    val (_, allocs) = regAlloc("codegen/storeCmp.c")
-    TODO()
+  fun `Register Allocation With Varying Sizes (SETcc Instruction)`() {
+    val (iLists, _) = regAlloc("codegen/storeCmp.c")
+    val (_, mi) = iLists.entries.first { it.key.isRoot }
+    val setInstr = mi.first { it.template in setcc.getOrElse(it.template.name, ::emptyList) }
+    assertEquals(1, setInstr.operands.size)
+    assert(setInstr.operands[0] is VirtualRegister)
+    assertEquals(1, MachineTargetData.x64.sizeOf(setInstr.operands[0].type))
   }
 
   @Test

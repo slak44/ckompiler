@@ -150,6 +150,8 @@ val cmp = instructionClass("cmp", listOf(VariableUse.USE, VariableUse.USE)) {
   arithmetic()
 }
 
+val and = instructionClass("and", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+
 val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM8, R8)
   instr(RM16, R16)
@@ -172,12 +174,21 @@ val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM64, IMM32)
 }
 
+val movzx = instructionClass("movzx", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(R16, RM8)
+  instr(R32, RM8)
+  instr(R64, RM8)
+
+  instr(R32, RM16)
+  instr(R64, RM16)
+}
+
 val setcc = listOf(
     "seta", "setae", "setb", "setbe", "setc", "sete", "setg", "setge", "setl",
     "setle", "setna", "setnae", "setnb", "setnbe", "setnc", "setne", "setng", "setnge", "setnl",
     "setnle", "setno", "setnp", "setns", "setnz", "seto", "setp", "setpe", "setpo", "sets", "setz"
 ).associateWith {
-  instructionClass(it, listOf(VariableUse.USE)) { instr(RM8) }
+  instructionClass(it, listOf(VariableUse.DEF)) { instr(RM8) }
 }
 
 val jcc = listOf(

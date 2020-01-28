@@ -3,6 +3,7 @@ package slak.ckompiler.backend.x64
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
+import slak.ckompiler.parser.SignedCharType
 import slak.ckompiler.parser.SignedIntType
 import slak.ckompiler.throwICE
 
@@ -123,9 +124,11 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       Comparisons.LESS_EQUAL -> if (isSigned) "setle" else "setbe"
       Comparisons.GREATER_EQUAL -> if (isSigned) "setge" else "setae"
     }
+    val setccTarget = VirtualRegister(cfg.registerIds(), SignedCharType)
     return listOf(
         cmp.match(i.lhs, i.rhs),
-        setcc.getValue(setValue).match(i.result)
+        setcc.getValue(setValue).match(setccTarget),
+        movzx.match(i.result, setccTarget)
     )
   }
 
