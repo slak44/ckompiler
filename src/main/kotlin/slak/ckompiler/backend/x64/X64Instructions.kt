@@ -56,6 +56,8 @@ data class ImmediateValue(val value: ConstantValue) : X64Value() {
 }
 
 data class RegisterValue(val register: MachineRegister, val size: Int) : X64Value() {
+  constructor(phys: PhysicalRegister) : this(phys.reg, MachineTargetData.x64.sizeOf(phys.type))
+
   override fun toString(): String {
     if (register.sizeBytes == size) return register.regName
     return register.aliases.first { it.second == size }.first
