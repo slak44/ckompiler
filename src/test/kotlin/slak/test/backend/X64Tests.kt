@@ -2,6 +2,7 @@ package slak.test.backend
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.backend.*
+import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.test.prepareCFG
 import slak.test.resource
@@ -11,7 +12,8 @@ import kotlin.test.assertEquals
 class X64Tests {
   private fun regAlloc(resourceName: String): AllocationResult {
     val cfg = prepareCFG(resource(resourceName), source)
-    val res = X64Target.regAlloc(cfg, X64Target.instructionSelection(cfg))
+    val gen = X64Generator(cfg)
+    val res = X64Target.regAlloc(cfg, gen.instructionSelection())
     val (newLists, allocation, _) = res
     for ((block, list) in newLists) {
       println(block)
@@ -21,7 +23,7 @@ class X64Tests {
     for ((value, register) in allocation) {
       println("allocate $value to $register")
     }
-    val final = X64Target.applyAllocation(cfg, res)
+    val final = gen.applyAllocation(res)
     println(final.joinToString("\n", prefix = "\n"))
     return res
   }
@@ -29,7 +31,7 @@ class X64Tests {
   @Test
   fun `Instruction Selection On CFG`() {
     val cfg = prepareCFG(resource("codegen/addsAndMovs.c"), source)
-    val iLists = X64Target.instructionSelection(cfg)
+    val iLists = X64Generator(cfg).instructionSelection()
     for (list in iLists) {
       println(list.value.stringify())
     }

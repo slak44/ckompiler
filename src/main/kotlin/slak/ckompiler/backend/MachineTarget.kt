@@ -81,8 +81,32 @@ fun List<MachineInstruction>.stringify(): String {
   }
 }
 
+/**
+ * [BasicBlock]s and the [MachineInstruction]s created from the [BasicBlock.instructions].
+ *
+ * @see TargetFunGenerator.instructionSelection
+ */
+typealias InstructionMap = Map<BasicBlock, List<MachineInstruction>>
+
 interface AsmInstruction {
   val template: InstructionTemplate
+}
+
+interface TargetFunGenerator {
+  /**
+   * Target function to generate code for.
+   */
+  val cfg: CFG
+
+  /**
+   * Instruction selection for the function described by [cfg].
+   */
+  fun instructionSelection(): InstructionMap
+
+  fun applyAllocation(alloc: AllocationResult): List<AsmInstruction>
+
+  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
+  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
 }
 
 interface MachineTarget {
@@ -96,16 +120,6 @@ interface MachineTarget {
   val forbidden: List<MachineRegister>
 
   fun registerClassOf(type: TypeName): MachineRegisterClass
-
-  /**
-   * Instruction selection for the [IRInstruction]s in a [BasicBlock].
-   */
-  fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction>
-
-  fun applyAllocation(cfg: CFG, alloc: AllocationResult): List<AsmInstruction>
-
-  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
-  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
 }
 
 fun MachineTarget.registerByName(name: String): MachineRegister {
@@ -114,22 +128,11 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
   }
 }
 
-/**
- * [BasicBlock]s and the [MachineInstruction]s created from the [BasicBlock.instructions].
- *
- * @see MachineTarget.instructionSelection
- */
-typealias InstructionMap = Map<BasicBlock, List<MachineInstruction>>
-
-fun MachineTarget.instructionSelection(cfg: CFG): InstructionMap {
-  return cfg.nodes.associateWith(this::selectBlockInstrs)
-}
-
 fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {
   // FIXME: deal with this sometime
   return lists
 }
 
-fun MachineTarget.assembleFunction(cfg: CFG, alloc: AllocationResult): List<AsmInstruction> {
-  return genFunctionPrologue(alloc) + applyAllocation(cfg, alloc) + genFunctionEpilogue(alloc)
+fun TargetFunGenerator.assembleFunction(alloc: AllocationResult): List<AsmInstruction> {
+  return genFunctionPrologue(alloc) + applyAllocation(alloc) + genFunctionEpilogue(alloc)
 }
