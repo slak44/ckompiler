@@ -59,6 +59,7 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: InstructionMap): Inter
       uses[variable] = Int.MAX_VALUE
     }
     for (value in defs.keys) {
+      if (value in valueMap) continue
       val valueId = irValCounter()
       valueMap[value] = valueId
       interference[valueId] = mutableListOf()
@@ -79,6 +80,7 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: InstructionMap): Inter
   }
   val adjLists = interference.entries.sortedBy { it.key }.map { it.value }
   val valueMapping = valueMap.entries.sortedBy { it.value }.map { it.key }
+  check(adjLists.size == valueMapping.size) { "Graph and value mapping have different sizes" }
   return InterferenceGraph(lists, adjLists, valueMapping)
 }
 

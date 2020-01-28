@@ -97,7 +97,7 @@ private fun ICBuilder.instr(operandUse: List<VariableUse>, vararg operands: Oper
 
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (this is JumpTarget && ref is JumpTargetConstant) return true
-  if (MachineTargetData.x64.sizeOf(ref.type) != size) return false
+  if (ref !is PhysicalRegister && MachineTargetData.x64.sizeOf(ref.type) != size) return false
   return when (ref) {
     is MemoryReference -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
@@ -108,6 +108,13 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
     }
     is ConstantValue -> {
       this is Imm
+    }
+    is PhysicalRegister -> {
+      val isCorrectKind = (this is Register && register == ref.reg) ||
+          (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
+      val isCorrectSize =
+          size == ref.reg.sizeBytes || size in ref.reg.aliases.map { it.second }
+      isCorrectKind && isCorrectSize
     }
   }
 }

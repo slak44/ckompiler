@@ -68,8 +68,20 @@ enum class VariableUse {
   DEF, USE, DEF_USE
 }
 
+/**
+ * A "template" for an instruction. Describes what is allowed as operands, and how they are used.
+ */
 interface InstructionTemplate {
+  /**
+   * Instruction name. "mov", "add", etc.
+   */
   val name: String
+
+  /**
+   * What each operand represents: a definition, a use, or both.
+   *
+   * @see MachineInstruction.operands
+   */
   val operandUse: List<VariableUse>
 }
 

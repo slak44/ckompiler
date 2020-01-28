@@ -137,13 +137,14 @@ private fun graphExprRegular(
 private fun graphExprTerm(
     root: CFG,
     current: BasicBlock,
-    cond: Expression
+    cond: Expression,
+    compareWithZero: Boolean = true
 ): Pair<BasicBlock, List<IRInstruction>> {
   val (nextBlock, exprs) = processExpression(root, current, cond)
   val instrs = createInstructions(exprs, root.targetData, root.registerIds)
   nextBlock.src += exprs
   val l = instrs.last()
-  return if (l !is IntCmp && l !is FltCmp) {
+  return if (compareWithZero && l !is IntCmp && l !is FltCmp) {
     val irValue = when (l) {
       is ResultInstruction -> l.result
       is SideEffectInstruction -> l.target
@@ -304,7 +305,7 @@ private fun GraphingContext.graphStatement(
     if (s.expr == null) {
       current.terminator = ImpossibleJump(deadCodeBlock, null, null)
     } else {
-      val (currentNext, returnIr) = graphExprTerm(root, current, s.expr)
+      val (currentNext, returnIr) = graphExprTerm(root, current, s.expr, compareWithZero = false)
       currentNext.terminator = ImpossibleJump(deadCodeBlock, returnIr, s.expr)
     }
     deadCodeBlock

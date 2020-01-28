@@ -28,17 +28,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     when (val term = block.terminator) {
       MissingJump -> logger.throwICE("Incomplete BasicBlock")
       is CondJump -> {
-        for (irInstr in term.cond.dropLast(1)) {
-          selected += expandMacroFor(irInstr)
-        }
-        when (val l = term.cond.last()) {
-          is IntCmp -> {
-            selected += selectCondJmp(l, JumpTargetConstant(term.target))
-            selected += jmp.match(JumpTargetConstant(term.other))
-          }
-          is FltCmp -> TODO("floats")
-          else -> TODO("no idea what happens here")
-        }
+        selected += selectCondJump(term)
       }
       is SelectJump -> TODO("deal with switches later")
       is UncondJump -> {
@@ -48,13 +38,29 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         selected += jmp.match(JumpTargetConstant(term.target))
       }
       is ImpossibleJump -> {
-        selected += jmp.match(JumpTargetConstant(returnBlock))
+        selected += selectReturn(term)
       }
     }
     return selected
   }
 
-  private fun selectCondJmp(i: IntCmp, jumpTrue: JumpTargetConstant): MachineInstruction {
+  private fun selectCondJump(condJump: CondJump): List<MachineInstruction> {
+    val selected = mutableListOf<MachineInstruction>()
+    for (irInstr in condJump.cond.dropLast(1)) {
+      selected += expandMacroFor(irInstr)
+    }
+    when (val l = condJump.cond.last()) {
+      is IntCmp -> {
+        selected += selectIntJmp(l, JumpTargetConstant(condJump.target))
+        selected += jmp.match(JumpTargetConstant(condJump.other))
+      }
+      is FltCmp -> TODO("floats")
+      else -> TODO("no idea what happens here")
+    }
+    return selected
+  }
+
+  private fun selectIntJmp(i: IntCmp, jumpTrue: JumpTargetConstant): MachineInstruction {
     val isSigned = i.lhs.type.unqualify() is SignedIntType
     // FIXME: deal with common cases like `!(a > b)` -> jnge/jnae
     val jmpName = when (i.cmp) {
@@ -66,6 +72,37 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       Comparisons.GREATER_EQUAL -> if (isSigned) "jge" else "jae"
     }
     return jcc.getValue(jmpName).match(jumpTrue)
+  }
+
+  /**
+   * System V ABI: 3.2.3, pages 24-25
+   */
+  private fun selectReturn(ret: ImpossibleJump): List<MachineInstruction> {
+    val selected = mutableListOf<MachineInstruction>()
+    if (ret.returned != null) {
+      require(ret.returned.isNotEmpty())
+      for (irInstr in ret.returned) {
+        selected += expandMacroFor(irInstr)
+      }
+      val retVal = when (val r = ret.returned.last()) {
+        is ResultInstruction -> r.result
+        is SideEffectInstruction -> r.target
+      }
+      val retType = X64Target.registerClassOf(retVal.type)
+      if (retType == Memory) {
+        TODO("deal with this")
+      } else {
+        require(retType is X64RegisterClass)
+        if (retType == X64RegisterClass.INTEGER) {
+          val rax = PhysicalRegister(X64Target.registerByName("rax"), retVal.type)
+          selected += mov.match(rax, retVal)
+        } else {
+          TODO("deal with this")
+        }
+      }
+    }
+    selected += jmp.match(JumpTargetConstant(returnBlock))
+    return selected
   }
 
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
