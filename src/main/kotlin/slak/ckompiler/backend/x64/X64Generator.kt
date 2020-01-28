@@ -200,7 +200,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   /**
    * System V ABI: 3.2.1, figure 3.3
    */
-  override fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction> {
+  override fun genFunctionPrologue(alloc: AllocationResult): List<X64Instruction> {
     // FIXME: allocate stack space
     return listOf(
         push.match(rbp),
@@ -214,7 +214,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   /**
    * System V ABI: 3.2.1, figure 3.3
    */
-  override fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction> {
+  override fun genFunctionEpilogue(alloc: AllocationResult): List<X64Instruction> {
     // FIXME: deallocate stack space
     return listOf(
         X64Instruction(leave.first(), emptyList()),
