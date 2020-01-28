@@ -202,3 +202,27 @@ val jcc = listOf(
 val jmp = instructionClass("jmp", listOf(VariableUse.USE)) { instr(JumpTarget) }
 
 val ret = instructionClass("ret", listOf()) { instr() }
+
+val push = instructionClass("push", listOf(VariableUse.USE)) {
+  instr(RM16)
+  instr(RM32)
+  instr(RM64)
+
+  instr(R16)
+  instr(R32)
+  instr(R64)
+
+  instr(IMM8)
+  instr(IMM16)
+  instr(IMM32)
+}
+
+val pop = instructionClass("pop", listOf(VariableUse.DEF)) {
+  instr(RM16)
+  instr(RM32)
+  instr(RM64)
+
+  instr(R16)
+  instr(R32)
+  instr(R64)
+}
