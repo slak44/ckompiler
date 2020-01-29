@@ -127,12 +127,11 @@ private fun insertSpillCode(cfg: CFG, target: IRValue, graph: InterferenceGraph)
 }
 
 fun MachineTarget.regAlloc(cfg: CFG, instrMap: InstructionMap): AllocationResult {
-  val seq = createDomTreePreOrderSequence(cfg.doms, cfg.startBlock, cfg.nodes)
   val spilled = mutableListOf<IRValue>()
   var instrs = instrMap
   while (true) {
     val stackSlots = mutableListOf<StackSlot>()
-    val graph = seq.interferenceGraph(instrs)
+    val graph = cfg.domTreePreorder.interferenceGraph(instrs)
     val (_, adjLists, valueMapping) = graph
     val peo = maximumCardinalitySearch(adjLists)
     val coloring = greedyColoring(adjLists, peo, emptyMap()) { node, forbiddenRegisters ->

@@ -24,6 +24,8 @@ class CFG(
   val nodes: Set<BasicBlock>
   /** [nodes], but sorted in post-order. Not a [Sequence] because we will need it in reverse. */
   val postOrderNodes: Set<BasicBlock>
+  /** @see createDomTreePreOrderSequence */
+  val domTreePreorder: Sequence<BasicBlock>
   /**
    * Stores the immediate dominator (IDom) of a particular node.
    * @see findDomFrontiers
@@ -59,11 +61,13 @@ class CFG(
     // SSA conversion
     if (!forceAllNodes) {
       doms = findDomFrontiers(startBlock, postOrderNodes)
+      domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
       insertPhiFunctions(definitions)
-      val renamer = VariableRenamer(doms, startBlock, nodes)
+      val renamer = VariableRenamer(doms, startBlock, domTreePreorder)
       renamer.variableRenaming()
     } else {
       doms = DominatorList(nodes.size)
+      domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
     }
 
     diags.forEach(Diagnostic::print)
@@ -112,11 +116,8 @@ class CFG(
 private class VariableRenamer(
     val doms: DominatorList,
     val startBlock: BasicBlock,
-    nodes: Set<BasicBlock>
+    val domTreePreorder: Sequence<BasicBlock>
 ) {
-  /** @see createDomTreePreOrderSequence */
-  private val domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
-
   /**
    * Stores what is the last created version of a particular variable (maps id to version).
    * @see variableRenaming
