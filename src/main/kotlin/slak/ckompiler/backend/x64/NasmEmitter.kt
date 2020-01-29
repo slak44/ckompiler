@@ -84,9 +84,9 @@ class NasmEmitter(
     text += instrGen {
       label(asmGenerator.cfg.f.name)
       emit(genAsm(asmGenerator.genFunctionPrologue(allocationResult)))
-      for ((block, asm) in asmMap - returnBlock) {
+      for (block in asmGenerator.cfg.domTreePreorder) {
         label(block.label)
-        emit(genAsm(asm))
+        emit(genAsm(asmMap.getValue(block)))
       }
       label(returnBlock.label)
       emit(genAsm(asmGenerator.genFunctionEpilogue(allocationResult)))
