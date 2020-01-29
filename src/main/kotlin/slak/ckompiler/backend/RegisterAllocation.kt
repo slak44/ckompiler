@@ -29,14 +29,17 @@ data class AllocationResult(
     val stackSlots: List<StackSlot>
 )
 
+private const val DEFINED_IN_PHI = -1
+private const val DEFINED_IN_PRED = -2
+
 /**
  * Create live ranges for all the values in the program, and create the interference graph.
  */
-private fun Sequence<BasicBlock>.interferenceGraph(lists: InstructionMap): InterferenceGraph {
+private fun CFG.interferenceGraph(lists: InstructionMap): InterferenceGraph {
   val irValCounter = IdCounter()
   val valueMap = mutableMapOf<IRValue, ValueIndex>()
   val interference = mutableMapOf<ValueIndex, MutableList<ValueIndex>>()
-  for (block in this) {
+  for (block in domTreePreorder) {
     val defs = mutableMapOf<IRValue, Int>()
     val uses = mutableMapOf<IRValue, Int>()
     for ((idx, mi) in lists.getValue(block).withIndex()) {
@@ -44,7 +47,10 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: InstructionMap): Inter
         if (operand is ConstantValue) continue
         when (operandUse) {
           VariableUse.DEF -> defs[operand] = idx + 1
-          VariableUse.USE -> uses[operand] = idx
+          VariableUse.USE -> {
+            if (operand !in defs) defs[operand] = DEFINED_IN_PRED
+            uses[operand] = idx
+          }
           VariableUse.DEF_USE -> {
             defs[operand] = idx
             uses[operand] = idx
@@ -53,10 +59,17 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: InstructionMap): Inter
       }
     }
     for ((variable, _) in block.phiFunctions) {
-      defs[variable] = -1
+      defs[variable] = DEFINED_IN_PHI
     }
-    for (succ in block.successors) for ((variable, _) in succ.phiFunctions) {
-      uses[variable] = Int.MAX_VALUE
+    for (succ in block.successors) {
+      // We can ignore the defined variable, since our SSA has the dominance property, this
+      // φ-defined variable can't loop back to the current block
+      for ((_, incoming) in succ.phiFunctions) {
+        for (value in incoming.values) {
+          if (defs[value] == DEFINED_IN_PRED) continue
+          uses[value] = Int.MAX_VALUE
+        }
+      }
     }
     for (value in defs.keys) {
       if (value in valueMap) continue
@@ -70,7 +83,7 @@ private fun Sequence<BasicBlock>.interferenceGraph(lists: InstructionMap): Inter
         if (value === otherValue || value !in uses || otherValue !in uses) continue
         val valRange = defs.getValue(value)..uses.getValue(value)
         val otherRange = defs.getValue(otherValue)..uses.getValue(otherValue)
-        if (valRange.intersect(otherRange).isNotEmpty()) {
+        if (defs.getValue(value) in otherRange || defs.getValue(otherValue) in valRange) {
           val otherValueId = valueMap.getValue(otherValue)
           interference.getValue(valueId).add(otherValueId)
           interference.getValue(otherValueId).add(valueId)
@@ -131,7 +144,7 @@ fun MachineTarget.regAlloc(cfg: CFG, instrMap: InstructionMap): AllocationResult
   var instrs = instrMap
   while (true) {
     val stackSlots = mutableListOf<StackSlot>()
-    val graph = cfg.domTreePreorder.interferenceGraph(instrs)
+    val graph = cfg.interferenceGraph(instrs)
     val (_, adjLists, valueMapping) = graph
     val peo = maximumCardinalitySearch(adjLists)
     val coloring = greedyColoring(adjLists, peo, emptyMap()) { node, forbiddenRegisters ->

@@ -24,8 +24,8 @@ class CFG(
   val nodes: Set<BasicBlock>
   /** [nodes], but sorted in post-order. Not a [Sequence] because we will need it in reverse. */
   val postOrderNodes: Set<BasicBlock>
-  /** @see createDomTreePreOrderSequence */
-  val domTreePreorder: Sequence<BasicBlock>
+  /** @see createDomTreePreOrderNodes */
+  val domTreePreorder: Set<BasicBlock>
   /**
    * Stores the immediate dominator (IDom) of a particular node.
    * @see findDomFrontiers
@@ -61,13 +61,13 @@ class CFG(
     // SSA conversion
     if (!forceAllNodes) {
       doms = findDomFrontiers(startBlock, postOrderNodes)
-      domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
+      domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
       insertPhiFunctions(definitions)
       val renamer = VariableRenamer(doms, startBlock, domTreePreorder)
       renamer.variableRenaming()
     } else {
       doms = DominatorList(nodes.size)
-      domTreePreorder = createDomTreePreOrderSequence(doms, startBlock, nodes)
+      domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
     }
 
     diags.forEach(Diagnostic::print)
@@ -116,7 +116,7 @@ class CFG(
 private class VariableRenamer(
     val doms: DominatorList,
     val startBlock: BasicBlock,
-    val domTreePreorder: Sequence<BasicBlock>
+    val domTreePreorder: Set<BasicBlock>
 ) {
   /**
    * Stores what is the last created version of a particular variable (maps id to version).
@@ -339,12 +339,9 @@ private class VariableRenamer(
  *
  * See Algorithm 3.1 in [http://ssabook.gforge.inria.fr/latest/book.pdf] for variable notations.
  */
-@Suppress("NestedBlockDepth")
 private fun insertPhiFunctions(definitions: Map<Variable, MutableSet<BasicBlock>>) {
   for ((v, defsV) in definitions) {
     val f = mutableSetOf<BasicBlock>()
-    // We already store the basic blocks as a set, so just make a copy
-    @Suppress("SpreadOperator")
     val w = mutableSetOf(*defsV.toTypedArray())
     while (w.isNotEmpty()) {
       val x = w.first()
@@ -361,27 +358,37 @@ private fun insertPhiFunctions(definitions: Map<Variable, MutableSet<BasicBlock>
 }
 
 /**
- * Orders [BasicBlock]s by doing a pre-order traversal of the dominator tree.
+ * Orders [BasicBlock]s by doing a pre-order (NLR) traversal of the dominator tree.
  *
- * The size of [doms], [nodes], and the resulting sequence must be identical.
+ * ```
+ * This dominator tree:
+ *           A
+ *         /  \
+ *        B    C
+ *           / | \
+ *          D  E  F
+ * ```
+ * Would be traversed: A B C D E F
+ *
+ * The size of [doms], [nodes], and the resulting set must be identical.
  */
-fun createDomTreePreOrderSequence(
+fun createDomTreePreOrderNodes(
     doms: DominatorList,
     root: BasicBlock,
     nodes: Set<BasicBlock>
-): Sequence<BasicBlock> = sequence {
+): Set<BasicBlock> {
   val visited = mutableSetOf<BasicBlock>()
   val stack = Stack<BasicBlock>()
   stack.push(root)
   while (stack.isNotEmpty()) {
     val block = stack.pop()
     if (block in visited) continue
-    yield(block)
     visited += block
     for (child in nodes.filter { doms[it] == block }.sortedBy { it.height }.asReversed()) {
       stack.push(child)
     }
   }
+  return visited
 }
 
 /** A [MutableList] of [BasicBlock]s, indexed by [BasicBlock]s. */

@@ -29,10 +29,11 @@ class X64Tests {
     for ((value, register) in allocation) {
       println("allocate $value to $register")
     }
+    println()
     val final = gen.applyAllocation(res)
     for ((block, list) in final) {
       println(block)
-      println(list.joinToString("\n", prefix = "\n"))
+      println(list.joinToString("\n"))
       println()
     }
     return res
@@ -77,5 +78,12 @@ class X64Tests {
     val (_, allocs, stackSlots) = regAlloc("codegen/parallelLiveRanges.c")
     assertEquals(0, allocs.values.filter { it.valueClass == Memory }.size)
     assert(stackSlots.isEmpty())
+  }
+
+  @Test
+  fun `Register Allocation Inter-Block Interference`() {
+    val (_, allocs, stackSlots) = regAlloc("codegen/interBlockInterference.c")
+    assert(stackSlots.isEmpty())
+    assertEquals(2, allocs.values.distinct().size)
   }
 }
