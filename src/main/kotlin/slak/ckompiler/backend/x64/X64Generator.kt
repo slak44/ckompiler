@@ -52,6 +52,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     }
     when (val l = condJump.cond.last()) {
       is IntCmp -> {
+        selected += cmp.match(l.lhs, l.rhs)
         selected += selectIntJmp(l, JumpTargetConstant(condJump.target))
         selected += jmp.match(JumpTargetConstant(condJump.other))
       }
