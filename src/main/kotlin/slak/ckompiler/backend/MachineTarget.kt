@@ -1,8 +1,10 @@
 package slak.ckompiler.backend
 
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.x64.X64Instruction
+import slak.ckompiler.analysis.BasicBlock
+import slak.ckompiler.analysis.CFG
+import slak.ckompiler.analysis.IRValue
+import slak.ckompiler.analysis.MemoryReference
 import slak.ckompiler.parser.TypeName
 
 interface MachineRegisterClass {
@@ -88,8 +90,8 @@ interface InstructionTemplate {
 
 data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>)
 
-fun List<MachineInstruction>.stringify(): String {
-  return joinToString(separator = "\n") {
+fun List<MachineInstruction>.stringify(separator: String = "\n"): String {
+  return joinToString(separator = separator) {
     "${it.template.name} " + it.operands.joinToString(", ")
   }
 }

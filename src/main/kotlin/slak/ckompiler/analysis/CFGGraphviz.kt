@@ -1,6 +1,10 @@
 package slak.ckompiler.analysis
 
 import slak.ckompiler.analysis.GraphvizColors.*
+import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.stringify
+import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.parser.Expression
 
 private enum class EdgeType {
@@ -66,24 +70,59 @@ private enum class GraphvizColors(val color: String) {
 }
 
 enum class CodePrintingMethods {
-  SOURCE_SUBSTRING, EXPRESSION_TO_STRING, IR_EXPRESSION_TO_STRING
+  SOURCE_SUBSTRING, EXPR_TO_STRING, IR_TO_STRING, MI_TO_STRING, ASM_TO_STRING
 }
 
-private fun Pair<List<IRInstruction>, List<Expression>>.joinToString(
-    sourceCode: String,
-    print: CodePrintingMethods
-): String {
-  return if (print == CodePrintingMethods.IR_EXPRESSION_TO_STRING) {
-    first.joinToString("\n")
-  } else {
-    second.joinToString("\n") {
-      when (print) {
-        CodePrintingMethods.SOURCE_SUBSTRING -> {
-          (it.sourceText ?: sourceCode).substring(it.range).trim()
-        }
-        CodePrintingMethods.EXPRESSION_TO_STRING -> it.toString()
-        else -> throw IllegalStateException("The other case is checked above")
+private fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
+  fun List<Expression>.sourceSubstr() = joinToString("\n") { it.exprToStr() }
+  val blockCode = src.sourceSubstr()
+  val termCode = when (val term = terminator) {
+    is CondJump -> term.src.exprToStr() + " ?"
+    is SelectJump -> term.src.exprToStr() + " ?"
+    is ImpossibleJump -> {
+      if (term.returned == null) "return;"
+      else "return ${term.src!!.exprToStr()};"
+    }
+    else -> ""
+  }.let { if (it.isBlank()) "" else "\n$it" }
+  return blockCode + termCode
+}
+
+private fun BasicBlock.irToString(): String {
+  val phi = phiFunctions.joinToString("\n").let { if (it.isEmpty()) "" else "$it\n" }
+  val blockCode = ir.joinToString("\n")
+  val termCode = when (val term = terminator) {
+    is CondJump -> term.cond.joinToString("\n") + " ?"
+    is SelectJump -> term.cond.joinToString("\n") + " ?"
+    is ImpossibleJump -> {
+      if (term.returned == null) "return;"
+      else "return ${term.returned.joinToString("\n")};"
+    }
+    else -> ""
+  }.let { if (it.isBlank()) "" else "\n$it" }
+  return phi + blockCode + termCode
+}
+
+private fun CFG.mapBlocksToString(
+    print: CodePrintingMethods,
+    sourceCode: String
+): Map<BasicBlock, String> {
+  if (print == CodePrintingMethods.MI_TO_STRING) {
+    val (newLists, _, _) = X64Target.regAlloc(this, X64Generator(this).instructionSelection())
+    return newLists.mapValues { it.value.stringify("\\l") }
+  } else if (print == CodePrintingMethods.ASM_TO_STRING) {
+    val gen = X64Generator(this)
+    val alloc = X64Target.regAlloc(this, gen.instructionSelection())
+    return gen.applyAllocation(alloc).mapValues { it.value.joinToString("\\l") }
+  }
+  return allNodes.associateWith {
+    when (print) {
+      CodePrintingMethods.SOURCE_SUBSTRING -> it.srcToString {
+        (sourceText ?: sourceCode).substring(range).trim()
       }
+      CodePrintingMethods.EXPR_TO_STRING -> it.srcToString { it.toString() }
+      CodePrintingMethods.IR_TO_STRING -> it.irToString()
+      else -> throw IllegalStateException("Unreachable")
     }
   }
 }
@@ -110,29 +149,14 @@ fun createGraphviz(
 ): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
+  val blockMap = graph.mapBlocksToString(print, sourceCode)
   val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
       it.isRoot -> "style=filled,color=$BLOCK_START"
       it.terminator is ImpossibleJump -> "style=filled,color=$BLOCK_RETURN"
       else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
     }
-
-    val phi = if (print == CodePrintingMethods.IR_EXPRESSION_TO_STRING) {
-      it.phiFunctions.joinToString("\n") { p -> p.toString() }
-    } else {
-      ""
-    }
-    val rawCode = (it.ir to it.src).joinToString(sourceCode, print)
-
-    val cond = (it.terminator as? CondJump)?.let { (cond, src) ->
-      "\n${(cond to listOf(src)).joinToString(sourceCode, print)} ?"
-    } ?: ""
-    val ret = (it.terminator as? ImpossibleJump)?.let { (_, returned, src) ->
-      if (returned == null) ""
-      else "\nreturn ${(returned to listOf(src!!)).joinToString(sourceCode, print)};"
-    } ?: ""
-
-    val code = phi + (if (phi.isNotBlank()) "\n" else "") + rawCode + cond + ret
+    val code = blockMap.getValue(it)
     val blockText = if (code.isBlank()) "<EMPTY>" else code.trim()
     "node${it.hashCode()} [shape=box,$style,label=\"${blockText.unescape()}\"];"
   } + sep + edges.joinToString(sep) {

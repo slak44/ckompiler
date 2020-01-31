@@ -194,9 +194,14 @@ class CLI(private val stdinStream: InputStream) :
   private val targetFunction by cli.flagValueArgument("--target-function", "FUNC_NAME",
       "Choose which function to create a graph of", initialValue = "main")
   private val printingMethod by cli.flagValueArgument("--printing-type", "TYPE",
-      "TYPE can be: SOURCE_SUBSTRING (default), print the original source in blocks" +
-          "; EXPRESSION_TO_STRING, use Expression.toString" +
-          "; IR_EXPRESSION_TO_STRING, use IRExpression.toString",
+      """
+        |Which text to put in the CFG blocks
+        |    SOURCE_SUBSTRING (default), print the original source in blocks
+        |    EXPR_TO_STRING, use Expression.toString
+        |    IR_TO_STRING, use IRInstruction.toString
+        |    MI_TO_STRING, use MachineInstruction.toString
+        |    ASM_TO_STRING use AsmInstruction.toString
+      """.trimMargin(),
       CodePrintingMethods.SOURCE_SUBSTRING, CodePrintingMethods::valueOf)
   private val forceAllNodes by cli.flagArgument("--force-all-nodes",
       "Force displaying the entire control flow graph")
