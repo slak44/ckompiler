@@ -5,8 +5,8 @@ import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
-import slak.ckompiler.analysis.findInterferenceIn
 import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.stringify
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
@@ -101,7 +101,7 @@ class CLI(private val stdinStream: InputStream) :
   private val isCFGOnly by cli.flagArgument("--cfg-mode",
       "Create the program's control flow graph only, don't compile")
   private val isInterferenceOnly by cli.flagArgument("--interference-mode",
-      "Print variable live-range interference in a function, don't compile")
+      "Print variable live-range interference in a function, don't assemble")
   private val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   private val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
 
@@ -379,17 +379,25 @@ class CLI(private val stdinStream: InputStream) :
           forceAllNodes = false,
           forceReturnZero = function.name == "main"
       )
-      val sb = StringBuilder()
-      sb.appendln("Interferences in ${function.name}:")
-      for ((var1, var2) in findInterferenceIn(cfg)) {
-        val var1Str = "${var1.type} ${var1.name} ${var1.id}"
-        val var2Str = "${var2.type} ${var2.name} ${var2.id}"
-        sb.append(var1Str)
-        sb.append(" interferes with ")
-        sb.append(var2Str)
-        sb.appendln()
+      val gen = X64Generator(cfg)
+      val selected = gen.instructionSelection()
+      val alloc = X64Target.regAlloc(cfg, selected)
+      val (newLists, allocation, _) = alloc
+      for ((block, list) in newLists) {
+        println(block)
+        println(list.stringify())
+        println()
       }
-      println(sb.toString())
+      for ((value, register) in allocation) {
+        println("allocate $value to $register")
+      }
+      println()
+      val final = gen.applyAllocation(alloc)
+      for ((block, list) in final) {
+        println(block)
+        println(list.joinToString("\n"))
+        println()
+      }
       return null
     }
 
