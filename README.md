@@ -491,6 +491,7 @@ especially to the C standard.
 - [NASM documentation][nasm]
 - [x86_64 calling conventions][x64calling]
 - [Intel 64 ISA reference][intel64isa]
+- [Register Allocation for Programs in SSA Form, Sebastian Hack][hack]
 
 [impl_defs]: ./ListOfBehaviours.md
 [log4j2_xml]: ./src/main/resources/log4j2.xml
@@ -531,3 +532,4 @@ https://en.wikipedia.org/wiki/X86_calling_conventions#x86-64_calling_conventions
 https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
 [std_draft]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 [kotlinxcli]: https://github.com/Kotlin/kotlinx.cli
+[hack]: https://publikationen.bibliothek.kit.edu/1000007166/6532
