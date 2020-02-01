@@ -89,7 +89,7 @@ private fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
 }
 
 private fun BasicBlock.irToString(): String {
-  val phi = phiFunctions.joinToString("\n").let { if (it.isEmpty()) "" else "$it\n" }
+  val phi = phi.joinToString("\n").let { if (it.isEmpty()) "" else "$it\n" }
   val blockCode = ir.joinToString("\n")
   val termCode = when (val term = terminator) {
     is CondJump -> term.cond.joinToString("\n") + " ?"

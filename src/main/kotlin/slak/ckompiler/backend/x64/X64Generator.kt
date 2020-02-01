@@ -133,7 +133,6 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is FltBinary -> TODO()
     is FltCmp -> TODO()
     is FltNeg -> TODO()
-    is PhiInstr -> TODO()
   }
 
   private fun matchAdd(i: IntBinary) = when (i.result) {

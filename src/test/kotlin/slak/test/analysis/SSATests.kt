@@ -68,10 +68,10 @@ class SSATests {
   fun `Phi Insertion`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
     for (node in cfg.nodes) {
-      println("$node φ-functions: \n\t${node.phiFunctions.joinToString("\n\t")}")
+      println("$node φ-functions: \n\t${node.phi.joinToString("\n\t")}")
     }
-    fun phis(id: Int) = cfg.nodes.first { it.postOrderId == id }.phiFunctions
-    fun List<PhiInstr>.x() = firstOrNull { it.variable.name == "x" }
+    fun phis(id: Int) = cfg.nodes.first { it.postOrderId == id }.phi
+    fun Iterable<PhiInstruction>.x() = firstOrNull { it.variable.name == "x" }
     for (i in listOf(4, 0, 1)) assertNotNull(phis(i).x())
     for (i in listOf(5, 2, 3)) assertNull(phis(i).x())
   }

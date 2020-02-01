@@ -193,7 +193,7 @@ private class VariableRenamer(
    */
   private fun ReachingDefinition.dominates(block: BasicBlock, instrIdx: Int): Boolean {
     return if (definedIn == block) {
-      if (definitionIdx == instrIdx && instrIdx < block.phiFunctions.size) {
+      if (definitionIdx == instrIdx && instrIdx == -1) {
         logger.throwICE("Multiple phi functions for same variable in the same block") {
           "$this dominates $block $instrIdx"
         }
@@ -229,44 +229,26 @@ private class VariableRenamer(
     traceVarDefinitionRename(bb, def, vPrime)
   }
 
-  // FIXME: simplify this disaster
-  private fun findVariableUses(i: IRInstruction): List<Variable> {
-    val vars = mutableListOf<Variable>()
-    when (i) {
-      is ConstantRegisterInstr, is PhiInstr -> {
-        // Do nothing
-      }
-      is LoadInstr -> if (i.target is Variable) vars += i.target
-      is StructuralCast -> if (i.operand is Variable) vars += i.operand
-      is ReinterpretCast -> if (i.operand is Variable) vars += i.operand
-      is NamedCall -> vars += i.args.filterIsInstance(Variable::class.java)
-      is IndirectCall -> vars += i.args.filterIsInstance(Variable::class.java)
-      is IntBinary -> {
-        if (i.lhs is Variable) vars += i.lhs
-        if (i.rhs is Variable) vars += i.rhs
-      }
-      is IntCmp -> {
-        if (i.lhs is Variable) vars += i.lhs
-        if (i.rhs is Variable) vars += i.rhs
-      }
-      is IntInvert -> if (i.operand is Variable) vars += i.operand
-      is IntNeg -> if (i.operand is Variable) vars += i.operand
-      is FltBinary -> {
-        if (i.lhs is Variable) vars += i.lhs
-        if (i.rhs is Variable) vars += i.rhs
-      }
-      is FltCmp -> {
-        if (i.lhs is Variable) vars += i.lhs
-        if (i.rhs is Variable) vars += i.rhs
-      }
-      is FltNeg -> if (i.operand is Variable) vars += i.operand
-      is StoreInstr -> if (i.value is Variable) vars += i.value
-    }
-    return vars
+  private fun findVariableUses(i: IRInstruction): List<Variable> = when (i) {
+    is ConstantRegisterInstr -> emptyList()
+    is BinaryInstruction -> listOfNotNull(i.lhs as? Variable, i.rhs as? Variable)
+    is LoadInstr -> listOfNotNull(i.target as? Variable)
+    is StructuralCast -> listOfNotNull(i.operand as? Variable)
+    is ReinterpretCast -> listOfNotNull(i.operand as? Variable)
+    is NamedCall -> i.args.mapNotNull { it as? Variable }
+    is IndirectCall -> i.args.mapNotNull { it as? Variable }
+    is IntInvert -> listOfNotNull(i.operand as? Variable)
+    is IntNeg -> listOfNotNull(i.operand as? Variable)
+    is FltNeg -> listOfNotNull(i.operand as? Variable)
+    is StoreInstr -> listOfNotNull(i.value as? Variable)
+    else -> logger.throwICE("Unreachable")
   }
 
   /** @see variableRenaming */
   private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
+    for (phi in BB.phi) {
+      handleDef(BB, phi.variable, -1)
+    }
     for ((idx, i) in BB.instructions.withIndex()) {
       val def = if (i is SideEffectInstruction) i.target else null
       for (variable in findVariableUses(i)) {
@@ -278,7 +260,7 @@ private class VariableRenamer(
       if (def == null || def !is Variable) continue
       handleDef(BB, def, idx)
     }
-    for (succ in BB.successors) for ((_, incoming) in succ.phiFunctions) {
+    for (succ in BB.successors) for ((_, incoming) in succ.phi) {
       // FIXME: incomplete?
       val oldReachingVar = incoming.getValue(BB).reachingDef?.variable
       updateReachingDef(incoming.getValue(BB), BB, Int.MAX_VALUE)
@@ -361,7 +343,7 @@ private fun insertPhiFunctions(definitions: Map<Variable, MutableSet<BasicBlock>
       w -= x
       for (y in x.dominanceFrontier) {
         if (y !in f) {
-          y.phiFunctions += PhiInstr(v.copy(0), y.preds.associateWith { v.copy(0) })
+          y.phi += PhiInstruction(v.copy(0), y.preds.associateWith { v.copy(0) })
           f += y
           if (y !in defsV) w += y
         }

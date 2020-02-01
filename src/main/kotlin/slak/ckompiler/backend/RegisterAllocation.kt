@@ -58,13 +58,13 @@ private fun CFG.interferenceGraph(lists: InstructionMap): InterferenceGraph {
         }
       }
     }
-    for ((variable, _) in block.phiFunctions) {
+    for ((variable, _) in block.phi) {
       defs[variable] = DEFINED_IN_PHI
     }
     for (succ in block.successors) {
       // We can ignore the defined variable, since our SSA has the dominance property, this
       // φ-defined variable can't loop back to the current block
-      for ((_, incoming) in succ.phiFunctions) {
+      for ((_, incoming) in succ.phi) {
         for (value in incoming.values) {
           if (defs[value] == DEFINED_IN_PRED) continue
           uses[value] = Int.MAX_VALUE

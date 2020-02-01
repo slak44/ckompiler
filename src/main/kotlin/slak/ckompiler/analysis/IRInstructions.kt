@@ -31,11 +31,10 @@ sealed class SideEffectInstruction : IRInstruction() {
  * A φ-function for a particular variable. [incoming] stores the list of versions that the φ has
  * to choose from; that is, it stores which values come from which predecessor [BasicBlock].
  */
-data class PhiInstr(
+data class PhiInstruction(
     val variable: Variable,
     val incoming: Map<BasicBlock, Variable>
-) : SideEffectInstruction() {
-  override val target get() = variable
+) {
   override fun toString() = "store *($variable) = φ(${incoming.entries.joinToString(", ") {
     "n${it.key.hashCode()} v${it.value.version}"
   }})"
@@ -125,6 +124,14 @@ data class IndirectCall(
 }
 
 /**
+ * Generic instruction with two operands.
+ */
+interface BinaryInstruction {
+  val lhs: IRValue
+  val rhs: IRValue
+}
+
+/**
  * Lists possible comparison orders for arithmetic types.
  */
 enum class Comparisons(val operator: String) {
@@ -168,18 +175,18 @@ enum class IntegralBinaryOps(val operator: String) {
 data class IntBinary(
     override val result: VirtualRegister,
     val op: IntegralBinaryOps,
-    val lhs: IRValue,
-    val rhs: IRValue
-) : IntegralInstruction() {
+    override val lhs: IRValue,
+    override val rhs: IRValue
+) : IntegralInstruction(), BinaryInstruction {
   override fun toString() = "$result = int op $lhs $op $rhs"
 }
 
 data class IntCmp(
     override val result: VirtualRegister,
-    val lhs: IRValue,
-    val rhs: IRValue,
+    override val lhs: IRValue,
+    override val rhs: IRValue,
     val cmp: Comparisons
-) : IntegralInstruction() {
+) : IntegralInstruction(), BinaryInstruction {
   override fun toString() = "$result = int cmp $lhs $cmp $rhs"
 }
 
@@ -216,18 +223,18 @@ enum class FloatingBinaryOps(val operator: String) {
 data class FltBinary(
     override val result: VirtualRegister,
     val op: FloatingBinaryOps,
-    val lhs: IRValue,
-    val rhs: IRValue
-) : FloatingPointInstruction() {
+    override val lhs: IRValue,
+    override val rhs: IRValue
+) : FloatingPointInstruction(), BinaryInstruction {
   override fun toString() = "$result = flt op $lhs $op $rhs"
 }
 
 data class FltCmp(
     override val result: VirtualRegister,
-    val lhs: IRValue,
-    val rhs: IRValue,
+    override val lhs: IRValue,
+    override val rhs: IRValue,
     val cmp: Comparisons
-) : FloatingPointInstruction() {
+) : FloatingPointInstruction(), BinaryInstruction {
   override fun toString() = "$result = flt cmp $lhs $cmp $rhs"
 }
 
