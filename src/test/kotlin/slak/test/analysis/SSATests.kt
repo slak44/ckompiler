@@ -10,39 +10,49 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class SSATests {
+  private fun CFG.assertIsSSA() {
+    val defined = mutableSetOf<Variable>()
+    for (block in domTreePreorder) {
+      for (instr in block.instructions) {
+        if (instr is StoreInstr && instr.target is Variable) {
+          val variable = instr.target as Variable
+          assert(variable !in defined)
+          defined += variable
+        }
+      }
+    }
+  }
+
   @Test
   fun `SSA Conversion Doesn't Fail 1`() {
     val cfg = prepareCFG(resource("ssa/domsTest.c"), source)
-    assert(cfg.startBlock.src.isNotEmpty())
-    assert(cfg.startBlock.isTerminated())
+    cfg.assertIsSSA()
   }
 
   @Test
   fun `SSA Conversion Doesn't Fail 2`() {
     val cfg = prepareCFG(resource("ssa/domsTest2.c"), source)
-    assert(cfg.startBlock.src.isNotEmpty())
-    assert(cfg.startBlock.isTerminated())
+    cfg.assertIsSSA()
   }
 
   @Test
   fun `SSA Conversion Doesn't Fail 3`() {
     val cfg = prepareCFG(resource("ssa/domsTest3.c"), source)
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
-    assert(cfg.startBlock.src.isNotEmpty())
-    assert(cfg.startBlock.isTerminated())
+    cfg.assertIsSSA()
   }
 
   @Test
   fun `SSA Conversion Doesn't Fail 4`() {
     val cfg = prepareCFG(resource("ssa/domsTest4.c"), source)
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
-    assert(cfg.startBlock.src.isNotEmpty())
-    assert(cfg.startBlock.isTerminated())
+    cfg.assertIsSSA()
   }
 
   @Test
   fun `Diamond Graph From If-Else Has Correct Dominance Frontier`() {
     val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
+    cfg.assertIsSSA()
     assert(cfg.startBlock.dominanceFrontier.isEmpty())
     val t = cfg.startBlock.terminator as CondJump
     val ret = cfg.nodes.first { it.terminator is ImpossibleJump }
@@ -53,6 +63,7 @@ class SSATests {
   @Test
   fun `Correct Definition Tracking Test`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    cfg.assertIsSSA()
     for ((key, value) in cfg.definitions) {
       println("$key (${key.id}) defined in \n\t${value.joinToString("\n\t")}")
     }
@@ -67,6 +78,7 @@ class SSATests {
   @Test
   fun `Phi Insertion`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    cfg.assertIsSSA()
     for (node in cfg.nodes) {
       println("$node φ-functions: \n\t${node.phi.joinToString("\n\t")}")
     }
@@ -79,6 +91,7 @@ class SSATests {
   @Test
   fun `Variable Renaming`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    cfg.assertIsSSA()
 
     fun getStoreValue(list: List<IRInstruction>?, at: Int) =
         (list?.get(at) as? StoreInstr)?.value as? Variable
@@ -138,6 +151,7 @@ class SSATests {
   @Test
   fun `Def-Use Chains On Program With One Basic Block`() {
     val cfg = prepareCFG(resource("ssa/sameDefMultipleUses.c"), source)
+    cfg.assertIsSSA()
     printDefUse(cfg)
     with(cfg) {
       assertEquals(listOf(2, 4, 6).map { startBlock to it }, useChainOf("a", 1))
@@ -150,6 +164,7 @@ class SSATests {
   @Test
   fun `Def-Use Chains With For Loop`() {
     val cfg = prepareCFG(resource("loops/forLoopTest.c"), source)
+    cfg.assertIsSSA()
     printDefUse(cfg)
     with(cfg) {
       val loopHeader = startBlock.successors[0]
