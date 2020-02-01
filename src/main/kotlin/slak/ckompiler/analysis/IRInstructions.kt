@@ -325,6 +325,11 @@ data class JumpTargetConstant(val target: BasicBlock) : ConstantValue() {
 }
 
 /**
+ * An index inside a [BasicBlock]'s labels ([BasicBlock.ir]).
+ */
+typealias LabelIndex = Int
+
+/**
  * The [variable] definition that reaches a point in the CFG, along with information about where it
  * was defined.
  *
@@ -333,7 +338,7 @@ data class JumpTargetConstant(val target: BasicBlock) : ConstantValue() {
 data class ReachingDefinition(
     val variable: Variable,
     val definedIn: BasicBlock,
-    val definitionIdx: Int
+    val definitionIdx: LabelIndex
 )
 
 /**

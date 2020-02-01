@@ -73,7 +73,7 @@ enum class CodePrintingMethods {
   SOURCE_SUBSTRING, EXPR_TO_STRING, IR_TO_STRING, MI_TO_STRING, ASM_TO_STRING
 }
 
-private fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
+fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
   fun List<Expression>.sourceSubstr() = joinToString("\n") { it.exprToStr() }
   val blockCode = src.sourceSubstr()
   val termCode = when (val term = terminator) {
@@ -88,7 +88,7 @@ private fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
   return blockCode + termCode
 }
 
-private fun BasicBlock.irToString(): String {
+fun BasicBlock.irToString(): String {
   val phi = phi.joinToString("\n").let { if (it.isEmpty()) "" else "$it\n" }
   val blockCode = ir.joinToString("\n")
   val termCode = when (val term = terminator) {

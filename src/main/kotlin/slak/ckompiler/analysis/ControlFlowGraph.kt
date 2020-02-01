@@ -55,6 +55,12 @@ class CFG(
    */
   val definitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
 
+  private val renamer: VariableRenamer
+  /** @see VariableRenamer.reachingDefs */
+  val reachingDefs: Map<Pair<Int, Int>, ReachingDefinition?> get() = renamer.reachingDefs
+  /** @see VariableRenamer.defUseChains */
+  val defUseChains: Map<Variable, List<Pair<BasicBlock, LabelIndex>>> get() = renamer.defUseChains
+
   val memoryIds = IdCounter()
   val registerIds = IdCounter()
 
@@ -76,11 +82,12 @@ class CFG(
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
       insertPhiFunctions(definitions)
-      val renamer = VariableRenamer(doms, startBlock, domTreePreorder)
+      renamer = VariableRenamer(doms, startBlock, domTreePreorder)
       renamer.variableRenaming()
     } else {
       doms = DominatorList(nodes.size)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
+      renamer = VariableRenamer(doms, startBlock, domTreePreorder)
     }
 
     diags.forEach(Diagnostic::print)
@@ -123,6 +130,12 @@ class CFG(
 }
 
 /**
+ * φ-functions happen just before the instructions in a [BasicBlock]. This is a pseudo-index that's
+ * less than 0.
+ */
+const val DEFINED_IN_PHI: LabelIndex = -1
+
+/**
  * Holds state required for SSA phase 2.
  * @see VariableRenamer.variableRenaming
  */
@@ -144,14 +157,15 @@ private class VariableRenamer(
     }
   /**
    * Maps each variable to a [ReachingDefinition] (maps a variable's id/version pair to
-   * [ReachingDefinition]).
+   * [ReachingDefinition]). This is technically the use-def chain, but since this is SSA, there is
+   * only one definition per variable version.
    *
    * See section 3.1.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    * @see ReachingDefinition
    * @see Variable.reachingDef
    * @see variableRenaming
    */
-  private val reachingDefs = mutableMapOf<Pair<Int, Int>, ReachingDefinition?>()
+  val reachingDefs = mutableMapOf<Pair<Int, Int>, ReachingDefinition?>()
   /**
    * Provides access to [reachingDefs] using property extension syntax (to resemble the original
    * algorithm).
@@ -168,6 +182,10 @@ private class VariableRenamer(
     set(value) {
       reachingDefs[variable.id to variable.version] = value
     }
+  /**
+   * Def-use chains for each variable definition. Stores location of all uses.
+   */
+  val defUseChains = mutableMapOf<Variable, MutableList<Pair<BasicBlock, LabelIndex>>>()
 
   /**
    * Creates a new version of a variable. Updates [latestVersions].
@@ -191,9 +209,9 @@ private class VariableRenamer(
   /**
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
-  private fun ReachingDefinition.dominates(block: BasicBlock, instrIdx: Int): Boolean {
+  private fun ReachingDefinition.dominates(block: BasicBlock, instrIdx: LabelIndex): Boolean {
     return if (definedIn == block) {
-      if (definitionIdx == instrIdx && instrIdx == -1) {
+      if (definitionIdx == instrIdx && instrIdx == DEFINED_IN_PHI) {
         logger.throwICE("Multiple phi functions for same variable in the same block") {
           "$this dominates $block $instrIdx"
         }
@@ -207,7 +225,7 @@ private class VariableRenamer(
   /**
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
-  private fun updateReachingDef(v: Variable, block: BasicBlock, instrIdx: Int) {
+  private fun updateReachingDef(v: Variable, block: BasicBlock, instrIdx: LabelIndex) {
     var r = v.reachingDef
     while (!(r == null || r.dominates(block, instrIdx))) {
       r = r.reachingDef
@@ -218,7 +236,7 @@ private class VariableRenamer(
   /**
    * Does the renaming for a variable definition.
    */
-  private fun handleDef(bb: BasicBlock, def: Variable, instrIdx: Int) {
+  private fun handleDef(bb: BasicBlock, def: Variable, instrIdx: LabelIndex) {
     val oldReachingDef = def.reachingDef
     updateReachingDef(def, bb, instrIdx)
     val vPrime = def.newVersion()
@@ -244,28 +262,43 @@ private class VariableRenamer(
     else -> logger.throwICE("Unreachable")
   }
 
+  /**
+   * Update/create the def-use chain ([defUseChains]) for the given variable, and add the current
+   * use to it (variable was used in [bb] at label [idx]). No-op if [Variable.reachingDef] is null.
+   */
+  private fun updateUsesFor(variable: Variable, bb: BasicBlock, idx: LabelIndex) {
+    if (variable.reachingDef != null) {
+      defUseChains.putIfAbsent(variable.reachingDef!!.variable, mutableListOf())
+      defUseChains.getValue(variable.reachingDef!!.variable) += bb to idx
+    }
+  }
+
   /** @see variableRenaming */
   private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
     for (phi in BB.phi) {
-      handleDef(BB, phi.variable, -1)
+      handleDef(BB, phi.variable, DEFINED_IN_PHI)
     }
     for ((idx, i) in BB.instructions.withIndex()) {
       val def = if (i is SideEffectInstruction) i.target else null
       for (variable in findVariableUses(i)) {
         val oldReachingVar = variable.reachingDef?.variable
         updateReachingDef(variable, BB, idx)
+        updateUsesFor(variable, BB, idx)
         variable.replaceWith(variable.reachingDef)
         traceVarUsageRename(BB, oldReachingVar, variable)
       }
       if (def == null || def !is Variable) continue
       handleDef(BB, def, idx)
     }
-    for (succ in BB.successors) for ((_, incoming) in succ.phi) {
-      // FIXME: incomplete?
-      val oldReachingVar = incoming.getValue(BB).reachingDef?.variable
-      updateReachingDef(incoming.getValue(BB), BB, Int.MAX_VALUE)
-      incoming.getValue(BB).replaceWith(incoming.getValue(BB).reachingDef)
-      traceVarUsageRename(succ, oldReachingVar, incoming.getValue(BB), isInPhi = true)
+    for (succ in BB.successors) {
+      for ((_, incoming) in succ.phi) {
+        val incFromBB = incoming.getValue(BB)
+        val oldReachingVar = incFromBB.reachingDef?.variable
+        updateReachingDef(incFromBB, BB, Int.MAX_VALUE)
+        updateUsesFor(incFromBB, succ, DEFINED_IN_PHI)
+        incFromBB.replaceWith(incFromBB.reachingDef)
+        traceVarUsageRename(succ, oldReachingVar, incFromBB, isInPhi = true)
+      }
     }
   }
 

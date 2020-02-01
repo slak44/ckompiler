@@ -114,4 +114,51 @@ class SSATests {
     val retVal = (returnBlockImpJmp?.returned?.get(0) as? LoadInstr)?.target as? Variable
     assertVarState("x" ver 6, retVal)
   }
+
+  private fun printDefUse(cfg: CFG) {
+    for (block in cfg.domTreePreorder) {
+      println("$block:")
+      println(block.irToString())
+      println()
+    }
+    for ((variable, uses) in cfg.defUseChains) {
+      println("uses of $variable:")
+      for ((block, label) in uses) {
+        println("\t$block, at label index $label")
+      }
+    }
+  }
+
+  private fun CFG.useChainOf(name: String, version: Int): List<Pair<BasicBlock, LabelIndex>> {
+    return defUseChains.keys
+        .first { it.tid.name == name && it.version == version }
+        .let { defUseChains.getValue(it) }
+  }
+
+  @Test
+  fun `Def-Use Chains On Program With One Basic Block`() {
+    val cfg = prepareCFG(resource("ssa/sameDefMultipleUses.c"), source)
+    printDefUse(cfg)
+    with(cfg) {
+      assertEquals(listOf(2, 4, 6).map { startBlock to it }, useChainOf("a", 1))
+      assertEquals(listOf(startBlock to 2), useChainOf("b", 1))
+      assertEquals(listOf(startBlock to 4), useChainOf("b", 2))
+      assertEquals(listOf(startBlock to 6), useChainOf("b", 3))
+    }
+  }
+
+  @Test
+  fun `Def-Use Chains With For Loop`() {
+    val cfg = prepareCFG(resource("loops/forLoopTest.c"), source)
+    printDefUse(cfg)
+    with(cfg) {
+      val loopHeader = startBlock.successors[0]
+      val loopBody = loopHeader.successors[0]
+      val returnBlock = loopHeader.successors[1]
+      assertEquals(listOf(loopHeader to DEFINED_IN_PHI), useChainOf("x", 1))
+      assertEquals(listOf(loopHeader to DEFINED_IN_PHI), useChainOf("i", 1))
+      assertEquals(listOf(loopHeader to 0, loopBody to 2, loopBody to 3), useChainOf("i", 2))
+      assertEquals(listOf(loopBody to 0, returnBlock to 0), useChainOf("x", 2))
+    }
+  }
 }
