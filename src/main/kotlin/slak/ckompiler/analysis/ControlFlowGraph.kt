@@ -8,7 +8,20 @@ import java.util.*
 
 private val logger = LogManager.getLogger()
 
-/** An instance of a [FunctionDefinition]'s control flow graph. */
+/**
+ * An instance of a [FunctionDefinition]'s control flow graph.
+ *
+ * These are called on construction (`forceAllNodes == false`):
+ * 1. [graph]
+ * 2. [collapseEmptyBlocks]
+ * 3. [filterReachable]
+ * 4. [handleUnterminatedBlocks]
+ * 5. [postOrderNodes]
+ * 6. [findDomFrontiers]
+ * 7. [createDomTreePreOrderNodes]
+ * 8. [insertPhiFunctions]
+ * 9. [VariableRenamer.variableRenaming]
+ */
 class CFG(
     val f: FunctionDefinition,
     val targetData: MachineTargetData,
