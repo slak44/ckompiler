@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "ckompiler"
-version = "SNAPSHOT3"
+version = "SNAPSHOT4"
 
 val includePath = "usr/include/ckompiler-$version"
 
@@ -78,7 +78,7 @@ publishing {
   repositories {
     maven {
       name = "Github"
-      url = uri("https://maven.pkg.github.com/slak44")
+      url = uri("https://maven.pkg.github.com/slak44/ckompiler")
       credentials {
         username = "slak44"
         val file = File(projectDir, "publish-token")
