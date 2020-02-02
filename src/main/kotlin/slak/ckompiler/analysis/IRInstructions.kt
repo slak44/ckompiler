@@ -363,7 +363,7 @@ class Variable(val tid: TypedIdentifier) : IRValue() {
     return v
   }
 
-  fun copy(version: Int): Variable {
+  fun copy(version: Int = this.version): Variable {
     val v = Variable(tid)
     v.version = version
     return v
@@ -393,9 +393,8 @@ class Variable(val tid: TypedIdentifier) : IRValue() {
   }
 
   override fun hashCode(): Int {
-    var result = tid.hashCode()
+    var result = tid.id
     result = 31 * result + version
-    result = 31 * result + tid.id
     return result
   }
 }

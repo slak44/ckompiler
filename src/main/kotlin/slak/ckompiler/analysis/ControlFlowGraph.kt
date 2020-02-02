@@ -57,7 +57,7 @@ class CFG(
 
   private val renamer: VariableRenamer
   /** @see VariableRenamer.reachingDefs */
-  val reachingDefs: Map<Pair<Int, Int>, ReachingDefinition?> get() = renamer.reachingDefs
+  val reachingDefs: Map<Variable, ReachingDefinition?> get() = renamer.reachingDefs
   /** @see VariableRenamer.defUseChains */
   val defUseChains: Map<Variable, List<Pair<BasicBlock, LabelIndex>>> get() = renamer.defUseChains
 
@@ -156,31 +156,33 @@ private class VariableRenamer(
       latestVersions[id] = value
     }
   /**
-   * Maps each variable to a [ReachingDefinition] (maps a variable's id/version pair to
-   * [ReachingDefinition]). This is technically the use-def chain, but since this is SSA, there is
-   * only one definition per variable version.
+   * Maps each variable to its [ReachingDefinition].
+   *
+   * This is technically the use-def chain, but since this is SSA, there is only one definition to
+   * speak of (per variable version).
    *
    * See section 3.1.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    * @see ReachingDefinition
    * @see Variable.reachingDef
    * @see variableRenaming
    */
-  val reachingDefs = mutableMapOf<Pair<Int, Int>, ReachingDefinition?>()
+  val reachingDefs = mutableMapOf<Variable, ReachingDefinition?>()
   /**
    * Provides access to [reachingDefs] using property extension syntax (to resemble the original
    * algorithm).
    * @see variableRenaming
    */
   private var Variable.reachingDef: ReachingDefinition?
-    get() = reachingDefs[id to version]
+    get() = reachingDefs[this]
     set(value) {
-      reachingDefs[id to version] = value
+      // Make a copy, don't bait and switch map keys (Variable.version is mutable)
+      reachingDefs[this.copy()] = value
     }
   /** @see Variable.reachingDef */
   private var ReachingDefinition.reachingDef: ReachingDefinition?
-    get() = reachingDefs[variable.id to variable.version]
+    get() = variable.reachingDef
     set(value) {
-      reachingDefs[variable.id to variable.version] = value
+      variable.reachingDef = value
     }
   /**
    * Def-use chains for each variable definition. Stores location of all uses.
