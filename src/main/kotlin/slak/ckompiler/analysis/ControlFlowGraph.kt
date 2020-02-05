@@ -8,6 +8,9 @@ import java.util.*
 
 private val logger = LogManager.getLogger()
 
+typealias ReachingDefs = Map<Variable, ReachingDefinition?>
+typealias DefUseChains = Map<Variable, List<Pair<BasicBlock, LabelIndex>>>
+
 /**
  * An instance of a [FunctionDefinition]'s control flow graph.
  *
@@ -55,11 +58,11 @@ class CFG(
    */
   val definitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
 
-  private val renamer: VariableRenamer
+  private val renamer = VariableRenamer(this)
   /** @see VariableRenamer.reachingDefs */
-  val reachingDefs: Map<Variable, ReachingDefinition?> get() = renamer.reachingDefs
+  val reachingDefs: ReachingDefs get() = renamer.reachingDefs
   /** @see VariableRenamer.defUseChains */
-  val defUseChains: Map<Variable, List<Pair<BasicBlock, LabelIndex>>> get() = renamer.defUseChains
+  val defUseChains: DefUseChains get() = renamer.defUseChains
 
   val memoryIds = IdCounter()
   val registerIds = IdCounter()
@@ -82,12 +85,10 @@ class CFG(
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
       insertPhiFunctions(definitions)
-      renamer = VariableRenamer(doms, startBlock, domTreePreorder)
       renamer.variableRenaming()
     } else {
       doms = DominatorList(nodes.size)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
-      renamer = VariableRenamer(doms, startBlock, domTreePreorder)
     }
 
     diags.forEach(Diagnostic::print)
@@ -127,6 +128,20 @@ class CFG(
     // Either way, terminate the blocks with a fake return
     it.terminator = ImpossibleJump(newBlock(), returned = ret, src = fakeZero)
   }
+
+  /**
+   * If [other] strictly dominates [this], return true.
+   */
+  infix fun BasicBlock.isDominatedBy(other: BasicBlock): Boolean {
+    var block = this
+    // Walk dominator tree path to root node
+    do {
+      block = doms[block]!!
+      // `other` was somewhere above `this` in the dominator tree
+      if (block == other) return true
+    } while (block != startBlock)
+    return false
+  }
 }
 
 /**
@@ -139,11 +154,7 @@ const val DEFINED_IN_PHI: LabelIndex = -1
  * Holds state required for SSA phase 2.
  * @see VariableRenamer.variableRenaming
  */
-private class VariableRenamer(
-    val doms: DominatorList,
-    val startBlock: BasicBlock,
-    val domTreePreorder: Set<BasicBlock>
-) {
+private class VariableRenamer(val cfg: CFG) {
   /**
    * Stores what is the last created version of a particular variable (maps id to version).
    * @see variableRenaming
@@ -158,8 +169,17 @@ private class VariableRenamer(
   /**
    * Maps each variable to its [ReachingDefinition].
    *
-   * This is technically the use-def chain, but since this is SSA, there is only one definition to
-   * speak of (per variable version).
+   * Track which definition was in use until a current definition. That is, if x2's reaching
+   * definition is x1, all uses of x between x1's definition and x2's definition are going to be
+   * renamed to x1, and all uses of x that come _after_ x2's definition will be renamed to x2.
+   *
+   * ```
+   * +--> int x = 0; // rename def, x -> x1
+   * |    f(x);      // rename use, x -> x1
+   * +--- x = 2;     // rename def, x -> x2
+   *      f(x);      // rename use, x -> x2
+   * ```
+   * This map tracks that arrow on the left, the one that identifies the previous definition.
    *
    * See section 3.1.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    * @see ReachingDefinition
@@ -195,20 +215,6 @@ private class VariableRenamer(
   private fun Variable.newVersion(): Variable = copy(++latestVersion)
 
   /**
-   * If [other] dominates [this], return true.
-   */
-  private infix fun BasicBlock.isDominatedBy(other: BasicBlock): Boolean {
-    var block = this
-    // Walk dominator tree path to root node
-    do {
-      block = doms[block]!!
-      // `other` was somewhere above `this` in the dominator tree
-      if (block == other) return true
-    } while (block != startBlock)
-    return false
-  }
-
-  /**
    * See page 34 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
   private fun ReachingDefinition.dominates(block: BasicBlock, instrIdx: LabelIndex): Boolean {
@@ -220,7 +226,9 @@ private class VariableRenamer(
       }
       definitionIdx < instrIdx
     } else {
-      block isDominatedBy definedIn
+      with(cfg) {
+        block isDominatedBy definedIn
+      }
     }
   }
 
@@ -276,7 +284,7 @@ private class VariableRenamer(
   }
 
   /** @see variableRenaming */
-  private fun variableRenamingImpl() = domTreePreorder.forEach { BB ->
+  private fun variableRenamingImpl() = cfg.domTreePreorder.forEach { BB ->
     for (phi in BB.phi) {
       handleDef(BB, phi.variable, DEFINED_IN_PHI)
     }
