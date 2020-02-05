@@ -119,7 +119,7 @@ class CFG(
       override val expandedFrom: SourcedRange? = null
     })
     val ret = if (forceReturnZero) {
-      val fakeRegister = VirtualRegister(definitions.size, SignedIntType)
+      val fakeRegister = VirtualRegister(registerIds(), SignedIntType)
       listOf(ConstantRegisterInstr(fakeRegister, IntConstant(fakeZero)))
     } else {
       null
