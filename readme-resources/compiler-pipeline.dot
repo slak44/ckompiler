@@ -17,7 +17,7 @@ digraph pipeline {
   ast[label=<Abstract Syntax Tree<br/><font point-size="14" face="monospace">ASTNode</font>>];
   graphing[label=<AST Graphing<br/><font point-size="14" face="monospace">ASTGraphing#graph</font>>,shape=box];
   definitions[label=<Definitions<br/><font point-size="14" face="monospace">Map&lt;Variable, Set&lt;BasicBlock&gt;&gt;</font>>];
-  cfg[label=<Control Flow Graph<br/><font point-size="14" face="monospace">ControlFlowGraph</font>>];
+  cfg[label=<Control Flow Graph<br/><font point-size="14" face="monospace">CFG</font>>];
   basicBlockContent[label=<Basic Block Expressions<br/><font point-size="14" face="monospace">List&lt;Expression&gt;</font>>];
   seq[label="Expression Sequnetialization",shape=box];
   seqExprs[label=<Sequentialized Expressions<br/><font point-size="14" face="monospace">SequentialExpression</font>>];
