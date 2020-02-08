@@ -2,11 +2,11 @@ package slak.test.backend
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.MachineTargetData
+import slak.ckompiler.analysis.ConstantValue
+import slak.ckompiler.analysis.IRValue
+import slak.ckompiler.analysis.MemoryReference
 import slak.ckompiler.analysis.VirtualRegister
-import slak.ckompiler.backend.AllocationResult
-import slak.ckompiler.backend.Memory
-import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.stringify
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.setcc
@@ -16,10 +16,31 @@ import slak.test.source
 import kotlin.test.assertEquals
 
 class X64Tests {
+  private fun InstructionMap.assertIsSSA() {
+    val defined = mutableSetOf<IRValue>()
+    for ((_, instructions) in this) {
+      for ((template, operands) in instructions) {
+        require(operands.size == template.operandUse.size)
+        val defs = operands
+            .zip(template.operandUse)
+            .filter {
+              it.first !is MemoryReference && it.first !is ConstantValue &&
+                  it.second == VariableUse.DEF || it.second == VariableUse.DEF_USE
+            }
+        for ((definedValue, _) in defs) {
+          assert(definedValue !in defined) { "$definedValue already defined" }
+          defined += definedValue
+        }
+      }
+    }
+  }
+
   private fun regAlloc(resourceName: String): AllocationResult {
     val cfg = prepareCFG(resource(resourceName), source)
     val gen = X64Generator(cfg)
-    val res = X64Target.regAlloc(cfg, gen.instructionSelection())
+    val instructionMap = gen.instructionSelection()
+    instructionMap.assertIsSSA()
+    val res = X64Target.regAlloc(cfg, instructionMap)
     val (newLists, allocation, _) = res
     for ((block, list) in newLists) {
       println(block)
