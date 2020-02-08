@@ -413,7 +413,7 @@ Once all these steps are complete, SSA conversion can begin. It works in 2
 phases: φ-function insertion, and variable renaming.
 
 The first phase is responsible for taking every single variable definition in
-the function, and creating `PhiFunction` instances for every control flow
+the function, and creating `PhiInstruction` instances for every control flow
 intersection (this is what the dominance frontier is used for). This is a
 relatively uncomplicated process if dominance is precomputed. See
 `insertPhiFunctions` in [ControlFlowGraph.kt][cfg].
