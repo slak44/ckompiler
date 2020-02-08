@@ -372,6 +372,29 @@ private class VariableRenamer(val cfg: CFG) {
   }
 }
 
+fun ReachingDefs.definitionOf(variable: Variable): ReachingDefinition {
+  return values.first { it?.variable == variable }!!
+}
+
+fun CFG.liveInFor(block: BasicBlock): List<Variable> {
+  return defUseChains.keys.filter { variable ->
+    val usedInBlocks = defUseChains.getValue(variable).map { it.first }
+    val wasDefinedIn = reachingDefs.definitionOf(variable).definedIn
+    // If the block uses the variable but doesn't define it, it's live-in
+    if (block in usedInBlocks && wasDefinedIn != block) {
+      return@filter true
+    }
+    // If any block in the dominance frontier is a block where the variable was used, and the
+    // variable's definition dominates `block`, then it means the variable will be alive in the
+    // block, even if it just "passed through", to be used later
+    if (block.dominanceFrontier.intersect(usedInBlocks).isNotEmpty() &&
+        block isDominatedBy wasDefinedIn) {
+      return@filter true
+    }
+    return@filter false
+  }
+}
+
 /**
  * φ-function insertion.
  *
