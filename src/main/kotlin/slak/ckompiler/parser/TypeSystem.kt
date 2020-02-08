@@ -125,16 +125,6 @@ sealed class TypeName {
       (this as? ArrayType)?.size !is NoSize && (unqualify() as? TagType)?.isComplete != false
 
   /**
-   * System V ABI: 3.2.3, page 17
-   */
-  fun isSSEType() = unqualify() is FloatType || unqualify() is DoubleType
-
-  /**
-   * System V ABI: 3.2.3, page 17
-   */
-  fun isABIIntegerType() = unqualify() is IntegralType || unqualify() is PointerType
-
-  /**
    * Applies conversions specified by the standard (functions & arrays to pointers).
    *
    * C standard: 6.3.2.1.0.3, 6.3.2.1.0.4
