@@ -88,12 +88,12 @@ interface InstructionTemplate {
   val operandUse: List<VariableUse>
 }
 
-data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>)
+data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>) {
+  override fun toString() = "${template.name} " + operands.joinToString(", ")
+}
 
 fun List<MachineInstruction>.stringify(separator: String = "\n"): String {
-  return joinToString(separator = separator) {
-    "${it.template.name} " + it.operands.joinToString(", ")
-  }
+  return joinToString(separator = separator)
 }
 
 /**
