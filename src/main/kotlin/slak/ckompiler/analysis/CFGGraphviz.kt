@@ -63,7 +63,8 @@ private enum class GraphvizColors(val color: String) {
   BLOCK_START("powderblue"), BLOCK_RETURN("mediumpurple2"),
   COND_TRUE("darkolivegreen3"), COND_FALSE("lightcoral"),
   COND_MAYBE("\"#D7BA4A\""),
-  IMPOSSIBLE("black");
+  IMPOSSIBLE("black"),
+  MI_COLOR_A("#ed8e45"), MI_COLOR_B("#3480eb");
 
   override fun toString() = color
 }
@@ -73,7 +74,7 @@ enum class CodePrintingMethods {
 }
 
 fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
-  fun List<Expression>.sourceSubstr() = joinToString("\n") { it.exprToStr() }
+  fun List<Expression>.sourceSubstr() = joinToString("<br/>") { it.exprToStr() }
   val blockCode = src.sourceSubstr()
   val termCode = when (val term = terminator) {
     is CondJump -> term.src.exprToStr() + " ?"
@@ -83,22 +84,22 @@ fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
       else "return ${term.src!!.exprToStr()};"
     }
     else -> ""
-  }.let { if (it.isBlank()) "" else "\n$it" }
+  }.let { if (it.isBlank()) "" else "<br/>$it" }
   return blockCode + termCode
 }
 
 fun BasicBlock.irToString(): String {
-  val phi = phi.joinToString("\n").let { if (it.isEmpty()) "" else "$it\n" }
-  val blockCode = ir.joinToString("\n")
+  val phi = phi.joinToString("<br/>").let { if (it.isEmpty()) "" else "${it.unescape()}<br/>" }
+  val blockCode = ir.joinToString("<br/>")
   val termCode = when (val term = terminator) {
-    is CondJump -> term.cond.joinToString("\n") + " ?"
-    is SelectJump -> term.cond.joinToString("\n") + " ?"
+    is CondJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
+    is SelectJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
     is ImpossibleJump -> {
       if (term.returned == null) "return;"
-      else "return ${term.returned.joinToString("\n")};"
+      else "return ${term.returned.joinToString("<br/>") { it.toString().unescape() }};"
     }
     else -> ""
-  }.let { if (it.isBlank()) "" else "\n$it" }
+  }.let { if (it.isBlank()) "" else "<br/>$it" }
   return phi + blockCode + termCode
 }
 
@@ -106,22 +107,28 @@ private fun CFG.mapBlocksToString(
     print: CodePrintingMethods,
     sourceCode: String
 ): Map<BasicBlock, String> {
+  val sep = "<br align=\"left\"/>"
   if (print == CodePrintingMethods.MI_TO_STRING) {
     val (newLists, _, _) = X64Target.regAlloc(this, X64Generator(this).instructionSelection())
-    return newLists.mapValues { it.value.joinToString(separator = "\\l", postfix = "\\l") }
+    return newLists.mapValues {
+      it.value.joinToString(separator = sep, postfix = sep) { mi ->
+        val color = if (mi.irLabelIndex % 2 == 0) MI_COLOR_A else MI_COLOR_B
+        "<font color=\"$color\">${mi.toString().unescape()}</font>"
+      }
+    }
   } else if (print == CodePrintingMethods.ASM_TO_STRING) {
     val gen = X64Generator(this)
     val alloc = X64Target.regAlloc(this, gen.instructionSelection())
     return gen.applyAllocation(alloc).mapValues {
-      it.value.joinToString(separator = "\\l", postfix = "\\l")
+      it.value.joinToString(separator = sep, postfix = sep)
     }
   }
   return allNodes.associateWith {
     when (print) {
       CodePrintingMethods.SOURCE_SUBSTRING -> it.srcToString {
-        (sourceText ?: sourceCode).substring(range).trim()
+        (sourceText ?: sourceCode).substring(range).trim().unescape()
       }
-      CodePrintingMethods.EXPR_TO_STRING -> it.srcToString { it.toString() }
+      CodePrintingMethods.EXPR_TO_STRING -> it.srcToString { toString().unescape() }
       CodePrintingMethods.IR_TO_STRING -> it.irToString()
       else -> throw IllegalStateException("Unreachable")
     }
@@ -133,6 +140,8 @@ private fun String.unescape(): String =
         .replace("\\b", "\\\\b")
         .replace("\\t", "\\\\t")
         .replace("\\n", "\\\\n")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
 
 /**
  * Pretty graph for debugging purposes.
@@ -158,8 +167,8 @@ fun createGraphviz(
       else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
     }
     val code = blockMap.getValue(it)
-    val blockText = if (code.isBlank()) "<EMPTY>" else code.trim()
-    "node${it.hashCode()} [shape=box,$style,label=\"${blockText.unescape()}\"];"
+    val blockText = if (code.isBlank()) "\"<EMPTY>\"" else code.trim()
+    "node${it.hashCode()} [shape=box,$style,label=<$blockText>];"
   } + sep + edges.joinToString(sep) {
     val color = when (it.type) {
       EdgeType.NORMAL -> "color=$BLOCK_DEFAULT"
