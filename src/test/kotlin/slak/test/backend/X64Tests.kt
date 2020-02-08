@@ -2,10 +2,7 @@ package slak.test.backend
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.ConstantValue
-import slak.ckompiler.analysis.IRValue
-import slak.ckompiler.analysis.MemoryReference
-import slak.ckompiler.analysis.VirtualRegister
+import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
@@ -17,9 +14,9 @@ import kotlin.test.assertEquals
 
 class X64Tests {
   private fun InstructionMap.assertIsSSA() {
-    val defined = mutableSetOf<IRValue>()
+    val defined = mutableMapOf<IRValue, LabelIndex>()
     for ((_, instructions) in this) {
-      for ((template, operands) in instructions) {
+      for ((template, operands, labelIndex) in instructions) {
         require(operands.size == template.operandUse.size)
         val defs = operands
             .zip(template.operandUse)
@@ -28,8 +25,10 @@ class X64Tests {
                   it.second == VariableUse.DEF || it.second == VariableUse.DEF_USE
             }
         for ((definedValue, _) in defs) {
-          assert(definedValue !in defined) { "$definedValue already defined" }
-          defined += definedValue
+          assert(definedValue !in defined || defined.getValue(definedValue) == labelIndex) {
+            "$definedValue already defined"
+          }
+          defined[definedValue] = labelIndex
         }
       }
     }

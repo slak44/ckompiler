@@ -1,10 +1,7 @@
 package slak.ckompiler.backend
 
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.BasicBlock
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.IRValue
-import slak.ckompiler.analysis.MemoryReference
+import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.TypeName
 
 interface MachineRegisterClass {
@@ -88,7 +85,13 @@ interface InstructionTemplate {
   val operandUse: List<VariableUse>
 }
 
-data class MachineInstruction(val template: InstructionTemplate, val operands: List<IRValue>) {
+const val ILLEGAL_INDEX = Int.MIN_VALUE
+
+data class MachineInstruction(
+    val template: InstructionTemplate,
+    val operands: List<IRValue>,
+    var irLabelIndex: LabelIndex = ILLEGAL_INDEX
+) {
   override fun toString() = "${template.name} " + operands.joinToString(", ")
 }
 

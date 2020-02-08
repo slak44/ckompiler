@@ -23,42 +23,47 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   private fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
     // FIXME: deal with φ
-    for (irInstr in block.ir) {
-      selected += expandMacroFor(irInstr)
+    for ((index, irInstr) in block.ir.withIndex()) {
+      selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = index }
     }
     when (val term = block.terminator) {
       MissingJump -> logger.throwICE("Incomplete BasicBlock")
       is CondJump -> {
-        selected += selectCondJump(term)
+        selected += selectCondJump(term, block.ir.size)
       }
       is SelectJump -> TODO("deal with switches later")
       is UncondJump -> {
-        selected += jmp.match(JumpTargetConstant(term.target))
+        selected += jmp.match(JumpTargetConstant(term.target)).also {
+          it.irLabelIndex = block.ir.size + 1
+        }
       }
       is ConstantJump -> {
-        selected += jmp.match(JumpTargetConstant(term.target))
+        selected += jmp.match(JumpTargetConstant(term.target)).also {
+          it.irLabelIndex = block.ir.size + 1
+        }
       }
       is ImpossibleJump -> {
-        selected += selectReturn(term)
+        selected += selectReturn(term, block.ir.size)
       }
     }
     return selected
   }
 
-  private fun selectCondJump(condJump: CondJump): List<MachineInstruction> {
+  private fun selectCondJump(condJump: CondJump, idxOffset: Int): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
-    for (irInstr in condJump.cond.dropLast(1)) {
-      selected += expandMacroFor(irInstr)
+    for ((index, irInstr) in condJump.cond.dropLast(1).withIndex()) {
+      selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
     }
-    when (val l = condJump.cond.last()) {
-      is IntCmp -> {
-        selected += cmp.match(l.lhs, l.rhs)
-        selected += selectIntJmp(l, JumpTargetConstant(condJump.target))
-        selected += jmp.match(JumpTargetConstant(condJump.other))
-      }
+    val actualJump = when (val l = condJump.cond.last()) {
+      is IntCmp -> listOf(
+          cmp.match(l.lhs, l.rhs),
+          selectIntJmp(l, JumpTargetConstant(condJump.target)),
+          jmp.match(JumpTargetConstant(condJump.other))
+      )
       is FltCmp -> TODO("floats")
       else -> TODO("no idea what happens here")
     }
+    selected += actualJump.onEach { it.irLabelIndex = idxOffset + condJump.cond.size - 1 }
     return selected
   }
 
@@ -79,12 +84,13 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   /**
    * System V ABI: 3.2.3, pages 24-25
    */
-  private fun selectReturn(ret: ImpossibleJump): List<MachineInstruction> {
+  private fun selectReturn(ret: ImpossibleJump, idxOffset: Int): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
+    val endIdx = idxOffset + (ret.returned?.size ?: 0) - 1
     if (ret.returned != null) {
       require(ret.returned.isNotEmpty())
-      for (irInstr in ret.returned) {
-        selected += expandMacroFor(irInstr)
+      for ((index, irInstr) in ret.returned.withIndex()) {
+        selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
       }
       val retVal = when (val r = ret.returned.last()) {
         is ResultInstruction -> r.result
@@ -97,13 +103,13 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         require(retType is X64RegisterClass)
         if (retType == X64RegisterClass.INTEGER) {
           val rax = PhysicalRegister(X64Target.registerByName("rax"), retVal.type)
-          selected += mov.match(rax, retVal)
+          selected += mov.match(rax, retVal).also { it.irLabelIndex = endIdx }
         } else {
           TODO("deal with this")
         }
       }
     }
-    selected += jmp.match(JumpTargetConstant(returnBlock))
+    selected += jmp.match(JumpTargetConstant(returnBlock)).also { it.irLabelIndex = endIdx }
     return selected
   }
 
