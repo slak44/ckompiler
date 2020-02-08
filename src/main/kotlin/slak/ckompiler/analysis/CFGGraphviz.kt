@@ -2,7 +2,6 @@ package slak.ckompiler.analysis
 
 import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.stringify
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.parser.Expression
@@ -109,11 +108,13 @@ private fun CFG.mapBlocksToString(
 ): Map<BasicBlock, String> {
   if (print == CodePrintingMethods.MI_TO_STRING) {
     val (newLists, _, _) = X64Target.regAlloc(this, X64Generator(this).instructionSelection())
-    return newLists.mapValues { it.value.stringify("\\l") }
+    return newLists.mapValues { it.value.joinToString(separator = "\\l", postfix = "\\l") }
   } else if (print == CodePrintingMethods.ASM_TO_STRING) {
     val gen = X64Generator(this)
     val alloc = X64Target.regAlloc(this, gen.instructionSelection())
-    return gen.applyAllocation(alloc).mapValues { it.value.joinToString("\\l") }
+    return gen.applyAllocation(alloc).mapValues {
+      it.value.joinToString(separator = "\\l", postfix = "\\l")
+    }
   }
   return allNodes.associateWith {
     when (print) {

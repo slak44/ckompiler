@@ -92,10 +92,6 @@ data class MachineInstruction(val template: InstructionTemplate, val operands: L
   override fun toString() = "${template.name} " + operands.joinToString(", ")
 }
 
-fun List<MachineInstruction>.stringify(separator: String = "\n"): String {
-  return joinToString(separator = separator)
-}
-
 /**
  * [BasicBlock]s and the [MachineInstruction]s created from the [BasicBlock.instructions].
  *

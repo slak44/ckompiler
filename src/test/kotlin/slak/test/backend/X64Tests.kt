@@ -44,8 +44,7 @@ class X64Tests {
     val (newLists, allocation, _) = res
     for ((block, list) in newLists) {
       println(block)
-      println(list.stringify())
-      println()
+      println(list.joinToString(separator = "\n", postfix = "\n"))
     }
     for ((value, register) in allocation) {
       println("allocate $value to $register")
@@ -54,8 +53,7 @@ class X64Tests {
     val final = gen.applyAllocation(res)
     for ((block, list) in final) {
       println(block)
-      println(list.joinToString("\n"))
-      println()
+      println(list.joinToString(separator = "\n", postfix = "\n"))
     }
     return res
   }
@@ -65,7 +63,7 @@ class X64Tests {
     val cfg = prepareCFG(resource("codegen/addsAndMovs.c"), source)
     val iLists = X64Generator(cfg).instructionSelection()
     for (list in iLists) {
-      println(list.value.stringify())
+      println(list.value.joinToString(separator = "\n", postfix = "\n"))
     }
   }
 

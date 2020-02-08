@@ -6,7 +6,6 @@ import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.stringify
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
@@ -390,8 +389,7 @@ class CLI(private val stdinStream: InputStream) :
       val (newLists, allocation, _) = alloc
       for ((block, list) in newLists) {
         println(block)
-        println(list.stringify())
-        println()
+        println(list.joinToString(separator = "\n", postfix = "\n"))
       }
       for ((value, register) in allocation) {
         println("allocate $value to $register")
@@ -400,8 +398,7 @@ class CLI(private val stdinStream: InputStream) :
       val final = gen.applyAllocation(alloc)
       for ((block, list) in final) {
         println(block)
-        println(list.joinToString("\n"))
-        println()
+        println(list.joinToString(separator = "\n", postfix = "\n"))
       }
       return null
     }
