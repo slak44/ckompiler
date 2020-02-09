@@ -130,7 +130,10 @@ private fun TargetFunGenerator.removePhi(allocationResult: AllocationResult): Al
   for (block in cfg.domTreePreorder.filter { it.phi.isNotEmpty() }) {
     for (pred in block.preds) {
       val copies = removeOnePhi(allocationResult, block, pred)
-      newInstructionMap[pred] = allocationResult.partial.getValue(pred) + copies
+      val instructions = allocationResult.partial.getValue(pred)
+      val jmpInstrs =
+          instructions.takeLastWhile { it.irLabelIndex == instructions.last().irLabelIndex }
+      newInstructionMap[pred] = instructions.dropLast(jmpInstrs.size) + copies + jmpInstrs
     }
   }
   return allocationResult.copy(partial = newInstructionMap)

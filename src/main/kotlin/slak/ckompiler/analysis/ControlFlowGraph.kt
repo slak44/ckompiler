@@ -381,7 +381,9 @@ private class VariableRenamer(val cfg: CFG) {
 
 fun CFG.liveInFor(block: BasicBlock): List<Variable> {
   return defUseChains.keys.filter { variable ->
-    val usedInBlocks = defUseChains.getValue(variable).map { it.first }
+    val usedInBlocks = defUseChains.getValue(variable)
+        .filter { it.second != DEFINED_IN_PHI }
+        .map { it.first }
     val wasDefinedIn = definitions.getValue(variable).first
     // If the block uses the variable but doesn't define it, it's live-in
     if (block in usedInBlocks && wasDefinedIn != block) {
