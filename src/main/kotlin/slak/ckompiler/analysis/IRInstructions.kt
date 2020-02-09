@@ -368,6 +368,12 @@ class Variable(val tid: TypedIdentifier) : IRValue() {
   var version = 0
     private set
 
+  /**
+   * Returns true if this variable is not defined, either from use before definition, or as a dummy
+   * for a φ-function.
+   */
+  val isUndefined get() = version == 0
+
   fun asPointer(): Variable {
     val v = Variable(tid.copy(type = PointerType(tid.type, emptyList())))
     v.version = version
