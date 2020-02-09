@@ -68,7 +68,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
     val assigned = mutableListOf<MachineRegister>()
     for (x in cfg.liveInFor(block)) {
       // If the live-in wasn't colored, and is null, that's a bug
-      assigned += requireNotNull(coloring[x]) { "Live-in not colored" }
+      assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
     }
     // Add the parameter register constraints to assigned
     if (block == cfg.startBlock) {
