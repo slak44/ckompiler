@@ -1,10 +1,14 @@
 package slak.ckompiler.backend.x64
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.Imm.*
 import slak.ckompiler.backend.x64.ModRM.*
+import slak.ckompiler.throwICE
+
+private val logger = LogManager.getLogger()
 
 enum class OperandType {
   REGISTER, MEMORY, REG_OR_MEM
@@ -118,6 +122,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
           size == ref.reg.sizeBytes || size in ref.reg.aliases.map { it.second }
       isCorrectKind && isCorrectSize
     }
+    is ParameterReference -> logger.throwICE("Parameter references were removed")
   }
 }
 

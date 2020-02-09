@@ -16,6 +16,21 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
    */
   private val returnBlock = BasicBlock(isRoot = false)
 
+  /**
+   * Maps each function parameter to a more concrete value: params passed in registers will be
+   * mapped to [PhysicalRegister]s, and ones passed in memory to [MemoryReference]s. The memory refs
+   * will always be 8 bytes per the ABI, regardless of their type.
+   *
+   * System V ABI: 3.2.1, figure 3.3
+   */
+  override val parameterMap = mutableMapOf<ParameterReference, IRValue>()
+
+  override val target = X64Target
+
+  init {
+    mapFunctionParams()
+  }
+
   override fun instructionSelection(): InstructionMap {
     return cfg.nodes.associateWith(this::selectBlockInstrs)
   }
@@ -47,6 +62,29 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       }
     }
     return selected
+  }
+
+  /**
+   * @see parameterMap
+   */
+  private fun mapFunctionParams() {
+    val vars = cfg.f.parameters.map(::Variable).withIndex()
+    val integral =
+        vars.filter { X64Target.registerClassOf(it.value.type) == X64RegisterClass.INTEGER }
+    val sse = vars.filter { X64Target.registerClassOf(it.value.type) == X64RegisterClass.SSE }
+    for ((intVar, regName) in integral.zip(intArgRegNames)) {
+      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), intVar.value.type)
+      parameterMap[ParameterReference(intVar.index, intVar.value.type)] = targetRegister
+    }
+    for ((sseVar, regName) in sse.zip(sseArgRegNames)) {
+      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), sseVar.value.type)
+      parameterMap[ParameterReference(sseVar.index, sseVar.value.type)] = targetRegister
+    }
+    // FIXME: deal with X87 here
+    for ((index, variable) in vars - integral - sse) {
+      val memory = MemoryReference(cfg.memoryIds(), variable.type)
+      parameterMap[ParameterReference(index, variable.type)] = memory
+    }
   }
 
   private fun selectCondJump(condJump: CondJump, idxOffset: Int): List<MachineInstruction> {
@@ -115,7 +153,10 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
 
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is LoadInstr -> listOf(mov.match(i.result, i.target))
-    is StoreInstr -> listOf(mov.match(i.target, i.value))
+    is StoreInstr -> {
+      val rhs = if (i.value is ParameterReference) parameterMap.getValue(i.value) else i.value
+      listOf(mov.match(i.target, rhs))
+    }
     is ConstantRegisterInstr -> listOf(mov.match(i.result, i.const))
     is StructuralCast -> TODO()
     is ReinterpretCast -> TODO()
@@ -191,6 +232,9 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         require(template is X64InstrTemplate)
         val ops = operands.map {
           if (it is ConstantValue) return@map ImmediateValue(it)
+          if (it is PhysicalRegister) {
+            return@map RegisterValue(it.reg, X64Target.machineTargetData.sizeOf(it.type))
+          }
           val machineRegister = allocated.getValue(it)
           if (machineRegister is StackSlot) {
             return@map StackValue(machineRegister, stackOffsets.getValue(machineRegister))
@@ -210,7 +254,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
    * System V ABI: 3.2.1, figure 3.3
    */
   override fun genFunctionPrologue(alloc: AllocationResult): List<X64Instruction> {
-    // FIXME: allocate stack space
+    // FIXME: deal with MEMORY class function arguments (see paramSourceMap)
+    // FIXME: allocate stack space for locals
     return listOf(
         push.match(rbp),
         mov.match(rbp, rsp)
@@ -234,5 +279,16 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   companion object {
     private val rbp = PhysicalRegister(X64Target.registerByName("rbp"), UnsignedLongType)
     private val rsp = PhysicalRegister(X64Target.registerByName("rsp"), UnsignedLongType)
+
+    /**
+     * System V ABI: 3.2.3, page 20
+     */
+    private val intArgRegNames = listOf("rdi", "rsi", "rdx", "rcx", "r8", "r9")
+
+    /**
+     * System V ABI: 3.2.3, page 20
+     */
+    private val sseArgRegNames =
+        listOf("xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
   }
 }

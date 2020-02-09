@@ -85,6 +85,9 @@ interface InstructionTemplate {
   val operandUse: List<VariableUse>
 }
 
+/**
+ * Illegal [LabelIndex] value. Should only exist during construction.
+ */
 const val ILLEGAL_INDEX = Int.MIN_VALUE
 
 data class MachineInstruction(
@@ -92,6 +95,34 @@ data class MachineInstruction(
     val operands: List<IRValue>,
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX
 ) {
+  /**
+   * List of [Variable]s, [VirtualRegister]s and [PhysicalRegister]s used at this label.
+   */
+  val uses: List<IRValue> by lazy {
+    require(operands.size == template.operandUse.size)
+    return@lazy operands
+        .zip(template.operandUse)
+        .asSequence()
+        .filter { it.second == VariableUse.USE || it.second == VariableUse.DEF_USE }
+        .map { it.first }
+        .filter { it is Variable || it is VirtualRegister || it is PhysicalRegister }
+        .toList()
+  }
+
+  /**
+   * List of [Variable]s, [VirtualRegister]s and [PhysicalRegister]s defined at this label.
+   */
+  val defs: List<IRValue> by lazy {
+    require(operands.size == template.operandUse.size)
+    return@lazy operands
+        .zip(template.operandUse)
+        .asSequence()
+        .filter { it.second == VariableUse.DEF || it.second == VariableUse.DEF_USE }
+        .map { it.first }
+        .filter { it is Variable || it is VirtualRegister || it is PhysicalRegister }
+        .toList()
+  }
+
   override fun toString() = "${template.name} " + operands.joinToString(", ")
 }
 
@@ -108,9 +139,20 @@ interface AsmInstruction {
 
 interface TargetFunGenerator {
   /**
+   * Reference to source [MachineTarget].
+   */
+  val target: MachineTarget
+
+  /**
    * Target function to generate code for.
    */
   val cfg: CFG
+
+  /**
+   * Constraints for current function parameters. The given [IRValue]s are marked as live-in for the
+   * start block.
+   */
+  val parameterMap: Map<ParameterReference, IRValue>
 
   /**
    * Instruction selection for the function described by [cfg].
@@ -147,15 +189,10 @@ fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {
   return lists
 }
 
-/**
- * All the information required to emit a function.
- */
-typealias EmissileFunction = Pair<TargetFunGenerator, AllocationResult>
-
 interface AsmEmitter {
   val externals: List<String>
-  val functions: List<EmissileFunction>
-  val mainCfg: EmissileFunction?
+  val functions: List<TargetFunGenerator>
+  val mainCfg: TargetFunGenerator?
 
   fun emitAsm(): String
 }

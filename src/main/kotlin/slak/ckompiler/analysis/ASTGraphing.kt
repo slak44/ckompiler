@@ -8,8 +8,9 @@ import slak.ckompiler.throwICE
 private val logger = LogManager.getLogger()
 
 fun graph(cfg: CFG) {
-  for (p in cfg.f.parameters) {
+  for ((idx, p) in cfg.f.parameters.withIndex()) {
     cfg.definitions[Variable(p)] = mutableSetOf(cfg.startBlock)
+    cfg.startBlock.ir += StoreInstr(Variable(p), ParameterReference(idx, p.type))
   }
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
   for (block in cfg.allNodes) {

@@ -257,6 +257,17 @@ sealed class IRValue {
 }
 
 /**
+ * Represents the [index]th parameter of a function. It might be a memory location, or it might be
+ * a register, depending on the target.
+ *
+ * [type] is the type of the value, not a pointer to it.
+ */
+data class ParameterReference(val index: Int, override val type: TypeName) : IRValue() {
+  override val name = "param$index"
+  override fun toString() = name
+}
+
+/**
  * Spilled virtual. Represents an abstract memory location (probably on the stack).
  *
  * [type] is the type of the value, not a pointer to it.

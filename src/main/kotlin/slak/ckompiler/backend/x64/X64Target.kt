@@ -16,6 +16,9 @@ object X64Target : MachineTarget {
   // FIXME: make rbp conditional on -fomit-frame-pointer
   override val forbidden = listOf(registerByName("rsp"), registerByName("rbp"))
 
+  /**
+   * System V ABI: 3.2.3, page 17
+   */
   override fun registerClassOf(type: TypeName): MachineRegisterClass = when (type) {
     VoidType, ErrorType -> logger.throwICE("ErrorType cannot make it to codegen")
     is BitfieldType -> TODO("no idea what to do with this")

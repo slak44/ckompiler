@@ -1,11 +1,18 @@
 package slak.test.backend
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.*
+import slak.ckompiler.analysis.CFG
+import slak.ckompiler.analysis.IRValue
+import slak.ckompiler.analysis.LabelIndex
+import slak.ckompiler.analysis.VirtualRegister
+import slak.ckompiler.backend.AllocationResult
+import slak.ckompiler.backend.InstructionMap
+import slak.ckompiler.backend.Memory
+import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
-import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.setcc
 import slak.test.prepareCFG
 import slak.test.resource
@@ -16,30 +23,32 @@ class X64Tests {
   private fun InstructionMap.assertIsSSA() {
     val defined = mutableMapOf<IRValue, LabelIndex>()
     for ((_, instructions) in this) {
-      for ((template, operands, labelIndex) in instructions) {
-        require(operands.size == template.operandUse.size)
-        val defs = operands
-            .zip(template.operandUse)
-            .filter {
-              it.first !is MemoryReference && it.first !is ConstantValue &&
-                  it.second == VariableUse.DEF || it.second == VariableUse.DEF_USE
-            }
-        for ((definedValue, _) in defs) {
-          assert(definedValue !in defined || defined.getValue(definedValue) == labelIndex) {
+      for (mi in instructions) {
+        for (definedValue in mi.defs) {
+          assert(definedValue !in defined || defined.getValue(definedValue) == mi.irLabelIndex) {
             "$definedValue already defined"
           }
-          defined[definedValue] = labelIndex
+          defined[definedValue] = mi.irLabelIndex
         }
       }
     }
   }
 
+  private fun regAllocCode(code: String): AllocationResult {
+    val cfg = prepareCFG(code, source)
+    return regAlloc(cfg)
+  }
+
   private fun regAlloc(resourceName: String): AllocationResult {
     val cfg = prepareCFG(resource(resourceName), source)
+    return regAlloc(cfg)
+  }
+
+  private fun regAlloc(cfg: CFG): AllocationResult {
     val gen = X64Generator(cfg)
     val instructionMap = gen.instructionSelection()
     instructionMap.assertIsSSA()
-    val res = X64Target.regAlloc(cfg, instructionMap)
+    val res = gen.regAlloc(instructionMap)
     val (newLists, allocation, _) = res
     for ((block, list) in newLists) {
       println(block)
@@ -70,6 +79,38 @@ class X64Tests {
   fun `Register Allocation`() {
     val (_, allocs) = regAlloc("codegen/interference.c")
     assertEquals(3, allocs.values.distinct().size)
+  }
+
+  @Test
+  fun `Register Allocation Lots Of Unused Variables`() {
+    val values = (1..30).joinToString("\n") { "int var$it = 0;" }
+    val (_, allocs) = regAllocCode("""
+      int main() { $values return 0; }
+    """.trimIndent())
+    assertEquals(1, allocs.values.distinct().size)
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = [2, 3, 4, 5, 6])
+  fun `Register Allocation With Int Function Arguments In Registers`(argCount: Int) {
+    val args = (1..argCount).joinToString(", ") { "int arg$it" }
+    val (_, allocs) = regAllocCode("""
+      int f($args) { return arg1; }
+    """.trimIndent())
+    assertEquals(2, allocs.values.distinct().size)
+  }
+
+  @Test
+  fun `Register Allocation RCX Parameter Not Clobbered`() {
+    val (_, allocs) = regAllocCode("""
+      int f(int argRDI, int argRSI, int argRDX, int argRCX) {
+        // argRDX will try to be moved to rcx, which should not happen
+        int fakeUse = argRDI + argRSI + argRDX + argRCX;
+        return 0;
+      }
+    """.trimIndent())
+    val variable = allocs.keys.first { it.name == "argRDX" }
+    assert(allocs.getValue(variable).regName != "rcx")
   }
 
   @Test

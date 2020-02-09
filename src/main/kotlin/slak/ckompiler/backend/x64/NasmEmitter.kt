@@ -1,9 +1,7 @@
 package slak.ckompiler.backend.x64
 
 import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.AsmEmitter
-import slak.ckompiler.backend.AsmInstruction
-import slak.ckompiler.backend.EmissileFunction
+import slak.ckompiler.backend.*
 
 typealias Instructions = List<String>
 
@@ -33,8 +31,8 @@ private inline fun instrGen(block: InstructionBuilder.() -> Unit): Instructions 
 
 class NasmEmitter(
     override val externals: List<String>,
-    override val functions: List<EmissileFunction>,
-    override val mainCfg: EmissileFunction?
+    override val functions: List<TargetFunGenerator>,
+    override val mainCfg: TargetFunGenerator?
 ) : AsmEmitter {
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
@@ -76,20 +74,21 @@ class NasmEmitter(
 
   val BasicBlock.label get() = ".block_${hashCode()}"
 
-  private fun generateFunction(function: EmissileFunction) {
-    prelude += "global ${function.first.cfg.f.name}"
-    val (asmGenerator, allocationResult) = function
-    val asmMap = asmGenerator.applyAllocation(allocationResult)
+  private fun generateFunction(function: TargetFunGenerator) {
+    prelude += "global ${function.cfg.f.name}"
+    val miMap = function.instructionSelection()
+    val allocationResult = function.regAlloc(miMap)
+    val asmMap = function.applyAllocation(allocationResult)
     val returnBlock = asmMap.keys.single { it.postOrderId == -1 }
     text += instrGen {
-      label(asmGenerator.cfg.f.name)
-      emit(genAsm(asmGenerator.genFunctionPrologue(allocationResult)))
-      for (block in asmGenerator.cfg.domTreePreorder) {
+      label(function.cfg.f.name)
+      emit(genAsm(function.genFunctionPrologue(allocationResult)))
+      for (block in function.cfg.domTreePreorder) {
         label(block.label)
         emit(genAsm(asmMap.getValue(block)))
       }
       label(returnBlock.label)
-      emit(genAsm(asmGenerator.genFunctionEpilogue(allocationResult)))
+      emit(genAsm(function.genFunctionEpilogue(allocationResult)))
     }
   }
 

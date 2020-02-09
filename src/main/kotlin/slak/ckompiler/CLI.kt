@@ -8,7 +8,6 @@ import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
-import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
@@ -385,7 +384,7 @@ class CLI(private val stdinStream: InputStream) :
       )
       val gen = X64Generator(cfg)
       val selected = gen.instructionSelection()
-      val alloc = X64Target.regAlloc(cfg, selected)
+      val alloc = gen.regAlloc(selected)
       val (newLists, allocation, _) = alloc
       for ((block, list) in newLists) {
         println(block)
@@ -442,10 +441,7 @@ class CLI(private val stdinStream: InputStream) :
           forceReturnZero = false,
           forceAllNodes = false
       )
-      // FIXME: this is X64 only:
-      val gen = X64Generator(cfg)
-      val selected = gen.instructionSelection()
-      gen to X64Target.regAlloc(cfg, selected)
+      X64Generator(cfg)
     }
     val mainEmit = main?.let {
       val cfg = CFG(
@@ -456,10 +452,7 @@ class CLI(private val stdinStream: InputStream) :
           forceReturnZero = true,
           forceAllNodes = false
       )
-      // FIXME: this is X64 only:
-      val gen = X64Generator(cfg)
-      val selected = gen.instructionSelection()
-      gen to X64Target.regAlloc(cfg, selected)
+      X64Generator(cfg)
     }
 
     val nasm = NasmEmitter(declNames, functionsEmit, mainEmit).emitAsm()

@@ -3,7 +3,6 @@ package slak.ckompiler.analysis
 import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
-import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.parser.Expression
 
 private enum class EdgeType {
@@ -109,7 +108,8 @@ private fun CFG.mapBlocksToString(
 ): Map<BasicBlock, String> {
   val sep = "<br align=\"left\"/>"
   if (print == CodePrintingMethods.MI_TO_STRING) {
-    val (newLists, _, _) = X64Target.regAlloc(this, X64Generator(this).instructionSelection())
+    val gen = X64Generator(this)
+    val (newLists, _, _) = gen.regAlloc(gen.instructionSelection())
     return newLists.mapValues {
       it.value.joinToString(separator = sep, postfix = sep) { mi ->
         val color = if (mi.irLabelIndex % 2 == 0) MI_COLOR_A else MI_COLOR_B
@@ -118,7 +118,7 @@ private fun CFG.mapBlocksToString(
     }
   } else if (print == CodePrintingMethods.ASM_TO_STRING) {
     val gen = X64Generator(this)
-    val alloc = X64Target.regAlloc(this, gen.instructionSelection())
+    val alloc = gen.regAlloc(gen.instructionSelection())
     return gen.applyAllocation(alloc).mapValues {
       it.value.joinToString(separator = sep, postfix = sep)
     }
