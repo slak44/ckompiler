@@ -9,8 +9,6 @@ import slak.ckompiler.parser.UnsignedLongType
 import slak.ckompiler.throwICE
 
 class X64Generator(override val cfg: CFG) : TargetFunGenerator {
-  private val logger = LogManager.getLogger()
-
   /**
    * All returns actually jump to this synthetic block, which then really returns from the function.
    */
@@ -277,6 +275,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   companion object {
+    private val logger = LogManager.getLogger()
+
     private val rbp = PhysicalRegister(X64Target.registerByName("rbp"), UnsignedLongType)
     private val rsp = PhysicalRegister(X64Target.registerByName("rsp"), UnsignedLongType)
 
