@@ -33,9 +33,15 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     return cfg.nodes.associateWith(this::selectBlockInstrs)
   }
 
+  override fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction {
+    return mov.match(
+        PhysicalRegister(dest, UnsignedLongType),
+        PhysicalRegister(src, UnsignedLongType)
+    )
+  }
+
   private fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
-    // FIXME: deal with φ
     for ((index, irInstr) in block.ir.withIndex()) {
       selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = index }
     }

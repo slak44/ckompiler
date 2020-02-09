@@ -159,6 +159,11 @@ interface TargetFunGenerator {
    */
   fun instructionSelection(): InstructionMap
 
+  /**
+   * Create a register to register copy instruction. Useful for post-coloring stages.
+   */
+  fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction
+
   fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<AsmInstruction>>
 
   fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
