@@ -8,7 +8,7 @@ import java.util.*
 
 private val logger = LogManager.getLogger()
 
-typealias ReachingDefs = Map<Variable, ReachingDefinition?>
+typealias Definitions = Map<Variable, Pair<BasicBlock, LabelIndex>>
 typealias DefUseChains = Map<Variable, List<Pair<BasicBlock, LabelIndex>>>
 
 /**
@@ -54,13 +54,15 @@ class CFG(
    * property of the block it's in; as a result, we can ignore *where* in the block it was defined.
    * The parser has already checked that a variable cannot be used until it is declared.
    *
+   * Only useful for φs, since after renaming, each block will have its own definition.
+   *
    * @see insertPhiFunctions
    */
-  val definitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
+  val exprDefinitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
 
   private val renamer = VariableRenamer(this)
-  /** @see VariableRenamer.reachingDefs */
-  val reachingDefs: ReachingDefs get() = renamer.reachingDefs
+  /** @see VariableRenamer.definitions */
+  val definitions: Definitions get() = renamer.definitions
   /** @see VariableRenamer.defUseChains */
   val defUseChains: DefUseChains get() = renamer.defUseChains
 
@@ -84,7 +86,7 @@ class CFG(
     if (!forceAllNodes) {
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
-      insertPhiFunctions(definitions)
+      insertPhiFunctions(exprDefinitions)
       renamer.variableRenaming()
     } else {
       doms = DominatorList(nodes.size)
@@ -186,7 +188,7 @@ private class VariableRenamer(val cfg: CFG) {
    * @see Variable.reachingDef
    * @see variableRenaming
    */
-  val reachingDefs = mutableMapOf<Variable, ReachingDefinition?>()
+  private val reachingDefs = mutableMapOf<Variable, ReachingDefinition?>()
   /**
    * Provides access to [reachingDefs] using property extension syntax (to resemble the original
    * algorithm).
@@ -208,6 +210,10 @@ private class VariableRenamer(val cfg: CFG) {
    * Def-use chains for each variable definition. Stores location of all uses.
    */
   val defUseChains = mutableMapOf<Variable, MutableList<Pair<BasicBlock, LabelIndex>>>()
+  /**
+   * Map of all versions' definitions, and their exact location.
+   */
+  val definitions = mutableMapOf<Variable, Pair<BasicBlock, LabelIndex>>()
 
   /**
    * Creates a new version of a variable. Updates [latestVersions].
@@ -250,6 +256,7 @@ private class VariableRenamer(val cfg: CFG) {
     val oldReachingDef = def.reachingDef
     updateReachingDef(def, bb, instrIdx)
     val vPrime = def.newVersion()
+    definitions[vPrime.copy()] = bb to instrIdx
     val reachingToPrime = ReachingDefinition(vPrime, bb, instrIdx)
     def.reachingDef = reachingToPrime
     def.replaceWith(reachingToPrime)
@@ -372,14 +379,10 @@ private class VariableRenamer(val cfg: CFG) {
   }
 }
 
-fun ReachingDefs.definitionOf(variable: Variable): ReachingDefinition {
-  return values.first { it?.variable == variable }!!
-}
-
 fun CFG.liveInFor(block: BasicBlock): List<Variable> {
   return defUseChains.keys.filter { variable ->
     val usedInBlocks = defUseChains.getValue(variable).map { it.first }
-    val wasDefinedIn = reachingDefs.definitionOf(variable).definedIn
+    val wasDefinedIn = definitions.getValue(variable).first
     // If the block uses the variable but doesn't define it, it's live-in
     if (block in usedInBlocks && wasDefinedIn != block) {
       return@filter true

@@ -9,7 +9,7 @@ private val logger = LogManager.getLogger()
 
 fun graph(cfg: CFG) {
   for ((idx, p) in cfg.f.parameters.withIndex()) {
-    cfg.definitions[Variable(p)] = mutableSetOf(cfg.startBlock)
+    cfg.exprDefinitions[Variable(p)] = mutableSetOf(cfg.startBlock)
     cfg.startBlock.ir += StoreInstr(Variable(p), ParameterReference(idx, p.type))
   }
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
@@ -64,8 +64,8 @@ private fun GraphingContext.graphCompound(
 }
 
 private fun CFG.addDefinition(current: BasicBlock, ident: Variable) {
-  if (!definitions.containsKey(ident)) definitions[ident] = mutableSetOf(current)
-  else definitions[ident]!! += current
+  if (!exprDefinitions.containsKey(ident)) exprDefinitions[ident] = mutableSetOf(current)
+  else exprDefinitions[ident]!! += current
 }
 
 private fun GraphingContext.addDeclaration(
@@ -77,10 +77,10 @@ private fun GraphingContext.addDeclaration(
   val inits = d.declaratorList.map { it.second }
   var latestBlock = current
   for ((ident, init) in refs.zip(inits)) {
-    if (root.definitions.containsKey(ident)) {
+    if (root.exprDefinitions.containsKey(ident)) {
       logger.throwICE("Redefinition of declaration") { ident }
     }
-    root.definitions[ident] = mutableSetOf(current)
+    root.exprDefinitions[ident] = mutableSetOf(current)
     latestBlock = transformInitializer(latestBlock, ident, init)
   }
   return latestBlock

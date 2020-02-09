@@ -64,10 +64,10 @@ class SSATests {
   fun `Correct Definition Tracking Test`() {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
     cfg.assertIsSSA()
-    for ((key, value) in cfg.definitions) {
+    for ((key, value) in cfg.exprDefinitions) {
       println("$key (${key.id}) defined in \n\t${value.joinToString("\n\t")}")
     }
-    val realDefs = cfg.definitions
+    val realDefs = cfg.exprDefinitions
     assertEquals(3, realDefs.size)
     val e = realDefs.values.toList()
     assertEquals(e[0].map { it.postOrderId }, listOf(5, 2, 3, 1))
