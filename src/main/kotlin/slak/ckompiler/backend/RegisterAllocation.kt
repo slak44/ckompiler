@@ -204,8 +204,9 @@ private fun TargetFunGenerator.removeOnePhi(
       if (free.isNotEmpty()) {
         // Step 4b: F is not empty
         // FIXME: deal with the case where there are free regs, but of the wrong class
-        var rLast = free.first { it.valueClass == r1.valueClass }
-        var nextInCycle: MachineRegister = r1
+        val freeTemp = free.first { it.valueClass == r1.valueClass }
+        var rLast = freeTemp
+        var nextInCycle = r1
         do {
           if (adjacency.getValue(nextInCycle).size > 1) TODO("deal with multiple cycles")
           copies += createRegisterCopy(rLast, nextInCycle)
@@ -214,6 +215,7 @@ private fun TargetFunGenerator.removeOnePhi(
           adjacency.getValue(nextInCycle).clear()
           nextInCycle = next
         } while (nextInCycle != r1)
+        copies += createRegisterCopy(rLast, freeTemp)
       } else {
         // Step 4c: F is empty
         TODO("implement this")
