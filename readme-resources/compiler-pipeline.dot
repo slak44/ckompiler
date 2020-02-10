@@ -19,8 +19,7 @@ digraph pipeline {
   definitions[label=<Definitions<br/><font point-size="14" face="monospace">Map&lt;Variable, Set&lt;BasicBlock&gt;&gt;</font>>];
   cfg[label=<Control Flow Graph<br/><font point-size="14" face="monospace">CFG</font>>];
   basicBlockContent[label=<Basic Block Expressions<br/><font point-size="14" face="monospace">List&lt;Expression&gt;</font>>];
-  seq[label="Expression Sequnetialization",shape=box];
-  seqExprs[label=<Sequentialized Expressions<br/><font point-size="14" face="monospace">SequentialExpression</font>>];
+  seqExprs[label=<Expression Sequentialization<br/><font point-size="14" face="monospace">SequentialExpression</font>>,shape=box];
   irBuilder[label=<IR Conversion (and constant folding)<br/><font point-size="14" face="monospace">List&lt;IRInstruction&gt;</font>>,shape=box];
   bbTransforms[label="Graph Transforms (DCE, simplifications)",shape=box];
   cfgNodes[label="Initial Processed CFG"];
@@ -56,7 +55,7 @@ digraph pipeline {
 
   graphing -> {cfg, definitions, basicBlockContent};
 
-  basicBlockContent -> seq -> seqExprs -> irBuilder;
+  basicBlockContent -> seqExprs -> irBuilder;
 
   targetData2 -> irBuilder;
 
@@ -99,8 +98,7 @@ digraph pipeline {
     color="green";
   }
   subgraph cluster_analysis {
-    graphing; cfg; bbTransforms; definitions; cfgNodes; seq; basicBlockContent; seqExprs;
-    irBuilder;
+    graphing; cfg; bbTransforms; definitions; cfgNodes; basicBlockContent; seqExprs; irBuilder;
     subgraph cluster_ssa {
       domFrontier; phiInsertion; variableRename; ssaFormCFG;
       label=<<font color="#CCCCCCFF" point-size="20">SSA Construction</font>>;
