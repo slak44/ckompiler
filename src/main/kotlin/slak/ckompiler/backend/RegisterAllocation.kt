@@ -195,7 +195,7 @@ private fun TargetFunGenerator.removeOnePhi(
       }
     }
   } while (hasValidEdge)
-  // Step 4: T is either empty or it just contains cycles
+  // Step 4: T is either empty, or it just contains cycles
   do {
     for (r1 in adjacency.keys) {
       // Step 4a: self-loops generate nothing (obviously)
@@ -210,8 +210,9 @@ private fun TargetFunGenerator.removeOnePhi(
           if (adjacency.getValue(nextInCycle).size > 1) TODO("deal with multiple cycles")
           copies += createRegisterCopy(rLast, nextInCycle)
           rLast = nextInCycle
-          nextInCycle = adjacency.getValue(nextInCycle).single()
+          val next = adjacency.getValue(nextInCycle).single()
           adjacency.getValue(nextInCycle).clear()
+          nextInCycle = next
         } while (nextInCycle != r1)
       } else {
         // Step 4c: F is empty
