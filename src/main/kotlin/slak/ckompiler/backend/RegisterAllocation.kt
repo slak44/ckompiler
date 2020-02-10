@@ -247,11 +247,10 @@ private fun TargetFunGenerator.removeOnePhi(
       // Step 4a: self-loops generate nothing (obviously)
       adjacency.getValue(r1) -= r1
       if (adjacency.getValue(r1).isEmpty()) continue
-      if (free.isNotEmpty()) {
+      val freeTemp = free.firstOrNull { it.valueClass == r1.valueClass }
+      if (freeTemp != null) {
         // Step 4b: F is not empty
-        // FIXME: deal with the case where there are free regs, but of the wrong class
-        val freeTemp = free.first { it.valueClass == r1.valueClass }
-        var rLast = freeTemp
+        var rLast: MachineRegister = freeTemp
         var nextInCycle = r1
         do {
           if (adjacency.getValue(nextInCycle).size > 1) TODO("deal with multiple cycles")
