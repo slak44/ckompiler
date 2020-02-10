@@ -89,8 +89,8 @@ fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
 
 fun BasicBlock.irToString(): String {
   val phi = phi.joinToString("<br/>") { it.toString().unescape() }
-      .let { if (it.isEmpty()) "" else "$it<br/>" }
-  val blockCode = ir.joinToString("<br/>")
+      .let { if (it.isBlank()) "" else "$it<br/>" }
+  val blockCode = ir.joinToString("<br/>").let { if (it.isBlank()) "" else "$it<br/>" }
   val termCode = when (val term = terminator) {
     is CondJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
     is SelectJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
@@ -99,7 +99,7 @@ fun BasicBlock.irToString(): String {
       else "return ${term.returned.joinToString("<br/>") { it.toString().unescape() }};"
     }
     else -> ""
-  }.let { if (it.isBlank()) "" else "<br/>$it" }
+  }
   return phi + blockCode + termCode
 }
 
