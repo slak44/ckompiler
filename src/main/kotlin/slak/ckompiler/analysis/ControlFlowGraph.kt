@@ -382,14 +382,16 @@ private class VariableRenamer(val cfg: CFG) {
 fun CFG.liveInFor(block: BasicBlock): List<Variable> {
   return defUseChains.keys.filter { variable ->
     val usedInBlocks = defUseChains.getValue(variable)
-        .filter { it.second != DEFINED_IN_PHI }
+        .filter { (succ, succIdx) ->
+          succIdx != DEFINED_IN_PHI || succ.phi.any { it.incoming[block] == variable }
+        }
         .map { it.first }
     val wasDefinedIn = definitions.getValue(variable).first
     // If the block uses the variable but doesn't define it, it's live-in
     if (block in usedInBlocks && wasDefinedIn != block) {
       return@filter true
     }
-    // If any block in the dominance frontier is a block where the variable was used, and the
+    // If any block in the dominance frontier is a block where the variable will be used, and the
     // variable's definition dominates `block`, then it means the variable will be alive in the
     // block, even if it just "passed through", to be used later
     if (block.dominanceFrontier.intersect(usedInBlocks).isNotEmpty() &&
