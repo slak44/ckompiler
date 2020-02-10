@@ -135,6 +135,13 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   return MachineInstruction(instr, operands.toList())
 }
 
+val dummyUse = instructionClass("DUMMY DO NOT EMIT", listOf(VariableUse.USE)) {
+  instr(R8)
+  instr(R16)
+  instr(R32)
+  instr(R64)
+}
+
 private val arithmetic: ICBuilder.() -> Unit = {
   instr(RM8, IMM8)
   instr(RM16, IMM16)

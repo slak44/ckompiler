@@ -222,12 +222,31 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is FltNeg -> TODO()
   }
 
+  /**
+   * Handle non-commutative 2-address code operation.
+   *
+   * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 5.1.2.2
+   */
   private fun matchSub(i: IntBinary) = when (i.result) {
     // result = result OP rhs
     i.lhs -> listOf(sub.match(i.lhs, i.rhs))
     // result = lhs OP result
-    i.rhs -> TODO("problematic case")
-    else -> TODO("sub is not commutative, deal with it")
+    i.rhs -> {
+      val subTarget = VirtualRegister(cfg.registerIds(), i.lhs.type)
+      listOf(
+          mov.match(subTarget, i.lhs),
+          sub.match(subTarget, i.result),
+          mov.match(i.result, subTarget)
+      )
+    }
+    else -> {
+      require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
+      listOfNotNull(
+          mov.match(i.result, i.lhs),
+          sub.match(i.result, i.rhs),
+          if (i.rhs !is ConstantValue) dummyUse.match(i.rhs) else null
+      )
+    }
   }
 
   private fun matchCommutativeBinary(

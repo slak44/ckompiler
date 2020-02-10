@@ -95,6 +95,7 @@ class NasmEmitter(
   private fun genAsm(blockAsm: List<AsmInstruction>) = instrGen {
     for (i in blockAsm) {
       require(i is X64Instruction)
+      if (i.template in dummyUse) continue
       emit("${i.template.name} ${i.operands.joinToString(", ") { operandToString(it) }}")
     }
   }
