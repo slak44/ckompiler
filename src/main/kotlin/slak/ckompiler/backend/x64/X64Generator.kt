@@ -183,44 +183,76 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     }
     is ConstantRegisterInstr -> listOf(mov.match(i.result, i.const))
     is StructuralCast -> TODO()
-    is ReinterpretCast -> TODO()
+    is ReinterpretCast -> {
+      if (i.operand == i.result) emptyList() else listOf(mov.match(i.result, i.operand))
+    }
     is NamedCall -> TODO()
     is IndirectCall -> TODO()
     is IntBinary -> when (i.op) {
-      IntegralBinaryOps.ADD -> matchAdd(i)
-      IntegralBinaryOps.SUB -> TODO()
+      IntegralBinaryOps.ADD -> matchCommutativeBinary(i, add)
+      IntegralBinaryOps.SUB -> matchSub(i)
       IntegralBinaryOps.MUL -> TODO()
       IntegralBinaryOps.DIV -> TODO()
       IntegralBinaryOps.REM -> TODO()
       IntegralBinaryOps.LSH -> TODO()
       IntegralBinaryOps.RSH -> TODO()
-      IntegralBinaryOps.AND -> TODO()
-      IntegralBinaryOps.OR -> TODO()
-      IntegralBinaryOps.XOR -> TODO()
+      IntegralBinaryOps.AND -> matchCommutativeBinary(i, and)
+      IntegralBinaryOps.OR -> matchCommutativeBinary(i, or)
+      IntegralBinaryOps.XOR -> matchCommutativeBinary(i, xor)
     }
     is IntCmp -> matchCmp(i)
-    is IntInvert -> TODO()
-    is IntNeg -> TODO()
+    is IntInvert -> if (i.operand == i.result) {
+      listOf(not.match(i.operand))
+    } else {
+      listOf(
+          mov.match(i.result, i.operand),
+          not.match(i.result)
+      )
+    }
+    is IntNeg -> if (i.operand == i.result) {
+      listOf(neg.match(i.operand))
+    } else {
+      listOf(
+          mov.match(i.result, i.operand),
+          neg.match(i.result)
+      )
+    }
     is FltBinary -> TODO()
     is FltCmp -> TODO()
     is FltNeg -> TODO()
   }
 
-  private fun matchAdd(i: IntBinary) = when (i.result) {
+  private fun matchSub(i: IntBinary) = when (i.result) {
     // result = result OP rhs
-    i.lhs -> listOf(add.match(i.lhs, i.rhs))
+    i.lhs -> listOf(sub.match(i.lhs, i.rhs))
     // result = lhs OP result
-    i.rhs -> listOf(add.match(i.rhs, i.lhs))
+    i.rhs -> TODO("problematic case")
+    else -> TODO("sub is not commutative, deal with it")
+  }
+
+  private fun matchCommutativeBinary(
+      i: BinaryInstruction,
+      op: List<X64InstrTemplate>
+  ): List<MachineInstruction> = when (i.result) {
+    // result = result OP rhs
+    i.lhs -> listOf(op.match(i.lhs, i.rhs))
+    // result = lhs OP result
+    i.rhs -> listOf(op.match(i.rhs, i.lhs))
     else -> {
-      // Can't have result = imm OP imm
-      require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
-      val nonImm = if (i.lhs is ConstantValue) i.rhs else i.lhs
-      val maybeImm = if (i.lhs === nonImm) i.rhs else i.lhs
+      val (nonImm, maybeImm) = findImmInBinary(i)
       listOf(
           mov.match(i.result, nonImm),
-          add.match(i.result, maybeImm)
+          op.match(i.result, maybeImm)
       )
     }
+  }
+
+  private fun findImmInBinary(i: BinaryInstruction): Pair<IRValue, IRValue> {
+    // Can't have result = imm OP imm
+    require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
+    val nonImm = if (i.lhs is ConstantValue) i.rhs else i.lhs
+    val maybeImm = if (i.lhs === nonImm) i.rhs else i.lhs
+    return nonImm to maybeImm
   }
 
   private fun matchCmp(i: IntCmp): List<MachineInstruction> {

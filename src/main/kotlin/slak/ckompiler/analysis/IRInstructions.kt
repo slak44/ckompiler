@@ -127,6 +127,7 @@ data class IndirectCall(
  * Generic instruction with two operands.
  */
 interface BinaryInstruction {
+  val result: IRValue
   val lhs: IRValue
   val rhs: IRValue
 }

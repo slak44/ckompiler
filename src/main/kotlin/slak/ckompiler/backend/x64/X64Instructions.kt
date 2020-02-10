@@ -156,15 +156,22 @@ private val arithmetic: ICBuilder.() -> Unit = {
   instr(R64, RM64)
 }
 
-val add = instructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
-  arithmetic()
-}
-
-val cmp = instructionClass("cmp", listOf(VariableUse.USE, VariableUse.USE)) {
-  arithmetic()
-}
-
+val add = instructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val sub = instructionClass("sub", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val cmp = instructionClass("cmp", listOf(VariableUse.USE, VariableUse.USE), arithmetic)
 val and = instructionClass("and", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val or = instructionClass("or", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val xor = instructionClass("xor", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+
+private val unaryRM: ICBuilder.() -> Unit = {
+  instr(RM8)
+  instr(RM16)
+  instr(RM32)
+  instr(RM64)
+}
+
+val neg = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
+val not = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
 
 val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM8, R8)
