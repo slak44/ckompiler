@@ -164,6 +164,23 @@ interface TargetFunGenerator {
    */
   fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction
 
+  /**
+   * Create a jump instruction. Useful for post-coloring stages.
+   */
+  fun createJump(target: BasicBlock): MachineInstruction
+
+  /**
+   * Handle copy insertion while implementing φs.
+   *
+   * The copies must be placed before the jumps at the end of the block, but before the
+   * compare that might make use of the pre-copy values. This is a target-dependent issue, which is
+   * why this function is here.
+   */
+  fun insertPhiCopies(
+      instructions: List<MachineInstruction>,
+      copies: List<MachineInstruction>
+  ): List<MachineInstruction>
+
   fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<AsmInstruction>>
 
   fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>

@@ -122,24 +122,70 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
 }
 
 /**
+ * Replace all φs.
+ *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 4.4
  * @return modified [AllocationResult]
+ * @see removeOnePhi
  */
 private fun TargetFunGenerator.removePhi(allocationResult: AllocationResult): AllocationResult {
   val newInstructionMap = allocationResult.partial.toMutableMap()
   for (block in cfg.domTreePreorder.filter { it.phi.isNotEmpty() }) {
-    for (pred in block.preds) {
+    // Make an explicit copy here to avoid ConcurrentModificationException, since splitting edges
+    // changes the preds
+    for (pred in block.preds.toList()) {
       val copies = removeOnePhi(allocationResult, block, pred)
-      val instructions = allocationResult.partial.getValue(pred)
-      val jmpInstrs =
-          instructions.takeLastWhile { it.irLabelIndex == instructions.last().irLabelIndex }
-      newInstructionMap[pred] = instructions.dropLast(jmpInstrs.size) + copies + jmpInstrs
+      if (copies.isEmpty()) continue
+      val insertHere = splitCriticalForCopies(newInstructionMap, pred, block)
+      val instructions = newInstructionMap.getValue(insertHere)
+      newInstructionMap[insertHere] = insertPhiCopies(instructions, copies)
     }
   }
   return allocationResult.copy(partial = newInstructionMap)
 }
 
 /**
+ * To avoid the "lost copies" problem, critical edges must be split, and the copies inserted
+ * there.
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 2.2.3
+ */
+private fun TargetFunGenerator.splitCriticalForCopies(
+    instructionMap: MutableMap<BasicBlock, List<MachineInstruction>>,
+    block: BasicBlock,
+    succ: BasicBlock
+): BasicBlock {
+  // If the edge isn't critical, don't split it
+  if (block.successors.size <= 1 || succ.preds.size <= 1) {
+    return block
+  }
+  // FIXME: this split messes with the internal state of the CFG
+  val insertedBlock = cfg.newBlock()
+  insertedBlock.terminator = UncondJump(succ)
+  val term = block.terminator
+  block.terminator = when {
+    term is SelectJump && term.options.isNotEmpty() -> {
+      if (term.default == succ) term.copy(default = insertedBlock)
+      else term.copy(options = term.options.mapValues {
+        if (it.value == succ) insertedBlock else succ
+      })
+    }
+    term is CondJump -> {
+      if (term.target == succ) term.copy(target = insertedBlock)
+      else term.copy(other = insertedBlock)
+    }
+    else -> logger.throwICE("Impossible; terminator has fewer successors than block.successors")
+  }
+  succ.preds -= block
+  succ.preds += insertedBlock
+  instructionMap[insertedBlock] = listOf(createJump(succ))
+  return insertedBlock
+}
+
+/**
+ * Creates the register transfer graph for one φ instruction (that means all of [BasicBlock.phi]),
+ * for a given predecessor, and generates the correct copy sequence to replace the φ with.
+ *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 4.4, pp 55-58
  * @param block the l in the paper
  * @param pred the l' in the paper

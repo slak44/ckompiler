@@ -40,6 +40,21 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     )
   }
 
+  override fun createJump(target: BasicBlock): MachineInstruction {
+    return jmp.match(JumpTargetConstant(target))
+  }
+
+  override fun insertPhiCopies(
+      instructions: List<MachineInstruction>,
+      copies: List<MachineInstruction>
+  ): List<MachineInstruction> {
+    val jmpInstrs = instructions.takeLastWhile {
+      it.irLabelIndex == instructions.last().irLabelIndex &&
+          (it.template in jmp || it.template in jcc.values.flatten())
+    }
+    return instructions.dropLast(jmpInstrs.size) + copies + jmpInstrs
+  }
+
   private fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
     for ((index, irInstr) in block.ir.withIndex()) {
