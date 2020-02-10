@@ -28,7 +28,19 @@ digraph pipeline {
   phiInsertion[label="φ-Function Insertion",shape=box];
   variableRename[label="Variable Renaming",shape=box];
   ssaFormCFG[label="CFG With IR In Pruned SSA Form"];
-  codeGenerator[label=<Code Generator<br/><font point-size="14" face="monospace">NasmGenerator</font>>,shape=box];
+  codeGenerator[label=<Function Generator<br/><font point-size="14" face="monospace">TargetFunGenerator</font>>];
+  machineTarget[label=<Machine Target<br/><font point-size="14" face="monospace">MachineTarget</font>>];
+  isel[label=<Instruction Selection<br/><font point-size="14" face="monospace">InstructionMap</font>>,shape=box];
+  spilling[label="Spilling",shape=box];
+  coloring[label="Coloring",shape=box];
+  allocation[label=<Value To Register Map<br/><font point-size="14" face="monospace">Map&lt;IRValue, MachineRegister&gt;</font>>];
+  coalescing[label="Coalescing",shape=box];
+  phiRemoval[label="φ Implementation",shape=box];
+  modifiedCode[label=<Code With Spills And Copies<br/><font point-size="14" face="monospace">InstructionMap</font>>];
+  allocResult[label=<Allocation Result<br/><font point-size="14" face="monospace">AllocationResult</font>>];
+  prologueEpilogue[label="Prologue/Epilogue Generation",shape=box];
+  appliedAlloc[label=<Applied Allocation<br/><font point-size="14" face="monospace">Map&lt;BasicBlock, List&lt;AsmInstruction&gt;&gt;</font>>];
+  asmEmitter[label=<Assembly Emitter<br/><font point-size="14" face="monospace">AsmEmitter</font>>];
   nasmCode[label=<NASM Source<br/><font point-size="14" face="monospace">String</font>>];
   assembler[label="NASM"];
 
@@ -52,7 +64,21 @@ digraph pipeline {
 
   {definitions, domFrontier} -> phiInsertion;
 
-  phiInsertion -> variableRename -> ssaFormCFG -> codeGenerator -> nasmCode -> assembler;
+  phiInsertion -> variableRename -> ssaFormCFG -> codeGenerator -> isel;
+
+  machineTarget -> codeGenerator[constraint=false];
+
+  isel -> spilling -> coloring -> coalescing -> phiRemoval;
+
+  coloring -> allocation;
+
+  allocation -> allocResult;
+
+  phiRemoval -> modifiedCode -> allocResult;
+
+  {codeGenerator, allocResult} -> {prologueEpilogue, appliedAlloc} -> asmEmitter;
+
+  asmEmitter -> nasmCode -> assembler;
 
   subgraph cluster_preprocessor {
     trPhase1And2; ppParser; ppTokens;
@@ -86,7 +112,13 @@ digraph pipeline {
     color="orange";
   }
   subgraph cluster_backend {
-    codeGenerator; nasmCode;
+    codeGenerator; machineTarget; isel; prologueEpilogue; appliedAlloc; asmEmitter; nasmCode;
+    subgraph cluster_regalloc {
+      spilling; coloring; coalescing; phiRemoval; allocation; modifiedCode; allocResult;
+      label=<<font color="#CCCCCCFF" point-size="20">Register Allocation</font>>;
+      labeljust="right";
+      color="orangered";
+    }
     label=<<font color="#CCCCCCFF" point-size="20">Backend</font>>;
     labeljust="right";
     color="cyan";

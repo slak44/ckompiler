@@ -468,16 +468,83 @@ Certain things depend on the target ISA and/or the machine (the size of an
 `MachineTargetData` also generates various macros used in stdlib headers (such
 as `__PTRDIFF_T_TYPE` for `stddef.h`).
 
+This class is technically part of the backend, but certain features handled in
+the front-end (eg `sizeof`) also depend on this target-specific data.
+
 For now, only x64 Linux is supported, but the infrastructure for x86 and other
 platforms exists.
 
-###### Codegen
+###### The Code Generation Interfaces
 
-Code generation takes the graphs for the functions in the translation unit, and
-generates code for a target. It currently targets x86_64 NASM, and, in the
-future, might target LLVM IR.
+These interfaces describe the code generation process in a target-independent
+manner. The code can be found in [MachineTarget.kt][machine_target].
 
-See [NasmGenerator.kt][nasm_gen].
+1. `MachineTarget`: This interface describes a particular compilation target. It
+   contains the relevant `MachineTargetData` instance, and data about the
+   register file of the target ISA.
+2. `MachineRegisterClass`: Describes a type of register in the ISA. For example,
+   x64 distinguishes between general purpose integer registers (`rax`, `rbp`,
+   etc) and SSE/AVX registers (`xmm4`, `ymm1`, etc).
+3. `MachineRegister`: A description of a particular register in the ISA. Stores
+   size, class, aliases.
+4. `TargetFunGenerator`: Implementors of this interface are code generators for
+   a single function CFG, for a particular `MachineTarget`. An instance of this
+   class holds all the state required for all the code generation stages before
+   emission.
+5. `AsmEmitter`: Takes the result of all the function generators in a
+   translation unit and emits the actual assembly string. Currently, this means
+   it emits NASM.
+6. `InstructionTemplate`: Represents a particular instruction from an ISA. For
+   example: `mov r/m64, r64` or `add r32, imm32`.
+7. `AsmInstruction`: Final generated instruction, ready for emission.
+
+There is also the `MachineInstruction` class, which isn't an interface, but it
+represents an instruction (`InstructionTemplate`) along with its operands
+(`IRValue`s), so it is still target-independent.
+
+###### Code Generation Process
+
+First, `TargetFunGenerator`s are created for all the functions in the
+translation unit. They are passed to an `AsmEmitter`, which returns the
+assembled code. The emitter is the one who triggers the actual generation
+process in each function's generator.
+
+Generation starts with instruction selection. Instruction selection creates
+`MachineInstruction`s for each block, and that is actually what it returns, a
+map of `BasicBlock` to `List<MachineInstruction>`.
+
+The next step is register allocation. Note that the code is still in SSA form: φ
+functions have not been removed, and variables are only assigned once per
+version. The register allocator is based on [this paper][hack], and is
+target-independent (code in [RegisterAllocation.kt][regalloc]).
+
+The allocator is a graph coloring register allocator (GCRA), but it allocates
+directly over SSA. Other GCRAs run a SSA destruction algorithm before
+allocation, but this actually introduces additional complexity: the coloring
+influences spilling, and coalescing influences both. A graph that is not
+k-colorable will have to be rebuilt after a spill. Both coloring and coalescing
+will have to run after spills.
+
+Allocation over SSA allows this process to be decoupled: SSA interference graphs
+are chordal (also from [here][hack]), so k-colorability can be determined in
+polynomial time. That is, register pressure at all labels in the program can be
+known beforehand. That information is used to figure out spill locations before
+coloring (all labels where the register pressure is higher than the available
+registers). The resulting graph can be then colored (also in polynomial time),
+and it is guaranteed that coloring will not fail, because we forcefully reduced
+the chromatic number via spilling. Coalescing runs after coloring, but before
+implementing φs.
+
+The register allocator produces an updated map of `MachineInstruction`s (with
+copies and/or spills inserted), the variables that have been spilled, and the
+actual allocation of registers to variables and temporaries.
+
+After this is done, the function generator creates the function
+prologue/epilogue, and the final `AsmInstruction`s by replacing `IRValue`s with
+actual registers and memory locations.
+
+Finally, the `AsmEmitter` emit the actual assembly from the `AsmInstruction`s
+passed from the generator.
 
 ### References
 
@@ -510,8 +577,6 @@ especially to the C standard.
 [ir]: ./src/main/kotlin/slak/ckompiler/analysis/IRBuilderContext.kt
 [cfg]: ./src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt
 [const_fold]: ./src/main/kotlin/slak/ckompiler/analysis/ConstantFolding.kt
-[nasm_gen]:
-./src/main/kotlin/slak/ckompiler/backend/nasm/NasmGenerator.kt
 [diags]: ./src/main/kotlin/slak/ckompiler/Diagnostics.kt
 [cli]: ./src/main/kotlin/slak/ckompiler/CLI.kt
 [cli_exts]: ./src/main/kotlin/slak/ckompiler/CLIExtensions.kt
@@ -533,3 +598,5 @@ https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_met
 [std_draft]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 [kotlinxcli]: https://github.com/Kotlin/kotlinx.cli
 [hack]: https://publikationen.bibliothek.kit.edu/1000007166/6532
+[machine_target]: ./src/main/kotlin/slak/ckompiler/backend/MachineTarget.kt
+[regalloc]: ./src/main/kotlin/slak/ckompiler/backend/RegisterAllocation.kt
