@@ -158,7 +158,12 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is LoadInstr -> listOf(mov.match(i.result, i.target))
     is StoreInstr -> {
-      val rhs = if (i.value is ParameterReference) parameterMap.getValue(i.value) else i.value
+      val rhs = if (i.value is ParameterReference) {
+        parameterMap[i.value]
+            ?: logger.throwICE("Function parameter not mapped to register/memory")
+      } else {
+        i.value
+      }
       listOf(mov.match(i.target, rhs))
     }
     is ConstantRegisterInstr -> listOf(mov.match(i.result, i.const))
