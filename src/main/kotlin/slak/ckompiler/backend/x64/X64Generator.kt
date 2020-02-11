@@ -190,7 +190,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       listOf(matchTypedMov(i.target, rhs))
     }
     is ConstantRegisterInstr -> listOf(mov.match(i.result, i.const))
-    is StructuralCast -> TODO()
+    is StructuralCast -> createStructuralCast(i)
     is ReinterpretCast -> {
       if (i.operand == i.result) emptyList() else listOf(matchTypedMov(i.result, i.operand))
     }
@@ -228,6 +228,35 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is FltBinary -> TODO()
     is FltCmp -> TODO()
     is FltNeg -> TODO()
+  }
+
+  private fun createStructuralCast(cast: StructuralCast): List<MachineInstruction> {
+    val src = cast.operand.type.normalize()
+    val dest = cast.result.type.normalize()
+    return when {
+      src == dest -> emptyList()
+      src is PointerType && dest is PointerType -> {
+        // We really don't care about pointer-to-pointer casts
+        listOf(matchTypedMov(cast.result, cast.operand))
+      }
+      src is IntegralType -> when (dest) {
+        is PointerType -> listOf(matchTypedMov(cast.result, cast.operand))
+        FloatType -> listOf(cvtsi2ss.match(cast.result, cast.operand))
+        DoubleType -> listOf(cvtsi2sd.match(cast.result, cast.operand))
+        else -> TODO("unimplemented structural cast type from integral")
+      }
+      src is FloatType -> when (dest) {
+        is IntegralType -> listOf(cvtss2si.match(cast.result, cast.operand))
+        DoubleType -> listOf(cvtss2sd.match(cast.result, cast.operand))
+        else -> TODO("unimplemented structural cast type from float")
+      }
+      src is DoubleType -> when (dest) {
+        is IntegralType -> listOf(cvtsd2si.match(cast.result, cast.operand))
+        FloatType -> listOf(cvtsd2ss.match(cast.result, cast.operand))
+        else -> TODO("unimplemented structural cast type from double")
+      }
+      else -> TODO("unimplemented structural cast type")
+    }
   }
 
   /**

@@ -274,3 +274,37 @@ val movsd = instructionClass("movsd", listOf(VariableUse.DEF_USE, VariableUse.US
   instr(XMM_SD, XMM_SD)
   instr(XMM_SD, M64)
 }
+
+val cvtsi2ss = instructionClass("cvtsi2ss", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(XMM_SS, RM32)
+  instr(XMM_SS, RM64)
+}
+
+val cvtsi2sd = instructionClass("cvtsi2sd", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(XMM_SD, RM32)
+  instr(XMM_SD, RM64)
+}
+
+val cvtss2sd = instructionClass("cvtss2sd", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(XMM_SD, XMM_SS)
+  instr(XMM_SD, M32)
+}
+
+val cvtsd2ss = instructionClass("cvtsd2ss", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(XMM_SS, XMM_SD)
+  instr(XMM_SS, M64)
+}
+
+val cvtss2si = instructionClass("cvtss2si", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(R32, XMM_SS)
+  instr(R32, M32)
+  instr(R64, XMM_SS)
+  instr(R64, M32)
+}
+
+val cvtsd2si = instructionClass("cvtsd2si", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(R32, XMM_SD)
+  instr(R32, M64)
+  instr(R64, XMM_SD)
+  instr(R64, M64)
+}
