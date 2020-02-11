@@ -152,15 +152,15 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
 
 private val nullary: ICBuilder.() -> Unit = { instr() }
 
-val dummyUse = instructionClass("DUMMY DO NOT EMIT", listOf(VariableUse.USE)) {
+val dummyUse = instructionClass("DUMMY USE DO NOT EMIT", listOf(VariableUse.USE)) {
   instr(R8)
   instr(R16)
   instr(R32)
   instr(R64)
 }
 
-val dummyCallSave = instructionClass("DUMMY DO NOT EMIT", emptyList(), nullary)
-val dummyCallRestore = instructionClass("DUMMY DO NOT EMIT", emptyList(), nullary)
+val dummyCallSave = instructionClass("DUMMY SAVE DO NOT EMIT", emptyList(), nullary)
+val dummyCallRestore = instructionClass("DUMMY RESTORE DO NOT EMIT", emptyList(), nullary)
 
 private val arithmetic: ICBuilder.() -> Unit = {
   instr(RM8, IMM8)
