@@ -21,7 +21,7 @@ private class IRBuilderContext(
 }
 
 private fun IRBuilderContext.buildCast(expr: CastExpression): ResultInstruction {
-  return StructuralCast(newRegister(expr.type), expr.type, buildOperand(expr.target))
+  return StructuralCast(newRegister(expr.type), buildOperand(expr.target))
 }
 
 /**

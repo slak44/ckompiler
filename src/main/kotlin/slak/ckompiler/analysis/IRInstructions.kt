@@ -75,15 +75,14 @@ data class LoadInstr(
 }
 
 /**
- * Modifies [operand] to have the type specified by [castTo]. May fail if the specified conversion
+ * Modifies [operand] to have the type specified by [result]. May fail if the specified conversion
  * is impossible.
  */
 data class StructuralCast(
     override val result: VirtualRegister,
-    val castTo: TypeName,
     val operand: IRValue
 ) : ResultInstruction() {
-  override fun toString() = "$result = cast $operand to $castTo"
+  override fun toString() = "$result = cast $operand to ${result.type}"
 }
 
 /**
