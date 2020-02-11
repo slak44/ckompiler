@@ -1,7 +1,12 @@
 package slak.ckompiler.backend.x64
 
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.*
+import slak.ckompiler.backend.AsmEmitter
+import slak.ckompiler.backend.AsmInstruction
+import slak.ckompiler.backend.TargetFunGenerator
+import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.parser.FloatingConstantNode
 
 typealias Instructions = List<String>
 
@@ -37,6 +42,20 @@ class NasmEmitter(
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
+
+  /**
+   * This maps literals to a label in .data with their value. It also enables deduplication, because
+   * it is undefined behaviour to modify string literals.
+   *
+   * C standard: 6.4.5.0.7
+   */
+  private val stringRefs = mutableMapOf<StrConstant, String>()
+
+  /**
+   * Maps a float to a label with the value.
+   * @see stringRefs
+   */
+  private val floatRefs = mutableMapOf<FltConstant, String>()
 
   override fun emitAsm(): String {
     for (external in externals) prelude += "extern $external"
@@ -100,15 +119,48 @@ class NasmEmitter(
     }
   }
 
-  // FIXME: handle float and string operands, they're stored separately
   private fun operandToString(operand: X64Value): String = when (operand) {
     is ImmediateValue -> when (val const = operand.value) {
       is IntConstant -> const.toString()
-      is FltConstant -> TODO()
-      is StrConstant -> TODO()
+      is FltConstant -> {
+        if (const !in floatRefs) createFloatConstant(const)
+        floatRefs.getValue(const)
+      }
+      is StrConstant -> {
+        if (const !in stringRefs) createStringConstant(const)
+        stringRefs.getValue(const)
+      }
       is JumpTargetConstant -> const.target.label
     }
     is RegisterValue -> operand.toString()
     is StackValue -> operand.toString()
+  }
+
+  private fun createFloatConstant(const: FltConstant) {
+    val labelName = const.value.toString()
+        .replace('.', '_')
+        .replace('+', 'p')
+        .replace('-', 'm')
+    floatRefs[const] = "f_${labelName}_${floatRefs.size}"
+    val kind = when (MachineTargetData.x64.sizeOf(const.type)) {
+      4 -> "dd"
+      8 -> "dq"
+      else -> TODO("handle larger floats")
+    }
+    val fltNasm = when {
+      const.value.isNaN() -> "__QNaN__"
+      const.value == Double.POSITIVE_INFINITY -> "__Infinity__"
+      const.value == Double.NEGATIVE_INFINITY -> "-__Infinity__"
+      else -> const.value.toString()
+    }
+    data += "${floatRefs[const]}: $kind $fltNasm"
+  }
+
+  private fun createStringConstant(const: StrConstant) {
+    val stringPeek = const.value.filter(Char::isLetterOrDigit).take(5)
+    stringRefs[const] = "s_${stringPeek}_${stringRefs.size}"
+    val bytes = const.value.toByteArray().joinToString(", ")
+    data += "; ${const.value}"
+    data += "${stringRefs[const]}: db $bytes, 0"
   }
 }
