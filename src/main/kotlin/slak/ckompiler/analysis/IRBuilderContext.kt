@@ -150,7 +150,7 @@ private fun IRBuilderContext.buildFunctionCall(expr: FunctionCall): ResultInstru
   val funType = expr.calledExpr.type.unqualify().asCallable()!!
   val res = newRegister(funType.returnType)
   return if (expr.calledExpr is TypedIdentifier) {
-    NamedCall(res, expr.calledExpr.name, funType, args)
+    NamedCall(res, NamedConstant(expr.calledExpr.name, funType), args)
   } else {
     val called = buildOperand(expr.calledExpr)
     require(called is VirtualRegister)

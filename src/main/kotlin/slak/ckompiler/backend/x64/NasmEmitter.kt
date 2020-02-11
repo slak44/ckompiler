@@ -114,7 +114,6 @@ class NasmEmitter(
   private fun genAsm(blockAsm: List<AsmInstruction>) = instrGen {
     for (i in blockAsm) {
       require(i is X64Instruction)
-      if (i.template in dummyUse) continue
       emit("${i.template.name} ${i.operands.joinToString(", ") { operandToString(it) }}")
     }
   }
@@ -131,6 +130,7 @@ class NasmEmitter(
         stringRefs.getValue(const)
       }
       is JumpTargetConstant -> const.target.label
+      is NamedConstant -> const.name
     }
     is RegisterValue -> operand.toString()
     is StackValue -> operand.toString()

@@ -104,8 +104,7 @@ data class ReinterpretCast(
  */
 data class NamedCall(
     override val result: VirtualRegister,
-    val name: String,
-    val type: FunctionType,
+    val name: NamedConstant,
     val args: List<IRValue>
 ) : ResultInstruction() {
   override fun toString() = "$result = call $name with args ${args.joinToString(", ")}"
@@ -332,6 +331,10 @@ data class StrConstant(val value: String, override val type: TypeName) : Constan
 data class JumpTargetConstant(val target: BasicBlock) : ConstantValue() {
   override val type = VoidType
   override val name = ".block_${hashCode()}"
+  override fun toString() = name
+}
+
+data class NamedConstant(override val name: String, override val type: TypeName) : ConstantValue() {
   override fun toString() = name
 }
 

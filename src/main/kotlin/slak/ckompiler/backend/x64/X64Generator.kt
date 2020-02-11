@@ -194,8 +194,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is ReinterpretCast -> {
       if (i.operand == i.result) emptyList() else listOf(matchTypedMov(i.result, i.operand))
     }
-    is NamedCall -> TODO()
-    is IndirectCall -> TODO()
+    is NamedCall -> createCall(i.result, i.name, i.args)
+    is IndirectCall -> createCall(i.result, i.callable, i.args)
     is IntBinary -> when (i.op) {
       IntegralBinaryOps.ADD -> matchCommutativeBinary(i, add)
       IntegralBinaryOps.SUB -> matchSub(i)
@@ -228,6 +228,85 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is FltBinary -> TODO()
     is FltCmp -> TODO()
     is FltNeg -> TODO()
+  }
+
+  /**
+   * System V ABI: 3.2.2, page 18; 3.2.3, page 20
+   */
+  private fun createCall(
+      result: VirtualRegister,
+      callable: IRValue,
+      args: List<IRValue>
+  ): List<MachineInstruction> {
+    val selected = mutableListOf<MachineInstruction>()
+    // Save caller-saved registers
+    selected += dummyCallSave.match()
+    val intArgs = args.withIndex()
+        .filter { (_, it) -> target.registerClassOf(it.type) == X64RegisterClass.INTEGER }
+    val fltArgs = args.withIndex()
+        .filter { (_, it) -> target.registerClassOf(it.type) == X64RegisterClass.SSE }
+    // Move register arguments in place
+    val intRegArgs = intArgs.take(intArgRegNames.size)
+    val fltRegArgs = fltArgs.take(sseArgRegNames.size)
+    val registerArguments = intRegArgs.map { intArgRegNames[it.index] to it.value } +
+        fltRegArgs.map { sseArgRegNames[it.index] to it.value }
+    for ((physRegName, arg) in registerArguments) {
+      val reg = PhysicalRegister(X64Target.registerByName(physRegName), arg.type)
+      selected += matchTypedMov(reg, arg)
+    }
+    // Push stack arguments in order, aligned
+    val intStackArgs = intArgs.drop(intArgRegNames.size)
+    val fltStackArgs = fltArgs.drop(sseArgRegNames.size)
+    val stackArgs = (intStackArgs + fltStackArgs).sortedBy { it.index }
+    val stackArgsSize = stackArgs.sumBy {
+      target.machineTargetData.sizeOf(it.value.type).coerceAtLeast(EIGHTBYTE)
+    }
+    if (stackArgsSize % ALIGNMENT_BYTES != 0) {
+      selected += sub.match(rsp, IntConstant(8, SignedIntType))
+    }
+    for (stackArg in stackArgs.map { it.value }.asReversed()) {
+      selected += pushArgOnStack(stackArg)
+    }
+    // The ABI says al must contain the number of vector arguments
+    selected += mov.match(al, IntConstant(fltRegArgs.size.toLong(), SignedCharType))
+    selected += call.match(callable)
+    selected += getCallResult(result)
+    // Clean up pushed arguments
+    val cleanStackSize = stackArgsSize + stackArgsSize / ALIGNMENT_BYTES
+    selected += add.match(rsp, IntConstant(cleanStackSize.toLong(), SignedIntType))
+    // Restore caller-saved registers
+    selected += dummyCallRestore.match()
+    return selected
+  }
+
+  /**
+   * System V ABI: "Returning of Values", page 24
+   */
+  private fun getCallResult(result: VirtualRegister): List<MachineInstruction> {
+    val rc = target.registerClassOf(result.type)
+    if (rc is Memory) TODO("some weird thing with caller storage in rdi, see ABI")
+    require(rc is X64RegisterClass)
+    if (rc == X64RegisterClass.X87) TODO("deal with x87")
+    val returnRegisterName = when (rc) {
+      X64RegisterClass.INTEGER -> "rax"
+      X64RegisterClass.SSE -> "xmm0"
+      else -> logger.throwICE("Unreachable")
+    }
+    val callResult = PhysicalRegister(X64Target.registerByName(returnRegisterName), result.type)
+    return listOf(matchTypedMov(result, callResult))
+  }
+
+  private fun pushArgOnStack(value: IRValue): List<MachineInstruction> {
+    val registerClass = target.registerClassOf(value.type)
+    if (registerClass is Memory) {
+      TODO("move memory argument to stack")
+    }
+    require(registerClass is X64RegisterClass)
+    return when (registerClass) {
+      X64RegisterClass.INTEGER -> TODO()
+      X64RegisterClass.SSE -> TODO()
+      X64RegisterClass.X87 -> TODO()
+    }
   }
 
   private fun createStructuralCast(cast: StructuralCast): List<MachineInstruction> {
@@ -355,36 +434,84 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   override fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<X64Instruction>> {
-    val (instrs, allocated, stackSlots) = alloc
     var currentStackOffset = 0
-    val stackOffsets = stackSlots.associateWith {
+    val stackOffsets = alloc.stackSlots.associateWith {
       val offset = currentStackOffset
       currentStackOffset += it.sizeBytes
       offset
     }
     val asm = mutableMapOf<BasicBlock, List<X64Instruction>>()
     for (block in cfg.postOrderNodes) {
-      val result = mutableListOf<X64Instruction>()
-      for ((template, operands) in instrs.getValue(block)) {
-        require(template is X64InstrTemplate)
-        val ops = operands.map {
-          if (it is ConstantValue) return@map ImmediateValue(it)
-          if (it is PhysicalRegister) {
-            return@map RegisterValue(it.reg, X64Target.machineTargetData.sizeOf(it.type))
-          }
-          val machineRegister = allocated.getValue(it)
-          if (machineRegister is StackSlot) {
-            return@map StackValue(machineRegister, stackOffsets.getValue(machineRegister))
-          } else {
-            return@map RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(it.type))
-          }
-        }
-        result += X64Instruction(template, ops)
-      }
+      val result = blockToX64Instr(block, alloc, stackOffsets)
       asm += block to result
     }
     asm += returnBlock to emptyList()
     return asm
+  }
+
+  private fun blockToX64Instr(
+      block: BasicBlock,
+      alloc: AllocationResult,
+      stackOffsets: Map<StackSlot, Int>
+  ): List<X64Instruction> {
+    val result = mutableListOf<X64Instruction>()
+    var lastSavedForCall: List<MachineRegister>? = null
+    for (mi in alloc.partial.getValue(block)) {
+      if (mi.template in dummyUse) continue
+      if (mi.template in dummyCallSave) {
+        lastSavedForCall = getCallerSavedInUse(alloc, block, mi.irLabelIndex)
+        result += lastSavedForCall.map {
+          val pushInstr = push.match(PhysicalRegister(it, SignedLongType))
+          val pushTemplate = pushInstr.template as X64InstrTemplate
+          X64Instruction(pushTemplate, listOf(RegisterValue(it, it.sizeBytes)))
+        }
+        continue
+      }
+      if (mi.template in dummyCallRestore) {
+        requireNotNull(lastSavedForCall) {
+          "Dummy call restore created without matching dummy call save"
+        }
+        result += lastSavedForCall.map {
+          val popInstr = pop.match(PhysicalRegister(it, SignedLongType))
+          val pushTemplate = popInstr.template as X64InstrTemplate
+          X64Instruction(pushTemplate, listOf(RegisterValue(it, it.sizeBytes)))
+        }
+        continue
+      }
+      result += miToX64Instr(mi, alloc, stackOffsets)
+    }
+    return result
+  }
+
+  private fun miToX64Instr(
+      mi: MachineInstruction,
+      alloc: AllocationResult,
+      stackOffsets: Map<StackSlot, Int>
+  ): X64Instruction {
+    require(mi.template is X64InstrTemplate)
+    val ops = mi.operands.map {
+      if (it is ConstantValue) return@map ImmediateValue(it)
+      if (it is PhysicalRegister) {
+        return@map RegisterValue(it.reg, X64Target.machineTargetData.sizeOf(it.type))
+      }
+      val machineRegister = alloc.allocations.getValue(it)
+      if (machineRegister is StackSlot) {
+        return@map StackValue(machineRegister, stackOffsets.getValue(machineRegister))
+      } else {
+        return@map RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(it.type))
+      }
+    }
+    return X64Instruction(mi.template, ops)
+  }
+
+  private fun getCallerSavedInUse(
+      alloc: AllocationResult,
+      block: BasicBlock,
+      labelIndex: LabelIndex
+  ): List<MachineRegister> {
+    // FIXME: get caller-saved registers in-use at the given label, and save those
+    //   for now just save a bunch of stuff lol
+    return listOf("rax", "rcx", "rdx", "rsi", "rdi").map { target.registerByName(it) }
   }
 
   /**
@@ -418,6 +545,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   companion object {
     private val logger = LogManager.getLogger()
 
+    private val al = PhysicalRegister(X64Target.registerByName("rax"), SignedCharType)
     private val rbp = PhysicalRegister(X64Target.registerByName("rbp"), UnsignedLongType)
     private val rsp = PhysicalRegister(X64Target.registerByName("rsp"), UnsignedLongType)
 
@@ -431,5 +559,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
      */
     private val sseArgRegNames =
         listOf("xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7")
+
+    private const val EIGHTBYTE = 8
+    private const val ALIGNMENT_BYTES = 16
   }
 }

@@ -51,6 +51,10 @@ object JumpTarget : Operand {
   override val size = 0
 }
 
+object NamedDisplacement : Operand {
+  override val size = 0
+}
+
 data class X64InstrTemplate(
     override val name: String,
     val operands: List<Operand>,
@@ -111,8 +115,11 @@ private fun instructionClass(
 }
 
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
+  if (this is NamedDisplacement && ref is NamedConstant) return true
   if (this is JumpTarget && ref is JumpTargetConstant) return true
-  if (ref !is PhysicalRegister && MachineTargetData.x64.sizeOf(ref.type) != size) return false
+  if (ref !is PhysicalRegister && MachineTargetData.x64.sizeOf(ref.type.normalize()) != size) {
+    return false
+  }
   return when (ref) {
     is MemoryReference, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
@@ -129,7 +136,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
       isCorrectKind && isCorrectSize
     }
     is IntConstant -> this is Imm
-    is JumpTargetConstant -> false // was checked above
+    is NamedConstant, is JumpTargetConstant -> false // was checked above
     is ParameterReference -> logger.throwICE("Parameter references were removed")
   }
 }
@@ -143,12 +150,17 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   return MachineInstruction(instr, operands.toList())
 }
 
+private val nullary: ICBuilder.() -> Unit = { instr() }
+
 val dummyUse = instructionClass("DUMMY DO NOT EMIT", listOf(VariableUse.USE)) {
   instr(R8)
   instr(R16)
   instr(R32)
   instr(R64)
 }
+
+val dummyCallSave = instructionClass("DUMMY DO NOT EMIT", emptyList(), nullary)
+val dummyCallRestore = instructionClass("DUMMY DO NOT EMIT", emptyList(), nullary)
 
 private val arithmetic: ICBuilder.() -> Unit = {
   instr(RM8, IMM8)
@@ -237,9 +249,15 @@ val jcc = listOf(
 
 val jmp = instructionClass("jmp", listOf(VariableUse.USE)) { instr(JumpTarget) }
 
-val leave = instructionClass("leave", listOf()) { instr() }
+val call = instructionClass("call", listOf(VariableUse.USE)) {
+  instr(NamedDisplacement)
+  instr(RM16)
+  instr(RM32)
+  instr(RM64)
+}
 
-val ret = instructionClass("ret", listOf()) { instr() }
+val leave = instructionClass("leave", emptyList(), nullary)
+val ret = instructionClass("ret", emptyList(), nullary)
 
 val push = instructionClass("push", listOf(VariableUse.USE)) {
   instr(RM16)
