@@ -15,7 +15,7 @@ enum class OperandType {
 }
 
 /**
- * Generic operand to an instruction (register reference, memory location, immediate, label).
+ * A generic operand to an instruction (register reference, memory location, immediate, label).
  */
 interface Operand {
   val size: Int
@@ -30,7 +30,13 @@ enum class ModRM(val type: OperandType, override val size: Int) : Operand {
   R8(OperandType.REGISTER, 1),
   R16(OperandType.REGISTER, 2),
   R32(OperandType.REGISTER, 4),
-  R64(OperandType.REGISTER, 8)
+  R64(OperandType.REGISTER, 8),
+
+  M32(OperandType.MEMORY, 4),
+  M64(OperandType.MEMORY, 8),
+
+  XMM_SS(OperandType.REGISTER, 4),
+  XMM_SD(OperandType.REGISTER, 8)
 }
 
 enum class Imm(override val size: Int) : Operand {
@@ -82,12 +88,21 @@ data class X64Instruction(
 private class ICBuilder(
     val instructions: MutableList<X64InstrTemplate>,
     val name: String,
-    val defaultUse: List<VariableUse>
-)
+    val defaultUse: List<VariableUse>? = null
+) {
+  fun instr(vararg operands: Operand) = instr(defaultUse!!, *operands)
+
+  fun instr(operandUse: List<VariableUse>, vararg operands: Operand) {
+    instructions += X64InstrTemplate(name, operands.toList(), operandUse)
+  }
+
+  @JvmName("l_instr")
+  fun List<VariableUse>.instr(vararg operands: Operand): Unit = instr(this, *operands)
+}
 
 private fun instructionClass(
     name: String,
-    defaultUse: List<VariableUse>,
+    defaultUse: List<VariableUse>? = null,
     block: ICBuilder.() -> Unit
 ): List<X64InstrTemplate> {
   val builder = ICBuilder(mutableListOf(), name, defaultUse)
@@ -95,25 +110,16 @@ private fun instructionClass(
   return builder.instructions
 }
 
-private fun ICBuilder.instr(vararg operands: Operand) = instr(defaultUse, *operands)
-
-private fun ICBuilder.instr(operandUse: List<VariableUse>, vararg operands: Operand) {
-  instructions += X64InstrTemplate(name, operands.toList(), operandUse)
-}
-
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (this is JumpTarget && ref is JumpTargetConstant) return true
   if (ref !is PhysicalRegister && MachineTargetData.x64.sizeOf(ref.type) != size) return false
   return when (ref) {
-    is MemoryReference -> {
+    is MemoryReference, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
     is VirtualRegister, is Variable -> {
       this is Register ||
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
-    }
-    is ConstantValue -> {
-      this is Imm
     }
     is PhysicalRegister -> {
       val isCorrectKind = (this is Register && register == ref.reg) ||
@@ -122,6 +128,8 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
           size == ref.reg.sizeBytes || size in ref.reg.aliases.map { it.second }
       isCorrectKind && isCorrectSize
     }
+    is IntConstant -> this is Imm
+    is JumpTargetConstant -> false // was checked above
     is ParameterReference -> logger.throwICE("Parameter references were removed")
   }
 }
@@ -255,4 +263,14 @@ val pop = instructionClass("pop", listOf(VariableUse.DEF)) {
   instr(R16)
   instr(R32)
   instr(R64)
+}
+
+val movss = instructionClass("movss", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
+  instr(XMM_SS, XMM_SS)
+  instr(XMM_SS, M32)
+}
+
+val movsd = instructionClass("movsd", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
+  instr(XMM_SD, XMM_SD)
+  instr(XMM_SD, M64)
 }

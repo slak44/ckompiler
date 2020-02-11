@@ -3,9 +3,7 @@ package slak.ckompiler.backend.x64
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
-import slak.ckompiler.parser.SignedCharType
-import slak.ckompiler.parser.SignedIntType
-import slak.ckompiler.parser.UnsignedLongType
+import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
 class X64Generator(override val cfg: CFG) : TargetFunGenerator {
@@ -34,10 +32,20 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   override fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction {
-    return mov.match(
-        PhysicalRegister(dest, UnsignedLongType),
-        PhysicalRegister(src, UnsignedLongType)
-    )
+    val dc = dest.valueClass
+    require(dc is X64RegisterClass && dc == src.valueClass) {
+      "Register value classes do not match"
+    }
+    val type = when (dc) {
+      X64RegisterClass.INTEGER -> UnsignedLongType
+      X64RegisterClass.SSE -> when (src.sizeBytes) {
+        4 -> FloatType
+        8 -> DoubleType
+        else -> TODO("type?")
+      }
+      X64RegisterClass.X87 -> LongDoubleType
+    }
+    return matchTypedMov(PhysicalRegister(dest, type), PhysicalRegister(src, type))
   }
 
   override fun createJump(target: BasicBlock): MachineInstruction {
@@ -171,7 +179,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
-    is LoadInstr -> listOf(mov.match(i.result, i.target))
+    is LoadInstr -> listOf(matchTypedMov(i.result, i.target))
     is StoreInstr -> {
       val rhs = if (i.value is ParameterReference) {
         parameterMap[i.value]
@@ -179,12 +187,12 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       } else {
         i.value
       }
-      listOf(mov.match(i.target, rhs))
+      listOf(matchTypedMov(i.target, rhs))
     }
     is ConstantRegisterInstr -> listOf(mov.match(i.result, i.const))
     is StructuralCast -> TODO()
     is ReinterpretCast -> {
-      if (i.operand == i.result) emptyList() else listOf(mov.match(i.result, i.operand))
+      if (i.operand == i.result) emptyList() else listOf(matchTypedMov(i.result, i.operand))
     }
     is NamedCall -> TODO()
     is IndirectCall -> TODO()
@@ -220,6 +228,31 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is FltBinary -> TODO()
     is FltCmp -> TODO()
     is FltNeg -> TODO()
+  }
+
+  /**
+   * Create a generic copy instruction. Figures out register class and picks the correct mov.
+   */
+  private fun matchTypedMov(dest: IRValue, src: IRValue): MachineInstruction {
+    val destRegClass = target.registerClassOf(dest.type)
+    val srcRegClass = target.registerClassOf(src.type)
+    require(destRegClass != Memory || srcRegClass != Memory) { "No memory-to-memory move exists" }
+    val nonMemoryClass = if (destRegClass != Memory && srcRegClass != Memory) {
+      require(destRegClass == srcRegClass) { "Move between register classes without cast" }
+      destRegClass
+    } else {
+      if (destRegClass == Memory) srcRegClass else destRegClass
+    }
+    require(nonMemoryClass is X64RegisterClass)
+    return when (nonMemoryClass) {
+      X64RegisterClass.INTEGER -> mov.match(dest, src)
+      X64RegisterClass.SSE -> when (target.machineTargetData.sizeOf(src.type)) {
+        4 -> movss.match(dest, src)
+        8 -> movsd.match(dest, src)
+        else -> logger.throwICE("Float size not 4 or 8 bytes")
+      }
+      X64RegisterClass.X87 -> TODO("x87 movs")
+    }
   }
 
   /**

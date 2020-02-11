@@ -65,7 +65,10 @@ val x64Registers: List<X64Register> = registers {
       // FIXME: some of these are for AVX-512 only
       register("zmm$n", 64,
           alias("ymm$n", 32),
-          alias("xmm$n", 16)
+          alias("xmm$n", 16),
+          // XMM can be used for single doubles and floats too:
+          alias("xmm$n", 8),
+          alias("xmm$n", 4)
       )
     }
   }
