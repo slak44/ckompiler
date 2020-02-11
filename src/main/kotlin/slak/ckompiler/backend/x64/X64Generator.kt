@@ -5,6 +5,8 @@ import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
+import kotlin.math.absoluteValue
+import kotlin.math.sign
 
 class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   /**
@@ -227,7 +229,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     }
     is FltBinary -> TODO()
     is FltCmp -> TODO()
-    is FltNeg -> TODO()
+    is FltNeg -> TODO("xorss/xorpd THING, -0.0f")
   }
 
   /**
@@ -299,7 +301,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   private fun pushArgOnStack(value: IRValue): List<MachineInstruction> {
     val registerClass = target.registerClassOf(value.type)
     if (registerClass is Memory) {
-      TODO("move memory argument to stack")
+      TODO("move memory argument to stack, push for ints, and" +
+          " sub rsp, 16/movq [rsp], XMMi")
     }
     require(registerClass is X64RegisterClass)
     return when (registerClass) {
@@ -561,5 +564,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
 
     private const val EIGHTBYTE = 8
     private const val ALIGNMENT_BYTES = 16
+
+    private fun Int.toHex() = "${if (sign == -1) "-" else ""}0x${absoluteValue.toString(16)}"
   }
 }
