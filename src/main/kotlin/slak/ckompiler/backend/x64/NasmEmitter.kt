@@ -6,7 +6,6 @@ import slak.ckompiler.backend.AsmEmitter
 import slak.ckompiler.backend.AsmInstruction
 import slak.ckompiler.backend.TargetFunGenerator
 import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.parser.FloatingConstantNode
 
 typealias Instructions = List<String>
 
@@ -123,7 +122,8 @@ class NasmEmitter(
       is IntConstant -> const.toString()
       is FltConstant -> {
         if (const !in floatRefs) createFloatConstant(const)
-        floatRefs.getValue(const)
+        // FIXME:
+        "[${floatRefs.getValue(const)}]"
       }
       is StrConstant -> {
         if (const !in stringRefs) createStringConstant(const)
