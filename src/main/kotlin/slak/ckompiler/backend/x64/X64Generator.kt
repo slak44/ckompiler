@@ -510,8 +510,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       labelIndex: LabelIndex
   ): List<MachineRegister> {
     // FIXME: get caller-saved registers in-use at the given label, and save those
-    //   for now just save a bunch of stuff lol
-    return listOf("rax", "rcx", "rdx", "rsi", "rdi").map { target.registerByName(it) }
+    return listOf<String>().map { target.registerByName(it) }
   }
 
   /**
