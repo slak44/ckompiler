@@ -246,12 +246,12 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         else -> TODO("unimplemented structural cast type from integral")
       }
       src is FloatType -> when (dest) {
-        is IntegralType -> listOf(cvtss2si.match(cast.result, cast.operand))
+        is IntegralType -> listOf(cvttss2si.match(cast.result, cast.operand))
         DoubleType -> listOf(cvtss2sd.match(cast.result, cast.operand))
         else -> TODO("unimplemented structural cast type from float")
       }
       src is DoubleType -> when (dest) {
-        is IntegralType -> listOf(cvtsd2si.match(cast.result, cast.operand))
+        is IntegralType -> listOf(cvttsd2si.match(cast.result, cast.operand))
         FloatType -> listOf(cvtsd2ss.match(cast.result, cast.operand))
         else -> TODO("unimplemented structural cast type from double")
       }

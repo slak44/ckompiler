@@ -295,14 +295,14 @@ val cvtsd2ss = instructionClass("cvtsd2ss", listOf(VariableUse.DEF, VariableUse.
   instr(XMM_SS, M64)
 }
 
-val cvtss2si = instructionClass("cvtss2si", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvttss2si = instructionClass("cvttss2si", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(R32, XMM_SS)
   instr(R32, M32)
   instr(R64, XMM_SS)
   instr(R64, M32)
 }
 
-val cvtsd2si = instructionClass("cvtsd2si", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvttsd2si = instructionClass("cvttsd2si", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(R32, XMM_SD)
   instr(R32, M64)
   instr(R64, XMM_SD)
