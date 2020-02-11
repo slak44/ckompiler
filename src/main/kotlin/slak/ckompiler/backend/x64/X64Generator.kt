@@ -331,6 +331,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   override fun genFunctionPrologue(alloc: AllocationResult): List<X64Instruction> {
     // FIXME: deal with MEMORY class function arguments (see paramSourceMap)
     // FIXME: allocate stack space for locals
+    // FIXME: save callee-saved registers
     return listOf(
         push.match(rbp),
         mov.match(rbp, rsp)
@@ -345,6 +346,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
    */
   override fun genFunctionEpilogue(alloc: AllocationResult): List<X64Instruction> {
     // FIXME: deallocate stack space
+    // FIXME: restore callee-saved registers
     return listOf(
         X64Instruction(leave.first(), emptyList()),
         X64Instruction(ret.first(), emptyList())
