@@ -66,6 +66,8 @@ class CFG(
   /** @see VariableRenamer.defUseChains */
   val defUseChains: DefUseChains get() = renamer.defUseChains
 
+  val liveIns by lazy(this::computeLiveIns)
+
   val memoryIds = IdCounter()
   val registerIds = IdCounter()
 
@@ -379,27 +381,34 @@ private class VariableRenamer(val cfg: CFG) {
   }
 }
 
-fun CFG.liveInFor(block: BasicBlock): List<Variable> {
-  return defUseChains.keys.filter { variable ->
-    val usedInBlocks = defUseChains.getValue(variable)
-        .filter { (succ, succIdx) ->
-          succIdx != DEFINED_IN_PHI || succ.phi.any { it.incoming[block] == variable }
-        }
+private fun CFG.computeLiveIns(): Map<BasicBlock, Set<Variable>> {
+  val liveInAt = nodes.associateWith { mutableSetOf<Variable>() }
+  for ((variable, definition) in definitions.entries) {
+    val usedInBlocks = defUseChains[variable]?.map { it.first } ?: continue
+    val phiUses = defUseChains.getValue(variable)
+        .filter { it.second == DEFINED_IN_PHI }
         .map { it.first }
-    val wasDefinedIn = definitions.getValue(variable).first
-    // If the block uses the variable but doesn't define it, it's live-in
-    if (block in usedInBlocks && wasDefinedIn != block) {
-      return@filter true
+        .toSet()
+    val visited = mutableSetOf<BasicBlock>()
+    val toVisit = usedInBlocks.toMutableSet()
+    while (toVisit.isNotEmpty()) {
+      val next = toVisit.first()
+      toVisit -= next
+      if (next in visited) continue
+      visited += next
+      if (next == definition.first) continue
+      if (next !in phiUses) {
+        liveInAt.getValue(next) += variable
+      }
+      val phi = next.phi.firstOrNull { it.variable.id == variable.id }
+      if (phi == null) {
+        toVisit += next.preds
+      } else {
+        toVisit += (next.preds - phi.incoming.filter { it.value != variable }.map { it.key })
+      }
     }
-    // If any block in the dominance frontier is a block where the variable will be used, and the
-    // variable's definition dominates `block`, then it means the variable will be alive in the
-    // block, even if it just "passed through", to be used later
-    if (block.dominanceFrontier.intersect(usedInBlocks).isNotEmpty() &&
-        block isDominatedBy wasDefinedIn) {
-      return@filter true
-    }
-    return@filter false
   }
+  return liveInAt
 }
 
 /**

@@ -66,7 +66,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
     if (block in visited) return
     visited += block
     val assigned = mutableListOf<MachineRegister>()
-    for (x in cfg.liveInFor(block)) {
+    for (x in cfg.liveIns.getValue(block)) {
       // If the live-in wasn't colored, and is null, that's a bug
       assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
     }
