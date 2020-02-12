@@ -6,9 +6,6 @@ import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
 
-typealias ValueIndex = Int
-typealias AdjLists = List<List<ValueIndex>>
-
 /**
  * Coloring of interference graph, assignment of register to [IRValue].
  */
