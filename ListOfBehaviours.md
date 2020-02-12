@@ -28,6 +28,9 @@ diagnostic information for the given pp-tokens
   an error diagnostic, and the entire expression has value `0`
 - (6.3.2.1.0.3) Lvalue conversion on an array object with `register` storage
   class is ignored, address is taken
+- (J.2/6.2.4) The value of objects with automatic storage duration when used
+  while it is indeterminate is the value in the first register of the correct
+  type (for example, on X64 that means `rax` for ints and `xmm0` for floats)
 
 # List of Unspecified Behaviours
 

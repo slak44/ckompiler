@@ -587,6 +587,12 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       if (it is PhysicalRegister) {
         return@map RegisterValue(it.reg, X64Target.machineTargetData.sizeOf(it.type))
       }
+      if (it is Variable && it.isUndefined) {
+        // Undefined behaviour, do whatever
+        val reg = (target.registers - target.forbidden)
+            .first { reg -> reg.valueClass == target.registerClassOf(it.type) }
+        return@map RegisterValue(reg, X64Target.machineTargetData.sizeOf(it.type))
+      }
       val machineRegister = alloc.allocations.getValue(it)
       if (machineRegister is StackSlot) {
         return@map StackValue(machineRegister, stackOffsets.getValue(machineRegister))

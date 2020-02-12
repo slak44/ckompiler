@@ -87,7 +87,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
     }
     val colored = mutableSetOf<IRValue>()
     for (mi in instrMap.getValue(block)) {
-      val dyingHere = mi.uses.filter { lastUses.getValue(it) == (block to mi.irLabelIndex) }
+      val dyingHere = mi.uses.filter { lastUses[it] == (block to mi.irLabelIndex) }
       // Deallocate registers of values that die at this label
       for (value in dyingHere) {
         val color = coloring[value] ?: continue
