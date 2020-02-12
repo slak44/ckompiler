@@ -32,7 +32,7 @@ private fun MachineTarget.matchValueToRegister(
 ): MachineRegister? {
   if (value is MemoryReference) return StackSlot(value, machineTargetData)
   val validClass = registerClassOf(value.type)
-  val validSize = machineTargetData.sizeOf(value.type)
+  val validSize = machineTargetData.sizeOf(value.type.unqualify().normalize())
   return (registers - forbidden - forbiddenNeigh).firstOrNull { candidate ->
     candidate.valueClass == validClass &&
         (candidate.sizeBytes == validSize || validSize in candidate.aliases.map { it.second })
