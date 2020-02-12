@@ -11,20 +11,8 @@ private val logger = LogManager.getLogger()
 /**
  * Common superclass of all IR instructions.
  */
-sealed class IRInstruction
-
-/**
- * An [IRInstruction] that returns its result in the [result] register.
- */
-sealed class ResultInstruction : IRInstruction() {
-  abstract val result: VirtualRegister
-}
-
-/**
- * An [IRInstruction] that modifies the [target] value.
- */
-sealed class SideEffectInstruction : IRInstruction() {
-  abstract val target: IRValue
+sealed class IRInstruction {
+  abstract val result: LoadableValue
 }
 
 /**
@@ -35,43 +23,34 @@ data class PhiInstruction(
     val variable: Variable,
     val incoming: Map<BasicBlock, Variable>
 ) {
-  override fun toString() = "store *($variable) = φ(${incoming.entries.joinToString(", ") {
+  override fun toString() = "store $variable = φ(${incoming.entries.joinToString(", ") {
     "n${it.key.hashCode()} v${it.value.version}"
   }})"
 }
 
 /**
- * Stores a [value] to a memory location specified by [target].
- *
- * [target]'s type must be [PointerType], or the [target] must be a [Variable].
+ * Read the value pointed at by [ptr], and store it in [result].
  */
-data class StoreInstr(override val target: IRValue, val value: IRValue) : SideEffectInstruction() {
-  override fun toString() = "store *($target) = $value"
+data class LoadMemory(
+    override val result: LoadableValue,
+    val ptr: MemoryReference
+) : IRInstruction() {
+  override fun toString() = "load $result = *($ptr)"
 }
 
 /**
- * Stores a [ConstantValue] in a [VirtualRegister].
- *
- * This exists so that a constant expression (think `return 0;`) can be transformed to a list of
- * valid [IRInstruction]s.
+ * Put [value] at the address pointed to by [ptr].
  */
-data class ConstantRegisterInstr(
-    override val result: VirtualRegister,
-    val const: ConstantValue
-) : ResultInstruction() {
-  override fun toString() = "$result = $const"
+data class StoreMemory(val ptr: MemoryReference, val value: IRValue) : IRInstruction() {
+  override val result get() = logger.throwICE("If this is used, it's a bug")
+  override fun toString() = "store *($ptr) = $value"
 }
 
 /**
- * Loads the value from the specified memory [target].
- *
- * [target]'s type must be [PointerType].
+ * Stores the [value] in [result].
  */
-data class LoadInstr(
-    override val result: VirtualRegister,
-    val target: IRValue
-) : ResultInstruction() {
-  override fun toString() = "$result = load $target"
+data class MoveInstr(override val result: LoadableValue, val value: IRValue) : IRInstruction() {
+  override fun toString() = "move $result = $value"
 }
 
 /**
@@ -79,9 +58,9 @@ data class LoadInstr(
  * is impossible.
  */
 data class StructuralCast(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val operand: IRValue
-) : ResultInstruction() {
+) : IRInstruction() {
   override fun toString() = "$result = cast $operand to ${result.type}"
 }
 
@@ -90,11 +69,10 @@ data class StructuralCast(
  * data in memory.
  */
 data class ReinterpretCast(
-    override val result: VirtualRegister,
-    val castTo: TypeName,
+    override val result: LoadableValue,
     val operand: IRValue
-) : ResultInstruction() {
-  override fun toString() = "$result = reinterpret $operand as $castTo"
+) : IRInstruction() {
+  override fun toString() = "$result = reinterpret $operand"
 }
 
 /**
@@ -103,10 +81,10 @@ data class ReinterpretCast(
  * be linked in later).
  */
 data class NamedCall(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val name: NamedConstant,
     val args: List<IRValue>
-) : ResultInstruction() {
+) : IRInstruction() {
   override fun toString() = "$result = call $name with args ${args.joinToString(", ")}"
 }
 
@@ -114,10 +92,10 @@ data class NamedCall(
  * A call to the function specified by the function pointer stored in [callable].
  */
 data class IndirectCall(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val callable: VirtualRegister,
     val args: List<IRValue>
-) : ResultInstruction() {
+) : IRInstruction() {
   override fun toString() = "$result = call *($callable) with args ${args.joinToString(", ")}"
 }
 
@@ -125,7 +103,7 @@ data class IndirectCall(
  * Generic instruction with two operands.
  */
 interface BinaryInstruction {
-  val result: IRValue
+  val result: LoadableValue
   val lhs: IRValue
   val rhs: IRValue
 }
@@ -160,7 +138,7 @@ enum class Comparisons(val operator: String) {
  * Represents instructions that operate on integral arguments. Its operands are of type
  * [slak.ckompiler.parser.IntegralType].
  */
-sealed class IntegralInstruction : ResultInstruction()
+sealed class IntegralInstruction : IRInstruction()
 
 enum class IntegralBinaryOps(val operator: String) {
   ADD(Punctuators.PLUS.s), SUB(Punctuators.MINUS.s),
@@ -172,7 +150,7 @@ enum class IntegralBinaryOps(val operator: String) {
 }
 
 data class IntBinary(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val op: IntegralBinaryOps,
     override val lhs: IRValue,
     override val rhs: IRValue
@@ -181,7 +159,7 @@ data class IntBinary(
 }
 
 data class IntCmp(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     override val lhs: IRValue,
     override val rhs: IRValue,
     val cmp: Comparisons
@@ -193,14 +171,14 @@ data class IntCmp(
  * Flip bits: ~
  */
 data class IntInvert(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val operand: IRValue
 ) : IntegralInstruction() {
   override fun toString() = "$result = invert $operand"
 }
 
 data class IntNeg(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val operand: IRValue
 ) : IntegralInstruction() {
   override fun toString() = "$result = int negate $operand"
@@ -210,7 +188,7 @@ data class IntNeg(
  * Represents instructions that operate on float arguments. Its operands are of type
  * [slak.ckompiler.parser.FloatingType].
  */
-sealed class FloatingPointInstruction : ResultInstruction()
+sealed class FloatingPointInstruction : IRInstruction()
 
 enum class FloatingBinaryOps(val operator: String) {
   ADD(Punctuators.PLUS.s), SUB(Punctuators.MINUS.s),
@@ -220,7 +198,7 @@ enum class FloatingBinaryOps(val operator: String) {
 }
 
 data class FltBinary(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val op: FloatingBinaryOps,
     override val lhs: IRValue,
     override val rhs: IRValue
@@ -229,7 +207,7 @@ data class FltBinary(
 }
 
 data class FltCmp(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     override val lhs: IRValue,
     override val rhs: IRValue,
     val cmp: Comparisons
@@ -238,7 +216,7 @@ data class FltCmp(
 }
 
 data class FltNeg(
-    override val result: VirtualRegister,
+    override val result: LoadableValue,
     val operand: IRValue
 ) : FloatingPointInstruction() {
   override fun toString() = "$result = flt negate $operand"
@@ -256,6 +234,11 @@ sealed class IRValue {
 }
 
 /**
+ * An [IRValue] that can be "written" to. What writing to it means depends on the value.
+ */
+sealed class LoadableValue : IRValue()
+
+/**
  * Represents the [index]th parameter of a function. It might be a memory location, or it might be
  * a register, depending on the target.
  *
@@ -267,12 +250,25 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
 }
 
 /**
- * Spilled virtual. Represents an abstract memory location (probably on the stack).
+ * Represents an abstract memory location (probably on the stack).
  *
- * [type] is the type of the value, not a pointer to it.
+ * [ptr] is the virtual pointer. Could be a [VirtualRegister] a [Variable], another
+ * [MemoryReference] or even a constant int casted to a pointer.
+ *
+ * [offset] is an _offset_ within the memory zone referenced by this object. Basically, for
+ * something like `a[20]`, the offset is the constant 20. If null, the offset is 0.
+ *
+ * The [type] of the referenced data can be different from the type pointed to by [ptr].
  */
-data class MemoryReference(val id: Int, override val type: TypeName) : IRValue() {
-  override val name = "memory ref$id"
+data class MemoryReference(
+    val id: Int,
+    val ptr: IRValue,
+    val offset: IRValue?,
+    override val type: TypeName
+) : IRValue() {
+  constructor(id: Int, ptr: IRValue) : this(id, ptr, null, ptr.type)
+
+  override val name = "mem$id[$ptr${if (offset != null) " + $offset" else ""}]"
   override fun toString() = name
 }
 
@@ -285,7 +281,7 @@ typealias RegisterId = Int
 data class VirtualRegister(
     val id: RegisterId,
     override val type: TypeName
-) : IRValue() {
+) : LoadableValue() {
   override val name = "$type vreg$id"
   override fun toString() = name
 }
@@ -296,7 +292,10 @@ data class VirtualRegister(
  *
  * Should not be generated by [createInstructions].
  */
-data class PhysicalRegister(val reg: MachineRegister, override val type: TypeName) : IRValue() {
+data class PhysicalRegister(
+    val reg: MachineRegister,
+    override val type: TypeName
+) : LoadableValue() {
   override val name = reg.regName
   override fun toString() = reg.regName
 
@@ -362,7 +361,7 @@ data class ReachingDefinition(
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-class Variable(val tid: TypedIdentifier) : IRValue() {
+class Variable(val tid: TypedIdentifier) : LoadableValue() {
   val id get() = tid.id
 
   override val name get() = tid.name

@@ -125,7 +125,7 @@ class CFG(
     })
     val ret = if (forceReturnZero) {
       val fakeRegister = VirtualRegister(registerIds(), SignedIntType)
-      listOf(ConstantRegisterInstr(fakeRegister, IntConstant(fakeZero)))
+      listOf(MoveInstr(fakeRegister, IntConstant(fakeZero)))
     } else {
       null
     }
@@ -267,9 +267,7 @@ private class VariableRenamer(val cfg: CFG) {
   }
 
   private fun findVariableUses(i: IRInstruction): List<Variable> = when (i) {
-    is ConstantRegisterInstr -> emptyList()
     is BinaryInstruction -> listOfNotNull(i.lhs as? Variable, i.rhs as? Variable)
-    is LoadInstr -> listOfNotNull(i.target as? Variable)
     is StructuralCast -> listOfNotNull(i.operand as? Variable)
     is ReinterpretCast -> listOfNotNull(i.operand as? Variable)
     is NamedCall -> i.args.mapNotNull { it as? Variable }
@@ -277,7 +275,9 @@ private class VariableRenamer(val cfg: CFG) {
     is IntInvert -> listOfNotNull(i.operand as? Variable)
     is IntNeg -> listOfNotNull(i.operand as? Variable)
     is FltNeg -> listOfNotNull(i.operand as? Variable)
-    is StoreInstr -> listOfNotNull(i.value as? Variable)
+    is MoveInstr -> listOfNotNull(i.value as? Variable)
+    is StoreMemory -> listOfNotNull(i.value as? Variable, i.ptr.ptr as? Variable)
+    is LoadMemory -> listOfNotNull(i.ptr.ptr as? Variable)
     else -> logger.throwICE("Unreachable")
   }
 
@@ -298,7 +298,7 @@ private class VariableRenamer(val cfg: CFG) {
       handleDef(BB, phi.variable, DEFINED_IN_PHI)
     }
     for ((idx, i) in BB.instructions.withIndex()) {
-      val def = if (i is SideEffectInstruction) i.target else null
+      val def = if (i is MoveInstr) i.result else null
       for (variable in findVariableUses(i)) {
         val oldReachingVar = variable.reachingDef?.variable
         updateReachingDef(variable, BB, idx)

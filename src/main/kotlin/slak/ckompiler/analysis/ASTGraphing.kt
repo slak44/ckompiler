@@ -10,13 +10,13 @@ private val logger = LogManager.getLogger()
 fun graph(cfg: CFG) {
   for ((idx, p) in cfg.f.parameters.withIndex()) {
     cfg.exprDefinitions[Variable(p)] = mutableSetOf(cfg.startBlock)
-    cfg.startBlock.ir += StoreInstr(Variable(p), ParameterReference(idx, p.type))
+    cfg.startBlock.ir += MoveInstr(Variable(p), ParameterReference(idx, p.type))
   }
   GraphingContext(root = cfg).graphCompound(cfg.startBlock, cfg.f.block)
   for (block in cfg.allNodes) {
     for (instr in block.instructions) {
-      if (instr !is StoreInstr || instr.target !is Variable) continue
-      cfg.addDefinition(block, instr.target)
+      if (instr !is MoveInstr || instr.result !is Variable) continue
+      cfg.addDefinition(block, instr.result as Variable)
     }
   }
 }
@@ -128,8 +128,8 @@ private fun graphExprRegular(
     expr: Expression
 ): BasicBlock {
   val (nextBlock, exprs) = processExpression(root, current, expr)
-  val instrs =
-      createInstructions(exprs.filterNot { it is Terminal }, root.targetData, root.registerIds)
+  val instrs = createInstructions(
+      exprs.filterNot { it is Terminal }, root.targetData, root.registerIds, root.memoryIds)
   nextBlock.ir += instrs
   nextBlock.src += exprs
   return nextBlock
@@ -142,16 +142,12 @@ private fun graphExprTerm(
     compareWithZero: Boolean = true
 ): Pair<BasicBlock, List<IRInstruction>> {
   val (nextBlock, exprs) = processExpression(root, current, cond)
-  val instrs = createInstructions(exprs, root.targetData, root.registerIds)
+  val instrs = createInstructions(exprs, root.targetData, root.registerIds, root.memoryIds)
   nextBlock.src += exprs
   val l = instrs.last()
   return if (compareWithZero && l !is IntCmp && l !is FltCmp) {
-    val irValue = when (l) {
-      is ResultInstruction -> l.result
-      is SideEffectInstruction -> l.target
-    }
     val res = VirtualRegister(root.registerIds(), SignedIntType)
-    val zeroCmp = IntCmp(res, irValue, IntConstant(0, irValue.type), Comparisons.NOT_EQUAL)
+    val zeroCmp = IntCmp(res, l.result, IntConstant(0, l.result.type), Comparisons.NOT_EQUAL)
     nextBlock to (instrs + zeroCmp)
   } else {
     nextBlock to instrs

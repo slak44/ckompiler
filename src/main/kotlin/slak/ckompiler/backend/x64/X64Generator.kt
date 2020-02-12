@@ -114,8 +114,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     // FIXME: deal with X87 here
     for ((index, variable) in vars - integral - sse) {
       val type = variable.type.unqualify().normalize()
-      val memory = MemoryReference(cfg.memoryIds(), type)
-      parameterMap[ParameterReference(index, type)] = memory
+      val memory = MemoryReference(cfg.memoryIds(), variable.asPointer())
+//      parameterMap[ParameterReference(index, type)] = memory
     }
   }
 
@@ -171,10 +171,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       for ((index, irInstr) in ret.returned.withIndex()) {
         selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
       }
-      val retVal = when (val r = ret.returned.last()) {
-        is ResultInstruction -> r.result
-        is SideEffectInstruction -> r.target
-      }
+      val retVal = ret.returned.last().result
       val retType = X64Target.registerClassOf(retVal.type)
       if (retType == Memory) {
         TODO("deal with this")
@@ -194,17 +191,17 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
-    is LoadInstr -> listOf(matchTypedMov(i.result, i.target))
-    is StoreInstr -> {
+    is MoveInstr -> {
       val rhs = if (i.value is ParameterReference) {
         parameterMap[i.value]
             ?: logger.throwICE("Function parameter not mapped to register/memory")
       } else {
         i.value
       }
-      listOf(matchTypedMov(i.target, rhs))
+      listOf(matchTypedMov(i.result, rhs))
     }
-    is ConstantRegisterInstr -> listOf(mov.match(i.result, i.const))
+    is LoadMemory -> TODO()
+    is StoreMemory -> TODO()
     is StructuralCast -> createStructuralCast(i)
     is ReinterpretCast -> {
       if (i.operand == i.result) emptyList() else listOf(matchTypedMov(i.result, i.operand))
@@ -284,7 +281,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
    * System V ABI: 3.2.2, page 18; 3.2.3, page 20
    */
   private fun createCall(
-      result: VirtualRegister,
+      result: LoadableValue,
       callable: IRValue,
       args: List<IRValue>
   ): List<MachineInstruction> {
@@ -335,7 +332,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   /**
    * System V ABI: "Returning of Values", page 24
    */
-  private fun getCallResult(result: VirtualRegister): List<MachineInstruction> {
+  private fun getCallResult(result: LoadableValue): List<MachineInstruction> {
     // When the call returns void, do nothing here
     if (result.type is VoidType) return emptyList()
     val rc = target.registerClassOf(result.type)

@@ -14,8 +14,8 @@ class SSATests {
     val defined = mutableSetOf<Variable>()
     for (block in domTreePreorder) {
       for (instr in block.instructions) {
-        if (instr is StoreInstr && instr.target is Variable) {
-          val variable = instr.target as Variable
+        if (instr is MoveInstr && instr.result is Variable) {
+          val variable = instr.result as Variable
           assert(variable !in defined)
           defined += variable
         }
@@ -94,7 +94,7 @@ class SSATests {
     cfg.assertIsSSA()
 
     fun getStoreValue(list: List<IRInstruction>?, at: Int) =
-        (list?.get(at) as? StoreInstr)?.value as? Variable
+        (list?.get(at) as? MoveInstr)?.value as? Variable
 
     fun BasicBlock.getStoreValue(at: Int) = getStoreValue(ir, at)
 
@@ -124,7 +124,7 @@ class SSATests {
     assertVarState("x" ver 5, condVarOf(blockFail2))
 
     val returnBlockImpJmp = blockFail2.successors[1].terminator as? ImpossibleJump
-    val retVal = (returnBlockImpJmp?.returned?.get(0) as? LoadInstr)?.target as? Variable
+    val retVal = (returnBlockImpJmp?.returned?.get(0) as? MoveInstr)?.value as? Variable
     assertVarState("x" ver 6, retVal)
   }
 
