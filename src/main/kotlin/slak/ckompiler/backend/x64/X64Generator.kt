@@ -102,17 +102,20 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         vars.filter { X64Target.registerClassOf(it.value.type) == X64RegisterClass.INTEGER }
     val sse = vars.filter { X64Target.registerClassOf(it.value.type) == X64RegisterClass.SSE }
     for ((intVar, regName) in integral.zip(intArgRegNames)) {
-      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), intVar.value.type)
-      parameterMap[ParameterReference(intVar.index, intVar.value.type)] = targetRegister
+      val type = intVar.value.type.unqualify().normalize()
+      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), type)
+      parameterMap[ParameterReference(intVar.index, type)] = targetRegister
     }
     for ((sseVar, regName) in sse.zip(sseArgRegNames)) {
-      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), sseVar.value.type)
-      parameterMap[ParameterReference(sseVar.index, sseVar.value.type)] = targetRegister
+      val type = sseVar.value.type.unqualify().normalize()
+      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), type)
+      parameterMap[ParameterReference(sseVar.index, type)] = targetRegister
     }
     // FIXME: deal with X87 here
     for ((index, variable) in vars - integral - sse) {
-      val memory = MemoryReference(cfg.memoryIds(), variable.type)
-      parameterMap[ParameterReference(index, variable.type)] = memory
+      val type = variable.type.unqualify().normalize()
+      val memory = MemoryReference(cfg.memoryIds(), type)
+      parameterMap[ParameterReference(index, type)] = memory
     }
   }
 
@@ -169,7 +172,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       } else {
         require(retType is X64RegisterClass)
         if (retType == X64RegisterClass.INTEGER) {
-          val rax = PhysicalRegister(X64Target.registerByName("rax"), retVal.type)
+          val rax = PhysicalRegister(X64Target.registerByName("rax"),
+              retVal.type.unqualify().normalize())
           selected += mov.match(rax, retVal).also { it.irLabelIndex = endIdx }
         } else {
           TODO("deal with this")
@@ -253,7 +257,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     val registerArguments = intRegArgs.map { intArgRegNames[it.index] to it.value } +
         fltRegArgs.map { sseArgRegNames[it.index] to it.value }
     for ((physRegName, arg) in registerArguments) {
-      val reg = PhysicalRegister(X64Target.registerByName(physRegName), arg.type)
+      val argType = arg.type.unqualify().normalize()
+      val reg = PhysicalRegister(X64Target.registerByName(physRegName), argType)
       selected += matchTypedMov(reg, arg)
     }
     // Push stack arguments in order, aligned
@@ -294,7 +299,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       X64RegisterClass.SSE -> "xmm0"
       else -> logger.throwICE("Unreachable")
     }
-    val callResult = PhysicalRegister(X64Target.registerByName(returnRegisterName), result.type)
+    val callResult = PhysicalRegister(X64Target.registerByName(returnRegisterName),
+        result.type.unqualify().normalize())
     return listOf(matchTypedMov(result, callResult))
   }
 
