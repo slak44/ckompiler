@@ -247,10 +247,12 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     val selected = mutableListOf<MachineInstruction>()
     // Save caller-saved registers
     selected += dummyCallSave.match()
-    val intArgs = args.withIndex()
-        .filter { (_, it) -> target.registerClassOf(it.type) == X64RegisterClass.INTEGER }
-    val fltArgs = args.withIndex()
-        .filter { (_, it) -> target.registerClassOf(it.type) == X64RegisterClass.SSE }
+    val intArgs = args
+        .filter { target.registerClassOf(it.type) == X64RegisterClass.INTEGER }
+        .withIndex()
+    val fltArgs = args
+        .filter { target.registerClassOf(it.type) == X64RegisterClass.SSE }
+        .withIndex()
     // Move register arguments in place
     val intRegArgs = intArgs.take(intArgRegNames.size)
     val fltRegArgs = fltArgs.take(sseArgRegNames.size)
