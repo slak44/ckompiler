@@ -363,3 +363,27 @@ val cvttsd2si = instructionClass("cvttsd2si", listOf(VariableUse.DEF, VariableUs
   instr(R64, XMM_SD)
   instr(R64, M64)
 }
+
+private val ssArithmetic: ICBuilder.() -> Unit = {
+  instr(XMM_SS, XMM_SS)
+  instr(XMM_SS, M32)
+}
+
+val addss = instructionClass("addss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val subss = instructionClass("subss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val mulss = instructionClass("mulss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val divss = instructionClass("divss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val xorps = instructionClass("xorps", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val comiss = instructionClass("comiss", listOf(VariableUse.USE, VariableUse.USE), ssArithmetic)
+
+private val sdArithmetic: ICBuilder.() -> Unit = {
+  instr(XMM_SD, XMM_SD)
+  instr(XMM_SD, M64)
+}
+
+val addsd = instructionClass("addsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val subsd = instructionClass("subsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val mulsd = instructionClass("mulsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val divsd = instructionClass("divsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val xorpd = instructionClass("xorpd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val comisd = instructionClass("comisd", listOf(VariableUse.USE, VariableUse.USE), sdArithmetic)

@@ -126,21 +126,30 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     }
     val actualJump = when (val l = condJump.cond.last()) {
       is IntCmp -> listOf(
-          cmp.match(l.lhs, l.rhs),
-          selectIntJmp(l, JumpTargetConstant(condJump.target)),
+          matchTypedCmp(l.lhs, l.rhs),
+          selectJmp(l, l.cmp, JumpTargetConstant(condJump.target)),
           jmp.match(JumpTargetConstant(condJump.other))
       )
-      is FltCmp -> TODO("floats")
+      is FltCmp -> listOf(
+          matchTypedCmp(l.lhs, l.rhs),
+          selectJmp(l, l.cmp, JumpTargetConstant(condJump.target)),
+          jmp.match(JumpTargetConstant(condJump.other))
+      )
       else -> TODO("no idea what happens here")
     }
     selected += actualJump.onEach { it.irLabelIndex = idxOffset + condJump.cond.size - 1 }
     return selected
   }
 
-  private fun selectIntJmp(i: IntCmp, jumpTrue: JumpTargetConstant): MachineInstruction {
+  private fun selectJmp(
+      i: BinaryInstruction,
+      compare: Comparisons,
+      jumpTrue: JumpTargetConstant
+  ): MachineInstruction {
+    // See matchTypedCmp for why this works
     val isSigned = i.lhs.type.unqualify() is SignedIntType
     // FIXME: deal with common cases like `!(a > b)` -> jnge/jnae
-    val jmpName = when (i.cmp) {
+    val jmpName = when (compare) {
       Comparisons.EQUAL -> "je"
       Comparisons.NOT_EQUAL -> "jne"
       Comparisons.LESS_THAN -> if (isSigned) "jl" else "jb"
@@ -203,8 +212,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is NamedCall -> createCall(i.result, i.name, i.args)
     is IndirectCall -> createCall(i.result, i.callable, i.args)
     is IntBinary -> when (i.op) {
-      IntegralBinaryOps.ADD -> matchCommutativeBinary(i, add)
-      IntegralBinaryOps.SUB -> matchSub(i)
+      IntegralBinaryOps.ADD -> matchCommutative(i, add)
+      IntegralBinaryOps.SUB -> matchNonCommutative(i, sub)
       IntegralBinaryOps.MUL -> {
         if (i.lhs.type.unqualify() is SignedIntegralType) matchIMul(i) else TODO("mul")
       }
@@ -212,11 +221,11 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       IntegralBinaryOps.REM -> TODO()
       IntegralBinaryOps.LSH -> TODO()
       IntegralBinaryOps.RSH -> TODO()
-      IntegralBinaryOps.AND -> matchCommutativeBinary(i, and)
-      IntegralBinaryOps.OR -> matchCommutativeBinary(i, or)
-      IntegralBinaryOps.XOR -> matchCommutativeBinary(i, xor)
+      IntegralBinaryOps.AND -> matchCommutative(i, and)
+      IntegralBinaryOps.OR -> matchCommutative(i, or)
+      IntegralBinaryOps.XOR -> matchCommutative(i, xor)
     }
-    is IntCmp -> matchCmp(i)
+    is IntCmp -> matchCmp(i, i.cmp)
     is IntInvert -> if (i.operand == i.result) {
       listOf(not.match(i.operand))
     } else {
@@ -233,9 +242,42 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
           neg.match(i.result)
       )
     }
-    is FltBinary -> TODO()
-    is FltCmp -> TODO()
-    is FltNeg -> TODO("xorss/xorpd THING, -0.0f")
+    is FltBinary -> when (i.op) {
+      FloatingBinaryOps.ADD -> when (i.result.type.unqualify()) {
+        FloatType -> matchCommutative(i, addss)
+        DoubleType -> matchCommutative(i, addsd)
+        else -> TODO("unknown")
+      }
+      FloatingBinaryOps.MUL -> when (i.result.type.unqualify()) {
+        FloatType -> matchCommutative(i, mulss)
+        DoubleType -> matchCommutative(i, mulsd)
+        else -> TODO("unknown")
+      }
+      FloatingBinaryOps.SUB -> when (i.result.type.unqualify()) {
+        FloatType -> matchNonCommutative(i, subss)
+        DoubleType -> matchNonCommutative(i, subsd)
+        else -> TODO("unknown")
+      }
+      FloatingBinaryOps.DIV -> when (i.result.type.unqualify()) {
+        FloatType -> matchNonCommutative(i, divss)
+        DoubleType -> matchNonCommutative(i, divsd)
+        else -> TODO("unknown")
+      }
+    }
+    is FltCmp -> matchCmp(i, i.cmp)
+    is FltNeg -> when (i.result.type.unqualify()) {
+      FloatType -> matchCommutative(object : BinaryInstruction {
+        override val result = i.result
+        override val lhs = i.operand
+        override val rhs = FltConstant(-0.0, FloatType)
+      }, xorps)
+      DoubleType -> matchCommutative(object : BinaryInstruction {
+        override val result = i.result
+        override val lhs = i.operand
+        override val rhs = FltConstant(-0.0, DoubleType)
+      }, xorpd)
+      else -> TODO("unknown")
+    }
   }
 
   /**
@@ -354,52 +396,30 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   /**
-   * Create a generic copy instruction. Figures out register class and picks the correct mov.
-   */
-  private fun matchTypedMov(dest: IRValue, src: IRValue): MachineInstruction {
-    val destRegClass = target.registerClassOf(dest.type)
-    val srcRegClass = target.registerClassOf(src.type)
-    require(destRegClass != Memory || srcRegClass != Memory) { "No memory-to-memory move exists" }
-    val nonMemoryClass = if (destRegClass != Memory && srcRegClass != Memory) {
-      require(destRegClass == srcRegClass) { "Move between register classes without cast" }
-      destRegClass
-    } else {
-      if (destRegClass == Memory) srcRegClass else destRegClass
-    }
-    require(nonMemoryClass is X64RegisterClass)
-    return when (nonMemoryClass) {
-      X64RegisterClass.INTEGER -> mov.match(dest, src)
-      X64RegisterClass.SSE -> when (target.machineTargetData.sizeOf(src.type)) {
-        4 -> movss.match(dest, src)
-        8 -> movsd.match(dest, src)
-        else -> logger.throwICE("Float size not 4 or 8 bytes")
-      }
-      X64RegisterClass.X87 -> TODO("x87 movs")
-    }
-  }
-
-  /**
    * Handle non-commutative 2-address code operation.
    *
    * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 5.1.2.2
    */
-  private fun matchSub(i: IntBinary) = when (i.result) {
+  private fun matchNonCommutative(
+      i: BinaryInstruction,
+      op: List<X64InstrTemplate>
+  ) = when (i.result) {
     // result = result OP rhs
-    i.lhs -> listOf(sub.match(i.lhs, i.rhs))
+    i.lhs -> listOf(op.match(i.lhs, i.rhs))
     // result = lhs OP result
     i.rhs -> {
-      val subTarget = VirtualRegister(cfg.registerIds(), i.lhs.type)
+      val opTarget = VirtualRegister(cfg.registerIds(), i.lhs.type)
       listOf(
-          mov.match(subTarget, i.lhs),
-          sub.match(subTarget, i.result),
-          mov.match(i.result, subTarget)
+          matchTypedMov(opTarget, i.lhs),
+          op.match(opTarget, i.result),
+          matchTypedMov(i.result, opTarget)
       )
     }
     else -> {
       require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
       listOfNotNull(
-          mov.match(i.result, i.lhs),
-          sub.match(i.result, i.rhs),
+          matchTypedMov(i.result, i.lhs),
+          op.match(i.result, i.rhs),
           if (i.rhs !is ConstantValue) dummyUse.match(i.rhs) else null
       )
     }
@@ -422,7 +442,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     )
   }
 
-  private fun matchCommutativeBinary(
+  private fun matchCommutative(
       i: BinaryInstruction,
       op: List<X64InstrTemplate>
   ): List<MachineInstruction> = when (i.result) {
@@ -433,7 +453,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     else -> {
       val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
       listOf(
-          mov.match(i.result, nonImm),
+          matchTypedMov(i.result, nonImm),
           op.match(i.result, maybeImm)
       )
     }
@@ -447,9 +467,10 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     return nonImm to maybeImm
   }
 
-  private fun matchCmp(i: IntCmp): List<MachineInstruction> {
+  private fun matchCmp(i: BinaryInstruction, compare: Comparisons): List<MachineInstruction> {
+    // Floats use the unsigned flags, so isSigned will only be true for actual signed ints
     val isSigned = i.lhs.type.unqualify() is SignedIntType
-    val setValue = when (i.cmp) {
+    val setValue = when (compare) {
       Comparisons.EQUAL -> "sete"
       Comparisons.NOT_EQUAL -> "setne"
       Comparisons.LESS_THAN -> if (isSigned) "setl" else "setb"
@@ -459,10 +480,50 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     }
     val setccTarget = VirtualRegister(cfg.registerIds(), SignedCharType)
     return listOf(
-        cmp.match(i.lhs, i.rhs),
+        matchTypedCmp(i.lhs, i.rhs),
         setcc.getValue(setValue).match(setccTarget),
         movzx.match(i.result, setccTarget)
     )
+  }
+
+  /**
+   * Create a generic compare instruction that sets flags. Picks from `cmp`, `comiss`, `comisd`.
+   */
+  private fun matchTypedCmp(lhs: IRValue, rhs: IRValue) = when (validateClasses(lhs, rhs)) {
+    X64RegisterClass.INTEGER -> cmp.match(lhs, rhs)
+    X64RegisterClass.SSE -> when (target.machineTargetData.sizeOf(rhs.type)) {
+      4 -> comiss.match(lhs, rhs)
+      8 -> comisd.match(lhs, rhs)
+      else -> logger.throwICE("Float size not 4 or 8 bytes")
+    }
+    X64RegisterClass.X87 -> TODO("x87 cmps")
+  }
+
+  /**
+   * Create a generic copy instruction. Figures out register class and picks the correct mov.
+   */
+  private fun matchTypedMov(dest: IRValue, src: IRValue) = when (validateClasses(dest, src)) {
+    X64RegisterClass.INTEGER -> mov.match(dest, src)
+    X64RegisterClass.SSE -> when (target.machineTargetData.sizeOf(src.type)) {
+      4 -> movss.match(dest, src)
+      8 -> movsd.match(dest, src)
+      else -> logger.throwICE("Float size not 4 or 8 bytes")
+    }
+    X64RegisterClass.X87 -> TODO("x87 movs")
+  }
+
+  private fun validateClasses(dest: IRValue, src: IRValue): X64RegisterClass {
+    val destRegClass = target.registerClassOf(dest.type)
+    val srcRegClass = target.registerClassOf(src.type)
+    require(destRegClass != Memory || srcRegClass != Memory) { "No memory-to-memory move exists" }
+    val nonMemoryClass = if (destRegClass != Memory && srcRegClass != Memory) {
+      require(destRegClass == srcRegClass) { "Move between register classes without cast" }
+      destRegClass
+    } else {
+      if (destRegClass == Memory) srcRegClass else destRegClass
+    }
+    require(nonMemoryClass is X64RegisterClass)
+    return nonMemoryClass
   }
 
   override fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<X64Instruction>> {
