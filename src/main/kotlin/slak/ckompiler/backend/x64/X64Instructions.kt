@@ -102,6 +102,16 @@ private class ICBuilder(
 
   @JvmName("l_instr")
   fun List<VariableUse>.instr(vararg operands: Operand): Unit = instr(this, *operands)
+
+  fun instr(
+      implicitOperands: List<MachineRegister>,
+      implicitResults: List<MachineRegister>,
+      operandUse: List<VariableUse>,
+      vararg operands: Operand
+  ) {
+    instructions +=
+        X64InstrTemplate(name, operands.toList(), operandUse, implicitOperands, implicitResults)
+  }
 }
 
 private fun instructionClass(
@@ -141,13 +151,17 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   }
 }
 
-fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
+fun List<X64InstrTemplate>.tryMatch(vararg operands: IRValue): MachineInstruction? {
   val instr = firstOrNull {
     it.operands.size == operands.size &&
         operands.zip(it.operands).all { (ref, targetOperand) -> targetOperand compatibleWith ref }
-  }
-  checkNotNull(instr) { "Instruction selection failure: match ${operands.toList()} in $this" }
+  } ?: return null
   return MachineInstruction(instr, operands.toList())
+}
+
+fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
+  val res = tryMatch(*operands)
+  return checkNotNull(res) { "Instruction selection failure: match ${operands.toList()} in $this" }
 }
 
 private val nullary: ICBuilder.() -> Unit = { instr() }
@@ -161,6 +175,29 @@ val dummyUse = instructionClass("DUMMY USE DO NOT EMIT", listOf(VariableUse.USE)
 
 val dummyCallSave = instructionClass("DUMMY SAVE DO NOT EMIT", emptyList(), nullary)
 val dummyCallRestore = instructionClass("DUMMY RESTORE DO NOT EMIT", emptyList(), nullary)
+
+val imul = instructionClass("imul", listOf(VariableUse.DEF_USE, VariableUse.USE, VariableUse.USE)) {
+  // 3 operand RMI form
+  instr(R16, RM16, IMM8)
+  instr(R32, RM32, IMM8)
+  instr(R64, RM64, IMM8)
+  instr(R16, RM16, IMM16)
+  instr(R32, RM32, IMM32)
+  instr(R64, RM64, IMM32)
+  // 2 operand RM form
+  val twoOp = listOf(VariableUse.DEF_USE, VariableUse.USE)
+  twoOp.instr(R16, RM16)
+  twoOp.instr(R32, RM32)
+  twoOp.instr(R64, RM64)
+  // 1 operand M form
+  val oneOp = listOf(VariableUse.DEF_USE)
+  val rax = X64Target.registerByName("rax")
+  val rdx = X64Target.registerByName("rdx")
+  instr(listOf(rax), listOf(rax, rdx), oneOp, RM8)
+  instr(listOf(rax), listOf(rax, rdx), oneOp, RM16)
+  instr(listOf(rax), listOf(rax, rdx), oneOp, RM32)
+  instr(listOf(rax), listOf(rax, rdx), oneOp, RM64)
+}
 
 private val arithmetic: ICBuilder.() -> Unit = {
   instr(RM8, IMM8)

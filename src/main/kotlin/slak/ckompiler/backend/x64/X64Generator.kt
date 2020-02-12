@@ -205,7 +205,9 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     is IntBinary -> when (i.op) {
       IntegralBinaryOps.ADD -> matchCommutativeBinary(i, add)
       IntegralBinaryOps.SUB -> matchSub(i)
-      IntegralBinaryOps.MUL -> TODO()
+      IntegralBinaryOps.MUL -> {
+        if (i.lhs.type.unqualify() is SignedIntegralType) matchIMul(i) else TODO("mul")
+      }
       IntegralBinaryOps.DIV -> TODO()
       IntegralBinaryOps.REM -> TODO()
       IntegralBinaryOps.LSH -> TODO()
@@ -403,6 +405,23 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     }
   }
 
+  private fun matchIMul(i: IntBinary): List<MachineInstruction> {
+    if (i.result == i.lhs) {
+      return listOf(imul.match(i.result, i.rhs))
+    }
+    if (i.result == i.rhs) {
+      return listOf(imul.match(i.result, i.lhs))
+    }
+    val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
+    if (maybeImm is ConstantValue) {
+      return listOf(imul.match(i.result, nonImm, maybeImm))
+    }
+    return listOf(
+        mov.match(i.result, nonImm),
+        imul.match(i.result, maybeImm)
+    )
+  }
+
   private fun matchCommutativeBinary(
       i: BinaryInstruction,
       op: List<X64InstrTemplate>
@@ -412,7 +431,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     // result = lhs OP result
     i.rhs -> listOf(op.match(i.rhs, i.lhs))
     else -> {
-      val (nonImm, maybeImm) = findImmInBinary(i)
+      val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
       listOf(
           mov.match(i.result, nonImm),
           op.match(i.result, maybeImm)
@@ -420,11 +439,11 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     }
   }
 
-  private fun findImmInBinary(i: BinaryInstruction): Pair<IRValue, IRValue> {
+  private fun findImmInBinary(lhs: IRValue, rhs: IRValue): Pair<IRValue, IRValue> {
     // Can't have result = imm OP imm
-    require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
-    val nonImm = if (i.lhs is ConstantValue) i.rhs else i.lhs
-    val maybeImm = if (i.lhs === nonImm) i.rhs else i.lhs
+    require(lhs !is ConstantValue || rhs !is ConstantValue)
+    val nonImm = if (lhs is ConstantValue) rhs else lhs
+    val maybeImm = if (lhs === nonImm) rhs else lhs
     return nonImm to maybeImm
   }
 
