@@ -290,6 +290,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
    * System V ABI: "Returning of Values", page 24
    */
   private fun getCallResult(result: VirtualRegister): List<MachineInstruction> {
+    // When the call returns void, do nothing here
+    if (result.type is VoidType) return emptyList()
     val rc = target.registerClassOf(result.type)
     if (rc is Memory) TODO("some weird thing with caller storage in rdi, see ABI")
     require(rc is X64RegisterClass)
