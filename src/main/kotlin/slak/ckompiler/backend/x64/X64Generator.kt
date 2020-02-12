@@ -503,7 +503,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
         requireNotNull(lastSavedForCall) {
           "Dummy call restore created without matching dummy call save"
         }
-        result += lastSavedForCall.map {
+        result += lastSavedForCall.asReversed().map {
           val popInstr = pop.match(PhysicalRegister(it, SignedLongType))
           val pushTemplate = popInstr.template as X64InstrTemplate
           X64Instruction(pushTemplate, listOf(RegisterValue(it, it.sizeBytes)))
@@ -542,7 +542,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       labelIndex: LabelIndex
   ): List<MachineRegister> {
     // FIXME: get caller-saved registers in-use at the given label, and save those
-    return listOf<String>().map { target.registerByName(it) }
+    return listOf<String>("rax", "rcx").map { target.registerByName(it) }
   }
 
   /**
