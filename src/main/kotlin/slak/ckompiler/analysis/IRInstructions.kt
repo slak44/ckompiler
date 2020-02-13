@@ -268,6 +268,12 @@ data class MemoryReference(
 ) : IRValue() {
   constructor(id: Int, ptr: IRValue) : this(id, ptr, null, ptr.type)
 
+  init {
+    require(ptr.type.unqualify().normalize() is PointerType)
+    require(offset == null || offset.type.unqualify().normalize() is IntegralType)
+    require(type.unqualify().normalize() is PointerType)
+  }
+
   override val name = "mem$id[$ptr${if (offset != null) " + $offset" else ""}]"
   override fun toString() = name
 }
