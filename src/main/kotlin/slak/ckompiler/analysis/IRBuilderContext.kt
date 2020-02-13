@@ -325,13 +325,7 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
   is ArraySubscript -> {
     buildOffset(buildOperand(expr.subscripted), buildOperand(expr.subscript), expr.type)
   }
-  is TypedIdentifier -> {
-    // FIXME: keep this here and remove it for register-stored vars, or insert code for spills?
-//    val load = LoadInstr(newRegister(expr.type), Variable(expr))
-//    instructions += load
-//    load.result
-    Variable(expr)
-  }
+  is TypedIdentifier -> Variable(expr)
   is IntegerConstantNode -> IntConstant(expr)
   is CharacterConstantNode -> IntConstant(expr)
   is FloatingConstantNode -> FltConstant(expr)
