@@ -104,11 +104,11 @@ class IRTests {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", structType) dot intVar("y"))
-    val load = requireNotNull(ir.last() as? LoadMemory)
-    assertEquals(SignedIntType, load.result.type)
-    val structPtr = requireNotNull(load.ptr.ptr as? MemoryReference)
+    val structPtr = requireNotNull(ir[0] as? MoveInstr).result
     val ptr = requireNotNull(structPtr.type.unqualify() as? PointerType)
     assertEquals(structType, ptr.referencedType)
+    val load = requireNotNull(ir[1] as? LoadMemory)
+    assertEquals(SignedIntType, load.result.type)
     val offset = requireNotNull(load.ptr.offset as? IntConstant)
     assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
   }
@@ -119,10 +119,10 @@ class IRTests {
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val member = nameRef("u", structType) dot intVar("y")
     val ir = createIR(member assign 42)
-    val store = requireNotNull(ir.last() as? StoreMemory)
-    val structPtr = requireNotNull(store.ptr.ptr as? MemoryReference)
+    val structPtr = requireNotNull(ir[0] as? MoveInstr).result
     val ptr = requireNotNull(structPtr.type.unqualify() as? PointerType)
     assertEquals(structType, ptr.referencedType)
+    val store = requireNotNull(ir[1] as? StoreMemory)
     val offset = requireNotNull(store.ptr.offset as? IntConstant)
     assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
     val const = requireNotNull(store.value as? IntConstant)

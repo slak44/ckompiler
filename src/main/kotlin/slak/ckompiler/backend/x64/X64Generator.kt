@@ -115,7 +115,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     for ((index, variable) in vars - integral - sse) {
       val type = variable.type.unqualify().normalize()
       val memory = MemoryReference(cfg.memoryIds(), variable.asPointer())
-//      parameterMap[ParameterReference(index, type)] = memory
+      parameterMap[ParameterReference(index, type)] = memory
     }
   }
 

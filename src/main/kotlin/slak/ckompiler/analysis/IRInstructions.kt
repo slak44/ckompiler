@@ -251,10 +251,15 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
 }
 
 /**
- * Represents an abstract memory location (probably on the stack).
+ * Represents an abstract memory location (probably on the stack). This is a pointer value, and
+ * address-of operator, and pointer arithmetic all in one.
  *
- * [ptr] is the virtual pointer. Could be a [VirtualRegister] a [Variable], another
- * [MemoryReference] or even a constant int casted to a pointer.
+ * [ptr] is the virtual pointer. Could be a [VirtualRegister] with a pointer type or even a constant
+ * int casted to a pointer. What it _can't_ be, is another [MemoryReference]. Store it somewhere
+ * else and use that value instead. That case comes up in things like `arrayOfStruct[2].member`. For
+ * [Variable]s, we expect instances whose type has been changed to a pointer, that is, a variable of
+ * type `int` will be passed here with the same id, but with type `int*`. One with `int*` will
+ * become `int**`, etc.
  *
  * [offset] is an _offset_ within the memory zone referenced by this object. Basically, for
  * something like `a[20]`, the offset is the constant 20. If null, the offset is 0.
@@ -270,6 +275,8 @@ data class MemoryReference(
   constructor(id: Int, ptr: IRValue) : this(id, ptr, null, ptr.type)
 
   init {
+    require(ptr !is MemoryReference)
+    require(offset !is MemoryReference)
     require(ptr.type.unqualify().normalize() is PointerType)
     require(offset == null || offset.type.unqualify().normalize() is IntegralType)
     require(type.unqualify().normalize() is PointerType)

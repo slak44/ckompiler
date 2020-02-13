@@ -199,7 +199,15 @@ private fun IRBuilderContext.buildPtrOffset(
   require(resPtrType is PointerType)
   val baseType = base.type.unqualify().normalize()
   require(baseType is PointerType)
-  return MemoryReference(memoryIds(), base, offset, resPtrType)
+  // Avoid recursive MemoryReferences
+  val actualBase = if (base is MemoryReference) {
+    val reg = newRegister(base.type)
+    instructions += MoveInstr(reg, base)
+    reg
+  } else {
+    base
+  }
+  return MemoryReference(memoryIds(), actualBase, offset, resPtrType)
 }
 
 private fun IRBuilderContext.buildOffset(
