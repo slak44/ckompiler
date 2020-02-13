@@ -1,11 +1,12 @@
 package slak.ckompiler.backend
 
+import slak.ckompiler.AtomicId
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.TypeName
 
 interface MachineRegisterClass {
-  val id: Int
+  val id: AtomicId
   val displayName: String
 }
 
@@ -25,7 +26,7 @@ typealias RegisterAlias = Pair<String, Int>
 fun alias(name: String, size: Int): RegisterAlias = name to size
 
 interface MachineRegister {
-  val id: Int
+  val id: AtomicId
   val regName: String
   val sizeBytes: Int
   val valueClass: MachineRegisterClass

@@ -1,13 +1,9 @@
 package slak.ckompiler.parser
 
 import org.apache.logging.log4j.LogManager
-import slak.ckompiler.SourceFileName
-import slak.ckompiler.SourcedRange
-import slak.ckompiler.analysis.IdCounter
+import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.Expression.ValueType.*
-import slak.ckompiler.rangeTo
-import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
 
@@ -188,7 +184,7 @@ data class TypedIdentifier(
 
   override val valueType = valueTypeOf(type)
 
-  var id = varCounter()
+  var id: AtomicId = varCounter()
     private set
 
   override val kindName = "variable"

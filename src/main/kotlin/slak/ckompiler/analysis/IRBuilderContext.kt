@@ -1,6 +1,7 @@
 package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*

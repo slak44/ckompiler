@@ -1,11 +1,8 @@
 package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
-import slak.ckompiler.DiagnosticId
-import slak.ckompiler.IDebugHandler
-import slak.ckompiler.SourcedRange
+import slak.ckompiler.*
 import slak.ckompiler.parser.*
-import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
 

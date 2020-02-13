@@ -1,6 +1,7 @@
 package slak.test.analysis
 
 import org.junit.jupiter.api.Test
+import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.*

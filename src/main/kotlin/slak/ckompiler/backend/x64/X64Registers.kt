@@ -1,6 +1,6 @@
 package slak.ckompiler.backend.x64
 
-import slak.ckompiler.analysis.IdCounter
+import slak.ckompiler.IdCounter
 import slak.ckompiler.backend.*
 
 enum class X64RegisterClass : MachineRegisterClass {

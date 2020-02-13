@@ -1,24 +1,14 @@
 package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.AtomicId
+import slak.ckompiler.IdCounter
 import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
 import slak.ckompiler.throwICE
-import java.util.concurrent.atomic.AtomicInteger
 
 private val logger = LogManager.getLogger()
-
-/**
- * Returns a sequential integer ID on [invoke].
- *
- * This operation is atomic. If multiple threads access this value in parallel, each thread's IDs
- * will not be sequential (but they will be distinct).
- */
-class IdCounter {
-  private val counter = AtomicInteger()
-  operator fun invoke() = counter.getAndIncrement()
-}
 
 /**
  * Instances represent terminators for [BasicBlock]s.
@@ -131,7 +121,7 @@ class BasicBlock(val isRoot: Boolean = false) {
    * @see hashCode
    * @see equals
    */
-  private val nodeId = nodeCounter()
+  private val nodeId: AtomicId = nodeCounter()
   /**
    * If not -1, this value represents the post order of [BasicBlock]s in their respective [CFG].
    *

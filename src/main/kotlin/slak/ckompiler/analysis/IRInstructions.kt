@@ -1,6 +1,7 @@
 package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.AtomicId
 import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
@@ -261,7 +262,7 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
  * The [type] of the referenced data can be different from the type pointed to by [ptr].
  */
 data class MemoryReference(
-    val id: Int,
+    val id: AtomicId,
     val ptr: IRValue,
     val offset: IRValue?,
     override val type: TypeName
@@ -278,14 +279,12 @@ data class MemoryReference(
   override fun toString() = name
 }
 
-typealias RegisterId = Int
-
 /**
  * A virtual register where an [IRInstruction]'s result is stored. These registers abide by SSA, so
  * they are only written to once. They also cannot escape the [BasicBlock] they're declared in.
  */
 data class VirtualRegister(
-    val id: RegisterId,
+    val id: AtomicId,
     override val type: TypeName
 ) : LoadableValue() {
   override val name = "$type vreg$id"
