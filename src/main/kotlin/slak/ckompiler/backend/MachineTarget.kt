@@ -36,7 +36,7 @@ interface MachineRegister {
 /**
  * Fake register that's actually a stack slot in the function's frame.
  */
-class StackSlot(value: MemoryReference, mtd: MachineTargetData) : MachineRegister {
+class StackSlot(value: StackVariable, mtd: MachineTargetData) : MachineRegister {
   override val id = value.id
   override val regName = value.name
   override val sizeBytes = mtd.sizeOf(value.type)

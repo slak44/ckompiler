@@ -7,17 +7,24 @@ import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class IRTests {
   private fun createIR(vararg exprs: Expression): List<IRInstruction> {
-    val instrs = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter(), IdCounter())
+    val instrs = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter())
     val registerIds = instrs
         .filter { it !is StoreMemory }
         .mapNotNull { (it.result as? VirtualRegister)?.id }
     // No virtual register is stored to twice
     assert(registerIds.distinct() == registerIds)
     return instrs
+  }
+
+  private fun assertIsPtrAdd(i: IRInstruction, ptrTo: TypeName, offset: Int) {
+    val ptrAdd = i as IntBinary
+    assertEquals(IntegralBinaryOps.ADD, ptrAdd.op)
+    assertEquals(ptr(ptrTo), ptrAdd.result.type)
+    val offsetActual = (ptrAdd.rhs as? IntConstant)?.value
+    assertEquals(offset.toLong(), offsetActual)
   }
 
   @Test
@@ -48,42 +55,26 @@ class IRTests {
   fun `IR Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(nameRef("v", arrayType)[2])
-    val load = ir[0]
-    check(load is LoadMemory)
+    assertIsPtrAdd(ir[0], SignedIntType, 2)
+    val load = ir[1] as LoadMemory
     assertEquals(SignedIntType, load.result.type)
-    val v = load.ptr.ptr
-    check(v is Variable)
-    assertEquals("v", v.name)
-    val offset = requireNotNull(load.ptr.offset as? IntConstant)
-    assertEquals(2, offset.value)
   }
 
   @Test
   fun `IR Store To Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(nameRef("v", arrayType)[2] assign 55)
-    val store = requireNotNull(ir.last() as? StoreMemory)
-    val v = requireNotNull(store.ptr.ptr as? Variable)
-    assertEquals("v", v.name)
-    val offset = requireNotNull(store.ptr.offset as? IntConstant)
-    assertEquals(2, offset.value)
-    val const = requireNotNull(store.value as? IntConstant)
-    assertEquals(55L, const.value)
+    assertIsPtrAdd(ir[0], SignedIntType, 2)
+    val store = ir.last() as StoreMemory
+    val const = requireNotNull(store.value as? IntConstant).value
+    assertEquals(55L, const)
   }
 
   @Test
   fun `IR Address Of Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(UnaryOperators.REF[nameRef("v", arrayType)[2]])
-    val load = ir[0]
-    check(load is MoveInstr)
-    assertEquals(ptr(SignedIntType), load.result.type)
-    val memRef = requireNotNull(load.value as? MemoryReference)
-    val v = memRef.ptr
-    check(v is Variable)
-    assertEquals("v", v.name)
-    val offset = requireNotNull(memRef.offset as? IntConstant)
-    assertEquals(2, offset.value)
+    assertIsPtrAdd(ir[0], SignedIntType, 2)
   }
 
   @Test
@@ -91,12 +82,9 @@ class IRTests {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", ptr(structType)) arrow intVar("y"))
-    val load = requireNotNull(ir.last() as? LoadMemory)
+    assertIsPtrAdd(ir[0], structType, MachineTargetData.x64.intSizeBytes)
+    val load = ir.last() as LoadMemory
     assertEquals(SignedIntType, load.result.type)
-    val ptr = requireNotNull(load.ptr.ptr.type.unqualify() as? PointerType)
-    assertEquals(structType, ptr.referencedType)
-    val offset = requireNotNull(load.ptr.offset as? IntConstant)
-    assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
   }
 
   @Test
@@ -104,13 +92,11 @@ class IRTests {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", structType) dot intVar("y"))
-    val structPtr = requireNotNull(ir[0] as? MoveInstr).result
-    val ptr = requireNotNull(structPtr.type.unqualify() as? PointerType)
-    assertEquals(structType, ptr.referencedType)
-    val load = requireNotNull(ir[1] as? LoadMemory)
+    val ptrAdd = ir[0] as IntBinary
+    assert(ptrAdd.lhs is StackVariable)
+    assertIsPtrAdd(ptrAdd, structType, MachineTargetData.x64.intSizeBytes)
+    val load = ir.last() as LoadMemory
     assertEquals(SignedIntType, load.result.type)
-    val offset = requireNotNull(load.ptr.offset as? IntConstant)
-    assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
   }
 
   @Test
@@ -119,12 +105,10 @@ class IRTests {
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val member = nameRef("u", structType) dot intVar("y")
     val ir = createIR(member assign 42)
-    val structPtr = requireNotNull(ir[0] as? MoveInstr).result
-    val ptr = requireNotNull(structPtr.type.unqualify() as? PointerType)
-    assertEquals(structType, ptr.referencedType)
-    val store = requireNotNull(ir[1] as? StoreMemory)
-    val offset = requireNotNull(store.ptr.offset as? IntConstant)
-    assertEquals(MachineTargetData.x64.intSizeBytes.toLong(), offset.value)
+    val ptrAdd = ir[0] as IntBinary
+    assert(ptrAdd.lhs is StackVariable)
+    assertIsPtrAdd(ptrAdd, structType, MachineTargetData.x64.intSizeBytes)
+    val store = ir.last() as StoreMemory
     val const = requireNotNull(store.value as? IntConstant)
     assertEquals(42L, const.value)
   }
@@ -134,9 +118,10 @@ class IRTests {
     val unionSpec = union("name", int declare "x", double declare "y").toSpec()
     val unionType = typeNameOf(unionSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", unionType) dot nameRef("y", DoubleType))
-    val castToTargetType = requireNotNull(ir[0] as? ReinterpretCast)
-    assertEquals(unionType, castToTargetType.operand.type)
-    assertEquals(DoubleType, castToTargetType.result.type)
+    val castToTargetType = ir[0] as ReinterpretCast
+    assert(castToTargetType.operand is StackVariable)
+    assertEquals(ptr(unionType), castToTargetType.operand.type)
+    assertEquals(ptr(DoubleType), castToTargetType.result.type)
   }
 
   @Test
@@ -146,12 +131,9 @@ class IRTests {
     val member = nameRef("u", unionType) dot intVar("y")
     val ir = createIR(member assign 42)
     assert(ir[0] is ReinterpretCast)
-    val store = requireNotNull(ir.last() as? StoreMemory)
-    assertNull(store.ptr.offset)
-    val target = requireNotNull(store.ptr.ptr as? VirtualRegister)
-    assertEquals(ptr(SignedIntType), target.type)
-    val const = requireNotNull(store.value as? IntConstant)
-    assertEquals(42L, const.value)
+    val store = ir.last() as StoreMemory
+    val const = requireNotNull(store.value as? IntConstant).value
+    assertEquals(42L, const)
   }
 
   @Test

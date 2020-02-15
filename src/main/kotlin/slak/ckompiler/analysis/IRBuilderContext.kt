@@ -14,8 +14,7 @@ private val logger = LogManager.getLogger()
  */
 private class IRBuilderContext(
     val machineTargetData: MachineTargetData,
-    private val registerIds: IdCounter,
-    val memoryIds: IdCounter
+    private val registerIds: IdCounter
 ) {
   val instructions = mutableListOf<IRInstruction>()
 
@@ -31,9 +30,8 @@ private fun IRBuilderContext.buildCast(expr: CastExpression): IRInstruction {
  */
 private fun IRBuilderContext.buildUnary(expr: UnaryExpression): IRInstruction = when (expr.op) {
   UnaryOperators.DEREF -> {
-    val ptr = buildLValuePtr(expr.operand)
-    require(ptr.type.unqualify() is PointerType)
-    LoadMemory(newRegister(ptr.type), ptr)
+    val ptr = buildOperand(expr.operand)
+    LoadMemory(newRegister((ptr.type as PointerType).referencedType), ptr)
   }
   UnaryOperators.NOT -> {
     require(expr.operand.type.isScalar())
@@ -163,8 +161,8 @@ private fun IRBuilderContext.buildFunctionCall(expr: FunctionCall): IRInstructio
  *
  * C standard: 6.5.3.2
  */
-private fun IRBuilderContext.buildLValuePtr(lvalue: Expression): MemoryReference = when (lvalue) {
-  is TypedIdentifier -> MemoryReference(memoryIds(), Variable(lvalue).asPointer())
+private fun IRBuilderContext.buildLValuePtr(lvalue: Expression): IRValue = when (lvalue) {
+  is TypedIdentifier -> StackVariable(lvalue)
   is ArraySubscript -> buildPtrOffset(
       buildOperand(lvalue.subscripted),
       buildOperand(lvalue.subscript),
@@ -183,7 +181,7 @@ private fun IRBuilderContext.buildAssignment(expr: BinaryExpression): IRInstruct
     }
     is UnaryExpression -> {
       require(expr.lhs.op == UnaryOperators.DEREF)
-      StoreMemory(buildLValuePtr(expr.lhs), value)
+      StoreMemory(buildLValuePtr(expr.lhs.operand), value)
     }
     else -> {
       StoreMemory(buildLValuePtr(expr.lhs), value)
@@ -191,25 +189,29 @@ private fun IRBuilderContext.buildAssignment(expr: BinaryExpression): IRInstruct
   }
 }
 
+/**
+ * Deal with pointer arithmetic. Returns ([resPtrType]*) ([base] + [offset]).
+ */
 private fun IRBuilderContext.buildPtrOffset(
     base: IRValue,
     offset: IRValue,
     resPtrType: TypeName
-): MemoryReference {
+): IRValue {
   require(resPtrType is PointerType)
   val baseType = base.type.unqualify().normalize()
   require(baseType is PointerType)
-  // Avoid recursive MemoryReferences
-  val actualBase = if (base is MemoryReference) {
-    val reg = newRegister(base.type)
-    instructions += MoveInstr(reg, base)
-    reg
-  } else {
-    base
-  }
-  return MemoryReference(memoryIds(), actualBase, offset, resPtrType)
+  val offsetTo = IntBinary(newRegister(baseType), IntegralBinaryOps.ADD, base, offset)
+  instructions += offsetTo
+  // Avoid unnecessary cast if possible
+  if (resPtrType == offsetTo.result.type) return offsetTo.result
+  val typedPtr = ReinterpretCast(newRegister(resPtrType), offsetTo.result)
+  instructions += typedPtr
+  return typedPtr.result
 }
 
+/**
+ * Dereference the result of [buildPtrOffset].
+ */
 private fun IRBuilderContext.buildOffset(
     base: IRValue,
     offset: IRValue,
@@ -222,57 +224,36 @@ private fun IRBuilderContext.buildOffset(
 }
 
 /**
- * Returns a pointer to the targeted member.
+ * Get a pointer to the tag from the [MemberAccessExpression], and the type of the tag.
  */
-private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression): MemoryReference {
-  val unqualType = expr.target.type.unqualify()
-  val (base, tagType) = if (unqualType is PointerType) {
-    require(unqualType.referencedType is TagType)
+private fun IRBuilderContext.buildTagPtr(expr: MemberAccessExpression): Pair<IRValue, TagType> {
+  val lhsType = expr.target.type.unqualify()
+  return if (lhsType is PointerType) {
+    require(lhsType.referencedType is TagType)
     check(expr.accessOperator.pct == Punctuators.ARROW)
-    buildOperand(expr.target) to unqualType.referencedType
+    buildOperand(expr.target) to lhsType.referencedType
   } else {
-    require(unqualType is TagType)
+    require(lhsType is TagType)
     check(expr.accessOperator.pct == Punctuators.DOT)
     val addrOf = buildLValuePtr(expr.target)
-    addrOf to unqualType
+    addrOf to lhsType
   }
+}
+
+/**
+ * Returns a pointer to the targeted member.
+ */
+private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression): IRValue {
+  val (basePtr, tagType) = buildTagPtr(expr)
+  val memberPtrType = PointerType(expr.type, emptyList())
   return when (tagType) {
     is StructureType -> {
       val offset = machineTargetData.offsetOf(tagType, expr.memberName)
       val offsetCt = IntConstant(offset.toLong(), machineTargetData.ptrDiffType)
-      val memberPtrType = PointerType(expr.type, emptyList())
-      buildPtrOffset(base, offsetCt, memberPtrType)
+      buildPtrOffset(basePtr, offsetCt, memberPtrType)
     }
     is UnionType -> {
-      val ptrToType = PointerType(expr.type, emptyList())
-      val cast = ReinterpretCast(newRegister(ptrToType), base)
-      instructions += cast
-      MemoryReference(memoryIds(), cast.result)
-    }
-  }
-}
-
-private fun IRBuilderContext.buildMemberAccess(expr: MemberAccessExpression): LoadableValue {
-  val unqualType = expr.target.type.unqualify()
-  val (base, tagType) = if (unqualType is PointerType) {
-    require(unqualType.referencedType is TagType)
-    check(expr.accessOperator.pct == Punctuators.ARROW)
-    buildOperand(expr.target) to unqualType.referencedType
-  } else {
-    require(unqualType is TagType)
-    check(expr.accessOperator.pct == Punctuators.DOT)
-    when (unqualType) {
-      is StructureType -> buildLValuePtr(expr.target) to unqualType
-      is UnionType -> buildOperand(expr.target) to unqualType
-    }
-  }
-  return when (tagType) {
-    is StructureType -> {
-      val offset = machineTargetData.offsetOf(tagType, expr.memberName)
-      buildOffset(base, IntConstant(offset.toLong(), machineTargetData.ptrDiffType), expr.type)
-    }
-    is UnionType -> {
-      val cast = ReinterpretCast(newRegister(expr.type), base)
+      val cast = ReinterpretCast(newRegister(memberPtrType), basePtr)
       instructions += cast
       cast.result
     }
@@ -321,7 +302,12 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
     instructions += functionCall
     functionCall.result
   }
-  is MemberAccessExpression -> buildMemberAccess(expr)
+  is MemberAccessExpression -> {
+    val ptr = buildMemberPtrAccess(expr)
+    val load = LoadMemory(newRegister(expr.type), ptr)
+    instructions += load
+    load.result
+  }
   is ArraySubscript -> {
     buildOffset(buildOperand(expr.subscripted), buildOperand(expr.subscript), expr.type)
   }
@@ -338,10 +324,9 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
 fun createInstructions(
     exprs: List<Expression>,
     targetData: MachineTargetData,
-    registerIds: IdCounter,
-    memoryIds: IdCounter
+    registerIds: IdCounter
 ): List<IRInstruction> {
-  val builder = IRBuilderContext(targetData, registerIds, memoryIds)
+  val builder = IRBuilderContext(targetData, registerIds)
   for (expr in exprs) {
     val folded = targetData.doConstantFolding(expr)
     val lastValue = builder.buildOperand(folded)

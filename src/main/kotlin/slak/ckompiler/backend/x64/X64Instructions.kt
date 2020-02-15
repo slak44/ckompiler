@@ -127,11 +127,12 @@ private fun instructionClass(
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (this is NamedDisplacement && ref is NamedConstant) return true
   if (this is JumpTarget && ref is JumpTargetConstant) return true
-  if (ref !is PhysicalRegister && MachineTargetData.x64.sizeOf(ref.type.normalize()) != size) {
+  val refSize = MachineTargetData.x64.sizeOf(ref.type.unqualify().normalize())
+  if (ref !is PhysicalRegister && refSize != size) {
     return false
   }
   return when (ref) {
-    is MemoryReference, is StrConstant, is FltConstant -> {
+    is StackVariable, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
     is VirtualRegister, is Variable -> {

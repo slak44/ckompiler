@@ -276,8 +276,8 @@ private class VariableRenamer(val cfg: CFG) {
     is IntNeg -> listOfNotNull(i.operand as? Variable)
     is FltNeg -> listOfNotNull(i.operand as? Variable)
     is MoveInstr -> listOfNotNull(i.value as? Variable)
-    is StoreMemory -> listOfNotNull(i.value as? Variable, i.ptr.ptr as? Variable)
-    is LoadMemory -> listOfNotNull(i.ptr.ptr as? Variable)
+    is StoreMemory -> listOfNotNull(i.storeTo as? Variable, i.value as? Variable)
+    is LoadMemory -> listOfNotNull(i.loadFrom as? Variable)
     else -> logger.throwICE("Unreachable")
   }
 

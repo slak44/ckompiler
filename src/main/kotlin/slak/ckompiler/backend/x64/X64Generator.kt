@@ -114,8 +114,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
     // FIXME: deal with X87 here
     for ((index, variable) in vars - integral - sse) {
       val type = variable.type.unqualify().normalize()
-      val memory = MemoryReference(cfg.memoryIds(), variable.asPointer())
-      parameterMap[ParameterReference(index, type)] = memory
+      parameterMap[ParameterReference(index, type)] = StackVariable(variable.tid)
     }
   }
 
@@ -200,8 +199,8 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       }
       listOf(matchTypedMov(i.result, rhs))
     }
-    is LoadMemory -> TODO()
-    is StoreMemory -> TODO()
+    is LoadMemory -> listOf(matchTypedMov(i.result, i.loadFrom))
+    is StoreMemory -> listOf(matchTypedMov(i.storeTo, i.value))
     is StructuralCast -> createStructuralCast(i)
     is ReinterpretCast -> {
       if (i.operand == i.result) emptyList() else listOf(matchTypedMov(i.result, i.operand))
@@ -525,7 +524,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
 
   override fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<X64Instruction>> {
     var currentStackOffset = 0
-    val stackOffsets = alloc.stackSlots.associateWith {
+    val stackOffsets = alloc.allocations.values.filterIsInstance<StackSlot>().associateWith {
       val offset = currentStackOffset
       currentStackOffset += it.sizeBytes
       offset

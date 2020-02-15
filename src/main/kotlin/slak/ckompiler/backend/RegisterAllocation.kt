@@ -19,20 +19,25 @@ typealias RegisterUseMap = Map<BasicBlock, List<MachineRegister>>
 data class AllocationResult(
     val partial: InstructionMap,
     val allocations: AllocationMap,
-    val stackSlots: List<StackSlot>,
     val registerUseMap: RegisterUseMap
-)
+) {
+  val stackSlots get() = allocations.values.filterIsInstance<StackSlot>()
+  operator fun component4() = stackSlots
+}
 
 private fun MachineTarget.matchValueToRegister(
     value: IRValue,
     forbiddenNeigh: List<MachineRegister>
-): MachineRegister? {
-  if (value is MemoryReference) return StackSlot(value, machineTargetData)
+): MachineRegister {
+  if (value is StackVariable) return StackSlot(value, machineTargetData)
   val validClass = registerClassOf(value.type)
   val validSize = machineTargetData.sizeOf(value.type.unqualify().normalize())
-  return (registers - forbidden - forbiddenNeigh).firstOrNull { candidate ->
+  val register = (registers - forbidden - forbiddenNeigh).firstOrNull { candidate ->
     candidate.valueClass == validClass &&
         (candidate.sizeBytes == validSize || validSize in candidate.aliases.map { it.second })
+  }
+  return requireNotNull(register) {
+    "Failed to find an empty register for the given value: $value"
   }
 }
 
@@ -42,17 +47,20 @@ private fun MachineTarget.matchValueToRegister(
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
  */
 fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
-  val stackSlots = mutableListOf<StackSlot>()
   val lastUses = mutableMapOf<IRValue, Pair<BasicBlock, Int>>()
-  lastUses.putAll(cfg.defUseChains.mapValues { it.value.last() })
-  // FIXME: see if this can't be done in the variable renamer
-  cfg.domTreePreorder.forEach { block ->
+  val forcedVariableSpills = mutableListOf<StackVariable>()
+  for (block in cfg.domTreePreorder) {
     for (mi in instrMap.getValue(block)) {
-      mi.uses
-          .filter { it is VirtualRegister || it is PhysicalRegister }
-          .forEach { lastUses[it] = block to mi.irLabelIndex }
+      // Track force-spilled variables (eg big structs, variables that had their address taken, etc)
+      forcedVariableSpills += mi.operands.filterIsInstance<StackVariable>()
+      // Initialize lastUses for other LoadableValues
+      for (it in mi.uses.filter { it is VirtualRegister || it is PhysicalRegister }) {
+        lastUses[it] = block to mi.irLabelIndex
+      }
     }
   }
+  // Initialize lastUses for Variables
+  lastUses.putAll(cfg.defUseChains.mapValues { it.value.last() })
   // FIXME: spilling here
   // FIXME: coalescing
   // List of visited nodes for DFS
@@ -78,7 +86,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
     }
     // Allocate φ-definitions
     for ((variable, _) in block.phi) {
-      val color = target.matchValueToRegister(variable, assigned)!!
+      val color = target.matchValueToRegister(variable, assigned)
       coloring[variable] = color
       assigned += color
     }
@@ -95,7 +103,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
           .filter { it !is PhysicalRegister || coloring[it] == null }
       // Allocate registers for values defined at this label
       for (definition in defined) {
-        val color = target.matchValueToRegister(definition, assigned)!!
+        val color = target.matchValueToRegister(definition, assigned)
         if (coloring[definition] != null) {
           logger.throwICE("Coloring the same definition twice")
         }
@@ -113,8 +121,8 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
     }
   }
   allocBlock(cfg.startBlock)
-  val allocations = coloring.filterKeys { it !is MemoryReference && it !is ConstantValue }
-  val intermediate = AllocationResult(instrMap, allocations, stackSlots, registerUseMap)
+  val allocations = coloring.filterKeys { it !is StackVariable && it !is ConstantValue }
+  val intermediate = AllocationResult(instrMap, allocations, registerUseMap)
   return removePhi(intermediate)
 }
 
@@ -193,7 +201,7 @@ private fun TargetFunGenerator.removeOnePhi(
     block: BasicBlock,
     pred: BasicBlock
 ): List<MachineInstruction> {
-  val (_, coloring, _, registerUseMap) = allocationResult
+  val (_, coloring, registerUseMap) = allocationResult
   // Step 1: the set of undefined registers U is excluded from the graph
   val phis = block.phi.filterNot { it.incoming.getValue(pred).isUndefined }
   // regs is the set R of registers in the register transfer graph T(R, T_E)

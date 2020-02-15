@@ -30,21 +30,31 @@ data class PhiInstruction(
 }
 
 /**
- * Read the value pointed at by [ptr], and store it in [result].
+ * Read the value pointed at by [loadFrom], and store it in [result].
  */
 data class LoadMemory(
     override val result: LoadableValue,
-    val ptr: MemoryReference
+    val loadFrom: IRValue
 ) : IRInstruction() {
-  override fun toString() = "load $result = *($ptr)"
+  init {
+    require(loadFrom.type is PointerType)
+    require(result.type == (loadFrom.type as PointerType).referencedType)
+  }
+
+  override fun toString() = "load $result = *($loadFrom)"
 }
 
 /**
- * Put [value] at the address pointed to by [ptr].
+ * Put [value] at the address pointed to by [storeTo]. [storeTo] must have pointer type.
  */
-data class StoreMemory(val ptr: MemoryReference, val value: IRValue) : IRInstruction() {
+data class StoreMemory(val storeTo: IRValue, val value: IRValue) : IRInstruction() {
+  init {
+    require(storeTo.type is PointerType)
+    require(value.type == (storeTo.type as PointerType).referencedType)
+  }
+
   override val result get() = logger.throwICE("If this is used, it's a bug")
-  override fun toString() = "store *($ptr) = $value"
+  override fun toString() = "store target *($storeTo) = $value"
 }
 
 /**
@@ -251,42 +261,6 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
 }
 
 /**
- * Represents an abstract memory location (probably on the stack). This is a pointer value, and
- * address-of operator, and pointer arithmetic all in one.
- *
- * [ptr] is the virtual pointer. Could be a [VirtualRegister] with a pointer type or even a constant
- * int casted to a pointer. What it _can't_ be, is another [MemoryReference]. Store it somewhere
- * else and use that value instead. That case comes up in things like `arrayOfStruct[2].member`. For
- * [Variable]s, we expect instances whose type has been changed to a pointer, that is, a variable of
- * type `int` will be passed here with the same id, but with type `int*`. One with `int*` will
- * become `int**`, etc.
- *
- * [offset] is an _offset_ within the memory zone referenced by this object. Basically, for
- * something like `a[20]`, the offset is the constant 20. If null, the offset is 0.
- *
- * The [type] of the referenced data can be different from the type pointed to by [ptr].
- */
-data class MemoryReference(
-    val id: AtomicId,
-    val ptr: IRValue,
-    val offset: IRValue?,
-    override val type: TypeName
-) : IRValue() {
-  constructor(id: Int, ptr: IRValue) : this(id, ptr, null, ptr.type)
-
-  init {
-    require(ptr !is MemoryReference)
-    require(offset !is MemoryReference)
-    require(ptr.type.unqualify().normalize() is PointerType)
-    require(offset == null || offset.type.unqualify().normalize() is IntegralType)
-    require(type.unqualify().normalize() is PointerType)
-  }
-
-  override val name = "mem$id[$ptr${if (offset != null) " + $offset" else ""}]"
-  override fun toString() = name
-}
-
-/**
  * A virtual register where an [IRInstruction]'s result is stored. These registers abide by SSA, so
  * they are only written to once. They also cannot escape the [BasicBlock] they're declared in.
  */
@@ -388,12 +362,6 @@ class Variable(val tid: TypedIdentifier) : LoadableValue() {
    */
   val isUndefined get() = version == 0
 
-  fun asPointer(): Variable {
-    val v = Variable(tid.copy(type = PointerType(tid.type, emptyList())))
-    v.version = version
-    return v
-  }
-
   fun copy(version: Int = this.version): Variable {
     val v = Variable(tid)
     v.version = version
@@ -428,4 +396,19 @@ class Variable(val tid: TypedIdentifier) : LoadableValue() {
     result = 31 * result + version
     return result
   }
+}
+
+/**
+ * Is basically a pointer to the variable, like &x. To actually use the value of x, it must be
+ * loaded to a [VirtualRegister] using [LoadMemory], then modified with [StoreMemory].
+ *
+ * The [id]s of these variables are in a shared pool with [Variable]s.
+ */
+class StackVariable(val tid: TypedIdentifier) : IRValue() {
+  val id get() = tid.id
+
+  override val name get() = tid.name
+  override val type: PointerType = PointerType(tid.type.normalize(), emptyList())
+
+  override fun toString() = "stack $type $name"
 }
