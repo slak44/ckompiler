@@ -2,10 +2,7 @@ package slak.ckompiler.backend.x64
 
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.AsmEmitter
-import slak.ckompiler.backend.AsmInstruction
-import slak.ckompiler.backend.TargetFunGenerator
-import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.*
 
 typealias Instructions = List<String>
 
@@ -113,11 +110,18 @@ class NasmEmitter(
   private fun genAsm(blockAsm: List<AsmInstruction>) = instrGen {
     for (i in blockAsm) {
       require(i is X64Instruction)
-      emit("${i.template.name} ${i.operands.joinToString(", ") { operandToString(it) }}")
+      // lea is special
+      val isLea = i.template in lea
+      emit("${i.template.name} ${i.operands.joinToString(", ") {
+        operandToString(it, forgetPrefix = isLea)
+      }}")
     }
   }
 
-  private fun operandToString(operand: X64Value): String = when (operand) {
+  private fun operandToString(
+      operand: X64Value,
+      forgetPrefix: Boolean = false
+  ): String = when (operand) {
     is ImmediateValue -> when (val const = operand.value) {
       is IntConstant -> const.toString()
       is FltConstant -> {
@@ -132,8 +136,24 @@ class NasmEmitter(
       is JumpTargetConstant -> const.target.label
       is NamedConstant -> const.name
     }
-    is RegisterValue -> operand.toString()
-    is StackValue -> operand.toString()
+    is RegisterValue -> regToStr(operand.register, operand.size)
+    is StackValue -> "${if (forgetPrefix) "" else prefixFor(operand.stackSlot.sizeBytes)} $operand"
+    is MemoryValue -> {
+      "${if (forgetPrefix) "" else prefixFor(operand.size)} [${operand.register.regName}]"
+    }
+  }
+
+  private fun prefixFor(size: Int): String = when (size) {
+    1 -> "byte"
+    2 -> "word"
+    4 -> "dword"
+    8 -> "qword"
+    else -> TODO()
+  }
+
+  private fun regToStr(register: MachineRegister, size: Int): String {
+    return if (register.sizeBytes == size) register.regName
+    else register.aliases.first { it.second == size }.first
   }
 
   private fun createFloatConstant(const: FltConstant) {

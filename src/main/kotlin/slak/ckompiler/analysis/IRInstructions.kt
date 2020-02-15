@@ -37,8 +37,8 @@ data class LoadMemory(
     val loadFrom: IRValue
 ) : IRInstruction() {
   init {
-    require(loadFrom.type is PointerType)
-    require(result.type == (loadFrom.type as PointerType).referencedType)
+//    require(loadFrom.type is PointerType)
+//    require(result.type == (loadFrom.type as PointerType).referencedType)
   }
 
   override fun toString() = "load $result = *($loadFrom)"
@@ -49,12 +49,12 @@ data class LoadMemory(
  */
 data class StoreMemory(val storeTo: IRValue, val value: IRValue) : IRInstruction() {
   init {
-    require(storeTo.type is PointerType)
-    require(value.type == (storeTo.type as PointerType).referencedType)
+//    require(storeTo.type is PointerType)
+//    require(value.type == (storeTo.type as PointerType).referencedType)
   }
 
   override val result get() = logger.throwICE("If this is used, it's a bug")
-  override fun toString() = "store target *($storeTo) = $value"
+  override fun toString() = "store *($storeTo) = $value"
 }
 
 /**
@@ -399,12 +399,26 @@ class Variable(val tid: TypedIdentifier) : LoadableValue() {
 }
 
 /**
+ * Represents a dereferenced pointer.
+ */
+data class MemoryLocation(val ptr: IRValue) : LoadableValue() {
+  init {
+    require(ptr.type is PointerType)
+  }
+
+  override val name = ptr.name
+  override val type = (ptr.type as PointerType).referencedType
+
+  override fun toString() = "mem[$ptr]"
+}
+
+/**
  * Is basically a pointer to the variable, like &x. To actually use the value of x, it must be
  * loaded to a [VirtualRegister] using [LoadMemory], then modified with [StoreMemory].
  *
  * The [id]s of these variables are in a shared pool with [Variable]s.
  */
-class StackVariable(val tid: TypedIdentifier) : IRValue() {
+data class StackVariable(val tid: TypedIdentifier) : LoadableValue() {
   val id get() = tid.id
 
   override val name get() = tid.name

@@ -32,6 +32,7 @@ enum class ModRM(val type: OperandType, override val size: Int) : Operand {
   R32(OperandType.REGISTER, 4),
   R64(OperandType.REGISTER, 8),
 
+  M16(OperandType.MEMORY, 2),
   M32(OperandType.MEMORY, 4),
   M64(OperandType.MEMORY, 8),
 
@@ -80,6 +81,10 @@ data class RegisterValue(val register: MachineRegister, val size: Int) : X64Valu
 
 data class StackValue(val stackSlot: StackSlot, val offset: Int) : X64Value() {
   override fun toString() = "[rbp - ${offset + stackSlot.sizeBytes}]"
+}
+
+data class MemoryValue(val register: MachineRegister, val size: Int) : X64Value() {
+  override fun toString() = "[$register]"
 }
 
 data class X64Instruction(
@@ -132,10 +137,10 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
     return false
   }
   return when (ref) {
-    is StackVariable, is StrConstant, is FltConstant -> {
+    is MemoryLocation, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
-    is VirtualRegister, is Variable -> {
+    is VirtualRegister, is Variable, is StackVariable -> {
       this is Register ||
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
     }
@@ -237,6 +242,15 @@ private val unaryRM: ICBuilder.() -> Unit = {
 
 val neg = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
 val not = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
+
+val lea = instructionClass("lea", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(R16, M32)
+  instr(R16, M64)
+  instr(R32, M32)
+  instr(R32, M64)
+  instr(R64, M32)
+  instr(R64, M64)
+}
 
 val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM8, R8)

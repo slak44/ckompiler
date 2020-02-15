@@ -60,6 +60,8 @@ class CFG(
    */
   val exprDefinitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
 
+  val stackVariables = mutableSetOf<StackVariable>()
+
   private val renamer = VariableRenamer(this)
   /** @see VariableRenamer.definitions */
   val definitions: Definitions get() = renamer.definitions
@@ -88,7 +90,9 @@ class CFG(
     if (!forceAllNodes) {
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
-      insertPhiFunctions(exprDefinitions)
+      val stackVarIds = stackVariables.map { it.id }
+      insertPhiFunctions(exprDefinitions.filter { it.key.id !in stackVarIds })
+      insertSpillCode(stackVarIds)
       renamer.variableRenaming()
     } else {
       doms = DominatorList(nodes.size)
@@ -409,6 +413,56 @@ private fun CFG.computeLiveIns(): Map<BasicBlock, Set<Variable>> {
     }
   }
   return liveInAt
+}
+
+private fun List<AtomicId>.maybeReplace(it: IRValue): IRValue {
+  return if (it is Variable && it.id in this) MemoryLocation(StackVariable(it.tid)) else it
+}
+
+private fun List<AtomicId>.maybeReplace(it: LoadableValue): LoadableValue {
+  return if (it is Variable && it.id in this) MemoryLocation(StackVariable(it.tid)) else it
+}
+
+// FIXME: this is possibly the dumbest way to implement this
+private fun List<AtomicId>.replaceSpilled(i: IRInstruction): IRInstruction = when (i) {
+  is StructuralCast -> i.copy(result = maybeReplace(i.result), operand = maybeReplace(i.operand))
+  is ReinterpretCast -> i.copy(result = maybeReplace(i.result), operand = maybeReplace(i.operand))
+  is NamedCall -> i.copy(args = i.args.map { maybeReplace(it) }, result = maybeReplace(i.result))
+  is IndirectCall -> i.copy(args = i.args.map { maybeReplace(it) }, result = maybeReplace(i.result))
+  is IntInvert -> i.copy(result = maybeReplace(i.result), operand = maybeReplace(i.operand))
+  is IntNeg -> i.copy(result = maybeReplace(i.result), operand = maybeReplace(i.operand))
+  is FltNeg -> i.copy(result = maybeReplace(i.result), operand = maybeReplace(i.operand))
+  is IntBinary ->
+    i.copy(result = maybeReplace(i.result), lhs = maybeReplace(i.lhs), rhs = maybeReplace(i.rhs))
+  is IntCmp ->
+    i.copy(result = maybeReplace(i.result), lhs = maybeReplace(i.lhs), rhs = maybeReplace(i.rhs))
+  is FltBinary ->
+    i.copy(result = maybeReplace(i.result), lhs = maybeReplace(i.lhs), rhs = maybeReplace(i.rhs))
+  is FltCmp ->
+    i.copy(result = maybeReplace(i.result), lhs = maybeReplace(i.lhs), rhs = maybeReplace(i.rhs))
+  is StoreMemory -> i.copy(storeTo = maybeReplace(i.storeTo), value = maybeReplace(i.value))
+  is LoadMemory -> i.copy(loadFrom = maybeReplace(i.loadFrom), result = maybeReplace(i.result))
+  is MoveInstr -> logger.throwICE("Impossible, checked in caller")
+}
+
+fun CFG.insertSpillCode(spilled: List<AtomicId>) = nodes.forEach { node ->
+  val newIR = node.ir.map {
+    if (it is MoveInstr) {
+      val result = it.result
+      val value = it.value
+      if (result is Variable && result.id in spilled) {
+        StoreMemory(MemoryLocation(StackVariable(result.tid)), value)
+      } else if (value is Variable && value.id in spilled) {
+        LoadMemory(result, MemoryLocation(StackVariable(value.tid)))
+      } else {
+        it
+      }
+    } else {
+      spilled.replaceSpilled(it)
+    }
+  }
+  node.ir.clear()
+  node.ir += newIR
 }
 
 /**

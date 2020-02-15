@@ -29,7 +29,6 @@ private fun MachineTarget.matchValueToRegister(
     value: IRValue,
     forbiddenNeigh: List<MachineRegister>
 ): MachineRegister {
-  if (value is StackVariable) return StackSlot(value, machineTargetData)
   val validClass = registerClassOf(value.type)
   val validSize = machineTargetData.sizeOf(value.type.unqualify().normalize())
   val register = (registers - forbidden - forbiddenNeigh).firstOrNull { candidate ->
@@ -48,11 +47,8 @@ private fun MachineTarget.matchValueToRegister(
  */
 fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   val lastUses = mutableMapOf<IRValue, Pair<BasicBlock, Int>>()
-  val forcedVariableSpills = mutableListOf<StackVariable>()
   for (block in cfg.domTreePreorder) {
     for (mi in instrMap.getValue(block)) {
-      // Track force-spilled variables (eg big structs, variables that had their address taken, etc)
-      forcedVariableSpills += mi.operands.filterIsInstance<StackVariable>()
       // Initialize lastUses for other LoadableValues
       for (it in mi.uses.filter { it is VirtualRegister || it is PhysicalRegister }) {
         lastUses[it] = block to mi.irLabelIndex
@@ -98,9 +94,14 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
         val color = coloring[value] ?: continue
         assigned -= color
       }
-      val defined = mi.defs
+      val (stackVars, defined) = mi.defs
           .filter { it !in colored }
           .filter { it !is PhysicalRegister || coloring[it] == null }
+          .partition { it is StackVariable || it is MemoryLocation }
+      // Also add stack variables to coloring
+      coloring += stackVars
+          .map { (it as MemoryLocation).ptr as StackVariable }
+          .associateWith { StackSlot(it, target.machineTargetData) }
       // Allocate registers for values defined at this label
       for (definition in defined) {
         val color = target.matchValueToRegister(definition, assigned)
@@ -121,7 +122,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
     }
   }
   allocBlock(cfg.startBlock)
-  val allocations = coloring.filterKeys { it !is StackVariable && it !is ConstantValue }
+  val allocations = coloring.filterKeys { it !is ConstantValue }
   val intermediate = AllocationResult(instrMap, allocations, registerUseMap)
   return removePhi(intermediate)
 }

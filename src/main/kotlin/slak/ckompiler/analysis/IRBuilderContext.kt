@@ -17,6 +17,7 @@ private class IRBuilderContext(
     private val registerIds: IdCounter
 ) {
   val instructions = mutableListOf<IRInstruction>()
+  val stackVariables = mutableListOf<StackVariable>()
 
   fun newRegister(type: TypeName) = VirtualRegister(registerIds(), type)
 }
@@ -162,7 +163,11 @@ private fun IRBuilderContext.buildFunctionCall(expr: FunctionCall): IRInstructio
  * C standard: 6.5.3.2
  */
 private fun IRBuilderContext.buildLValuePtr(lvalue: Expression): IRValue = when (lvalue) {
-  is TypedIdentifier -> StackVariable(lvalue)
+  is TypedIdentifier -> {
+    val sv = StackVariable(lvalue)
+    stackVariables += sv
+    sv
+  }
   is ArraySubscript -> buildPtrOffset(
       buildOperand(lvalue.subscripted),
       buildOperand(lvalue.subscript),
@@ -325,7 +330,7 @@ fun createInstructions(
     exprs: List<Expression>,
     targetData: MachineTargetData,
     registerIds: IdCounter
-): List<IRInstruction> {
+): Pair<List<IRInstruction>, List<StackVariable>> {
   val builder = IRBuilderContext(targetData, registerIds)
   for (expr in exprs) {
     val folded = targetData.doConstantFolding(expr)
@@ -334,5 +339,5 @@ fun createInstructions(
       builder.instructions += MoveInstr(builder.newRegister(lastValue.type), lastValue)
     }
   }
-  return builder.instructions
+  return builder.instructions to builder.stackVariables
 }

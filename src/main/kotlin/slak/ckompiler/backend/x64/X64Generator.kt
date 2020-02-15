@@ -16,7 +16,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
 
   /**
    * Maps each function parameter to a more concrete value: params passed in registers will be
-   * mapped to [PhysicalRegister]s, and ones passed in memory to [MemoryReference]s. The memory refs
+   * mapped to [PhysicalRegister]s, and ones passed in memory to [StackVariable]s. The memory refs
    * will always be 8 bytes per the ABI, regardless of their type.
    *
    * System V ABI: 3.2.1, figure 3.3
@@ -199,8 +199,18 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       }
       listOf(matchTypedMov(i.result, rhs))
     }
-    is LoadMemory -> listOf(matchTypedMov(i.result, i.loadFrom))
-    is StoreMemory -> listOf(matchTypedMov(i.storeTo, i.value))
+    is LoadMemory -> {
+      val loadable =
+          if (i.loadFrom is StackVariable || i.loadFrom is MemoryLocation) i.loadFrom
+          else MemoryLocation(i.loadFrom)
+      listOf(matchTypedMov(i.result, loadable))
+    }
+    is StoreMemory -> {
+      val storable =
+          if (i.storeTo is StackVariable || i.storeTo is MemoryLocation) i.storeTo
+          else MemoryLocation(i.storeTo)
+      listOf(matchTypedMov(storable, i.value))
+    }
     is StructuralCast -> createStructuralCast(i)
     is ReinterpretCast -> {
       if (i.operand == i.result) emptyList() else listOf(matchTypedMov(i.result, i.operand))
@@ -498,7 +508,15 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   /**
    * Create a generic copy instruction. Figures out register class and picks the correct mov.
    */
-  private fun matchTypedMov(dest: IRValue, src: IRValue) = when (validateClasses(dest, src)) {
+  private fun matchTypedMov(dest: IRValue, src: IRValue): MachineInstruction {
+    return if (src is StackVariable) {
+      lea.match(dest, MemoryLocation(src))
+    } else {
+      matchRegTypedMov(dest, src)
+    }
+  }
+
+  private fun matchRegTypedMov(dest: IRValue, src: IRValue) = when (validateClasses(dest, src)) {
     X64RegisterClass.INTEGER -> mov.match(dest, src)
     X64RegisterClass.SSE -> when (target.machineTargetData.sizeOf(src.type)) {
       4 -> movss.match(dest, src)
@@ -589,7 +607,11 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
             .first { reg -> reg.valueClass == target.registerClassOf(it.type) }
         return@map RegisterValue(reg, X64Target.machineTargetData.sizeOf(it.type))
       }
-      val machineRegister = alloc.allocations.getValue(it)
+      val unwrapped = if (it is MemoryLocation) it.ptr else it
+      val machineRegister = alloc.allocations.getValue(unwrapped)
+      if (it is MemoryLocation && it.ptr !is StackVariable) {
+        return@map MemoryValue(machineRegister, X64Target.machineTargetData.sizeOf(it.type))
+      }
       if (machineRegister is StackSlot) {
         return@map StackValue(machineRegister, stackOffsets.getValue(machineRegister))
       } else {

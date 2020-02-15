@@ -39,7 +39,7 @@ interface MachineRegister {
 class StackSlot(value: StackVariable, mtd: MachineTargetData) : MachineRegister {
   override val id = value.id
   override val regName = value.name
-  override val sizeBytes = mtd.sizeOf(value.type)
+  override val sizeBytes = mtd.sizeOf(value.type.referencedType)
   override val valueClass = Memory
   override val aliases = emptyList<RegisterAlias>()
 
@@ -97,7 +97,7 @@ data class MachineInstruction(
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX
 ) {
   /**
-   * List of [Variable]s, [VirtualRegister]s and [PhysicalRegister]s used at this label.
+   * List of things used at this label.
    */
   val uses: List<IRValue> by lazy {
     require(operands.size == template.operandUse.size)
@@ -106,12 +106,12 @@ data class MachineInstruction(
         .asSequence()
         .filter { it.second == VariableUse.USE || it.second == VariableUse.DEF_USE }
         .map { it.first }
-        .filter { it is Variable || it is VirtualRegister || it is PhysicalRegister }
+        .filter { it !is ConstantValue && it !is ParameterReference }
         .toList()
   }
 
   /**
-   * List of [Variable]s, [VirtualRegister]s and [PhysicalRegister]s defined at this label.
+   * List of things defined at this label.
    */
   val defs: List<IRValue> by lazy {
     require(operands.size == template.operandUse.size)
@@ -120,7 +120,7 @@ data class MachineInstruction(
         .asSequence()
         .filter { it.second == VariableUse.DEF || it.second == VariableUse.DEF_USE }
         .map { it.first }
-        .filter { it is Variable || it is VirtualRegister || it is PhysicalRegister }
+        .filter { it !is ConstantValue && it !is ParameterReference }
         .toList()
   }
 
