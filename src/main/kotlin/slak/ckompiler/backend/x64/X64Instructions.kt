@@ -170,6 +170,44 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   return checkNotNull(res) { "Instruction selection failure: match ${operands.toList()} in $this" }
 }
 
+/**
+ * Create a generic copy instruction. Figures out register class and picks the correct kind of move.
+ */
+fun matchTypedMov(dest: IRValue, src: IRValue): MachineInstruction {
+  return if (src is StackVariable) {
+    lea.match(dest, MemoryLocation(src))
+  } else {
+    matchRegTypedMov(dest, src)
+  }
+}
+
+private fun matchRegTypedMov(dest: IRValue, src: IRValue) = when (validateClasses(dest, src)) {
+  X64RegisterClass.INTEGER -> mov.match(dest, src)
+  X64RegisterClass.SSE -> when (X64Target.machineTargetData.sizeOf(src.type)) {
+    4 -> movss.match(dest, src)
+    8 -> movsd.match(dest, src)
+    else -> logger.throwICE("Float size not 4 or 8 bytes")
+  }
+  X64RegisterClass.X87 -> TODO("x87 movs")
+}
+
+/**
+ * Gets the common non-memory register class of the operands.
+ */
+fun validateClasses(dest: IRValue, src: IRValue): X64RegisterClass {
+  val destRegClass = X64Target.registerClassOf(dest.type)
+  val srcRegClass = X64Target.registerClassOf(src.type)
+  require(destRegClass != Memory || srcRegClass != Memory) { "No memory-to-memory move exists" }
+  val nonMemoryClass = if (destRegClass != Memory && srcRegClass != Memory) {
+    require(destRegClass == srcRegClass) { "Move between register classes without cast" }
+    destRegClass
+  } else {
+    if (destRegClass == Memory) srcRegClass else destRegClass
+  }
+  require(nonMemoryClass is X64RegisterClass)
+  return nonMemoryClass
+}
+
 private val nullary: ICBuilder.() -> Unit = { instr() }
 
 val dummyUse = instructionClass("DUMMY USE DO NOT EMIT", listOf(VariableUse.USE)) {

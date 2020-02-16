@@ -138,7 +138,49 @@ interface AsmInstruction {
   val template: InstructionTemplate
 }
 
-interface TargetFunGenerator {
+/**
+ * Provides function-related facilities: setting up/tearing down the stack frame, handling incoming
+ * function parameters, calling other functions, generating moves for returns.
+ */
+interface FunctionAssembler {
+  /**
+   * Constraints for current function parameters. The given [IRValue]s are marked as live-in for the
+   * start block.
+   */
+  val parameterMap: Map<ParameterReference, IRValue>
+
+  /**
+   * All returns actually jump to this synthetic block, which then really returns from the function.
+   */
+  val returnBlock: BasicBlock
+
+  /**
+   * Generates the asm for the "bulk" of the function, the stuff between the prologue and the
+   * epilogue.
+   */
+  fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<AsmInstruction>>
+
+  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
+
+  /**
+   * This function must always be called after [genFunctionPrologue], because it can depend on some
+   * results from it.
+   */
+  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
+
+  fun createCall(
+      result: LoadableValue,
+      callable: IRValue,
+      args: List<IRValue>
+  ): List<MachineInstruction>
+
+  fun createReturn(retVal: LoadableValue): List<MachineInstruction>
+}
+
+/**
+ * Generates [AsmInstruction]s for a single function.
+ */
+interface TargetFunGenerator : FunctionAssembler {
   /**
    * Reference to source [MachineTarget].
    */
@@ -148,12 +190,6 @@ interface TargetFunGenerator {
    * Target function to generate code for.
    */
   val cfg: CFG
-
-  /**
-   * Constraints for current function parameters. The given [IRValue]s are marked as live-in for the
-   * start block.
-   */
-  val parameterMap: Map<ParameterReference, IRValue>
 
   /**
    * Instruction selection for the function described by [cfg].
@@ -181,16 +217,6 @@ interface TargetFunGenerator {
       instructions: List<MachineInstruction>,
       copies: List<MachineInstruction>
   ): List<MachineInstruction>
-
-  fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<AsmInstruction>>
-
-  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
-  
-  /**
-   * This function must always be called after [genFunctionPrologue], because it can depend on some
-   * results from it.
-   */
-  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
 }
 
 interface MachineTarget {
