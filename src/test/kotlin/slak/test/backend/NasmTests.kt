@@ -160,6 +160,20 @@ class NasmTests {
   }
 
   @Test
+  fun `Return Int Via Pointer`() {
+    compileAndRun("""
+      void f(int* result) {
+        *result = 42;
+      }
+      int main() {
+        int data;
+        f(&data);
+        return data;
+      }
+    """.trimIndent()).justExitCode(42)
+  }
+
+  @Test
   fun `Identical String Literals Compare Equal Because Deduplication Or Folding`() {
     compileAndRun("""
       int main() {
