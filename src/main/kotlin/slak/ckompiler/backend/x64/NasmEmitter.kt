@@ -137,9 +137,9 @@ class NasmEmitter(
       is NamedConstant -> const.name
     }
     is RegisterValue -> regToStr(operand.register, operand.size)
-    is StackValue -> "${if (forgetPrefix) "" else prefixFor(operand.stackSlot.sizeBytes)} $operand"
+    is StackValue -> "${if (forgetPrefix) "" else prefixFor(operand.stackSlot.sizeBytes)}$operand"
     is MemoryValue -> {
-      "${if (forgetPrefix) "" else prefixFor(operand.size)} [${operand.register.regName}]"
+      "${if (forgetPrefix) "" else prefixFor(operand.size)}[${operand.register.regName}]"
     }
   }
 
@@ -149,7 +149,7 @@ class NasmEmitter(
     4 -> "dword"
     8 -> "qword"
     else -> TODO()
-  }
+  } + ' '
 
   private fun regToStr(register: MachineRegister, size: Int): String {
     return if (register.sizeBytes == size) register.regName
