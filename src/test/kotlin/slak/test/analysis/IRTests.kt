@@ -52,6 +52,19 @@ class IRTests {
   }
 
   @Test
+  fun `IR Pointer Dereference`() {
+    val ir = createIR(
+        nameRef("a", ptr(SignedIntType)) assign 12345,
+        UnaryOperators.DEREF[nameRef("a", ptr(SignedIntType))] assign 3
+    )
+    val store = ir[1] as StoreMemory
+    val storeTarget = store.storeTo as Variable
+    assertEquals("a", storeTarget.name)
+    val constant = (store.value as? IntConstant)?.value
+    assertEquals(3, constant)
+  }
+
+  @Test
   fun `IR Array Subscript`() {
     val arrayType = ArrayType(SignedIntType, ConstantSize(int(4)))
     val ir = createIR(nameRef("v", arrayType)[2])

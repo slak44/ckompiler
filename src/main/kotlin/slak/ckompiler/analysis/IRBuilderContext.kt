@@ -186,7 +186,8 @@ private fun IRBuilderContext.buildAssignment(expr: BinaryExpression): IRInstruct
     }
     is UnaryExpression -> {
       require(expr.lhs.op == UnaryOperators.DEREF)
-      StoreMemory(buildLValuePtr(expr.lhs.operand), value)
+      // For dereferences, the operand is guaranteed to be a pointer
+      StoreMemory(buildOperand(expr.lhs.operand), value)
     }
     else -> {
       StoreMemory(buildLValuePtr(expr.lhs), value)
