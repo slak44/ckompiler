@@ -295,6 +295,7 @@ data class PhysicalRegister(
 sealed class ConstantValue : IRValue()
 
 data class IntConstant(val value: Long, override val type: TypeName) : ConstantValue() {
+  constructor(int: Int, type: TypeName) : this(int.toLong(), type)
   constructor(int: IntegerConstantNode) : this(int.value, int.type)
   constructor(char: CharacterConstantNode) : this(char.char.toLong(), char.type)
 

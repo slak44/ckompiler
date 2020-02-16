@@ -255,7 +255,7 @@ private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression):
   return when (tagType) {
     is StructureType -> {
       val offset = machineTargetData.offsetOf(tagType, expr.memberName)
-      val offsetCt = IntConstant(offset.toLong(), machineTargetData.ptrDiffType)
+      val offsetCt = IntConstant(offset, machineTargetData.ptrDiffType)
       buildPtrOffset(basePtr, offsetCt, memberPtrType)
     }
     is UnionType -> {

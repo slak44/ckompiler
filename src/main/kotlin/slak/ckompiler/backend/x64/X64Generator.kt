@@ -327,12 +327,12 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       selected += pushArgOnStack(stackArg)
     }
     // The ABI says al must contain the number of vector arguments
-    selected += mov.match(al, IntConstant(fltRegArgs.size.toLong(), SignedCharType))
+    selected += mov.match(al, IntConstant(fltRegArgs.size, SignedCharType))
     selected += call.match(callable)
     selected += getCallResult(result)
     // Clean up pushed arguments
     val cleanStackSize = stackArgsSize + stackArgsSize / ALIGNMENT_BYTES
-    selected += add.match(rsp, IntConstant(cleanStackSize.toLong(), SignedIntType))
+    selected += add.match(rsp, IntConstant(cleanStackSize, SignedIntType))
     // Restore caller-saved registers
     selected += dummyCallRestore.match()
     return selected
