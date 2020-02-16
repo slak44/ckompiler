@@ -37,20 +37,23 @@ data class LoadMemory(
     val loadFrom: IRValue
 ) : IRInstruction() {
   init {
-//    require(loadFrom.type is PointerType)
-//    require(result.type == (loadFrom.type as PointerType).referencedType)
+    require(loadFrom.type is PointerType)
+    require(result.type == (loadFrom.type as PointerType).referencedType)
   }
 
   override fun toString() = "load $result = *($loadFrom)"
 }
 
 /**
- * Put [value] at the address pointed to by [storeTo]. [storeTo] must have pointer type.
+ * Put [value] at the address pointed to by [storeTo]. [storeTo] must have pointer type, or be a
+ * [MemoryLocation].
  */
 data class StoreMemory(val storeTo: IRValue, val value: IRValue) : IRInstruction() {
   init {
-//    require(storeTo.type is PointerType)
-//    require(value.type == (storeTo.type as PointerType).referencedType)
+    if (storeTo !is MemoryLocation) {
+      require(storeTo.type is PointerType)
+      require(value.type == (storeTo.type as PointerType).referencedType)
+    }
   }
 
   override val result get() = logger.throwICE("If this is used, it's a bug")
