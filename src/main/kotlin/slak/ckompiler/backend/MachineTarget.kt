@@ -185,6 +185,11 @@ interface TargetFunGenerator {
   fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<AsmInstruction>>
 
   fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
+  
+  /**
+   * This function must always be called after [genFunctionPrologue], because it can depend on some
+   * results from it.
+   */
   fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
 }
 

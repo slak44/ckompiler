@@ -7,12 +7,24 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import kotlin.math.absoluteValue
 import kotlin.math.sign
+import kotlin.properties.Delegates
 
 class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   /**
    * All returns actually jump to this synthetic block, which then really returns from the function.
    */
   private val returnBlock = BasicBlock(isRoot = false)
+
+  /**
+   * If this is set to true, it means this function does not make any calls (ie is a leaf function).
+   * This is useful for knowing whether to use the red zone or not.
+   *
+   * System V ABI: page 19
+   */
+  private var isLeaf = true
+
+  /** @see genFunctionPrologue */
+  private var finalStackSizeBytes by Delegates.notNull<Int>()
 
   /**
    * Maps each function parameter to a more concrete value: params passed in registers will be
@@ -294,6 +306,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
       callable: IRValue,
       args: List<IRValue>
   ): List<MachineInstruction> {
+    isLeaf = false
     val selected = mutableListOf<MachineInstruction>()
     // Save caller-saved registers
     selected += dummyCallSave.match()
@@ -631,31 +644,41 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
   }
 
   /**
+   * FIXME: maybe extract this and prologue into separate class
    * System V ABI: 3.2.1, figure 3.3
    */
   override fun genFunctionPrologue(alloc: AllocationResult): List<X64Instruction> {
+    val prologue = mutableListOf<MachineInstruction>()
+    prologue += push.match(rbp)
+    prologue += mov.match(rbp, rsp)
     // FIXME: deal with MEMORY class function arguments (see paramSourceMap)
-    // FIXME: allocate stack space for locals
     // FIXME: save callee-saved registers
-    return listOf(
-        push.match(rbp),
-        mov.match(rbp, rsp)
-    ).map {
-      val ops = it.operands.map { op -> RegisterValue(op as PhysicalRegister) }
-      X64Instruction(it.template as X64InstrTemplate, ops)
+    finalStackSizeBytes = alloc.stackSlots.sumBy { it.sizeBytes }
+    // See if we can use the red zone
+    if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
+      // FIXME: we could avoid setting up the stack frame entirely in this case,
+      //   but for that we need rsp-relative stack values
+    } else {
+      prologue += sub.match(rsp, IntConstant(finalStackSizeBytes, SignedIntType))
     }
+    return prologue.map { miToX64Instr(it, alloc, emptyMap()) }
   }
 
   /**
    * System V ABI: 3.2.1, figure 3.3
    */
   override fun genFunctionEpilogue(alloc: AllocationResult): List<X64Instruction> {
-    // FIXME: deallocate stack space
+    val epilogue = mutableListOf<MachineInstruction>()
     // FIXME: restore callee-saved registers
-    return listOf(
-        X64Instruction(leave.first(), emptyList()),
-        X64Instruction(ret.first(), emptyList())
-    )
+    if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
+      // FIXME: we could avoid setting up the stack frame entirely in this case,
+      //   but for that we need rsp-relative stack values
+    } else {
+      epilogue += add.match(rsp, IntConstant(finalStackSizeBytes, SignedIntType))
+    }
+    epilogue += leave.match()
+    epilogue += ret.match()
+    return epilogue.map { miToX64Instr(it, alloc, emptyMap()) }
   }
 
   companion object {
@@ -678,6 +701,7 @@ class X64Generator(override val cfg: CFG) : TargetFunGenerator {
 
     private const val EIGHTBYTE = 8
     private const val ALIGNMENT_BYTES = 16
+    private const val RED_ZONE_BYTES = 128
 
     private fun Int.toHex() = "${if (sign == -1) "-" else ""}0x${absoluteValue.toString(16)}"
   }
