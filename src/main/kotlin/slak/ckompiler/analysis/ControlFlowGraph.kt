@@ -70,7 +70,6 @@ class CFG(
 
   val liveIns by lazy(this::computeLiveIns)
 
-  val memoryIds = IdCounter()
   val registerIds = IdCounter()
 
   init {
@@ -442,27 +441,35 @@ private fun List<AtomicId>.replaceSpilled(i: IRInstruction): IRInstruction = whe
     i.copy(result = maybeReplace(i.result), lhs = maybeReplace(i.lhs), rhs = maybeReplace(i.rhs))
   is StoreMemory -> i.copy(storeTo = maybeReplace(i.storeTo), value = maybeReplace(i.value))
   is LoadMemory -> i.copy(loadFrom = maybeReplace(i.loadFrom), result = maybeReplace(i.result))
-  is MoveInstr -> logger.throwICE("Impossible, checked in caller")
+  is MoveInstr -> {
+    val result = i.result
+    val value = i.value
+    if (result is Variable && result.id in this) {
+      StoreMemory(MemoryLocation(StackVariable(result.tid)), value)
+    } else if (value is Variable && value.id in this) {
+      LoadMemory(result, MemoryLocation(StackVariable(value.tid)))
+    } else {
+      i
+    }
+  }
 }
 
 fun CFG.insertSpillCode(spilled: List<AtomicId>) = nodes.forEach { node ->
-  val newIR = node.ir.map {
-    if (it is MoveInstr) {
-      val result = it.result
-      val value = it.value
-      if (result is Variable && result.id in spilled) {
-        StoreMemory(MemoryLocation(StackVariable(result.tid)), value)
-      } else if (value is Variable && value.id in spilled) {
-        LoadMemory(result, MemoryLocation(StackVariable(value.tid)))
-      } else {
-        it
-      }
-    } else {
-      spilled.replaceSpilled(it)
-    }
-  }
+  val newIR = node.ir.map(spilled::replaceSpilled)
   node.ir.clear()
   node.ir += newIR
+  val term = node.terminator
+  when {
+    term is ImpossibleJump && term.returned != null -> {
+      node.terminator = term.copy(returned = term.returned.map(spilled::replaceSpilled))
+    }
+    term is CondJump -> {
+      node.terminator = term.copy(cond = term.cond.map(spilled::replaceSpilled))
+    }
+    term is SelectJump -> {
+      node.terminator = term.copy(cond = term.cond.map(spilled::replaceSpilled))
+    }
+  }
 }
 
 /**

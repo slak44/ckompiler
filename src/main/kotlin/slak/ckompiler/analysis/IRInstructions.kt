@@ -37,8 +37,10 @@ data class LoadMemory(
     val loadFrom: IRValue
 ) : IRInstruction() {
   init {
-    require(loadFrom.type is PointerType)
-    require(result.type == (loadFrom.type as PointerType).referencedType)
+    if (loadFrom !is MemoryLocation) {
+      require(loadFrom.type is PointerType)
+      require(result.type == (loadFrom.type as PointerType).referencedType)
+    }
   }
 
   override fun toString() = "load $result = *($loadFrom)"
