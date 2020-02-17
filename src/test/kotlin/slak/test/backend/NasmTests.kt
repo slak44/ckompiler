@@ -160,6 +160,22 @@ class NasmTests {
   }
 
   @Test
+  fun `Int Pointers Referencing And Dereferencing Between Blocks`() {
+    compileAndRun("""
+      int main() {
+        int a = 12;
+        int* b = &a;
+        if (1) {
+          a = 33;
+        } else {
+          a = 44;
+        }
+        return a;
+      }
+    """.trimIndent()).justExitCode(33)
+  }
+
+  @Test
   fun `Return Int Via Pointer`() {
     compileAndRun(resource("e2e/retViaPointer.c")).justExitCode(42)
   }
