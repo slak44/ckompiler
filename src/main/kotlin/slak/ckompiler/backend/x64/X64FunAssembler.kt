@@ -52,8 +52,9 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       val targetRegister = PhysicalRegister(X64Target.registerByName(regName), type)
       parameterMap[ParameterReference(sseVar.index, type)] = targetRegister
     }
+    val stackVars = vars - integral.take(intArgRegNames.size) - sse.take(sseArgRegNames.size)
     // FIXME: deal with X87 here
-    for ((index, variable) in vars - integral - sse) {
+    for ((index, variable) in stackVars) {
       val type = variable.type.unqualify().normalize()
       parameterMap[ParameterReference(index, type)] = StackVariable(variable.tid)
     }
