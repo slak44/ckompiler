@@ -18,7 +18,7 @@ private class InstructionBuilder {
   }
 
   fun emit(s: Instructions) {
-    for (i in s) emit(i)
+    for (i in s) instr += i
   }
 
   fun toInstructions(): Instructions = instr
