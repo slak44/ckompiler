@@ -60,7 +60,6 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
   }
 
   /**
-   * FIXME: maybe extract this and prologue into separate class
    * System V ABI: 3.2.1, figure 3.3
    */
   override fun genFunctionPrologue(alloc: AllocationResult): List<X64Instruction> {
