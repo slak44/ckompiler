@@ -137,8 +137,7 @@ private fun CFG.mapBlocksToString(
 }
 
 private fun String.unescape(): String =
-    replace("\"", "\\\"")
-        .replace("\\b", "\\\\b")
+    replace("\\b", "\\\\b")
         .replace("\\t", "\\\\t")
         .replace("\\n", "\\\\n")
         .replace("<", "&lt;")
