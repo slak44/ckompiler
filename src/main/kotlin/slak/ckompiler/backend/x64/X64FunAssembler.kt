@@ -69,7 +69,10 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     prologue += mov.match(rbp, rsp)
     // FIXME: deal with MEMORY class function arguments (see paramSourceMap)
     // FIXME: save callee-saved registers
-    finalStackSizeBytes = alloc.stackSlots.sumBy { it.sizeBytes }
+    finalStackSizeBytes = alloc.stackSlots.sumBy { it.sizeBytes }.let {
+      if (it % ALIGNMENT_BYTES != 0) it + ALIGNMENT_BYTES - it % ALIGNMENT_BYTES
+      else it
+    }
     // See if we can use the red zone
     if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,
