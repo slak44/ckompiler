@@ -161,16 +161,7 @@ class NasmTests {
 
   @Test
   fun `Return Int Via Pointer`() {
-    compileAndRun("""
-      void f(int* result) {
-        *result = 42;
-      }
-      int main() {
-        int data;
-        f(&data);
-        return data;
-      }
-    """.trimIndent()).justExitCode(42)
+    compileAndRun(resource("e2e/retViaPointer.c")).justExitCode(42)
   }
 
   @Test
