@@ -153,9 +153,11 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       target.machineTargetData.sizeOf(it.value.type).coerceAtLeast(EIGHTBYTE)
     }
     if (stackArgsSize % ALIGNMENT_BYTES != 0) {
-      selected += sub.match(rsp, IntConstant(8, SignedIntType))
+      selected += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
     }
     for (stackArg in stackArgs.map { it.value }.asReversed()) {
+      // FIXME: if MemoryLocation would support stuff like [rsp + 24] we could avoid this sub
+      selected += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
       selected += pushArgOnStack(stackArg)
     }
     // The ABI says al must contain the number of vector arguments
@@ -209,17 +211,39 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
   }
 
   private fun pushArgOnStack(value: IRValue): List<MachineInstruction> {
-    val registerClass = target.registerClassOf(value.type)
+    val selected = mutableListOf<MachineInstruction>()
+    // If the thing is in memory, move it to a register, to avoid an illegal mem to mem operation
+    val actualValue = if (value is MemoryLocation) {
+      val resultType = (value.ptr.type as PointerType).referencedType
+      val result = VirtualRegister(cfg.registerIds(), resultType)
+      selected += matchTypedMov(result, value)
+      result
+    } else {
+      value
+    }
+    val registerClass = target.registerClassOf(actualValue.type)
     if (registerClass is Memory) {
       TODO("move memory argument to stack, push for ints, and" +
           " sub rsp, 16/movq [rsp], XMMi")
     }
     require(registerClass is X64RegisterClass)
-    return when (registerClass) {
-      X64RegisterClass.INTEGER -> TODO()
+    when (registerClass) {
+      X64RegisterClass.INTEGER -> selected += pushInteger(actualValue)
       X64RegisterClass.SSE -> TODO()
       X64RegisterClass.X87 -> TODO()
     }
+    return selected
+  }
+
+  private fun pushInteger(value: IRValue): MachineInstruction {
+    // 64-bit values can be directly pushed on the stack
+    if (target.machineTargetData.sizeOf(value.type) == EIGHTBYTE) {
+      return push.match(value)
+    }
+    // Space is already allocated, move thing to [rsp]
+    // Use the value's type for rsp, because the value might be < 8 bytes, and the mov should match
+    val topOfStack = MemoryLocation(PhysicalRegister(rsp.reg, PointerType(value.type, emptyList())))
+    return matchTypedMov(topOfStack, value)
   }
 
   private fun blockToX64Instr(
@@ -262,29 +286,37 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       stackOffsets: Map<StackSlot, Int>
   ): X64Instruction {
     require(mi.template is X64InstrTemplate)
-    val ops = mi.operands.map {
-      if (it is ConstantValue) return@map ImmediateValue(it)
-      if (it is PhysicalRegister) {
-        return@map RegisterValue(it.reg, X64Target.machineTargetData.sizeOf(it.type))
-      }
-      if (it is Variable && it.isUndefined) {
-        // Undefined behaviour, do whatever
-        val reg = (target.registers - target.forbidden)
-            .first { reg -> reg.valueClass == target.registerClassOf(it.type) }
-        return@map RegisterValue(reg, X64Target.machineTargetData.sizeOf(it.type))
-      }
-      val unwrapped = if (it is MemoryLocation) it.ptr else it
-      val machineRegister = alloc.allocations.getValue(unwrapped)
-      if (it is MemoryLocation && it.ptr !is StackVariable) {
-        return@map MemoryValue(machineRegister, X64Target.machineTargetData.sizeOf(it.type))
-      }
-      if (machineRegister is StackSlot) {
-        return@map StackValue(machineRegister, stackOffsets.getValue(machineRegister))
-      } else {
-        return@map RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(it.type))
-      }
-    }
+    val ops = mi.operands.map { operandToX64(it, alloc, stackOffsets) }
     return X64Instruction(mi.template, ops)
+  }
+
+  private fun operandToX64(
+      value: IRValue,
+      alloc: AllocationResult,
+      stackOffsets: Map<StackSlot, Int>
+  ): X64Value {
+    if (value is ConstantValue) return ImmediateValue(value)
+    if (value is PhysicalRegister) {
+      return RegisterValue(value.reg, X64Target.machineTargetData.sizeOf(value.type))
+    }
+    if (value is Variable && value.isUndefined) {
+      // Undefined behaviour, do whatever
+      val reg = (target.registers - target.forbidden)
+          .first { reg -> reg.valueClass == target.registerClassOf(value.type) }
+      return RegisterValue(reg, X64Target.machineTargetData.sizeOf(value.type))
+    }
+    val unwrapped = if (value is MemoryLocation) value.ptr else value
+    val machineRegister =
+        if (unwrapped is PhysicalRegister) unwrapped.reg
+        else alloc.allocations.getValue(unwrapped)
+    if (value is MemoryLocation && value.ptr !is StackVariable) {
+      return MemoryValue(machineRegister, X64Target.machineTargetData.sizeOf(value.type))
+    }
+    return if (machineRegister is StackSlot) {
+      StackValue(machineRegister, stackOffsets.getValue(machineRegister))
+    } else {
+      RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(value.type))
+    }
   }
 
   private fun getCallerSavedInUse(
@@ -300,8 +332,10 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     private val logger = LogManager.getLogger()
 
     private val al = PhysicalRegister(X64Target.registerByName("rax"), SignedCharType)
-    private val rbp = PhysicalRegister(X64Target.registerByName("rbp"), UnsignedLongType)
-    private val rsp = PhysicalRegister(X64Target.registerByName("rsp"), UnsignedLongType)
+    private val rbp = PhysicalRegister(
+        X64Target.registerByName("rbp"), PointerType(UnsignedLongType, emptyList()))
+    private val rsp = PhysicalRegister(
+        X64Target.registerByName("rsp"), PointerType(UnsignedLongType, emptyList()))
 
     private const val EIGHTBYTE = 8
     private const val ALIGNMENT_BYTES = 16

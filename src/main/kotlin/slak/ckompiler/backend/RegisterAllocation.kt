@@ -94,8 +94,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
           .filter { it is StackVariable || it is MemoryLocation }
           .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
           .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
-      val dyingHere = mi.uses
-          .filter { lastUses[it] == (block to mi.irLabelIndex) || it is PhysicalRegister }
+      val dyingHere = mi.uses.filter { lastUses[it] == (block to mi.irLabelIndex) }
       // Deallocate registers of values that die at this label
       for (value in dyingHere) {
         val color = coloring[value] ?: continue
@@ -104,8 +103,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
       val defined = mi.defs
           .asSequence()
           .filter { it !in colored }
-          .filter { it !is PhysicalRegister || coloring[it] == null }
-          .filter { it !is StackVariable && it !is MemoryLocation }
+          .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
       // Allocate registers for values defined at this label
       for (definition in defined) {
         val color = target.matchValueToRegister(definition, assigned)
