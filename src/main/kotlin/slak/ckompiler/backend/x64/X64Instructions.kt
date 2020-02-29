@@ -129,6 +129,12 @@ private fun instructionClass(
   return builder.instructions
 }
 
+private fun dummyInstructionClass(
+    name: String,
+    defaultUse: List<VariableUse>? = null,
+    block: ICBuilder.() -> Unit
+): List<X64InstrTemplate> = instructionClass("DUMMY $name DO NOT EMIT", defaultUse, block)
+
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (this is NamedDisplacement && ref is NamedConstant) return true
   if (this is JumpTarget && ref is JumpTargetConstant) return true
@@ -210,15 +216,15 @@ fun validateClasses(dest: IRValue, src: IRValue): X64RegisterClass {
 
 private val nullary: ICBuilder.() -> Unit = { instr() }
 
-val dummyUse = instructionClass("DUMMY USE DO NOT EMIT", listOf(VariableUse.USE)) {
+val dummyUse = dummyInstructionClass("USE", listOf(VariableUse.USE)) {
   instr(R8)
   instr(R16)
   instr(R32)
   instr(R64)
 }
 
-val dummyCallSave = instructionClass("DUMMY SAVE DO NOT EMIT", emptyList(), nullary)
-val dummyCallRestore = instructionClass("DUMMY RESTORE DO NOT EMIT", emptyList(), nullary)
+val dummyCallSave = dummyInstructionClass("CALL SAVE", emptyList(), nullary)
+val dummyCallRestore = dummyInstructionClass("CALL RESTORE", emptyList(), nullary)
 
 val imul = instructionClass("imul", listOf(VariableUse.DEF_USE, VariableUse.USE, VariableUse.USE)) {
   // 3 operand RMI form
