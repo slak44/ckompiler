@@ -30,6 +30,9 @@ fun TargetFunGenerator.spiller(
       )
     }
   }
+  check(pressure.all { it.value.isEmpty() } || allSpills.isNotEmpty()) {
+    "Either there is no pressure, or there are spills, can't have pressure but no spills"
+  }
   // FIXME: deal with spilled virtuals, don't just filter them
   cfg.insertSpillCode(allSpills.filterIsInstance<Variable>().map { it.id })
   return instructionSelection()
@@ -64,7 +67,8 @@ private fun TargetFunGenerator.findRegisterPressure(
         val classOf = target.registerClassOf(value.type)
         current[classOf] = current.getValue(classOf) - 1
       }
-      val defined = mi.defs.filter { it !is StackVariable && it !is MemoryLocation }
+      val defined = mi.defs
+          .filter { it !is StackVariable && it !is MemoryLocation && it !is PhysicalRegister }
       // Increase pressure for values defined at this label
       // If never used, then it shouldn't increase pressure
       for (definition in defined.filter { it in lastUses }) {
@@ -96,23 +100,30 @@ private fun TargetFunGenerator.spillClass(
   require(k > 0)
   val markedSpill = mutableListOf<IRValue>()
 
-  fun Iterable<IRValue>.ofClass() = filter { target.registerClassOf(it.type) == registerClass }
+  fun Sequence<IRValue>.ofClass() = filter { target.registerClassOf(it.type) == registerClass }
 
-  val p = (cfg.liveIns.getValue(block) + block.phi.map { it.variable }).ofClass()
+  val p = (cfg.liveIns.getValue(block) + block.phi.map { it.variable })
+      .asSequence().ofClass().toList()
   require(p.size <= k)
-  val q = mutableListOf<IRValue>()
+  val q = mutableSetOf<IRValue>()
   q += p
   for (mi in instructions) {
-    val usesOfClass = mi.uses
+    val dyingHere = mi.uses
+        .asSequence()
         .ofClass()
         .filter { it !is StackVariable && it !is MemoryLocation }
-    val dyingHere = usesOfClass.filter { lastUses[it] == (block to mi.irLabelIndex) }
+        .filter { lastUses[it] == (block to mi.irLabelIndex) || it is PhysicalRegister }
     for (value in dyingHere) {
       q -= value
     }
-    val defined = mi.defs.ofClass().filter { it !is StackVariable && it !is MemoryLocation }
-    for (definition in defined.filter { it in lastUses }) {
-      if (definition in alreadySpilled) continue
+    val defined = mi.defs
+        .asSequence()
+        .ofClass()
+        .filter { it !is StackVariable && it !is MemoryLocation }
+        .filter { it in lastUses }
+        .filter { it !in alreadySpilled }
+        .filterNot { it is PhysicalRegister && it.reg in target.forbidden }
+    for (definition in defined) {
       q += definition
       if (q.size > k) {
         // Spill the furthest use

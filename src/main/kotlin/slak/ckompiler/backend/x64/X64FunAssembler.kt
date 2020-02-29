@@ -53,6 +53,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       parameterMap[ParameterReference(sseVar.index, type)] = targetRegister
     }
     val stackVars = vars - integral.take(intArgRegNames.size) - sse.take(sseArgRegNames.size)
+    cfg.insertSpillCode(stackVars.map { it.value.id })
     // FIXME: deal with X87 here
     for ((index, variable) in stackVars) {
       val type = variable.type.unqualify().normalize()

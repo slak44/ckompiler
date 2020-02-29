@@ -94,7 +94,8 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
           .filter { it is StackVariable || it is MemoryLocation }
           .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
           .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
-      val dyingHere = mi.uses.filter { lastUses[it] == (block to mi.irLabelIndex) }
+      val dyingHere = mi.uses
+          .filter { lastUses[it] == (block to mi.irLabelIndex) || it is PhysicalRegister }
       // Deallocate registers of values that die at this label
       for (value in dyingHere) {
         val color = coloring[value] ?: continue

@@ -137,14 +137,18 @@ class X64Generator(
     return selected
   }
 
+  private fun removeParamsFromValue(value: IRValue): IRValue {
+    return if (value is ParameterReference) {
+      parameterMap[value]
+          ?: logger.throwICE("Function parameter not mapped to register/memory")
+    } else {
+      value
+    }
+  }
+
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is MoveInstr -> {
-      val rhs = if (i.value is ParameterReference) {
-        parameterMap[i.value]
-            ?: logger.throwICE("Function parameter not mapped to register/memory")
-      } else {
-        i.value
-      }
+      val rhs = removeParamsFromValue(i.value)
       listOf(matchTypedMov(i.result, rhs))
     }
     is LoadMemory -> {
@@ -154,10 +158,15 @@ class X64Generator(
       listOf(matchTypedMov(i.result, loadable))
     }
     is StoreMemory -> {
+      val value = removeParamsFromValue(i.value)
       val storable =
           if (i.storeTo is StackVariable || i.storeTo is MemoryLocation) i.storeTo
           else MemoryLocation(i.storeTo)
-      listOf(matchTypedMov(storable, i.value))
+      if (MemoryLocation(value) == storable) {
+        emptyList()
+      } else {
+        listOf(matchTypedMov(storable, value))
+      }
     }
     is StructuralCast -> createStructuralCast(i)
     is ReinterpretCast -> {
