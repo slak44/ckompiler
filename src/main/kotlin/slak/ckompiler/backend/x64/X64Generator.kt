@@ -162,7 +162,7 @@ class X64Generator(
       val storable =
           if (i.storeTo is StackVariable || i.storeTo is MemoryLocation) i.storeTo
           else MemoryLocation(i.storeTo)
-      if (MemoryLocation(value) == storable) {
+      if (value.type is PointerType && MemoryLocation(value) == storable) {
         emptyList()
       } else {
         listOf(matchTypedMov(storable, value))
