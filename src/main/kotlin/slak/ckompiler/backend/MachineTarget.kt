@@ -222,8 +222,11 @@ interface TargetFunGenerator : FunctionAssembler {
 interface MachineTarget {
   val machineTargetData: MachineTargetData
   val targetName: String
+  val registerClasses: List<MachineRegisterClass>
+  /**
+   * Complete list of registers for this target.
+   */
   val registers: List<MachineRegister>
-
   /**
    * Do not consider these when allocating function locals.
    */

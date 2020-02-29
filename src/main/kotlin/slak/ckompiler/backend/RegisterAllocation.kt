@@ -44,9 +44,10 @@ private fun MachineTarget.matchValueToRegister(
  * Performs target-independent spilling and register allocation.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
+ * @see spiller
  */
 fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
-  val lastUses = mutableMapOf<IRValue, Pair<BasicBlock, Int>>()
+  val lastUses = mutableMapOf<IRValue, Label>()
   for (block in cfg.domTreePreorder) {
     for (mi in instrMap.getValue(block)) {
       // Initialize lastUses for other LoadableValues
@@ -57,7 +58,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   }
   // Initialize lastUses for Variables
   lastUses.putAll(cfg.defUseChains.mapValues { it.value.last() })
-  // FIXME: spilling here
+  val spilledInstrs = spiller(instrMap, lastUses)
   // FIXME: coalescing
   // List of visited nodes for DFS
   val visited = mutableSetOf<BasicBlock>()
@@ -87,7 +88,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
       assigned += color
     }
     val colored = mutableSetOf<IRValue>()
-    for (mi in instrMap.getValue(block)) {
+    for (mi in spilledInstrs.getValue(block)) {
       // Also add stack variables to coloring
       coloring += mi.operands
           .filter { it is StackVariable || it is MemoryLocation }
@@ -125,7 +126,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   }
   allocBlock(cfg.startBlock)
   val allocations = coloring.filterKeys { it !is ConstantValue }
-  val intermediate = AllocationResult(instrMap, allocations, registerUseMap)
+  val intermediate = AllocationResult(spilledInstrs, allocations, registerUseMap)
   return removePhi(intermediate)
 }
 

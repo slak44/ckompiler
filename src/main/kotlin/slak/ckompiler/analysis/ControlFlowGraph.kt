@@ -8,8 +8,8 @@ import java.util.*
 
 private val logger = LogManager.getLogger()
 
-typealias Definitions = Map<Variable, Pair<BasicBlock, LabelIndex>>
-typealias DefUseChains = Map<Variable, List<Pair<BasicBlock, LabelIndex>>>
+typealias Definitions = Map<Variable, Label>
+typealias DefUseChains = Map<Variable, List<Label>>
 
 /**
  * An instance of a [FunctionDefinition]'s control flow graph.
@@ -214,11 +214,11 @@ private class VariableRenamer(val cfg: CFG) {
   /**
    * Def-use chains for each variable definition. Stores location of all uses.
    */
-  val defUseChains = mutableMapOf<Variable, MutableList<Pair<BasicBlock, LabelIndex>>>()
+  val defUseChains = mutableMapOf<Variable, MutableList<Label>>()
   /**
    * Map of all versions' definitions, and their exact location.
    */
-  val definitions = mutableMapOf<Variable, Pair<BasicBlock, LabelIndex>>()
+  val definitions = mutableMapOf<Variable, Label>()
 
   /**
    * Creates a new version of a variable. Updates [latestVersions].

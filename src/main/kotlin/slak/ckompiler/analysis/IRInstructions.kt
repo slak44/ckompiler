@@ -335,6 +335,11 @@ data class NamedConstant(override val name: String, override val type: TypeName)
 typealias LabelIndex = Int
 
 /**
+ * Identifies a label inside a block.
+ */
+typealias Label = Pair<BasicBlock, LabelIndex>
+
+/**
  * The [variable] definition that reaches a point in the CFG, along with information about where it
  * was defined.
  *

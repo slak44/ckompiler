@@ -142,7 +142,7 @@ class SSATests {
     }
   }
 
-  private fun CFG.useChainOf(name: String, version: Int): List<Pair<BasicBlock, LabelIndex>> {
+  private fun CFG.useChainOf(name: String, version: Int): List<Label> {
     return defUseChains.keys
         .first { it.tid.name == name && it.version == version }
         .let { defUseChains.getValue(it) }
