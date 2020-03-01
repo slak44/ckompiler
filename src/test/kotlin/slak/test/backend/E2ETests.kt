@@ -12,7 +12,7 @@ import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class NasmTests {
+class E2ETests {
   private class CompileAndRunBuilder {
     var text: String? = null
     var file: File? = null
