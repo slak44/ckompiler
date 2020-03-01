@@ -237,10 +237,10 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
           " sub rsp, 16/movq [rsp], XMMi")
     }
     require(registerClass is X64RegisterClass)
-    when (registerClass) {
-      X64RegisterClass.INTEGER -> selected += pushInteger(actualValue)
-      X64RegisterClass.SSE -> TODO()
-      X64RegisterClass.X87 -> TODO()
+    selected += when (registerClass) {
+      X64RegisterClass.INTEGER -> pushInteger(actualValue)
+      X64RegisterClass.SSE -> pushSSE(actualValue)
+      X64RegisterClass.X87 -> TODO("push x87")
     }
     return selected
   }
@@ -253,6 +253,12 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
 //    }
     // Space is already allocated, move thing to [rsp]
     // Use the value's type for rsp, because the value might be < 8 bytes, and the mov should match
+    val topOfStack = MemoryLocation(PhysicalRegister(rsp.reg, PointerType(value.type, emptyList())))
+    return matchTypedMov(topOfStack, value)
+  }
+
+  // FIXME: redundant code
+  private fun pushSSE(value: IRValue): MachineInstruction {
     val topOfStack = MemoryLocation(PhysicalRegister(rsp.reg, PointerType(value.type, emptyList())))
     return matchTypedMov(topOfStack, value)
   }
@@ -373,11 +379,8 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     val result = mutableListOf<MachineInstruction>()
     val topOfStack = MemoryLocation(PhysicalRegister(rsp.reg, PointerType(type, emptyList())))
     when (popTo.valueClass) {
-      X64RegisterClass.INTEGER -> {
+      X64RegisterClass.SSE, X64RegisterClass.INTEGER -> {
         result += matchTypedMov(PhysicalRegister(popTo, type), topOfStack)
-      }
-      X64RegisterClass.SSE -> {
-        TODO()
       }
       X64RegisterClass.X87 -> TODO("pop X87 thing")
     }

@@ -198,8 +198,8 @@ fun matchTypedMov(dest: IRValue, src: IRValue): MachineInstruction {
 private fun matchRegTypedMov(dest: IRValue, src: IRValue) = when (validateClasses(dest, src)) {
   X64RegisterClass.INTEGER -> mov.match(dest, src)
   X64RegisterClass.SSE -> when (X64Target.machineTargetData.sizeOf(src.type)) {
-    4 -> movss.match(dest, src)
-    8 -> movsd.match(dest, src)
+    4 -> movss.tryMatch(dest, src) ?: movq.match(dest, src)
+    8 -> movsd.tryMatch(dest, src) ?: movq.match(dest, src)
     else -> logger.throwICE("Float size not 4 or 8 bytes")
   }
   X64RegisterClass.X87 -> TODO("x87 movs")
@@ -333,6 +333,16 @@ val movzx = instructionClass("movzx", listOf(VariableUse.DEF, VariableUse.USE)) 
 
   instr(R32, RM16)
   instr(R64, RM16)
+}
+
+val movq = instructionClass("movq", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(XMM_SS, XMM_SS)
+  instr(XMM_SD, XMM_SD)
+  instr(XMM_SS, M64)
+  instr(XMM_SD, M64)
+
+  instr(M64, XMM_SS)
+  instr(M64, XMM_SD)
 }
 
 val setcc = listOf(
