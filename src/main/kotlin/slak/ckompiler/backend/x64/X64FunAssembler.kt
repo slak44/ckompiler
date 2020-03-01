@@ -168,7 +168,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     for (stackArg in stackArgs.map { it.value }.asReversed()) {
       // FIXME: if MemoryLocation would support stuff like [rsp + 24] we could avoid this sub
       selected += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
-      selected += pushArgOnStack(stackArg)
+      selected += pushOnStack(stackArg)
     }
     // The ABI says al must contain the number of vector arguments
     selected += mov.match(al, IntConstant(fltRegArgs.size, SignedCharType))
@@ -220,7 +220,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     return selected
   }
 
-  private fun pushArgOnStack(value: IRValue): List<MachineInstruction> {
+  private fun pushOnStack(value: IRValue): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
     // If the thing is in memory, move it to a register, to avoid an illegal mem to mem operation
     val actualValue = if (value is MemoryLocation) {
@@ -247,9 +247,10 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
 
   private fun pushInteger(value: IRValue): MachineInstruction {
     // 64-bit values can be directly pushed on the stack
-    if (target.machineTargetData.sizeOf(value.type) == EIGHTBYTE) {
-      return push.match(value)
-    }
+    // FIXME: this is wrong, we space is already allocated, don't use push
+//    if (target.machineTargetData.sizeOf(value.type) == EIGHTBYTE) {
+//      return push.match(value)
+//    }
     // Space is already allocated, move thing to [rsp]
     // Use the value's type for rsp, because the value might be < 8 bytes, and the mov should match
     val topOfStack = MemoryLocation(PhysicalRegister(rsp.reg, PointerType(value.type, emptyList())))
@@ -262,29 +263,35 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       stackOffsets: Map<StackSlot, Int>
   ): List<X64Instruction> {
     val result = mutableListOf<X64Instruction>()
-    var lastSavedForCall: List<MachineRegister>? = null
+    val currentInUse = mutableListOf<Pair<MachineRegister, TypeName>>()
+    currentInUse += cfg.liveIns.getValue(block).map { alloc.allocations.getValue(it) to it.type }
+    var lastSavedForCall: List<Pair<MachineRegister, TypeName>>? = null
     for (mi in alloc.partial.getValue(block)) {
+      // Track in-use registers
+      currentInUse -= mi.uses
+          .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
+          .filter { alloc.lastUses[it] == Label(block, mi.irLabelIndex) }
+          .map { alloc.allocations.getValue(it) to it.type }
+      currentInUse += mi.defs
+          .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
+          .map { alloc.allocations.getValue(it) to it.type }
+
       if (mi.template in dummyUse) continue
       if (mi.template in dummyCallSave) {
-        lastSavedForCall = getCallerSavedInUse(alloc, block, mi.irLabelIndex)
-        result += lastSavedForCall.map {
-          val pushInstr = push.match(PhysicalRegister(it, SignedLongType))
-          val pushTemplate = pushInstr.template as X64InstrTemplate
-          X64Instruction(pushTemplate, listOf(RegisterValue(it, it.sizeBytes)))
-        }
+        lastSavedForCall = currentInUse.filterNot { target.isPreservedAcrossCalls(it.first) }
+        result += saveRegisters(lastSavedForCall).map { miToX64Instr(it, alloc, emptyMap()) }
         continue
       }
       if (mi.template in dummyCallRestore) {
         requireNotNull(lastSavedForCall) {
           "Dummy call restore created without matching dummy call save"
         }
-        result += lastSavedForCall.asReversed().map {
-          val popInstr = pop.match(PhysicalRegister(it, SignedLongType))
-          val pushTemplate = popInstr.template as X64InstrTemplate
-          X64Instruction(pushTemplate, listOf(RegisterValue(it, it.sizeBytes)))
-        }
+        result += restoreRegisters(lastSavedForCall.asReversed())
+            .map { miToX64Instr(it, alloc, emptyMap()) }
+        lastSavedForCall = null
         continue
       }
+      // Add current instruction
       result += miToX64Instr(mi, alloc, stackOffsets)
     }
     return result
@@ -332,13 +339,50 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     }
   }
 
-  private fun getCallerSavedInUse(
-      alloc: AllocationResult,
-      block: BasicBlock,
-      labelIndex: LabelIndex
-  ): List<MachineRegister> {
-    // FIXME: get caller-saved registers in-use at the given label, and save those
-    return listOf<String>("rax", "rcx").map { target.registerByName(it) }
+  private fun saveRegisters(
+      toSave: List<Pair<MachineRegister, TypeName>>
+  ): List<MachineInstruction> {
+    val result = mutableListOf<MachineInstruction>()
+    val size = toSave.sumBy { target.machineTargetData.sizeOf(it.second) }
+    if (size % ALIGNMENT_BYTES != 0) {
+      result += sub.match(rsp, IntConstant((size alignTo ALIGNMENT_BYTES) - size, SignedIntType))
+    }
+    for ((register, type) in toSave) {
+      result += sub.match(rsp, IntConstant(target.machineTargetData.sizeOf(type), SignedIntType))
+      result += pushOnStack(PhysicalRegister(register, type))
+    }
+    return result
+  }
+
+  private fun restoreRegisters(
+      toRestore: List<Pair<MachineRegister, TypeName>>
+  ): List<MachineInstruction> {
+    val result = mutableListOf<MachineInstruction>()
+    val size = toRestore.sumBy { target.machineTargetData.sizeOf(it.second) }
+    for ((register, type) in toRestore) {
+      result += popRegister(register, type)
+    }
+    if (size % ALIGNMENT_BYTES != 0) {
+      result += add.match(rsp, IntConstant((size alignTo ALIGNMENT_BYTES) - size, SignedIntType))
+    }
+    return result
+  }
+
+  private fun popRegister(popTo: MachineRegister, type: TypeName): List<MachineInstruction> {
+    require(popTo.valueClass is X64RegisterClass)
+    val result = mutableListOf<MachineInstruction>()
+    val topOfStack = MemoryLocation(PhysicalRegister(rsp.reg, PointerType(type, emptyList())))
+    when (popTo.valueClass) {
+      X64RegisterClass.INTEGER -> {
+        result += matchTypedMov(PhysicalRegister(popTo, type), topOfStack)
+      }
+      X64RegisterClass.SSE -> {
+        TODO()
+      }
+      X64RegisterClass.X87 -> TODO("pop X87 thing")
+    }
+    result += add.match(rsp, IntConstant(target.machineTargetData.sizeOf(type), SignedIntType))
+    return result
   }
 
   companion object {

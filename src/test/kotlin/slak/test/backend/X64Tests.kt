@@ -143,7 +143,7 @@ class X64Tests {
 
   @Test
   fun `Register Allocation With Register Pressure`() {
-    val (_, allocs, _, stackSlots) = regAlloc("codegen/highRegisterPressure.c")
+    val (_, allocs, _, _, stackSlots) = regAlloc("codegen/highRegisterPressure.c")
     assertEquals(14, allocs.values.filter { it.valueClass != Memory }.distinct().size)
     val spilled = allocs.entries.filter { it.value.valueClass == Memory }
     assertEquals(1, spilled.size)
@@ -152,14 +152,14 @@ class X64Tests {
 
   @Test
   fun `Register Allocation Many Non-Interfering`() {
-    val (_, allocs, _, stackSlots) = regAlloc("codegen/parallelLiveRanges.c")
+    val (_, allocs, _, _, stackSlots) = regAlloc("codegen/parallelLiveRanges.c")
     assertEquals(0, allocs.values.filter { it.valueClass == Memory }.size)
     assert(stackSlots.isEmpty())
   }
 
   @Test
   fun `Register Allocation Inter-Block Interference`() {
-    val (_, allocs, _, stackSlots) = regAlloc("codegen/interBlockInterference.c")
+    val (_, allocs, _, _, stackSlots) = regAlloc("codegen/interBlockInterference.c")
     assert(stackSlots.isEmpty())
     assertEquals(2, allocs.values.distinct().size)
   }

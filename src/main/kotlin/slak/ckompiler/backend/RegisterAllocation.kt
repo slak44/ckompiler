@@ -19,10 +19,11 @@ typealias RegisterUseMap = Map<BasicBlock, List<MachineRegister>>
 data class AllocationResult(
     val partial: InstructionMap,
     val allocations: AllocationMap,
-    val registerUseMap: RegisterUseMap
+    val registerUseMap: RegisterUseMap,
+    val lastUses: Map<IRValue, Label>
 ) {
   val stackSlots get() = allocations.values.filterIsInstance<StackSlot>()
-  operator fun component4() = stackSlots
+  operator fun component5() = stackSlots
 }
 
 private fun MachineTarget.matchValueToRegister(
@@ -125,7 +126,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   }
   allocBlock(cfg.startBlock)
   val allocations = coloring.filterKeys { it !is ConstantValue }
-  val intermediate = AllocationResult(spilledInstrs, allocations, registerUseMap)
+  val intermediate = AllocationResult(spilledInstrs, allocations, registerUseMap, lastUses)
   return removePhi(intermediate)
 }
 
