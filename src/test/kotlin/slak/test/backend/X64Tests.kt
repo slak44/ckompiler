@@ -2,18 +2,16 @@ package slak.test.backend
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.IRValue
-import slak.ckompiler.analysis.LabelIndex
-import slak.ckompiler.analysis.VirtualRegister
-import slak.ckompiler.backend.AllocationResult
-import slak.ckompiler.backend.InstructionMap
-import slak.ckompiler.backend.Memory
-import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.setcc
+import slak.ckompiler.parser.SignedIntType
+import slak.ckompiler.parser.TypedIdentifier
 import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
@@ -64,6 +62,26 @@ class X64Tests {
       println(list.joinToString(separator = "\n", postfix = "\n"))
     }
     return res
+  }
+
+  @Suppress("unused")
+  enum class RegisterCalleeSavedTestCase(val reg: MachineRegister, val isCalleeSaved: Boolean) {
+    RAX(X64Target.registerByName("rax"), false),
+    RBX(X64Target.registerByName("rbx"), true),
+    RSP(X64Target.registerByName("rsp"), true),
+    R10(X64Target.registerByName("r10"), false),
+    XMM5(X64Target.registerByName("xmm5"), false),
+    STACK_SLOT(StackSlot(
+        StackVariable(TypedIdentifier("fake", SignedIntType)),
+        MachineTargetData.x64
+    ), false)
+  }
+
+  @ParameterizedTest
+  @EnumSource(RegisterCalleeSavedTestCase::class)
+  fun `Correctly Detect Callee Saved Registers`(test: RegisterCalleeSavedTestCase) {
+    val reported = X64Target.isPreservedAcrossCalls(test.reg)
+    assertEquals(test.isCalleeSaved, reported)
   }
 
   @Test
