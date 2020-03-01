@@ -319,4 +319,43 @@ class E2ETests {
       }
     """.trimIndent()).expect(stdout = test.output)
   }
+
+  companion object {
+    private const val A = 5
+    private const val B = 23
+  }
+
+  @Suppress("unused")
+  enum class IntOpsTestCases(val code: String, private val result: Int) {
+    INT_ADD("res = a + b;", A + B),
+    INT_SUB("res = a - b;", A - B),
+    INT_MUL("res = a * b;", A * B),
+    INT_DIV("res = b / a;", B / A),
+    INT_REM("res = b % a;", B % A),
+
+    INT_NEG("res = -b;", -B),
+    INT_NOT("res = !b;", 0),
+
+    INT_EQ("res = a == b;", 0),
+    INT_NEQ("res = a != b;", 1),
+    INT_LEQ("res = a <= b;", 1);
+
+    val output get() = result.toString()
+  }
+
+  @ParameterizedTest
+  @EnumSource(IntOpsTestCases::class)
+  fun `Int Operation Tests`(test: IntOpsTestCases) {
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int a = $A;
+        int b = $B;
+        int res;
+        ${test.code}
+        printf("%d", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = test.output)
+  }
 }
