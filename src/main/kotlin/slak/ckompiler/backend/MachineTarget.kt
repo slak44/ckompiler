@@ -232,6 +232,8 @@ interface MachineTarget {
    */
   val forbidden: List<MachineRegister>
 
+  fun isPreservedAcrossCalls(register: MachineRegister): Boolean
+
   fun registerClassOf(type: TypeName): MachineRegisterClass
 }
 

@@ -18,6 +18,20 @@ object X64Target : MachineTarget {
   override val forbidden = listOf(registerByName("rsp"), registerByName("rbp"))
 
   /**
+   * System V ABI: figure 3.4, page 23
+   */
+  private val calleeSaved = listOf(
+      "rbx", "rsp", "rbp", "r12", "r13", "r14", "r15"
+  ).mapTo(mutableSetOf(), this::registerByName)
+
+  /**
+   * System V ABI: figure 3.4, page 23
+   */
+  override fun isPreservedAcrossCalls(register: MachineRegister): Boolean {
+    return register in calleeSaved
+  }
+
+  /**
    * System V ABI: 3.2.3, page 17
    */
   override fun registerClassOf(type: TypeName): MachineRegisterClass = when (type) {
