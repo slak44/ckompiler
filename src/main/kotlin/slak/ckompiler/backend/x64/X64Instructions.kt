@@ -293,7 +293,7 @@ private val unaryRM: ICBuilder.() -> Unit = {
 }
 
 val neg = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
-val not = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
+val not = instructionClass("not", listOf(VariableUse.DEF_USE), unaryRM)
 
 val lea = instructionClass("lea", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(R16, M32)
