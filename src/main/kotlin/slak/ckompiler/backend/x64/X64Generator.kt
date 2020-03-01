@@ -336,14 +336,6 @@ class X64Generator(
     }
   }
 
-  private fun findImmInBinary(lhs: IRValue, rhs: IRValue): Pair<IRValue, IRValue> {
-    // Can't have result = imm OP imm
-    require(lhs !is ConstantValue || rhs !is ConstantValue)
-    val nonImm = if (lhs is ConstantValue) rhs else lhs
-    val maybeImm = if (lhs === nonImm) rhs else lhs
-    return nonImm to maybeImm
-  }
-
   private fun matchCmp(i: BinaryInstruction, compare: Comparisons): List<MachineInstruction> {
     // Floats use the unsigned flags, so isSigned will only be true for actual signed ints
     val isSigned = i.lhs.type.unqualify() is SignedIntType
@@ -355,9 +347,10 @@ class X64Generator(
       Comparisons.LESS_EQUAL -> if (isSigned) "setle" else "setbe"
       Comparisons.GREATER_EQUAL -> if (isSigned) "setge" else "setae"
     }
+    val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
     val setccTarget = VirtualRegister(cfg.registerIds(), SignedCharType)
     return listOf(
-        matchTypedCmp(i.lhs, i.rhs),
+        matchTypedCmp(nonImm, maybeImm),
         setcc.getValue(setValue).match(setccTarget),
         movzx.match(i.result, setccTarget)
     )
@@ -374,6 +367,14 @@ class X64Generator(
       else -> logger.throwICE("Float size not 4 or 8 bytes")
     }
     X64RegisterClass.X87 -> TODO("x87 cmps")
+  }
+
+  private fun findImmInBinary(lhs: IRValue, rhs: IRValue): Pair<IRValue, IRValue> {
+    // Can't have result = imm OP imm
+    require(lhs !is ConstantValue || rhs !is ConstantValue)
+    val nonImm = if (lhs is ConstantValue) rhs else lhs
+    val maybeImm = if (lhs === nonImm) rhs else lhs
+    return nonImm to maybeImm
   }
 
   companion object {
