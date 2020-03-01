@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.x64
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
@@ -32,6 +33,12 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
    */
   override val parameterMap = mutableMapOf<ParameterReference, IRValue>()
 
+  /**
+   * Stores actual stack values for function parameters passed on the stack. That is, it maps the
+   * id of the relevant [Variable]/[StackVariable]/[StackSlot] to its `[rbp + 0x123]` [StackValue].
+   */
+  private val stackParamOffsets = mutableMapOf<AtomicId, StackValue>()
+
   init {
     mapFunctionParams()
   }
@@ -55,9 +62,15 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     val stackVars = vars - integral.take(intArgRegNames.size) - sse.take(sseArgRegNames.size)
     cfg.insertSpillCode(stackVars.map { it.value.id })
     // FIXME: deal with X87 here
+    var paramOffset = INITIAL_MEM_ARG_OFFSET
     for ((index, variable) in stackVars) {
       val type = variable.type.unqualify().normalize()
-      parameterMap[ParameterReference(index, type)] = StackVariable(variable.tid)
+      val stackVar = StackVariable(variable.tid)
+      parameterMap[ParameterReference(index, type)] = stackVar
+      stackParamOffsets[stackVar.id] =
+          StackValue(StackSlot(stackVar, target.machineTargetData), paramOffset)
+      val varSize = target.machineTargetData.sizeOf(type)
+      paramOffset += varSize.coerceAtLeast(EIGHTBYTE) alignTo EIGHTBYTE
     }
   }
 
@@ -70,10 +83,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     prologue += mov.match(rbp, rsp)
     // FIXME: deal with MEMORY class function arguments (see paramSourceMap)
     // FIXME: save callee-saved registers
-    finalStackSizeBytes = alloc.stackSlots.sumBy { it.sizeBytes }.let {
-      if (it % ALIGNMENT_BYTES != 0) it + ALIGNMENT_BYTES - it % ALIGNMENT_BYTES
-      else it
-    }
+    finalStackSizeBytes = alloc.stackSlots.sumBy { it.sizeBytes } alignTo ALIGNMENT_BYTES
     // See if we can use the red zone
     if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,
@@ -312,10 +322,13 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     if (value is MemoryLocation && value.ptr !is StackVariable) {
       return MemoryValue(machineRegister, X64Target.machineTargetData.sizeOf(value.type))
     }
-    return if (machineRegister is StackSlot) {
-      StackValue(machineRegister, stackOffsets.getValue(machineRegister))
+    if (machineRegister !is StackSlot) {
+      return RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(value.type))
+    }
+    return if (machineRegister.id in stackParamOffsets) {
+      stackParamOffsets.getValue(machineRegister.id)
     } else {
-      RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(value.type))
+      StackValue.fromFrame(machineRegister, stackOffsets.getValue(machineRegister))
     }
   }
 
@@ -338,8 +351,13 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
         X64Target.registerByName("rsp"), PointerType(UnsignedLongType, emptyList()))
 
     private const val EIGHTBYTE = 8
+    private const val INITIAL_MEM_ARG_OFFSET = 16
     private const val ALIGNMENT_BYTES = 16
     private const val RED_ZONE_BYTES = 128
+
+    private infix fun Int.alignTo(alignment: Int): Int {
+      return if (this % alignment != 0) this + alignment - this % alignment else this
+    }
 
     /**
      * System V ABI: 3.2.3, page 20

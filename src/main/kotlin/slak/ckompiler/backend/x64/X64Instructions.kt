@@ -7,6 +7,7 @@ import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.Imm.*
 import slak.ckompiler.backend.x64.ModRM.*
 import slak.ckompiler.throwICE
+import kotlin.math.absoluteValue
 
 private val logger = LogManager.getLogger()
 
@@ -79,8 +80,15 @@ data class RegisterValue(val register: MachineRegister, val size: Int) : X64Valu
   }
 }
 
-data class StackValue(val stackSlot: StackSlot, val offset: Int) : X64Value() {
-  override fun toString() = "[rbp - ${offset + stackSlot.sizeBytes}]"
+data class StackValue(val stackSlot: StackSlot, val absOffset: Int) : X64Value() {
+  override fun toString() =
+      if (absOffset < 0) "[rbp - ${absOffset.absoluteValue}]"
+      else "[rbp + $absOffset]"
+
+  companion object {
+    fun fromFrame(stackSlot: StackSlot, frameOffset: Int) =
+        StackValue(stackSlot, -(frameOffset + stackSlot.sizeBytes))
+  }
 }
 
 data class MemoryValue(val register: MachineRegister, val size: Int) : X64Value() {
