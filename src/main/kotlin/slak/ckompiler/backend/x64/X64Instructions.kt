@@ -119,7 +119,7 @@ private class ICBuilder(
   fun instr(
       implicitOperands: List<MachineRegister>,
       implicitResults: List<MachineRegister>,
-      operandUse: List<VariableUse>,
+      operandUse: List<VariableUse> = emptyList(),
       vararg operands: Operand
   ) {
     instructions +=
@@ -234,6 +234,9 @@ val dummyUse = dummyInstructionClass("USE", listOf(VariableUse.USE)) {
 val dummyCallSave = dummyInstructionClass("CALL SAVE", emptyList(), nullary)
 val dummyCallRestore = dummyInstructionClass("CALL RESTORE", emptyList(), nullary)
 
+private val rax = X64Target.registerByName("rax")
+private val rdx = X64Target.registerByName("rdx")
+
 val imul = instructionClass("imul", listOf(VariableUse.DEF_USE, VariableUse.USE, VariableUse.USE)) {
   // 3 operand RMI form
   instr(R16, RM16, IMM8)
@@ -249,13 +252,25 @@ val imul = instructionClass("imul", listOf(VariableUse.DEF_USE, VariableUse.USE,
   twoOp.instr(R64, RM64)
   // 1 operand M form
   val oneOp = listOf(VariableUse.DEF_USE)
-  val rax = X64Target.registerByName("rax")
-  val rdx = X64Target.registerByName("rdx")
   instr(listOf(rax), listOf(rax, rdx), oneOp, RM8)
   instr(listOf(rax), listOf(rax, rdx), oneOp, RM16)
   instr(listOf(rax), listOf(rax, rdx), oneOp, RM32)
   instr(listOf(rax), listOf(rax, rdx), oneOp, RM64)
 }
+
+private val division: ICBuilder.() -> Unit = {
+  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse!!, RM8)
+  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse, RM16)
+  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse, RM32)
+  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse, RM64)
+}
+
+val div = instructionClass("div", listOf(VariableUse.USE), division)
+val idiv = instructionClass("idiv", listOf(VariableUse.USE), division)
+
+val cwd = instructionClass("cwd", emptyList(), nullary)
+val cdq = instructionClass("cdq", emptyList(), nullary)
+val cqo = instructionClass("cqo", emptyList(), nullary)
 
 private val arithmetic: ICBuilder.() -> Unit = {
   instr(RM8, IMM8)

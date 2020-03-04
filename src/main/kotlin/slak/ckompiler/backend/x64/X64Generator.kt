@@ -180,8 +180,7 @@ class X64Generator(
       IntegralBinaryOps.MUL -> {
         if (i.lhs.type.unqualify() is SignedIntegralType) matchIMul(i) else TODO("mul")
       }
-      IntegralBinaryOps.DIV -> TODO()
-      IntegralBinaryOps.REM -> TODO()
+      IntegralBinaryOps.REM, IntegralBinaryOps.DIV -> matchDivRem(i)
       IntegralBinaryOps.LSH -> TODO()
       IntegralBinaryOps.RSH -> TODO()
       IntegralBinaryOps.AND -> matchCommutative(i, and)
@@ -316,6 +315,26 @@ class X64Generator(
     return listOf(
         mov.match(i.result, nonImm),
         imul.match(i.result, maybeImm)
+    )
+  }
+
+  private fun matchDivRem(i: IntBinary): List<MachineInstruction> {
+    val divType = i.lhs.type.unqualify()
+    val divInstr = if (divType is SignedIntegralType) idiv else div
+    val cdqInstr = when (target.machineTargetData.sizeOf(divType)) {
+      2 -> cwd
+      4 -> cdq
+      8 -> cqo
+      else -> TODO("what to do?")
+    }
+    val rax = PhysicalRegister(target.registerByName("rax"), divType)
+    val rdx = PhysicalRegister(target.registerByName("rdx"), divType)
+    val resultReg = if (i.op == IntegralBinaryOps.REM) rdx else rax
+    return listOf(
+        mov.match(rax, i.lhs),
+        cdqInstr.match(),
+        divInstr.match(i.rhs),
+        mov.match(i.result, resultReg)
     )
   }
 
