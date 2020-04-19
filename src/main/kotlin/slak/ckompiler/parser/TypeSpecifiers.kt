@@ -84,11 +84,11 @@ class Char(first: Keyword) : BasicTypeSpecifier(first) {
 }
 
 class SignedChar(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Char"
+  override fun toString() = "${Keywords.SIGNED.keyword} ${Keywords.CHAR.keyword}"
 }
 
 class UnsignedChar(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Char"
+  override fun toString() = "${Keywords.UNSIGNED.keyword} ${Keywords.CHAR.keyword}"
 }
 
 class Short(first: Keyword) : BasicTypeSpecifier(first) {
@@ -96,11 +96,11 @@ class Short(first: Keyword) : BasicTypeSpecifier(first) {
 }
 
 class SignedShort(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Short"
+  override fun toString() = "${Keywords.SIGNED.keyword} ${Keywords.SHORT.keyword}"
 }
 
 class UnsignedShort(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Short"
+  override fun toString() = "${Keywords.UNSIGNED.keyword} ${Keywords.SHORT.keyword}"
 }
 
 class IntType(first: Keyword) : BasicTypeSpecifier(first) {
@@ -120,23 +120,23 @@ class LongType(first: Keyword) : BasicTypeSpecifier(first) {
 }
 
 class SignedLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Long"
+  override fun toString() = "${Keywords.SIGNED.keyword} ${Keywords.LONG.keyword}"
 }
 
 class UnsignedLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Long"
+  override fun toString() = "${Keywords.UNSIGNED.keyword} ${Keywords.LONG.keyword}"
 }
 
 class LongLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "$Long $Long"
+  override fun toString() = "${Keywords.LONG.keyword} ${Keywords.LONG.keyword}"
 }
 
 class SignedLongLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.SIGNED.keyword} $Long $Long"
+  override fun toString() = "${Keywords.SIGNED.keyword} ${Keywords.LONG.keyword} ${Keywords.LONG.keyword}"
 }
 
 class UnsignedLongLong(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "${Keywords.UNSIGNED.keyword} $Long $Long"
+  override fun toString() = "${Keywords.UNSIGNED.keyword} ${Keywords.LONG.keyword} ${Keywords.LONG.keyword}"
 }
 
 class FloatTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
@@ -148,5 +148,5 @@ class DoubleTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {
 }
 
 class LongDouble(first: Keyword) : BasicTypeSpecifier(first) {
-  override fun toString() = "$Long $Double"
+  override fun toString() = "${Keywords.LONG.keyword} ${Keywords.DOUBLE.keyword}"
 }
