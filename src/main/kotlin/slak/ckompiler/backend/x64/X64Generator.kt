@@ -17,6 +17,10 @@ class X64Generator(
     return cfg.nodes.associateWith(this::selectBlockInstrs)
   }
 
+  override fun createIRCopy(dest: IRValue, src: IRValue): MachineInstruction {
+    return matchTypedMov(dest, src)
+  }
+
   override fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction {
     val dc = dest.valueClass
     require(dc is X64RegisterClass && dc == src.valueClass) {
@@ -327,14 +331,18 @@ class X64Generator(
       8 -> cqo
       else -> TODO("what to do?")
     }
-    val rax = PhysicalRegister(target.registerByName("rax"), divType)
-    val rdx = PhysicalRegister(target.registerByName("rdx"), divType)
-    val resultReg = if (i.op == IntegralBinaryOps.REM) rdx else rax
+    val rax = target.registerByName("rax")
+    val rdx = target.registerByName("rdx")
+    val (resultReg, otherReg) = if (i.op == IntegralBinaryOps.REM) rdx to rax else rax to rdx
     return listOf(
-        mov.match(rax, i.lhs),
-        cdqInstr.match(),
-        divInstr.match(i.rhs),
-        mov.match(i.result, resultReg)
+        cdqInstr.match().withConstraints(
+            listOf(IntConstant(0, divType) constrainedTo rdx),
+            listOf(IntConstant(0, divType) constrainedTo rdx)
+        ),
+        divInstr.match(i.rhs).withConstraints(
+            listOf(i.lhs constrainedTo rax),
+            listOf(i.result constrainedTo resultReg, IntConstant(0, divType) constrainedTo otherReg)
+        )
     )
   }
 

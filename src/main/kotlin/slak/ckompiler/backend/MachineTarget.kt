@@ -69,6 +69,10 @@ enum class VariableUse {
   DEF, USE, DEF_USE
 }
 
+data class Constraint(val value: IRValue, val target: MachineRegister)
+
+infix fun IRValue.constrainedTo(target: MachineRegister) = Constraint(this, target)
+
 /**
  * A "template" for an instruction. Describes what is allowed as operands, and how they are used.
  */
@@ -84,6 +88,16 @@ interface InstructionTemplate {
    * @see MachineInstruction.operands
    */
   val operandUse: List<VariableUse>
+
+  /**
+   * Operand constraints. For instance, in x64 the div instruction expects an operand in rdx:rax.
+   */
+  val implicitOperands: List<MachineRegister>
+
+  /**
+   * Result constraints. For instance, in x64 the div instruction leaves the result in rdx:rax.
+   */
+  val implicitResults: List<MachineRegister>
 }
 
 /**
@@ -94,7 +108,9 @@ const val ILLEGAL_INDEX = Int.MIN_VALUE
 data class MachineInstruction(
     val template: InstructionTemplate,
     val operands: List<IRValue>,
-    var irLabelIndex: LabelIndex = ILLEGAL_INDEX
+    var irLabelIndex: LabelIndex = ILLEGAL_INDEX,
+    val constrainedArgs: List<Constraint> = emptyList(),
+    val constrainedRes: List<Constraint> = emptyList()
 ) {
   /**
    * List of things used at this label.
@@ -122,6 +138,10 @@ data class MachineInstruction(
         .map { it.first }
         .filter { it !is ConstantValue && it !is ParameterReference }
         .toList()
+  }
+
+  fun withConstraints(constrainedArgs: List<Constraint>, constrainedRes: List<Constraint>): MachineInstruction {
+    return copy(constrainedArgs = constrainedArgs, constrainedRes = constrainedRes)
   }
 
   override fun toString() = "${template.name} " + operands.joinToString(", ")
@@ -197,7 +217,20 @@ interface TargetFunGenerator : FunctionAssembler {
   fun instructionSelection(): InstructionMap
 
   /**
+   * Create a [MachineInstruction] to copy [src] to [dest]. The [InstructionTemplate] is target-specific, which is why
+   * this is needed. This is for pre-coloring stages.
+   *
+   * You might be tempted to use this function for [MachineRegister]s (via [PhysicalRegister]). Don't; use
+   * [createRegisterCopy] instead.
+   *
+   * @see createRegisterCopy post-coloring
+   */
+  fun createIRCopy(dest: IRValue, src: IRValue): MachineInstruction
+
+  /**
    * Create a register to register copy instruction. Useful for post-coloring stages.
+   *
+   * @see createIRCopy pre-coloring
    */
   fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction
 

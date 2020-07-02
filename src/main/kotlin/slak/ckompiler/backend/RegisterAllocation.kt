@@ -42,12 +42,109 @@ private fun MachineTarget.matchValueToRegister(
 }
 
 /**
- * Performs target-independent spilling and register allocation.
- *
- * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
- * @see spiller
+ * See [insertConstraintCopies]. This function rewrites the blocks to accommodate the new copies.
  */
-fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
+private fun rewriteBlockUses(
+    block: BasicBlock,
+    copyToInsert: MachineInstruction,
+    atIdx: LabelIndex,
+    toRewrite: IRValue,
+    rewritten: IRValue,
+    instructions: List<MachineInstruction>
+): List<MachineInstruction> {
+  val (before, after) = instructions.take(atIdx) to instructions.drop(atIdx + 1)
+  val newAfter = mutableListOf<MachineInstruction>()
+  for (mi in after) {
+    val newOperands = mi.operands.zip(mi.template.operandUse).map {
+      // Explicitly not care about DEF_USE
+      if (it.first == toRewrite && it.second == VariableUse.USE) {
+        rewritten
+      } else {
+        it.first
+      }
+    }
+    newAfter += mi.copy(operands = newOperands)
+  }
+  // If we rewrote a variable, it might have been used in a future phi, so deal with that
+  if (rewritten is Variable) {
+    for (succ in block.successors) {
+      val replacementPhis = mutableSetOf<PhiInstruction>()
+      succ.phi.retainAll { phi ->
+        if (phi.incoming.getValue(block) != toRewrite) return@retainAll true
+        val newIncoming = phi.incoming.toMutableMap()
+        newIncoming[block] = rewritten
+        replacementPhis += phi.copy(incoming = newIncoming)
+        return@retainAll false
+      }
+      succ.phi += replacementPhis
+    }
+  }
+  return before + copyToInsert + instructions[atIdx] + newAfter
+}
+
+/**
+ * See [insertConstraintCopies]. This function incrementally updates a "last uses" map, by updating all the last use
+ * indices that were pushed due to a copy being inserted.
+ */
+private fun rewriteLastUses(
+    newLastUses: MutableMap<IRValue, Label>,
+    block: BasicBlock,
+    value: IRValue,
+    copyIndex: LabelIndex
+) {
+  for ((modifiedValue, oldDeath) in newLastUses.filterValues { it.first == block && it.second > copyIndex }) {
+    newLastUses[modifiedValue] = Label(block, oldDeath.second + 1)
+  }
+  newLastUses[value] = Label(block, copyIndex + 1)
+}
+
+/**
+ * Inserts copies for constrained instructions, that respect the Simple Constraint Property (Definition 4.8).
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.6.1
+ */
+private fun TargetFunGenerator.insertConstraintCopies(
+    instrMap: InstructionMap,
+    lastUses: Map<IRValue, Label>
+): Pair<InstructionMap, Map<IRValue, Label>> {
+  val newMap = instrMap.toMutableMap()
+  val newLastUses = lastUses.toMutableMap()
+  for (block in cfg.domTreePreorder) {
+    var newInstr = instrMap.getValue(block)
+    // Track how many copies we inserted
+    // We need to know to offset the index for rewriting, since the loop below uses only pre-insert indices
+    var insertions = 0
+    for ((index, mi) in instrMap.getValue(block).withIndex()) {
+      if (mi.constrainedArgs.isEmpty() || mi.constrainedRes.isEmpty()) continue
+      for ((value, target) in mi.constrainedArgs) {
+        // If it doesn't die after this instruction, it's not live-through, so leave it alone
+        if (lastUses.getValue(value).second <= index) continue
+        // Result constrained to same register as live-though constrained variable: copy must be made
+        if (target in mi.constrainedRes.map { it.target }) {
+          val copiedValue = if (value is Variable) {
+            val oldVersion = cfg.latestVersions.getValue(value.id)
+            cfg.latestVersions[value.id] = oldVersion + 1
+            value.copy(oldVersion + 1)
+          } else {
+            VirtualRegister(cfg.registerIds(), value.type)
+          }
+          val copy = createIRCopy(copiedValue, value)
+          copy.irLabelIndex = mi.irLabelIndex
+          newInstr = rewriteBlockUses(block, copy, index + insertions, value, copiedValue, newInstr)
+          rewriteLastUses(newLastUses, block, value, index + insertions)
+          insertions++
+        }
+      }
+    }
+    newMap[block] = newInstr
+  }
+  return newMap to newLastUses
+}
+
+/**
+ * Creates a map of each [IRValue] to the [Label] where it dies. Uses [MachineInstruction] indices.
+ */
+private fun findLastUses(cfg: CFG, instrMap: InstructionMap): Map<IRValue, Label> {
   val lastUses = mutableMapOf<IRValue, Label>()
   for (block in cfg.domTreePreorder) {
     for ((index, mi) in instrMap.getValue(block).withIndex()) {
@@ -66,7 +163,19 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
       }
     }
   }
-  val spilledInstrs = spiller(instrMap, lastUses)
+  return lastUses
+}
+
+/**
+ * Performs target-independent spilling and register allocation.
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
+ * @see spiller
+ */
+fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
+  val initialLastUses = findLastUses(cfg, instrMap)
+  val spilledInstrs = spiller(instrMap, initialLastUses)
+  val (withCopies, lastUses) = insertConstraintCopies(spilledInstrs, initialLastUses)
   // FIXME: coalescing
   // List of visited nodes for DFS
   val visited = mutableSetOf<BasicBlock>()
@@ -96,7 +205,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
       assigned += color
     }
     val colored = mutableSetOf<IRValue>()
-    for ((index, mi) in spilledInstrs.getValue(block).withIndex()) {
+    for ((index, mi) in withCopies.getValue(block).withIndex()) {
       // Also add stack variables to coloring
       coloring += mi.operands
           .filter { it is StackVariable || it is MemoryLocation }
@@ -133,7 +242,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   }
   allocBlock(cfg.startBlock)
   val allocations = coloring.filterKeys { it !is ConstantValue }
-  val intermediate = AllocationResult(spilledInstrs, allocations, registerUseMap, lastUses)
+  val intermediate = AllocationResult(withCopies, allocations, registerUseMap, lastUses)
   return removePhi(intermediate)
 }
 

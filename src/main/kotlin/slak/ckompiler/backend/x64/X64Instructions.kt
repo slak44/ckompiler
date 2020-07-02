@@ -61,8 +61,8 @@ data class X64InstrTemplate(
     override val name: String,
     val operands: List<Operand>,
     override val operandUse: List<VariableUse>,
-    val implicitOperands: List<MachineRegister> = emptyList(),
-    val implicitResults: List<MachineRegister> = emptyList()
+    override val implicitOperands: List<MachineRegister> = emptyList(),
+    override val implicitResults: List<MachineRegister> = emptyList()
 ) : InstructionTemplate
 
 sealed class X64Value

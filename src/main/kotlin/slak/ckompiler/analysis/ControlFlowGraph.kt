@@ -67,6 +67,8 @@ class CFG(
   val definitions: Definitions get() = renamer.definitions
   /** @see VariableRenamer.defUseChains */
   val defUseChains: DefUseChains get() = renamer.defUseChains
+  /** @see VariableRenamer.latestVersions */
+  val latestVersions: MutableMap<AtomicId, Int> get() = renamer.latestVersions
 
   val liveIns by lazy(this::computeLiveIns)
 
@@ -166,7 +168,7 @@ private class VariableRenamer(val cfg: CFG) {
    * Stores what is the last created version of a particular variable (maps id to version).
    * @see variableRenaming
    */
-  private val latestVersions = mutableMapOf<Int, Int>().withDefault { 0 }
+  val latestVersions = mutableMapOf<AtomicId, Int>().withDefault { 0 }
   /** @see latestVersions */
   private var Variable.latestVersion: Int
     get() = latestVersions.getValue(id)

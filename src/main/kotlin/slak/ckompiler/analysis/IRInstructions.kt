@@ -387,6 +387,7 @@ class Variable(val tid: TypedIdentifier) : LoadableValue() {
   fun replaceWith(newerVersion: ReachingDefinition?) {
     if (newerVersion == null) return
     if (tid.id != newerVersion.variable.tid.id || newerVersion.variable.version < version) {
+      // FIXME: this might actually be legit if we insert a constraint copy with a newer version
       logger.throwICE("Illegal variable version replacement") { "$this -> $newerVersion" }
     }
     version = newerVersion.variable.version
