@@ -58,10 +58,10 @@ private fun TargetFunGenerator.findRegisterPressure(
       val classOf = target.registerClassOf(phiDefined.type)
       current[classOf] = current.getValue(classOf) + 1
     }
-    for (mi in instrMap.getValue(block)) {
+    for ((index, mi) in instrMap.getValue(block).withIndex()) {
       val dyingHere = mi.uses
           .filter { it !is StackVariable && it !is MemoryLocation }
-          .filter { lastUses[it] == (block to mi.irLabelIndex) }
+          .filter { lastUses[it] == Label(block, index) }
       // Reduce pressure for values that die at this label
       for (value in dyingHere) {
         val classOf = target.registerClassOf(value.type)
@@ -78,7 +78,7 @@ private fun TargetFunGenerator.findRegisterPressure(
       // If pressure is too high, add it to the list
       for (mrc in target.registerClasses) {
         if (current.getValue(mrc) > maxPressure.getValue(mrc)) {
-          pressure.getValue(mrc) += block to mi.irLabelIndex
+          pressure.getValue(mrc) += Label(block, index)
         }
       }
     }
@@ -107,12 +107,12 @@ private fun TargetFunGenerator.spillClass(
   require(p.size <= k)
   val q = mutableSetOf<IRValue>()
   q += p
-  for (mi in instructions) {
+  for ((index, mi) in instructions.withIndex()) {
     val dyingHere = mi.uses
         .asSequence()
         .ofClass()
         .filter { it !is StackVariable && it !is MemoryLocation }
-        .filter { lastUses[it] == (block to mi.irLabelIndex) || it is PhysicalRegister }
+        .filter { lastUses[it] == Label(block, index) || it is PhysicalRegister }
     for (value in dyingHere) {
       q -= value
     }
@@ -129,7 +129,7 @@ private fun TargetFunGenerator.spillClass(
         // Spill the furthest use
         val spilled = q
             .filter { it is Variable || it is VirtualRegister }
-            .maxBy { useDistance(lastUses, instructions, Label(block, mi.irLabelIndex), it) }
+            .maxBy { useDistance(lastUses, instructions, Label(block, index), it) }
             ?: TODO("No variable/virtual can be spilled! Maybe conflicting pre-coloring. see ref")
         q -= spilled
         markedSpill += spilled
@@ -157,17 +157,11 @@ private fun useDistance(
       .filter { it !is StackVariable && it !is MemoryLocation }
       .any { it == v }
   if (isUsedAtL) return 0
+  check(v in lastUses)
+  // Value is live-out, distance is rest of block from l
+  if (lastUses[v]?.second == LabelIndex.MAX_VALUE) return instructions.size - l.second
   // If l is after the last use, the distance is undefined
-  if (l.first == lastUses[v]?.first && l.second > lastUses[v]?.second!!) return Int.MAX_VALUE
-  var currentDistance = 1
-  for (mi in instructions.drop(l.second.coerceAtLeast(0) + 1)) {
-    val dyingHere = mi.uses
-        .filter { it !is StackVariable && it !is MemoryLocation }
-        .filter { lastUses[it] == (l.first to mi.irLabelIndex) }
-    for (value in dyingHere) {
-      if (value == v) return currentDistance
-    }
-    currentDistance++
-  }
-  TODO("unreachable?")
+  if (l.first == lastUses[v]?.first && l.second > lastUses[v]?.second!!) return LabelIndex.MAX_VALUE
+  // Simple distance
+  return lastUses.getValue(v).second - l.second
 }

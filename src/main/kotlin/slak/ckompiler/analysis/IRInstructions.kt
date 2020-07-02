@@ -330,7 +330,9 @@ data class NamedConstant(override val name: String, override val type: TypeName)
 }
 
 /**
- * An index inside a [BasicBlock]'s labels ([BasicBlock.ir]).
+ * An index inside a basic block's labels. This currently can mean 2 things:
+ * - [BasicBlock]'s IR: [BasicBlock.ir].
+ * - [slak.ckompiler.backend.InstructionMap]'s MI: [slak.ckompiler.backend.MachineInstruction]
  */
 typealias LabelIndex = Int
 

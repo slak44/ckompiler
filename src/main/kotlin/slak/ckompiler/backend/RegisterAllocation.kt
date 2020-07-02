@@ -50,15 +50,22 @@ private fun MachineTarget.matchValueToRegister(
 fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   val lastUses = mutableMapOf<IRValue, Label>()
   for (block in cfg.domTreePreorder) {
-    for (mi in instrMap.getValue(block)) {
-      // Initialize lastUses for other LoadableValues
-      for (it in mi.uses.filter { it is VirtualRegister || it is PhysicalRegister }) {
-        lastUses[it] = block to mi.irLabelIndex
+    for ((index, mi) in instrMap.getValue(block).withIndex()) {
+      // For "variables", keep updating the map
+      // Obviously, the last use will be the last update in the map
+      for (it in mi.uses.filter { it is VirtualRegister || it is PhysicalRegister || it is Variable }) {
+        lastUses[it] = Label(block, index)
+      }
+    }
+    // We need to check successor phis: if something is used there, it means it is live-out in this block
+    // If it's live-out in this block, its "last use" is not what was recorded above
+    for (succ in block.successors) {
+      for (phi in succ.phi) {
+        val usedInSuccPhi = phi.incoming.getValue(block)
+        lastUses[usedInSuccPhi] = Label(block, LabelIndex.MAX_VALUE)
       }
     }
   }
-  // Initialize lastUses for Variables
-  lastUses.putAll(cfg.defUseChains.mapValues { it.value.last() })
   val spilledInstrs = spiller(instrMap, lastUses)
   // FIXME: coalescing
   // List of visited nodes for DFS
@@ -89,13 +96,13 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
       assigned += color
     }
     val colored = mutableSetOf<IRValue>()
-    for (mi in spilledInstrs.getValue(block)) {
+    for ((index, mi) in spilledInstrs.getValue(block).withIndex()) {
       // Also add stack variables to coloring
       coloring += mi.operands
           .filter { it is StackVariable || it is MemoryLocation }
           .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
           .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
-      val dyingHere = mi.uses.filter { lastUses[it] == (block to mi.irLabelIndex) }
+      val dyingHere = mi.uses.filter { lastUses[it] == Label(block, index) }
       // Deallocate registers of values that die at this label
       for (value in dyingHere) {
         val color = coloring[value] ?: continue
