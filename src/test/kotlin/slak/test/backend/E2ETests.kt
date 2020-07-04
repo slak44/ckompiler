@@ -360,17 +360,64 @@ class E2ETests {
   }
 
   @Test
-  fun `Constrained Div Test`() {
+  fun `Constrained Div Test With Reversed Argument Order`() {
+    val a = 23
+    val b = 5
     compileAndRun("""
       #include <stdio.h>
       int main() {
-        int live_through = 7;
-        int a = $A;
-        int b = $B;
+        int b = $b, a = $a;
+        int res = a / b;
+        printf("%d", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString())
+  }
+
+  @Test
+  fun `Constrained Div Test With Live Through Variable`() {
+    val a = 23
+    val b = 5
+    val lt = 7
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int live_through = $lt;
+        int a = $a, b = $b;
         int res = a / b;
         printf("%d", res);
         return live_through;
       }
-    """.trimIndent()).expect(stdout = (A / B).toString(), exitCode = 7)
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = lt)
+  }
+
+  @Test
+  fun `Constrained Div Test With Live Through Argument Dividend`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int a = $a, b = $b;
+        int res = a / b;
+        printf("%d", res);
+        return a;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = a)
+  }
+
+  @Test
+  fun `Constrained Div Test With Live Through Argument Divisor`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int a = $a, b = $b;
+        int res = a / b;
+        printf("%d", res);
+        return b;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = b)
   }
 }
