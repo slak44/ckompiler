@@ -123,7 +123,7 @@ data class MachineInstruction(
         .filter { it.second == VariableUse.USE || it.second == VariableUse.DEF_USE }
         .map { it.first }
         .filter { it !is ConstantValue && it !is ParameterReference }
-        .toList()
+        .toList() + constrainedArgs.map { it.value }
   }
 
   /**
@@ -256,10 +256,12 @@ interface MachineTarget {
   val machineTargetData: MachineTargetData
   val targetName: String
   val registerClasses: List<MachineRegisterClass>
+
   /**
    * Complete list of registers for this target.
    */
   val registers: List<MachineRegister>
+
   /**
    * Do not consider these when allocating function locals.
    */
