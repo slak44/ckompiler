@@ -333,15 +333,12 @@ class X64Generator(
     }
     val rax = target.registerByName("rax")
     val rdx = target.registerByName("rdx")
-    val (resultReg, otherReg) = if (i.op == IntegralBinaryOps.REM) rdx to rax else rax to rdx
+    val resultReg = if (i.op == IntegralBinaryOps.REM) rdx else rax
     return listOf(
-        cdqInstr.match().withConstraints(
-            listOf(IntConstant(0, divType) constrainedTo rdx),
-            listOf(IntConstant(0, divType) constrainedTo rdx)
-        ),
+        cdqInstr.match(),
         divInstr.match(i.rhs).withConstraints(
             listOf(i.lhs constrainedTo rax),
-            listOf(i.result constrainedTo resultReg, IntConstant(0, divType) constrainedTo otherReg)
+            listOf(i.result constrainedTo resultReg)
         )
     )
   }
