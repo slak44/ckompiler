@@ -137,7 +137,7 @@ data class MachineInstruction(
         .filter { it.second == VariableUse.DEF || it.second == VariableUse.DEF_USE }
         .map { it.first }
         .filter { it !is ConstantValue && it !is ParameterReference }
-        .toList()
+        .toList() + constrainedRes.map { it.value }
   }
 
   fun withConstraints(constrainedArgs: List<Constraint>, constrainedRes: List<Constraint>): MachineInstruction {
