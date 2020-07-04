@@ -358,4 +358,19 @@ class E2ETests {
       }
     """.trimIndent()).expect(stdout = test.output)
   }
+
+  @Test
+  fun `Constrained Div Test`() {
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int live_through = 7;
+        int a = $A;
+        int b = $B;
+        int res = a / b;
+        printf("%d", res);
+        return live_through;
+      }
+    """.trimIndent()).expect(stdout = (A / B).toString(), exitCode = 7)
+  }
 }
