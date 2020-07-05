@@ -179,9 +179,9 @@ private fun TargetFunGenerator.rewriteValue(
   // No point in inserting a copy for something that's never used
   if (value !in lastUses) return instructions
   val copiedValue = cfg.makeCopiedValue(value)
-  val copy = createIRCopy(copiedValue, value)
-  copy.irLabelIndex = constrainedInstr.irLabelIndex
-  val newInstr = rewriteBlockUses(block, copy, copyIndex, value, copiedValue, instructions, rewriteConstrained)
+  val copyInstr = createIRCopy(copiedValue, value)
+      .copy(isConstraintCopy = rewriteConstrained, irLabelIndex = constrainedInstr.irLabelIndex)
+  val newInstr = rewriteBlockUses(block, copyInstr, copyIndex, value, copiedValue, instructions, rewriteConstrained)
   // The replacement will die at the index where the original died
   lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
   rewriteLastUses(lastUses, block, copyIndex)
@@ -296,7 +296,7 @@ private fun TargetFunGenerator.prepareForColoring(
  * In the constrained argument loop, values are removed from T. After the loop T becomes the set of unconstrained
  * arguments that lives through the label. For example, `div x`, followed by some other use of x.
  *
- * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.8
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.8, 4.6.4
  */
 private fun TargetFunGenerator.constrainedColoring(
     mi: MachineInstruction,
@@ -428,6 +428,18 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
           .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
       if (mi.isConstrained) {
         constrainedColoring(mi, Label(block, index), lastUses, coloring, assigned)
+        // Correctly color copies inserted by the live range split
+        // See last paragraph of section 4.6.4
+        val copyInstrs = finalInstrMap.getValue(block).take(index).takeLastWhile { it.isConstraintCopy }
+        val copies = copyInstrs.flatMap { it.defs.filterIsInstance<AllocatableValue>() }
+        val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
+        val colorsAtL = (mi.defs.filterIsInstance<AllocatableValue>() + usedAtL).map { coloring.getValue(it) }
+        for (copy in copies - usedAtL) {
+          checkNotNull(coloring[copy])
+          val color = target.matchValueToRegister(copy, assigned + colorsAtL)
+          coloring[copy] = color
+          assigned += color
+        }
       }
       val dyingHere = mi.uses.filter { lastUses[it] == Label(block, index) }
       // Deallocate registers of values that die at this label

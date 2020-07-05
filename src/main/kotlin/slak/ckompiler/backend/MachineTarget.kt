@@ -110,7 +110,8 @@ data class MachineInstruction(
     val operands: List<IRValue>,
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX,
     val constrainedArgs: List<Constraint> = emptyList(),
-    val constrainedRes: List<Constraint> = emptyList()
+    val constrainedRes: List<Constraint> = emptyList(),
+    val isConstraintCopy: Boolean = false
 ) {
   val isConstrained = constrainedArgs.isNotEmpty() || constrainedRes.isNotEmpty()
 
