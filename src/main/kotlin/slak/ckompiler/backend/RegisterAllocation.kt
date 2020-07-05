@@ -136,14 +136,12 @@ private fun rewriteBlockUses(
 private fun rewriteLastUses(
     newLastUses: MutableMap<IRValue, Label>,
     block: BasicBlock,
-    value: IRValue,
     copyIndex: LabelIndex
 ) {
   for ((modifiedValue, oldDeath) in newLastUses.filterValues { it.first == block && it.second >= copyIndex }) {
     val nextIdx = if (oldDeath.second == Int.MAX_VALUE) Int.MAX_VALUE else oldDeath.second + 1
     newLastUses[modifiedValue] = Label(block, nextIdx)
   }
-  newLastUses[value] = Label(block, copyIndex)
 }
 
 /**
@@ -160,6 +158,15 @@ private fun CFG.makeCopiedValue(value: AllocatableValue): AllocatableValue {
   }
 }
 
+/**
+ * Insert a copy.
+ *
+ * Updates the [lastUses], the instructions and the [CFG]'s internal state to account for that copy.
+ *
+ * If [rewriteConstrained] is true, this is part of a live range split, and the copy must be used in the
+ * [constrainedInstr] as well (ie we rewrite the constrained instruction as well). If false, it's not, and the [value]
+ * is a constrained argument of [constrainedInstr].
+ */
 private fun TargetFunGenerator.rewriteValue(
     lastUses: MutableMap<IRValue, Label>,
     value: AllocatableValue,
@@ -170,12 +177,21 @@ private fun TargetFunGenerator.rewriteValue(
     rewriteConstrained: Boolean
 ): List<MachineInstruction> {
   val copiedValue = cfg.makeCopiedValue(value)
-  // The replacement will die at the index where the original died
-  lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
   val copy = createIRCopy(copiedValue, value)
   copy.irLabelIndex = constrainedInstr.irLabelIndex
   val newInstr = rewriteBlockUses(block, copy, copyIndex, value, copiedValue, instructions, rewriteConstrained)
-  rewriteLastUses(lastUses, block, value, copyIndex)
+  // The replacement will die at the index where the original died
+  lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
+  rewriteLastUses(lastUses, block, copyIndex)
+  if (rewriteConstrained) {
+    // Live range split: the constrained instr was rewritten, and the value cannot have been used there, so it dies
+    // when it is copied
+    lastUses[value] = Label(block, copyIndex)
+  } else {
+    // The value is a constrained argument: it is still used at the constrained MI, after the copy
+    // We know that is the last use, because all the ones afterwards were just rewritten
+    lastUses[value] = Label(block, copyIndex + 1)
+  }
   return newInstr
 }
 
