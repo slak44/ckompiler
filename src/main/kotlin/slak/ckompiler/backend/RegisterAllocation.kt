@@ -53,11 +53,11 @@ private fun MachineTarget.matchValueToRegister(
  * That means we can just rewire the uses, and still be in SSA form, so no SSA reconstruction needed.
  *
  * [Variable]s are more problematic, since a new version of a variable might create a new φ, which is problematic.
- * Say for a diamond [CFG]:
- *    A
- *   / \
- *  B   C
- *   \ /
+ * Consider a diamond [CFG]:
+ *     A
+ *   /  \
+ *  B    C
+ *   \  /
  *    D
  * With the variable defined at the top in A (version 1, [toRewrite]), and used in all other 3 blocks.
  * Now if we need to rewrite its uses in say, block C, we'll replace its uses with version 2 ([rewritten]). But now we
