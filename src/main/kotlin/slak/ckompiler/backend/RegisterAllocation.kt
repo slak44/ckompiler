@@ -305,9 +305,6 @@ private fun TargetFunGenerator.constrainedColoring(
     cD += target
     d -= value
     coloring[value] = target
-    // FIXME: if the resulting value is never used, should it still be marked assigned?
-    //  more than that, should it be marked assigned at all?
-//    assigned += target
   }
   for (x in a) {
     // We differ here a bit, because cD - cA might have a register, but of the wrong class
@@ -326,8 +323,14 @@ private fun TargetFunGenerator.constrainedColoring(
       coloring[x] = target.matchValueToRegister(x, assigned + cD)
     }
   }
-  // FIXME:
-  check(t.isEmpty()) { "Can we find literally any case where T is not empty at this point?" }
+
+  // Assign leftovers
+  val forbidden = assigned + cD + cA
+  for (x in t) {
+    val color = target.matchValueToRegister(x, forbidden)
+    coloring[x] = color
+    assigned += color
+  }
 }
 
 /**
