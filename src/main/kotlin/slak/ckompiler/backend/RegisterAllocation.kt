@@ -54,11 +54,13 @@ private fun MachineTarget.matchValueToRegister(
  *
  * [Variable]s are more problematic, since a new version of a variable might create a new φ, which is problematic.
  * Consider a diamond [CFG]:
+ * ```
  *     A
  *   /  \
  *  B    C
  *   \  /
  *    D
+ * ```
  * With the variable defined at the top in A (version 1, [toRewrite]), and used in all other 3 blocks.
  * Now if we need to rewrite its uses in say, block C, we'll replace its uses with version 2 ([rewritten]). But now we
  * have a problem: version 1 is live-out in block B, and version 2 is live-out in block C, so block D needs a φ
@@ -77,11 +79,10 @@ private fun rewriteBlockUses(
     atIdx: LabelIndex,
     toRewrite: AllocatableValue,
     rewritten: AllocatableValue,
-    instructions: List<MachineInstruction>
+    instructions: List<MachineInstruction>,
+    rewriteConstrained: Boolean
 ): List<MachineInstruction> {
-  val (before, after) = instructions.take(atIdx) to instructions.drop(atIdx + 1)
-  val newAfter = mutableListOf<MachineInstruction>()
-  for (mi in after) {
+  fun rewriteOne(mi: MachineInstruction): MachineInstruction {
     val newOperands = mi.operands.zip(mi.template.operandUse).map {
       // Explicitly not care about DEF_USE
       if (it.first == toRewrite && it.second == VariableUse.USE) {
@@ -97,8 +98,15 @@ private fun rewriteBlockUses(
         it
       }
     }
-    newAfter += mi.copy(operands = newOperands, constrainedArgs = newConstrainedArgs)
+    return mi.copy(operands = newOperands, constrainedArgs = newConstrainedArgs)
   }
+
+  val (before, after) = instructions.take(atIdx) to instructions.drop(atIdx + 1)
+  val newAfter = after.map(::rewriteOne)
+  val newConstrained = instructions[atIdx].let {
+    if (rewriteConstrained) rewriteOne(it) else it
+  }
+
   // FIXME: this is broken; see docs above about SSA
   // If we rewrote a variable, it might have been used in a future phi, so deal with that
   if (rewritten is Variable) {
@@ -115,7 +123,8 @@ private fun rewriteBlockUses(
       succ.phi += replacementPhis
     }
   }
-  return before + copyToInsert + instructions[atIdx] + newAfter
+
+  return before + copyToInsert + newConstrained + newAfter
 }
 
 /**
@@ -156,14 +165,15 @@ private fun TargetFunGenerator.rewriteValue(
     block: BasicBlock,
     constrainedInstr: MachineInstruction,
     copyIndex: LabelIndex,
-    instructions: List<MachineInstruction>
+    instructions: List<MachineInstruction>,
+    rewriteConstrained: Boolean
 ): List<MachineInstruction> {
   val copiedValue = cfg.makeCopiedValue(value)
   // The replacement will die at the index where the original died
   lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
   val copy = createIRCopy(copiedValue, value)
   copy.irLabelIndex = constrainedInstr.irLabelIndex
-  val newInstr = rewriteBlockUses(block, copy, copyIndex, value, copiedValue, instructions)
+  val newInstr = rewriteBlockUses(block, copy, copyIndex, value, copiedValue, instructions, rewriteConstrained)
   rewriteLastUses(lastUses, block, value, copyIndex)
   return newInstr
 }
@@ -181,7 +191,7 @@ private fun TargetFunGenerator.splitLiveRanges(
     lastUses: MutableMap<IRValue, Label>
 ): List<MachineInstruction> {
   return splitFor.foldIndexed(instructions) { inserted, instrs, value ->
-    rewriteValue(lastUses, value, block, instrs[atIndex + inserted], atIndex + inserted, instrs)
+    rewriteValue(lastUses, value, block, instrs[atIndex + inserted], atIndex + inserted, instrs, true)
   }
 }
 
@@ -229,7 +239,7 @@ private fun TargetFunGenerator.prepareForColoring(
         if (newLastUses.getValue(value).second <= index) continue
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (target in mi.constrainedRes.map { it.target }) {
-          newInstr = rewriteValue(newLastUses, value, block, mi, index, newInstr)
+          newInstr = rewriteValue(newLastUses, value, block, mi, index, newInstr, false)
           updateAlive(newInstr[index], index)
           index++
         }
