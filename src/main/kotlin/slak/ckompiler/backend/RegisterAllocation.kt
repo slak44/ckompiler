@@ -75,8 +75,8 @@ private fun rewriteBlockUses(
     block: BasicBlock,
     copyToInsert: MachineInstruction,
     atIdx: LabelIndex,
-    toRewrite: LoadableValue,
-    rewritten: LoadableValue,
+    toRewrite: AllocatableValue,
+    rewritten: AllocatableValue,
     instructions: List<MachineInstruction>
 ): List<MachineInstruction> {
   val (before, after) = instructions.take(atIdx) to instructions.drop(atIdx + 1)
@@ -137,10 +137,9 @@ private fun rewriteLastUses(
 }
 
 /**
- * Creates a new virtual register, or a new version of a variable. Throws for other [IRValue]s.
+ * Creates a new virtual register, or a new version of a variable.
  */
-private fun CFG.makeCopiedValue(value: LoadableValue): LoadableValue {
-  require(value is Variable || value is VirtualRegister)
+private fun CFG.makeCopiedValue(value: AllocatableValue): AllocatableValue {
   if (value.isUndefined) return value
   return if (value is Variable) {
     val oldVersion = latestVersions.getValue(value.id)
@@ -153,7 +152,7 @@ private fun CFG.makeCopiedValue(value: LoadableValue): LoadableValue {
 
 private fun TargetFunGenerator.rewriteValue(
     lastUses: MutableMap<IRValue, Label>,
-    value: LoadableValue,
+    value: AllocatableValue,
     block: BasicBlock,
     constrainedInstr: MachineInstruction,
     copyIndex: LabelIndex,
@@ -175,7 +174,7 @@ private fun TargetFunGenerator.rewriteValue(
  * @see prepareForColoring
  */
 private fun TargetFunGenerator.splitLiveRanges(
-    splitFor: Set<LoadableValue>,
+    splitFor: Set<AllocatableValue>,
     atIndex: LabelIndex,
     block: BasicBlock,
     instructions: List<MachineInstruction>,
@@ -209,14 +208,11 @@ private fun TargetFunGenerator.prepareForColoring(
     var newInstr = instrMap.getValue(block)
     // Track which variables are alive at any point in this block
     // Initialize with the block live-ins
-    val alive: MutableSet<LoadableValue> = cfg.liveIns.getValue(block).toMutableSet()
+    val alive: MutableSet<AllocatableValue> = cfg.liveIns.getValue(block).toMutableSet()
     fun updateAlive(mi: MachineInstruction, index: LabelIndex) {
-      val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }.filterIsInstance<LoadableValue>()
+      val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }.filterIsInstance<AllocatableValue>()
       alive -= dyingHere
-      // The cast is obviously correct as long as VirtualRegister/Variable are LoadableValues
-      @Suppress("UNCHECKED_CAST")
-      val definedHere = mi.defs.filter { it is VirtualRegister || it is Variable } as List<LoadableValue>
-      alive += definedHere
+      alive += mi.defs.filterIsInstance<AllocatableValue>()
     }
 
     var index = 0
@@ -269,12 +265,12 @@ private fun TargetFunGenerator.constrainedColoring(
     coloring: MutableMap<IRValue, MachineRegister>,
     assigned: MutableList<MachineRegister>
 ) {
-  val arg = mi.uses.filter { it is VirtualRegister || it is Variable }
+  val arg = mi.uses.filterIsInstance<AllocatableValue>()
   val t = arg
       .filter { lastUses[it]?.first == label.first && lastUses.getValue(it).second > label.second }
       .toMutableSet()
   val a = (arg - t).toMutableSet()
-  val d = mi.defs.filter { it is VirtualRegister || it is Variable }.toMutableSet()
+  val d = mi.defs.filterIsInstance<AllocatableValue>().toMutableSet()
   val cA = mutableListOf<MachineRegister>()
   val cD = mutableListOf<MachineRegister>()
 
@@ -323,7 +319,7 @@ private fun findLastUses(cfg: CFG, instrMap: InstructionMap): Map<IRValue, Label
     for ((index, mi) in instrMap.getValue(block).withIndex()) {
       // For "variables", keep updating the map
       // Obviously, the last use will be the last update in the map
-      for (it in mi.uses.filter { it is VirtualRegister || it is PhysicalRegister || it is Variable }) {
+      for (it in mi.uses.filterIsInstance<AllocatableValue>()) {
         lastUses[it] = Label(block, index)
       }
     }
@@ -398,7 +394,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
         val defined = mi.defs
             .asSequence()
             .filter { it !in colored }
-            .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
+            .filterIsInstance<AllocatableValue>()
         // Allocate registers for values defined at this label
         for (definition in defined) {
           val color = target.matchValueToRegister(definition, assigned)

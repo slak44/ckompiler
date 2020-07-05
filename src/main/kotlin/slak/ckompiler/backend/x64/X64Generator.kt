@@ -342,8 +342,8 @@ class X64Generator(
         ),
         divInstr.match(i.rhs).withConstraints(
             // FIXME: if not loadable, move it into a vreg
-            listOf(i.lhs as LoadableValue constrainedTo rax, rdxDummy constrainedTo rdx),
-            listOf(i.result constrainedTo resultReg)
+            listOf(i.lhs as AllocatableValue constrainedTo rax, rdxDummy constrainedTo rdx),
+            listOf(i.result as AllocatableValue constrainedTo resultReg)
         )
     )
   }

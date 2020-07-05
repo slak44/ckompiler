@@ -67,8 +67,7 @@ private fun TargetFunGenerator.findRegisterPressure(
         val classOf = target.registerClassOf(value.type)
         current[classOf] = current.getValue(classOf) - 1
       }
-      val defined = mi.defs
-          .filter { it !is StackVariable && it !is MemoryLocation && it !is PhysicalRegister }
+      val defined = mi.defs.filterIsInstance<AllocatableValue>()
       // Increase pressure for values defined at this label
       // If never used, then it shouldn't increase pressure
       for (definition in defined.filter { it in lastUses }) {
@@ -128,7 +127,7 @@ private fun TargetFunGenerator.spillClass(
       if (q.size > k) {
         // Spill the furthest use
         val spilled = q
-            .filter { it is Variable || it is VirtualRegister }
+            .filterIsInstance<AllocatableValue>()
             .maxBy { useDistance(lastUses, instructions, Label(block, index), it) }
             ?: TODO("No variable/virtual can be spilled! Maybe conflicting pre-coloring. see ref")
         q -= spilled

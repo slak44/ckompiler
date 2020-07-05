@@ -275,12 +275,12 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     for ((index, mi) in alloc.partial.getValue(block).withIndex()) {
       // Track in-use registers
       currentInUse -= mi.uses
-          .filter { it is VirtualRegister || it is Variable }
+          .filterIsInstance<AllocatableValue>()
           .filterNot { (it as LoadableValue).isUndefined }
           .filter { alloc.lastUses[it] == Label(block, index) }
           .map { alloc.allocations.getValue(it) to it.type }
       currentInUse += mi.defs
-          .filter { it is VirtualRegister || it is Variable }
+          .filterIsInstance<AllocatableValue>()
           .map { alloc.allocations.getValue(it) to it.type }
 
       if (mi.template in dummyUse) continue

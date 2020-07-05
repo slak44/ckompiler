@@ -262,6 +262,11 @@ sealed class LoadableValue : IRValue() {
 }
 
 /**
+ * A [LoadableValue] that will sit in a register after it is allocated.
+ */
+sealed class AllocatableValue : LoadableValue()
+
+/**
  * Represents the [index]th parameter of a function. It might be a memory location, or it might be
  * a register, depending on the target.
  *
@@ -280,7 +285,7 @@ data class VirtualRegister(
     val id: AtomicId,
     override val type: TypeName,
     override val isUndefined: Boolean = false
-) : LoadableValue() {
+) : AllocatableValue() {
   override val name = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
   override fun toString() = name
 }
@@ -369,7 +374,7 @@ data class ReachingDefinition(
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-class Variable(val tid: TypedIdentifier) : LoadableValue() {
+class Variable(val tid: TypedIdentifier) : AllocatableValue() {
   val id get() = tid.id
 
   override val name get() = tid.name

@@ -69,9 +69,9 @@ enum class VariableUse {
   DEF, USE, DEF_USE
 }
 
-data class Constraint(val value: LoadableValue, val target: MachineRegister)
+data class Constraint(val value: AllocatableValue, val target: MachineRegister)
 
-infix fun LoadableValue.constrainedTo(target: MachineRegister) = Constraint(this, target)
+infix fun AllocatableValue.constrainedTo(target: MachineRegister) = Constraint(this, target)
 
 /**
  * A "template" for an instruction. Describes what is allowed as operands, and how they are used.
