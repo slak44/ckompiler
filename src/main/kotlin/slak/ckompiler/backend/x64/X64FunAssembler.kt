@@ -272,14 +272,15 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     val currentInUse = mutableListOf<Pair<MachineRegister, TypeName>>()
     currentInUse += cfg.liveIns.getValue(block).map { alloc.allocations.getValue(it) to it.type }
     var lastSavedForCall: List<Pair<MachineRegister, TypeName>>? = null
-    for (mi in alloc.partial.getValue(block)) {
+    for ((index, mi) in alloc.partial.getValue(block).withIndex()) {
       // Track in-use registers
       currentInUse -= mi.uses
-          .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
-          .filter { alloc.lastUses[it] == Label(block, mi.irLabelIndex) }
+          .filter { it is VirtualRegister || it is Variable }
+          .filterNot { (it as LoadableValue).isUndefined }
+          .filter { alloc.lastUses[it] == Label(block, index) }
           .map { alloc.allocations.getValue(it) to it.type }
       currentInUse += mi.defs
-          .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
+          .filter { it is VirtualRegister || it is Variable }
           .map { alloc.allocations.getValue(it) to it.type }
 
       if (mi.template in dummyUse) continue
