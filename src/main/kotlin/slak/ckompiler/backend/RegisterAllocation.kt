@@ -140,7 +140,8 @@ private fun rewriteLastUses(
     copyIndex: LabelIndex
 ) {
   for ((modifiedValue, oldDeath) in newLastUses.filterValues { it.first == block && it.second >= copyIndex }) {
-    newLastUses[modifiedValue] = Label(block, oldDeath.second + 1)
+    val nextIdx = if (oldDeath.second == Int.MAX_VALUE) Int.MAX_VALUE else oldDeath.second + 1
+    newLastUses[modifiedValue] = Label(block, nextIdx)
   }
   newLastUses[value] = Label(block, copyIndex)
 }
