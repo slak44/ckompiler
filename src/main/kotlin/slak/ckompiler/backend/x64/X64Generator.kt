@@ -335,14 +335,15 @@ class X64Generator(
     val rdx = target.registerByName("rdx")
     val resultReg = if (i.op == IntegralBinaryOps.REM) rdx else rax
     val rdxDummy = VirtualRegister(cfg.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
-    return listOf(
+    val actualDividend = if (i.lhs is AllocatableValue) i.lhs else VirtualRegister(cfg.registerIds(), i.lhs.type)
+    return listOfNotNull(
+        if (i.lhs is AllocatableValue) null else matchTypedMov(actualDividend, i.lhs),
         cdqInstr.match().withConstraints(
             listOf(rdxDummy constrainedTo rdx),
             listOf(rdxDummy constrainedTo rdx)
         ),
         divInstr.match(i.rhs).withConstraints(
-            // FIXME: if not loadable, move it into a vreg
-            listOf(i.lhs as AllocatableValue constrainedTo rax, rdxDummy constrainedTo rdx),
+            listOf(actualDividend constrainedTo rax, rdxDummy constrainedTo rdx),
             listOf(i.result as AllocatableValue constrainedTo resultReg)
         )
     )
