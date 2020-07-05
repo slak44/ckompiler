@@ -227,4 +227,19 @@ class X64Tests {
       }
     """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = b)
   }
+
+  @Test
+  fun `Constrained Div Test With Constant Dividend`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int b = $b;
+        int res = $a / b;
+        printf("%d", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString())
+  }
 }
