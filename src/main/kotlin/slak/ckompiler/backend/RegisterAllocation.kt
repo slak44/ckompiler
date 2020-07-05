@@ -111,6 +111,7 @@ private fun rewriteBlockUses(
         replacementPhis += phi.copy(incoming = newIncoming)
         return@retainAll false
       }
+      check(replacementPhis.isNotEmpty()) { "FIXME: SSA" }
       succ.phi += replacementPhis
     }
   }
