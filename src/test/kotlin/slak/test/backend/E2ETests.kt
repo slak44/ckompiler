@@ -5,82 +5,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
-import slak.ckompiler.ExitCodes
-import slak.test.cli
+import slak.test.compileAndRun
+import slak.test.expect
+import slak.test.justExitCode
 import slak.test.resource
-import java.io.File
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class E2ETests {
-  private class CompileAndRunBuilder {
-    var text: String? = null
-    var file: File? = null
-    var programArgList = listOf<String>()
-    var stdin: String? = null
-  }
-
-  private data class RunResult(val exitCode: Int, val stdout: String, val stderr: String)
-
-  private fun RunResult.justExitCode(expected: Int) = expect(exitCode = expected)
-
-  private fun RunResult.expect(exitCode: Int = 0, stdout: String = "", stderr: String = "") {
-    assertEquals(exitCode, this.exitCode, "Exit code is wrong;")
-    assertEquals(stdout, this.stdout, "stdout is wrong;")
-    assertEquals(stderr, this.stderr, "stderr is wrong;")
-  }
-
-  private fun compileAndRun(block: CompileAndRunBuilder.() -> Unit): RunResult {
-    val builder = CompileAndRunBuilder()
-    builder.block()
-    require(builder.text != null || builder.file != null) { "Specify either text or file" }
-    if (builder.file == null) {
-      builder.file = File.createTempFile("input", ".c")
-      builder.file!!.deleteOnExit()
-      builder.file!!.writeText(builder.text!!)
-    }
-    if (builder.text == null) {
-      val otherInput = File.createTempFile("input", ".c")
-      otherInput.deleteOnExit()
-      otherInput.writeText(builder.file!!.readText())
-      builder.file = otherInput
-    }
-    val executable = File.createTempFile("exe", ".out")
-    executable.deleteOnExit()
-    val (_, compilerExitCode) = cli(
-        builder.file!!.absolutePath,
-        "-isystem", resource("include").absolutePath,
-        "-o", executable.absolutePath
-    )
-    assertEquals(ExitCodes.NORMAL, compilerExitCode, "CLI reported a failure")
-    assertTrue(executable.exists(), "Expected executable to exist")
-    val inputRedirect =
-        if (builder.stdin != null) ProcessBuilder.Redirect.PIPE else ProcessBuilder.Redirect.INHERIT
-    val process = ProcessBuilder(executable.absolutePath, *builder.programArgList.toTypedArray())
-        .redirectInput(inputRedirect)
-        .redirectOutput(ProcessBuilder.Redirect.PIPE)
-        .redirectError(ProcessBuilder.Redirect.PIPE)
-        .start()
-    if (builder.stdin != null) {
-      process.outputStream.bufferedWriter().use {
-        it.write(builder.stdin!!)
-      }
-    }
-    val stdout = process.inputStream.bufferedReader().readText()
-    val stderr = process.errorStream.bufferedReader().readText()
-    val exitCode = process.waitFor()
-    return RunResult(exitCode = exitCode, stdout = stdout, stderr = stderr)
-  }
-
-  private fun compileAndRun(resource: File): RunResult = compileAndRun { file = resource }
-
-  private fun compileAndRun(code: String, programArgs: List<String> = emptyList()): RunResult {
-    return compileAndRun {
-      text = code
-      programArgList = programArgs
-    }
-  }
-
   @ParameterizedTest
   @ValueSource(strings = ["1", "1 2", "1 2 3", "1 2 3 4"])
   fun `Returns Argc`(cmdLine: String) {
@@ -357,67 +287,5 @@ class E2ETests {
         return 0;
       }
     """.trimIndent()).expect(stdout = test.output)
-  }
-
-  @Test
-  fun `Constrained Div Test With Reversed Argument Order`() {
-    val a = 23
-    val b = 5
-    compileAndRun("""
-      #include <stdio.h>
-      int main() {
-        int b = $b, a = $a;
-        int res = a / b;
-        printf("%d", res);
-        return 0;
-      }
-    """.trimIndent()).expect(stdout = (a / b).toString())
-  }
-
-  @Test
-  fun `Constrained Div Test With Live Through Variable`() {
-    val a = 23
-    val b = 5
-    val lt = 7
-    compileAndRun("""
-      #include <stdio.h>
-      int main() {
-        int live_through = $lt;
-        int a = $a, b = $b;
-        int res = a / b;
-        printf("%d", res);
-        return live_through;
-      }
-    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = lt)
-  }
-
-  @Test
-  fun `Constrained Div Test With Live Through Argument Dividend`() {
-    val a = 23
-    val b = 5
-    compileAndRun("""
-      #include <stdio.h>
-      int main() {
-        int a = $a, b = $b;
-        int res = a / b;
-        printf("%d", res);
-        return a;
-      }
-    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = a)
-  }
-
-  @Test
-  fun `Constrained Div Test With Live Through Argument Divisor`() {
-    val a = 23
-    val b = 5
-    compileAndRun("""
-      #include <stdio.h>
-      int main() {
-        int a = $a, b = $b;
-        int res = a / b;
-        printf("%d", res);
-        return b;
-      }
-    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = b)
   }
 }

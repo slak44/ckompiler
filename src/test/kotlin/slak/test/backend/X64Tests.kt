@@ -12,6 +12,8 @@ import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.setcc
 import slak.ckompiler.parser.SignedIntType
 import slak.ckompiler.parser.TypedIdentifier
+import slak.test.*
+import slak.test.compileAndRun
 import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
@@ -162,5 +164,67 @@ class X64Tests {
     val (_, allocs, _, _, stackSlots) = regAlloc("codegen/interBlockInterference.c")
     assert(stackSlots.isEmpty())
     assertEquals(2, allocs.values.distinct().size)
+  }
+
+  @Test
+  fun `Constrained Div Test With Reversed Argument Order`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int b = $b, a = $a;
+        int res = a / b;
+        printf("%d", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString())
+  }
+
+  @Test
+  fun `Constrained Div Test With Live Through Variable`() {
+    val a = 23
+    val b = 5
+    val lt = 7
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int live_through = $lt;
+        int a = $a, b = $b;
+        int res = a / b;
+        printf("%d", res);
+        return live_through;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = lt)
+  }
+
+  @Test
+  fun `Constrained Div Test With Live Through Argument Dividend`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int a = $a, b = $b;
+        int res = a / b;
+        printf("%d", res);
+        return a;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = a)
+  }
+
+  @Test
+  fun `Constrained Div Test With Live Through Argument Divisor`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int a = $a, b = $b;
+        int res = a / b;
+        printf("%d", res);
+        return b;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = b)
   }
 }
