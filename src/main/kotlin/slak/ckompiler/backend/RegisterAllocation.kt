@@ -256,6 +256,14 @@ private fun TargetFunGenerator.prepareForColoring(
 /**
  * Colors a single constrained label. See reference for variable notations and algorithm.
  *
+ * For clarity on arguments:
+ * - arg(l) is the set of all arguments to the label, constrained and unconstrained.
+ * - T is a subset of arg(l), whose elements live though the constrained label
+ * - A is the complement of T in arg(l) (ie everything in arg(l) and not in T)
+ *
+ * In the constrained argument loop, values are removed from T. After the loop T becomes the set of unconstrained
+ * arguments that lives through the label. For example, `div x`, followed by some other use of x.
+ *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.8
  */
 private fun TargetFunGenerator.constrainedColoring(
