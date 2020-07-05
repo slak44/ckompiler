@@ -112,6 +112,8 @@ data class MachineInstruction(
     val constrainedArgs: List<Constraint> = emptyList(),
     val constrainedRes: List<Constraint> = emptyList()
 ) {
+  val isConstrained = constrainedArgs.isNotEmpty() || constrainedRes.isNotEmpty()
+
   /**
    * List of things used at this label.
    */

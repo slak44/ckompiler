@@ -69,8 +69,7 @@ private fun MachineTarget.matchValueToRegister(
  * know the incoming from the other blocks... and those other blocks might not know which version is live-out in them.
  * That means we have to rebuild the SSA (which is not exactly a cheap operation).
  *
- * @see insertConstraintCopies
- * @see facilitatePrecoloring
+ * @see prepareForColoring
  */
 private fun rewriteBlockUses(
     block: BasicBlock,
@@ -122,8 +121,7 @@ private fun rewriteBlockUses(
  * This function incrementally updates a "last uses" map, by updating all the last use indices that were pushed due to a
  * copy being inserted.
  *
- * @see insertConstraintCopies
- * @see facilitatePrecoloring
+ * @see prepareForColoring
  */
 private fun rewriteLastUses(
     newLastUses: MutableMap<IRValue, Label>,
@@ -152,57 +150,28 @@ private fun CFG.makeCopiedValue(value: LoadableValue): LoadableValue {
   }
 }
 
-private data class IntermediateConstraintsResult(
-    val instrMap: InstructionMap,
-    val lastUses: Map<IRValue, Label>,
-    val withConstraints: Set<BasicBlock>
-)
-
-/**
- * Inserts copies for constrained instructions, that respect the Simple Constraint Property (Definition 4.8).
- *
- * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.6.1
- */
-private fun TargetFunGenerator.insertConstraintCopies(
-    instrMap: InstructionMap,
-    lastUses: Map<IRValue, Label>
-): IntermediateConstraintsResult {
-  val newMap = instrMap.toMutableMap()
-  val newLastUses = lastUses.toMutableMap()
-  val withConstraints = mutableSetOf<BasicBlock>()
-  for (block in cfg.domTreePreorder) {
-    var newInstr = instrMap.getValue(block)
-    // Track how many copies we inserted
-    // We need to know to offset the index for rewriting, since the loop below uses only pre-insert indices
-    var insertions = 0
-    for ((index, mi) in instrMap.getValue(block).withIndex()) {
-      if (mi.constrainedArgs.isEmpty() || mi.constrainedRes.isEmpty()) continue
-      // Track constrained labels for later, so we don't traverse the graph again
-      withConstraints += block
-      for ((value, target) in mi.constrainedArgs) {
-        // If it doesn't die after this instruction, it's not live-through, so leave it alone
-        if (lastUses.getValue(value).second <= index) continue
-        // Result constrained to same register as live-though constrained variable: copy must be made
-        if (target in mi.constrainedRes.map { it.target }) {
-          val copiedValue = cfg.makeCopiedValue(value)
-          newLastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
-          val copy = createIRCopy(copiedValue, value)
-          copy.irLabelIndex = mi.irLabelIndex
-          newInstr = rewriteBlockUses(block, copy, index + insertions, value, copiedValue, newInstr)
-          rewriteLastUses(newLastUses, block, value, index + insertions)
-          insertions++
-        }
-      }
-    }
-    newMap[block] = newInstr
-  }
-  return IntermediateConstraintsResult(newMap, newLastUses, withConstraints)
+private fun TargetFunGenerator.rewriteValue(
+    lastUses: MutableMap<IRValue, Label>,
+    value: LoadableValue,
+    block: BasicBlock,
+    constrainedInstr: MachineInstruction,
+    copyIndex: LabelIndex,
+    instructions: List<MachineInstruction>
+): List<MachineInstruction> {
+  val copiedValue = cfg.makeCopiedValue(value)
+  // The replacement will die at the index where the original died
+  lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
+  val copy = createIRCopy(copiedValue, value)
+  copy.irLabelIndex = constrainedInstr.irLabelIndex
+  val newInstr = rewriteBlockUses(block, copy, copyIndex, value, copiedValue, instructions)
+  rewriteLastUses(lastUses, block, value, copyIndex)
+  return newInstr
 }
 
 /**
  * Splits the live-range of each value in [splitFor], by creating copies and inserting them [atIndex].
  *
- * @see facilitatePrecoloring
+ * @see prepareForColoring
  */
 private fun TargetFunGenerator.splitLiveRanges(
     splitFor: Set<LoadableValue>,
@@ -211,40 +180,31 @@ private fun TargetFunGenerator.splitLiveRanges(
     instructions: List<MachineInstruction>,
     lastUses: MutableMap<IRValue, Label>
 ): List<MachineInstruction> {
-  require(splitFor.all { it is VirtualRegister || it is Variable }) {
-    "Trying to split live range of non-var, non-vreg"
+  return splitFor.foldIndexed(instructions) { inserted, instrs, value ->
+    rewriteValue(lastUses, value, block, instrs[atIndex + inserted], atIndex + inserted, instrs)
   }
-  var newInstrs = instructions
-  for ((insertedCurrently, value) in splitFor.withIndex()) {
-    val rewritten = cfg.makeCopiedValue(value)
-    // The replacement will die at the index where the original died
-    lastUses[rewritten] = Label(block, lastUses.getValue(value).second)
-    val copy = createIRCopy(rewritten, value)
-    copy.irLabelIndex = newInstrs[atIndex + insertedCurrently].irLabelIndex
-    // And rewrite everything
-    newInstrs = rewriteBlockUses(block, copy, atIndex + insertedCurrently, value, rewritten, newInstrs)
-    rewriteLastUses(lastUses, block, value, atIndex + insertedCurrently)
-  }
-  return newInstrs
 }
 
 /**
- * FIXME: interleave these 2 copy additions, that is, run insertConstraintCopies facilitatePrecoloring on cdq,
- *   and then run insertConstraintCopies facilitatePrecoloring on div, etc.
- * Turns Precol-Ext (NP Complete for chordal graphs) into 1-Precol-Ext (P for chordal graphs). Basically, to solve
- * register targeting constraints, we precolor those nodes, and then extend the coloring to a complete k-coloring. The
- * general problem is hard, but if we split the live ranges of all the living variables at the constrained label, the
- * problem becomes solvable in polynomial time. See reference for more details and proofs.
+ * Prepares the code to be colored.
  *
- * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.6.3
+ * Firstly, it inserts copies for constrained instructions, that respect the Simple Constraint Property
+ * (Definition 4.8).
+ *
+ * Secondly, it turns Precol-Ext (NP Complete for chordal graphs) into 1-Precol-Ext (P for chordal graphs). Basically,
+ * to solve register targeting constraints, we precolor those nodes, and then extend the coloring to a complete
+ * k-coloring. The general problem is hard, but if we split the live ranges of all the living variables at the
+ * constrained label, the problem becomes solvable in polynomial time. See reference for more details and proofs.
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.6.1, 4.6.3
  */
-private fun TargetFunGenerator.facilitatePrecoloring(
-    icr: IntermediateConstraintsResult
-): IntermediateConstraintsResult {
-  val (instrMap, lastUses, withConstraints) = icr
-  val newInstrMap = instrMap.toMutableMap()
+private fun TargetFunGenerator.prepareForColoring(
+    instrMap: InstructionMap,
+    lastUses: Map<IRValue, Label>
+): Pair<InstructionMap, Map<IRValue, Label>> {
+  val newMap = instrMap.toMutableMap()
   val newLastUses = lastUses.toMutableMap()
-  for (block in withConstraints) {
+  for (block in cfg.domTreePreorder) {
     var newInstr = instrMap.getValue(block)
     // Track which variables are alive at any point in this block
     // Initialize with the block live-ins
@@ -261,25 +221,39 @@ private fun TargetFunGenerator.facilitatePrecoloring(
     var index = 0
     while (index < newInstr.size) {
       val mi = newInstr[index]
-      if (mi.constrainedArgs.isNotEmpty() || mi.constrainedRes.isNotEmpty()) {
-        newInstr = splitLiveRanges(alive, index, block, newInstr, newLastUses)
-        // FIXME: do we have to alter live-ins? probably for variables, see SSA reconstruction
-        // Each value alive is copied, and for each copy an instruction is inserted
-        // But we need to run updateAlive on the new copy instructions...
-        for (copyIdx in index until (index + alive.size)) {
-          updateAlive(newInstr[copyIdx], copyIdx)
-          index++
-        }
-        // ...and then skip the original constrained label
-        index++
-      } else {
+      if (!mi.isConstrained) {
         updateAlive(mi, index)
         index++
+        continue
       }
+
+      for ((value, target) in mi.constrainedArgs) {
+        // If it doesn't die after this instruction, it's not live-through, so leave it alone
+        if (newLastUses.getValue(value).second <= index) continue
+        // Result constrained to same register as live-though constrained variable: copy must be made
+        if (target in mi.constrainedRes.map { it.target }) {
+          newInstr = rewriteValue(newLastUses, value, block, mi, index, newInstr)
+          updateAlive(newInstr[index], index)
+          index++
+        }
+      }
+      check(newInstr[index] == mi)
+
+      newInstr = splitLiveRanges(alive, index, block, newInstr, newLastUses)
+      // FIXME: do we have to alter live-ins? probably for variables, see SSA reconstruction
+      // Each value alive is copied, and for each copy an instruction is inserted
+      // But we need to run updateAlive on the new copy instructions...
+      for (copyIdx in index until (index + alive.size)) {
+        updateAlive(newInstr[copyIdx], copyIdx)
+        index++
+      }
+      // ...and then skip the original constrained label
+      index++
     }
-    newInstrMap[block] = newInstr
+
+    newMap[block] = newInstr
   }
-  return IntermediateConstraintsResult(newInstrMap, newLastUses, withConstraints)
+  return Pair(newMap, newLastUses)
 }
 
 /**
@@ -373,9 +347,8 @@ private fun findLastUses(cfg: CFG, instrMap: InstructionMap): Map<IRValue, Label
 fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   val initialLastUses = findLastUses(cfg, instrMap)
   val spilledInstrs = spiller(instrMap, initialLastUses)
-  // FIXME: terrible
   val spillLastUses = findLastUses(cfg, spilledInstrs)
-  val (finalInstrMap, lastUses) = facilitatePrecoloring(insertConstraintCopies(spilledInstrs, spillLastUses))
+  val (finalInstrMap, lastUses) = prepareForColoring(spilledInstrs, spillLastUses)
   // FIXME: coalescing
   // List of visited nodes for DFS
   val visited = mutableSetOf<BasicBlock>()
@@ -411,8 +384,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
           .filter { it is StackVariable || it is MemoryLocation }
           .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
           .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
-      val isConstrained = mi.constrainedArgs.isNotEmpty() || mi.constrainedRes.isNotEmpty()
-      if (isConstrained) {
+      if (mi.isConstrained) {
         constrainedColoring(mi, Label(block, index), lastUses, coloring, assigned)
       }
       val dyingHere = mi.uses.filter { lastUses[it] == Label(block, index) }
@@ -421,7 +393,7 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
         val color = coloring[value] ?: continue
         assigned -= color
       }
-      if (!isConstrained) {
+      if (!mi.isConstrained) {
         val defined = mi.defs
             .asSequence()
             .filter { it !in colored }
