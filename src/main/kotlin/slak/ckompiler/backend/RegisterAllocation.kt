@@ -26,19 +26,23 @@ data class AllocationResult(
   operator fun component5() = stackSlots
 }
 
-private fun MachineTarget.matchValueToRegister(
-    value: IRValue,
-    forbiddenNeigh: List<MachineRegister>
-): MachineRegister {
+private fun MachineTarget.pickMatchingRegister(
+    validRegisters: List<MachineRegister>,
+    value: IRValue
+): MachineRegister? {
   val validClass = registerClassOf(value.type)
   val validSize = machineTargetData.sizeOf(value.type.unqualify().normalize())
-  val register = (registers - forbidden - forbiddenNeigh).firstOrNull { candidate ->
+  return validRegisters.firstOrNull { candidate ->
     candidate.valueClass == validClass &&
         (candidate.sizeBytes == validSize || validSize in candidate.aliases.map { it.second })
   }
-  return requireNotNull(register) {
-    "Failed to find an empty register for the given value: $value"
-  }
+}
+
+private fun MachineTarget.matchValueToRegister(
+    value: IRValue,
+    forbiddenNeigh: List<MachineRegister>
+) = requireNotNull(pickMatchingRegister(registers - forbidden - forbiddenNeigh, value)) {
+  "Failed to find an empty register for the given value: $value"
 }
 
 /**
@@ -72,8 +76,8 @@ private fun rewriteBlockUses(
     block: BasicBlock,
     copyToInsert: MachineInstruction,
     atIdx: LabelIndex,
-    toRewrite: IRValue,
-    rewritten: IRValue,
+    toRewrite: LoadableValue,
+    rewritten: LoadableValue,
     instructions: List<MachineInstruction>
 ): List<MachineInstruction> {
   val (before, after) = instructions.take(atIdx) to instructions.drop(atIdx + 1)
@@ -127,17 +131,18 @@ private fun rewriteLastUses(
     value: IRValue,
     copyIndex: LabelIndex
 ) {
-  for ((modifiedValue, oldDeath) in newLastUses.filterValues { it.first == block && it.second > copyIndex }) {
+  for ((modifiedValue, oldDeath) in newLastUses.filterValues { it.first == block && it.second >= copyIndex }) {
     newLastUses[modifiedValue] = Label(block, oldDeath.second + 1)
   }
-  newLastUses[value] = Label(block, copyIndex + 1)
+  newLastUses[value] = Label(block, copyIndex)
 }
 
 /**
  * Creates a new virtual register, or a new version of a variable. Throws for other [IRValue]s.
  */
-private fun CFG.makeCopiedValue(value: IRValue): IRValue {
+private fun CFG.makeCopiedValue(value: LoadableValue): LoadableValue {
   require(value is Variable || value is VirtualRegister)
+  if (value.isUndefined) return value
   return if (value is Variable) {
     val oldVersion = latestVersions.getValue(value.id)
     latestVersions[value.id] = oldVersion + 1
@@ -150,7 +155,7 @@ private fun CFG.makeCopiedValue(value: IRValue): IRValue {
 private data class IntermediateConstraintsResult(
     val instrMap: InstructionMap,
     val lastUses: Map<IRValue, Label>,
-    val constrainedLabels: List<Label>
+    val withConstraints: Set<BasicBlock>
 )
 
 /**
@@ -164,7 +169,7 @@ private fun TargetFunGenerator.insertConstraintCopies(
 ): IntermediateConstraintsResult {
   val newMap = instrMap.toMutableMap()
   val newLastUses = lastUses.toMutableMap()
-  val constrainedLabels = mutableListOf<Label>()
+  val withConstraints = mutableSetOf<BasicBlock>()
   for (block in cfg.domTreePreorder) {
     var newInstr = instrMap.getValue(block)
     // Track how many copies we inserted
@@ -173,13 +178,14 @@ private fun TargetFunGenerator.insertConstraintCopies(
     for ((index, mi) in instrMap.getValue(block).withIndex()) {
       if (mi.constrainedArgs.isEmpty() || mi.constrainedRes.isEmpty()) continue
       // Track constrained labels for later, so we don't traverse the graph again
-      constrainedLabels += Label(block, index + insertions)
+      withConstraints += block
       for ((value, target) in mi.constrainedArgs) {
         // If it doesn't die after this instruction, it's not live-through, so leave it alone
         if (lastUses.getValue(value).second <= index) continue
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (target in mi.constrainedRes.map { it.target }) {
           val copiedValue = cfg.makeCopiedValue(value)
+          newLastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
           val copy = createIRCopy(copiedValue, value)
           copy.irLabelIndex = mi.irLabelIndex
           newInstr = rewriteBlockUses(block, copy, index + insertions, value, copiedValue, newInstr)
@@ -190,7 +196,7 @@ private fun TargetFunGenerator.insertConstraintCopies(
     }
     newMap[block] = newInstr
   }
-  return IntermediateConstraintsResult(newMap, newLastUses, constrainedLabels)
+  return IntermediateConstraintsResult(newMap, newLastUses, withConstraints)
 }
 
 /**
@@ -199,7 +205,7 @@ private fun TargetFunGenerator.insertConstraintCopies(
  * @see facilitatePrecoloring
  */
 private fun TargetFunGenerator.splitLiveRanges(
-    splitFor: List<IRValue>,
+    splitFor: Set<LoadableValue>,
     atIndex: LabelIndex,
     block: BasicBlock,
     instructions: List<MachineInstruction>,
@@ -210,21 +216,21 @@ private fun TargetFunGenerator.splitLiveRanges(
   }
   var newInstrs = instructions
   for ((insertedCurrently, value) in splitFor.withIndex()) {
-    // The replacement will die at the index where the original died
-    val rewrittenLastUse = lastUses.getValue(value)
-    // Make the copy
     val rewritten = cfg.makeCopiedValue(value)
+    // The replacement will die at the index where the original died
+    lastUses[rewritten] = Label(block, lastUses.getValue(value).second)
     val copy = createIRCopy(rewritten, value)
     copy.irLabelIndex = newInstrs[atIndex + insertedCurrently].irLabelIndex
     // And rewrite everything
     newInstrs = rewriteBlockUses(block, copy, atIndex + insertedCurrently, value, rewritten, newInstrs)
     rewriteLastUses(lastUses, block, value, atIndex + insertedCurrently)
-    lastUses[rewritten] = rewrittenLastUse
   }
   return newInstrs
 }
 
 /**
+ * FIXME: interleave these 2 copy additions, that is, run insertConstraintCopies facilitatePrecoloring on cdq,
+ *   and then run insertConstraintCopies facilitatePrecoloring on div, etc.
  * Turns Precol-Ext (NP Complete for chordal graphs) into 1-Precol-Ext (P for chordal graphs). Basically, to solve
  * register targeting constraints, we precolor those nodes, and then extend the coloring to a complete k-coloring. The
  * general problem is hard, but if we split the live ranges of all the living variables at the constrained label, the
@@ -235,38 +241,102 @@ private fun TargetFunGenerator.splitLiveRanges(
 private fun TargetFunGenerator.facilitatePrecoloring(
     icr: IntermediateConstraintsResult
 ): IntermediateConstraintsResult {
-  val (instrMap, lastUses, constrainedLabels) = icr
+  val (instrMap, lastUses, withConstraints) = icr
   val newInstrMap = instrMap.toMutableMap()
   val newLastUses = lastUses.toMutableMap()
-  // Group constrained labels by the block they're in
-  val blockConstraints = constrainedLabels.groupBy { it.first }
-  for (block in blockConstraints.keys) {
+  for (block in withConstraints) {
     var newInstr = instrMap.getValue(block)
-    // Get a list of indices to split live ranges at
-    val constrainedIndices = blockConstraints.getValue(block).map { it.second }
     // Track which variables are alive at any point in this block
     // Initialize with the block live-ins
-    val alive: MutableList<IRValue> = cfg.liveIns.getValue(block).toMutableList()
+    val alive: MutableSet<LoadableValue> = cfg.liveIns.getValue(block).toMutableSet()
+    fun updateAlive(mi: MachineInstruction, index: LabelIndex) {
+      val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }.filterIsInstance<LoadableValue>()
+      alive -= dyingHere
+      // The cast is obviously correct as long as VirtualRegister/Variable are LoadableValues
+      @Suppress("UNCHECKED_CAST")
+      val definedHere = mi.defs.filter { it is VirtualRegister || it is Variable } as List<LoadableValue>
+      alive += definedHere
+    }
+
     var index = 0
-    var inserted = 0
     while (index < newInstr.size) {
       val mi = newInstr[index]
-      // The indices list has old values, before insertions
-      if ((index - inserted) in constrainedIndices) {
+      if (mi.constrainedArgs.isNotEmpty() || mi.constrainedRes.isNotEmpty()) {
         newInstr = splitLiveRanges(alive, index, block, newInstr, newLastUses)
-        // FIXME: do we have to alter live-ins?
-        // Each one alive is copied, each copy an instruction that is inserted
-        inserted += alive.size
-        index += alive.size
+        // FIXME: do we have to alter live-ins? probably for variables, see SSA reconstruction
+        // Each value alive is copied, and for each copy an instruction is inserted
+        // But we need to run updateAlive on the new copy instructions...
+        for (copyIdx in index until (index + alive.size)) {
+          updateAlive(newInstr[copyIdx], copyIdx)
+          index++
+        }
+        // ...and then skip the original constrained label
+        index++
+      } else {
+        updateAlive(mi, index)
+        index++
       }
-      val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }
-      alive -= dyingHere
-      val definedHere = mi.defs.filter { it is VirtualRegister || it is Variable }
-      alive += definedHere
-      index++
+    }
+    newInstrMap[block] = newInstr
+  }
+  return IntermediateConstraintsResult(newInstrMap, newLastUses, withConstraints)
+}
+
+/**
+ * Colors a single constrained label. See reference for variable notations and algorithm.
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.8
+ */
+private fun TargetFunGenerator.constrainedColoring(
+    mi: MachineInstruction,
+    label: Label,
+    lastUses: Map<IRValue, Label>,
+    coloring: MutableMap<IRValue, MachineRegister>,
+    assigned: MutableList<MachineRegister>
+) {
+  val arg = mi.uses.filter { it is VirtualRegister || it is Variable }
+  val t = arg
+      .filter { lastUses[it]?.first == label.first && lastUses.getValue(it).second > label.second }
+      .toMutableSet()
+  val a = (arg - t).toMutableSet()
+  val d = mi.defs.filter { it is VirtualRegister || it is Variable }.toMutableSet()
+  val cA = mutableListOf<MachineRegister>()
+  val cD = mutableListOf<MachineRegister>()
+
+  for ((value, target) in mi.constrainedArgs) {
+    cA += target
+    a -= value
+    coloring[value] = target
+    if (value in t) {
+      assigned += target
+    }
+    t -= value
+  }
+  for ((value, target) in mi.constrainedRes) {
+    cD += target
+    d -= value
+    coloring[value] = target
+    // FIXME: if the resulting value is never used, should it still be marked assigned?
+    assigned += target
+  }
+  for (x in a) {
+    // We differ here a bit, because cD - cA might have a register, but of the wrong class
+    val reg = target.pickMatchingRegister(cD - cA, x)
+    if (reg != null) {
+      coloring[x] = reg
+    } else {
+      coloring[x] = target.matchValueToRegister(x, assigned + cA)
     }
   }
-  return IntermediateConstraintsResult(newInstrMap, newLastUses, constrainedLabels)
+  for (x in d) {
+    val reg = target.pickMatchingRegister(cA - cD, x)
+    if (reg != null) {
+      coloring[x] = reg
+    } else {
+      coloring[x] = target.matchValueToRegister(x, assigned + cD)
+    }
+  }
+  // FIXME
 }
 
 /**
@@ -303,7 +373,9 @@ private fun findLastUses(cfg: CFG, instrMap: InstructionMap): Map<IRValue, Label
 fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   val initialLastUses = findLastUses(cfg, instrMap)
   val spilledInstrs = spiller(instrMap, initialLastUses)
-  val (finalInstrMap, lastUses) = facilitatePrecoloring(insertConstraintCopies(spilledInstrs, initialLastUses))
+  // FIXME: terrible
+  val spillLastUses = findLastUses(cfg, spilledInstrs)
+  val (finalInstrMap, lastUses) = facilitatePrecoloring(insertConstraintCopies(spilledInstrs, spillLastUses))
   // FIXME: coalescing
   // List of visited nodes for DFS
   val visited = mutableSetOf<BasicBlock>()
@@ -339,27 +411,33 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
           .filter { it is StackVariable || it is MemoryLocation }
           .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
           .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
+      val isConstrained = mi.constrainedArgs.isNotEmpty() || mi.constrainedRes.isNotEmpty()
+      if (isConstrained) {
+        constrainedColoring(mi, Label(block, index), lastUses, coloring, assigned)
+      }
       val dyingHere = mi.uses.filter { lastUses[it] == Label(block, index) }
       // Deallocate registers of values that die at this label
       for (value in dyingHere) {
         val color = coloring[value] ?: continue
         assigned -= color
       }
-      val defined = mi.defs
-          .asSequence()
-          .filter { it !in colored }
-          .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
-      // Allocate registers for values defined at this label
-      for (definition in defined) {
-        val color = target.matchValueToRegister(definition, assigned)
-        if (coloring[definition] != null) {
-          logger.throwICE("Coloring the same definition twice")
+      if (!isConstrained) {
+        val defined = mi.defs
+            .asSequence()
+            .filter { it !in colored }
+            .filter { it !is PhysicalRegister && it !is StackVariable && it !is MemoryLocation }
+        // Allocate registers for values defined at this label
+        for (definition in defined) {
+          val color = target.matchValueToRegister(definition, assigned)
+          if (coloring[definition] != null) {
+            logger.throwICE("Coloring the same definition twice")
+          }
+          coloring[definition] = color
+          colored += definition
+          // Don't mark the register as assigned unless this value has at least one use, that
+          // is, it exists in lastUses
+          if (definition in lastUses) assigned += color
         }
-        coloring[definition] = color
-        colored += definition
-        // Don't mark the register as assigned unless this value has at least one use, that
-        // is, it exists in lastUses
-        if (definition in lastUses) assigned += color
       }
     }
     registerUseMap[block] = assigned

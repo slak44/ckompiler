@@ -252,7 +252,14 @@ sealed class IRValue {
 /**
  * An [IRValue] that can be "written" to. What writing to it means depends on the value.
  */
-sealed class LoadableValue : IRValue()
+sealed class LoadableValue : IRValue() {
+  /**
+   * If true, signals that the stored value is irrelevant: that means not even generate code for operations on it!
+   *
+   * Garbage in, garbage out.
+   */
+  abstract val isUndefined: Boolean
+}
 
 /**
  * Represents the [index]th parameter of a function. It might be a memory location, or it might be
@@ -271,9 +278,10 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
  */
 data class VirtualRegister(
     val id: AtomicId,
-    override val type: TypeName
+    override val type: TypeName,
+    override val isUndefined: Boolean = false
 ) : LoadableValue() {
-  override val name = "$type vreg$id"
+  override val name = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
   override fun toString() = name
 }
 
@@ -288,6 +296,7 @@ data class PhysicalRegister(
     override val type: TypeName
 ) : LoadableValue() {
   override val name = reg.regName
+  override val isUndefined = false
   override fun toString() = reg.regName
 
   override fun equals(other: Any?) = (other as? PhysicalRegister)?.reg == reg
@@ -373,7 +382,7 @@ class Variable(val tid: TypedIdentifier) : LoadableValue() {
    * Returns true if this variable is not defined, either from use before definition, or as a dummy
    * for a φ-function.
    */
-  val isUndefined get() = version == 0
+  override val isUndefined get() = version == 0
 
   fun copy(version: Int = this.version): Variable {
     val v = Variable(tid)
@@ -422,6 +431,7 @@ data class MemoryLocation(val ptr: IRValue) : LoadableValue() {
 
   override val name = ptr.name
   override val type = (ptr.type as PointerType).referencedType
+  override val isUndefined = false
 
   override fun toString() = "mem[$ptr]"
 }
@@ -437,6 +447,7 @@ data class StackVariable(val tid: TypedIdentifier) : LoadableValue() {
 
   override val name get() = tid.name
   override val type: PointerType = PointerType(tid.type.normalize(), emptyList())
+  override val isUndefined = false
 
   override fun toString() = "stack $type $name"
 }

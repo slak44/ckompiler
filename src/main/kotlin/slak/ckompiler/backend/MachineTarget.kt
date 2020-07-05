@@ -69,9 +69,9 @@ enum class VariableUse {
   DEF, USE, DEF_USE
 }
 
-data class Constraint(val value: IRValue, val target: MachineRegister)
+data class Constraint(val value: LoadableValue, val target: MachineRegister)
 
-infix fun IRValue.constrainedTo(target: MachineRegister) = Constraint(this, target)
+infix fun LoadableValue.constrainedTo(target: MachineRegister) = Constraint(this, target)
 
 /**
  * A "template" for an instruction. Describes what is allowed as operands, and how they are used.
@@ -145,11 +145,14 @@ data class MachineInstruction(
   }
 
   override fun toString(): String {
-    val initial = "${template.name} " + operands.joinToString(", ")
-    val constrained = (constrainedArgs + constrainedRes).joinToString(" ", prefix = " ") {
-      "[${it.value} constrained to ${it.target}]"
+    val initial = template.name + operands.joinToString(", ", prefix = " ")
+    val constrainedArgs = constrainedArgs.joinToString(" ", prefix = " ") {
+      "[constrains ${it.value} to ${it.target}]"
     }
-    return initial + constrained
+    val constrainedRes = constrainedRes.joinToString(" ", prefix = " ") {
+      "[result ${it.value} constrained to ${it.target}]"
+    }
+    return initial + constrainedArgs + constrainedRes
   }
 }
 

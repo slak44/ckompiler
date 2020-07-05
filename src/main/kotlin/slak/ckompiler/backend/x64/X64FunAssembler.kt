@@ -322,8 +322,10 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     if (value is PhysicalRegister) {
       return RegisterValue(value.reg, X64Target.machineTargetData.sizeOf(value.type))
     }
-    if (value is Variable && value.isUndefined) {
-      // Undefined behaviour, do whatever
+    if (value is LoadableValue && value.isUndefined) {
+      // Undefined behaviour, can do whatever; we pick the first register of the correct class
+      // This is useful, because all undefined things will be "in" the same register, which will create a bunch of
+      // "mov rax, rax"-type instructions that are easy to remove
       val reg = (target.registers - target.forbidden)
           .first { reg -> reg.valueClass == target.registerClassOf(value.type) }
       return RegisterValue(reg, X64Target.machineTargetData.sizeOf(value.type))
