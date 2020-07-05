@@ -199,6 +199,22 @@ class X64Tests {
   }
 
   @Test
+  fun `Constrained Div Test With Unused Variable`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int unused = 1234;
+        int a = $a, b = $b;
+        int res = a / b;
+        printf("%d", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString())
+  }
+
+  @Test
   fun `Constrained Div Test With Live Through Argument Dividend`() {
     val a = 23
     val b = 5
