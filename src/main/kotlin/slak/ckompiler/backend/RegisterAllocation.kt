@@ -296,7 +296,8 @@ private fun TargetFunGenerator.constrainedColoring(
     d -= value
     coloring[value] = target
     // FIXME: if the resulting value is never used, should it still be marked assigned?
-    assigned += target
+    //  more than that, should it be marked assigned at all?
+//    assigned += target
   }
   for (x in a) {
     // We differ here a bit, because cD - cA might have a register, but of the wrong class
@@ -315,7 +316,8 @@ private fun TargetFunGenerator.constrainedColoring(
       coloring[x] = target.matchValueToRegister(x, assigned + cD)
     }
   }
-  // FIXME
+  // FIXME:
+  check(t.isEmpty()) { "Can we find literally any case where T is not empty at this point?" }
 }
 
 /**
