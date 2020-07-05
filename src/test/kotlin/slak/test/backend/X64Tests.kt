@@ -167,6 +167,41 @@ class X64Tests {
   }
 
   @Test
+  fun `Multiple Constrained Div Test`() {
+    val x = listOf(1, 23, 5, 6, 87, -2345, -34, 22, 65, 9)
+    val result = x.indices.windowed(2).map { it[0] / it[1] }.sum()
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int ${x.withIndex().joinToString(", ") { "x${it.index} = ${it.value}" }};
+        int res = 0;
+        ${x.indices.windowed(2).joinToString("\n") { "res += x${it[0]} / x${it[1]};" }}
+        printf("%d", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = result.toString())
+  }
+
+  @Test
+  fun `Constrained Div Test With Phi Insertion`() {
+    val a = 23
+    val b = 5
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int b = $b, a = $a;
+        int res = 0;
+        if (a > b) {
+          res = a / b;
+          a = 111;
+        }
+        printf("%d", res);
+        return a;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = 111)
+  }
+
+  @Test
   fun `Constrained Div Test With Reversed Argument Order`() {
     val a = 23
     val b = 5
@@ -196,6 +231,25 @@ class X64Tests {
         return live_through;
       }
     """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = lt)
+  }
+
+  @Test
+  fun `Constrained Div Test With Register Pressure`() {
+    val a = 23
+    val b = 5
+    val lt = 7
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int live_through = $lt;
+        int x1 = 1, x2 = 2, x3 = 3, x4 = 4;
+        int a = $a, b = $b;
+        int res = a / b;
+        live_through += x1 + x2 + x3 + x4;
+        printf("%d", res);
+        return live_through;
+      }
+    """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = lt + 10)
   }
 
   @Test
