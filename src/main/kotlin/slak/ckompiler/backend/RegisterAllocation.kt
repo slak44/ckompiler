@@ -176,6 +176,8 @@ private fun TargetFunGenerator.rewriteValue(
     instructions: List<MachineInstruction>,
     rewriteConstrained: Boolean
 ): List<MachineInstruction> {
+  // No point in inserting a copy for something that's never used
+  if (value !in lastUses) return instructions
   val copiedValue = cfg.makeCopiedValue(value)
   val copy = createIRCopy(copiedValue, value)
   copy.irLabelIndex = constrainedInstr.irLabelIndex
