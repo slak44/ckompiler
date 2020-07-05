@@ -183,6 +183,9 @@ private fun TargetFunGenerator.rewriteValue(
   // The replacement will die at the index where the original died
   lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
   rewriteLastUses(lastUses, block, copyIndex)
+  // This is the case where the value is an undefined dummy
+  // We want to keep the original and correct last use, instead of destroying it here
+  if (value === copiedValue) return newInstr
   if (rewriteConstrained) {
     // Live range split: the constrained instr was rewritten, and the value cannot have been used there, so it dies
     // when it is copied
