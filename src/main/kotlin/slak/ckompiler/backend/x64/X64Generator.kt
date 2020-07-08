@@ -336,13 +336,15 @@ class X64Generator(
     val resultReg = if (i.op == IntegralBinaryOps.REM) rdx else rax
     val rdxDummy = VirtualRegister(cfg.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
     val actualDividend = if (i.lhs is AllocatableValue) i.lhs else VirtualRegister(cfg.registerIds(), i.lhs.type)
+    val actualDivisor = if (i.rhs is ConstantValue) VirtualRegister(cfg.registerIds(), i.rhs.type) else i.rhs
     return listOfNotNull(
         if (i.lhs is AllocatableValue) null else matchTypedMov(actualDividend, i.lhs),
+        if (i.rhs !is ConstantValue) null else matchTypedMov(actualDivisor, i.rhs),
         cdqInstr.match().withConstraints(
             listOf(rdxDummy constrainedTo rdx),
             listOf(rdxDummy constrainedTo rdx)
         ),
-        divInstr.match(i.rhs).withConstraints(
+        divInstr.match(actualDivisor).withConstraints(
             listOf(actualDividend constrainedTo rax, rdxDummy constrainedTo rdx),
             listOf(i.result as AllocatableValue constrainedTo resultReg)
         )
