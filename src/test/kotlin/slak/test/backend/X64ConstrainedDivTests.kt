@@ -3,22 +3,24 @@ package slak.test.backend
 import org.junit.jupiter.api.Test
 import slak.test.compileAndRun
 import slak.test.expect
+import slak.test.justExitCode
 
 class X64ConstrainedDivTests {
   @Test
   fun `Multiple Constrained Div Test`() {
-    val x = listOf(1, 23, 5, 6, 87, -2345, -34, 22, 65, 9)
-    val result = x.indices.windowed(2).map { it[0] / it[1] }.sum()
+    val x = mapOf(2 to -1, -231 to 53, 343 to 7)
+    val defs = x.entries.withIndex().joinToString(", ") {
+      "x${it.index}D = ${it.value.key}, x${it.index}d = ${it.value.value}"
+    }
+    val result = x.entries.sumBy { it.key / it.value }
     compileAndRun("""
-      #include <stdio.h>
       int main() {
-        int ${x.withIndex().joinToString(", ") { "x${it.index} = ${it.value}" }};
+        int ${defs};
         int res = 0;
-        ${x.indices.windowed(2).joinToString("\n") { "res += x${it[0]} / x${it[1]};" }}
-        printf("%d", res);
-        return 0;
+        ${x.entries.indices.joinToString("\n") { "res += x${it}D / x${it}d;" }}
+        return res;
       }
-    """.trimIndent()).expect(stdout = result.toString())
+    """.trimIndent()).justExitCode(result)
   }
 
   @Test
