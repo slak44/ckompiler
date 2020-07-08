@@ -435,7 +435,8 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
         val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
         val colorsAtL = (mi.defs.filterIsInstance<AllocatableValue>() + usedAtL).map { coloring.getValue(it) }
         for (copy in copies - usedAtL) {
-          checkNotNull(coloring[copy])
+          val oldColor = checkNotNull(coloring[copy])
+          assigned -= oldColor
           val color = target.matchValueToRegister(copy, assigned + colorsAtL)
           coloring[copy] = color
           assigned += color
