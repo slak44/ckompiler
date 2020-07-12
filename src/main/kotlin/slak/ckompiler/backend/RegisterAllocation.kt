@@ -27,7 +27,7 @@ data class AllocationResult(
 }
 
 private fun MachineTarget.pickMatchingRegister(
-    validRegisters: List<MachineRegister>,
+    validRegisters: Set<MachineRegister>,
     value: IRValue
 ): MachineRegister? {
   val validClass = registerClassOf(value.type)
@@ -40,8 +40,8 @@ private fun MachineTarget.pickMatchingRegister(
 
 private fun MachineTarget.matchValueToRegister(
     value: IRValue,
-    forbiddenNeigh: List<MachineRegister>
-) = requireNotNull(pickMatchingRegister(registers - forbidden - forbiddenNeigh, value)) {
+    forbiddenNeigh: Set<MachineRegister>
+) = requireNotNull(pickMatchingRegister(registers.toSet() - forbidden - forbiddenNeigh, value)) {
   "Failed to find an empty register for the given value: $value"
 }
 
@@ -322,7 +322,7 @@ private data class RegisterAllocationContext(
   /** The value of [assigned] at the end of each [allocBlock]. */
   val registerUseMap = mutableMapOf<BasicBlock, List<MachineRegister>>()
   /** The registers in use at a moment in time. Should be only used internally by the allocator. */
-  val assigned = mutableListOf<MachineRegister>()
+  val assigned = mutableSetOf<MachineRegister>()
 
   val target get() = generator.target
 
@@ -353,8 +353,8 @@ private fun RegisterAllocationContext.constrainedColoring(mi: MachineInstruction
       .toMutableSet()
   val a = (arg - t).toMutableSet()
   val d = mi.defs.filterIsInstance<AllocatableValue>().toMutableSet()
-  val cA = mutableListOf<MachineRegister>()
-  val cD = mutableListOf<MachineRegister>()
+  val cA = mutableSetOf<MachineRegister>()
+  val cD = mutableSetOf<MachineRegister>()
 
   for ((value, target) in mi.constrainedArgs) {
     cA += target
