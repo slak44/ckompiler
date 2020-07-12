@@ -244,7 +244,7 @@ private fun TargetFunGenerator.prepareForColoring(
     fun updateAlive(mi: MachineInstruction, index: LabelIndex) {
       val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }.filterIsInstance<AllocatableValue>()
       alive -= dyingHere
-      alive += mi.defs.filterIsInstance<AllocatableValue>()
+      alive += mi.defs.filter { it in lastUses }.filterIsInstance<AllocatableValue>()
     }
 
     var index = 0
