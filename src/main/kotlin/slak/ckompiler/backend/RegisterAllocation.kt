@@ -400,6 +400,16 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
     if (block in visited) return
     visited += block
     val assigned = mutableListOf<MachineRegister>()
+
+    // Deallocate registers of values that die at this label
+    fun unassignDyingAt(mi: MachineInstruction, index: Int) {
+      val dyingHere = mi.uses.filter { lastUses[it] == Label(block, index) }
+      for (value in dyingHere) {
+        val color = coloring[value] ?: continue
+        assigned -= color
+      }
+    }
+
     for (x in cfg.liveIns.getValue(block)) {
       // If the live-in wasn't colored, and is null, that's a bug
       assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
@@ -433,7 +443,8 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
         val copyInstrs = finalInstrMap.getValue(block).take(index).takeLastWhile { it.isConstraintCopy }
         val copies = copyInstrs.flatMap { it.defs.filterIsInstance<AllocatableValue>() }
         val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
-        val colorsAtL = (mi.defs.filterIsInstance<AllocatableValue>() + usedAtL).map { coloring.getValue(it) }
+        val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
+        val colorsAtL = (definedAtL + usedAtL).map { coloring.getValue(it) }
         for (copy in copies - usedAtL) {
           val oldColor = checkNotNull(coloring[copy])
           assigned -= oldColor
@@ -441,14 +452,13 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
           coloring[copy] = color
           assigned += color
         }
-      }
-      val dyingHere = mi.uses.filter { lastUses[it] == Label(block, index) }
-      // Deallocate registers of values that die at this label
-      for (value in dyingHere) {
-        val color = coloring[value] ?: continue
-        assigned -= color
-      }
-      if (!mi.isConstrained) {
+        unassignDyingAt(mi, index)
+        for (def in definedAtL.filter { it in lastUses }) {
+          val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
+          assigned += color
+        }
+      } else {
+        unassignDyingAt(mi, index)
         val defined = mi.defs
             .asSequence()
             .filter { it !in colored }
