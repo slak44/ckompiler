@@ -35,6 +35,8 @@ class NasmEmitter(
     override val functions: List<TargetFunGenerator>,
     override val mainCfg: TargetFunGenerator?
 ) : AsmEmitter {
+  private val peepholeOptimizer = X64PeepholeOpt()
+
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
   private val data = mutableListOf<String>()
@@ -100,7 +102,8 @@ class NasmEmitter(
       emit(genAsm(function.genFunctionPrologue(allocationResult)))
       for (block in function.cfg.domTreePreorder) {
         label(block.label)
-        emit(genAsm(asmMap.getValue(block)))
+        @Suppress("UNCHECKED_CAST")
+        emit(genAsm(peepholeOptimizer.optimize(function, asmMap.getValue(block) as List<X64Instruction>)))
       }
       label(returnBlock.label)
       emit(genAsm(function.genFunctionEpilogue(allocationResult)))

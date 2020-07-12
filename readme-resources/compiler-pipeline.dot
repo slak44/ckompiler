@@ -39,6 +39,7 @@ digraph pipeline {
   allocResult[label=<Allocation Result<br/><font point-size="14" face="monospace">AllocationResult</font>>];
   prologueEpilogue[label="Prologue/Epilogue Generation",shape=box];
   appliedAlloc[label=<Applied Allocation<br/><font point-size="14" face="monospace">Map&lt;BasicBlock, List&lt;AsmInstruction&gt;&gt;</font>>];
+  peepholeOpt[label=<Peephold Optimizations<br/><font point-size="14" face="monospace">PeepholeOptimizer&lt;T&gt;</font>>];
   asmEmitter[label=<Assembly Emitter<br/><font point-size="14" face="monospace">AsmEmitter</font>>];
   nasmCode[label=<NASM Source<br/><font point-size="14" face="monospace">String</font>>];
   assembler[label="NASM"];
@@ -77,6 +78,8 @@ digraph pipeline {
 
   {codeGenerator, allocResult} -> {prologueEpilogue, appliedAlloc} -> asmEmitter;
 
+  peepholeOpt -> asmEmitter;
+
   asmEmitter -> nasmCode -> assembler;
 
   subgraph cluster_preprocessor {
@@ -110,7 +113,7 @@ digraph pipeline {
     color="orange";
   }
   subgraph cluster_backend {
-    codeGenerator; machineTarget; isel; prologueEpilogue; appliedAlloc; asmEmitter; nasmCode;
+    codeGenerator; machineTarget; isel; prologueEpilogue; appliedAlloc; peepholeOpt; asmEmitter; nasmCode;
     subgraph cluster_regalloc {
       spilling; coloring; coalescing; phiRemoval; allocation; modifiedCode; allocResult;
       label=<<font color="#CCCCCCFF" point-size="20">Register Allocation</font>>;

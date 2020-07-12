@@ -295,6 +295,10 @@ fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {
   return lists
 }
 
+interface PeepholeOptimizer<T : AsmInstruction> {
+  fun optimize(targetFun: TargetFunGenerator, asm: List<T>): List<T>
+}
+
 interface AsmEmitter {
   val externals: List<String>
   val functions: List<TargetFunGenerator>

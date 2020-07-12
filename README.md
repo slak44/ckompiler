@@ -74,13 +74,13 @@ Since the `DeclarationParser` implements some of those interfaces itself,
 
 This approach has several advantages:
 
-1. Components are forced to be written against the exposed interfaces 
+1. Components are forced to be written against the exposed interfaces
    (dependency inversion principle), allowing implementation details to be
    hidden in the concrete classes (single responsibility principle).
 2. The individual interfaces are simple compared to a monolith approach, where
    every component would have access to every other component (interface
    segregation principle).
-3. The dependencies between components are made explicit; for example, a 
+3. The dependencies between components are made explicit; for example, a
    `ScopeHandler` has no business using a `ControlKeywordParser`. Requiring
    manual delegation helps prevent accidental coupling.
 4. The delegate syntax is clean: there is usually no need to write
@@ -405,7 +405,7 @@ The `CFG` class is also responsible for converting the code in its nodes to a
 4. We precompute a list of the CFG's nodes in [post-order][post_order]
    (basically DFS, for the kinds of graphs encountered here). See
    `postOrderNodes` in [ControlFlowGraph.kt][cfg].
-5. An auxiliary data structure, `DominatorList`, is created. This list stores 
+5. An auxiliary data structure, `DominatorList`, is created. This list stores
    each node's _immediate dominator_. The list is then used to compute every
    node's _dominance frontier_, which is stored as a member of `BasicBlock`.
 
@@ -494,9 +494,11 @@ manner. The code can be found in [MachineTarget.kt][machine_target].
 5. `AsmEmitter`: Takes the result of all the function generators in a
    translation unit and emits the actual assembly string. Currently, this means
    it emits NASM.
-6. `InstructionTemplate`: Represents a particular instruction from an ISA. For
+6. `PeepholeOptimizer`: Takes a list of `AsmInstruction`s, and optimizes them in
+  isolation. Used by `AsmEmitter`s.
+7. `InstructionTemplate`: Represents a particular instruction from an ISA. For
    example: `mov r/m64, r64` or `add r32, imm32`.
-7. `AsmInstruction`: Final generated instruction, ready for emission.
+8. `AsmInstruction`: Final generated instruction, ready for emission.
 
 There is also the `MachineInstruction` class, which isn't an interface, but it
 represents an instruction (`InstructionTemplate`) along with its operands
