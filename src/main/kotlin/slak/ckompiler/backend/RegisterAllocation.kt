@@ -244,7 +244,7 @@ private fun TargetFunGenerator.prepareForColoring(
     fun updateAlive(mi: MachineInstruction, index: LabelIndex) {
       val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }.filterIsInstance<AllocatableValue>()
       alive -= dyingHere
-      alive += mi.defs.filter { it in lastUses }.filterIsInstance<AllocatableValue>()
+      alive += mi.defs.filter { it in newLastUses }.filterIsInstance<AllocatableValue>()
     }
 
     var index = 0
@@ -418,6 +418,7 @@ private fun RegisterAllocationContext.unassignDyingAt(label: Label, mi: MachineI
 private fun RegisterAllocationContext.allocConstrainedMI(label: Label, mi: MachineInstruction) {
   require(mi.isConstrained)
   constrainedColoring(mi, label)
+  unassignDyingAt(label, mi)
   // Correctly color copies inserted by the live range split
   // See last paragraph of section 4.6.4
   val (block, index) = label
@@ -433,7 +434,6 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: Label, mi: Machi
     coloring[copy] = color
     assigned += color
   }
-  unassignDyingAt(label, mi)
   for (def in definedAtL.filter { it in lastUses }) {
     val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
     assigned += color
