@@ -24,6 +24,22 @@ class X64ConstrainedDivTests {
   }
 
   @Test
+  fun `Consecutive Constrained Div Test`() {
+    val (x1, x2, x3, x4) = listOf(23, 5, 343, 7)
+    compileAndRun("""
+      int main() {
+        int res = 0;
+        int x1 = $x1, x2 = $x2;
+        res += x1 / x2;
+        // x1, x2 are dead here
+        int x3 = $x3, x4 = $x4;
+        res += x3 / x4;
+        return res;
+      }
+    """.trimIndent()).justExitCode(x1 / x2 + x3 / x4)
+  }
+
+  @Test
   fun `Constrained Div Test With Phi Insertion`() {
     val a = 23
     val b = 5
