@@ -8,6 +8,8 @@ import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Instruction
+import slak.ckompiler.backend.x64.X64PeepholeOpt
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
@@ -398,6 +400,15 @@ class CLI(private val stdinStream: InputStream) :
       for ((block, list) in final) {
         println(block)
         println(list.joinToString(separator = "\n", postfix = "\n"))
+      }
+      println("Optimized:")
+      for ((block, list) in final) {
+        @Suppress("UNCHECKED_CAST")
+        val withOpts = X64PeepholeOpt().optimize(gen, list as List<X64Instruction>)
+        println(block)
+        println(withOpts.joinToString(separator = "\n", postfix = "\n"))
+        println("(initial: ${list.size} | optimized: ${withOpts.size})")
+        println()
       }
       return null
     }

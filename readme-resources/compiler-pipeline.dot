@@ -39,7 +39,7 @@ digraph pipeline {
   allocResult[label=<Allocation Result<br/><font point-size="14" face="monospace">AllocationResult</font>>];
   prologueEpilogue[label="Prologue/Epilogue Generation",shape=box];
   appliedAlloc[label=<Applied Allocation<br/><font point-size="14" face="monospace">Map&lt;BasicBlock, List&lt;AsmInstruction&gt;&gt;</font>>];
-  peepholeOpt[label=<Peephold Optimizations<br/><font point-size="14" face="monospace">PeepholeOptimizer&lt;T&gt;</font>>];
+  peepholeOpt[label=<Peephole Optimizations<br/><font point-size="14" face="monospace">PeepholeOptimizer&lt;T&gt;</font>>];
   asmEmitter[label=<Assembly Emitter<br/><font point-size="14" face="monospace">AsmEmitter</font>>];
   nasmCode[label=<NASM Source<br/><font point-size="14" face="monospace">String</font>>];
   assembler[label="NASM"];
