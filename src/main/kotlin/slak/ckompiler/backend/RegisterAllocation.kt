@@ -286,6 +286,54 @@ private fun TargetFunGenerator.prepareForColoring(
 }
 
 /**
+ * Creates a map of each [IRValue] to the [Label] where it dies. Uses [MachineInstruction] indices.
+ */
+private fun findLastUses(cfg: CFG, instrMap: InstructionMap): Map<IRValue, Label> {
+  val lastUses = mutableMapOf<IRValue, Label>()
+  for (block in cfg.domTreePreorder) {
+    for ((index, mi) in instrMap.getValue(block).withIndex()) {
+      // For "variables", keep updating the map
+      // Obviously, the last use will be the last update in the map
+      for (it in mi.uses.filterIsInstance<AllocatableValue>()) {
+        lastUses[it] = Label(block, index)
+      }
+    }
+    // We need to check successor phis: if something is used there, it means it is live-out in this block
+    // If it's live-out in this block, its "last use" is not what was recorded above
+    for (succ in block.successors) {
+      for (phi in succ.phi) {
+        val usedInSuccPhi = phi.incoming.getValue(block)
+        lastUses[usedInSuccPhi] = Label(block, LabelIndex.MAX_VALUE)
+      }
+    }
+  }
+  return lastUses
+}
+
+private data class RegisterAllocationContext(
+    val generator: TargetFunGenerator,
+    val instrMap: InstructionMap,
+    val lastUses: Map<IRValue, Label>
+) {
+  /** List of visited nodes for DFS. */
+  val visited = mutableSetOf<BasicBlock>()
+  /** The allocation itself. */
+  val coloring = mutableMapOf<IRValue, MachineRegister>()
+  /** The value of [assigned] at the end of each [allocBlock]. */
+  val registerUseMap = mutableMapOf<BasicBlock, List<MachineRegister>>()
+  /** The registers in use at a moment in time. Should be only used internally by the allocator. */
+  val assigned = mutableListOf<MachineRegister>()
+
+  val target get() = generator.target
+
+  /** Begin a DFS from the starting block. */
+  fun doAllocation() {
+    require(visited.isEmpty() && coloring.isEmpty())
+    allocBlock(generator.cfg.startBlock)
+  }
+}
+
+/**
  * Colors a single constrained label. See reference for variable notations and algorithm.
  *
  * For clarity on arguments:
@@ -298,13 +346,7 @@ private fun TargetFunGenerator.prepareForColoring(
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.8, 4.6.4
  */
-private fun TargetFunGenerator.constrainedColoring(
-    mi: MachineInstruction,
-    label: Label,
-    lastUses: Map<IRValue, Label>,
-    coloring: MutableMap<IRValue, MachineRegister>,
-    assigned: MutableList<MachineRegister>
-) {
+private fun RegisterAllocationContext.constrainedColoring(mi: MachineInstruction, label: Label) {
   val arg = mi.uses.filterIsInstance<AllocatableValue>()
   val t = arg
       .filter { lastUses[it]?.first == label.first && lastUses.getValue(it).second > label.second }
@@ -356,28 +398,109 @@ private fun TargetFunGenerator.constrainedColoring(
 }
 
 /**
- * Creates a map of each [IRValue] to the [Label] where it dies. Uses [MachineInstruction] indices.
+ * Deallocate registers of values that die at the specified label.
  */
-private fun findLastUses(cfg: CFG, instrMap: InstructionMap): Map<IRValue, Label> {
-  val lastUses = mutableMapOf<IRValue, Label>()
-  for (block in cfg.domTreePreorder) {
-    for ((index, mi) in instrMap.getValue(block).withIndex()) {
-      // For "variables", keep updating the map
-      // Obviously, the last use will be the last update in the map
-      for (it in mi.uses.filterIsInstance<AllocatableValue>()) {
-        lastUses[it] = Label(block, index)
-      }
+private fun RegisterAllocationContext.unassignDyingAt(label: Label, mi: MachineInstruction) {
+  val dyingHere = mi.uses.filter { lastUses[it] == label }
+  for (value in dyingHere) {
+    val color = coloring[value] ?: continue
+    assigned -= color
+  }
+}
+
+/**
+ * Allocate registers at and around a constrained instruction.
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.6.4
+ *
+ * @see constrainedColoring
+ */
+private fun RegisterAllocationContext.allocConstrainedMI(label: Label, mi: MachineInstruction) {
+  require(mi.isConstrained)
+  constrainedColoring(mi, label)
+  // Correctly color copies inserted by the live range split
+  // See last paragraph of section 4.6.4
+  val (block, index) = label
+  val copyInstrs = instrMap.getValue(block).take(index).takeLastWhile { it.isConstraintCopy }
+  val copies = copyInstrs.flatMap { it.defs.filterIsInstance<AllocatableValue>() }
+  val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
+  val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
+  val colorsAtL = (definedAtL + usedAtL).map { coloring.getValue(it) }
+  for (copy in copies - usedAtL) {
+    val oldColor = checkNotNull(coloring[copy])
+    assigned -= oldColor
+    val color = target.matchValueToRegister(copy, assigned + colorsAtL)
+    coloring[copy] = color
+    assigned += color
+  }
+  unassignDyingAt(label, mi)
+  for (def in definedAtL.filter { it in lastUses }) {
+    val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
+    assigned += color
+  }
+}
+
+/**
+ * Register allocation for one [block]. Recursive DFS case.
+ */
+private fun RegisterAllocationContext.allocBlock(block: BasicBlock) {
+  if (block in visited) return
+  visited += block
+
+  for (x in generator.cfg.liveIns.getValue(block)) {
+    // If the live-in wasn't colored, and is null, that's a bug
+    assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
+  }
+  // Add the parameter register constraints to assigned
+  if (block == generator.cfg.startBlock) {
+    assigned += generator.parameterMap.values.mapNotNull { (it as? PhysicalRegister)?.reg }
+  }
+  // Remove incoming φ-uses from assigned
+  for (used in block.phi.flatMap { it.incoming.values }) {
+    val color = coloring[used] ?: continue
+    assigned -= color
+  }
+  // Allocate φ-definitions
+  for ((variable, _) in block.phi) {
+    val color = target.matchValueToRegister(variable, assigned)
+    coloring[variable] = color
+    assigned += color
+  }
+  val colored = mutableSetOf<IRValue>()
+  for ((index, mi) in instrMap.getValue(block).withIndex()) {
+    // Also add stack variables to coloring
+    coloring += mi.operands
+        .filter { it is StackVariable || it is MemoryLocation }
+        .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
+        .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
+    if (mi.isConstrained) {
+      allocConstrainedMI(Label(block, index), mi)
+      continue
     }
-    // We need to check successor phis: if something is used there, it means it is live-out in this block
-    // If it's live-out in this block, its "last use" is not what was recorded above
-    for (succ in block.successors) {
-      for (phi in succ.phi) {
-        val usedInSuccPhi = phi.incoming.getValue(block)
-        lastUses[usedInSuccPhi] = Label(block, LabelIndex.MAX_VALUE)
+    // Handle unconstrained instructions
+    unassignDyingAt(Label(block, index), mi)
+    val defined = mi.defs
+        .asSequence()
+        .filter { it !in colored }
+        .filterIsInstance<AllocatableValue>()
+    // Allocate registers for values defined at this label
+    for (definition in defined) {
+      val color = target.matchValueToRegister(definition, assigned)
+      if (coloring[definition] != null) {
+        logger.throwICE("Coloring the same definition twice")
       }
+      coloring[definition] = color
+      colored += definition
+      // Don't mark the register as assigned unless this value has at least one use, that is, it exists in lastUses
+      if (definition in lastUses) assigned += color
     }
   }
-  return lastUses
+  registerUseMap[block] = assigned.toList()
+  assigned.clear()
+  // Recursive DFS on dominator tree
+  for (c in generator.cfg.nodes.filter { generator.cfg.doms[it] == block }.sortedBy { it.height }) {
+    allocBlock(c)
+  }
 }
 
 /**
@@ -392,100 +515,10 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   val spillLastUses = findLastUses(cfg, spilledInstrs)
   val (finalInstrMap, lastUses) = prepareForColoring(spilledInstrs, spillLastUses)
   // FIXME: coalescing
-  // List of visited nodes for DFS
-  val visited = mutableSetOf<BasicBlock>()
-  val coloring = mutableMapOf<IRValue, MachineRegister>()
-  val registerUseMap = mutableMapOf<BasicBlock, List<MachineRegister>>()
-  fun allocBlock(block: BasicBlock) {
-    if (block in visited) return
-    visited += block
-    val assigned = mutableListOf<MachineRegister>()
-
-    // Deallocate registers of values that die at this label
-    fun unassignDyingAt(mi: MachineInstruction, index: Int) {
-      val dyingHere = mi.uses.filter { lastUses[it] == Label(block, index) }
-      for (value in dyingHere) {
-        val color = coloring[value] ?: continue
-        assigned -= color
-      }
-    }
-
-    for (x in cfg.liveIns.getValue(block)) {
-      // If the live-in wasn't colored, and is null, that's a bug
-      assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
-    }
-    // Add the parameter register constraints to assigned
-    if (block == cfg.startBlock) {
-      assigned += parameterMap.values.mapNotNull { (it as? PhysicalRegister)?.reg }
-    }
-    // Remove incoming φ-uses from assigned
-    for (used in block.phi.flatMap { it.incoming.values }) {
-      val color = coloring[used] ?: continue
-      assigned -= color
-    }
-    // Allocate φ-definitions
-    for ((variable, _) in block.phi) {
-      val color = target.matchValueToRegister(variable, assigned)
-      coloring[variable] = color
-      assigned += color
-    }
-    val colored = mutableSetOf<IRValue>()
-    for ((index, mi) in finalInstrMap.getValue(block).withIndex()) {
-      // Also add stack variables to coloring
-      coloring += mi.operands
-          .filter { it is StackVariable || it is MemoryLocation }
-          .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
-          .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
-      if (mi.isConstrained) {
-        constrainedColoring(mi, Label(block, index), lastUses, coloring, assigned)
-        // Correctly color copies inserted by the live range split
-        // See last paragraph of section 4.6.4
-        val copyInstrs = finalInstrMap.getValue(block).take(index).takeLastWhile { it.isConstraintCopy }
-        val copies = copyInstrs.flatMap { it.defs.filterIsInstance<AllocatableValue>() }
-        val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
-        val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
-        val colorsAtL = (definedAtL + usedAtL).map { coloring.getValue(it) }
-        for (copy in copies - usedAtL) {
-          val oldColor = checkNotNull(coloring[copy])
-          assigned -= oldColor
-          val color = target.matchValueToRegister(copy, assigned + colorsAtL)
-          coloring[copy] = color
-          assigned += color
-        }
-        unassignDyingAt(mi, index)
-        for (def in definedAtL.filter { it in lastUses }) {
-          val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
-          assigned += color
-        }
-      } else {
-        unassignDyingAt(mi, index)
-        val defined = mi.defs
-            .asSequence()
-            .filter { it !in colored }
-            .filterIsInstance<AllocatableValue>()
-        // Allocate registers for values defined at this label
-        for (definition in defined) {
-          val color = target.matchValueToRegister(definition, assigned)
-          if (coloring[definition] != null) {
-            logger.throwICE("Coloring the same definition twice")
-          }
-          coloring[definition] = color
-          colored += definition
-          // Don't mark the register as assigned unless this value has at least one use, that
-          // is, it exists in lastUses
-          if (definition in lastUses) assigned += color
-        }
-      }
-    }
-    registerUseMap[block] = assigned
-    // Recursive DFS on dominator tree
-    for (c in cfg.nodes.filter { cfg.doms[it] == block }.sortedBy { it.height }) {
-      allocBlock(c)
-    }
-  }
-  allocBlock(cfg.startBlock)
-  val allocations = coloring.filterKeys { it !is ConstantValue }
-  val intermediate = AllocationResult(finalInstrMap, allocations, registerUseMap, lastUses)
+  val ctx = RegisterAllocationContext(this, finalInstrMap, lastUses)
+  ctx.doAllocation()
+  val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
+  val intermediate = AllocationResult(finalInstrMap, allocations, ctx.registerUseMap, lastUses)
   return removePhi(intermediate)
 }
 
