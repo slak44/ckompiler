@@ -298,8 +298,16 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
         lastSavedForCall = null
         continue
       }
+      // Add linked before (eg cdq before div)
+      for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.BEFORE }) {
+        result += miToX64Instr(linkedMi, alloc, stackOffsets)
+      }
       // Add current instruction
       result += miToX64Instr(mi, alloc, stackOffsets)
+      // Add linked after
+      for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.AFTER }) {
+        result += miToX64Instr(linkedMi, alloc, stackOffsets)
+      }
     }
     return result
   }

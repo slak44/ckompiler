@@ -69,10 +69,6 @@ enum class VariableUse {
   DEF, USE, DEF_USE
 }
 
-data class Constraint(val value: AllocatableValue, val target: MachineRegister)
-
-infix fun AllocatableValue.constrainedTo(target: MachineRegister) = Constraint(this, target)
-
 /**
  * A "template" for an instruction. Describes what is allowed as operands, and how they are used.
  */
@@ -105,13 +101,22 @@ interface InstructionTemplate {
  */
 const val ILLEGAL_INDEX = Int.MIN_VALUE
 
+data class Constraint(val value: AllocatableValue, val target: MachineRegister)
+
+infix fun AllocatableValue.constrainedTo(target: MachineRegister) = Constraint(this, target)
+
+enum class LinkPosition { BEFORE, AFTER }
+
+data class LinkedInstruction(val mi: MachineInstruction, val pos: LinkPosition)
+
 data class MachineInstruction(
     val template: InstructionTemplate,
     val operands: List<IRValue>,
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX,
     val constrainedArgs: List<Constraint> = emptyList(),
     val constrainedRes: List<Constraint> = emptyList(),
-    val isConstraintCopy: Boolean = false
+    val isConstraintCopy: Boolean = false,
+    val links: List<LinkedInstruction> = emptyList()
 ) {
   val isConstrained = constrainedArgs.isNotEmpty() || constrainedRes.isNotEmpty()
 
@@ -143,19 +148,24 @@ data class MachineInstruction(
         .toList() + constrainedRes.map { it.value }
   }
 
-  fun withConstraints(constrainedArgs: List<Constraint>, constrainedRes: List<Constraint>): MachineInstruction {
-    return copy(constrainedArgs = constrainedArgs, constrainedRes = constrainedRes)
-  }
-
   override fun toString(): String {
+    fun String.trimIfEmpty() = if (this.isBlank()) "" else this
+    val linkedBefore = links
+        .filter { it.pos == LinkPosition.BEFORE }
+        .joinToString("\n\t", prefix = "\t", postfix = "\n") { it.mi.toString() }
+        .trimIfEmpty()
     val initial = template.name + operands.joinToString(", ", prefix = " ")
-    val constrainedArgs = constrainedArgs.joinToString(" ", prefix = " ") {
+    val constrainedArgs = constrainedArgs.joinToString("\n\t", prefix = "\n\t") {
       "[constrains ${it.value} to ${it.target}]"
-    }
-    val constrainedRes = constrainedRes.joinToString(" ", prefix = " ") {
+    }.trimIfEmpty()
+    val constrainedRes = constrainedRes.joinToString("\n\t", prefix = "\n\t") {
       "[result ${it.value} constrained to ${it.target}]"
-    }
-    return initial + constrainedArgs + constrainedRes
+    }.trimIfEmpty()
+    val linkedAfter = links
+        .filter { it.pos == LinkPosition.AFTER }
+        .joinToString("\n\t", prefix = "\n\t") { it.mi.toString() }
+        .trimIfEmpty()
+    return linkedBefore + initial + constrainedArgs + constrainedRes + linkedAfter
   }
 }
 
