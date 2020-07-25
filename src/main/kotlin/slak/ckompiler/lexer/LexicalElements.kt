@@ -124,6 +124,10 @@ enum class Radix(val prefixLength: Int) {
 /** C standard: A.1.3 */
 fun isNonDigit(c: Char) = c == '_' || c in 'A'..'Z' || c in 'a'..'z'
 
+/** C standard: A.1.3, 6.4.2.1.0.3 */
+fun isIdentifierNonDigit(c: Char) =
+    isNonDigit(c) || c == '$' || c.category in arrayOf(CharCategory.LOWERCASE_LETTER, CharCategory.UPPERCASE_LETTER)
+
 /** C standard: A.1.3 */
 fun isDigit(c: Char) = c in '0'..'9'
 
@@ -150,9 +154,9 @@ fun nextWhitespaceOrPunct(s: String, vararg excludeChars: Char): Int {
  */
 fun identifier(s: String): Identifier? {
   // An identifier must start with a non-digit if it isn't a universal character name
-  if (!isNonDigit(s[0])) return null
+  if (!isIdentifierNonDigit(s[0])) return null
   // FIXME check for universal character names
-  val idx = s.indexOfFirst { !isDigit(it) && !isNonDigit(it) }
+  val idx = s.indexOfFirst { !isDigit(it) && !isIdentifierNonDigit(it) }
   val ident = s.slice(0 until if (idx == -1) s.length else idx)
   return Identifier(ident)
 }

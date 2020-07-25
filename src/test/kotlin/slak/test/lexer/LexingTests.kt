@@ -22,6 +22,14 @@ class LexingTests {
     l.assertTokens(Identifier(ident))
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = ["\$asd", "$$$", "asd$", "$", "φ", "să", "Âs", "Λ", "Ñ"])
+  fun `Identifiers Extra`(ident: String) {
+    val l = preparePP(ident, source)
+    l.assertNoDiagnostics()
+    l.assertTokens(Identifier(ident))
+  }
+
   @Test
   fun `Keywords All`() {
     val l = preparePP(Keywords.values().joinToString(" ") { it.keyword }, source)

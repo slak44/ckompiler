@@ -15,6 +15,8 @@ translation phase 3
 - (J.3.4/5.2.2.0.3): Escape sequences produce the relevant ASCII codes
 - (6.10.2.0.4): Macro replaced `#include` directives are resolved using
 diagnostic information for the given pp-tokens
+- (J.3.3/6.4.2.1.0.3): Additional characters are the '$' character, and all
+unicode characters of category LOWERCASE_LETTER or UPPERCASE_LETTER
 
 # List of Undefined Behaviours
 
