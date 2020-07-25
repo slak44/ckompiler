@@ -155,17 +155,26 @@ data class MachineInstruction(
         .joinToString("\n\t", prefix = "\t", postfix = "\n") { it.mi.toString() }
         .trimIfEmpty()
     val initial = template.name + operands.joinToString(", ", prefix = " ")
-    val constrainedArgs = constrainedArgs.joinToString("\n\t", prefix = "\n\t") {
+    val (constrainedArgList, argUndefined) = constrainedArgs.partition { !it.value.isUndefined }
+    val constrainedArgsText = constrainedArgList.joinToString("\n\t", prefix = "\n\t") {
       "[constrains ${it.value} to ${it.target}]"
     }.trimIfEmpty()
-    val constrainedRes = constrainedRes.joinToString("\n\t", prefix = "\n\t") {
+    val (constrainedResList, resUndefined) = constrainedRes.partition { !it.value.isUndefined }
+    val constrainedResText = constrainedResList.joinToString("\n\t", prefix = "\n\t") {
       "[result ${it.value} constrained to ${it.target}]"
     }.trimIfEmpty()
+    val dummyArgs = argUndefined.joinToString(", ") { it.target.regName }
+    val dummyRes = resUndefined.joinToString(", ") { it.target.regName }
+    val dummyLine = if (argUndefined.isNotEmpty() && resUndefined.isNotEmpty()) {
+      "\n\t[dummy args: $dummyArgs | dummy res: $dummyRes]"
+    } else {
+      ""
+    }
     val linkedAfter = links
         .filter { it.pos == LinkPosition.AFTER }
         .joinToString("\n\t", prefix = "\n\t") { it.mi.toString() }
         .trimIfEmpty()
-    return linkedBefore + initial + constrainedArgs + constrainedRes + linkedAfter
+    return linkedBefore + initial + constrainedArgsText + constrainedResText + dummyLine + linkedAfter
   }
 }
 
@@ -186,7 +195,7 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
   override fun toString(): String {
     val old = values.keys.joinToString(", ")
     val new = values.values.joinToString(", ")
-    return "parallel copy from [$old] to [$new]"
+    return "parallel copy [$new] ← [$old]"
   }
 
   companion object {

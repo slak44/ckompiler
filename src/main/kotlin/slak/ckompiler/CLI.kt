@@ -4,6 +4,7 @@ import kotlinx.cli.*
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
+import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.NasmEmitter
@@ -215,6 +216,8 @@ class CLI(private val stdinStream: InputStream) :
   private val interferenceFuncName by cli.flagValueArgument("--interference-function", "FUNC_NAME",
       "Choose which function to print variable interference for", initialValue = "main")
 
+  private val showDummies by cli.flagArgument("--show-dummies", "Show all dummy allocations")
+
   init {
     cli.helpGroup("Compiler debug options")
   }
@@ -393,6 +396,7 @@ class CLI(private val stdinStream: InputStream) :
       }
       val realAllocation = gen.regAlloc(selected)
       for ((value, register) in realAllocation.allocations) {
+        if (value is LoadableValue && value.isUndefined && !showDummies) continue
         println("allocate $value to $register")
       }
       println()

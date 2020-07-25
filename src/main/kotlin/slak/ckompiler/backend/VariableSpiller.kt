@@ -60,7 +60,7 @@ private fun TargetFunGenerator.findRegisterPressure(
     }
     for ((index, mi) in instrMap.getValue(block).withIndex()) {
       val dyingHere = mi.uses
-          .filter { it !is StackVariable && it !is MemoryLocation }
+          .filterIsInstance<AllocatableValue>()
           .filter { lastUses[it] == Label(block, index) }
       // Reduce pressure for values that die at this label
       for (value in dyingHere) {
@@ -69,8 +69,8 @@ private fun TargetFunGenerator.findRegisterPressure(
       }
       val defined = mi.defs.filterIsInstance<AllocatableValue>()
       // Increase pressure for values defined at this label
-      // If never used, then it shouldn't increase pressure
-      for (definition in defined.filter { it in lastUses }) {
+      // If never used, then it shouldn't increase pressure, nor should undefined
+      for (definition in defined.filter { it in lastUses && !it.isUndefined }) {
         val classOf = target.registerClassOf(definition.type)
         current[classOf] = current.getValue(classOf) + 1
       }

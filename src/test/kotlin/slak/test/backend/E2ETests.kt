@@ -167,6 +167,15 @@ class E2ETests {
     compileAndRun(resource("e2e/shortCircuiting.c")).justExitCode(55)
   }
 
+  @Test
+  fun `Basic Function Call`() {
+    compileAndRun(resource("e2e/basicFunctionCall.c")).justExitCode(4)
+  }
+
+  @Test
+  fun `Function Call With Caller-Saved Variable`() {
+    compileAndRun(resource("e2e/callerSavedFunctionCall.c")).justExitCode(7)
+  }
 
   @Test
   fun `For Loop Summing Test`() {

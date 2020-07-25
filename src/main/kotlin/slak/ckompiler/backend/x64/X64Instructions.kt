@@ -231,9 +231,6 @@ val dummyUse = dummyInstructionClass("USE", listOf(VariableUse.USE)) {
   instr(R64)
 }
 
-val dummyCallSave = dummyInstructionClass("CALL SAVE", emptyList(), nullary)
-val dummyCallRestore = dummyInstructionClass("CALL RESTORE", emptyList(), nullary)
-
 private val rax = X64Target.registerByName("rax")
 private val rdx = X64Target.registerByName("rdx")
 

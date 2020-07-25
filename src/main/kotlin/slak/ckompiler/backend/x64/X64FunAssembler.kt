@@ -136,9 +136,8 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       args: List<IRValue>
   ): List<MachineInstruction> {
     isLeaf = false
-    val selected = mutableListOf<MachineInstruction>()
-    // Save caller-saved registers
-    selected += dummyCallSave.match()
+    val before = mutableListOf<MachineInstruction>()
+    val beforeLinked = mutableListOf<MachineInstruction>()
     val intArgs = args
         .filter { target.registerClassOf(it.type) == X64RegisterClass.INTEGER }
         .withIndex()
@@ -150,10 +149,20 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     val fltRegArgs = fltArgs.take(sseArgRegNames.size)
     val registerArguments = intRegArgs.map { intArgRegNames[it.index] to it.value } +
         fltRegArgs.map { sseArgRegNames[it.index] to it.value }
+    val argConstraints = mutableListOf<Constraint>()
     for ((physRegName, arg) in registerArguments) {
       val argType = arg.type.unqualify().normalize()
-      val reg = PhysicalRegister(X64Target.registerByName(physRegName), argType)
-      selected += matchTypedMov(reg, arg)
+      val reg = X64Target.registerByName(physRegName)
+      when (arg) {
+        is AllocatableValue -> argConstraints += arg constrainedTo reg
+        is ConstantValue -> beforeLinked += matchTypedMov(PhysicalRegister(reg, argType), arg)
+        is LoadableValue -> {
+          val copyTarget = VirtualRegister(cfg.registerIds(), argType)
+          before += matchTypedMov(copyTarget, arg)
+          argConstraints += copyTarget constrainedTo reg
+        }
+        is ParameterReference -> logger.throwICE("Unreachable; these have to be removed")
+      }
     }
     // Push stack arguments in order, aligned
     val intStackArgs = intArgs.drop(intArgRegNames.size)
@@ -163,31 +172,61 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       target.machineTargetData.sizeOf(it.value.type).coerceAtLeast(EIGHTBYTE)
     }
     if (stackArgsSize % ALIGNMENT_BYTES != 0) {
-      selected += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
+      beforeLinked += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
     }
     for (stackArg in stackArgs.map { it.value }.asReversed()) {
       // FIXME: if MemoryLocation would support stuff like [rsp + 24] we could avoid this sub
-      selected += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
-      selected += pushOnStack(stackArg)
+      beforeLinked += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
+      beforeLinked += pushOnStack(stackArg)
     }
     // The ABI says al must contain the number of vector arguments
-    selected += mov.match(al, IntConstant(fltRegArgs.size, SignedCharType))
-    selected += call.match(callable)
-    selected += getCallResult(result)
+    beforeLinked += mov.match(al, IntConstant(fltRegArgs.size, SignedCharType))
+
+    val callInstr = call.match(callable)
+
+    val afterLinked = mutableListOf<MachineInstruction>()
+    val after = mutableListOf<MachineInstruction>()
     // Clean up pushed arguments
     val cleanStackSize = stackArgsSize + stackArgsSize / ALIGNMENT_BYTES
-    selected += add.match(rsp, IntConstant(cleanStackSize, SignedIntType))
-    // Restore caller-saved registers
-    selected += dummyCallRestore.match()
-    return selected
+    afterLinked += add.match(rsp, IntConstant(cleanStackSize, SignedIntType))
+
+    // Add result value constraint
+    val resultRegister = callResultConstraint(result)
+    val resultConstraint = if (resultRegister == null) {
+      null
+    } else {
+      val copyTarget = VirtualRegister(cfg.registerIds(), result.type)
+      after += matchTypedMov(result, copyTarget)
+      copyTarget constrainedTo resultRegister
+    }
+
+    // Create actual call instruction
+    val allLinks = beforeLinked.map { LinkedInstruction(it, LinkPosition.BEFORE) } +
+        afterLinked.map { LinkedInstruction(it, LinkPosition.AFTER) }
+
+    // FIXME: maybe when calling our other functions, we could track what regs they use, and not save them if we know
+    //  they won't be clobbered
+    fun makeDummy() = VirtualRegister(cfg.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
+    val dummies = List(target.callerSaved.size) { makeDummy() }
+    val callerSavedConstraints = dummies.zip(target.callerSaved).map { (dummy, reg) -> dummy constrainedTo reg }
+
+    val finalCall = callInstr.copy(
+        links = allLinks,
+        constrainedArgs = argConstraints + (makeDummy() constrainedTo al.reg),
+        constrainedRes = listOfNotNull(resultConstraint) + callerSavedConstraints
+    )
+
+    return before + finalCall + after
   }
 
   /**
    * System V ABI: "Returning of Values", page 24
+   *
+   * @return the register to which the result is constrained, or null for void return
    */
-  private fun getCallResult(result: LoadableValue): List<MachineInstruction> {
+  private fun callResultConstraint(result: LoadableValue): MachineRegister? {
     // When the call returns void, do nothing here
-    if (result.type is VoidType) return emptyList()
+    if (result.type is VoidType) return null
     val rc = target.registerClassOf(result.type)
     if (rc is Memory) TODO("some weird thing with caller storage in rdi, see ABI")
     require(rc is X64RegisterClass)
@@ -197,9 +236,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       X64RegisterClass.SSE -> "xmm0"
       else -> logger.throwICE("Unreachable")
     }
-    val callResult = PhysicalRegister(X64Target.registerByName(returnRegisterName),
-        result.type.unqualify().normalize())
-    return listOf(matchTypedMov(result, callResult))
+    return X64Target.registerByName(returnRegisterName)
   }
 
   override fun createReturn(retVal: LoadableValue): List<MachineInstruction> {
@@ -269,35 +306,9 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       stackOffsets: Map<StackSlot, Int>
   ): List<X64Instruction> {
     val result = mutableListOf<X64Instruction>()
-    val currentInUse = mutableListOf<Pair<MachineRegister, TypeName>>()
-    currentInUse += cfg.liveIns.getValue(block).map { alloc.allocations.getValue(it) to it.type }
-    var lastSavedForCall: List<Pair<MachineRegister, TypeName>>? = null
-    for ((index, mi) in alloc.partial.getValue(block).withIndex()) {
-      // Track in-use registers
-      currentInUse -= mi.uses
-          .filterIsInstance<AllocatableValue>()
-          .filterNot { (it as LoadableValue).isUndefined }
-          .filter { alloc.lastUses[it] == Label(block, index) }
-          .map { alloc.allocations.getValue(it) to it.type }
-      currentInUse += mi.defs
-          .filterIsInstance<AllocatableValue>()
-          .map { alloc.allocations.getValue(it) to it.type }
-
+    for (mi in alloc.partial.getValue(block)) {
       if (mi.template in dummyUse) continue
-      if (mi.template in dummyCallSave) {
-        lastSavedForCall = currentInUse.filterNot { target.isPreservedAcrossCalls(it.first) }
-        result += saveRegisters(lastSavedForCall).map { miToX64Instr(it, alloc, emptyMap()) }
-        continue
-      }
-      if (mi.template in dummyCallRestore) {
-        requireNotNull(lastSavedForCall) {
-          "Dummy call restore created without matching dummy call save"
-        }
-        result += restoreRegisters(lastSavedForCall.asReversed())
-            .map { miToX64Instr(it, alloc, emptyMap()) }
-        lastSavedForCall = null
-        continue
-      }
+
       // Add linked before (eg cdq before div)
       for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.BEFORE }) {
         result += miToX64Instr(linkedMi, alloc, stackOffsets)
@@ -356,6 +367,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     }
   }
 
+  // FIXME: it would be nice to not need 2 instructions for a save (should use mov [rbp-$off], toSave)
   private fun saveRegisters(
       toSave: List<Pair<MachineRegister, TypeName>>
   ): List<MachineInstruction> {

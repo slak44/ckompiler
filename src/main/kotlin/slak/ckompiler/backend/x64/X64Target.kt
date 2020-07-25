@@ -20,9 +20,11 @@ object X64Target : MachineTarget {
   /**
    * System V ABI: figure 3.4, page 23
    */
-  private val calleeSaved = listOf(
+  val calleeSaved = listOf(
       "rbx", "rsp", "rbp", "r12", "r13", "r14", "r15"
   ).mapTo(mutableSetOf(), this::registerByName)
+
+  val callerSaved = registers - calleeSaved
 
   /**
    * System V ABI: figure 3.4, page 23
