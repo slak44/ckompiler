@@ -386,17 +386,17 @@ class CLI(private val stdinStream: InputStream) :
       )
       val gen = X64Generator(cfg)
       val selected = gen.instructionSelection()
-      val alloc = gen.regAlloc(selected)
-      val (newLists, allocation, _) = alloc
-      for ((block, list) in newLists) {
+      val (debugInstrs) = gen.regAlloc(selected, debugNoReplaceParallel = true)
+      for ((block, list) in debugInstrs) {
         println(block)
         println(list.joinToString(separator = "\n", postfix = "\n"))
       }
-      for ((value, register) in allocation) {
+      val realAllocation = gen.regAlloc(selected)
+      for ((value, register) in realAllocation.allocations) {
         println("allocate $value to $register")
       }
       println()
-      val final = gen.applyAllocation(alloc)
+      val final = gen.applyAllocation(realAllocation)
       for ((block, list) in final) {
         println(block)
         println(list.joinToString(separator = "\n", postfix = "\n"))

@@ -46,8 +46,9 @@ private fun MachineTarget.matchValueToRegister(
 }
 
 /**
- * This function rewrites a block to accommodate a new copy instruction. It also modifies the CFG to deal with rewritten
- * values, such that we remain in SSA form.
+ * This function rewrites a block to accommodate a new version of a variable. It also modifies the CFG to deal with
+ * rewritten values, such that we remain in SSA form. If [copyToInsert] is not null, then the specified copy is inserted
+ * at [atIdx]. Otherwise, the copy is assumed to already be in place or that it will be inserted later.
  *
  * [VirtualRegister]s are easy to deal with: they cannot escape the block, so they can't introduce new φs.
  * That means we can just rewire the uses, and still be in SSA form, so no SSA reconstruction needed.
@@ -71,11 +72,13 @@ private fun MachineTarget.matchValueToRegister(
  * know the incoming from the other blocks... and those other blocks might not know which version is live-out in them.
  * That means we have to rebuild the SSA (which is not exactly a cheap operation).
  *
+ * FIXME: try to do this rewrite in bulk: ie not call this function for each value, but for all of them at once
+ *
  * @see prepareForColoring
  */
 private fun rewriteBlockUses(
     block: BasicBlock,
-    copyToInsert: MachineInstruction,
+    copyToInsert: MachineInstruction?,
     atIdx: LabelIndex,
     toRewrite: AllocatableValue,
     rewritten: AllocatableValue,
@@ -124,22 +127,23 @@ private fun rewriteBlockUses(
     }
   }
 
-  return before + copyToInsert + newConstrained + newAfter
+  return before + listOfNotNull(copyToInsert) + newConstrained + newAfter
 }
 
 /**
  * This function incrementally updates a "last uses" map, by updating all the last use indices that were pushed due to a
- * copy being inserted.
+ * copy (or more) being inserted.
  *
  * @see prepareForColoring
  */
 private fun rewriteLastUses(
     newLastUses: MutableMap<IRValue, Label>,
     block: BasicBlock,
-    copyIndex: LabelIndex
+    copyIndex: LabelIndex,
+    copiesInserted: Int = 1
 ) {
   for ((modifiedValue, oldDeath) in newLastUses.filterValues { it.first == block && it.second >= copyIndex }) {
-    val nextIdx = if (oldDeath.second == Int.MAX_VALUE) Int.MAX_VALUE else oldDeath.second + 1
+    val nextIdx = if (oldDeath.second == Int.MAX_VALUE) Int.MAX_VALUE else oldDeath.second + copiesInserted
     newLastUses[modifiedValue] = Label(block, nextIdx)
   }
 }
@@ -163,9 +167,7 @@ private fun CFG.makeCopiedValue(value: AllocatableValue): AllocatableValue {
  *
  * Updates the [lastUses], the instructions and the [CFG]'s internal state to account for that copy.
  *
- * If [rewriteConstrained] is true, this is part of a live range split, and the copy must be used in the
- * [constrainedInstr] as well (ie we rewrite the constrained instruction as well). If false, it's not, and the [value]
- * is a constrained argument of [constrainedInstr].
+ * [value] is a constrained argument of [constrainedInstr].
  */
 private fun TargetFunGenerator.rewriteValue(
     lastUses: MutableMap<IRValue, Label>,
@@ -173,30 +175,23 @@ private fun TargetFunGenerator.rewriteValue(
     block: BasicBlock,
     constrainedInstr: MachineInstruction,
     copyIndex: LabelIndex,
-    instructions: List<MachineInstruction>,
-    rewriteConstrained: Boolean
+    instructions: List<MachineInstruction>
 ): List<MachineInstruction> {
   // No point in inserting a copy for something that's never used
   if (value !in lastUses) return instructions
   val copiedValue = cfg.makeCopiedValue(value)
   val copyInstr = createIRCopy(copiedValue, value)
-      .copy(isConstraintCopy = rewriteConstrained, irLabelIndex = constrainedInstr.irLabelIndex)
-  val newInstr = rewriteBlockUses(block, copyInstr, copyIndex, value, copiedValue, instructions, rewriteConstrained)
+  copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
+  val newInstr = rewriteBlockUses(block, copyInstr, copyIndex, value, copiedValue, instructions, false)
   // The replacement will die at the index where the original died
   lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
   rewriteLastUses(lastUses, block, copyIndex)
   // This is the case where the value is an undefined dummy
   // We want to keep the original and correct last use, instead of destroying it here
   if (value === copiedValue) return newInstr
-  if (rewriteConstrained) {
-    // Live range split: the constrained instr was rewritten, and the value cannot have been used there, so it dies
-    // when it is copied
-    lastUses[value] = Label(block, copyIndex)
-  } else {
-    // The value is a constrained argument: it is still used at the constrained MI, after the copy
-    // We know that is the last use, because all the ones afterwards were just rewritten
-    lastUses[value] = Label(block, copyIndex + 1)
-  }
+  // The value is a constrained argument: it is still used at the constrained MI, after the copy
+  // We know that is the last use, because all the ones afterwards were just rewritten
+  lastUses[value] = Label(block, copyIndex + 1)
   return newInstr
 }
 
@@ -212,9 +207,30 @@ private fun TargetFunGenerator.splitLiveRanges(
     instructions: List<MachineInstruction>,
     lastUses: MutableMap<IRValue, Label>
 ): List<MachineInstruction> {
-  return splitFor.foldIndexed(instructions) { inserted, instrs, value ->
-    rewriteValue(lastUses, value, block, instrs[atIndex + inserted], atIndex + inserted, instrs, true)
+  // No point in making a copy for something that's never used
+  val actualValues = splitFor.filter { it in lastUses }
+  val phi = ParallelCopyTemplate.createCopy(actualValues.associateWith(cfg::makeCopiedValue))
+  phi.irLabelIndex = atIndex
+  val phiMap = (phi.template as ParallelCopyTemplate).values
+
+  val rewritten = actualValues.fold(instructions) { instrs, value ->
+    val copiedValue = phiMap.getValue(value)
+    val newInstr = rewriteBlockUses(block, null, atIndex, value, copiedValue, instrs, true)
+    // The replacement will die at the index where the original died
+    lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
+    return@fold newInstr
   }
+
+  // Splice the copy in the instructions
+  val withCopy = rewritten.take(atIndex) + phi + rewritten.drop(atIndex)
+
+  rewriteLastUses(lastUses, block, atIndex)
+  for (value in actualValues) {
+    // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
+    lastUses[value] = Label(block, atIndex)
+  }
+
+  return withCopy
 }
 
 /**
@@ -261,7 +277,7 @@ private fun TargetFunGenerator.prepareForColoring(
         if (newLastUses.getValue(value).second <= index) continue
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (target in mi.constrainedRes.map { it.target }) {
-          newInstr = rewriteValue(newLastUses, value, block, mi, index, newInstr, false)
+          newInstr = rewriteValue(newLastUses, value, block, mi, index, newInstr)
           updateAlive(newInstr[index], index)
           index++
         }
@@ -270,13 +286,10 @@ private fun TargetFunGenerator.prepareForColoring(
 
       newInstr = splitLiveRanges(alive, index, block, newInstr, newLastUses)
       // FIXME: do we have to alter live-ins? probably for variables, see SSA reconstruction
-      // Each value alive is copied, and for each copy an instruction is inserted
-      // But we need to run updateAlive on the new copy instructions...
-      for (copyIdx in index until (index + alive.size)) {
-        updateAlive(newInstr[copyIdx], copyIdx)
-        index++
-      }
-      // ...and then skip the original constrained label
+      // The parallel copy needs to have updateAlive run on it, before skipping it
+      updateAlive(newInstr[index], index)
+      index++
+      // ...and then also skip the original constrained label
       index++
     }
 
@@ -317,12 +330,18 @@ private data class RegisterAllocationContext(
 ) {
   /** List of visited nodes for DFS. */
   val visited = mutableSetOf<BasicBlock>()
+
   /** The allocation itself. */
   val coloring = mutableMapOf<IRValue, MachineRegister>()
+
   /** The value of [assigned] at the end of each [allocBlock]. */
   val registerUseMap = mutableMapOf<BasicBlock, List<MachineRegister>>()
+
   /** The registers in use at a moment in time. Should be only used internally by the allocator. */
   val assigned = mutableSetOf<MachineRegister>()
+
+  /** Store the copy sequences to replace each label with a parallel copy. */
+  val parallelCopies = mutableMapOf<Label, List<MachineInstruction>>()
 
   val target get() = generator.target
 
@@ -391,6 +410,8 @@ private fun RegisterAllocationContext.constrainedColoring(mi: MachineInstruction
   // Assign leftovers
   val forbidden = assigned + cD + cA
   for (x in t) {
+    val oldColor = checkNotNull(coloring[x])
+    assigned -= oldColor
     val color = target.matchValueToRegister(x, forbidden)
     coloring[x] = color
     assigned += color
@@ -417,13 +438,20 @@ private fun RegisterAllocationContext.unassignDyingAt(label: Label, mi: MachineI
  */
 private fun RegisterAllocationContext.allocConstrainedMI(label: Label, mi: MachineInstruction) {
   require(mi.isConstrained)
+
+  val (block, index) = label
+  require(index > 0) { "No parallel copy found for constrained instruction" }
+  val phi = instrMap.getValue(block)[index - 1]
+
+  val phiTemplate = phi.template
+  require(phiTemplate is ParallelCopyTemplate) { "Instruction preceding constrained is not a parallel copy" }
+  val phiMap = phiTemplate.values
+
   constrainedColoring(mi, label)
   unassignDyingAt(label, mi)
   // Correctly color copies inserted by the live range split
   // See last paragraph of section 4.6.4
-  val (block, index) = label
-  val copyInstrs = instrMap.getValue(block).take(index).takeLastWhile { it.isConstraintCopy }
-  val copies = copyInstrs.flatMap { it.defs.filterIsInstance<AllocatableValue>() }
+  val copies = phiMap.values
   val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
   val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
   val colorsAtL = (definedAtL + usedAtL).map { coloring.getValue(it) }
@@ -434,6 +462,9 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: Label, mi: Machi
     coloring[copy] = color
     assigned += color
   }
+  // Create the copy sequence to replace the parallel copy
+  parallelCopies[Label(block, index - 1)] = generator.replaceParallel(phi, coloring, assigned)
+
   for (def in definedAtL.filter { it in lastUses }) {
     val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
     assigned += color
@@ -504,12 +535,34 @@ private fun RegisterAllocationContext.allocBlock(block: BasicBlock) {
 }
 
 /**
+ * Return a modified [InstructionMap] with all [ParallelCopyTemplate] MIs removed.
+ */
+private fun RegisterAllocationContext.replaceParallelInstructions(): Pair<InstructionMap, Map<IRValue, Label>> {
+  val newInstrs = instrMap.toMutableMap()
+  val newLastUses = lastUses.toMutableMap()
+  for ((block, blockPositions) in parallelCopies.entries.groupBy { it.key.first }) {
+    var intraBlockOffset = 0
+    for ((label, copySequence) in blockPositions.sortedBy { it.key.second }) {
+      val index = label.second + intraBlockOffset
+      val existing = newInstrs.getValue(block)
+      // +1 to also drop the parallel copy itself
+      newInstrs[block] = existing.take(index) + copySequence + existing.drop(index + 1)
+      rewriteLastUses(newLastUses, block, index, copySequence.size)
+      // Added N copy MIs, removed the parallel MI, so the indices should offset by N - 1
+      intraBlockOffset += copySequence.size - 1
+    }
+  }
+  return newInstrs to newLastUses
+}
+
+/**
  * Performs target-independent spilling and register allocation.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
+ * @param debugNoReplaceParallel only for debugging: if true, [replaceParallelInstructions] will not be called
  * @see spiller
  */
-fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
+fun TargetFunGenerator.regAlloc(instrMap: InstructionMap, debugNoReplaceParallel: Boolean = false): AllocationResult {
   val initialLastUses = findLastUses(cfg, instrMap)
   val spilledInstrs = spiller(instrMap, initialLastUses)
   val spillLastUses = findLastUses(cfg, spilledInstrs)
@@ -517,8 +570,13 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap): AllocationResult {
   // FIXME: coalescing
   val ctx = RegisterAllocationContext(this, finalInstrMap, lastUses)
   ctx.doAllocation()
+  val (withoutParallelInstr, withoutParallelUses) = if (debugNoReplaceParallel) {
+    finalInstrMap to lastUses
+  } else {
+    ctx.replaceParallelInstructions()
+  }
   val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
-  val intermediate = AllocationResult(finalInstrMap, allocations, ctx.registerUseMap, lastUses)
+  val intermediate = AllocationResult(withoutParallelInstr, allocations, ctx.registerUseMap, withoutParallelUses)
   return removePhi(intermediate)
 }
 
@@ -617,6 +675,49 @@ private fun TargetFunGenerator.removeOnePhi(
   // Step 2: the unused register set F
   val free =
       (target.registers - target.forbidden - registerUseMap.getValue(pred)).toMutableList()
+  return solveTransferGraph(adjacency, free)
+}
+
+/**
+ * Creates the register transfer graph for one φ instruction (a [MachineInstruction] with [ParallelCopyTemplate]), and
+ * generates the correct copy sequence to replace the φ with.
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 4.4, pp 55-58
+ * @return the copy instruction sequence
+ * @see removeOnePhi
+ */
+private fun TargetFunGenerator.replaceParallel(
+    parallelCopy: MachineInstruction,
+    coloring: AllocationMap,
+    assigned: Set<MachineRegister>
+): List<MachineInstruction> {
+  val phiMap = (parallelCopy.template as ParallelCopyTemplate).values
+  // Step 1: the set of undefined registers U is excluded from the graph
+  val vals = (phiMap.keys + phiMap.values).filterNot { it.isUndefined }
+  // regs is the set R of registers in the register transfer graph T(R, T_E)
+  val regs = vals.map { coloring.getValue(it) }
+  // Adjacency lists for T
+  val adjacency = mutableMapOf<MachineRegister, MutableSet<MachineRegister>>()
+  for (it in regs) adjacency[it] = mutableSetOf()
+  for (key in phiMap.keys) {
+    val target = coloring.getValue(phiMap.getValue(key))
+    adjacency.getValue(coloring.getValue(key)) += target
+  }
+  // Step 2: the unused register set F
+  val free = (target.registers - target.forbidden - assigned).toMutableList()
+  return solveTransferGraph(adjacency, free)
+}
+
+/**
+ * Common steps for register transfer graph solving.
+ *
+ * @see removeOnePhi
+ * @see replaceParallel
+ */
+private fun TargetFunGenerator.solveTransferGraph(
+    adjacency: MutableMap<MachineRegister, MutableSet<MachineRegister>>,
+    free: MutableList<MachineRegister>
+): List<MachineInstruction> {
   val copies = mutableListOf<MachineInstruction>()
   // Step 3: For each edge e = (r, s), r ≠ s, out degree of s == 0
   // We do this for as long as an edge e with the above property exists

@@ -115,7 +115,6 @@ data class MachineInstruction(
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX,
     val constrainedArgs: List<Constraint> = emptyList(),
     val constrainedRes: List<Constraint> = emptyList(),
-    val isConstraintCopy: Boolean = false,
     val links: List<LinkedInstruction> = emptyList()
 ) {
   val isConstrained = constrainedArgs.isNotEmpty() || constrainedRes.isNotEmpty()
@@ -149,6 +148,7 @@ data class MachineInstruction(
   }
 
   override fun toString(): String {
+    if (template is ParallelCopyTemplate) return template.toString()
     fun String.trimIfEmpty() = if (this.isBlank()) "" else this
     val linkedBefore = links
         .filter { it.pos == LinkPosition.BEFORE }
@@ -166,6 +166,33 @@ data class MachineInstruction(
         .joinToString("\n\t", prefix = "\n\t") { it.mi.toString() }
         .trimIfEmpty()
     return linkedBefore + initial + constrainedArgs + constrainedRes + linkedAfter
+  }
+}
+
+/**
+ * This is technically still a φ instruction, but this one is in the middle of a block, and essentially models a live
+ * range split for the given variables (since it is in a block, "variables" actually includes [VirtualRegister]s too).
+ *
+ * It stores pairs of values: the old version, and the new version.
+ *
+ * Internally used by the register allocator, should probably not make it out of it.
+ */
+data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableValue>) : InstructionTemplate {
+  override val name = toString()
+  override val operandUse = List(values.size) { VariableUse.USE } + List(values.size) { VariableUse.DEF }
+  override val implicitOperands: List<MachineRegister> = emptyList()
+  override val implicitResults: List<MachineRegister> = emptyList()
+
+  override fun toString(): String {
+    val old = values.keys.joinToString(", ")
+    val new = values.values.joinToString(", ")
+    return "parallel copy from [$old] to [$new]"
+  }
+
+  companion object {
+    fun createCopy(values: Map<AllocatableValue, AllocatableValue>): MachineInstruction {
+      return MachineInstruction(ParallelCopyTemplate(values), values.keys.toList() + values.values)
+    }
   }
 }
 
