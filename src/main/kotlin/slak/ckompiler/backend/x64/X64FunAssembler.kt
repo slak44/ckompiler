@@ -172,12 +172,12 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       target.machineTargetData.sizeOf(it.value.type).coerceAtLeast(EIGHTBYTE)
     }
     if (stackArgsSize % ALIGNMENT_BYTES != 0) {
-      beforeLinked += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
+      before += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
     }
     for (stackArg in stackArgs.map { it.value }.asReversed()) {
       // FIXME: if MemoryLocation would support stuff like [rsp + 24] we could avoid this sub
-      beforeLinked += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
-      beforeLinked += pushOnStack(stackArg)
+      before += sub.match(rsp, IntConstant(EIGHTBYTE, SignedIntType))
+      before += pushOnStack(stackArg)
     }
     // The ABI says al must contain the number of vector arguments
     beforeLinked += mov.match(al, IntConstant(fltRegArgs.size, SignedCharType))

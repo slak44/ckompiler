@@ -217,7 +217,7 @@ private fun TargetFunGenerator.splitLiveRanges(
     val copiedValue = phiMap.getValue(value)
     val newInstr = rewriteBlockUses(block, null, atIndex, value, copiedValue, instrs, true)
     // The replacement will die at the index where the original died
-    lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
+    lastUses[copiedValue] = lastUses.getValue(value)
     return@fold newInstr
   }
 
@@ -259,8 +259,8 @@ private fun TargetFunGenerator.prepareForColoring(
     val alive: MutableSet<AllocatableValue> = cfg.liveIns.getValue(block).toMutableSet()
     fun updateAlive(mi: MachineInstruction, index: LabelIndex) {
       val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }.filterIsInstance<AllocatableValue>()
-      alive -= dyingHere
       alive += mi.defs.filter { it in newLastUses }.filterIsInstance<AllocatableValue>()
+      alive -= dyingHere
     }
 
     var index = 0
@@ -289,7 +289,8 @@ private fun TargetFunGenerator.prepareForColoring(
       // The parallel copy needs to have updateAlive run on it, before skipping it
       updateAlive(newInstr[index], index)
       index++
-      // ...and then also skip the original constrained label
+      // Same with the original constrained label
+      updateAlive(newInstr[index], index)
       index++
     }
 
@@ -427,6 +428,11 @@ private fun RegisterAllocationContext.unassignDyingAt(label: Label, mi: MachineI
     val color = coloring[value] ?: continue
     assigned -= color
   }
+  // Pretend registers "die" immediately
+  // This is only true if the instructions with phys reg we generate respect that
+  // They're mostly operations on rsp/rbp, which don't matter, or on rax/xmm0 for returns which also don't matter
+  // This really exists here for function parameters passed in registers
+  assigned -= mi.uses.filterIsInstance<PhysicalRegister>().map { it.reg }
 }
 
 /**
@@ -518,7 +524,9 @@ private fun RegisterAllocationContext.allocBlock(block: BasicBlock) {
     for (definition in defined) {
       val color = target.matchValueToRegister(definition, assigned)
       if (coloring[definition] != null) {
-        logger.throwICE("Coloring the same definition twice")
+        logger.throwICE("Coloring the same definition twice") {
+          "def: $definition, old color: ${coloring[definition]}, new color: $color"
+        }
       }
       coloring[definition] = color
       colored += definition
