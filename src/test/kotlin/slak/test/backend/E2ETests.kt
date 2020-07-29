@@ -178,6 +178,11 @@ class E2ETests {
   }
 
   @Test
+  fun `Function Call With Callee-Saved Variable`() {
+    compileAndRun(resource("e2e/calls/calleeSaved.c")).justExitCode(40)
+  }
+
+  @Test
   fun `For Loop Summing Test`() {
     compileAndRun(resource("loops/forLoopTest.c")).justExitCode(86)
   }
