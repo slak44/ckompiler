@@ -107,7 +107,7 @@ class E2ETests {
 
   @Test
   fun `Return Int Via Pointer`() {
-    compileAndRun(resource("e2e/retViaPointer.c")).justExitCode(42)
+    compileAndRun(resource("e2e/calls/retViaPointer.c")).justExitCode(42)
   }
 
   @Test
@@ -169,12 +169,12 @@ class E2ETests {
 
   @Test
   fun `Basic Function Call`() {
-    compileAndRun(resource("e2e/basicFunctionCall.c")).justExitCode(4)
+    compileAndRun(resource("e2e/calls/basicFunctionCall.c")).justExitCode(4)
   }
 
   @Test
   fun `Function Call With Caller-Saved Variable`() {
-    compileAndRun(resource("e2e/callerSavedFunctionCall.c")).justExitCode(7)
+    compileAndRun(resource("e2e/calls/callerSavedFunctionCall.c")).justExitCode(7)
   }
 
   @Test
@@ -189,7 +189,7 @@ class E2ETests {
 
   @Test
   fun `Early Return In Void Function Works`() {
-    compileAndRun(resource("e2e/earlyReturn.c")).justExitCode(0)
+    compileAndRun(resource("e2e/calls/earlyReturn.c")).justExitCode(0)
   }
 
   @ParameterizedTest
@@ -218,7 +218,7 @@ class E2ETests {
   ])
   fun `Lots Of Int Parameters`(int: String) {
     compileAndRun {
-      file = resource("e2e/manyIntParameters.c")
+      file = resource("e2e/calls/manyIntParameters.c")
       stdin = int
     }.expect(stdout = int)
   }
