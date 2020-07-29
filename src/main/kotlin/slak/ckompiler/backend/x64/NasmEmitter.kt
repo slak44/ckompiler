@@ -140,10 +140,7 @@ class NasmEmitter(
       is NamedConstant -> const.name
     }
     is RegisterValue -> regToStr(operand.register, operand.size)
-    is StackValue -> "${if (forgetPrefix) "" else prefixFor(operand.stackSlot.sizeBytes)}$operand"
-    is MemoryValue -> {
-      "${if (forgetPrefix) "" else prefixFor(operand.size)}[${operand.register.regName}]"
-    }
+    is MemoryValue -> "${if (forgetPrefix) "" else prefixFor(operand.sizeInMem)}${operand}"
   }
 
   private fun prefixFor(size: Int): String = when (size) {

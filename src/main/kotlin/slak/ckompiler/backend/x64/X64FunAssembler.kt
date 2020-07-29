@@ -35,9 +35,9 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
 
   /**
    * Stores actual stack values for function parameters passed on the stack. That is, it maps the
-   * id of the relevant [Variable]/[StackVariable]/[StackSlot] to its `[rbp + 0x123]` [StackValue].
+   * id of the relevant [Variable]/[StackVariable]/[StackSlot] to its `[rbp + 0x123]` [MemoryValue].
    */
-  private val stackParamOffsets = mutableMapOf<AtomicId, StackValue>()
+  private val stackParamOffsets = mutableMapOf<AtomicId, MemoryValue>()
 
   init {
     mapFunctionParams()
@@ -67,8 +67,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       val type = variable.type.unqualify().normalize()
       val stackVar = StackVariable(variable.tid)
       parameterMap[ParameterReference(index, type)] = stackVar
-      stackParamOffsets[stackVar.id] =
-          StackValue(StackSlot(stackVar, target.machineTargetData), paramOffset)
+      stackParamOffsets[stackVar.id] = MemoryValue.frameAbs(StackSlot(stackVar, target.machineTargetData), paramOffset)
       val varSize = target.machineTargetData.sizeOf(type)
       paramOffset += varSize.coerceAtLeast(EIGHTBYTE) alignTo EIGHTBYTE
     }
@@ -260,6 +259,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
   private fun pushOnStack(value: IRValue): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
     // If the thing is in memory, move it to a register, to avoid an illegal mem to mem operation
+    // Since this function is used before the bulk of the functions, there will always be a free register
     val actualValue = if (value is MemoryLocation) {
       val resultType = (value.ptr.type as PointerType).referencedType
       val result = VirtualRegister(cfg.registerIds(), resultType)
@@ -339,8 +339,9 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       stackOffsets: Map<StackSlot, Int>
   ): X64Value {
     if (value is ConstantValue) return ImmediateValue(value)
+    val typeSize = X64Target.machineTargetData.sizeOf(value.type)
     if (value is PhysicalRegister) {
-      return RegisterValue(value.reg, X64Target.machineTargetData.sizeOf(value.type))
+      return RegisterValue(value.reg, typeSize)
     }
     if (value is LoadableValue && value.isUndefined) {
       // Undefined behaviour, can do whatever; we pick the first register of the correct class
@@ -348,22 +349,22 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       // "mov rax, rax"-type instructions that are easy to remove
       val reg = (target.registers - target.forbidden)
           .first { reg -> reg.valueClass == target.registerClassOf(value.type) }
-      return RegisterValue(reg, X64Target.machineTargetData.sizeOf(value.type))
+      return RegisterValue(reg, typeSize)
     }
     val unwrapped = if (value is MemoryLocation) value.ptr else value
     val machineRegister =
         if (unwrapped is PhysicalRegister) unwrapped.reg
         else alloc.allocations.getValue(unwrapped)
     if (value is MemoryLocation && value.ptr !is StackVariable) {
-      return MemoryValue(machineRegister, X64Target.machineTargetData.sizeOf(value.type))
+      return MemoryValue(typeSize, RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(unwrapped.type)))
     }
     if (machineRegister !is StackSlot) {
-      return RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(value.type))
+      return RegisterValue(machineRegister, typeSize)
     }
     return if (machineRegister.id in stackParamOffsets) {
       stackParamOffsets.getValue(machineRegister.id)
     } else {
-      StackValue.fromFrame(machineRegister, stackOffsets.getValue(machineRegister))
+      MemoryValue.inFrame(machineRegister, stackOffsets.getValue(machineRegister))
     }
   }
 

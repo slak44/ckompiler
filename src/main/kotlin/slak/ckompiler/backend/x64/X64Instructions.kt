@@ -80,19 +80,52 @@ data class RegisterValue(val register: MachineRegister, val size: Int) : X64Valu
   }
 }
 
-data class StackValue(val stackSlot: StackSlot, val absOffset: Int) : X64Value() {
-  override fun toString() =
-      if (absOffset < 0) "[rbp - ${absOffset.absoluteValue}]"
-      else "[rbp + $absOffset]"
+/**
+ * Intel 64 Basic Architecture (volume 1): 3.7.5.1
+ *
+ * Intel 64 ISA Reference (volume 2): 2.1.5
+ */
+data class MemoryValue(
+    val sizeInMem: Int,
+    val base: RegisterValue,
+    val index: RegisterValue? = null,
+    val scale: Int? = null,
+    val displacement: Int? = null
+) : X64Value() {
+  init {
+    require(scale == null || index != null) {
+      "Cannot use scale with no index"
+    }
+    require(scale == null || scale in arrayOf(1, 2, 4, 8)) {
+      "Scale can only be 1, 2, 4, or 8"
+    }
+  }
+
+  override fun toString(): String {
+    val indexText = when {
+      index == null -> ""
+      scale != null -> " + $scale * $index"
+      else -> " + $index"
+    }
+    val dispText = when {
+      displacement == null || displacement == 0 -> ""
+      displacement < 0 -> " - ${displacement.absoluteValue}"
+      else -> " + $displacement"
+    }
+    return "[$base$indexText$dispText]"
+  }
 
   companion object {
-    fun fromFrame(stackSlot: StackSlot, frameOffset: Int) =
-        StackValue(stackSlot, -(frameOffset + stackSlot.sizeBytes))
-  }
-}
+    private val rbp = RegisterValue(X64Target.registerByName("rbp"), 8)
 
-data class MemoryValue(val register: MachineRegister, val size: Int) : X64Value() {
-  override fun toString() = "[$register]"
+    fun frameAbs(stackSlot: StackSlot, frameOffset: Int): MemoryValue {
+      return MemoryValue(stackSlot.sizeBytes, base = rbp, displacement = frameOffset)
+    }
+
+    fun inFrame(stackSlot: StackSlot, frameOffset: Int): MemoryValue {
+      return MemoryValue(stackSlot.sizeBytes, base = rbp, displacement = -(frameOffset + stackSlot.sizeBytes))
+    }
+  }
 }
 
 data class X64Instruction(
