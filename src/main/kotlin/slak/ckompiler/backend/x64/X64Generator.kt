@@ -9,10 +9,9 @@ import kotlin.math.absoluteValue
 import kotlin.math.sign
 
 class X64Generator(
-    override val cfg: CFG
-) : TargetFunGenerator, FunctionAssembler by X64FunAssembler(cfg) {
-  override val target = X64Target
-
+    override val cfg: CFG,
+    override val target: X64Target
+) : TargetFunGenerator, FunctionAssembler by X64FunAssembler(cfg, target) {
   override fun instructionSelection(): InstructionMap {
     return cfg.nodes.associateWith(this::selectBlockInstrs)
   }

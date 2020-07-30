@@ -7,10 +7,7 @@ import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.x64.NasmEmitter
-import slak.ckompiler.backend.x64.X64Generator
-import slak.ckompiler.backend.x64.X64Instruction
-import slak.ckompiler.backend.x64.X64PeepholeOpt
+import slak.ckompiler.backend.x64.*
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
@@ -28,7 +25,7 @@ typealias CLIDefines = Map<String, String>
 
 /**
  * The command line interface for the compiler.
- * @param stdinStream which stream to use for the `-` argument; should be [System. in] for main
+ * @param stdinStream which stream to use for the `-` argument; should be [System.in] for main
  */
 class CLI(private val stdinStream: InputStream) :
     IDebugHandler by DebugHandler("CLI", "<command line>", "") {
@@ -184,6 +181,18 @@ class CLI(private val stdinStream: InputStream) :
       help = "Directory to search for libraries in",
       positionalPredicate = { it.startsWith("-L") },
       mapping = { it.removePrefix("-L") }
+  )
+
+  init {
+    cli.helpGroup("Target specific options")
+  }
+
+  private val targetSpecific: List<String> by cli.flagOrPositionalArgumentList(
+      flags = listOf("-m"),
+      valueSyntax = "VALUE",
+      help = "Each target has its specific options, with their own syntax",
+      positionalPredicate = { it.startsWith("-m") },
+      mapping = { it.removePrefix("-m") }
   )
 
   init {
@@ -377,6 +386,8 @@ class CLI(private val stdinStream: InputStream) :
 
     val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
+    val target = X64Target(X64TargetOpts(targetSpecific, this))
+
     if (isInterferenceOnly) {
       val function = allFuncs.findNamedFunction(interferenceFuncName) ?: return null
       val cfg = CFG(
@@ -387,7 +398,7 @@ class CLI(private val stdinStream: InputStream) :
           forceAllNodes = false,
           forceReturnZero = function.name == "main"
       )
-      val gen = X64Generator(cfg)
+      val gen = X64Generator(cfg, target)
       val selected = gen.instructionSelection()
       val (debugInstrs) = gen.regAlloc(selected, debugNoReplaceParallel = true)
       for ((block, list) in debugInstrs) {
@@ -456,7 +467,7 @@ class CLI(private val stdinStream: InputStream) :
           forceReturnZero = false,
           forceAllNodes = false
       )
-      X64Generator(cfg)
+      X64Generator(cfg, target)
     }
     val mainEmit = main?.let {
       val cfg = CFG(
@@ -467,7 +478,7 @@ class CLI(private val stdinStream: InputStream) :
           forceReturnZero = true,
           forceAllNodes = false
       )
-      X64Generator(cfg)
+      X64Generator(cfg, target)
     }
 
     val nasm = NasmEmitter(declNames, functionsEmit, mainEmit).emitAsm()

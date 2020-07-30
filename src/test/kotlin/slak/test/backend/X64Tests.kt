@@ -9,6 +9,7 @@ import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
+import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.backend.x64.setcc
 import slak.ckompiler.parser.SignedIntType
 import slak.ckompiler.parser.TypedIdentifier
@@ -42,8 +43,9 @@ class X64Tests {
     return regAlloc(cfg)
   }
 
-  private fun regAlloc(cfg: CFG): AllocationResult {
-    val gen = X64Generator(cfg)
+  private fun regAlloc(cfg: CFG, targetOptions: List<String> = emptyList()): AllocationResult {
+    val target = X64Target(X64TargetOpts(targetOptions, cfg))
+    val gen = X64Generator(cfg, target)
     val instructionMap = gen.instructionSelection()
     instructionMap.assertIsSSA()
     val res = gen.regAlloc(instructionMap)
@@ -66,11 +68,11 @@ class X64Tests {
 
   @Suppress("unused")
   enum class RegisterCalleeSavedTestCase(val reg: MachineRegister, val isCalleeSaved: Boolean) {
-    RAX(X64Target.registerByName("rax"), false),
-    RBX(X64Target.registerByName("rbx"), true),
-    RSP(X64Target.registerByName("rsp"), true),
-    R10(X64Target.registerByName("r10"), false),
-    XMM5(X64Target.registerByName("xmm5"), false),
+    RAX(X64Target().registerByName("rax"), false),
+    RBX(X64Target().registerByName("rbx"), true),
+    RSP(X64Target().registerByName("rsp"), true),
+    R10(X64Target().registerByName("r10"), false),
+    XMM5(X64Target().registerByName("xmm5"), false),
     STACK_SLOT(StackSlot(
         StackVariable(TypedIdentifier("fake", SignedIntType)),
         MachineTargetData.x64
@@ -80,14 +82,14 @@ class X64Tests {
   @ParameterizedTest
   @EnumSource(RegisterCalleeSavedTestCase::class)
   fun `Correctly Detect Callee Saved Registers`(test: RegisterCalleeSavedTestCase) {
-    val reported = X64Target.isPreservedAcrossCalls(test.reg)
+    val reported = X64Target().isPreservedAcrossCalls(test.reg)
     assertEquals(test.isCalleeSaved, reported)
   }
 
   @Test
   fun `Instruction Selection On CFG`() {
     val cfg = prepareCFG(resource("codegen/addsAndMovs.c"), source)
-    val iLists = X64Generator(cfg).instructionSelection()
+    val iLists = X64Generator(cfg, X64Target()).instructionSelection()
     for (list in iLists) {
       println(list.value.joinToString(separator = "\n", postfix = "\n"))
     }

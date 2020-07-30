@@ -7,7 +7,7 @@ import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-object X64Target : MachineTarget {
+class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : MachineTarget {
   private val logger = LogManager.getLogger()
 
   override val machineTargetData = MachineTargetData.x64

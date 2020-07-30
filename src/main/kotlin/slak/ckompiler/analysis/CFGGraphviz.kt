@@ -3,6 +3,8 @@ package slak.ckompiler.analysis
 import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Target
+import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.parser.Expression
 
 private enum class EdgeType {
@@ -105,11 +107,13 @@ fun BasicBlock.irToString(): String {
 
 private fun CFG.mapBlocksToString(
     print: CodePrintingMethods,
-    sourceCode: String
+    sourceCode: String,
+    targetOptions: List<String>
 ): Map<BasicBlock, String> {
+  val target = X64Target(X64TargetOpts(targetOptions, this))
   val sep = "<br align=\"left\"/>"
   if (print == CodePrintingMethods.MI_TO_STRING) {
-    val gen = X64Generator(this)
+    val gen = X64Generator(this, target)
     val (newLists, _, _) = gen.regAlloc(gen.instructionSelection())
     return newLists.mapValues {
       it.value.joinToString(separator = sep, postfix = sep) { mi ->
@@ -118,7 +122,7 @@ private fun CFG.mapBlocksToString(
       }
     }
   } else if (print == CodePrintingMethods.ASM_TO_STRING) {
-    val gen = X64Generator(this)
+    val gen = X64Generator(this, target)
     val alloc = gen.regAlloc(gen.instructionSelection())
     return gen.applyAllocation(alloc).mapValues {
       it.value.joinToString(separator = sep, postfix = sep)
@@ -155,11 +159,12 @@ fun createGraphviz(
     graph: CFG,
     sourceCode: String,
     reachableOnly: Boolean,
-    print: CodePrintingMethods
+    print: CodePrintingMethods,
+    targetOptions: List<String> = emptyList()
 ): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
-  val blockMap = graph.mapBlocksToString(print, sourceCode)
+  val blockMap = graph.mapBlocksToString(print, sourceCode, targetOptions)
   val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
       it.isRoot -> "style=filled,color=$BLOCK_START"

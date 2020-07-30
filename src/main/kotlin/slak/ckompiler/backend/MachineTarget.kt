@@ -310,10 +310,13 @@ interface TargetFunGenerator : FunctionAssembler {
   ): List<MachineInstruction>
 }
 
+interface TargetOptions
+
 interface MachineTarget {
   val machineTargetData: MachineTargetData
   val targetName: String
   val registerClasses: List<MachineRegisterClass>
+  val options: TargetOptions
 
   /**
    * Complete list of registers for this target.

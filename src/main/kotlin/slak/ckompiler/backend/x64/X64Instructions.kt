@@ -116,7 +116,7 @@ data class MemoryValue(
   }
 
   companion object {
-    private val rbp = RegisterValue(X64Target.registerByName("rbp"), 8)
+    private val rbp = RegisterValue(X64Target().registerByName("rbp"), 8)
 
     fun frameAbs(stackSlot: StackSlot, frameOffset: Int): MemoryValue {
       return MemoryValue(stackSlot.sizeBytes, base = rbp, displacement = frameOffset)
@@ -222,7 +222,7 @@ fun List<X64InstrTemplate>.matchAsm(vararg operands: X64Value): X64Instruction {
     it.operands.size == operands.size && operands.zip(it.operands).all { (value, targetOperand) ->
       when (targetOperand) {
         is Register -> value is RegisterValue && value.register == targetOperand.register
-        is Imm -> value is ImmediateValue && X64Target.machineTargetData.sizeOf(value.value.type) == targetOperand.size
+        is Imm -> value is ImmediateValue && MachineTargetData.x64.sizeOf(value.value.type) == targetOperand.size
         is ModRM -> {
           val matchReg = value is RegisterValue && targetOperand.size == value.size
           val matchMem = value is MemoryValue && targetOperand.size == value.sizeInMem
@@ -253,7 +253,7 @@ fun matchTypedMov(dest: IRValue, src: IRValue): MachineInstruction {
 
 private fun matchRegTypedMov(dest: IRValue, src: IRValue) = when (validateClasses(dest, src)) {
   X64RegisterClass.INTEGER -> mov.match(dest, src)
-  X64RegisterClass.SSE -> when (X64Target.machineTargetData.sizeOf(src.type)) {
+  X64RegisterClass.SSE -> when (MachineTargetData.x64.sizeOf(src.type)) {
     4 -> movss.tryMatch(dest, src) ?: movq.match(dest, src)
     8 -> movsd.tryMatch(dest, src) ?: movq.match(dest, src)
     else -> logger.throwICE("Float size not 4 or 8 bytes")
@@ -265,8 +265,8 @@ private fun matchRegTypedMov(dest: IRValue, src: IRValue) = when (validateClasse
  * Gets the common non-memory register class of the operands.
  */
 fun validateClasses(dest: IRValue, src: IRValue): X64RegisterClass {
-  val destRegClass = X64Target.registerClassOf(dest.type)
-  val srcRegClass = X64Target.registerClassOf(src.type)
+  val destRegClass = X64Target().registerClassOf(dest.type)
+  val srcRegClass = X64Target().registerClassOf(src.type)
   require(destRegClass != Memory || srcRegClass != Memory) { "No memory-to-memory move exists" }
   val nonMemoryClass = if (destRegClass != Memory && srcRegClass != Memory) {
     require(destRegClass == srcRegClass) { "Move between register classes without cast" }
@@ -287,8 +287,8 @@ val dummyUse = dummyInstructionClass("USE", listOf(VariableUse.USE)) {
   instr(R64)
 }
 
-private val rax = X64Target.registerByName("rax")
-private val rdx = X64Target.registerByName("rdx")
+private val rax = X64Target().registerByName("rax")
+private val rdx = X64Target().registerByName("rdx")
 
 val imul = instructionClass("imul", listOf(VariableUse.DEF_USE, VariableUse.USE, VariableUse.USE)) {
   // 3 operand RMI form

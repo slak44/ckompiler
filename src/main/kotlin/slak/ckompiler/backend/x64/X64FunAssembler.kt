@@ -8,9 +8,7 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import kotlin.properties.Delegates
 
-class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
-  private val target = X64Target
-
+class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAssembler {
   override val returnBlock = BasicBlock(isRoot = false)
 
   /**
@@ -45,6 +43,12 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
    */
   private val stackParamOffsets = mutableMapOf<AtomicId, MemoryValue>()
 
+  private val al = PhysicalRegister(target.registerByName("rax"), SignedCharType)
+  private val rbp = PhysicalRegister(
+      target.registerByName("rbp"), PointerType(UnsignedLongType, emptyList()))
+  private val rsp = PhysicalRegister(
+      target.registerByName("rsp"), PointerType(UnsignedLongType, emptyList()))
+
   init {
     mapFunctionParams()
   }
@@ -53,16 +57,16 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
   private fun mapFunctionParams() {
     val vars = cfg.f.parameters.map(::Variable).withIndex()
     val integral =
-        vars.filter { X64Target.registerClassOf(it.value.type) == X64RegisterClass.INTEGER }
-    val sse = vars.filter { X64Target.registerClassOf(it.value.type) == X64RegisterClass.SSE }
+        vars.filter { target.registerClassOf(it.value.type) == X64RegisterClass.INTEGER }
+    val sse = vars.filter { target.registerClassOf(it.value.type) == X64RegisterClass.SSE }
     for ((intVar, regName) in integral.zip(intArgRegNames)) {
       val type = intVar.value.type.unqualify().normalize()
-      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), type)
+      val targetRegister = PhysicalRegister(target.registerByName(regName), type)
       parameterMap[ParameterReference(intVar.index, type)] = targetRegister
     }
     for ((sseVar, regName) in sse.zip(sseArgRegNames)) {
       val type = sseVar.value.type.unqualify().normalize()
-      val targetRegister = PhysicalRegister(X64Target.registerByName(regName), type)
+      val targetRegister = PhysicalRegister(target.registerByName(regName), type)
       parameterMap[ParameterReference(sseVar.index, type)] = targetRegister
     }
     val stackVars = vars - integral.take(intArgRegNames.size) - sse.take(sseArgRegNames.size)
@@ -90,7 +94,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     @Suppress("UNCHECKED_CAST")
     calleeSaved = alloc.allocations.values
         .filterIsInstanceTo(mutableSetOf<X64Register>())
-        .intersect(X64Target.calleeSaved) as Set<X64Register>
+        .intersect(target.calleeSaved) as Set<X64Register>
     stackBeginOffset = calleeSaved.sumBy { it.sizeBytes }
     finalStackSizeBytes = (stackBeginOffset + alloc.stackSlots.sumBy { it.sizeBytes }) alignTo ALIGNMENT_BYTES
     // See if we can use the red zone
@@ -169,7 +173,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     val argConstraints = mutableListOf<Constraint>()
     for ((physRegName, arg) in registerArguments) {
       val argType = arg.type.unqualify().normalize()
-      val reg = X64Target.registerByName(physRegName)
+      val reg = target.registerByName(physRegName)
       when (arg) {
         is AllocatableValue -> argConstraints += arg constrainedTo reg
         is ConstantValue -> beforeLinked += matchTypedMov(PhysicalRegister(reg, argType), arg)
@@ -253,18 +257,18 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       X64RegisterClass.SSE -> "xmm0"
       else -> logger.throwICE("Unreachable")
     }
-    return X64Target.registerByName(returnRegisterName)
+    return target.registerByName(returnRegisterName)
   }
 
   override fun createReturn(retVal: LoadableValue): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
-    val retType = X64Target.registerClassOf(retVal.type)
+    val retType = target.registerClassOf(retVal.type)
     if (retType == Memory) {
       TODO("deal with this")
     } else {
       require(retType is X64RegisterClass)
       if (retType == X64RegisterClass.INTEGER) {
-        val rax = PhysicalRegister(X64Target.registerByName("rax"),
+        val rax = PhysicalRegister(target.registerByName("rax"),
             retVal.type.unqualify().normalize())
         selected += mov.match(rax, retVal)
       } else {
@@ -357,7 +361,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
       stackOffsets: Map<StackSlot, Int>
   ): X64Value {
     if (value is ConstantValue) return ImmediateValue(value)
-    val typeSize = X64Target.machineTargetData.sizeOf(value.type)
+    val typeSize = target.machineTargetData.sizeOf(value.type)
     if (value is PhysicalRegister) {
       return RegisterValue(value.reg, typeSize)
     }
@@ -374,7 +378,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
         if (unwrapped is PhysicalRegister) unwrapped.reg
         else alloc.allocations.getValue(unwrapped)
     if (value is MemoryLocation && value.ptr !is StackVariable) {
-      return MemoryValue(typeSize, RegisterValue(machineRegister, X64Target.machineTargetData.sizeOf(unwrapped.type)))
+      return MemoryValue(typeSize, RegisterValue(machineRegister, target.machineTargetData.sizeOf(unwrapped.type)))
     }
     if (machineRegister !is StackSlot) {
       return RegisterValue(machineRegister, typeSize)
@@ -432,12 +436,6 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
 
   companion object {
     private val logger = LogManager.getLogger()
-
-    private val al = PhysicalRegister(X64Target.registerByName("rax"), SignedCharType)
-    private val rbp = PhysicalRegister(
-        X64Target.registerByName("rbp"), PointerType(UnsignedLongType, emptyList()))
-    private val rsp = PhysicalRegister(
-        X64Target.registerByName("rsp"), PointerType(UnsignedLongType, emptyList()))
 
     private const val EIGHTBYTE = 8
     private const val INITIAL_MEM_ARG_OFFSET = 16
