@@ -21,6 +21,12 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
    */
   private var isLeaf = true
 
+  /** The starting offset for the stack; the prologue can put things on the stack before the [StackSlot]s. */
+  private var stackBeginOffset = 0
+
+  /** Set of registers saved, that will need to be restored. */
+  private lateinit var calleeSaved: Set<X64Register>
+
   /** @see genFunctionPrologue */
   private var finalStackSizeBytes by Delegates.notNull<Int>()
 
@@ -80,9 +86,13 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     val prologue = mutableListOf<MachineInstruction>()
     prologue += push.match(rbp)
     prologue += mov.match(rbp, rsp)
-    // FIXME: deal with MEMORY class function arguments (see paramSourceMap)
-    // FIXME: save callee-saved registers
-    finalStackSizeBytes = alloc.stackSlots.sumBy { it.sizeBytes } alignTo ALIGNMENT_BYTES
+    // This cast cannot fail
+    @Suppress("UNCHECKED_CAST")
+    calleeSaved = alloc.allocations.values
+        .filterIsInstanceTo(mutableSetOf<X64Register>())
+        .intersect(X64Target.calleeSaved) as Set<X64Register>
+    stackBeginOffset = calleeSaved.sumBy { it.sizeBytes }
+    finalStackSizeBytes = (stackBeginOffset + alloc.stackSlots.sumBy { it.sizeBytes }) alignTo ALIGNMENT_BYTES
     // See if we can use the red zone
     if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,
@@ -90,7 +100,13 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
     } else {
       prologue += sub.match(rsp, IntConstant(finalStackSizeBytes, SignedIntType))
     }
-    return prologue.map { miToX64Instr(it, alloc, emptyMap()) }
+    val registerSaves = mutableListOf<X64Instruction>()
+    for ((idx, reg) in calleeSaved.withIndex()) {
+      val toSave = RegisterValue(reg, EIGHTBYTE)
+      val stackLoc = MemoryValue(EIGHTBYTE, base = RegisterValue(rbp), displacement = -(idx + 1) * EIGHTBYTE)
+      registerSaves += mov.matchAsm(stackLoc, toSave)
+    }
+    return prologue.map { miToX64Instr(it, alloc, emptyMap()) } + registerSaves
   }
 
   /**
@@ -98,12 +114,14 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
    */
   override fun genFunctionEpilogue(alloc: AllocationResult): List<X64Instruction> {
     val epilogue = mutableListOf<MachineInstruction>()
-    // FIXME: restore callee-saved registers
     if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,
       //   but for that we need rsp-relative stack values
     } else {
-      epilogue += add.match(rsp, IntConstant(finalStackSizeBytes, SignedIntType))
+      epilogue += add.match(rsp, IntConstant(finalStackSizeBytes - stackBeginOffset, SignedIntType))
+    }
+    for (reg in calleeSaved.reversed()) {
+      epilogue += pop.match(PhysicalRegister(reg, target.machineTargetData.ptrDiffType))
     }
     epilogue += leave.match()
     epilogue += ret.match()
@@ -111,7 +129,7 @@ class X64FunAssembler(val cfg: CFG) : FunctionAssembler {
   }
 
   override fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<X64Instruction>> {
-    var currentStackOffset = 0
+    var currentStackOffset = stackBeginOffset
     val stackOffsets = alloc.allocations.values.filterIsInstance<StackSlot>().associateWith {
       val offset = currentStackOffset
       currentStackOffset += it.sizeBytes

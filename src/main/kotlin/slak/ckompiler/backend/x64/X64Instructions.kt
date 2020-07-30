@@ -217,6 +217,29 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   return checkNotNull(res) { "Instruction selection failure: match ${operands.toList()} in $this" }
 }
 
+fun List<X64InstrTemplate>.matchAsm(vararg operands: X64Value): X64Instruction {
+  val instr = firstOrNull {
+    it.operands.size == operands.size && operands.zip(it.operands).all { (value, targetOperand) ->
+      when (targetOperand) {
+        is Register -> value is RegisterValue && value.register == targetOperand.register
+        is Imm -> value is ImmediateValue && X64Target.machineTargetData.sizeOf(value.value.type) == targetOperand.size
+        is ModRM -> {
+          val matchReg = value is RegisterValue && targetOperand.size == value.size
+          val matchMem = value is MemoryValue && targetOperand.size == value.sizeInMem
+          when (targetOperand.type) {
+            OperandType.REGISTER -> matchReg
+            OperandType.MEMORY -> matchMem
+            OperandType.REG_OR_MEM -> matchReg || matchMem
+          }
+        }
+        else -> false
+      }
+    }
+  }
+  checkNotNull(instr) { "Failed to create instruction from the given operands: ${operands.toList()} in $this" }
+  return X64Instruction(instr, operands.toList())
+}
+
 /**
  * Create a generic copy instruction. Figures out register class and picks the correct kind of move.
  */
