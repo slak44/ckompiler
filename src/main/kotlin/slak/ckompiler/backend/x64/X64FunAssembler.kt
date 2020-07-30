@@ -98,7 +98,7 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
     stackBeginOffset = calleeSaved.sumBy { it.sizeBytes }
     finalStackSizeBytes = (stackBeginOffset + alloc.stackSlots.sumBy { it.sizeBytes }) alignTo ALIGNMENT_BYTES
     // See if we can use the red zone
-    if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
+    if (target.options.useRedZone && isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,
       //   but for that we need rsp-relative stack values
     } else {
@@ -118,7 +118,7 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
    */
   override fun genFunctionEpilogue(alloc: AllocationResult): List<X64Instruction> {
     val epilogue = mutableListOf<MachineInstruction>()
-    if (isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
+    if (target.options.useRedZone && isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,
       //   but for that we need rsp-relative stack values
     } else {

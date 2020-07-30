@@ -178,8 +178,19 @@ class E2ETests {
   }
 
   @Test
-  fun `Function Call With Callee-Saved Variable`() {
-    compileAndRun(resource("e2e/calls/calleeSaved.c")).justExitCode(40)
+  fun `Function Call With Callee-Saved Variable Without Red Zone`() {
+    compileAndRun {
+      file = resource("e2e/calls/calleeSaved.c")
+      cliArgList = listOf("-mno-red-zone")
+    }.justExitCode(40)
+  }
+
+  @Test
+  fun `Function Call With Callee-Saved Variable With Red Zone`() {
+    compileAndRun {
+      file = resource("e2e/calls/calleeSaved.c")
+      cliArgList = listOf()
+    }.justExitCode(40)
   }
 
   @Test

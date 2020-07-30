@@ -9,6 +9,7 @@ internal class CompileAndRunBuilder {
   var text: String? = null
   var file: File? = null
   var programArgList = listOf<String>()
+  var cliArgList = listOf<String>()
   var stdin: String? = null
 }
 
@@ -42,7 +43,8 @@ internal fun <T : Any> T.compileAndRun(block: CompileAndRunBuilder.() -> Unit): 
   val (_, compilerExitCode) = cli(
       builder.file!!.absolutePath,
       "-isystem", resource("include").absolutePath,
-      "-o", executable.absolutePath
+      "-o", executable.absolutePath,
+      *builder.cliArgList.toTypedArray()
   )
   assertEquals(ExitCodes.NORMAL, compilerExitCode, "CLI reported a failure")
   assertTrue(executable.exists(), "Expected executable to exist")
