@@ -117,19 +117,33 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
    * System V ABI: 3.2.1, figure 3.3
    */
   override fun genFunctionEpilogue(alloc: AllocationResult): List<X64Instruction> {
-    val epilogue = mutableListOf<MachineInstruction>()
+    val epilogue = mutableListOf<X64Instruction>()
     if (target.options.useRedZone && isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,
       //   but for that we need rsp-relative stack values
     } else {
-      epilogue += add.match(rsp, IntConstant(finalStackSizeBytes - stackBeginOffset, SignedIntType))
+      val stackSlotSize = IntConstant(finalStackSizeBytes - stackBeginOffset, SignedIntType)
+      epilogue += add.matchAsm(RegisterValue(rsp), ImmediateValue(stackSlotSize))
     }
+    var savedOffset = stackBeginOffset
     for (reg in calleeSaved.reversed()) {
-      epilogue += pop.match(PhysicalRegister(reg, target.machineTargetData.ptrDiffType))
+      epilogue += restoreRegister(reg, savedOffset)
+      savedOffset -= EIGHTBYTE
     }
-    epilogue += leave.match()
-    epilogue += ret.match()
-    return epilogue.map { miToX64Instr(it, alloc, emptyMap()) }
+    epilogue += leave.matchAsm()
+    epilogue += ret.matchAsm()
+    return epilogue
+  }
+
+  private fun restoreRegister(register: X64Register, offset: Int): X64Instruction {
+    val regVal = RegisterValue(register, EIGHTBYTE)
+    // Can't directly pop xmm regs, so always generate a move
+    return if (target.options.useRedZone || register.valueClass == X64RegisterClass.SSE) {
+      val mem = MemoryValue(EIGHTBYTE, base = RegisterValue(rbp), displacement = -offset)
+      target.matchAsmMov(regVal, mem)
+    } else {
+      pop.matchAsm(regVal)
+    }
   }
 
   override fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<X64Instruction>> {
@@ -388,50 +402,6 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
     } else {
       MemoryValue.inFrame(machineRegister, stackOffsets.getValue(machineRegister))
     }
-  }
-
-  // FIXME: it would be nice to not need 2 instructions for a save (should use mov [rbp-$off], toSave)
-  private fun saveRegisters(
-      toSave: List<Pair<MachineRegister, TypeName>>
-  ): List<MachineInstruction> {
-    val result = mutableListOf<MachineInstruction>()
-    val size = toSave.sumBy { target.machineTargetData.sizeOf(it.second) }
-    if (size % ALIGNMENT_BYTES != 0) {
-      result += sub.match(rsp, IntConstant((size alignTo ALIGNMENT_BYTES) - size, SignedIntType))
-    }
-    for ((register, type) in toSave) {
-      result += sub.match(rsp, IntConstant(target.machineTargetData.sizeOf(type), SignedIntType))
-      result += pushOnStack(PhysicalRegister(register, type))
-    }
-    return result
-  }
-
-  private fun restoreRegisters(
-      toRestore: List<Pair<MachineRegister, TypeName>>
-  ): List<MachineInstruction> {
-    val result = mutableListOf<MachineInstruction>()
-    val size = toRestore.sumBy { target.machineTargetData.sizeOf(it.second) }
-    for ((register, type) in toRestore) {
-      result += popRegister(register, type)
-    }
-    if (size % ALIGNMENT_BYTES != 0) {
-      result += add.match(rsp, IntConstant((size alignTo ALIGNMENT_BYTES) - size, SignedIntType))
-    }
-    return result
-  }
-
-  private fun popRegister(popTo: MachineRegister, type: TypeName): List<MachineInstruction> {
-    require(popTo.valueClass is X64RegisterClass)
-    val result = mutableListOf<MachineInstruction>()
-    val topOfStack = MemoryLocation(PhysicalRegister(rsp.reg, PointerType(type, emptyList())))
-    when (popTo.valueClass) {
-      X64RegisterClass.SSE, X64RegisterClass.INTEGER -> {
-        result += matchTypedMov(PhysicalRegister(popTo, type), topOfStack)
-      }
-      X64RegisterClass.X87 -> TODO("pop X87 thing")
-    }
-    result += add.match(rsp, IntConstant(target.machineTargetData.sizeOf(type), SignedIntType))
-    return result
   }
 
   companion object {
