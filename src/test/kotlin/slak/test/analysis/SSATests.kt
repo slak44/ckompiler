@@ -1,6 +1,8 @@
 package slak.test.analysis
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.analysis.*
 import slak.test.prepareCFG
 import slak.test.resource
@@ -175,5 +177,17 @@ class SSATests {
       assertEquals(listOf(loopHeader to 0, loopBody to 2, loopBody to 3), useChainOf("i", 2))
       assertEquals(listOf(loopBody to 0, returnBlock to 0), useChainOf("x", 2))
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["ssa/domsTest.c", "ssa/domsTest2.c", "ssa/domsTest3.c"])
+  fun `Iterated Dominance Frontier Works`(fileName: String) {
+    val cfg = prepareCFG(resource(fileName), source)
+    cfg.assertIsSSA()
+    val block1 = cfg.startBlock.successors[0]
+    val variable = cfg.definitions.keys.first { it.name == "x" && it.version == 2 }
+    val iteratedFront = block1.iteratedDominanceFrontier(setOf(variable.id))
+    val actualIterated = cfg.nodes.filter { it.phi.any { (variable1) -> variable1.id == variable.id } }.toSet()
+    assertEquals(actualIterated, iteratedFront)
   }
 }

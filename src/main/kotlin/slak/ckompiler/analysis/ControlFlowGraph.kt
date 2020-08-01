@@ -606,6 +606,24 @@ private fun findDomFrontiers(startNode: BasicBlock, postOrder: Set<BasicBlock>):
 }
 
 /**
+ * Get the iterated dominance frontier of a [BasicBlock]. Run after [findDomFrontiers].
+ */
+fun BasicBlock.iteratedDominanceFrontier(defs: Set<AtomicId>): Set<BasicBlock> {
+  val visited = mutableSetOf<BasicBlock>()
+  val iteratedFront = mutableSetOf<BasicBlock>()
+  fun iterate(block: BasicBlock) {
+    if (block in visited) return
+    visited += block
+    iteratedFront += block.dominanceFrontier
+    for (frontierBlock in block.dominanceFrontier.filter { it.phi.any { (variable) -> variable.id in defs } }) {
+      iterate(frontierBlock)
+    }
+  }
+  iterate(this)
+  return iteratedFront
+}
+
+/**
  * Compute the post order for a set of nodes, and return it.
  *
  * Also sets [BasicBlock.postOrderId] and [BasicBlock.height] accordingly.
