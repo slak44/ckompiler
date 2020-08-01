@@ -72,11 +72,10 @@ private fun MachineTarget.matchValueToRegister(
  * know the incoming from the other blocks... and those other blocks might not know which version is live-out in them.
  * That means we have to rebuild the SSA (which is not exactly a cheap operation).
  *
- * FIXME: try to do this rewrite in bulk: ie not call this function for each value, but for all of them at once
- *
  * @see prepareForColoring
  */
 private fun rewriteBlockUses(
+    lastUses: MutableMap<IRValue, Label>,
     block: BasicBlock,
     copyToInsert: MachineInstruction?,
     atIdx: LabelIndex,
@@ -103,6 +102,9 @@ private fun rewriteBlockUses(
     }
     return mi.copy(operands = newOperands, constrainedArgs = newConstrainedArgs)
   }
+
+  // The replacement will die at the index where the original died
+  lastUses[rewritten] = lastUses.getValue(toRewrite)
 
   val (before, after) = instructions.take(atIdx) to instructions.drop(atIdx + 1)
   val newAfter = after.map(::rewriteOne)
@@ -182,9 +184,7 @@ private fun TargetFunGenerator.rewriteValue(
   val copiedValue = cfg.makeCopiedValue(value)
   val copyInstr = createIRCopy(copiedValue, value)
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
-  val newInstr = rewriteBlockUses(block, copyInstr, copyIndex, value, copiedValue, instructions, false)
-  // The replacement will die at the index where the original died
-  lastUses[copiedValue] = Label(block, lastUses.getValue(value).second)
+  val newInstr = rewriteBlockUses(lastUses, block, copyInstr, copyIndex, value, copiedValue, instructions, false)
   rewriteLastUses(lastUses, block, copyIndex)
   // This is the case where the value is an undefined dummy
   // We want to keep the original and correct last use, instead of destroying it here
@@ -215,10 +215,7 @@ private fun TargetFunGenerator.splitLiveRanges(
 
   val rewritten = actualValues.fold(instructions) { instrs, value ->
     val copiedValue = phiMap.getValue(value)
-    val newInstr = rewriteBlockUses(block, null, atIndex, value, copiedValue, instrs, true)
-    // The replacement will die at the index where the original died
-    lastUses[copiedValue] = lastUses.getValue(value)
-    return@fold newInstr
+    return@fold rewriteBlockUses(lastUses, block, null, atIndex, value, copiedValue, instrs, true)
   }
 
   // Splice the copy in the instructions
