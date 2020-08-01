@@ -6,9 +6,10 @@ import slak.ckompiler.IDebugHandler
 import slak.ckompiler.backend.TargetOptions
 
 class X64TargetOpts(
+    generic: TargetOptions,
     targetOptions: List<String>,
     debugHandler: IDebugHandler
-) : TargetOptions, IDebugHandler by debugHandler {
+) : TargetOptions by generic, IDebugHandler by debugHandler {
   val useRedZone: Boolean
 
   init {
@@ -28,6 +29,6 @@ class X64TargetOpts(
   }
 
   companion object {
-    val defaults = X64TargetOpts(emptyList(), DebugHandler("", "", ""))
+    val defaults = X64TargetOpts(TargetOptions.defaults, emptyList(), DebugHandler("", "", ""))
   }
 }

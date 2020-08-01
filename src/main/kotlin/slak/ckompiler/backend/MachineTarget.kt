@@ -310,7 +310,18 @@ interface TargetFunGenerator : FunctionAssembler {
   ): List<MachineInstruction>
 }
 
-interface TargetOptions
+/**
+ * Base options for a compilation target. Each target also has extra options beyond these.
+ */
+interface TargetOptions {
+  val omitFramePointer: Boolean
+
+  companion object {
+    val defaults = object : TargetOptions {
+      override val omitFramePointer = true
+    }
+  }
+}
 
 interface MachineTarget {
   val machineTargetData: MachineTargetData

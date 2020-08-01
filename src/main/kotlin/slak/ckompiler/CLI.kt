@@ -6,6 +6,7 @@ import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.analysis.createGraphviz
+import slak.ckompiler.backend.TargetOptions
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.*
 import slak.ckompiler.lexer.IncludePaths
@@ -182,6 +183,16 @@ class CLI(private val stdinStream: InputStream) :
       positionalPredicate = { it.startsWith("-L") },
       mapping = { it.removePrefix("-L") }
   )
+
+  init {
+    cli.helpGroup("Optimization options")
+  }
+
+  private val baseTargetOpts = object : TargetOptions {
+    override val omitFramePointer by cli.toggleableFlagArgument(
+        "-fomit-frame-pointer", "-fno-omit-frame-pointer",
+        "Do not maintain a frame pointer if possible", initialValue = true)
+  }
 
   init {
     cli.helpGroup("Target specific options")
@@ -386,7 +397,7 @@ class CLI(private val stdinStream: InputStream) :
 
     val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
-    val target = X64Target(X64TargetOpts(targetSpecific, this))
+    val target = X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
 
     if (isInterferenceOnly) {
       val function = allFuncs.findNamedFunction(interferenceFuncName) ?: return null

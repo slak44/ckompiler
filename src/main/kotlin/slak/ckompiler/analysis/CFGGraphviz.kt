@@ -108,9 +108,9 @@ fun BasicBlock.irToString(): String {
 private fun CFG.mapBlocksToString(
     print: CodePrintingMethods,
     sourceCode: String,
-    targetOptions: List<String>
+    targetOpts: X64TargetOpts
 ): Map<BasicBlock, String> {
-  val target = X64Target(X64TargetOpts(targetOptions, this))
+  val target = X64Target(targetOpts)
   val sep = "<br align=\"left\"/>"
   if (print == CodePrintingMethods.MI_TO_STRING) {
     val gen = X64Generator(this, target)
@@ -160,11 +160,11 @@ fun createGraphviz(
     sourceCode: String,
     reachableOnly: Boolean,
     print: CodePrintingMethods,
-    targetOptions: List<String> = emptyList()
+    targetOpts: X64TargetOpts = X64TargetOpts.defaults
 ): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
-  val blockMap = graph.mapBlocksToString(print, sourceCode, targetOptions)
+  val blockMap = graph.mapBlocksToString(print, sourceCode, targetOpts)
   val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
       it.isRoot -> "style=filled,color=$BLOCK_START"

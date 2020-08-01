@@ -2,7 +2,6 @@ package slak.ckompiler.backend.x64
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE

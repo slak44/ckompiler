@@ -43,8 +43,16 @@ class X64Tests {
     return regAlloc(cfg)
   }
 
-  private fun regAlloc(cfg: CFG, targetOptions: List<String> = emptyList()): AllocationResult {
-    val target = X64Target(X64TargetOpts(targetOptions, cfg))
+  private object DefaultX64TestOptions : TargetOptions {
+    override val omitFramePointer = false
+  }
+
+  private fun regAlloc(
+      cfg: CFG,
+      baseTargetOptions: TargetOptions = DefaultX64TestOptions,
+      targetOptions: List<String> = emptyList()
+  ): AllocationResult {
+    val target = X64Target(X64TargetOpts(baseTargetOptions, targetOptions, cfg))
     val gen = X64Generator(cfg, target)
     val instructionMap = gen.instructionSelection()
     instructionMap.assertIsSSA()
