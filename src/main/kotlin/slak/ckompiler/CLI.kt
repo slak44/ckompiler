@@ -4,11 +4,12 @@ import kotlinx.cli.*
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
-import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.analysis.createGraphviz
 import slak.ckompiler.backend.TargetOptions
-import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.x64.*
+import slak.ckompiler.backend.x64.NasmEmitter
+import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Target
+import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
@@ -99,8 +100,8 @@ class CLI(private val stdinStream: InputStream) :
   private val isPreprocessOnly by cli.flagArgument("-E", "Preprocess only")
   private val isCFGOnly by cli.flagArgument("--cfg-mode",
       "Create the program's control flow graph only, don't compile")
-  private val isInterferenceOnly by cli.flagArgument("--interference-mode",
-      "Print variable live-range interference in a function, don't assemble")
+  private val isMIDebugOnly by cli.flagArgument("--mi-debug",
+      "Print MI/RegAlloc debug data, don't assemble")
   private val isCompileOnly by cli.flagArgument("-S", "Compile only, don't assemble")
   private val isAssembleOnly by cli.flagArgument("-c", "Assemble only, don't link")
 
@@ -230,11 +231,11 @@ class CLI(private val stdinStream: InputStream) :
       "Force displaying of unreachable basic blocks and impossible edges")
 
   init {
-    cli.helpGroup("Interference options (require --interference-mode)")
+    cli.helpGroup("MI debug options (require --mi-debug)")
   }
 
-  private val interferenceFuncName by cli.flagValueArgument("--interference-function", "FUNC_NAME",
-      "Choose which function to print variable interference for", initialValue = "main")
+  private val miDebugFuncName by cli.flagValueArgument("--mi-function", "FUNC_NAME",
+      "Choose which function to print debug data for", initialValue = "main")
 
   private val showDummies by cli.flagArgument("--show-dummies", "Show all dummy allocations")
 
@@ -399,8 +400,8 @@ class CLI(private val stdinStream: InputStream) :
 
     val target = X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
 
-    if (isInterferenceOnly) {
-      val function = allFuncs.findNamedFunction(interferenceFuncName) ?: return null
+    if (isMIDebugOnly) {
+      val function = allFuncs.findNamedFunction(miDebugFuncName) ?: return null
       val cfg = CFG(
           f = function,
           targetData = MachineTargetData.x64,
@@ -518,7 +519,7 @@ class CLI(private val stdinStream: InputStream) :
       executionFailed = true
     }
     val isNotLinking =
-        isInterferenceOnly || isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly
+        isMIDebugOnly || isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly
     if (output.isPresent && isNotLinking && sourceCount > 1) {
       diagnostic { id = DiagnosticId.MULTIPLE_FILES_PARTIAL }
       return ExitCodes.EXECUTION_FAILED
