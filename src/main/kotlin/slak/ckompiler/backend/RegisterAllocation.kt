@@ -46,9 +46,32 @@ private fun MachineTarget.matchValueToRegister(
 }
 
 /**
- * This function rewrites a block to accommodate a new version of a variable. It also modifies the CFG to deal with
- * rewritten values, such that we remain in SSA form. If [copyToInsert] is not null, then the specified copy is inserted
- * at [atIdx]. Otherwise, the copy is assumed to already be in place or that it will be inserted later.
+ * Rewrite a [MachineInstruction]'s operands that match any of the [rewriteMap]'s keys, with the associated value from
+ * the map. Only cares about [VariableUse.USE], and also rewrites constrained args.
+ */
+fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableValue>): MachineInstruction {
+  val newOperands = operands.zip(template.operandUse).map {
+    // Explicitly not care about DEF_USE
+    if (it.first in rewriteMap.keys && it.second == VariableUse.USE && it.first is AllocatableValue) {
+      rewriteMap.getValue(it.first as AllocatableValue)
+    } else {
+      it.first
+    }
+  }
+  val newConstrainedArgs = constrainedArgs.map {
+    if (it.value in rewriteMap.keys) {
+      it.copy(value = rewriteMap.getValue(it.value))
+    } else {
+      it
+    }
+  }
+  return copy(operands = newOperands, constrainedArgs = newConstrainedArgs)
+}
+
+/**
+ * This function rewrites a block to accommodate a new version of some variables. It also modifies the CFG to deal with
+ * rewritten values, such that we remain in SSA form. The copies are assumed to already be in place or will be inserted
+ * later.
  *
  * [VirtualRegister]s are easy to deal with: they cannot escape the block, so they can't introduce new φs.
  * That means we can just rewire the uses, and still be in SSA form, so no SSA reconstruction needed.
@@ -62,59 +85,38 @@ private fun MachineTarget.matchValueToRegister(
  *   \  /
  *    D
  * ```
- * With the variable defined at the top in A (version 1, [toRewrite]), and used in all other 3 blocks.
- * Now if we need to rewrite its uses in say, block C, we'll replace its uses with version 2 ([rewritten]). But now we
- * have a problem: version 1 is live-out in block B, and version 2 is live-out in block C, so block D needs a φ
- * instruction, one which was not there previously (there was only one version).
+ * With the variable defined at the top in A (version 1, any key of [rewriteMap]), and used in all other 3 blocks.
+ * Now if we need to rewrite its uses in say, block C, we'll replace its uses with version 2 (associated [rewriteMap]
+ * value). But now we have a problem: version 1 is live-out in block B, and version 2 is live-out in block C, so block D
+ * needs a φ instruction, one which was not there previously (there was only one version).
  *
  * If the φ was already there, it would have been ok: just update the incoming value from this block with the new
  * version. When we insert a new φ, we still know the incoming from our [block] (it's the new version), but we don't
  * know the incoming from the other blocks... and those other blocks might not know which version is live-out in them.
  * That means we have to rebuild the SSA (which is not exactly a cheap operation).
  *
+ * @return the instructions from [instructions], after the index [atIdx], rewritten
+ *
+ * @see rewriteBy
  * @see prepareForColoring
  */
 private fun rewriteBlockUses(
     lastUses: MutableMap<IRValue, Label>,
     block: BasicBlock,
-    copyToInsert: MachineInstruction?,
     atIdx: LabelIndex,
-    toRewrite: AllocatableValue,
-    rewritten: AllocatableValue,
-    instructions: List<MachineInstruction>,
-    rewriteConstrained: Boolean
+    rewriteMap: Map<AllocatableValue, AllocatableValue>,
+    instructions: List<MachineInstruction>
 ): List<MachineInstruction> {
-  fun rewriteOne(mi: MachineInstruction): MachineInstruction {
-    val newOperands = mi.operands.zip(mi.template.operandUse).map {
-      // Explicitly not care about DEF_USE
-      if (it.first == toRewrite && it.second == VariableUse.USE) {
-        rewritten
-      } else {
-        it.first
-      }
-    }
-    val newConstrainedArgs = mi.constrainedArgs.map {
-      if (it.value == toRewrite) {
-        it.copy(value = rewritten)
-      } else {
-        it
-      }
-    }
-    return mi.copy(operands = newOperands, constrainedArgs = newConstrainedArgs)
-  }
+  val newAfter = instructions.drop(atIdx + 1).map { it.rewriteBy(rewriteMap) }
 
-  // The replacement will die at the index where the original died
-  lastUses[rewritten] = lastUses.getValue(toRewrite)
+  for ((toRewrite, rewritten) in rewriteMap) {
+    // Each replacement will die at the index where the original died
+    lastUses[rewritten] = lastUses.getValue(toRewrite)
 
-  val (before, after) = instructions.take(atIdx) to instructions.drop(atIdx + 1)
-  val newAfter = after.map(::rewriteOne)
-  val newConstrained = instructions[atIdx].let {
-    if (rewriteConstrained) rewriteOne(it) else it
-  }
+    if (rewritten !is Variable) continue
 
-  // FIXME: this is broken; see docs above about SSA
-  // If we rewrote a variable, it might have been used in a future phi, so deal with that
-  if (rewritten is Variable) {
+    // FIXME: SSA
+    // If we rewrote a variable, it might have been used in a future phi, so deal with that
     for (succ in block.successors) {
       val replacementPhis = mutableSetOf<PhiInstruction>()
       succ.phi.retainAll { phi ->
@@ -129,7 +131,7 @@ private fun rewriteBlockUses(
     }
   }
 
-  return before + listOfNotNull(copyToInsert) + newConstrained + newAfter
+  return newAfter
 }
 
 /**
@@ -184,7 +186,8 @@ private fun TargetFunGenerator.rewriteValue(
   val copiedValue = cfg.makeCopiedValue(value)
   val copyInstr = createIRCopy(copiedValue, value)
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
-  val newInstr = rewriteBlockUses(lastUses, block, copyInstr, copyIndex, value, copiedValue, instructions, false)
+  val newInstrAfter = rewriteBlockUses(lastUses, block, copyIndex, mapOf(value to copiedValue), instructions)
+  val newInstr = instructions.take(copyIndex) + copyInstr + constrainedInstr + newInstrAfter
   rewriteLastUses(lastUses, block, copyIndex)
   // This is the case where the value is an undefined dummy
   // We want to keep the original and correct last use, instead of destroying it here
@@ -213,13 +216,10 @@ private fun TargetFunGenerator.splitLiveRanges(
   phi.irLabelIndex = atIndex
   val phiMap = (phi.template as ParallelCopyTemplate).values
 
-  val rewritten = actualValues.fold(instructions) { instrs, value ->
-    val copiedValue = phiMap.getValue(value)
-    return@fold rewriteBlockUses(lastUses, block, null, atIndex, value, copiedValue, instrs, true)
-  }
+  val rewrittenAfter = rewriteBlockUses(lastUses, block, atIndex, phiMap, instructions)
 
-  // Splice the copy in the instructions
-  val withCopy = rewritten.take(atIndex) + phi + rewritten.drop(atIndex)
+  // Splice the copy in the instructions, and rewrite the constrained instr too
+  val withCopy = instructions.take(atIndex) + phi + instructions[atIndex].rewriteBy(phiMap) + rewrittenAfter
 
   rewriteLastUses(lastUses, block, atIndex)
   for (value in actualValues) {
