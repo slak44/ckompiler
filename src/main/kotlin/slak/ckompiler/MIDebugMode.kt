@@ -1,6 +1,5 @@
 package slak.ckompiler
 
-import com.github.ajalt.mordant.TermColors
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.backend.regAlloc
@@ -16,6 +15,11 @@ private fun printHeader(text: String) {
   println()
 }
 
+private fun printNotBlank(text: String?) {
+  if (text.isNullOrBlank()) return
+  println(text)
+}
+
 fun printMIDebug(cfg: CFG, target: X64Target, showDummies: Boolean) {
   val gen = X64Generator(cfg, target)
   val selected = gen.instructionSelection()
@@ -23,8 +27,8 @@ fun printMIDebug(cfg: CFG, target: X64Target, showDummies: Boolean) {
   printHeader("Initial MachineInstructions (with parallel copies)")
   for ((block, list) in debugInstrs) {
     println(block)
-    println(block.phi.joinToString(separator = "\n", postfix = "\n"))
-    println(list.joinToString(separator = "\n", postfix = "\n"))
+    printNotBlank(block.phi.joinToString(separator = "\n"))
+    printNotBlank(list.joinToString(separator = "\n", postfix = "\n"))
   }
   printHeader("Register allocation")
   val realAllocation = gen.regAlloc(selected)
@@ -36,14 +40,14 @@ fun printMIDebug(cfg: CFG, target: X64Target, showDummies: Boolean) {
   val final = gen.applyAllocation(realAllocation)
   for ((block, list) in final) {
     println(block)
-    println(list.joinToString(separator = "\n", postfix = "\n"))
+    printNotBlank(list.joinToString(separator = "\n", postfix = "\n"))
   }
   printHeader("Optimized MachineInstructions")
   for ((block, list) in final) {
     @Suppress("UNCHECKED_CAST")
     val withOpts = X64PeepholeOpt().optimize(gen, list as List<X64Instruction>)
     println(block)
-    println(withOpts.joinToString(separator = "\n", postfix = "\n"))
+    printNotBlank(withOpts.joinToString(separator = "\n", postfix = "\n"))
     println("(initial: ${list.size} | optimized: ${withOpts.size})")
     println()
   }
