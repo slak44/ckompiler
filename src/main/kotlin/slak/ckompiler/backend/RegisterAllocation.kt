@@ -26,22 +26,22 @@ data class AllocationResult(
   operator fun component5() = stackSlots
 }
 
-private fun MachineTarget.pickMatchingRegister(
-    validRegisters: Set<MachineRegister>,
+private fun MachineTarget.selectRegisterWhitelist(
+    whitelist: Set<MachineRegister>,
     value: IRValue
 ): MachineRegister? {
   val validClass = registerClassOf(value.type)
   val validSize = machineTargetData.sizeOf(value.type.unqualify().normalize())
-  return validRegisters.firstOrNull { candidate ->
+  return whitelist.firstOrNull { candidate ->
     candidate.valueClass == validClass &&
         (candidate.sizeBytes == validSize || validSize in candidate.aliases.map { it.second })
   }
 }
 
-private fun MachineTarget.matchValueToRegister(
-    value: IRValue,
-    forbiddenNeigh: Set<MachineRegister>
-) = requireNotNull(pickMatchingRegister(registers.toSet() - forbidden - forbiddenNeigh, value)) {
+private fun MachineTarget.selectRegisterBlacklist(
+    blacklist: Set<MachineRegister>,
+    value: IRValue
+) = requireNotNull(selectRegisterWhitelist(registers.toSet() - forbidden - blacklist, value)) {
   "Failed to find an empty register for the given value: $value"
 }
 
@@ -464,19 +464,19 @@ private fun RegisterAllocationContext.constrainedColoring(mi: MachineInstruction
   }
   for (x in a) {
     // We differ here a bit, because cD - cA might have a register, but of the wrong class
-    val reg = target.pickMatchingRegister(cD - cA, x)
+    val reg = target.selectRegisterWhitelist(cD - cA, x)
     if (reg != null) {
       coloring[x] = reg
     } else {
-      coloring[x] = target.matchValueToRegister(x, assigned + cA)
+      coloring[x] = target.selectRegisterBlacklist(assigned + cA, x)
     }
   }
   for (x in d) {
-    val reg = target.pickMatchingRegister(cA - cD, x)
+    val reg = target.selectRegisterWhitelist(cA - cD, x)
     if (reg != null) {
       coloring[x] = reg
     } else {
-      coloring[x] = target.matchValueToRegister(x, assigned + cD)
+      coloring[x] = target.selectRegisterBlacklist(assigned + cD, x)
     }
   }
 
@@ -485,7 +485,7 @@ private fun RegisterAllocationContext.constrainedColoring(mi: MachineInstruction
   for (x in t) {
     val oldColor = checkNotNull(coloring[x])
     assigned -= oldColor
-    val color = target.matchValueToRegister(x, forbidden)
+    val color = target.selectRegisterBlacklist(forbidden, x)
     coloring[x] = color
     assigned += color
   }
@@ -536,7 +536,7 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: Label, mi: Machi
   for (copy in copies - usedAtL) {
     val oldColor = checkNotNull(coloring[copy])
     assigned -= oldColor
-    val color = target.matchValueToRegister(copy, assigned + colorsAtL)
+    val color = target.selectRegisterBlacklist(assigned + colorsAtL, copy)
     coloring[copy] = color
     assigned += color
   }
@@ -571,7 +571,7 @@ private fun RegisterAllocationContext.allocBlock(block: BasicBlock) {
   }
   // Allocate φ-definitions
   for ((variable, _) in block.phi) {
-    val color = target.matchValueToRegister(variable, assigned)
+    val color = target.selectRegisterBlacklist(assigned, variable)
     coloring[variable] = color
     assigned += color
   }
@@ -594,7 +594,7 @@ private fun RegisterAllocationContext.allocBlock(block: BasicBlock) {
         .filterIsInstance<AllocatableValue>()
     // Allocate registers for values defined at this label
     for (definition in defined) {
-      val color = target.matchValueToRegister(definition, assigned)
+      val color = target.selectRegisterBlacklist(assigned, definition)
       if (coloring[definition] != null) {
         logger.throwICE("Coloring the same definition twice") {
           "def: $definition, old color: ${coloring[definition]}, new color: $color"
