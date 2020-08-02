@@ -48,6 +48,8 @@ private fun MachineTarget.matchValueToRegister(
 /**
  * Rewrite a [MachineInstruction]'s operands that match any of the [rewriteMap]'s keys, with the associated value from
  * the map. Only cares about [VariableUse.USE], and also rewrites constrained args.
+ *
+ * @see rewriteBlockUses
  */
 fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableValue>): MachineInstruction {
   val newOperands = operands.zip(template.operandUse).map {
@@ -69,9 +71,70 @@ fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableVa
 }
 
 /**
- * This function rewrites a block to accommodate a new version of some variables. It also modifies the CFG to deal with
- * rewritten values, such that we remain in SSA form. The copies are assumed to already be in place or will be inserted
- * later.
+ * Rebuild SSA for some affected variables. See reference for some notations.
+ *
+ * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.2.1.2, Algorithm 4.1
+ */
+fun CFG.ssaReconstruction(
+    toRewrite: Set<AllocatableValue>,
+    instrMap: InstructionMap,
+    miDefUseChains: DefUseChains
+): InstructionMap {
+  val newInstrMap = instrMap.toMutableMap()
+  val varsInitial = toRewrite.filterIsInstance<Variable>()
+  val vars = varsInitial.toMutableSet()
+  val ids = vars.mapTo(mutableSetOf()) { it.id }
+  val blocks = vars.map { definitions.getValue(it).first }.toMutableSet()
+  val f = blocks.iteratedDominanceFrontier(ids)
+
+  fun findDef(label: Label, variable: Variable): Variable {
+    val (block, index) = label
+
+    for (u in traverseDominatorTree(doms, block)) {
+      // If this is a phi, we need to skip the first block
+      if (u == block && index == DEFINED_IN_PHI) continue
+      // Ignore things after our given label (including the label)
+      for (mi in newInstrMap.getValue(u).take(if (u == block) index else Int.MAX_VALUE).asReversed()) {
+        val maybeDefined = mi.defs.filterIsInstance<Variable>().firstOrNull { it.id == variable.id }
+        if (maybeDefined != null) {
+          return maybeDefined
+        }
+      }
+      val maybeDefinedPhi = u.phi.firstOrNull { it.variable.id == variable.id }
+      if (maybeDefinedPhi != null) {
+        return maybeDefinedPhi.variable
+      }
+      if (u in f) {
+        u.phi += PhiInstruction(variable, u.preds.associateWith { findDef(Label(it, Int.MAX_VALUE), variable) })
+      }
+    }
+    logger.throwICE("Unreachable: no definition for $variable was found up the tree from $label")
+  }
+
+  for (x in varsInitial) {
+    for (label in miDefUseChains.getValue(x)) {
+      val (block, index) = label
+      val newVersion = findDef(label, x)
+      // Already wired correctly
+      if (x == newVersion) continue
+      if (index == DEFINED_IN_PHI) {
+        val phiInstr = block.phi.first { it.variable.id == x.id }
+        block.phi -= phiInstr
+        val (pred, _) = phiInstr.incoming.entries.first { it.value == x }
+        pred.phi += phiInstr.copy(incoming = phiInstr.incoming + (pred to newVersion))
+      } else {
+        val instrs = newInstrMap.getValue(block)
+        val newMI = instrs[index].rewriteBy(mapOf(x to newVersion))
+        newInstrMap[block] = instrs.take(index) + newMI + instrs.drop(index + 1)
+      }
+    }
+  }
+  return newInstrMap
+}
+
+/**
+ * This function rewrites a block to accommodate a new version of some variables. The copies are assumed to already be
+ * in place or will be inserted later.
  *
  * [VirtualRegister]s are easy to deal with: they cannot escape the block, so they can't introduce new φs.
  * That means we can just rewire the uses, and still be in SSA form, so no SSA reconstruction needed.
@@ -91,9 +154,10 @@ fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableVa
  * needs a φ instruction, one which was not there previously (there was only one version).
  *
  * If the φ was already there, it would have been ok: just update the incoming value from this block with the new
- * version. When we insert a new φ, we still know the incoming from our [block] (it's the new version), but we don't
+ * version. When we insert a new φ, we still know the incoming from our block (it's the new version), but we don't
  * know the incoming from the other blocks... and those other blocks might not know which version is live-out in them.
- * That means we have to rebuild the SSA (which is not exactly a cheap operation).
+ * That means we have to rebuild the SSA (which is not exactly a cheap operation). This function does not rebuild it,
+ * see [ssaReconstruction] for that.
  *
  * @return the instructions from [instructions], after the index [atIdx], rewritten
  *
@@ -101,37 +165,11 @@ fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableVa
  * @see prepareForColoring
  */
 private fun rewriteBlockUses(
-    lastUses: MutableMap<IRValue, Label>,
-    block: BasicBlock,
     atIdx: LabelIndex,
     rewriteMap: Map<AllocatableValue, AllocatableValue>,
     instructions: List<MachineInstruction>
 ): List<MachineInstruction> {
-  val newAfter = instructions.drop(atIdx + 1).map { it.rewriteBy(rewriteMap) }
-
-  for ((toRewrite, rewritten) in rewriteMap) {
-    // Each replacement will die at the index where the original died
-    lastUses[rewritten] = lastUses.getValue(toRewrite)
-
-    if (rewritten !is Variable) continue
-
-    // FIXME: SSA
-    // If we rewrote a variable, it might have been used in a future phi, so deal with that
-    for (succ in block.successors) {
-      val replacementPhis = mutableSetOf<PhiInstruction>()
-      succ.phi.retainAll { phi ->
-        if (phi.incoming.getValue(block) != toRewrite) return@retainAll true
-        val newIncoming = phi.incoming.toMutableMap()
-        newIncoming[block] = rewritten
-        replacementPhis += phi.copy(incoming = newIncoming)
-        return@retainAll false
-      }
-      check(replacementPhis.isNotEmpty()) { "FIXME: SSA" }
-      succ.phi += replacementPhis
-    }
-  }
-
-  return newAfter
+  return instructions.drop(atIdx + 1).map { it.rewriteBy(rewriteMap) }
 }
 
 /**
@@ -184,10 +222,15 @@ private fun TargetFunGenerator.rewriteValue(
   // No point in inserting a copy for something that's never used
   if (value !in lastUses) return instructions
   val copiedValue = cfg.makeCopiedValue(value)
+  if (copiedValue is Variable) {
+    cfg.definitions[copiedValue] = Label(block, copyIndex)
+  }
   val copyInstr = createIRCopy(copiedValue, value)
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
-  val newInstrAfter = rewriteBlockUses(lastUses, block, copyIndex, mapOf(value to copiedValue), instructions)
+  val newInstrAfter = rewriteBlockUses(copyIndex, mapOf(value to copiedValue), instructions)
   val newInstr = instructions.take(copyIndex) + copyInstr + constrainedInstr + newInstrAfter
+  // The copy will die at the index where the original died
+  lastUses[copiedValue] = lastUses.getValue(value)
   rewriteLastUses(lastUses, block, copyIndex)
   // This is the case where the value is an undefined dummy
   // We want to keep the original and correct last use, instead of destroying it here
@@ -212,15 +255,23 @@ private fun TargetFunGenerator.splitLiveRanges(
 ): List<MachineInstruction> {
   // No point in making a copy for something that's never used
   val actualValues = splitFor.filter { it in lastUses }
-  val phi = ParallelCopyTemplate.createCopy(actualValues.associateWith(cfg::makeCopiedValue))
+  val rewriteMap = actualValues.associateWith(cfg::makeCopiedValue)
+  val phi = ParallelCopyTemplate.createCopy(rewriteMap)
   phi.irLabelIndex = atIndex
-  val phiMap = (phi.template as ParallelCopyTemplate).values
+  for (newVar in rewriteMap.values.filterIsInstance<Variable>()) {
+    cfg.definitions[newVar] = Label(block, atIndex)
+  }
 
-  val rewrittenAfter = rewriteBlockUses(lastUses, block, atIndex, phiMap, instructions)
+  val rewrittenAfter = rewriteBlockUses(atIndex, rewriteMap, instructions)
 
   // Splice the copy in the instructions, and rewrite the constrained instr too
-  val withCopy = instructions.take(atIndex) + phi + instructions[atIndex].rewriteBy(phiMap) + rewrittenAfter
+  val withCopy = instructions.take(atIndex) + phi + instructions[atIndex].rewriteBy(rewriteMap) + rewrittenAfter
 
+  // Update last uses
+  for ((toRewrite, rewritten) in rewriteMap) {
+    // Each replacement will die at the index where the original died
+    lastUses[rewritten] = lastUses.getValue(toRewrite)
+  }
   rewriteLastUses(lastUses, block, atIndex)
   for (value in actualValues) {
     // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
@@ -247,13 +298,14 @@ private fun TargetFunGenerator.prepareForColoring(
     instrMap: InstructionMap,
     lastUses: Map<IRValue, Label>
 ): Pair<InstructionMap, Map<IRValue, Label>> {
-  val newMap = instrMap.toMutableMap()
+  var newMap = instrMap.toMutableMap()
   val newLastUses = lastUses.toMutableMap()
   for (block in cfg.domTreePreorder) {
-    var newInstr = instrMap.getValue(block)
     // Track which variables are alive at any point in this block
-    // Initialize with the block live-ins
+    // Initialize with the block live-ins, and with φ vars
     val alive: MutableSet<AllocatableValue> = cfg.liveIns.getValue(block).toMutableSet()
+    alive += block.phi.map { it.variable }
+
     fun updateAlive(mi: MachineInstruction, index: LabelIndex) {
       val dyingHere = mi.uses.filter { newLastUses[it] == Label(block, index) }.filterIsInstance<AllocatableValue>()
       alive += mi.defs.filter { it in newLastUses }.filterIsInstance<AllocatableValue>()
@@ -261,8 +313,8 @@ private fun TargetFunGenerator.prepareForColoring(
     }
 
     var index = 0
-    while (index < newInstr.size) {
-      val mi = newInstr[index]
+    while (index < newMap.getValue(block).size) {
+      val mi = newMap.getValue(block)[index]
       if (!mi.isConstrained) {
         updateAlive(mi, index)
         index++
@@ -274,24 +326,25 @@ private fun TargetFunGenerator.prepareForColoring(
         if (newLastUses.getValue(value).second <= index) continue
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (target in mi.constrainedRes.map { it.target }) {
-          newInstr = rewriteValue(newLastUses, value, block, mi, index, newInstr)
-          updateAlive(newInstr[index], index)
+          newMap[block] = rewriteValue(newLastUses, value, block, mi, index, newMap.getValue(block))
+          newMap = cfg.ssaReconstruction(alive, newMap, findDefUseChains(cfg, newMap)).toMutableMap()
+          updateAlive(newMap.getValue(block)[index], index)
           index++
         }
       }
-      check(newInstr[index] == mi)
+      check(newMap.getValue(block)[index] == mi) {
+        "Sanity check failed: the constrained arg copy insertion above did not correctly update the current index"
+      }
 
-      newInstr = splitLiveRanges(alive, index, block, newInstr, newLastUses)
-      // FIXME: do we have to alter live-ins? probably for variables, see SSA reconstruction
+      newMap[block] = splitLiveRanges(alive, index, block, newMap.getValue(block), newLastUses)
+      newMap = cfg.ssaReconstruction(alive, newMap, findDefUseChains(cfg, newMap)).toMutableMap()
       // The parallel copy needs to have updateAlive run on it, before skipping it
-      updateAlive(newInstr[index], index)
+      updateAlive(newMap.getValue(block)[index], index)
       index++
       // Same with the original constrained label
-      updateAlive(newInstr[index], index)
+      updateAlive(newMap.getValue(block)[index], index)
       index++
     }
-
-    newMap[block] = newInstr
   }
   return Pair(newMap, newLastUses)
 }
@@ -319,6 +372,28 @@ private fun findLastUses(cfg: CFG, instrMap: InstructionMap): Map<IRValue, Label
     }
   }
   return lastUses
+}
+
+private fun findDefUseChains(cfg: CFG, instrMap: InstructionMap): DefUseChains {
+  val allUses = mutableMapOf<Variable, MutableList<Label>>()
+  fun newUse(variable: Variable, label: Label) {
+    allUses.putIfAbsent(variable, mutableListOf())
+    allUses.getValue(variable) += label
+  }
+
+  for (block in cfg.domTreePreorder) {
+    for (phi in block.phi) {
+      for (variable in phi.incoming.values) {
+        newUse(variable, Label(block, DEFINED_IN_PHI))
+      }
+    }
+    for ((index, mi) in instrMap.getValue(block).withIndex()) {
+      for (variable in mi.filterOperands { _, use -> use == VariableUse.USE }.filterIsInstance<Variable>()) {
+        newUse(variable, Label(block, index))
+      }
+    }
+  }
+  return allUses
 }
 
 private data class RegisterAllocationContext(
@@ -457,7 +532,7 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: Label, mi: Machi
   val copies = phiMap.values
   val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
   val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
-  val colorsAtL = (definedAtL + usedAtL).map { coloring.getValue(it) }
+  val colorsAtL = (definedAtL + usedAtL).mapTo(mutableSetOf()) { coloring.getValue(it) }
   for (copy in copies - usedAtL) {
     val oldColor = checkNotNull(coloring[copy])
     assigned -= oldColor
@@ -594,23 +669,26 @@ fun TargetFunGenerator.regAlloc(instrMap: InstructionMap, debugNoReplaceParallel
  */
 private fun TargetFunGenerator.removePhi(allocationResult: AllocationResult): AllocationResult {
   val newInstructionMap = allocationResult.partial.toMutableMap()
+  val newRegUseMap = allocationResult.registerUseMap.toMutableMap()
   for (block in cfg.domTreePreorder.filter { it.phi.isNotEmpty() }) {
-    // Make an explicit copy here to avoid ConcurrentModificationException, since splitting edges
-    // changes the preds
+    // Make an explicit copy here to avoid ConcurrentModificationException, since splitting edges changes the preds
     for (pred in block.preds.toList()) {
-      val copies = removeOnePhi(allocationResult, block, pred)
+      val copies = removeOnePhi(allocationResult.copy(registerUseMap = newRegUseMap), block, pred)
       if (copies.isEmpty()) continue
       val insertHere = splitCriticalForCopies(newInstructionMap, pred, block)
+      newRegUseMap[insertHere] = newRegUseMap.getValue(block)
       val instructions = newInstructionMap.getValue(insertHere)
       newInstructionMap[insertHere] = insertPhiCopies(instructions, copies)
     }
   }
-  return allocationResult.copy(partial = newInstructionMap)
+  return allocationResult.copy(partial = newInstructionMap, registerUseMap = newRegUseMap)
 }
 
 /**
  * To avoid the "lost copies" problem, critical edges must be split, and the copies inserted
  * there.
+ *
+ * This split messes with the internal state of the CFG.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 2.2.3
  */
@@ -623,8 +701,8 @@ private fun TargetFunGenerator.splitCriticalForCopies(
   if (block.successors.size <= 1 || succ.preds.size <= 1) {
     return block
   }
-  // FIXME: this split messes with the internal state of the CFG
   val insertedBlock = cfg.newBlock()
+  // Rewire terminator jumps
   insertedBlock.terminator = UncondJump(succ)
   val term = block.terminator
   block.terminator = when {
@@ -640,8 +718,18 @@ private fun TargetFunGenerator.splitCriticalForCopies(
     }
     else -> logger.throwICE("Impossible; terminator has fewer successors than block.successors")
   }
+  // Update preds
   succ.preds -= block
   succ.preds += insertedBlock
+  // Update successor's φs, for which the old block was incoming (now insertedBlock should be in incoming)
+  val rewritePhis = succ.phi.filter { block in it.incoming.keys }
+  val rewritten = rewritePhis.map {
+    val value = it.incoming.getValue(block)
+    it.copy(incoming = it.incoming - block + (insertedBlock to value))
+  }
+  succ.phi -= rewritePhis
+  succ.phi += rewritten
+  // Create the MIs for the inserted block (just an unconditional jump)
   instructionMap[insertedBlock] = listOf(createJump(succ))
   return insertedBlock
 }

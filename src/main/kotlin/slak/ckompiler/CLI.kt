@@ -402,15 +402,16 @@ class CLI(private val stdinStream: InputStream) :
 
     if (isMIDebugOnly) {
       val function = allFuncs.findNamedFunction(miDebugFuncName) ?: return null
-      val cfg = CFG(
-          f = function,
-          targetData = MachineTargetData.x64,
-          srcFileName = relPath,
-          srcText = text,
-          forceAllNodes = false,
-          forceReturnZero = function.name == "main"
-      )
-      printMIDebug(cfg, target, showDummies)
+      printMIDebug(target, showDummies) {
+        CFG(
+            f = function,
+            targetData = MachineTargetData.x64,
+            srcFileName = relPath,
+            srcText = text,
+            forceAllNodes = false,
+            forceReturnZero = function.name == "main"
+        )
+      }
       return null
     }
 

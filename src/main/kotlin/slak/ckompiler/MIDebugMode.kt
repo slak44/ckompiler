@@ -20,10 +20,10 @@ private fun printNotBlank(text: String?) {
   println(text)
 }
 
-fun printMIDebug(cfg: CFG, target: X64Target, showDummies: Boolean) {
-  val gen = X64Generator(cfg, target)
-  val selected = gen.instructionSelection()
-  val (debugInstrs) = gen.regAlloc(selected, debugNoReplaceParallel = true)
+fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) {
+  val genInitial = X64Generator(createCFG(), target)
+  val selectedInitial = genInitial.instructionSelection()
+  val (debugInstrs) = genInitial.regAlloc(selectedInitial, debugNoReplaceParallel = true)
   printHeader("Initial MachineInstructions (with parallel copies)")
   for ((block, list) in debugInstrs) {
     println(block)
@@ -31,6 +31,8 @@ fun printMIDebug(cfg: CFG, target: X64Target, showDummies: Boolean) {
     printNotBlank(list.joinToString(separator = "\n", postfix = "\n"))
   }
   printHeader("Register allocation")
+  val gen = X64Generator(createCFG(), target)
+  val selected = gen.instructionSelection()
   val realAllocation = gen.regAlloc(selected)
   for ((value, register) in realAllocation.allocations) {
     if (value is LoadableValue && value.isUndefined && !showDummies) continue

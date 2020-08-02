@@ -263,7 +263,7 @@ class E2ETests {
 
   @ParameterizedTest
   @EnumSource(InfNaNTestCases::class)
-  fun `Handle Infinities And NaNs`(test: InfNaNTestCases) {
+  fun `Print Infinities And NaNs`(test: InfNaNTestCases) {
     compileAndRun("""
       #include <stdio.h>
       #include <math.h>
@@ -273,6 +273,20 @@ class E2ETests {
         return 0;
       }
     """.trimIndent()).expect(stdout = test.output)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["123.456", "0.000", "-1.347", "-9999.333"])
+  fun `Printf Doubles`(value: String) {
+    compileAndRun("""
+      #include <stdio.h>
+      #include <math.h>
+      int main() {
+        double res = $value;
+        printf("%.3f", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = value)
   }
 
   companion object {

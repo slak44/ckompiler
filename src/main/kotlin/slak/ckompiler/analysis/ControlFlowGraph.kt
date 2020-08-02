@@ -8,7 +8,7 @@ import java.util.*
 
 private val logger = LogManager.getLogger()
 
-typealias Definitions = Map<Variable, Label>
+typealias Definitions = MutableMap<Variable, Label>
 typealias DefUseChains = Map<Variable, List<Label>>
 
 /**
@@ -541,6 +541,18 @@ class DominatorList(size: Int) {
 }
 
 /**
+ * Traverse the dominator tree from a [startNode] up to the root of the tree.
+ */
+fun CFG.traverseDominatorTree(doms: DominatorList, startNode: BasicBlock): Iterator<BasicBlock> = iterator {
+  var node = startNode
+  do {
+    yield(node)
+    node = requireNotNull(doms[node]) { "Dominator list is incomplete for $node" }
+  } while (node != startBlock)
+  if (startNode != startBlock) yield(startBlock)
+}
+
+/**
  * Constructs the dominator tree, and the identifies the dominance frontiers of
  * each node (fills [BasicBlock.dominanceFrontier]).
  *
@@ -606,9 +618,9 @@ private fun findDomFrontiers(startNode: BasicBlock, postOrder: Set<BasicBlock>):
 }
 
 /**
- * Get the iterated dominance frontier of a [BasicBlock]. Run after [findDomFrontiers].
+ * Get the iterated dominance frontier of set of [BasicBlock]s. Run after [findDomFrontiers].
  */
-fun BasicBlock.iteratedDominanceFrontier(defs: Set<AtomicId>): Set<BasicBlock> {
+fun Iterable<BasicBlock>.iteratedDominanceFrontier(defs: Set<AtomicId>): Set<BasicBlock> {
   val visited = mutableSetOf<BasicBlock>()
   val iteratedFront = mutableSetOf<BasicBlock>()
   fun iterate(block: BasicBlock) {
@@ -619,9 +631,12 @@ fun BasicBlock.iteratedDominanceFrontier(defs: Set<AtomicId>): Set<BasicBlock> {
       iterate(frontierBlock)
     }
   }
-  iterate(this)
+  for (block in this) iterate(block)
   return iteratedFront
 }
+
+/** @see iteratedDominanceFrontier */
+fun BasicBlock.iteratedDominanceFrontier(defs: Set<AtomicId>) = listOf(this).iteratedDominanceFrontier(defs)
 
 /**
  * Compute the post order for a set of nodes, and return it.
