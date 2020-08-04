@@ -8,8 +8,16 @@ import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 import kotlin.properties.Delegates
 
-class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAssembler {
-  override val returnBlock = BasicBlock(isRoot = false)
+class X64FunAssembler(private val target: X64Target) : FunctionAssembler {
+  var generator: X64Generator? = null
+    set(value) {
+      field = value
+      mapFunctionParams()
+    }
+
+  val graph by lazy { generator!!.graph }
+
+  override val returnBlock by lazy { graph.newBlock(Int.MAX_VALUE, emptyList()) }
 
   /**
    * If this is set to true, it means this function does not make any calls (ie is a leaf function).
@@ -49,13 +57,9 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
   private val rsp = PhysicalRegister(
       target.registerByName("rsp"), PointerType(UnsignedLongType, emptyList()))
 
-  init {
-    mapFunctionParams()
-  }
-
   /** @see parameterMap */
   private fun mapFunctionParams() {
-    val vars = cfg.f.parameters.map(::Variable).withIndex()
+    val vars = graph.f.parameters.map(::Variable).withIndex()
     val integral =
         vars.filter { target.registerClassOf(it.value.type) == X64RegisterClass.INTEGER }
     val sse = vars.filter { target.registerClassOf(it.value.type) == X64RegisterClass.SSE }
@@ -70,7 +74,7 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
       parameterMap[ParameterReference(sseVar.index, type)] = targetRegister
     }
     val stackVars = vars - integral.take(intArgRegNames.size) - sse.take(sseArgRegNames.size)
-    cfg.insertSpillCode(stackVars.map { it.value.id })
+    generator!!.insertSpillCode(stackVars.mapTo(mutableSetOf()) { it.value.id })
     // FIXME: deal with X87 here
     var paramOffset = INITIAL_MEM_ARG_OFFSET
     for ((index, variable) in stackVars) {
@@ -146,19 +150,19 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
     }
   }
 
-  override fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<X64Instruction>> {
+  override fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<X64Instruction>> {
     var currentStackOffset = stackBeginOffset
     val stackOffsets = alloc.allocations.values.filterIsInstance<StackSlot>().associateWith {
       val offset = currentStackOffset
       currentStackOffset += it.sizeBytes
       offset
     }
-    val asm = mutableMapOf<BasicBlock, List<X64Instruction>>()
-    for (block in cfg.postOrderNodes) {
-      val result = blockToX64Instr(block, alloc, stackOffsets)
-      asm += block to result
+    val asm = mutableMapOf<AtomicId, List<X64Instruction>>()
+    for (blockId in alloc.graph.domTreePreorder) {
+      val result = blockToX64Instr(blockId, alloc, stackOffsets)
+      asm += blockId to result
     }
-    asm += returnBlock to emptyList()
+    asm += returnBlock.id to emptyList()
     return asm
   }
 
@@ -192,7 +196,7 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
         is AllocatableValue -> argConstraints += arg constrainedTo reg
         is ConstantValue -> beforeLinked += matchTypedMov(PhysicalRegister(reg, argType), arg)
         is LoadableValue -> {
-          val copyTarget = VirtualRegister(cfg.registerIds(), argType)
+          val copyTarget = VirtualRegister(graph.registerIds(), argType)
           before += matchTypedMov(copyTarget, arg)
           argConstraints += copyTarget constrainedTo reg
         }
@@ -230,7 +234,7 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
     val resultConstraint = if (resultRegister == null) {
       null
     } else {
-      val copyTarget = VirtualRegister(cfg.registerIds(), result.type)
+      val copyTarget = VirtualRegister(graph.registerIds(), result.type)
       after += matchTypedMov(result, copyTarget)
       copyTarget constrainedTo resultRegister
     }
@@ -241,7 +245,7 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
 
     // FIXME: maybe when calling our other functions, we could track what regs they use, and not save them if we know
     //  they won't be clobbered
-    fun makeDummy() = VirtualRegister(cfg.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
+    fun makeDummy() = VirtualRegister(graph.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
     val dummies = List(target.callerSaved.size) { makeDummy() }
     val callerSavedConstraints = dummies.zip(target.callerSaved).map { (dummy, reg) -> dummy constrainedTo reg }
 
@@ -298,7 +302,7 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
     // Since this function is used before the bulk of the functions, there will always be a free register
     val actualValue = if (value is MemoryLocation) {
       val resultType = (value.ptr.type as PointerType).referencedType
-      val result = VirtualRegister(cfg.registerIds(), resultType)
+      val result = VirtualRegister(graph.registerIds(), resultType)
       selected += matchTypedMov(result, value)
       result
     } else {
@@ -337,12 +341,12 @@ class X64FunAssembler(val cfg: CFG, private val target: X64Target) : FunctionAss
   }
 
   private fun blockToX64Instr(
-      block: BasicBlock,
+      blockId: AtomicId,
       alloc: AllocationResult,
       stackOffsets: Map<StackSlot, Int>
   ): List<X64Instruction> {
     val result = mutableListOf<X64Instruction>()
-    for (mi in alloc.partial.getValue(block)) {
+    for (mi in alloc.graph[blockId]) {
       if (mi.template in dummyUse) continue
 
       // Add linked before (eg cdq before div)

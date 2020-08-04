@@ -206,13 +206,6 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
   }
 }
 
-/**
- * [BasicBlock]s and the [MachineInstruction]s created from the [BasicBlock.instructions].
- *
- * @see TargetFunGenerator.instructionSelection
- */
-typealias InstructionMap = Map<BasicBlock, List<MachineInstruction>>
-
 interface AsmInstruction {
   val template: InstructionTemplate
 }
@@ -231,13 +224,13 @@ interface FunctionAssembler {
   /**
    * All returns actually jump to this synthetic block, which then really returns from the function.
    */
-  val returnBlock: BasicBlock
+  val returnBlock: InstrBlock
 
   /**
    * Generates the asm for the "bulk" of the function, the stuff between the prologue and the
    * epilogue.
    */
-  fun applyAllocation(alloc: AllocationResult): Map<BasicBlock, List<AsmInstruction>>
+  fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<AsmInstruction>>
 
   fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
 
@@ -266,14 +259,9 @@ interface TargetFunGenerator : FunctionAssembler {
   val target: MachineTarget
 
   /**
-   * Target function to generate code for.
+   * Resulting graph to generate code for. The output of this generator.
    */
-  val cfg: CFG
-
-  /**
-   * Instruction selection for the function described by [cfg].
-   */
-  fun instructionSelection(): InstructionMap
+  val graph: InstructionGraph
 
   /**
    * Create a [MachineInstruction] to copy [src] to [dest]. The [InstructionTemplate] is target-specific, which is why
@@ -296,7 +284,7 @@ interface TargetFunGenerator : FunctionAssembler {
   /**
    * Create a jump instruction. Useful for post-coloring stages.
    */
-  fun createJump(target: BasicBlock): MachineInstruction
+  fun createJump(target: InstrBlock): MachineInstruction
 
   /**
    * Handle copy insertion while implementing φs.
@@ -305,10 +293,24 @@ interface TargetFunGenerator : FunctionAssembler {
    * compare that might make use of the pre-copy values. This is a target-dependent issue, which is
    * why this function is here.
    */
-  fun insertPhiCopies(
-      instructions: List<MachineInstruction>,
-      copies: List<MachineInstruction>
-  ): List<MachineInstruction>
+  fun insertPhiCopies(block: InstrBlock, copies: List<MachineInstruction>)
+
+  /**
+   * If any instruction uses a [Variable] with an id from [spilled], replace all the affected MIs in the [block] with
+   * new ones.
+   *
+   * This is a target-dependent operation, because it is basically a localized instruction selection.
+   */
+  fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>)
+
+  /**
+   * Run [rewriteSpill] on every block.
+   */
+  fun insertSpillCode(spilled: Set<AtomicId>) {
+    for (blockId in graph.domTreePreorder) {
+      rewriteSpill(graph[blockId], spilled)
+    }
+  }
 }
 
 /**
@@ -349,11 +351,6 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
   return registers.first { reg ->
     reg.regName == name || name in reg.aliases.map { it.first }
   }
-}
-
-fun MachineTarget.instructionScheduling(lists: InstructionMap): InstructionMap {
-  // FIXME: deal with this sometime
-  return lists
 }
 
 interface PeepholeOptimizer<T : AsmInstruction> {

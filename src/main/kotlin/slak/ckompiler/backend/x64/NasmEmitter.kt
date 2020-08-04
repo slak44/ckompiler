@@ -1,5 +1,6 @@
 package slak.ckompiler.backend.x64
 
+import slak.ckompiler.AtomicId
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
@@ -89,23 +90,22 @@ class NasmEmitter(
     emit("call exit")
   }
 
-  val BasicBlock.label get() = ".block_${hashCode()}"
+  val InstrBlock.label get() = id.label
+  val AtomicId.label get() = ".block_$this"
 
   private fun generateFunction(function: TargetFunGenerator) {
-    prelude += "global ${function.cfg.f.name}"
-    val miMap = function.instructionSelection()
-    val allocationResult = function.regAlloc(miMap)
+    prelude += "global ${function.graph.f.name}"
+    val allocationResult = function.regAlloc()
     val asmMap = function.applyAllocation(allocationResult)
-    val returnBlock = asmMap.keys.single { it.postOrderId == -1 }
     text += instrGen {
-      label(function.cfg.f.name)
+      label(function.graph.f.name)
       emit(genAsm(function.genFunctionPrologue(allocationResult)))
-      for (block in function.cfg.domTreePreorder) {
+      for (block in function.graph.domTreePreorder) {
         label(block.label)
         @Suppress("UNCHECKED_CAST")
         emit(genAsm(peepholeOptimizer.optimize(function, asmMap.getValue(block) as List<X64Instruction>)))
       }
-      label(returnBlock.label)
+      label(function.returnBlock.label)
       emit(genAsm(function.genFunctionEpilogue(allocationResult)))
     }
   }

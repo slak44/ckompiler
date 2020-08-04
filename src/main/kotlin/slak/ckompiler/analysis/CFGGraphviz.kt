@@ -9,8 +9,10 @@ import slak.ckompiler.parser.Expression
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,
+
   /** An edge that might be traversed based on what value is. */
   COND_MAYBE,
+
   /** An edge that cannot ever be traversed. */
   IMPOSSIBLE
 }
@@ -114,19 +116,21 @@ private fun CFG.mapBlocksToString(
   val sep = "<br align=\"left\"/>"
   if (print == CodePrintingMethods.MI_TO_STRING) {
     val gen = X64Generator(this, target)
-    val (newLists, _, _) = gen.regAlloc(gen.instructionSelection())
-    return newLists.mapValues {
-      it.value.joinToString(separator = sep, postfix = sep) { mi ->
+    val (graph) = gen.regAlloc()
+    val nodes = graph.domTreePreorder.asSequence().toList()
+    val instrGraphMap = nodes.associateWith {
+      graph[it].joinToString(separator = sep, postfix = sep) { mi ->
         val color = if (mi.irLabelIndex % 2 == 0) MI_COLOR_A else MI_COLOR_B
         "<font color=\"$color\">${mi.toString().unescape()}</font>"
       }
     }
+    return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   } else if (print == CodePrintingMethods.ASM_TO_STRING) {
     val gen = X64Generator(this, target)
-    val alloc = gen.regAlloc(gen.instructionSelection())
+    val alloc = gen.regAlloc()
     return gen.applyAllocation(alloc).mapValues {
       it.value.joinToString(separator = sep, postfix = sep)
-    }
+    }.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   }
   return allNodes.associateWith {
     when (print) {

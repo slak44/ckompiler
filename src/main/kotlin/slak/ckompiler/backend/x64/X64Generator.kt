@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.x64
 
 import org.apache.logging.log4j.LogManager
+import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
@@ -8,12 +9,17 @@ import slak.ckompiler.throwICE
 import kotlin.math.absoluteValue
 import kotlin.math.sign
 
-class X64Generator(
-    override val cfg: CFG,
-    override val target: X64Target
-) : TargetFunGenerator, FunctionAssembler by X64FunAssembler(cfg, target) {
-  override fun instructionSelection(): InstructionMap {
-    return cfg.nodes.associateWith(this::selectBlockInstrs)
+class X64Generator private constructor(
+    private val cfg: CFG,
+    override val target: X64Target,
+    funAsm: X64FunAssembler
+) : TargetFunGenerator, FunctionAssembler by funAsm {
+  constructor(cfg: CFG, target: X64Target) : this(cfg, target, X64FunAssembler(target))
+
+  override val graph: InstructionGraph = InstructionGraph.copyStructureFrom(cfg, this::selectBlockInstrs)
+
+  init {
+    funAsm.generator = this
   }
 
   override fun createIRCopy(dest: IRValue, src: IRValue): MachineInstruction {
@@ -37,19 +43,51 @@ class X64Generator(
     return matchTypedMov(PhysicalRegister(dest, type), PhysicalRegister(src, type))
   }
 
-  override fun createJump(target: BasicBlock): MachineInstruction {
-    return jmp.match(JumpTargetConstant(target))
+  override fun createJump(target: InstrBlock): MachineInstruction {
+    return jmp.match(JumpTargetConstant(target.id))
   }
 
-  override fun insertPhiCopies(
-      instructions: List<MachineInstruction>,
-      copies: List<MachineInstruction>
-  ): List<MachineInstruction> {
-    val jmpInstrs = instructions.takeLastWhile {
-      it.irLabelIndex == instructions.last().irLabelIndex &&
-          (it.template in jmp || it.template in jcc.values.flatten())
+  override fun insertPhiCopies(block: InstrBlock, copies: List<MachineInstruction>) {
+    val jmpInstrs = block.indexOfLast {
+      it.irLabelIndex != block.last().irLabelIndex || !(it.template in jmp || it.template in jcc.values.flatten())
     }
-    return instructions.dropLast(jmpInstrs.size) + copies + jmpInstrs
+    block.addAll(jmpInstrs, copies)
+  }
+
+  override fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>) {
+    val bb = cfg.nodes.first { it.nodeId == block.id }
+    val it = block.listIterator()
+    while (it.hasNext()) {
+      val mi = it.next()
+      val shouldChange = mi.operands.any { it is Variable && it.id in spilled }
+      if (!shouldChange) continue
+
+      // Remove all MIs generated from this IR, both behind and forward
+      while (it.hasPrevious() && it.previous().irLabelIndex == mi.irLabelIndex) it.remove()
+      while (it.hasNext() && it.next().irLabelIndex == mi.irLabelIndex) it.remove()
+
+      // Find original IR from basic block
+      val actualIR = if (mi.irLabelIndex > bb.ir.size) {
+        val idxInTerm = mi.irLabelIndex - bb.ir.size
+        when (val term = bb.terminator) {
+          is CondJump -> term.cond[idxInTerm]
+          is SelectJump -> term.cond[idxInTerm]
+          is ImpossibleJump -> term.returned!![idxInTerm]
+          else -> logger.throwICE("irLabelIndex points to terminator without IR")
+        }
+      } else {
+        bb.ir[mi.irLabelIndex]
+      }
+
+      // Replace spills
+      val rewrittenIR = spilled.replaceSpilled(actualIR)
+
+      // Match and insert new MIs
+      val newMIs = expandMacroFor(rewrittenIR).onEach { it.irLabelIndex = mi.irLabelIndex }
+      for (newMI in newMIs) {
+        it.add(newMI)
+      }
+    }
   }
 
   private fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction> {
@@ -136,7 +174,7 @@ class X64Generator(
       selected += createReturn(retVal).onEach { it.irLabelIndex = endIdx }
     }
     selected +=
-        jmp.match(JumpTargetConstant(returnBlock)).also { it.irLabelIndex = endIdx }
+        jmp.match(JumpTargetConstant(returnBlock.id)).also { it.irLabelIndex = endIdx }
     return selected
   }
 
@@ -287,7 +325,7 @@ class X64Generator(
     i.lhs -> listOf(op.match(i.lhs, i.rhs))
     // result = lhs OP result
     i.rhs -> {
-      val opTarget = VirtualRegister(cfg.registerIds(), i.lhs.type)
+      val opTarget = VirtualRegister(graph.registerIds(), i.lhs.type)
       listOf(
           matchTypedMov(opTarget, i.lhs),
           op.match(opTarget, i.result),
@@ -333,9 +371,9 @@ class X64Generator(
     val rax = target.registerByName("rax")
     val rdx = target.registerByName("rdx")
     val (resultReg, otherReg) = if (i.op == IntegralBinaryOps.REM) rdx to rax else rax to rdx
-    val dummy = VirtualRegister(cfg.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
-    val actualDividend = if (i.lhs is AllocatableValue) i.lhs else VirtualRegister(cfg.registerIds(), i.lhs.type)
-    val actualDivisor = if (i.rhs is ConstantValue) VirtualRegister(cfg.registerIds(), i.rhs.type) else i.rhs
+    val dummy = VirtualRegister(graph.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
+    val actualDividend = if (i.lhs is AllocatableValue) i.lhs else VirtualRegister(graph.registerIds(), i.lhs.type)
+    val actualDivisor = if (i.rhs is ConstantValue) VirtualRegister(graph.registerIds(), i.rhs.type) else i.rhs
     return listOfNotNull(
         if (i.lhs is AllocatableValue) null else matchTypedMov(actualDividend, i.lhs),
         if (i.rhs !is ConstantValue) null else matchTypedMov(actualDivisor, i.rhs),
@@ -376,7 +414,7 @@ class X64Generator(
       Comparisons.GREATER_EQUAL -> if (isSigned) "setge" else "setae"
     }
     val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
-    val setccTarget = VirtualRegister(cfg.registerIds(), SignedCharType)
+    val setccTarget = VirtualRegister(graph.registerIds(), SignedCharType)
     return listOf(
         matchTypedCmp(nonImm, maybeImm),
         setcc.getValue(setValue).match(setccTarget),

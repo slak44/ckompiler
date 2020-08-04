@@ -19,10 +19,10 @@ import slak.test.source
 import kotlin.test.assertEquals
 
 class X64Tests {
-  private fun InstructionMap.assertIsSSA() {
-    val defined = mutableMapOf<IRValue, LabelIndex>()
-    for ((_, instructions) in this) {
-      for (mi in instructions) {
+  private fun InstructionGraph.assertIsSSA() {
+    val defined = mutableMapOf<IRValue, Int>()
+    for (blockId in domTreePreorder) {
+      for (mi in this[blockId]) {
         for (definedValue in mi.defs) {
           assert(definedValue !in defined || defined.getValue(definedValue) == mi.irLabelIndex) {
             "$definedValue already defined"
@@ -54,13 +54,12 @@ class X64Tests {
   ): AllocationResult {
     val target = X64Target(X64TargetOpts(baseTargetOptions, targetOptions, cfg))
     val gen = X64Generator(cfg, target)
-    val instructionMap = gen.instructionSelection()
-    instructionMap.assertIsSSA()
-    val res = gen.regAlloc(instructionMap)
-    val (newLists, allocation, _) = res
-    for ((block, list) in newLists) {
-      println(block)
-      println(list.joinToString(separator = "\n", postfix = "\n"))
+    gen.graph.assertIsSSA()
+    val res = gen.regAlloc()
+    val (graph, allocation, _) = res
+    for (blockId in graph.domTreePreorder) {
+      println(graph[blockId])
+      println(graph[blockId].joinToString(separator = "\n", postfix = "\n"))
     }
     for ((value, register) in allocation) {
       println("allocate $value to $register")
@@ -97,9 +96,9 @@ class X64Tests {
   @Test
   fun `Instruction Selection On CFG`() {
     val cfg = prepareCFG(resource("codegen/addsAndMovs.c"), source)
-    val iLists = X64Generator(cfg, X64Target()).instructionSelection()
-    for (list in iLists) {
-      println(list.value.joinToString(separator = "\n", postfix = "\n"))
+    val gen = X64Generator(cfg, X64Target())
+    for (blockId in gen.graph.domTreePreorder) {
+      println(gen.graph[blockId].joinToString(separator = "\n", postfix = "\n"))
     }
   }
 
@@ -143,9 +142,8 @@ class X64Tests {
 
   @Test
   fun `Register Allocation With Varying Sizes (SETcc Instruction)`() {
-    val (iLists, _) = regAlloc("codegen/storeCmp.c")
-    val (_, mi) = iLists.entries.first { it.key.isRoot }
-    val setInstr = mi.first { it.template in setcc.getOrElse(it.template.name, ::emptyList) }
+    val (graph, _) = regAlloc("codegen/storeCmp.c")
+    val setInstr = graph[graph.startId].first { it.template in setcc.getOrElse(it.template.name, ::emptyList) }
     assertEquals(1, setInstr.operands.size)
     assert(setInstr.operands[0] is VirtualRegister)
     assertEquals(1, MachineTargetData.x64.sizeOf(setInstr.operands[0].type))
@@ -153,7 +151,7 @@ class X64Tests {
 
   @Test
   fun `Register Allocation With Register Pressure`() {
-    val (_, allocs, _, _, stackSlots) = regAlloc("codegen/highRegisterPressure.c")
+    val (_, allocs, _, stackSlots) = regAlloc("codegen/highRegisterPressure.c")
     assertEquals(14, allocs.values.filter { it.valueClass != Memory }.distinct().size)
     val spilled = allocs.entries.filter { it.value.valueClass == Memory }
     assertEquals(1, spilled.size)
@@ -162,14 +160,14 @@ class X64Tests {
 
   @Test
   fun `Register Allocation Many Non-Interfering`() {
-    val (_, allocs, _, _, stackSlots) = regAlloc("codegen/parallelLiveRanges.c")
+    val (_, allocs, _, stackSlots) = regAlloc("codegen/parallelLiveRanges.c")
     assertEquals(0, allocs.values.filter { it.valueClass == Memory }.size)
     assert(stackSlots.isEmpty())
   }
 
   @Test
   fun `Register Allocation Inter-Block Interference`() {
-    val (_, allocs, _, _, stackSlots) = regAlloc("codegen/interBlockInterference.c")
+    val (_, allocs, _, stackSlots) = regAlloc("codegen/interBlockInterference.c")
     assert(stackSlots.isEmpty())
     assertEquals(2, allocs.values.distinct().size)
   }

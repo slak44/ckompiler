@@ -22,18 +22,20 @@ private fun printNotBlank(text: String?) {
 
 fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) {
   val genInitial = X64Generator(createCFG(), target)
-  val selectedInitial = genInitial.instructionSelection()
-  val (debugInstrs) = genInitial.regAlloc(selectedInitial, debugNoReplaceParallel = true)
+  val (graph) = genInitial.regAlloc(debugNoReplaceParallel = true)
   printHeader("Initial MachineInstructions (with parallel copies)")
-  for ((block, list) in debugInstrs) {
+  for (blockId in graph.domTreePreorder) {
+    val block = graph[blockId]
     println(block)
-    printNotBlank(block.phi.joinToString(separator = "\n"))
-    printNotBlank(list.joinToString(separator = "\n", postfix = "\n"))
+    printNotBlank(block.phi.entries.joinToString(separator = "\n") { (variable, incoming) ->
+      val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.id}" }
+      "$variable ← φ($incStr)"
+    })
+    printNotBlank(block.joinToString(separator = "\n", postfix = "\n"))
   }
   printHeader("Register allocation")
   val gen = X64Generator(createCFG(), target)
-  val selected = gen.instructionSelection()
-  val realAllocation = gen.regAlloc(selected)
+  val realAllocation = gen.regAlloc()
   for ((value, register) in realAllocation.allocations) {
     if (value is LoadableValue && value.isUndefined && !showDummies) continue
     println("allocate $value to $register")

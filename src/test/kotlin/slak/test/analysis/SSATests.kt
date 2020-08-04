@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Target
 import slak.test.prepareCFG
 import slak.test.resource
 import slak.test.source
@@ -186,8 +188,11 @@ class SSATests {
     cfg.assertIsSSA()
     val block1 = cfg.startBlock.successors[0]
     val variable = cfg.definitions.keys.first { it.name == "x" && it.version == 2 }
-    val iteratedFront = block1.iteratedDominanceFrontier(setOf(variable.id))
-    val actualIterated = cfg.nodes.filter { it.phi.any { (variable1) -> variable1.id == variable.id } }.toSet()
-    assertEquals(actualIterated, iteratedFront)
+    val gen = X64Generator(cfg, X64Target())
+    with(gen.graph) {
+      val iteratedFront = listOf(block1.nodeId).iteratedDominanceFrontier(setOf(variable.id))
+      val actualIterated = cfg.nodes.filter { it.phi.any { (variable1) -> variable1.id == variable.id } }.toSet()
+      assertEquals(actualIterated.map { it.nodeId }.toSet(), iteratedFront)
+    }
   }
 }

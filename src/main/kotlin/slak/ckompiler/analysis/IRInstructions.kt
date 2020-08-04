@@ -333,9 +333,11 @@ data class StrConstant(val value: String, override val type: TypeName) : Constan
   override fun toString() = name
 }
 
-data class JumpTargetConstant(val target: BasicBlock) : ConstantValue() {
+data class JumpTargetConstant(val target: AtomicId) : ConstantValue() {
+  constructor(basicBlock: BasicBlock) : this(basicBlock.nodeId)
+
   override val type = VoidType
-  override val name = ".block_${hashCode()}"
+  override val name = ".block_$target"
   override fun toString() = name
 }
 

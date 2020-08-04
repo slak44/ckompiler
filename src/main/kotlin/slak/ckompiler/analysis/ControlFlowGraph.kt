@@ -39,7 +39,7 @@ class CFG(
   /** Filtered set of nodes that only contains reachable, non-empty nodes. */
   val nodes: Set<BasicBlock>
   /** [nodes], but sorted in post-order. Not a [Sequence] because we will need it in reverse. */
-  val postOrderNodes: Set<BasicBlock>
+  private val postOrderNodes: Set<BasicBlock>
   /** @see createDomTreePreOrderNodes */
   val domTreePreorder: Set<BasicBlock>
   /**
@@ -69,8 +69,6 @@ class CFG(
   val defUseChains: DefUseChains get() = renamer.defUseChains
   /** @see VariableRenamer.latestVersions */
   val latestVersions: MutableMap<AtomicId, Int> get() = renamer.latestVersions
-
-  val liveIns by lazy(this::computeLiveIns)
 
   val registerIds = IdCounter()
 
@@ -386,46 +384,16 @@ private class VariableRenamer(val cfg: CFG) {
   }
 }
 
-private fun CFG.computeLiveIns(): Map<BasicBlock, Set<Variable>> {
-  val liveInAt = nodes.associateWith { mutableSetOf<Variable>() }
-  for ((variable, definition) in definitions.entries) {
-    val usedInBlocks = defUseChains[variable]?.map { it.first } ?: continue
-    val phiUses = defUseChains.getValue(variable)
-        .filter { it.second == DEFINED_IN_PHI }
-        .map { it.first }
-        .toSet()
-    val visited = mutableSetOf<BasicBlock>()
-    val toVisit = usedInBlocks.toMutableSet()
-    while (toVisit.isNotEmpty()) {
-      val next = toVisit.first()
-      toVisit -= next
-      if (next in visited) continue
-      visited += next
-      if (next == definition.first) continue
-      if (next !in phiUses) {
-        liveInAt.getValue(next) += variable
-      }
-      val phi = next.phi.firstOrNull { it.variable.id == variable.id }
-      if (phi == null) {
-        toVisit += next.preds
-      } else {
-        toVisit += (next.preds - phi.incoming.filter { it.value != variable }.map { it.key })
-      }
-    }
-  }
-  return liveInAt
-}
-
-private fun List<AtomicId>.maybeReplace(it: IRValue): IRValue {
+private fun Iterable<AtomicId>.maybeReplace(it: IRValue): IRValue {
   return if (it is Variable && it.id in this) MemoryLocation(StackVariable(it.tid)) else it
 }
 
-private fun List<AtomicId>.maybeReplace(it: LoadableValue): LoadableValue {
+private fun Iterable<AtomicId>.maybeReplace(it: LoadableValue): LoadableValue {
   return if (it is Variable && it.id in this) MemoryLocation(StackVariable(it.tid)) else it
 }
 
 // FIXME: this is possibly the dumbest way to implement this
-private fun List<AtomicId>.replaceSpilled(i: IRInstruction): IRInstruction = when (i) {
+fun Iterable<AtomicId>.replaceSpilled(i: IRInstruction): IRInstruction = when (i) {
   is StructuralCast -> i.copy(result = maybeReplace(i.result), operand = maybeReplace(i.operand))
   is ReinterpretCast -> i.copy(result = maybeReplace(i.result), operand = maybeReplace(i.operand))
   is NamedCall -> i.copy(args = i.args.map { maybeReplace(it) }, result = maybeReplace(i.result))
@@ -541,18 +509,6 @@ class DominatorList(size: Int) {
 }
 
 /**
- * Traverse the dominator tree from a [startNode] up to the root of the tree.
- */
-fun CFG.traverseDominatorTree(doms: DominatorList, startNode: BasicBlock): Iterator<BasicBlock> = iterator {
-  var node = startNode
-  do {
-    yield(node)
-    node = requireNotNull(doms[node]) { "Dominator list is incomplete for $node" }
-  } while (node != startBlock)
-  if (startNode != startBlock) yield(startBlock)
-}
-
-/**
  * Constructs the dominator tree, and the identifies the dominance frontiers of
  * each node (fills [BasicBlock.dominanceFrontier]).
  *
@@ -616,27 +572,6 @@ private fun findDomFrontiers(startNode: BasicBlock, postOrder: Set<BasicBlock>):
   }
   return doms
 }
-
-/**
- * Get the iterated dominance frontier of set of [BasicBlock]s. Run after [findDomFrontiers].
- */
-fun Iterable<BasicBlock>.iteratedDominanceFrontier(defs: Set<AtomicId>): Set<BasicBlock> {
-  val visited = mutableSetOf<BasicBlock>()
-  val iteratedFront = mutableSetOf<BasicBlock>()
-  fun iterate(block: BasicBlock) {
-    if (block in visited) return
-    visited += block
-    iteratedFront += block.dominanceFrontier
-    for (frontierBlock in block.dominanceFrontier.filter { it.phi.any { (variable) -> variable.id in defs } }) {
-      iterate(frontierBlock)
-    }
-  }
-  for (block in this) iterate(block)
-  return iteratedFront
-}
-
-/** @see iteratedDominanceFrontier */
-fun BasicBlock.iteratedDominanceFrontier(defs: Set<AtomicId>) = listOf(this).iteratedDominanceFrontier(defs)
 
 /**
  * Compute the post order for a set of nodes, and return it.

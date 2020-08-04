@@ -121,7 +121,7 @@ class BasicBlock(val isRoot: Boolean = false) {
    * @see hashCode
    * @see equals
    */
-  private val nodeId: AtomicId = nodeCounter()
+  val nodeId: AtomicId = nodeCounter()
   /**
    * If not -1, this value represents the post order of [BasicBlock]s in their respective [CFG].
    *
@@ -246,6 +246,6 @@ class BasicBlock(val isRoot: Boolean = false) {
       "BasicBlock<id$nodeId/post$postOrderId>(${terminator.javaClass.simpleName})"
 
   companion object {
-    private val nodeCounter = IdCounter()
+    val nodeCounter = IdCounter()
   }
 }
