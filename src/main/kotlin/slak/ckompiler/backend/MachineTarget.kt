@@ -211,35 +211,10 @@ interface AsmInstruction {
 }
 
 /**
- * Provides function-related facilities: setting up/tearing down the stack frame, handling incoming
- * function parameters, calling other functions, generating moves for returns.
+ * Generates calls and returns. These operations tend to be (and very much are on x64) long and complicated, which is
+ * why this separate interface exists.
  */
-interface FunctionAssembler {
-  /**
-   * Constraints for current function parameters. The given [IRValue]s are marked as live-in for the
-   * start block.
-   */
-  val parameterMap: Map<ParameterReference, IRValue>
-
-  /**
-   * All returns actually jump to this synthetic block, which then really returns from the function.
-   */
-  val returnBlock: InstrBlock
-
-  /**
-   * Generates the asm for the "bulk" of the function, the stuff between the prologue and the
-   * epilogue.
-   */
-  fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<AsmInstruction>>
-
-  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
-
-  /**
-   * This function must always be called after [genFunctionPrologue], because it can depend on some
-   * results from it.
-   */
-  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
-
+interface FunctionCallGenerator {
   fun createCall(
       result: LoadableValue,
       callable: IRValue,
@@ -250,9 +225,32 @@ interface FunctionAssembler {
 }
 
 /**
+ * Provides function-related facilities: setting up/tearing down the stack frame, handling incoming function
+ * parameters, assembling the function instructions into a list.
+ */
+interface FunctionAssembler {
+  /**
+   * Constraints for current function parameters. The given [IRValue]s are marked as live-in for the start block.
+   */
+  val parameterMap: Map<ParameterReference, IRValue>
+
+  /**
+   * Generates the asm for the "bulk" of the function, the stuff between the prologue and the epilogue.
+   */
+  fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<AsmInstruction>>
+
+  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
+
+  /**
+   * This function must always be called after [genFunctionPrologue], because it can depend on some results from it.
+   */
+  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
+}
+
+/**
  * Generates [AsmInstruction]s for a single function.
  */
-interface TargetFunGenerator : FunctionAssembler {
+interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
   /**
    * Reference to source [MachineTarget].
    */
@@ -307,7 +305,7 @@ interface TargetFunGenerator : FunctionAssembler {
    * Run [rewriteSpill] on every block.
    */
   fun insertSpillCode(spilled: Set<AtomicId>) {
-    for (blockId in graph.domTreePreorder) {
+    for (blockId in graph.blocks) {
       rewriteSpill(graph[blockId], spilled)
     }
   }

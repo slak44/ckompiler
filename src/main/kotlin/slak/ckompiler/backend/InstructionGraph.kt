@@ -21,8 +21,14 @@ class InstructionGraph private constructor(
   private val nodes = mutableMapOf<AtomicId, InstrBlock>()
   private val adjacency = mutableMapOf<AtomicId, MutableSet<InstrBlock>>()
   private val transposed = mutableMapOf<AtomicId, MutableSet<InstrBlock>>()
+
   private val idom = mutableListOf<AtomicId>()
   private val dominanceFrontiers = mutableMapOf<AtomicId, Set<AtomicId>>()
+
+  /**
+   * All returns actually jump to this synthetic block, which then really returns from the function.
+   */
+  val returnBlock: InstrBlock = newBlock(Int.MAX_VALUE, emptyList())
 
   private val liveIns = mutableMapOf<AtomicId, MutableSet<Variable>>()
 
@@ -73,8 +79,8 @@ class InstructionGraph private constructor(
   }
 
   fun domTreeChildren(id: AtomicId) = nodes.keys
-      .filter { idom[it] == id }
-      .sortedBy { nodes.getValue(it).domTreeHeight }
+      .filter { idom[this[id].seqId] == id }
+      .sortedBy { this[id].domTreeHeight }
       .asReversed()
 
   val domTreePreorder get() = iterator<AtomicId> {
@@ -103,6 +109,8 @@ class InstructionGraph private constructor(
     } while (node != startId)
     if (node != startId) yield(startId)
   }
+
+  val blocks: Set<AtomicId> get() = nodes.keys
 
   operator fun get(id: AtomicId): InstrBlock = nodes.getValue(id)
 
@@ -327,23 +335,31 @@ class InstructionGraph private constructor(
     }
   }
 
+  /**
+   * This function is separate from [InstructionGraph.partiallyInitialize] purely because [obtainMI] can and does make
+   * use of the graph before it's built (eg [registerIds]).
+   */
+  fun copyStructureFrom(cfg: CFG, obtainMI: (BasicBlock) -> List<MachineInstruction>) {
+    for (node in cfg.nodes) {
+      val block = InstrBlock.fromBasic(this, node, obtainMI(node))
+      nodes[node.nodeId] = block
+      idom[block.seqId] = cfg.doms[node]!!.nodeId
+    }
+    for (node in cfg.domTreePreorder) {
+      adjacency[node.nodeId] = node.successors.mapTo(mutableSetOf()) { nodes.getValue(it.nodeId) }
+      transposed[node.nodeId] = node.preds.mapTo(mutableSetOf()) { nodes.getValue(it.nodeId) }
+    }
+    dominanceFrontiers +=
+        cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
+    variableDefs += cfg.definitions.mapValues { it.value.first.nodeId }
+    findLastUses()
+    computeLiveIns(findDefUseChains())
+  }
+
   companion object {
-    fun copyStructureFrom(cfg: CFG, obtainMI: (BasicBlock) -> List<MachineInstruction>): InstructionGraph {
+    fun partiallyInitialize(cfg: CFG): InstructionGraph {
       val graph = InstructionGraph(cfg.f, cfg.startBlock.nodeId, cfg.registerIds, cfg.latestVersions)
-      for (node in cfg.nodes) {
-        val block = InstrBlock.fromBasic(graph, node, obtainMI(node))
-        graph.nodes[node.nodeId] = block
-        graph.idom[block.seqId] = cfg.doms[node]!!.nodeId
-      }
-      for (node in cfg.domTreePreorder) {
-        graph.adjacency[node.nodeId] = node.successors.mapTo(mutableSetOf()) { graph.nodes.getValue(it.nodeId) }
-        graph.transposed[node.nodeId] = node.preds.mapTo(mutableSetOf()) { graph.nodes.getValue(it.nodeId) }
-      }
-      graph.dominanceFrontiers +=
-          cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
-      graph.variableDefs += cfg.definitions.mapValues { it.value.first.nodeId }
-      graph.findLastUses()
-      graph.computeLiveIns(graph.findDefUseChains())
+      graph.idom += MutableList(cfg.nodes.size) { 0 }
       return graph
     }
   }

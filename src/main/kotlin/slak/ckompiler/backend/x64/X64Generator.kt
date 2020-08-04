@@ -12,14 +12,16 @@ import kotlin.math.sign
 class X64Generator private constructor(
     private val cfg: CFG,
     override val target: X64Target,
-    funAsm: X64FunAssembler
-) : TargetFunGenerator, FunctionAssembler by funAsm {
-  constructor(cfg: CFG, target: X64Target) : this(cfg, target, X64FunAssembler(target))
+    private val funAsm: X64FunAssembler
+) : TargetFunGenerator,
+    FunctionAssembler by funAsm,
+    FunctionCallGenerator by X64CallGenerator(target, cfg.registerIds) {
+  constructor(cfg: CFG, target: X64Target) : this(cfg, target, X64FunAssembler(target, cfg))
 
-  override val graph: InstructionGraph = InstructionGraph.copyStructureFrom(cfg, this::selectBlockInstrs)
+  override val graph: InstructionGraph = InstructionGraph.partiallyInitialize(cfg)
 
   init {
-    funAsm.generator = this
+    graph.copyStructureFrom(cfg, this::selectBlockInstrs)
   }
 
   override fun createIRCopy(dest: IRValue, src: IRValue): MachineInstruction {
@@ -174,7 +176,7 @@ class X64Generator private constructor(
       selected += createReturn(retVal).onEach { it.irLabelIndex = endIdx }
     }
     selected +=
-        jmp.match(JumpTargetConstant(returnBlock.id)).also { it.irLabelIndex = endIdx }
+        jmp.match(JumpTargetConstant(graph.returnBlock.id)).also { it.irLabelIndex = endIdx }
     return selected
   }
 
@@ -213,8 +215,14 @@ class X64Generator private constructor(
     is ReinterpretCast -> {
       if (i.operand == i.result) emptyList() else listOf(matchTypedMov(i.result, i.operand))
     }
-    is NamedCall -> createCall(i.result, i.name, i.args)
-    is IndirectCall -> createCall(i.result, i.callable, i.args)
+    is NamedCall -> {
+      funAsm.isLeaf = false
+      createCall(i.result, i.name, i.args)
+    }
+    is IndirectCall -> {
+      funAsm.isLeaf = false
+      createCall(i.result, i.callable, i.args)
+    }
     is IntBinary -> when (i.op) {
       IntegralBinaryOps.ADD -> matchCommutative(i, add)
       IntegralBinaryOps.SUB -> matchNonCommutative(i, sub)
