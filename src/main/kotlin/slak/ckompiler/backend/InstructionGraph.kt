@@ -105,7 +105,7 @@ class InstructionGraph private constructor(
     var node = beginAt
     do {
       yield(node)
-      node = idom[node]
+      node = idom[nodes.getValue(node).seqId]
     } while (node != startId)
     if (node != startId) yield(startId)
   }
@@ -270,7 +270,9 @@ class InstructionGraph private constructor(
       visited += block
       val blockFront = dominanceFrontiers.getValue(block)
       iteratedFront += blockFront
-      for (frontierBlock in blockFront.filter { nodes.getValue(block).phi.keys.any { it.id in variableDefIds } }) {
+      for (frontierBlock in blockFront.filter { node ->
+        nodes.getValue(node).phi.keys.any { it.id in variableDefIds }
+      }) {
         iterate(frontierBlock)
       }
     }
