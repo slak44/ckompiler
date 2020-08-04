@@ -138,7 +138,7 @@ class InstructionGraph private constructor(
     return lastBlock == label.first && lastIndex > label.second
   }
 
-  fun isUsed(value: AllocatableValue): Boolean = value !in deaths
+  fun isUsed(value: AllocatableValue): Boolean = value in deaths
 
   fun liveInsOf(blockId: AtomicId): Set<Variable> = liveIns[blockId] ?: emptySet()
 
