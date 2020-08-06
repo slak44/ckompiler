@@ -233,9 +233,6 @@ private fun TargetFunGenerator.prepareForColoring() {
 }
 
 private class RegisterAllocationContext(val generator: TargetFunGenerator) {
-  /** List of visited nodes for DFS. */
-  val visited = mutableSetOf<InstrBlock>()
-
   /** The allocation itself. */
   val coloring = mutableMapOf<IRValue, MachineRegister>()
 
@@ -253,8 +250,10 @@ private class RegisterAllocationContext(val generator: TargetFunGenerator) {
 
   /** Begin a DFS from the starting block. */
   fun doAllocation() {
-    require(visited.isEmpty() && coloring.isEmpty())
-    allocBlock(graph[graph.startId])
+    require(coloring.isEmpty())
+    for (blockId in graph.domTreePreorder) {
+      allocBlock(graph[blockId])
+    }
   }
 }
 
@@ -384,9 +383,6 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
  * Register allocation for one [block]. Recursive DFS case.
  */
 private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
-  if (block in visited) return
-  visited += block
-
   for (x in graph.liveInsOf(block.id)) {
     // If the live-in wasn't colored, and is null, that's a bug
     assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
@@ -440,10 +436,6 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
   }
   registerUseMap[block] = assigned.toList()
   assigned.clear()
-  // Recursive DFS on dominator tree
-  for (c in graph.domTreeChildren(block.id)) {
-    allocBlock(graph[c])
-  }
 }
 
 /**

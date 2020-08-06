@@ -195,4 +195,41 @@ class SSATests {
       assertEquals(actualIterated.map { it.nodeId }.toSet(), iteratedFront)
     }
   }
+
+  @Test
+  fun `Pre-order Traversal Of Dominator Tree Is Correct For Diamond Graph`() {
+    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
+    cfg.assertIsSSA()
+    val gen = X64Generator(cfg, X64Target())
+    val sequence = createDomTreePreOrderNodes(cfg.doms, cfg.startBlock, cfg.nodes)
+    val instrSequence = gen.graph.domTreePreorder.asSequence()
+    val correctOrder = listOf(
+        cfg.startBlock,
+        cfg.startBlock.successors[0],
+        cfg.startBlock.successors[1],
+        cfg.startBlock.successors[0].successors[0]
+    )
+    val correctForInstr = correctOrder.map { it.nodeId }
+    assertEquals(correctOrder, sequence.toList())
+    assertEquals(correctForInstr, instrSequence.toList())
+  }
+
+  @Test
+  fun `Pre-order Traversal Of Dominator Tree Is Correct For 3-Node Graph`() {
+    val cfg = prepareCFG(resource("codegen/interBlockInterference.c"), source)
+    cfg.assertIsSSA()
+    val gen = X64Generator(cfg, X64Target())
+    val sequence = createDomTreePreOrderNodes(cfg.doms, cfg.startBlock, cfg.nodes)
+    val instrSequence = gen.graph.domTreePreorder.asSequence()
+    val correctOrder = listOf(
+        cfg.startBlock,
+        cfg.startBlock.successors[0],
+        cfg.startBlock.successors[0].successors[0]
+    )
+    val correctForInstr = correctOrder.map { it.nodeId }
+    println(correctOrder)
+    println(correctForInstr)
+    assertEquals(correctOrder, sequence.toList())
+    assertEquals(correctForInstr, instrSequence.toList())
+  }
 }

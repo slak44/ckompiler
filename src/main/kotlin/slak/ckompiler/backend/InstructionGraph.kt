@@ -198,7 +198,10 @@ class InstructionGraph private constructor(
     }
 
     for ((value, uses) in allUses.filterKeys { it is Variable }) {
-      for ((blockId, _) in uses) {
+      for ((blockId, index) in uses) {
+        // φ-uses are not interesting, since we know they either are not materialized for the control flow, and the one
+        // value that is, dies right at that φ
+        if (index == DEFINED_IN_PHI) continue
         // If a variable is used in a block, it's live-in in that block...
         newLiveIn(value as Variable, blockId)
       }

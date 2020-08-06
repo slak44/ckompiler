@@ -165,6 +165,7 @@ class X64Tests {
     assert(stackSlots.isEmpty())
   }
 
+  // FIXME: this is a terrible test
   @Test
   fun `Register Allocation Inter-Block Interference`() {
     val (_, allocs, _, stackSlots) = regAlloc("codegen/interBlockInterference.c")
