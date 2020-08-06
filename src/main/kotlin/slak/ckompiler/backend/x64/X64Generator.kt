@@ -53,7 +53,7 @@ class X64Generator private constructor(
     val jmpInstrs = block.indexOfLast {
       it.irLabelIndex != block.last().irLabelIndex || !(it.template in jmp || it.template in jcc.values.flatten())
     }
-    block.addAll(jmpInstrs, copies)
+    block.addAll(jmpInstrs.coerceAtLeast(0), copies)
   }
 
   override fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>) {

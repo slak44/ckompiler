@@ -175,6 +175,7 @@ class InstructionGraph private constructor(
     require(dest in adjacency.getValue(src.id)) { "No edge between given blocks" }
     val newBlock = newBlock(dest.domTreeHeight, listOf(createJump(dest)))
     replaceJump(src, dest, newBlock)
+    nodes[newBlock.id] = newBlock
     // Adjust edges
     adjacency.getValue(src.id) -= dest
     transposed.getValue(dest.id) -= src
