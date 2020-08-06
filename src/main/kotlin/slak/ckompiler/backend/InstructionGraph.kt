@@ -200,11 +200,13 @@ class InstructionGraph private constructor(
 
     for ((value, uses) in allUses.filterKeys { it is Variable }) {
       for ((blockId, index) in uses) {
+        value as Variable
         // φ-uses are not interesting, since we know they either are not materialized for the control flow, and the one
         // value that is, dies right at that φ
-        if (index == DEFINED_IN_PHI) continue
+        // For variables with version zero (undefined), we don't actually care about them
+        if (index == DEFINED_IN_PHI || value.isUndefined) continue
         // If a variable is used in a block, it's live-in in that block...
-        newLiveIn(value as Variable, blockId)
+        newLiveIn(value, blockId)
       }
     }
     for ((variable, definitionBlockId) in variableDefs) {
@@ -212,6 +214,11 @@ class InstructionGraph private constructor(
         // ...except for the block it's defined in
         liveIns.getValue(definitionBlockId) -= variable
       }
+    }
+
+    // When there is only one node, there are no live-in variables (either empty map or empty list for that block)
+    check(nodes.size > 1 || liveIns.isEmpty() || liveIns.values.single().isEmpty()) {
+      "Live-ins exist for graph with single node"
     }
   }
 
