@@ -102,12 +102,16 @@ class InstructionGraph private constructor(
    * Traverse the dominator tree from a certain node ([beginAt]) upwards to the root of the tree.
    */
   fun traverseDominatorTree(beginAt: AtomicId): Iterator<AtomicId> = iterator {
+    if (beginAt == startId) {
+      yield(startId)
+      return@iterator
+    }
     var node = beginAt
     do {
       yield(node)
       node = idom[nodes.getValue(node).seqId]
     } while (node != startId)
-    if (node != startId) yield(startId)
+    yield(startId)
   }
 
   val blocks: Set<AtomicId> get() = nodes.keys
