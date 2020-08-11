@@ -30,6 +30,12 @@ class InstructionGraph private constructor(
    */
   val returnBlock: InstrBlock = newBlock(Int.MAX_VALUE, emptyList())
 
+  init {
+    nodes[returnBlock.id] = returnBlock
+    adjacency[returnBlock.id] = mutableSetOf()
+    // Technically the transposed edges is not empty, but we kinda want to crash in that case
+  }
+
   private val liveIns = mutableMapOf<AtomicId, MutableSet<Variable>>()
 
   /**
@@ -146,7 +152,12 @@ class InstructionGraph private constructor(
 
   fun liveInsOf(blockId: AtomicId): Set<Variable> = liveIns[blockId] ?: emptySet()
 
-  fun newBlock(treeHeight: Int, instrs: List<MachineInstruction>): InstrBlock {
+  /**
+   * Create a new [InstrBlock], without a backing [BasicBlock].
+   *
+   * Use this function with care: [nodes], [adjacency], [transposed] and maybe other state must be updated.
+   */
+  private fun newBlock(treeHeight: Int, instrs: List<MachineInstruction>): InstrBlock {
     return InstrBlock(BasicBlock.nodeCounter(), nodes.size, treeHeight, this, instrs.toMutableList(), mutableMapOf())
   }
 
@@ -180,10 +191,13 @@ class InstructionGraph private constructor(
     val newBlock = newBlock(dest.domTreeHeight, listOf(createJump(dest)))
     replaceJump(src, dest, newBlock)
     nodes[newBlock.id] = newBlock
-    // Adjust edges
+    // Adjust existing edges
     adjacency.getValue(src.id) -= dest
     transposed.getValue(dest.id) -= src
     adjacency.getValue(src.id) += newBlock
+    transposed.getValue(dest.id) += newBlock
+    // Add new edge
+    adjacency[newBlock.id] = mutableSetOf(dest)
     transposed.getValue(dest.id) += newBlock
     // Update successor's φs, for which the old block was incoming (now newBlock should be in incoming)
     for ((_, incoming) in dest.phi) {

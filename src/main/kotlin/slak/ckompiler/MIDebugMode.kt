@@ -24,7 +24,7 @@ fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) 
   val genInitial = X64Generator(createCFG(), target)
   val (graph) = genInitial.regAlloc(debugNoReplaceParallel = true)
   printHeader("Initial MachineInstructions (with parallel copies)")
-  for (blockId in graph.domTreePreorder) {
+  for (blockId in graph.blocks - graph.returnBlock.id) {
     val block = graph[blockId]
     println(block)
     printNotBlank(block.phi.entries.joinToString(separator = "\n") { (variable, incoming) ->
@@ -42,15 +42,16 @@ fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) 
   }
   printHeader("Processed MachineInstructions (with applied allocation)")
   val final = gen.applyAllocation(realAllocation)
-  for ((block, list) in final) {
-    println(block)
+  val finalGraph = realAllocation.graph
+  for ((blockId, list) in final) {
+    println(finalGraph[blockId])
     printNotBlank(list.joinToString(separator = "\n", postfix = "\n"))
   }
   printHeader("Optimized MachineInstructions")
-  for ((block, list) in final) {
+  for ((blockId, list) in final) {
     @Suppress("UNCHECKED_CAST")
     val withOpts = X64PeepholeOpt().optimize(gen, list as List<X64Instruction>)
-    println(block)
+    println(finalGraph[blockId])
     printNotBlank(withOpts.joinToString(separator = "\n", postfix = "\n"))
     println("(initial: ${list.size} | optimized: ${withOpts.size})")
     println()

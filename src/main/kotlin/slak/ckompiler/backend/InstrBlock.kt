@@ -44,6 +44,10 @@ class InstrBlock(
   override fun hashCode() = id
   override fun equals(other: Any?) = id == (other as? InstrBlock)?.id
 
+  override fun toString(): String {
+    return "InstrBlock(id = $id, seq = $seqId, h = $domTreeHeight, succ = ${graph.successors(id).map { it.id }})"
+  }
+
   companion object {
     fun fromBasic(graph: InstructionGraph, bb: BasicBlock, instrs: List<MachineInstruction>): InstrBlock {
       require(bb.height != -1 && bb.postOrderId != -1)

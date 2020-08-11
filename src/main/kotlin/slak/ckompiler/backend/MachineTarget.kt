@@ -302,10 +302,10 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
   fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>)
 
   /**
-   * Run [rewriteSpill] on every block.
+   * Run [rewriteSpill] on every block, except for the [InstructionGraph.returnBlock], since that block is synthetic.
    */
   fun insertSpillCode(spilled: Set<AtomicId>) {
-    for (blockId in graph.blocks) {
+    for (blockId in graph.blocks - graph.returnBlock.id) {
       rewriteSpill(graph[blockId], spilled)
     }
   }
