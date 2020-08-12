@@ -273,7 +273,8 @@ class InstructionGraph private constructor(
         }
       }
       for ((index, mi) in block.withIndex()) {
-        for (variable in mi.filterOperands { _, use -> use == VariableUse.USE }.filterIsInstance<AllocatableValue>()) {
+        val uses = mi.filterOperands { _, use -> use == VariableUse.USE }.filterIsInstance<AllocatableValue>()
+        for (variable in uses + mi.constrainedArgs.map { it.value }) {
           newUse(variable, InstrLabel(blockId, index))
         }
       }
