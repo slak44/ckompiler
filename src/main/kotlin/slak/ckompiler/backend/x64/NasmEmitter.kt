@@ -100,7 +100,7 @@ class NasmEmitter(
     text += instrGen {
       label(function.graph.f.name)
       emit(genAsm(function.genFunctionPrologue(allocationResult)))
-      for (block in function.graph.blocks) {
+      for (block in function.graph.blocks - function.graph.returnBlock.id) {
         label(block.label)
         @Suppress("UNCHECKED_CAST")
         emit(genAsm(peepholeOptimizer.optimize(function, asmMap.getValue(block) as List<X64Instruction>)))
