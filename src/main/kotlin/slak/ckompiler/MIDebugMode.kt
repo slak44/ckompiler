@@ -1,7 +1,9 @@
 package slak.ckompiler
 
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.LoadableValue
+import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.AllocationResult
+import slak.ckompiler.backend.InstrLabel
+import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Instruction
@@ -20,6 +22,33 @@ private fun printNotBlank(text: String?) {
   println(text)
 }
 
+inline fun AllocationResult.walkGraphAllocs(violationHandler: (MachineRegister, InstrLabel) -> Unit) {
+  val allocated = allocations.keys.filterIsInstance<AllocatableValue>()
+  for (blockId in graph.blocks) {
+    val alive = mutableListOf<MachineRegister>()
+    alive += graph.liveInsOf(blockId).map { allocations.getValue(it) }
+    for (dyingPhiVarReg in graph[blockId].phi.values.flatMap { it.values }.map { allocations.getValue(it) }) {
+      alive -= dyingPhiVarReg
+    }
+    alive += graph[blockId].phi.keys.map { allocations.getValue(it) }
+    for ((index, mi) in graph[blockId].withIndex()) {
+      val regsDefinedHere = mi.defs.intersect(allocated).map { allocations.getValue(it) } +
+          mi.defs.filterIsInstance<PhysicalRegister>().map { it.reg }
+      val regsDyingHere = mi.uses.intersect(allocated)
+          .filter { graph.isLastUse(it as AllocatableValue, InstrLabel(blockId, index)) }
+          .map { allocations.getValue(it) } +
+          mi.uses.filterIsInstance<PhysicalRegister>().map { it.reg }
+      alive -= regsDyingHere
+      for (definedHere in regsDefinedHere) {
+        if (definedHere in alive) {
+          violationHandler(definedHere, InstrLabel(blockId, index))
+        }
+      }
+      alive += regsDefinedHere
+    }
+  }
+}
+
 fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) {
   val genInitial = X64Generator(createCFG(), target)
   val (graph) = genInitial.regAlloc(debugNoReplaceParallel = true)
@@ -36,13 +65,18 @@ fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) 
   printHeader("Register allocation")
   val gen = X64Generator(createCFG(), target)
   val realAllocation = gen.regAlloc()
+  val finalGraph = realAllocation.graph
   for ((value, register) in realAllocation.allocations) {
     if (value is LoadableValue && value.isUndefined && !showDummies) continue
     println("allocate $value to $register")
   }
+  printHeader("Allocation violations")
+  realAllocation.walkGraphAllocs { register, (block, index) ->
+    println("coloring violation for $register at (block $block, index $index)")
+    println(finalGraph[block][index].toString().lines().joinToString("\n") { "-->$it" })
+  }
   printHeader("Processed MachineInstructions (with applied allocation)")
   val final = gen.applyAllocation(realAllocation)
-  val finalGraph = realAllocation.graph
   for ((blockId, list) in final) {
     println(finalGraph[blockId])
     printNotBlank(list.joinToString(separator = "\n", postfix = "\n"))
