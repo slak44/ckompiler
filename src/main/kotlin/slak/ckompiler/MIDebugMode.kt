@@ -57,7 +57,7 @@ fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) 
     val block = graph[blockId]
     println(block)
     printNotBlank(block.phi.entries.joinToString(separator = "\n") { (variable, incoming) ->
-      val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.id}" }
+      val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.version}" }
       "$variable ← φ($incStr)"
     })
     printNotBlank(block.joinToString(separator = "\n", postfix = "\n"))
