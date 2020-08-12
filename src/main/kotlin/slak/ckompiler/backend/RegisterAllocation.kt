@@ -484,7 +484,8 @@ fun TargetFunGenerator.regAlloc(debugNoReplaceParallel: Boolean = false): Alloca
 private fun TargetFunGenerator.removePhi(allocationResult: AllocationResult): AllocationResult {
   val (graph, _, regUseMap) = allocationResult
   val newRegUseMap = regUseMap.toMutableMap()
-  for (blockId in graph.domTreePreorder) {
+  // Force eager evaluation of the dom tree traversal, because we will change the graph, which will change the traversal
+  for (blockId in graph.domTreePreorder.asSequence().toList()) {
     val block = graph[blockId]
     if (block.isEmpty()) continue
     // Make an explicit copy here to avoid ConcurrentModificationException, since splitting edges changes the preds

@@ -30,12 +30,6 @@ class InstructionGraph private constructor(
    */
   val returnBlock: InstrBlock = newBlock(Int.MAX_VALUE, emptyList())
 
-  init {
-    nodes[returnBlock.id] = returnBlock
-    adjacency[returnBlock.id] = mutableSetOf()
-    // Technically the transposed edges is not empty, but we kinda want to crash in that case
-  }
-
   private val liveIns = mutableMapOf<AtomicId, MutableSet<Variable>>()
 
   /**
@@ -84,9 +78,9 @@ class InstructionGraph private constructor(
     return copiedValue
   }
 
-  fun domTreeChildren(id: AtomicId) = nodes.keys
-      .filter { idom[this[id].seqId] == id }
-      .sortedBy { this[id].domTreeHeight }
+  fun domTreeChildren(id: AtomicId) = (nodes.keys - returnBlock.id)
+      .filter { idom[this[it].seqId] == id }
+      .sortedBy { this[it].domTreeHeight }
       .asReversed()
 
   val domTreePreorder get() = iterator<AtomicId> {
@@ -376,10 +370,13 @@ class InstructionGraph private constructor(
       nodes[node.nodeId] = block
       idom[block.seqId] = cfg.doms[node]!!.nodeId
     }
+    nodes[returnBlock.id] = returnBlock
     for (node in cfg.domTreePreorder) {
       adjacency[node.nodeId] = node.successors.mapTo(mutableSetOf()) { nodes.getValue(it.nodeId) }
       transposed[node.nodeId] = node.preds.mapTo(mutableSetOf()) { nodes.getValue(it.nodeId) }
     }
+    adjacency[returnBlock.id] = mutableSetOf()
+    // Technically the transposed edges is not empty for returnBlock, but we kinda want to crash in that case
     dominanceFrontiers +=
         cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
     variableDefs += cfg.definitions.mapValues { it.value.first.nodeId }
