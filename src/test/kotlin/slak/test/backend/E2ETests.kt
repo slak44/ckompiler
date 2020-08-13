@@ -168,6 +168,11 @@ class E2ETests {
   }
 
   @Test
+  fun `Live-Through If Statement`() {
+    compileAndRun(resource("e2e/liveThroughIf.c")).justExitCode(66)
+  }
+
+  @Test
   fun `Basic Function Call`() {
     compileAndRun(resource("e2e/calls/basicFunctionCall.c")).justExitCode(4)
   }
