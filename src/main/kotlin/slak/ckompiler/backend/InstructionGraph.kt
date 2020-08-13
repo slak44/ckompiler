@@ -36,8 +36,6 @@ class InstructionGraph private constructor(
    * Store the block where a version of a [Variable] was defined.
    *
    * For [VirtualRegister]s, the definition is in the same block, and can be easily found by iterating the block.
-   *
-   * This is really only useful for SSA reconstruction.
    */
   private val variableDefs = mutableMapOf<Variable, AtomicId>()
 
@@ -130,6 +128,10 @@ class InstructionGraph private constructor(
     return transposed.getValue(block.id)
   }
 
+  fun predecessors(blockId: AtomicId): Set<InstrBlock> {
+    return transposed.getValue(blockId)
+  }
+
   fun lastUseOf(value: AllocatableValue): InstrLabel? = deaths[value]
 
   fun isLastUse(value: AllocatableValue, label: InstrLabel): Boolean {
@@ -202,29 +204,45 @@ class InstructionGraph private constructor(
   }
 
   /**
-   * Populate [liveIns].
+   * Populate [liveIns], via liveness analysis. Only variables are stored, because [VirtualRegister]s cannot escape
+   * their definition blocks.
    */
   private fun computeLiveIns(allUses: Map<AllocatableValue, List<InstrLabel>>) {
-    fun newLiveIn(value: Variable, blockId: AtomicId) {
-      liveIns.putIfAbsent(blockId, mutableSetOf())
-      liveIns.getValue(blockId) += value
-    }
+    val defUseChains = allUses.filterKeys { it is Variable }
 
-    for ((value, uses) in allUses.filterKeys { it is Variable }) {
-      for ((blockId, index) in uses) {
-        value as Variable
+    for ((variable, definitionBlockId) in variableDefs) {
+      // Continue if undefined, we treat them as always dead
+      if (variable.isUndefined) continue
+      val usedInBlocks = defUseChains[variable]?.map { it.first }
+      // Continue if there are no uses
+      if (usedInBlocks == null || usedInBlocks.isEmpty()) continue
+      // Find blocks where the variable was used in φ
+      val phiUses = defUseChains.getValue(variable)
+          .filter { it.second == DEFINED_IN_PHI }
+          .map { it.first }
+          .toSet()
+      val visited = mutableSetOf<AtomicId>()
+      val toVisit = usedInBlocks.toMutableSet()
+      while (toVisit.isNotEmpty()) {
+        val next = toVisit.first()
+        toVisit -= next
+        if (next in visited) continue
+        visited += next
+        // If definition was in this block, it's not live-in in it
+        if (next == definitionBlockId) continue
         // φ-uses are not interesting, since we know they either are not materialized for the control flow, and the one
         // value that is, dies right at that φ
-        // For variables with version zero (undefined), we don't actually care about them
-        if (index == DEFINED_IN_PHI || value.isUndefined) continue
-        // If a variable is used in a block, it's live-in in that block...
-        newLiveIn(value, blockId)
-      }
-    }
-    for ((variable, definitionBlockId) in variableDefs) {
-      if (definitionBlockId in liveIns) {
-        // ...except for the block it's defined in
-        liveIns.getValue(definitionBlockId) -= variable
+        if (next !in phiUses) {
+          liveIns.putIfAbsent(next, mutableSetOf())
+          liveIns.getValue(next) += variable
+        }
+        // Go up the graph
+        val preds = predecessors(next).map { it.id }
+        toVisit += preds
+        // But only go up on edges for this version
+        // Which means skip all preds caused by the other versions in the φ
+        val phiIncoming = this[next].phi.entries.firstOrNull { it.key.id == variable.id }?.value
+        toVisit -= phiIncoming?.filter { it.value != variable }?.map { it.key } ?: emptyList()
       }
     }
 
