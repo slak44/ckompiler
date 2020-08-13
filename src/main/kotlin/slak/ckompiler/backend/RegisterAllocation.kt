@@ -212,8 +212,11 @@ private fun TargetFunGenerator.prepareForColoring() {
         if (target in mi.constrainedRes.map { it.target }) {
           rewriteValue(block, index, value, mi)
           graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
+          // Process the inserted copy
           updateAlive()
           index++
+          // We don't want to rewrite the constrained instr in this case
+          block[index] = mi
         }
       }
       check(block[index] == mi) {
