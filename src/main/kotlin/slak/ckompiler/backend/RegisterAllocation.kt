@@ -463,9 +463,13 @@ private fun RegisterAllocationContext.replaceParallelInstructions() {
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
  * @param debugNoReplaceParallel only for debugging: if true, [replaceParallelInstructions] will not be called
+ * @param debugNoCheckAlloc only for debugging: if true, do not crash when [walkGraphAllocs] finds a hard violation
  * @see runSpiller
  */
-fun TargetFunGenerator.regAlloc(debugNoReplaceParallel: Boolean = false): AllocationResult {
+fun TargetFunGenerator.regAlloc(
+    debugNoReplaceParallel: Boolean = false,
+    debugNoCheckAlloc: Boolean = false
+): AllocationResult {
   runSpiller()
   prepareForColoring()
   // FIXME: coalescing
@@ -474,7 +478,17 @@ fun TargetFunGenerator.regAlloc(debugNoReplaceParallel: Boolean = false): Alloca
   if (!debugNoReplaceParallel) ctx.replaceParallelInstructions()
   val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
   val intermediate = AllocationResult(graph, allocations, ctx.registerUseMap)
-  return removePhi(intermediate)
+  val final = removePhi(intermediate)
+  val failedCheck = if (!debugNoCheckAlloc) final.walkGraphAllocs { register, (blockId, index), type ->
+    if (type == ViolationType.SOFT) return@walkGraphAllocs false
+    logger.error("Hard violation of allocation for $register at (block: $blockId, index $index)")
+    return@walkGraphAllocs true
+  } else {
+    false
+  }
+  // FIXME: re-enable this when the "last" use issue is fixed
+//  check(!failedCheck) { "Hard violation. See above errors." }
+  return final
 }
 
 /**
