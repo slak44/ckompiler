@@ -1,10 +1,7 @@
 package slak.ckompiler
 
 import slak.ckompiler.analysis.*
-import slak.ckompiler.backend.AllocationResult
-import slak.ckompiler.backend.InstrLabel
-import slak.ckompiler.backend.MachineRegister
-import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Instruction
 import slak.ckompiler.backend.x64.X64PeepholeOpt
@@ -22,7 +19,11 @@ private fun printNotBlank(text: String?) {
   println(text)
 }
 
-inline fun AllocationResult.walkGraphAllocs(violationHandler: (MachineRegister, InstrLabel) -> Unit) {
+enum class ViolationType {
+  HARD, SOFT
+}
+
+inline fun AllocationResult.walkGraphAllocs(violationHandler: (MachineRegister, InstrLabel, ViolationType) -> Unit) {
   val allocated = allocations.keys.filterIsInstance<AllocatableValue>()
   for (blockId in graph.blocks) {
     val alive = mutableListOf<MachineRegister>()
@@ -38,10 +39,14 @@ inline fun AllocationResult.walkGraphAllocs(violationHandler: (MachineRegister, 
           .filter { graph.isLastUse(it as AllocatableValue, InstrLabel(blockId, index)) }
           .map { allocations.getValue(it) } +
           mi.uses.filterIsInstance<PhysicalRegister>().map { it.reg }
+      val useDefRegs = mi
+          .filterOperands { _, variableUse -> variableUse == VariableUse.DEF_USE }
+          .map { allocations.getValue(it) }
       alive -= regsDyingHere
       for (definedHere in regsDefinedHere) {
         if (definedHere in alive) {
-          violationHandler(definedHere, InstrLabel(blockId, index))
+          val violationType = if (definedHere !in useDefRegs) ViolationType.HARD else ViolationType.SOFT
+          violationHandler(definedHere, InstrLabel(blockId, index), violationType)
         }
       }
       alive += regsDefinedHere
@@ -71,7 +76,10 @@ fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) 
     println("allocate $value to $register")
   }
   printHeader("Allocation violations")
-  realAllocation.walkGraphAllocs { register, (block, index) ->
+  realAllocation.walkGraphAllocs { register, (block, index), type ->
+    if (type == ViolationType.SOFT) {
+      print("[SOFT] ")
+    }
     println("coloring violation for $register at (block $block, index $index)")
     println(finalGraph[block][index].toString().lines().joinToString("\n") { "-->$it" })
   }
