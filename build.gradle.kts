@@ -44,6 +44,12 @@ dependencies {
   testImplementation(kotlin("test-junit"))
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
+  kotlinOptions {
+    jvmTarget = "13"
+  }
+}
+
 tasks.test {
   useJUnitPlatform()
   // Must be present at startup-ish time
