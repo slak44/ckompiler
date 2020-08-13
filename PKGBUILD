@@ -1,32 +1,36 @@
 # Maintainer: Stefan Silviu Alexandru <stefan.silviu.alexandru@gmail.com>
 pkgname=ckompiler
-pkgver=SNAPSHOT2
-pkgrel=2
+pkgver=SNAPSHOT5
+pkgrel=1
 pkgdesc='A C11 compiler written in Kotlin'
 arch=('any')
 url='https://github.com/slak44/ckompiler'
 license=('MIT')
-depends=('java-environment')
+depends=('java-environment=11' 'java-runtime=11')
 optdepends=('nasm: for assembling compiled files'
             'graphviz: CFG viewing support')
-makedepends=('gradle>=5.5' 'kotlin>=1.3.41')
+makedepends=('kotlin>=1.3.72')
 provides=('ckompiler')
-source=('https://github.com/slak44/ckompiler/archive/SNAPSHOT2.zip')
-sha256sums=('e7f747f01ae007c6e1c8725249d6459ec30c2fa55e82478383518495e93b6e51')
+source=("https://github.com/slak44/ckompiler/archive/$pkgver.zip")
+sha256sums=('1eba2de5c27d4921eb2699af752f9c4529776cd239be1fd12b0122170e2352e2')
+
+function runGradle() {
+  ./gradlew -g "./dot-gradle" "$@"
+}
 
 build() {
   cd "$pkgname-$pkgver"
-  gradle -g "./dot-gradle" build
+  runGradle build
 }
 
 check() {
   cd "$pkgname-$pkgver"
-  gradle -g "./dot-gradle" check
+  runGradle check
 }
 
 package() {
   cd "$pkgname-$pkgver"
-  DESTDIR="$pkgdir/" gradle -g "./dot-gradle" installDist
+  DESTDIR="$pkgdir/" runGradle installDist
   # Install license
   install -d "$pkgdir/usr/share/licenses/$pkgname/"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/"
