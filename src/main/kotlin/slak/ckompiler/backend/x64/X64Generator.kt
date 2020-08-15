@@ -306,7 +306,7 @@ class X64Generator private constructor(
         is PointerType -> listOf(matchTypedMov(cast.result, cast.operand))
         FloatType -> listOf(cvtsi2ss.match(cast.result, cast.operand))
         DoubleType -> listOf(cvtsi2sd.match(cast.result, cast.operand))
-        else -> TODO("unimplemented structural cast type from integral")
+        else -> TODO("unimplemented structural cast type from integral to $dest")
       }
       src is FloatType -> when (dest) {
         is IntegralType -> listOf(cvttss2si.match(cast.result, cast.operand))

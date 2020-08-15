@@ -22,10 +22,6 @@ private class IRBuilderContext(
   fun newRegister(type: TypeName) = VirtualRegister(registerIds(), type)
 }
 
-private fun IRBuilderContext.buildCast(expr: CastExpression): IRInstruction {
-  return StructuralCast(newRegister(expr.type), buildOperand(expr.target))
-}
-
 /**
  * C standard: 6.5.3.3, 6.5.3.2
  */
@@ -267,7 +263,7 @@ private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression):
 }
 
 /**
- * C standard: 6.5.3.3.0.2
+ * C standard: 6.5.3.3.0.2, note 104
  */
 private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (expr) {
   is ErrorExpression -> logger.throwICE("ErrorExpression was removed")
@@ -299,9 +295,16 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
     }
   }
   is CastExpression -> {
-    val cast = buildCast(expr)
-    instructions += cast
-    cast.result
+    // Casts don't give lvalues, thus casting to the unqualified version is perfect
+    val castTo = expr.type.unqualify()
+    if (expr.target.type.unqualify().isCompatibleWith(castTo)) {
+      // If this cast doesn't actually change the underlying type, don't even do it at all
+      buildOperand(expr.target)
+    } else {
+      val cast = StructuralCast(newRegister(castTo), buildOperand(expr.target))
+      instructions += cast
+      cast.result
+    }
   }
   is FunctionCall -> {
     val functionCall = buildFunctionCall(expr)

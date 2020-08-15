@@ -159,4 +159,22 @@ class IRTests {
       assert(i is IntBinary)
     }
   }
+
+  @Test
+  fun `IR Useless Cast Is Not Generated`() {
+    val ir = createIR(SignedIntType.cast(1 add 3))
+    assert(ir.none { it is StructuralCast || it is ReinterpretCast })
+  }
+
+  @Test
+  fun `IR Useless Cast Is Not Generated For Cast Between Const`() {
+    val ir = createIR((const + SignedIntType).cast(nameRef("foo", const + SignedIntType)))
+    assert(ir.none { it is StructuralCast || it is ReinterpretCast })
+  }
+
+  @Test
+  fun `IR Useless Cast Is Not Generated For Const Int To Int Cast`() {
+    val ir = createIR(SignedIntType.cast(nameRef("foo", const + SignedIntType)))
+    assert(ir.none { it is StructuralCast || it is ReinterpretCast })
+  }
 }
