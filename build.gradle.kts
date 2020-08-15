@@ -3,7 +3,7 @@ import java.util.Properties
 
 plugins {
   application
-  kotlin("jvm") version "1.3.72"
+  kotlin("jvm") version "1.4.0"
   `maven-publish`
 }
 
@@ -32,8 +32,7 @@ repositories {
 dependencies {
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
-  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-cli-jvm",
-      version = "0.1.0-dev-5") {
+  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-cli-jvm", version = "0.1.0-dev-5") {
     exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
   }
   implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
