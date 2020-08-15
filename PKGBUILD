@@ -1,18 +1,22 @@
 # Maintainer: Stefan Silviu Alexandru <stefan.silviu.alexandru@gmail.com>
 pkgname=ckompiler
 pkgver=SNAPSHOT5
-pkgrel=1
+pkgrel=2
 pkgdesc='A C11 compiler written in Kotlin'
 arch=('any')
 url='https://github.com/slak44/ckompiler'
 license=('MIT')
-depends=('java-environment=11' 'java-runtime=11')
+depends=('java-environment>=11' 'java-runtime>=11')
 optdepends=('nasm: for assembling compiled files'
             'graphviz: CFG viewing support')
-makedepends=('kotlin>=1.3.72')
 provides=('ckompiler')
 source=("https://github.com/slak44/ckompiler/archive/$pkgver.zip")
 sha256sums=('1eba2de5c27d4921eb2699af752f9c4529776cd239be1fd12b0122170e2352e2')
+
+javaVer="$(archlinux-java get | cut -d '-' -f2)"
+if [ "$javaVer" -lt "11" ]; then
+  echo "archlinux-java reports the current version to be java $javaVer; this package requires at least 11 to be set"
+fi
 
 function runGradle() {
   ./gradlew -g "./dot-gradle" "$@"
