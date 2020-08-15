@@ -638,7 +638,8 @@ data class StructDeclaration(
  */
 data class Enumerator(
     val ident: IdentifierNode,
-    val value: ExprConstantNode?
+    val value: IntegerConstantNode?,
+    val computedValue: IntegerConstantNode
 ) : ASTNode(), OrdinaryIdentifier {
   override val name = ident.name
   override val kindName = "enumeration constant"

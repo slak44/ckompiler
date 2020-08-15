@@ -332,4 +332,17 @@ class E2ETests {
       }
     """.trimIndent()).expect(stdout = test.output)
   }
+
+  @Test
+  fun `Enum Value Usage As Return`() {
+    compileAndRun("""
+      enum color {RED, GREEN, BLUE};
+      int main() {
+        enum color c1 = BLUE;
+        enum color c2 = GREEN;
+        enum color c3 = c1;
+        return c3;
+      }
+    """.trimIndent()).justExitCode(2)
+  }
 }

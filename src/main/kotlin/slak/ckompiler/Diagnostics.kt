@@ -73,6 +73,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   PARAM_NAME_OMITTED(ERROR, "Parameter name omitted for type '%s'"),
   FOR_INIT_NON_LOCAL(ERROR, "Declaration of non-local variable in 'for' loop"),
   EXPR_NOT_CONSTANT(ERROR, "Expression is not a constant expression"),
+  EXPR_NOT_CONSTANT_INT(ERROR, "Expression is not an integer constant expression"),
   FUN_CALL_ARG_COUNT(ERROR, "Too %s arguments to function call, expected '%d', got '%d'"),
   FUN_CALL_ARG_COUNT_VAR(ERROR,
       "Too few arguments to function call, expected at least '%d', got '%d'"),

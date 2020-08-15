@@ -155,7 +155,6 @@ class ExpressionTests {
     assert(p.diags.isNotEmpty())
   }
 
-  @Disabled("temporary codegen disable")
   @Test
   fun `Enum Value Usage`() {
     val p = prepareCode("""
@@ -169,8 +168,8 @@ class ExpressionTests {
     p.assertNoDiagnostics()
     val color = enum("color", "RED", "GREEN", "BLUE").toSpec()
     int func ("main" withParams emptyList()) body compoundOf(
-        color declare ("c1" assign intVar("RED")),
-        color declare ("c2" assign intVar("GREEN")),
+        color declare ("c1" assign int(0)),
+        color declare ("c2" assign int(1)),
         color declare ("c3" assign intVar("c1"))
     ) assertEquals p.root.decls[0]
   }

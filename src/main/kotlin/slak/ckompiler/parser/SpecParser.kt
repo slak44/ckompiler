@@ -262,7 +262,7 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
    *
    * C standard: 6.7.2.2, 6.4.4.3
    */
-  private fun parseEnumerator(endIdx: Int): Enumerator? = tokenContext(endIdx) {
+  private fun parseEnumerator(endIdx: Int, lastEnumerationValue: Long): Enumerator? = tokenContext(endIdx) {
     if (current() !is Identifier) {
       diagnostic {
         id = DiagnosticId.EXPECTED_IDENT
@@ -271,10 +271,13 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
       eatUntil(tokenCount)
       return@tokenContext null
     }
+    val nextValue = IntegerConstantNode(lastEnumerationValue + 1)
     val name = IdentifierNode.from(current())
     eat() // The identifier
-    // This is when there is no enumeration constant value
-    if (isEaten()) return@tokenContext Enumerator(name, null)
+    if (isEaten()) {
+      // This is when there is no enumeration constant value
+      return@tokenContext Enumerator(name, null, nextValue)
+    }
     if (current().asPunct() != Punctuators.ASSIGN) {
       diagnostic {
         id = DiagnosticId.EXPECTED_ENUM_INIT
@@ -285,7 +288,17 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
     }
     eat() // The '='
     // FIXME: warn if the constant exceeds range of int (6.7.2.2.0.2)
-    return@tokenContext Enumerator(name, parseConstant(tokenCount))
+    return@tokenContext when (val constant = parseConstant(tokenCount)) {
+      is ErrorExpression, null -> Enumerator(name, null, nextValue)
+      !is IntegerConstantNode -> {
+        diagnostic {
+          id = DiagnosticId.EXPR_NOT_CONSTANT_INT
+          errorOn(constant)
+        }
+        Enumerator(name, null, nextValue)
+      }
+      else -> Enumerator(name, constant, constant)
+    }
   }
 
   /**
@@ -295,6 +308,7 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
    */
   private fun parseEnumeratorList(endIdx: Int): List<Enumerator> = tokenContext(endIdx) {
     val enumerators = mutableListOf<Enumerator>()
+    var currentEnumeratorValue = -1L
     while (isNotEaten()) {
       val currentElemEnd = firstOutsideParens(
           Punctuators.COMMA, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = true)
@@ -307,7 +321,13 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
         }
         continue
       }
-      parseEnumerator(currentElemEnd)?.let { enumerators += it }
+      val maybeEnumerator = parseEnumerator(currentElemEnd, currentEnumeratorValue)
+      if (maybeEnumerator != null) {
+        enumerators += maybeEnumerator
+        currentEnumeratorValue = maybeEnumerator.computedValue.value
+      } else {
+        currentEnumeratorValue++
+      }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; found comma that separates enumerators
         eat()

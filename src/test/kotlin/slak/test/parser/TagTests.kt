@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.Declaration
+import slak.ckompiler.parser.Enumerator
 import slak.ckompiler.parser.ErrorExpression
 import slak.test.*
 import kotlin.test.assertEquals
@@ -240,7 +241,7 @@ class TagTests {
       enum testing { TEST = } testValue;
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.EXPECTED_EXPR)
-    val enum = enum("testing", "TEST" withEnumConst ErrorExpression().zeroRange())
+    val enum = enum("testing", Enumerator(name("TEST"), null, int(0)))
     enum.toSpec() declare "testValue" assertEquals p.root.decls[0]
   }
 

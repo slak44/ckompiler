@@ -1,7 +1,10 @@
 package slak.ckompiler.parser
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
+
+private val logger = LogManager.getLogger()
 
 interface IExpressionParser {
   /**
@@ -566,25 +569,27 @@ class ExpressionParser(
     when (val tok = current()) {
       is Identifier -> {
         val ident = tok.name
-        val existingIdent = searchIdent(ident)
-        // When this ident not a valid thing to put in an expression, we can report the error(s) but
-        // keep going with it anyway. That allows us to report errors more sensibly by not eating
-        // more tokens than necessary.
-        if (existingIdent == null) diagnostic {
-          id = DiagnosticId.USE_UNDECLARED
-          formatArgs(tok.name)
-          errorOn(safeToken(0))
+        when (val existingIdent = searchIdent(ident)) {
+          null -> diagnostic {
+            id = DiagnosticId.USE_UNDECLARED
+            formatArgs(tok.name)
+            errorOn(safeToken(0))
+          }
+          is TypedefName -> diagnostic {
+            id = DiagnosticId.UNEXPECTED_TYPEDEF_USE
+            formatArgs(existingIdent.name, existingIdent.typedefedToString())
+            errorOn(safeToken(0))
+          }
+          is Enumerator -> return existingIdent.computedValue.copy().withRange(tok)
+          is TypedIdentifier -> {
+            // Change the token range from the original declaration's name to this particular occurrence
+            return existingIdent.copy().withRange(tok)
+          }
+          else -> logger.warn("Unhandled branch: implementor of OrdinaryIdentifier not handled ($existingIdent)")
         }
-        if (existingIdent is TypedefName) diagnostic {
-          id = DiagnosticId.UNEXPECTED_TYPEDEF_USE
-          formatArgs(existingIdent.name, existingIdent.typedefedToString())
-          errorOn(safeToken(0))
-        }
-        if (existingIdent !is TypedIdentifier) {
-          return TypedIdentifier(ident, ErrorType).withRange(rangeOne())
-        }
-        // Change the token range from the original declaration's name to this particular occurrence
-        return existingIdent.copy().withRange(tok)
+        // When this ident not a valid thing to put in an expression, we can report the error(s) but keep going with it
+        // anyway. That allows us to report errors more sensibly by not eating more tokens than necessary.
+        return TypedIdentifier(ident, ErrorType).withRange(rangeOne())
       }
       is IntegralConstant -> {
         // FIXME conversions might fail here?

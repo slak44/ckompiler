@@ -194,8 +194,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       newIdentifier(enumerator)
     }
     when {
-      (tag is TagNameSpecifier && tag.kind.value == Keywords.ENUM) &&
-          foundTag == null -> diagnostic {
+      (tag is TagNameSpecifier && tag.kind.value == Keywords.ENUM) && previousDef == null -> diagnostic {
         id = DiagnosticId.USE_ENUM_UNDEFINED
         formatArgs(name.name)
         errorOn(name)

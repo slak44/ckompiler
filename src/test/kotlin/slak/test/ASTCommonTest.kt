@@ -362,18 +362,27 @@ internal infix fun Expression.arrow(tid: TypedIdentifier): MemberAccessExpressio
   return MemberAccessExpression(this, Punctuators.ARROW.pct, name(tid.name), tid.type).zeroRange()
 }
 
-internal infix fun <T> String.withEnumConst(int: T) =
-    Enumerator(name(this), parseDSLElement(int) as ExprConstantNode)
+internal infix fun <T> String.withEnumConst(int: T): Enumerator {
+  val const = parseDSLElement(int) as IntegerConstantNode
+  return Enumerator(name(this), const, const)
+}
 
 internal fun enum(tagName: String?): EnumSpecifier {
   return EnumSpecifier(tagName?.let(::name), emptyList(), Keywords.ENUM.kw)
 }
 
 internal fun <T> enum(tagName: String?, vararg enumerators: T): EnumSpecifier {
+  var enumValue = -1L
   val realEnums = enumerators.map {
     when (it) {
-      is String -> Enumerator(name(it), null)
-      is Enumerator -> it
+      is String -> {
+        enumValue++
+        Enumerator(name(it), null, IntegerConstantNode(enumValue))
+      }
+      is Enumerator -> {
+        enumValue = it.computedValue.value
+        it
+      }
       else -> throw IllegalArgumentException("Bad enumerator type")
     }
   }
