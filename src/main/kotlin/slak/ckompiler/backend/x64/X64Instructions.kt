@@ -183,7 +183,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (ref !is PhysicalRegister && refSize != size) {
     return false
   }
-  return when (ref) {
+  return when (val actualRef = if (ref is TypeOverride) ref.source else ref) {
     is MemoryLocation, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
@@ -192,14 +192,15 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
     }
     is PhysicalRegister -> {
-      val isCorrectKind = (this is Register && register == ref.reg) ||
+      val isCorrectKind = (this is Register && register == actualRef.reg) ||
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
       val isCorrectSize =
-          size == ref.reg.sizeBytes || size in ref.reg.aliases.map { it.second }
+          size == actualRef.reg.sizeBytes || size in actualRef.reg.aliases.map { it.second }
       isCorrectKind && isCorrectSize
     }
     is IntConstant -> this is Imm
     is NamedConstant, is JumpTargetConstant -> false // was checked above
+    is TypeOverride -> logger.throwICE("Was removed above")
     is ParameterReference -> logger.throwICE("Parameter references were removed")
   }
 }
@@ -426,7 +427,7 @@ val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM64, IMM32)
 }
 
-val movzx = instructionClass("movzx", listOf(VariableUse.DEF, VariableUse.USE)) {
+private val movAndExtend: ICBuilder.() -> Unit = {
   instr(R16, RM8)
   instr(R32, RM8)
   instr(R64, RM8)
@@ -434,6 +435,10 @@ val movzx = instructionClass("movzx", listOf(VariableUse.DEF, VariableUse.USE)) 
   instr(R32, RM16)
   instr(R64, RM16)
 }
+
+val movzx = instructionClass("movzx", listOf(VariableUse.DEF, VariableUse.USE), movAndExtend)
+val movsx = instructionClass("movsx", listOf(VariableUse.DEF, VariableUse.USE), movAndExtend)
+val movsxd = instructionClass("movsxd", listOf(VariableUse.DEF, VariableUse.USE)) { instr(R64, RM32) }
 
 val movq = instructionClass("movq", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(XMM_SS, XMM_SS)

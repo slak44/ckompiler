@@ -250,6 +250,13 @@ sealed class IRValue {
 }
 
 /**
+ * This should only really be used by codegen. It wraps another [IRValue], and overrides its [type].
+ */
+class TypeOverride(val source: IRValue, override val type: TypeName) : IRValue() {
+  override val name = source.name
+}
+
+/**
  * An [IRValue] that can be "written" to. What writing to it means depends on the value.
  */
 sealed class LoadableValue : IRValue() {
@@ -346,9 +353,7 @@ data class NamedConstant(override val name: String, override val type: TypeName)
 }
 
 /**
- * An index inside a basic block's labels. This currently can mean 2 things:
- * - [BasicBlock]'s IR: [BasicBlock.ir].
- * - [slak.ckompiler.backend.InstructionMap]'s MI: [slak.ckompiler.backend.MachineInstruction]
+ * An index inside a basic block's labels.
  */
 typealias LabelIndex = Int
 

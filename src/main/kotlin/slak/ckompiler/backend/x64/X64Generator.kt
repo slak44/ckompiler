@@ -306,6 +306,7 @@ class X64Generator private constructor(
         is PointerType -> listOf(matchTypedMov(cast.result, cast.operand))
         FloatType -> listOf(cvtsi2ss.match(cast.result, cast.operand))
         DoubleType -> listOf(cvtsi2sd.match(cast.result, cast.operand))
+        is IntegralType -> listOf(matchIntegralCast(src, dest, cast))
         else -> TODO("unimplemented structural cast type from integral to $dest")
       }
       src is FloatType -> when (dest) {
@@ -320,6 +321,37 @@ class X64Generator private constructor(
       }
       else -> TODO("unimplemented structural cast type")
     }
+  }
+
+  /**
+   * FIXME: these cast rules are not so simple
+   *
+   * C standard: 6.3.1.3
+   */
+  private fun matchIntegralCast(src: IntegralType, dest: IntegralType, cast: StructuralCast) = when {
+    dest > src -> {
+      // FIXME: edge cases for unsigned destination
+      val movType = when {
+        src is SignedIntegralType && target.machineTargetData.sizeOf(dest) == 8 -> movsxd
+        src is SignedIntegralType -> movsx
+        else -> movzx
+      }
+      movType.match(cast.result, cast.operand)
+    }
+    dest < src -> {
+      if (dest is SignedIntegralType) {
+        mov.match(cast.result, TypeOverride(cast.operand, dest))
+      } else {
+        TODO("narrowing integral cast from $src to $dest")
+      }
+    }
+    dest is UnsignedIntegralType && src is SignedIntegralType -> {
+      TODO("integral signed to unsigned cast, same size")
+    }
+    dest is SignedIntegralType && src is UnsignedIntegralType -> {
+      TODO("integral unsigned to signed cast, same size")
+    }
+    else -> logger.throwICE("Cast between same type cannot make it to codegen") { "$src to $dest" }
   }
 
   /**
