@@ -29,13 +29,12 @@ digraph pipeline {
   ssaFormCFG[label="CFG With IR In Pruned SSA Form"];
   codeGenerator[label=<Function Generator<br/><font point-size="14" face="monospace">TargetFunGenerator</font>>];
   machineTarget[label=<Machine Target<br/><font point-size="14" face="monospace">MachineTarget</font>>];
-  isel[label=<Instruction Selection<br/><font point-size="14" face="monospace">InstructionMap</font>>,shape=box];
+  isel[label=<Instruction Selection<br/><font point-size="14" face="monospace">InstructionGraph</font>>,shape=box];
   spilling[label="Spilling",shape=box];
   coloring[label="Coloring",shape=box];
-  allocation[label=<Value To Register Map<br/><font point-size="14" face="monospace">Map&lt;IRValue, MachineRegister&gt;</font>>];
   coalescing[label="Coalescing",shape=box];
   phiRemoval[label="φ Implementation",shape=box];
-  modifiedCode[label=<Code With Spills And Copies<br/><font point-size="14" face="monospace">InstructionMap</font>>];
+  finalGraph[label=<Modified graph<br/><font point-size="14" face="monospace">InstructionGraph</font>>];
   allocResult[label=<Allocation Result<br/><font point-size="14" face="monospace">AllocationResult</font>>];
   prologueEpilogue[label="Prologue/Epilogue Generation",shape=box];
   appliedAlloc[label=<Applied Allocation<br/><font point-size="14" face="monospace">Map&lt;BasicBlock, List&lt;AsmInstruction&gt;&gt;</font>>];
@@ -70,11 +69,9 @@ digraph pipeline {
 
   isel -> spilling -> coloring -> coalescing -> phiRemoval;
 
-  coloring -> allocation;
+  {coloring, phiRemoval} -> finalGraph -> allocResult;
 
-  allocation -> allocResult;
-
-  phiRemoval -> modifiedCode -> allocResult;
+  {spilling, coloring} -> allocResult;
 
   {codeGenerator, allocResult} -> {prologueEpilogue, appliedAlloc} -> asmEmitter;
 
@@ -115,9 +112,9 @@ digraph pipeline {
   subgraph cluster_backend {
     codeGenerator; machineTarget; isel; prologueEpilogue; appliedAlloc; peepholeOpt; asmEmitter; nasmCode;
     subgraph cluster_regalloc {
-      spilling; coloring; coalescing; phiRemoval; allocation; modifiedCode; allocResult;
+      spilling; coloring; coalescing; phiRemoval; finalGraph; allocResult;
       label=<<font color="#CCCCCCFF" point-size="20">Register Allocation</font>>;
-      labeljust="right";
+      labeljust="left";
       color="orangered";
     }
     label=<<font color="#CCCCCCFF" point-size="20">Backend</font>>;

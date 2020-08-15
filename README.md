@@ -10,7 +10,7 @@ Run `./gradlew distZip` for the compiler's CLI (will be created in
 
 JUnit tests can be found in the `slak.test` package, in `src/test/kotlin`.
 
-Also see what was chosen for some
+Also, see what was chosen for some
 [implementation defined/undefined behaviours][impl_defs].
 
 ## The CLI
@@ -85,7 +85,7 @@ This approach has several advantages:
    manual delegation helps prevent accidental coupling.
 4. The delegate syntax is clean: there is usually no need to write
    `component.doThing()`, rather `doThing()` can be called directly. This is
-   most obvious for parser components using `ITokenHandler`, since they have
+   most obvious in parser components using `ITokenHandler`, since they have
    lots (hundreds) of calls to functions like `current`, `eat`, `isEaten` or
    `tokenContext`. Without delegation, they'd end up polluting the source with
    `tokenHandler.current()` everywhere, which is not great for readability.
@@ -96,7 +96,7 @@ A compiler has to deal with two classes of "errors"; those that come from the
 code being compiled ("diagnostics"), and those that signal issues in the
 compiler itself.
 
-All of the relevant code can be found in the [Diagnostics.kt][diags] file.
+All the relevant code can be found in the [Diagnostics.kt][diags] file.
 
 ###### Diagnostics
 
@@ -112,7 +112,7 @@ int main() {int x; (x + 2) = 5;}
 </pre>
 
 We generate `Diagnostic` instances using a simple DSL, but the error messages,
-the source extracts and the caret/tilde markers are created lazily, internally.
+the source extracts, and the caret/tilde markers are created lazily, internally.
 They are only computed when (or if) the diagnostic gets printed. This is useful,
 because it makes creating a `Diagnostic` instance relatively cheap. As a result,
 we can create diagnostics even if they might be discarded later, with little
@@ -251,7 +251,7 @@ This interface is used both in the parser, and in the preprocessor.
 
 ### Nested Declarator Parsing
 
-Parsing declarators gets very complicated very fast when nested declarators come
+Parsing declarators gets very complicated, very fast when nested declarators come
 into play. A typical declaration with nested declarators looks like:
 ```
 int * (*f(int x))(double y)
@@ -327,8 +327,8 @@ Control flow is resolved by converting the AST to a graph (see
 [ASTGraphing.kt][ast_graphing]), where each node (a so-called [BasicBlock][bb])
 represents a _linear_ piece of code, with no jumps, conditional or otherwise.
 Basically, all `ASTNode` subclasses are removed by the conversion to a graph,
-except for `Expression` subclasses (with certain exceptions that are also
-removed, namely `TernaryConditional`).
+except for `Expression` subclasses (with certain exceptions:
+`TernaryConditional`, in particular, is also removed).
 
 Those linear pieces of code are represented as a `List<Expression>`, and are
 transformed to the simple IR (`List<IRInstruction>`) while creating the graph
@@ -429,7 +429,7 @@ Once this work is completed, the code is now in SSA form.
 
 If the `ControlFlowVariableRenames` marker in [log4j2.xml][log4j2_xml] is
 enabled (it is denied logging by default), the variable renamer will print a
-table outlining some of the steps done during renaming for the variable `x`:
+table outlining the steps done during renaming for the variable `x`:
 ```text
 [TRACE] in ControlFlow: BB| x mention   | x.reachingDef
 [TRACE] in ControlFlow: -------------------------------
@@ -465,14 +465,34 @@ table outlining some of the steps done during renaming for the variable `x`:
 Certain things depend on the target ISA and/or the machine (the size of an
 `int`, for example). `MachineTargetData` instances contain all this information.
 
-`MachineTargetData` also generates various macros used in stdlib headers (such
-as `__PTRDIFF_T_TYPE` for `stddef.h`).
+`MachineTargetData` is also responsible for generating various macros used in
+stdlib headers (such as `__PTRDIFF_T_TYPE` for `stddef.h`).
 
 This class is technically part of the backend, but certain features handled in
 the front-end (eg `sizeof`) also depend on this target-specific data.
 
 For now, only x64 Linux is supported, but the infrastructure for x86 and other
 platforms exists.
+
+###### The `MachineInstruction` class
+
+This class represents an instruction along with its operands (`IRValue`s), so
+it is still target-independent. All the target-dependent aspects of the
+instruction are contained within the `InstructionTemplate` stored by the MI (see
+below for more).
+
+###### The Instruction Graph
+
+A [CFG][cfg] is sufficient to represent the control flow, but in order to more
+cleanly separate responsibilities, and to avoid turning the CFG class into a god
+object, a new graph representation is introduced, [InstructionGraph][igraph].
+
+This class is the CFG's analogue in the backend (and is actually created by
+copying the structure of the existing CFG). Similarly, `InstrBlock` is the
+analogue for `BasicBlock`.
+
+`InstrBlock` implements the `MutableList<MachineInstruction>` interface, for
+easily interacting with the instructions in a block.
 
 ###### The Code Generation Interfaces
 
@@ -482,13 +502,14 @@ manner. The code can be found in [MachineTarget.kt][machine_target].
 1. `MachineTarget`: This interface describes a particular compilation target. It
    contains the relevant `MachineTargetData` instance, and data about the
    register file of the target ISA.
+2. `TargetOptions`: Represents the set of CLI options passed to a target.
 2. `MachineRegisterClass`: Describes a type of register in the ISA. For example,
    x64 distinguishes between general purpose integer registers (`rax`, `rbp`,
    etc) and SSE/AVX registers (`xmm4`, `ymm1`, etc).
 3. `MachineRegister`: A description of a particular register in the ISA. Stores
    size, class, aliases.
 4. `TargetFunGenerator`: Implementors of this interface are code generators for
-   a single function CFG, for a particular `MachineTarget`. An instance of this
+   a single function graph, for a particular `MachineTarget`. An instance of this
    class holds all the state required for all the code generation stages before
    emission.
 5. `AsmEmitter`: Takes the result of all the function generators in a
@@ -500,20 +521,18 @@ manner. The code can be found in [MachineTarget.kt][machine_target].
    example: `mov r/m64, r64` or `add r32, imm32`.
 8. `AsmInstruction`: Final generated instruction, ready for emission.
 
-There is also the `MachineInstruction` class, which isn't an interface, but it
-represents an instruction (`InstructionTemplate`) along with its operands
-(`IRValue`s), so it is still target-independent.
-
 ###### Code Generation Process
 
 First, `TargetFunGenerator`s are created for all the functions in the
 translation unit. They are passed to an `AsmEmitter`, which returns the
 assembled code. The emitter is the one who triggers the actual generation
-process in each function's generator.
+process for each function's generator.
 
 Generation starts with instruction selection. Instruction selection creates
-`MachineInstruction`s for each block, and that is actually what it returns, a
-map of `BasicBlock` to `List<MachineInstruction>`.
+`MachineInstruction`s for each block, which are stored in the corresponding
+`InstrBlock`. The block has overridden methods for adding to the list: they
+also incrementally update the last uses map to account for the operands of the
+instruction.
 
 The next step is register allocation. Note that the code is still in SSA form: φ
 functions have not been removed, and variables are only assigned once per
@@ -521,7 +540,7 @@ version. The register allocator is based on [this paper][hack], and is
 target-independent (code in [RegisterAllocation.kt][regalloc]).
 
 The allocator is a graph coloring register allocator (GCRA), but it allocates
-directly over SSA. Other GCRAs run a SSA destruction algorithm before
+directly over SSA. Other GCRAs run an SSA destruction algorithm before
 allocation, but this actually introduces additional complexity: the coloring
 influences spilling, and coalescing influences both. A graph that is not
 k-colorable will have to be rebuilt after a spill. Both coloring and coalescing
@@ -537,9 +556,10 @@ and it is guaranteed that coloring will not fail, because we forcefully reduced
 the chromatic number via spilling. Coalescing runs after coloring, but before
 implementing φs.
 
-The register allocator produces an updated map of `MachineInstruction`s (with
-copies and/or spills inserted), the variables that have been spilled, and the
-actual allocation of registers to variables and temporaries.
+The register allocator alters the blocks of the `InstructionGraph`. Copies
+and/or spills are inserted, even new blocks might be inserted. The allocator also
+produces a list of spilled variables, as well its primary purpose, the actual
+allocation of registers to variables/temporaries.
 
 After this is done, the function generator creates the function
 prologue/epilogue, and the final `AsmInstruction`s by replacing `IRValue`s with
@@ -602,3 +622,4 @@ https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_met
 [hack]: https://publikationen.bibliothek.kit.edu/1000007166/6532
 [machine_target]: ./src/main/kotlin/slak/ckompiler/backend/MachineTarget.kt
 [regalloc]: ./src/main/kotlin/slak/ckompiler/backend/RegisterAllocation.kt
+[igraph]: ./src/main/kotlin/slak/ckompiler/backend/InstructionGraph.kt
