@@ -199,6 +199,11 @@ class E2ETests {
   }
 
   @Test
+  fun `Upcast Int To Long`() {
+    compileAndRun(resource("e2e/upcastIntLong.c")).expect(stdout = "123")
+  }
+
+  @Test
   fun `For Loop Summing Test`() {
     compileAndRun(resource("loops/forLoopTest.c")).justExitCode(86)
   }
