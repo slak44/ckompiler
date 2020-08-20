@@ -199,6 +199,11 @@ class E2ETests {
     }.justExitCode(40)
   }
 
+  @Test
+  fun `Function Calls With Reused Variable`() {
+    compileAndRun(resource("e2e/calls/reuseThroughCalls.c")).justExitCode(1)
+  }
+
   @Suppress("unused")
   enum class AddDifferentTypes(val type1: TypeName, val type2: TypeName) {
     INT_LONG(SignedIntType, SignedLongType),

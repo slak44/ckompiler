@@ -132,8 +132,8 @@ private fun TargetFunGenerator.rewriteValue(
   if (value === copiedValue) return
   // The value is a constrained argument: it is still used at the constrained MI, after the copy
   // We know that is the last use, because all the ones afterwards were just rewritten
-  // FIXME: check if block.add doesn't do this for us
-  graph.deaths[value] = InstrLabel(block.id, index + 1)
+  // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
+  graph.deaths[value] = InstrLabel(block.id, index)
 }
 
 /**
