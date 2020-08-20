@@ -173,20 +173,19 @@ private fun IRBuilderContext.buildLValuePtr(lvalue: Expression): IRValue = when 
   else -> logger.throwICE("Unhandled lvalue")
 }
 
-private fun IRBuilderContext.buildAssignment(expr: BinaryExpression): IRInstruction {
-  val value = buildOperand(expr.rhs)
-  require(expr.lhs.valueType != Expression.ValueType.RVALUE)
-  return when (expr.lhs) {
+private fun IRBuilderContext.buildAssignment(lhs: Expression, rhs: IRValue): IRInstruction {
+  require(lhs.valueType != Expression.ValueType.RVALUE)
+  return when (lhs) {
     is TypedIdentifier -> {
-      MoveInstr(Variable(expr.lhs), value)
+      MoveInstr(Variable(lhs), rhs)
     }
     is UnaryExpression -> {
-      require(expr.lhs.op == UnaryOperators.DEREF)
+      require(lhs.op == UnaryOperators.DEREF)
       // For dereferences, the operand is guaranteed to be a pointer
-      StoreMemory(buildOperand(expr.lhs.operand), value)
+      StoreMemory(buildOperand(lhs.operand), rhs)
     }
     else -> {
-      StoreMemory(buildLValuePtr(expr.lhs), value)
+      StoreMemory(buildLValuePtr(lhs), rhs)
     }
   }
 }
@@ -284,7 +283,8 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
   }
   is BinaryExpression -> {
     if (expr.op == BinaryOperators.ASSIGN) {
-      val assign = buildAssignment(expr)
+      val rhs = buildOperand(CastExpression(expr.rhs, expr.type))
+      val assign = buildAssignment(expr.lhs, rhs)
       instructions += assign
       // Stores are hoisted by sequentialize, so this register will never be used
       VirtualRegister(0, VoidType)

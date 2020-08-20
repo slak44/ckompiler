@@ -2,6 +2,7 @@ package slak.ckompiler.analysis
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.AtomicId
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
@@ -250,13 +251,6 @@ sealed class IRValue {
 }
 
 /**
- * This should only really be used by codegen. It wraps another [IRValue], and overrides its [type].
- */
-class TypeOverride(val source: IRValue, override val type: TypeName) : IRValue() {
-  override val name = source.name
-}
-
-/**
  * An [IRValue] that can be "written" to. What writing to it means depends on the value.
  */
 sealed class LoadableValue : IRValue() {
@@ -295,6 +289,9 @@ data class VirtualRegister(
 ) : AllocatableValue() {
   override val name = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
   override fun toString() = name
+
+  override fun equals(other: Any?) = (other as? VirtualRegister)?.id == id
+  override fun hashCode() = id
 }
 
 /**
@@ -462,4 +459,24 @@ data class StackVariable(val tid: TypedIdentifier) : LoadableValue() {
   override val isUndefined = false
 
   override fun toString() = "stack $type $name"
+}
+
+/**
+ * Return a copy of an [IRValue], coercing its type to the provided parameter.
+ */
+fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = when (value) {
+  is VirtualRegister -> value.copy(type = type)
+  is Variable -> Variable(value.tid.copy(type = type))
+  is PhysicalRegister ->
+    if (sizeOf(type) in value.reg.aliases.map { it.second } || sizeOf(type) == value.reg.sizeBytes) {
+      value.copy(type = type)
+    } else {
+      TODO()
+    }
+  is MemoryLocation -> TODO()
+  is StackVariable -> TODO()
+  is IntConstant -> value.copy(type = type) // FIXME: check type limits
+  is FltConstant -> TODO()
+  is StrConstant -> TODO()
+  is ParameterReference, is JumpTargetConstant, is NamedConstant -> logger.throwICE("Illegal target of IRValue copy")
 }

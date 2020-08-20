@@ -328,30 +328,29 @@ class X64Generator private constructor(
    *
    * C standard: 6.3.1.3
    */
-  private fun matchIntegralCast(src: IntegralType, dest: IntegralType, cast: StructuralCast) = when {
-    dest > src -> {
-      // FIXME: edge cases for unsigned destination
-      val movType = when {
-        src is SignedIntegralType && target.machineTargetData.sizeOf(dest) == 8 -> movsxd
-        src is SignedIntegralType -> movsx
-        else -> movzx
+  private fun matchIntegralCast(src: IntegralType, dest: IntegralType, cast: StructuralCast): MachineInstruction {
+    val destSize = target.machineTargetData.sizeOf(dest)
+    val srcSize = target.machineTargetData.sizeOf(src)
+    return when {
+      destSize == srcSize -> matchTypedMov(cast.result, cast.operand)
+      destSize > srcSize -> {
+        // FIXME: edge cases for unsigned destination?
+        val movType = when {
+          src is SignedIntegralType && destSize == 8 && srcSize == 4 -> movsxd
+          src is SignedIntegralType -> movsx
+          else -> movzx
+        }
+        movType.match(cast.result, cast.operand)
       }
-      movType.match(cast.result, cast.operand)
-    }
-    dest < src -> {
-      if (dest is SignedIntegralType) {
-        mov.match(cast.result, TypeOverride(cast.operand, dest))
-      } else {
-        TODO("narrowing integral cast from $src to $dest")
+      destSize < srcSize -> {
+        if (dest is SignedIntegralType) {
+          mov.match(cast.result, target.machineTargetData.copyWithType(cast.operand, dest))
+        } else {
+          TODO("narrowing integral cast from $src to $dest")
+        }
       }
+      else -> logger.throwICE("Cast between same type cannot make it to codegen") { "$src to $dest" }
     }
-    dest is UnsignedIntegralType && src is SignedIntegralType -> {
-      TODO("integral signed to unsigned cast, same size")
-    }
-    dest is SignedIntegralType && src is UnsignedIntegralType -> {
-      TODO("integral unsigned to signed cast, same size")
-    }
-    else -> logger.throwICE("Cast between same type cannot make it to codegen") { "$src to $dest" }
   }
 
   /**
@@ -364,7 +363,10 @@ class X64Generator private constructor(
       op: List<X64InstrTemplate>
   ) = when (i.result) {
     // result = result OP rhs
-    i.lhs -> listOf(op.match(i.lhs, i.rhs))
+    i.lhs -> {
+      val (rhs, ops) = convertIfImm(i.rhs)
+      ops + op.match(i.lhs, rhs)
+    }
     // result = lhs OP result
     i.rhs -> {
       val opTarget = VirtualRegister(graph.registerIds(), i.lhs.type)
@@ -376,24 +378,36 @@ class X64Generator private constructor(
     }
     else -> {
       require(i.lhs !is ConstantValue || i.rhs !is ConstantValue)
-      listOfNotNull(
+      val (rhs, ops) = convertIfImm(i.rhs)
+      ops + listOfNotNull(
           matchTypedMov(i.result, i.lhs),
-          op.match(i.result, i.rhs),
-          if (i.rhs !is ConstantValue) dummyUse.match(i.rhs) else null
+          op.match(i.result, rhs),
+          if (i.rhs !is ConstantValue) dummyUse.match(rhs) else null
       )
     }
   }
 
   private fun matchIMul(i: IntBinary): List<MachineInstruction> {
     if (i.result == i.lhs) {
-      return listOf(imul.match(i.result, i.rhs))
+      val (rhs, ops) = convertIfImm(i.rhs)
+      return ops + imul.match(i.result, rhs)
     }
     if (i.result == i.rhs) {
-      return listOf(imul.match(i.result, i.lhs))
+      val (lhs, ops) = convertIfImm(i.lhs)
+      return ops + imul.match(i.result, lhs)
     }
     val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
     if (maybeImm is ConstantValue) {
-      return listOf(imul.match(i.result, nonImm, maybeImm))
+      return if (target.machineTargetData.sizeOf(maybeImm.type) < 8) {
+        // 3-operand RMI only supports 32bit immediates
+        listOf(imul.match(i.result, nonImm, maybeImm))
+      } else {
+        val (storedImm, ops) = convertImmForOp(maybeImm)
+        ops + listOf(
+            matchTypedMov(i.result, nonImm),
+            imul.match(i.result, storedImm)
+        )
+      }
     }
     return listOf(
         mov.match(i.result, nonImm),
@@ -432,15 +446,19 @@ class X64Generator private constructor(
       op: List<X64InstrTemplate>
   ): List<MachineInstruction> = when (i.result) {
     // result = result OP rhs
-    i.lhs -> listOf(op.match(i.lhs, i.rhs))
+    i.lhs -> {
+      val (rhs, ops) = convertIfImm(i.rhs)
+      ops + op.match(i.lhs, rhs)
+    }
     // result = lhs OP result
-    i.rhs -> listOf(op.match(i.rhs, i.lhs))
+    i.rhs -> {
+      val (lhs, ops) = convertIfImm(i.lhs)
+      ops + op.match(i.rhs, lhs)
+    }
     else -> {
       val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
-      listOf(
-          matchTypedMov(i.result, nonImm),
-          op.match(i.result, maybeImm)
-      )
+      val (maybeConvImm, ops) = convertIfImm(maybeImm)
+      listOf(matchTypedMov(i.result, nonImm)) + ops + op.match(i.result, maybeConvImm)
     }
   }
 
@@ -483,6 +501,16 @@ class X64Generator private constructor(
     val nonImm = if (lhs is ConstantValue) rhs else lhs
     val maybeImm = if (lhs === nonImm) rhs else lhs
     return nonImm to maybeImm
+  }
+
+  private fun convertIfImm(irValue: IRValue): Pair<IRValue, List<MachineInstruction>> {
+    return if (irValue is ConstantValue) convertImmForOp(irValue) else irValue to emptyList()
+  }
+
+  private fun convertImmForOp(imm: ConstantValue): Pair<IRValue, List<MachineInstruction>> {
+    if (imm !is IntConstant || target.machineTargetData.sizeOf(imm.type) < 8) return imm to emptyList()
+    val regCopy = VirtualRegister(graph.registerIds(), imm.type)
+    return regCopy to listOf(matchTypedMov(regCopy, imm))
   }
 
   companion object {

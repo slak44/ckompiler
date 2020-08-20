@@ -57,7 +57,7 @@ class IRTests {
         nameRef("a", ptr(SignedIntType)) assign 12345,
         UnaryOperators.DEREF[nameRef("a", ptr(SignedIntType))] assign 3
     )
-    val store = ir[1] as StoreMemory
+    val store = ir[2] as StoreMemory
     val storeTarget = store.storeTo as Variable
     assertEquals("a", storeTarget.name)
     val constant = (store.value as? IntConstant)?.value

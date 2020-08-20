@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
+import slak.ckompiler.parser.*
 import slak.test.compileAndRun
 import slak.test.expect
 import slak.test.justExitCode
@@ -198,6 +199,40 @@ class E2ETests {
     }.justExitCode(40)
   }
 
+  @Suppress("unused")
+  enum class AddDifferentTypes(val type1: TypeName, val type2: TypeName) {
+    INT_LONG(SignedIntType, SignedLongType),
+    LONG_INT(SignedLongType, SignedIntType),
+    SHORT_INT(SignedShortType, SignedIntType),
+    SHORT_LONG(SignedShortType, SignedLongType),
+    UINT_INT(UnsignedIntType, SignedIntType),
+    CHAR_LONG(SignedCharType, SignedLongType),
+    BOOL_CHAR(BooleanType, SignedCharType)
+  }
+
+  @ParameterizedTest
+  @EnumSource(AddDifferentTypes::class)
+  fun `Add Different Types`(test: AddDifferentTypes) {
+    compileAndRun("""
+      int main() {
+        ${test.type1} a = 1;
+        ${test.type2} b = 10;
+        return a + b;
+      }
+    """.trimIndent()).justExitCode(11)
+  }
+
+  @Test
+  fun `Plus Assign Different Types`() {
+    compileAndRun("""
+      int main() {
+        long a = 1;
+        a += 2;
+        return a;
+      }
+    """.trimIndent()).justExitCode(3)
+  }
+
   @Test
   fun `Upcast Int To Long`() {
     compileAndRun(resource("e2e/upcastIntLong.c")).expect(stdout = "123")
@@ -300,6 +335,7 @@ class E2ETests {
   }
 
   companion object {
+    private const val RES = 2
     private const val A = 5
     private const val B = 23
   }
@@ -331,6 +367,37 @@ class E2ETests {
         int a = $A;
         int b = $B;
         int res;
+        ${test.code}
+        printf("%d", res);
+        return 0;
+      }
+    """.trimIndent()).expect(stdout = test.output)
+  }
+
+  @Suppress("unused")
+  enum class SimplifiableIntOpTestCases(val code: String, private val result: Int) {
+    COMM_ADD_LHS("res = res + b;", RES + B),
+    COMM_ADD_RHS("res = b + res;", B + RES),
+
+    NOT_COMM_SUB_LHS("res = res - b;", RES - B),
+    NOT_COMM_SUB_RHS("res = b - res;", B - RES),
+
+    MUL_RHS("res = b * res;", B * RES),
+    MUL_IMM("res = b * 123;", B * 123),
+    MUL_IMM_LARGE("res = b * 123L;", B * 123);
+
+    val output get() = result.toString()
+  }
+
+  @ParameterizedTest
+  @EnumSource(SimplifiableIntOpTestCases::class)
+  fun `Int Operation Tests`(test: SimplifiableIntOpTestCases) {
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        int a = $A;
+        int b = $B;
+        int res = $RES;
         ${test.code}
         printf("%d", res);
         return 0;

@@ -183,7 +183,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (ref !is PhysicalRegister && refSize != size) {
     return false
   }
-  return when (val actualRef = if (ref is TypeOverride) ref.source else ref) {
+  return when (ref) {
     is MemoryLocation, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
@@ -192,15 +192,13 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
     }
     is PhysicalRegister -> {
-      val isCorrectKind = (this is Register && register == actualRef.reg) ||
+      val isCorrectKind = (this is Register && register == ref.reg) ||
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
-      val isCorrectSize =
-          size == actualRef.reg.sizeBytes || size in actualRef.reg.aliases.map { it.second }
+      val isCorrectSize = size == ref.reg.sizeBytes || size in ref.reg.aliases.map { it.second }
       isCorrectKind && isCorrectSize
     }
     is IntConstant -> this is Imm
     is NamedConstant, is JumpTargetConstant -> false // was checked above
-    is TypeOverride -> logger.throwICE("Was removed above")
     is ParameterReference -> logger.throwICE("Parameter references were removed")
   }
 }
@@ -215,7 +213,13 @@ fun List<X64InstrTemplate>.tryMatch(vararg operands: IRValue): MachineInstructio
 
 fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   val res = tryMatch(*operands)
-  return checkNotNull(res) { "Instruction selection failure: match ${operands.toList()} in $this" }
+  return checkNotNull(res) {
+    val likely = filter { it.operands.size == operands.size }.sortedByDescending {
+      operands.zip(it.operands).count { (ref, targetOperand) -> targetOperand compatibleWith ref }
+    }
+    "Instruction selection failure: match ${operands.toList()} in $this\n" +
+        "Likely candidate: ${likely.firstOrNull()}"
+  }
 }
 
 fun List<X64InstrTemplate>.tryMatchAsm(vararg operands: X64Value): X64Instruction? {

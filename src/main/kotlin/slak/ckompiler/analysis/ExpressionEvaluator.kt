@@ -190,7 +190,18 @@ fun evalUnary(
 fun evalCast(type: TypeName, target: ExprConstantNode): ExprConstantNode = when (type) {
   ErrorType -> ErrorExpression().withRange(target)
   VoidType -> VoidExpression().withRange(target)
-  is IntegralType -> IntegerConstantNode(convertToInt(target))
+  is IntegralType -> {
+    val resultSuffix = when (type) {
+      UnsignedIntType -> IntegralSuffix.UNSIGNED
+      UnsignedLongType -> IntegralSuffix.UNSIGNED_LONG
+      UnsignedLongLongType -> IntegralSuffix.UNSIGNED_LONG_LONG
+      SignedLongType -> IntegralSuffix.LONG
+      SignedLongLongType -> IntegralSuffix.LONG_LONG
+      SignedIntType -> IntegralSuffix.NONE
+      else -> IntegralSuffix.NONE
+    }
+    IntegerConstantNode(convertToInt(target), resultSuffix)
+  }
   FloatType -> FloatingConstantNode(convertToFloat(target), FloatingSuffix.FLOAT)
   DoubleType -> FloatingConstantNode(convertToFloat(target), FloatingSuffix.NONE)
   LongDoubleType -> FloatingConstantNode(convertToFloat(target), FloatingSuffix.LONG_DOUBLE)
