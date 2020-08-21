@@ -22,7 +22,6 @@ data class AllocationResult(
     val registerUseMap: RegisterUseMap
 ) {
   val stackSlots get() = allocations.values.filterIsInstance<StackSlot>()
-  operator fun component4() = stackSlots
 }
 
 private fun MachineTarget.selectRegisterWhitelist(
