@@ -363,9 +363,12 @@ class InstructionGraph private constructor(
           return maybeDefinedPhi.key
         }
         if (u in f) {
-          val incoming =
-              predecessors(uBlock).map { it.id }.associateWith { findDef(InstrLabel(it, Int.MAX_VALUE), variable) }
-          uBlock.phi[variable] = incoming.toMutableMap()
+          val incoming = predecessors(uBlock).map { it.id }
+              .associateWithTo(mutableMapOf()) { findDef(InstrLabel(it, Int.MAX_VALUE), variable) }
+          val yPrime = createCopyOf(variable, uBlock) as Variable
+          vars += yPrime
+          uBlock.phi[yPrime] = incoming
+          return yPrime
         }
       }
       logger.throwICE("Unreachable: no definition for $variable was found up the tree from $label")
