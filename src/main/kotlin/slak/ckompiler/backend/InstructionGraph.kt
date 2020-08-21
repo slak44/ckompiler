@@ -304,7 +304,7 @@ class InstructionGraph private constructor(
   /**
    * Get the iterated dominance frontier of a set of [InstrBlock]s.
    */
-  fun Iterable<AtomicId>.iteratedDominanceFrontier(variableDefIds: Set<AtomicId>): Set<AtomicId> {
+  fun iteratedDominanceFrontier(blocks: Iterable<AtomicId>, variableDefIds: Set<AtomicId>): Set<AtomicId> {
     val visited = mutableSetOf<AtomicId>()
     val iteratedFront = mutableSetOf<AtomicId>()
     fun iterate(block: AtomicId) {
@@ -318,7 +318,7 @@ class InstructionGraph private constructor(
         iterate(frontierBlock)
       }
     }
-    for (block in this) iterate(block)
+    for (block in blocks) iterate(block)
     return iteratedFront
   }
 
@@ -332,7 +332,7 @@ class InstructionGraph private constructor(
     val vars = reconstruct.toMutableSet()
     val ids = vars.mapTo(mutableSetOf()) { it.id }
     val blocks = vars.map { variableDefs.getValue(it) }.toMutableSet()
-    val f = blocks.iteratedDominanceFrontier(ids)
+    val f = iteratedDominanceFrontier(blocks, ids)
 
     fun findDef(label: InstrLabel, variable: Variable): Variable {
       val (blockId, index) = label
