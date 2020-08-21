@@ -50,6 +50,11 @@ class E2ETests {
   }
 
   @Test
+  fun `SSA Reconstruction With Phi Insertion`() {
+    compileAndRun(resource("ssa/reconstructionInsertPhi.c")).expect(exitCode = 2, stdout = "2")
+  }
+
+  @Test
   fun `Hello World!`() {
     compileAndRun(resource("e2e/helloWorld.c")).expect(stdout = "Hello World!\n")
   }
@@ -207,6 +212,11 @@ class E2ETests {
   @Test
   fun `Function Calls With Reused Variable`() {
     compileAndRun(resource("e2e/calls/reuseThroughCalls.c")).justExitCode(1)
+  }
+
+  @Test
+  fun `Function Call In If`() {
+    compileAndRun(resource("e2e/calls/ifCall.c")).expect(exitCode = 2, stdout = "2")
   }
 
   @Suppress("unused")
