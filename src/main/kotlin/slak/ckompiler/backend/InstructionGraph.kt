@@ -39,6 +39,14 @@ class InstructionGraph private constructor(
    */
   private val variableDefs = mutableMapOf<Variable, AtomicId>()
 
+  /**
+   * Stores all variables used in parallel copies, for each block. Since these are basically φ instructions in the
+   * middle of a block, we need to know who's getting redefined, to correctly compute the iterated dominance frontier.
+   *
+   * @see iteratedDominanceFrontier
+   */
+  val parallelCopies = mutableMapOf<AtomicId, MutableList<Variable>>()
+
   val deaths = mutableMapOf<AllocatableValue, InstrLabel>()
 
   /**
@@ -313,7 +321,8 @@ class InstructionGraph private constructor(
       val blockFront = dominanceFrontiers.getValue(block)
       iteratedFront += blockFront
       for (frontierBlock in blockFront.filter { node ->
-        nodes.getValue(node).phi.keys.any { it.id in variableDefIds }
+        nodes.getValue(node).phi.keys.any { it.id in variableDefIds } ||
+            parallelCopies[node]?.any { it.id in variableDefIds } == true
       }) {
         iterate(frontierBlock)
       }
@@ -331,7 +340,8 @@ class InstructionGraph private constructor(
     val defUseChains = findDefUseChains()
     val vars = reconstruct.toMutableSet()
     val ids = vars.mapTo(mutableSetOf()) { it.id }
-    val blocks = vars.map { variableDefs.getValue(it) }.toMutableSet()
+    val blocks = vars.map { variableDefs.getValue(it) }.toMutableSet() +
+        parallelCopies.filterValues { it.any { variable -> variable.id in ids } }.map { it.key }
     val f = iteratedDominanceFrontier(blocks, ids)
 
     fun findDef(label: InstrLabel, variable: Variable): Variable {

@@ -151,6 +151,10 @@ private fun splitLiveRanges(
   val rewriteMap = actualValues.associateWith { graph.createCopyOf(it, block) }
   val phi = ParallelCopyTemplate.createCopy(rewriteMap)
   phi.irLabelIndex = atIndex
+  for (copiedValue in rewriteMap.values.filterIsInstance<Variable>()) {
+    graph.parallelCopies.putIfAbsent(block.id, mutableListOf())
+    graph.parallelCopies.getValue(block.id) += copiedValue
+  }
 
   rewriteBlockUses(block, atIndex, rewriteMap)
 
