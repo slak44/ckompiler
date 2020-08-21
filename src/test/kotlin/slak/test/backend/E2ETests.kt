@@ -45,6 +45,11 @@ class E2ETests {
   }
 
   @Test
+  fun `SSA Reconstruction With Phi Use Rewrite`() {
+    compileAndRun(resource("ssa/reconstructionRewritePhi.c")).expect(exitCode = 13, stdout = "01")
+  }
+
+  @Test
   fun `Hello World!`() {
     compileAndRun(resource("e2e/helloWorld.c")).expect(stdout = "Hello World!\n")
   }

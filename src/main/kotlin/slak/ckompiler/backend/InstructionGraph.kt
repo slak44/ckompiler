@@ -369,7 +369,7 @@ class InstructionGraph private constructor(
         // Already wired correctly
         if (x == newVersion) continue
         if (index == DEFINED_IN_PHI) {
-          val incoming = block.phi.getValue(x)
+          val incoming = block.phi.entries.first { it.key.id == x.id }.value
           val target = incoming.entries.first { it.value == x }.key
           incoming[target] = newVersion
         } else {
