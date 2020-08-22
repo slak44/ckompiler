@@ -149,7 +149,7 @@ private fun TargetFunGenerator.prepareForColoring() {
 
     var index = 0
 
-    fun updateAlive() {
+    fun updateAlive(index: Int) {
       val mi = block[index]
       val dyingHere = mi.uses.filterIsInstance<AllocatableValue>()
           .filter { graph.isLastUse(it, InstrLabel(blockId, index)) }
@@ -160,36 +160,36 @@ private fun TargetFunGenerator.prepareForColoring() {
     while (index < block.size) {
       val mi = block[index]
       if (!mi.isConstrained) {
-        updateAlive()
+        updateAlive(index)
         index++
         continue
       }
 
+      val startIndex = index
       for ((value, target) in mi.constrainedArgs) {
         // If it doesn't die after this instruction, it's not live-through, so leave it alone
         if (!graph.livesThrough(value, InstrLabel(blockId, index))) continue
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (target in mi.constrainedRes.map { it.target }) {
           insertSingleCopy(block, index, value, mi)
-          graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
-          // Process the inserted copy
-          updateAlive()
           index++
-          // We don't want to rewrite the constrained instr in this case
-          block[index] = mi
         }
       }
-      check(block[index] == mi) {
-        "Sanity check failed: the constrained arg copy insertion above did not correctly update the current index"
+      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
+      for (copyIdx in startIndex until index) {
+        // Process the inserted copies
+        updateAlive(copyIdx)
       }
+      // We don't want to rewrite the constrained instr in this case
+      block[index] = mi
 
       splitLiveRanges(graph, alive, index, block)
       graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
       // The parallel copy needs to have updateAlive run on it, before skipping it
-      updateAlive()
+      updateAlive(index)
       index++
       // Same with the original constrained label
-      updateAlive()
+      updateAlive(index)
       index++
     }
   }
