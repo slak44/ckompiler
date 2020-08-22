@@ -47,8 +47,8 @@ private fun MachineTarget.selectRegisterBlacklist(
  * Rewrite a [MachineInstruction]'s operands that match any of the [rewriteMap]'s keys, with the associated value from
  * the map. Only cares about [VariableUse.USE], and also rewrites constrained args.
  *
- * @see rewriteBlockUses
- */
+ * @see InstructionGraph.ssaReconstruction
+*/
 fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableValue>): MachineInstruction {
   val newOperands = operands.zip(template.operandUse).map {
     // Explicitly not care about DEF_USE
@@ -69,51 +69,11 @@ fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableVa
 }
 
 /**
- * This function rewrites a block to accommodate a new version of some variables. The copies are assumed to already be
- * in place or will be inserted later.
- *
- * [VirtualRegister]s are easy to deal with: they cannot escape the block, so they can't introduce new φs.
- * That means we can just rewire the uses, and still be in SSA form, so no SSA reconstruction needed.
- *
- * [Variable]s are more problematic, since a new version of a variable might create a new φ, which is problematic.
- * Consider a diamond [CFG]:
- * ```
- *     A
- *   /  \
- *  B    C
- *   \  /
- *    D
- * ```
- * With the variable defined at the top in A (version 1, any key of [rewriteMap]), and used in all other 3 blocks.
- * Now if we need to rewrite its uses in say, block C, we'll replace its uses with version 2 (associated [rewriteMap]
- * value). But now we have a problem: version 1 is live-out in block B, and version 2 is live-out in block C, so block D
- * needs a φ instruction, one which was not there previously (there was only one version).
- *
- * If the φ was already there, it would have been ok: just update the incoming value from this block with the new
- * version. When we insert a new φ, we still know the incoming from our block (it's the new version), but we don't
- * know the incoming from the other blocks... and those other blocks might not know which version is live-out in them.
- * That means we have to rebuild the SSA (which is not exactly a cheap operation). This function does not rebuild it,
- * see [InstructionGraph.ssaReconstruction] for that.
- *
- * @see rewriteBy
- * @see prepareForColoring
- */
-private fun rewriteBlockUses(
-    block: InstrBlock,
-    afterIdx: Int,
-    rewriteMap: Map<AllocatableValue, AllocatableValue>
-) {
-  for (i in block.indices.drop(afterIdx + 1)) {
-    block[i] = block[i].rewriteBy(rewriteMap)
-  }
-}
-
-/**
- * Insert a copy, rewrite its uses in this [block].
+ * Insert a copy.
  *
  * [value] is a constrained argument of [constrainedInstr].
  */
-private fun TargetFunGenerator.rewriteValue(
+private fun TargetFunGenerator.insertSingleCopy(
     block: InstrBlock,
     index: Int,
     value: AllocatableValue,
@@ -124,7 +84,6 @@ private fun TargetFunGenerator.rewriteValue(
   val copiedValue = graph.createCopyOf(value, block)
   val copyInstr = createIRCopy(copiedValue, value)
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
-  rewriteBlockUses(block, index, mapOf(value to copiedValue))
   block.add(index, copyInstr)
   // This is the case where the value is an undefined dummy
   // We want to keep the original and correct last use, instead of destroying it here
@@ -155,8 +114,6 @@ private fun splitLiveRanges(
     graph.parallelCopies.putIfAbsent(block.id, mutableListOf())
     graph.parallelCopies.getValue(block.id) += copiedValue
   }
-
-  rewriteBlockUses(block, atIndex, rewriteMap)
 
   // Splice the copy in the instructions
   block.add(atIndex, phi)
@@ -210,10 +167,10 @@ private fun TargetFunGenerator.prepareForColoring() {
 
       for ((value, target) in mi.constrainedArgs) {
         // If it doesn't die after this instruction, it's not live-through, so leave it alone
-        if (graph.lastUseOf(value)!!.second <= index) continue
+        if (!graph.livesThrough(value, InstrLabel(blockId, index))) continue
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (target in mi.constrainedRes.map { it.target }) {
-          rewriteValue(block, index, value, mi)
+          insertSingleCopy(block, index, value, mi)
           graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
           // Process the inserted copy
           updateAlive()

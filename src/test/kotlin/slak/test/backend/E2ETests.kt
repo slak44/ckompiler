@@ -51,7 +51,7 @@ class E2ETests {
 
   @Test
   fun `SSA Reconstruction With Phi Insertion`() {
-    compileAndRun(resource("ssa/reconstructionInsertPhi.c")).expect(exitCode = 2, stdout = "2")
+    compileAndRun(resource("ssa/reconstructionInsertPhi.c")).expect(exitCode = 3, stdout = "")
   }
 
   @Test
