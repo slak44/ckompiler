@@ -140,15 +140,13 @@ class InstructionGraph private constructor(
     return transposed.getValue(blockId)
   }
 
-  fun lastUseOf(value: AllocatableValue): InstrLabel? = deaths[value]
-
   fun isLastUse(value: AllocatableValue, label: InstrLabel): Boolean {
-    val last = lastUseOf(value) ?: return true
+    val last = deaths[value] ?: return true
     return last == label
   }
 
   fun livesThrough(value: AllocatableValue, label: InstrLabel): Boolean {
-    val (lastBlock, lastIndex) = lastUseOf(value) ?: return false
+    val (lastBlock, lastIndex) = deaths[value] ?: return false
     val (queryBlock, queriedIndex) = label
     return if (lastBlock != queryBlock) {
       check(value is Variable) { "Non-Variable escaped its definition block" }
