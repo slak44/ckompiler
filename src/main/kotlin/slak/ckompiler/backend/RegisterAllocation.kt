@@ -288,7 +288,12 @@ private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi:
  * Deallocate registers of values that die at the specified label.
  */
 private fun RegisterAllocationContext.unassignDyingAt(label: InstrLabel, mi: MachineInstruction) {
-  val dyingHere = mi.uses.filterIsInstance<AllocatableValue>().filter { graph.isLastUse(it, label) }
+  val uses = mi.uses.filterIsInstance<AllocatableValue>()
+  val dyingHere = if (mi.template is ParallelCopyTemplate) {
+    uses
+  } else {
+    uses.filter { graph.isLastUse(it, label) }
+  }
   for (value in dyingHere) {
     val color = coloring[value] ?: continue
     assigned -= color
