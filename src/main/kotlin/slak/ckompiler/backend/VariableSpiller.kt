@@ -129,10 +129,7 @@ private fun useDistance(
     l: InstrLabel,
     v: AllocatableValue
 ): UseDistance {
-  val isUsedAtL = graph[l.first][l.second.coerceAtLeast(0)]
-      .uses
-      .filter { it !is StackVariable && it !is MemoryLocation }
-      .any { it == v }
+  val isUsedAtL = graph[l.first][l.second.coerceAtLeast(0)].uses.any { it == v }
   if (isUsedAtL) return 0
   check(graph.isUsed(v))
   when (v) {
