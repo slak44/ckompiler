@@ -8,13 +8,15 @@ import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
 
+typealias InstrPhi = MutableMap<Variable, MutableMap<AtomicId, Variable>>
+
 class InstrBlock(
     val id: AtomicId,
     val seqId: Int,
     val domTreeHeight: Int,
     private val graph: InstructionGraph,
     private val instructions: MutableList<MachineInstruction>,
-    val phi: MutableMap<Variable, MutableMap<AtomicId, Variable>>
+    val phi: InstrPhi
 ) : MutableList<MachineInstruction> by instructions {
   override fun remove(element: MachineInstruction): Boolean {
     return removeAll(listOf(element))
@@ -26,18 +28,18 @@ class InstrBlock(
 
   override fun removeAt(index: Int): MachineInstruction {
     return instructions.removeAt(index).also {
-      graph.updateLastUses(id, index, -1)
+      graph.updateIndices(id, index, -1)
     }
   }
 
   override fun add(index: Int, element: MachineInstruction) {
     instructions.add(index, element)
-    graph.updateLastUses(id, index, 1)
+    graph.updateIndices(id, index, 1)
   }
 
   override fun addAll(index: Int, elements: Collection<MachineInstruction>): Boolean {
     return instructions.addAll(index, elements).also {
-      graph.updateLastUses(id, index, elements.size)
+      graph.updateIndices(id, index, elements.size)
     }
   }
 

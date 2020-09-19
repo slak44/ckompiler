@@ -10,6 +10,7 @@ import java.util.*
 
 private val logger = LogManager.getLogger()
 
+typealias DefUseChains = MutableMap<AllocatableValue, MutableSet<InstrLabel>>
 typealias InstrLabel = Pair<AtomicId, Int>
 
 class InstructionGraph private constructor(
@@ -22,7 +23,11 @@ class InstructionGraph private constructor(
   private val adjacency = mutableMapOf<AtomicId, MutableSet<InstrBlock>>()
   private val transposed = mutableMapOf<AtomicId, MutableSet<InstrBlock>>()
 
+  /**
+   * Stores immediate dominator for a block. Indexed by [InstrBlock.seqId].
+   */
   private val idom = mutableListOf<AtomicId>()
+
   private val dominanceFrontiers = mutableMapOf<AtomicId, Set<AtomicId>>()
 
   /**
@@ -30,14 +35,14 @@ class InstructionGraph private constructor(
    */
   val returnBlock: InstrBlock = newBlock(Int.MAX_VALUE, emptyList())
 
-  private val liveIns = mutableMapOf<AtomicId, MutableSet<Variable>>()
-
   /**
    * Store the block where a version of a [Variable] was defined.
    *
    * For [VirtualRegister]s, the definition is in the same block, and can be easily found by iterating the block.
    */
-  private val variableDefs = mutableMapOf<Variable, AtomicId>()
+  val variableDefs = mutableMapOf<Variable, AtomicId>()
+
+  lateinit var defUseChains: DefUseChains
 
   /**
    * Stores all variables used in parallel copies, for each block. Since these are basically φ instructions in the
@@ -47,20 +52,30 @@ class InstructionGraph private constructor(
    */
   val parallelCopies = mutableMapOf<AtomicId, MutableList<Variable>>()
 
-  val deaths = mutableMapOf<AllocatableValue, InstrLabel>()
+  val virtualDeaths = mutableMapOf<VirtualRegister, InstrLabel>()
 
   /**
-   * This function incrementally updates a "last uses" map, by updating all the last use indices that were pushed due to
-   * an instruction (or more) being inserted. It can also be used for removals, with [inserted] set to a negative value.
+   * @see computeLiveSetsByVar
    */
-  fun updateLastUses(
-      block: AtomicId,
-      index: LabelIndex,
-      inserted: Int = 1
-  ) {
-    for ((modifiedValue, oldDeath) in deaths.filterValues { it.first == block && it.second >= index }) {
-      val nextIdx = if (oldDeath.second == Int.MAX_VALUE) Int.MAX_VALUE else oldDeath.second + inserted
-      deaths[modifiedValue] = InstrLabel(block, nextIdx)
+  lateinit var liveSets: LiveSets
+
+  /**
+   * This function incrementally some maps, by updating all the indices that were pushed due to an instruction (or more)
+   * being inserted. It can also be used for removals, with [inserted] set to a negative value.
+   */
+  fun updateIndices(block: AtomicId, index: LabelIndex, inserted: Int = 1) {
+    for ((modifiedValue, oldLabel) in virtualDeaths.filterValues { it.first == block && it.second >= index }) {
+      val nextIdx = if (oldLabel.second == Int.MAX_VALUE) Int.MAX_VALUE else oldLabel.second + inserted
+      virtualDeaths[modifiedValue] = InstrLabel(block, nextIdx)
+    }
+    val toUpdate = defUseChains.map { (v, uses) -> v to uses.filter { it.first == block && it.second >= index } }
+    for ((modifiedValue, oldLabels) in toUpdate) {
+      for (oldLabel in oldLabels) {
+        val nextIdx = if (oldLabel.second == Int.MAX_VALUE) Int.MAX_VALUE else oldLabel.second + inserted
+        defUseChains[modifiedValue]!! -= oldLabel
+        defUseChains[modifiedValue]!! += InstrLabel(block, nextIdx)
+        liveSets = computeLiveSetsByVar()
+      }
     }
   }
 
@@ -69,19 +84,22 @@ class InstructionGraph private constructor(
    */
   fun createCopyOf(value: AllocatableValue, block: InstrBlock): AllocatableValue {
     if (value.isUndefined) return value
-    val copiedValue = if (value is Variable) {
-      val oldVersion = latestVersions.getValue(value.id)
-      latestVersions[value.id] = oldVersion + 1
-      val copy = value.copy(oldVersion + 1)
-      // Also update definitions for variables
-      variableDefs[copy] = block.id
-      copy
-    } else {
-      VirtualRegister(registerIds(), value.type)
+    return when (value) {
+      is Variable -> {
+        val oldVersion = latestVersions.getValue(value.id)
+        latestVersions[value.id] = oldVersion + 1
+        val copy = value.copy(oldVersion + 1)
+        // Also update definitions for variables
+        variableDefs[copy] = block.id
+        copy
+      }
+      is VirtualRegister -> {
+        val copy = VirtualRegister(registerIds(), value.type)
+        // The copy will die where the original died
+        virtualDeaths[copy] = virtualDeaths.getValue(value)
+        copy
+      }
     }
-    // The copy will die where the original died
-    deaths[copiedValue] = deaths.getValue(value)
-    return copiedValue
   }
 
   fun domTreeChildren(id: AtomicId) = (nodes.keys - returnBlock.id)
@@ -89,20 +107,21 @@ class InstructionGraph private constructor(
       .sortedBy { this[it].domTreeHeight }
       .asReversed()
 
-  val domTreePreorder get() = iterator<AtomicId> {
-    val visited = mutableSetOf<AtomicId>()
-    val stack = Stack<AtomicId>()
-    stack.push(startId)
-    while (stack.isNotEmpty()) {
-      val blockId = stack.pop()
-      if (blockId in visited) continue
-      yield(blockId)
-      visited += blockId
-      for (child in domTreeChildren(blockId)) {
-        stack.push(child)
+  val domTreePreorder
+    get() = iterator<AtomicId> {
+      val visited = mutableSetOf<AtomicId>()
+      val stack = Stack<AtomicId>()
+      stack.push(startId)
+      while (stack.isNotEmpty()) {
+        val blockId = stack.pop()
+        if (blockId in visited) continue
+        yield(blockId)
+        visited += blockId
+        for (child in domTreeChildren(blockId)) {
+          stack.push(child)
+        }
       }
     }
-  }
 
   /**
    * Traverse the dominator tree from a certain node ([beginAt]) upwards to the root of the tree.
@@ -140,25 +159,57 @@ class InstructionGraph private constructor(
     return transposed.getValue(blockId)
   }
 
-  fun isLastUse(value: AllocatableValue, label: InstrLabel): Boolean {
-    val last = deaths[value] ?: return true
-    return last == label
+  fun isDeadAt(value: Variable, label: InstrLabel): Boolean {
+    if (value.isUndefined) return true
+    val (block, index) = label
+    val isLiveIn = value in liveSets.liveIn[block] ?: emptyList()
+    val isLiveOut = value in liveSets.liveOut[block] ?: emptyList()
+    // Live-through
+    if (isLiveIn && isLiveOut) return false
+    // Never alive in this block
+    if (!isLiveIn && !isLiveOut) return true
+    // Killed in block, check death index
+    if (isLiveIn && !isLiveOut) {
+      return this[block].drop(index).any { value in it.uses.filterIsInstance<Variable>() }
+    }
+    // Defined in this block, check definition index
+    if (!isLiveIn && isLiveOut) {
+      return this[block].take(index).any { value in it.defs.filterIsInstance<Variable>() }
+    }
+    logger.throwICE("Unreachable")
   }
 
-  fun livesThrough(value: AllocatableValue, label: InstrLabel): Boolean {
-    val (lastBlock, lastIndex) = deaths[value] ?: return false
-    val (queryBlock, queriedIndex) = label
-    return if (lastBlock != queryBlock) {
-      check(value is Variable) { "Non-Variable escaped its definition block" }
-      successors(queryBlock).any { value in liveInsOf(it.id) }
-    } else {
-      lastIndex > queriedIndex
+  fun isDyingAt(value: AllocatableValue, label: InstrLabel): Boolean {
+    return when (value) {
+      is VirtualRegister -> {
+        // FIXME
+        val last = virtualDeaths[value] ?: return true
+        last == label
+      }
+      is Variable -> isDeadAt(value, label.first to label.second + 1)
     }
   }
 
-  fun isUsed(value: AllocatableValue): Boolean = value in deaths
+  fun livesThrough(value: AllocatableValue, label: InstrLabel): Boolean {
+    return when (value) {
+      is VirtualRegister -> {
+        // FIXME
+        val (lastBlock, lastIndex) = virtualDeaths[value] ?: return false
+        val (queryBlock, queriedIndex) = label
+        check(lastBlock == queryBlock)
+        lastIndex > queriedIndex
+      }
+      // FIXME: fairy inefficient
+      is Variable -> !isDeadAt(value, label) && !isDyingAt(value, label)
+    }
+  }
 
-  fun liveInsOf(blockId: AtomicId): Set<Variable> = liveIns[blockId] ?: emptySet()
+  fun isUsed(value: AllocatableValue): Boolean = when (value) {
+    is VirtualRegister -> value in virtualDeaths
+    is Variable -> value in defUseChains
+  }
+
+  fun liveInsOf(blockId: AtomicId): Set<Variable> = liveSets.liveIn[blockId] ?: emptySet()
 
   /**
    * Create a new [InstrBlock], without a backing [BasicBlock].
@@ -216,96 +267,34 @@ class InstructionGraph private constructor(
   }
 
   /**
-   * Populate [liveIns], via liveness analysis. Only variables are stored, because [VirtualRegister]s cannot escape
-   * their definition blocks.
+   * Populate [virtualDeaths].
    */
-  private fun computeLiveIns(allUses: Map<AllocatableValue, List<InstrLabel>>) {
-    val defUseChains = allUses.filterKeys { it is Variable }
-
-    for ((variable, definitionBlockId) in variableDefs) {
-      // Continue if undefined, we treat them as always dead
-      if (variable.isUndefined) continue
-      val usedInBlocks = defUseChains[variable]?.map { it.first }
-      // Continue if there are no uses
-      if (usedInBlocks == null || usedInBlocks.isEmpty()) continue
-      // Find blocks where the variable was used in φ
-      val phiUses = defUseChains.getValue(variable)
-          .filter { it.second == DEFINED_IN_PHI }
-          .map { it.first }
-          .toSet()
-      val visited = mutableSetOf<AtomicId>()
-      val toVisit = usedInBlocks.toMutableSet()
-      while (toVisit.isNotEmpty()) {
-        val next = toVisit.first()
-        toVisit -= next
-        if (next in visited) continue
-        visited += next
-        // If definition was in this block, it's not live-in in it
-        if (next == definitionBlockId) continue
-        // φ-uses are not interesting, since we know they either are not materialized for the control flow, and the one
-        // value that is, dies right at that φ
-        if (next !in phiUses) {
-          liveIns.putIfAbsent(next, mutableSetOf())
-          liveIns.getValue(next) += variable
-        }
-        // Go up the graph
-        val preds = predecessors(next).map { it.id }
-        toVisit += preds
-        // But only go up on edges for this version
-        // Which means skip all preds caused by the other versions in the φ
-        val phiIncoming = this[next].phi.entries.firstOrNull { it.key.id == variable.id }?.value
-        toVisit -= phiIncoming?.filter { it.value != variable }?.map { it.key } ?: emptyList()
-      }
-    }
-
-    // When there is only one node, there are no live-in variables (either empty map or empty list for that block)
-    check(nodes.size > 1 || liveIns.isEmpty() || liveIns.values.single().isEmpty()) {
-      "Live-ins exist for graph with single node"
-    }
-  }
-
-  /**
-   * Populate [deaths].
-   */
-  private fun findLastUses() {
+  private fun findVirtualRanges() {
     for (blockId in domTreePreorder) {
       for ((index, mi) in this[blockId].withIndex()) {
-        // For "variables", keep updating the map
+        // Keep updating the map
         // Obviously, the last use will be the last update in the map
-        for (it in mi.uses.filterIsInstance<AllocatableValue>()) {
-          deaths[it] = InstrLabel(blockId, index)
-        }
-      }
-      // We need to check successor phis: if something is used there, it means it is live-out in this block
-      // If it's live-out in this block, its "last use" is not what was recorded above
-      for (succ in successors(blockId)) {
-        for ((_, incoming) in succ.phi) {
-          val usedInSuccPhi = incoming.getValue(blockId)
-          deaths[usedInSuccPhi] = InstrLabel(blockId, LabelIndex.MAX_VALUE)
+        for (it in mi.uses.filterIsInstance<VirtualRegister>()) {
+          virtualDeaths[it] = InstrLabel(blockId, index)
         }
       }
     }
   }
 
-  private fun findDefUseChains(): Map<AllocatableValue, List<InstrLabel>> {
-    val allUses = mutableMapOf<AllocatableValue, MutableList<InstrLabel>>()
-
-    fun newUse(value: AllocatableValue, label: InstrLabel) {
-      allUses.putIfAbsent(value, mutableListOf())
-      allUses.getValue(value) += label
-    }
+  private fun findDefUseChains(): DefUseChains {
+    val allUses = mutableMapOf<AllocatableValue, MutableSet<InstrLabel>>()
 
     for (blockId in domTreePreorder) {
       val block = this[blockId]
       for (phi in block.phi) {
         for (variable in phi.value.values) {
-          newUse(variable, InstrLabel(blockId, DEFINED_IN_PHI))
+          allUses.getOrPut(variable, ::mutableSetOf) += InstrLabel(blockId, DEFINED_IN_PHI)
         }
       }
       for ((index, mi) in block.withIndex()) {
         val uses = mi.filterOperands { _, use -> use == VariableUse.USE }.filterIsInstance<AllocatableValue>()
         for (variable in uses + mi.constrainedArgs.map { it.value }) {
-          newUse(variable, InstrLabel(blockId, index))
+          allUses.getOrPut(variable, ::mutableSetOf) += InstrLabel(blockId, index)
         }
       }
     }
@@ -341,7 +330,6 @@ class InstructionGraph private constructor(
    * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.2.1.2, Algorithm 4.1
    */
   fun ssaReconstruction(reconstruct: Set<Variable>) {
-    val defUseChains = findDefUseChains()
     // vars is the set D in the algorithm
     val vars = reconstruct.toMutableSet()
     val ids = vars.mapTo(mutableSetOf()) { it.id }
@@ -425,12 +413,19 @@ class InstructionGraph private constructor(
           return maybeDefinedPhi.key
         }
         if (u in f) {
+          // Insert new φ for variable
           val yPrime = createCopyOf(variable, uBlock) as Variable
           uBlock.phi[yPrime] = mutableMapOf()
           vars += yPrime
           val incoming = predecessors(uBlock).map { it.id }
               .associateWithTo(mutableMapOf()) { findDef(InstrLabel(u, DEFINED_IN_PHI), it, variable) }
           uBlock.phi[yPrime] = incoming
+          // Update def-use chains for the vars used in the φ
+          for ((_, incVar) in incoming) {
+            defUseChains.getOrPut(incVar, ::mutableSetOf) += blockId to DEFINED_IN_PHI
+          }
+          // Add φ definition
+          variableDefs[yPrime] = blockId
           return yPrime
         }
       }
@@ -439,23 +434,36 @@ class InstructionGraph private constructor(
 
     // Take all affected variables
     for (x in reconstruct) {
+      // Make a copy, avoid concurrent modifications
+      val uses = defUseChains.getValue(x).toMutableList()
       // And rewrite all of their uses
-      for (label in defUseChains.getValue(x)) {
+      for (label in uses) {
         val (blockId, index) = label
         val block = this[blockId]
         // Call findDef to get the latest definition for this use, and update the use with the version of the definition
-        if (index == DEFINED_IN_PHI) {
+        val newVersion = if (index == DEFINED_IN_PHI) {
           // If it's a φuse, then call findDef with the correct predecessor to search for defs in
           val incoming = block.phi.entries.first { it.key.id == x.id }.value
           val target = incoming.entries.first { it.value == x }.key
           val newVersion = findDef(label, target, x)
+          // If already wired correctly, don't bother updating anything
+          if (x == newVersion) continue
           incoming[target] = newVersion
+          newVersion
         } else {
           // Otherwise just go up the dominator tree looking for definitions
           val newVersion = findDef(label, null, x)
           // If already wired correctly, don't bother rewriting anything
           if (x == newVersion) continue
+          // Rewrite use
           block[index] = block[index].rewriteBy(mapOf(x to newVersion))
+          newVersion
+        }
+        if (x != newVersion) {
+          // Update uses
+          defUseChains.getOrPut(x, ::mutableSetOf) -= blockId to index
+          defUseChains.getOrPut(newVersion, ::mutableSetOf) += blockId to index
+          liveSets = computeLiveSetsByVar()
         }
       }
     }
@@ -481,8 +489,9 @@ class InstructionGraph private constructor(
     dominanceFrontiers +=
         cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
     variableDefs += cfg.definitions.mapValues { it.value.first.nodeId }
-    findLastUses()
-    computeLiveIns(findDefUseChains())
+    defUseChains = findDefUseChains()
+    liveSets = computeLiveSetsByVar()
+    findVirtualRanges()
   }
 
   companion object {

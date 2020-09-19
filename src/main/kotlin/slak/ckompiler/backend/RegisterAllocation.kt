@@ -91,7 +91,9 @@ private fun TargetFunGenerator.insertSingleCopy(
   // The value is a constrained argument: it is still used at the constrained MI, after the copy
   // We know that is the last use, because all the ones afterwards were just rewritten
   // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
-  graph.deaths[value] = InstrLabel(block.id, index)
+  // FIXME this is probably wrong, as the var will be pickd up as alive
+  if (value is Variable) return
+  graph.virtualDeaths[value as VirtualRegister] = InstrLabel(block.id, index)
 }
 
 /**
@@ -120,9 +122,19 @@ private fun splitLiveRanges(
   // Also rewrite the constrained instr too
   block[atIndex + 1] = block[atIndex + 1].rewriteBy(rewriteMap)
 
-  for (value in actualValues) {
-    // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
-    graph.deaths[value] = InstrLabel(block.id, atIndex)
+  for ((value, rewritten) in rewriteMap) {
+    when (value) {
+      is VirtualRegister -> {
+        // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
+        graph.virtualDeaths[value] = InstrLabel(block.id, atIndex)
+      }
+      is Variable -> {
+        // Leave the variable use from atIndex alone: the parallel copy does indeed use the variable
+        // We do need to setup the copy's use at the rewritten instruction:
+        graph.defUseChains.getOrPut(rewritten, ::mutableSetOf) += block.id to atIndex + 1
+        graph.liveSets = graph.computeLiveSetsByVar()
+      }
+    }
   }
 }
 
@@ -145,14 +157,13 @@ private fun TargetFunGenerator.prepareForColoring() {
     // Track which variables are alive at any point in this block
     // Initialize with the block live-ins, and with φ vars
     val alive: MutableSet<AllocatableValue> = graph.liveInsOf(blockId).toMutableSet()
-    alive += block.phi.keys
 
     var index = 0
 
     fun updateAlive(index: Int) {
       val mi = block[index]
       val dyingHere = mi.uses.filterIsInstance<AllocatableValue>()
-          .filter { graph.isLastUse(it, InstrLabel(blockId, index)) }
+          .filter { graph.isDyingAt(it, InstrLabel(blockId, index)) }
       alive += mi.defs.filterIsInstance<AllocatableValue>().filter { graph.isUsed(it) }
       alive -= dyingHere
     }
@@ -292,7 +303,7 @@ private fun RegisterAllocationContext.unassignDyingAt(label: InstrLabel, mi: Mac
   val dyingHere = if (mi.template is ParallelCopyTemplate) {
     uses
   } else {
-    uses.filter { graph.isLastUse(it, label) }
+    uses.filter { graph.isDyingAt(it, label) }
   }
   for (value in dyingHere) {
     val color = coloring[value] ?: continue
@@ -351,8 +362,9 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
  * Register allocation for one [block]. Recursive DFS case.
  */
 private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
-  for (x in graph.liveInsOf(block.id)) {
+  for (x in graph.liveInsOf(block.id) - block.phi.keys) {
     // If the live-in wasn't colored, and is null, that's a bug
+    // Live-ins defined in the block's φ are not considered
     assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
   }
   // Add the parameter register constraints to assigned

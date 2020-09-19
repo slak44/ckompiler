@@ -173,4 +173,74 @@ class X64Tests {
     assert(result.stackSlots.isEmpty())
     assertEquals(2, result.allocations.values.distinct().size)
   }
+
+  private fun Set<Variable>.hasVars(vararg varNames: String) =
+      assertEquals(varNames.toList().sorted(), map { it.name + it.version }.sorted())
+
+  @Test
+  fun `LiveSets Liveness Is Correct 1`() {
+    val cfg = prepareCFG(resource("ssa/liveSetTest1.c"), source)
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val gen = X64Generator(cfg, target)
+    gen.graph.assertIsSSA()
+    val (liveIn, liveOut) = gen.graph.liveSets
+
+    with(gen.graph) {
+      liveOut.getValue(startId).hasVars("x1", "y1")
+      val (succ1, succ2) = successors(this[startId]).toList()
+      liveIn.getValue(succ1.id).hasVars("x1")
+      liveOut.getValue(succ1.id).hasVars("x1", "y2")
+      liveIn.getValue(succ2.id).hasVars("y1")
+      liveOut.getValue(succ2.id).hasVars("x2", "y1")
+      val final = successors(succ1).first()
+      liveIn.getValue(final.id).hasVars("x1", "y1", "x2", "y2", "x3", "y3")
+    }
+  }
+
+  @Test
+  fun `LiveSets Liveness Is Correct 2`() {
+    val cfg = prepareCFG(resource("ssa/liveSetTest2.c"), source)
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val gen = X64Generator(cfg, target)
+    gen.graph.assertIsSSA()
+    val (liveIn, liveOut) = gen.graph.liveSets
+
+    with(gen.graph) {
+      liveOut.getValue(startId).hasVars("x1")
+      val (ifOuterBefore, final) = successors(this[startId]).toList()
+      liveIn.getValue(ifOuterBefore.id).hasVars("x1")
+      liveOut.getValue(ifOuterBefore.id).hasVars("x1")
+      val (ifInner, ifInnerAfter) = successors(ifOuterBefore).toList()
+      assert(liveIn[ifInner.id]?.isEmpty() ?: true)
+      liveOut.getValue(ifInner.id).hasVars("x2")
+      liveIn.getValue(ifInnerAfter.id).hasVars("x1", "x2", "x3")
+      liveOut.getValue(ifInnerAfter.id).hasVars("x4")
+      liveIn.getValue(final.id).hasVars("x1", "x4", "x5")
+    }
+  }
+
+  @Test
+  fun `LiveSets Liveness Is Correct 3`() {
+    val cfg = prepareCFG(resource("ssa/liveSetTest3.c"), source)
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val gen = X64Generator(cfg, target)
+    gen.graph.assertIsSSA()
+    val (liveIn, liveOut) = gen.graph.liveSets
+
+    with(gen.graph) {
+      liveOut.getValue(startId).hasVars("x1")
+      val loopHeader = successors(this[startId]).first()
+      liveIn.getValue(loopHeader.id).hasVars("x1", "x5", "x2")
+      liveOut.getValue(loopHeader.id).hasVars("x2")
+      val (beforeIf, final) = successors(loopHeader).toList()
+      liveIn.getValue(beforeIf.id).hasVars("x2")
+      liveOut.getValue(beforeIf.id).hasVars("x2")
+      val (innerIf, afterIf) = successors(beforeIf).toList()
+      assert(liveIn[innerIf.id]?.isEmpty() ?: true)
+      liveOut.getValue(innerIf.id).hasVars("x3")
+      liveIn.getValue(afterIf.id).hasVars("x2", "x3", "x4")
+      liveOut.getValue(afterIf.id).hasVars("x5")
+      liveIn.getValue(final.id).hasVars("x2")
+    }
+  }
 }

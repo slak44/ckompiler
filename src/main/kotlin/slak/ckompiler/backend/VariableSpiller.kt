@@ -40,14 +40,10 @@ private fun TargetFunGenerator.findRegisterPressure(
       val classOf = target.registerClassOf(liveIn.type)
       current[classOf] = 1
     }
-    for ((phiDefined, _) in block.phi) {
-      val classOf = target.registerClassOf(phiDefined.type)
-      current[classOf] = current.getValue(classOf) + 1
-    }
     for ((index, mi) in block.withIndex()) {
       val dyingHere = mi.uses
           .filterIsInstance<AllocatableValue>()
-          .filter { graph.isLastUse(it, InstrLabel(blockId, index)) }
+          .filter { graph.isDyingAt(it, InstrLabel(blockId, index)) }
       // Reduce pressure for values that die at this label
       for (value in dyingHere) {
         val classOf = target.registerClassOf(value.type)
@@ -85,7 +81,7 @@ private fun TargetFunGenerator.spillClass(
 
   fun Sequence<IRValue>.ofClass() = filter { target.registerClassOf(it.type) == registerClass }
 
-  val p = (graph.liveInsOf(block.id) + block.phi.keys).asSequence().ofClass().toList()
+  val p = graph.liveInsOf(block.id).asSequence().ofClass().toList()
   require(p.size <= k)
   val q = mutableSetOf<IRValue>()
   q += p
@@ -95,7 +91,7 @@ private fun TargetFunGenerator.spillClass(
         .ofClass()
         .filter { it !is StackVariable && it !is MemoryLocation }
         .filter {
-          (it is AllocatableValue && graph.isLastUse(it, InstrLabel(block.id, index))) || it is PhysicalRegister
+          (it is AllocatableValue && graph.isDyingAt(it, InstrLabel(block.id, index))) || it is PhysicalRegister
         }
     for (value in dyingHere) {
       q -= value
@@ -139,10 +135,18 @@ private fun useDistance(
       .any { it == v }
   if (isUsedAtL) return 0
   check(graph.isUsed(v))
-  // Value is live-out, distance is rest of block from l
-  if (graph.deaths[v]?.second == LabelIndex.MAX_VALUE) return graph[l.first].size - l.second
-  // If l is after the last use, the distance is undefined
-  if (l.first == graph.deaths[v]?.first && l.second > graph.deaths[v]?.second!!) return LabelIndex.MAX_VALUE
-  // Simple distance
-  return graph.deaths.getValue(v).second - l.second
+  when (v) {
+    is VirtualRegister -> {
+      // Value is live-out, distance is rest of block from l
+      if (graph.virtualDeaths[v]?.second == LabelIndex.MAX_VALUE) return graph[l.first].size - l.second
+      // If l is after the last use, the distance is undefined
+      if (l.first == graph.virtualDeaths[v]?.first && l.second > graph.virtualDeaths[v]?.second!!) return LabelIndex.MAX_VALUE
+      // Simple distance
+      return graph.virtualDeaths.getValue(v).second - l.second
+    }
+    is Variable -> {
+      // FIXME: lol
+      return 7
+    }
+  }
 }

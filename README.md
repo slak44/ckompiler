@@ -574,13 +574,14 @@ The documentation in the code makes references to some of these documents,
 especially to the C standard.
 
 - [C11 draft standard][std_draft]
-- [Fast dominance algorithm][dom_algo]
 - [SSA book][ssa_book]
 - [System V ABI][sysVabi]
 - [NASM documentation][nasm]
 - [x86_64 calling conventions][x64calling]
 - [Intel 64 ISA reference][intel64isa]
+- [A simple, fast dominance algorithm, Cooper et al][dom_algo]
 - [Register Allocation for Programs in SSA Form, Sebastian Hack][hack]
+- [Computing Liveness Sets for SSA-Form Programs, Brander et al][liveness_sets]
 
 [impl_defs]: ./ListOfBehaviours.md
 [log4j2_xml]: ./src/main/resources/log4j2.xml
@@ -623,3 +624,4 @@ https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_met
 [machine_target]: ./src/main/kotlin/slak/ckompiler/backend/MachineTarget.kt
 [regalloc]: ./src/main/kotlin/slak/ckompiler/backend/RegisterAllocation.kt
 [igraph]: ./src/main/kotlin/slak/ckompiler/backend/InstructionGraph.kt
+[liveness_sets]: https://hal.inria.fr/inria-00558509/
