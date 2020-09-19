@@ -362,7 +362,7 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
  * Register allocation for one [block]. Recursive DFS case.
  */
 private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
-  for (x in graph.liveInsOf(block.id) - block.phi.keys) {
+  for (x in graph.liveInsOf(block.id) - block.phiDefs) {
     // If the live-in wasn't colored, and is null, that's a bug
     // Live-ins defined in the block's φ are not considered
     assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }

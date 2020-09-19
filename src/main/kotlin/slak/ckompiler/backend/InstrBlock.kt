@@ -18,6 +18,8 @@ class InstrBlock(
     private val instructions: MutableList<MachineInstruction>,
     val phi: InstrPhi
 ) : MutableList<MachineInstruction> by instructions {
+  val phiDefs get() = phi.keys
+
   override fun remove(element: MachineInstruction): Boolean {
     return removeAll(listOf(element))
   }

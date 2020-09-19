@@ -314,7 +314,7 @@ class InstructionGraph private constructor(
       val blockFront = dominanceFrontiers.getValue(block)
       iteratedFront += blockFront
       for (frontierBlock in blockFront.filter { node ->
-        nodes.getValue(node).phi.keys.any { it.id in variableDefIds } ||
+        nodes.getValue(node).phiDefs.any { it.id in variableDefIds } ||
             parallelCopies[node]?.any { it.id in variableDefIds } == true
       }) {
         iterate(frontierBlock)
