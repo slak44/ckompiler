@@ -362,9 +362,9 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
  * Register allocation for one [block]. Recursive DFS case.
  */
 private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
-  for (x in graph.liveInsOf(block.id) - block.phiDefs) {
+  for (x in graph.liveInsOf(block.id) - block.phiDefs - block.phiUses) {
     // If the live-in wasn't colored, and is null, that's a bug
-    // Live-ins defined in the block's φ are not considered
+    // Live-ins in the block's φ are not considered
     assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
   }
   // Add the parameter register constraints to assigned
@@ -372,7 +372,7 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
     assigned += generator.parameterMap.values.mapNotNull { (it as? PhysicalRegister)?.reg }
   }
   // Remove incoming φ-uses from assigned
-  for (used in block.phi.values.flatMap { it.values }) {
+  for (used in block.phiUses) {
     val color = coloring[used] ?: continue
     assigned -= color
   }

@@ -19,6 +19,7 @@ class InstrBlock(
     val phi: InstrPhi
 ) : MutableList<MachineInstruction> by instructions {
   val phiDefs get() = phi.keys
+  val phiUses get() = phi.values.flatMap { it.values }
 
   override fun remove(element: MachineInstruction): Boolean {
     return removeAll(listOf(element))

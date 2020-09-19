@@ -170,7 +170,7 @@ class InstructionGraph private constructor(
     if (!isLiveIn && !isLiveOut) return true
     // Killed in block, check death index
     if (isLiveIn && !isLiveOut) {
-      return this[block].drop(index).any { value in it.uses.filterIsInstance<Variable>() }
+      return this[block].drop(index).none { value in it.uses.filterIsInstance<Variable>() }
     }
     // Defined in this block, check definition index
     if (!isLiveIn && isLiveOut) {

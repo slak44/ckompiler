@@ -27,7 +27,7 @@ inline fun AllocationResult.walkGraphAllocs(
   for (blockId in graph.blocks) {
     val alive = mutableListOf<MachineRegister>()
     alive += graph.liveInsOf(blockId).map { allocations.getValue(it) }
-    val usedByPhi = graph[blockId].phi.values.flatMap { it.values }.filter { !it.isUndefined }
+    val usedByPhi = graph[blockId].phiUses.filter { !it.isUndefined }
     alive -= usedByPhi.map { allocations.getValue(it) }
     for ((index, mi) in graph[blockId].withIndex()) {
       val regsDefinedHere = mi.defs.intersect(allocated)
