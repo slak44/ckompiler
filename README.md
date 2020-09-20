@@ -568,6 +568,16 @@ actual registers and memory locations.
 Finally, the `AsmEmitter` emit the actual assembly from the `AsmInstruction`s
 passed from the generator.
 
+###### `--mi-debug` mode
+
+Like the `--cfg-mode` option above, the backend has a debugging option.
+By default, it prints the code at various execution points
+(`MachineInstruction`s, `InstrBlock`s and/or `AsmInstruction`s). It also prints
+the list of allocations made, and all the allocation violations.
+
+The `--mi-html` prints this information in pretty HTML instead:
+[example](readme-resources/example-mi-debug.html). 
+
 ### References
 
 The documentation in the code makes references to some of these documents,
