@@ -55,7 +55,8 @@ class X64Generator private constructor(
     }
     // +1 because we want to insert _after_ the index of the non-jump
     val indexToInsert = (jmpInstrs + 1).coerceAtLeast(0)
-    block.addAll(indexToInsert, copies)
+    // This is clearly post-allocation, so it's ok
+    block.unsafelyGetInstructions().addAll(indexToInsert, copies)
   }
 
   override fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>) {

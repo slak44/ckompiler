@@ -16,6 +16,9 @@ enum class ViolationType {
 /**
  * Find all wrongly colored registers. Notify the caller via the [violationHandler] callback for each violation.
  *
+ * Call this function _before_ any destructive operations on the block instructions. That's before stuff like
+ * [replaceParallelInstructions].
+ *
  * @return true if any [violationHandler] call returned true
  * @see ViolationType
  */
@@ -35,7 +38,7 @@ inline fun AllocationResult.walkGraphAllocs(
           .map { allocations.getValue(it) } +
           mi.defs.filterIsInstance<PhysicalRegister>().map { it.reg }
       val regsDyingHere = mi.uses.intersect(allocated)
-          .filter { graph.isDyingAt(it as AllocatableValue, InstrLabel(blockId, index)) }
+          .filter { graph.isDeadAfter(it as AllocatableValue, InstrLabel(blockId, index)) }
           .map { allocations.getValue(it) } +
           mi.uses.filterIsInstance<PhysicalRegister>().map { it.reg }
       val useDefRegs = mi

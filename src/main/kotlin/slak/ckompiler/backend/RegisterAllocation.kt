@@ -91,8 +91,10 @@ private fun TargetFunGenerator.insertSingleCopy(
   // The value is a constrained argument: it is still used at the constrained MI, after the copy
   // We know that is the last use, because all the ones afterwards were just rewritten
   // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
-  // FIXME this is probably wrong, as the var will be pickd up as alive
-  if (value is Variable) return
+  if (value is Variable) {
+    graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
+    return
+  }
   graph.virtualDeaths[value as VirtualRegister] = InstrLabel(block.id, index)
 }
 
@@ -113,8 +115,7 @@ private fun splitLiveRanges(
   val phi = ParallelCopyTemplate.createCopy(rewriteMap)
   phi.irLabelIndex = atIndex
   for (copiedValue in rewriteMap.values.filterIsInstance<Variable>()) {
-    graph.parallelCopies.putIfAbsent(block.id, mutableListOf())
-    graph.parallelCopies.getValue(block.id) += copiedValue
+    graph.parallelCopies.getOrPut(block.id, ::mutableListOf) += copiedValue
   }
 
   // Splice the copy in the instructions
@@ -129,13 +130,16 @@ private fun splitLiveRanges(
         graph.virtualDeaths[value] = InstrLabel(block.id, atIndex)
       }
       is Variable -> {
-        // Leave the variable use from atIndex alone: the parallel copy does indeed use the variable
-        // We do need to setup the copy's use at the rewritten instruction:
-        graph.defUseChains.getOrPut(rewritten, ::mutableSetOf) += block.id to atIndex + 1
-        graph.liveSets = graph.computeLiveSetsByVar()
+        // The use got pushed by adding the copy, remove that
+        graph.defUseChains.getOrPut(value, ::mutableSetOf) -= InstrLabel(block.id, atIndex + 1)
+        // Add back the variable use from atIndex: the parallel copy itself does indeed use the variable
+        graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, atIndex)
+        // We also need to setup the copy's use at the rewritten instruction:
+        graph.defUseChains.getOrPut(rewritten, ::mutableSetOf) += InstrLabel(block.id, atIndex + 1)
       }
     }
   }
+  // Don't rebuild liveness, ssaReconstruction will do it for us
 }
 
 /**
@@ -163,7 +167,7 @@ private fun TargetFunGenerator.prepareForColoring() {
     fun updateAlive(index: Int) {
       val mi = block[index]
       val dyingHere = mi.uses.filterIsInstance<AllocatableValue>()
-          .filter { graph.isDyingAt(it, InstrLabel(blockId, index)) }
+          .filter { graph.isDeadAfter(it, InstrLabel(blockId, index)) }
       alive += mi.defs.filterIsInstance<AllocatableValue>().filter { graph.isUsed(it) }
       alive -= dyingHere
     }
@@ -303,7 +307,7 @@ private fun RegisterAllocationContext.unassignDyingAt(label: InstrLabel, mi: Mac
   val dyingHere = if (mi.template is ParallelCopyTemplate) {
     uses
   } else {
-    uses.filter { graph.isDyingAt(it, label) }
+    uses.filter { graph.isDeadAfter(it, label) }
   }
   for (value in dyingHere) {
     val color = coloring[value] ?: continue
@@ -426,9 +430,12 @@ private fun RegisterAllocationContext.replaceParallelInstructions() {
     var intraBlockOffset = 0
     for ((label, copySequence) in blockPositions.sortedBy { it.key.second }) {
       val index = label.second + intraBlockOffset
-      // Drop the copy
-      graph[block].removeAt(index)
-      graph[block].addAll(index, copySequence)
+      // Update the instructions directly, because we don't care about liveness anymore
+      // Also it crashes, since this replacement breaks some invariants
+      val instrs = graph[block].unsafelyGetInstructions()
+      // Drop the copy, add the new sequence in its place
+      instrs.removeAt(index)
+      instrs.addAll(index, copySequence)
       // Added N copy MIs, removed the parallel MI, so the indices should offset by N - 1
       intraBlockOffset += copySequence.size - 1
     }
@@ -452,20 +459,21 @@ fun TargetFunGenerator.regAlloc(
   // FIXME: coalescing
   val ctx = RegisterAllocationContext(this)
   ctx.doAllocation()
-  if (!debugNoReplaceParallel) ctx.replaceParallelInstructions()
   val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
-  val intermediate = AllocationResult(graph, allocations, ctx.registerUseMap)
-  val final = removePhi(intermediate)
-  val failedCheck = if (!debugNoCheckAlloc) final.walkGraphAllocs { register, (blockId, index), type ->
-    if (type == ViolationType.SOFT) return@walkGraphAllocs false
-    logger.error("Hard violation of allocation for $register at (block: $blockId, index $index)")
-    return@walkGraphAllocs true
-  } else {
-    false
+
+  if (!debugNoCheckAlloc) {
+    val initial = AllocationResult(graph, allocations, ctx.registerUseMap)
+    val failedCheck = initial.walkGraphAllocs { register, (blockId, index), type ->
+      if (type == ViolationType.SOFT) return@walkGraphAllocs false
+      logger.error("Hard violation of allocation for $register at (block: $blockId, index $index)")
+      return@walkGraphAllocs true
+    }
+    check(!failedCheck) { "Hard violation. See above errors." }
   }
-  // FIXME: re-enable this when the "last" use issue is fixed
-//  check(!failedCheck) { "Hard violation. See above errors." }
-  return final
+
+  if (!debugNoReplaceParallel) ctx.replaceParallelInstructions()
+  val intermediate = AllocationResult(graph, allocations, ctx.registerUseMap)
+  return removePhi(intermediate)
 }
 
 /**

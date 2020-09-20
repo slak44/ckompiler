@@ -74,9 +74,9 @@ class InstructionGraph private constructor(
         val nextIdx = if (oldLabel.second == Int.MAX_VALUE) Int.MAX_VALUE else oldLabel.second + inserted
         defUseChains[modifiedValue]!! -= oldLabel
         defUseChains[modifiedValue]!! += InstrLabel(block, nextIdx)
-        liveSets = computeLiveSetsByVar()
       }
     }
+    liveSets = computeLiveSetsByVar()
   }
 
   /**
@@ -160,26 +160,42 @@ class InstructionGraph private constructor(
   }
 
   fun isDeadAt(value: Variable, label: InstrLabel): Boolean {
-    if (value.isUndefined) return true
+    if (value.isUndefined || !isUsed(value)) return true
+
     val (block, index) = label
     val isLiveIn = value in liveSets.liveIn[block] ?: emptyList()
     val isLiveOut = value in liveSets.liveOut[block] ?: emptyList()
+
     // Live-through
     if (isLiveIn && isLiveOut) return false
-    // Never alive in this block
-    if (!isLiveIn && !isLiveOut) return true
-    // Killed in block, check death index
+
+    val lastUseHere = defUseChains.getValue(value).filter { it.first == block }.maxBy { it.second }
+
+    // Killed in block, check if index is after last use
     if (isLiveIn && !isLiveOut) {
-      return this[block].drop(index).none { value in it.uses.filterIsInstance<Variable>() }
+      return lastUseHere == null || index > lastUseHere.second
     }
+
+    val definitionHere = this[block].indexOfFirst { value in it.defs }
+    check(definitionHere != -1) { "Not live-in, but there is no definition of this variable here" }
+
     // Defined in this block, check definition index
     if (!isLiveIn && isLiveOut) {
-      return this[block].take(index).any { value in it.defs.filterIsInstance<Variable>() }
+      return index < definitionHere
+    }
+
+    if (!isLiveIn && !isLiveOut) {
+      // If lastUseHere is null, and it's neither live-in nor live-out, this value should return false for isUsed
+      // Which is checked at the top of this function, so it's a bug if no "last" use is found here
+      checkNotNull(lastUseHere)
+      // Otherwise, it is both defined and killed in this block
+      // If the index is after the last use, or before the definition, it's dead
+      return index > lastUseHere.second || index < definitionHere
     }
     logger.throwICE("Unreachable")
   }
 
-  fun isDyingAt(value: AllocatableValue, label: InstrLabel): Boolean {
+  fun isDeadAfter(value: AllocatableValue, label: InstrLabel): Boolean {
     return when (value) {
       is VirtualRegister -> {
         // FIXME
@@ -200,13 +216,13 @@ class InstructionGraph private constructor(
         lastIndex > queriedIndex
       }
       // FIXME: fairy inefficient
-      is Variable -> !isDeadAt(value, label) && !isDyingAt(value, label)
+      is Variable -> !isDeadAt(value, label) && !isDeadAfter(value, label)
     }
   }
 
   fun isUsed(value: AllocatableValue): Boolean = when (value) {
     is VirtualRegister -> value in virtualDeaths
-    is Variable -> value in defUseChains
+    is Variable -> value in defUseChains && defUseChains.getValue(value).isNotEmpty()
   }
 
   fun liveInsOf(blockId: AtomicId): Set<Variable> = liveSets.liveIn[blockId] ?: emptySet()
@@ -420,12 +436,12 @@ class InstructionGraph private constructor(
           val incoming = predecessors(uBlock).map { it.id }
               .associateWithTo(mutableMapOf()) { findDef(InstrLabel(u, DEFINED_IN_PHI), it, variable) }
           uBlock.phi[yPrime] = incoming
-          // Update def-use chains for the vars used in the φ
-          for ((_, incVar) in incoming) {
-            defUseChains.getOrPut(incVar, ::mutableSetOf) += blockId to DEFINED_IN_PHI
-          }
           // Add φ definition
           variableDefs[yPrime] = blockId
+          // Update def-use chains for the vars used in the φ
+          for ((_, incVar) in incoming) {
+            defUseChains.getOrPut(incVar, ::mutableSetOf) += InstrLabel(blockId, DEFINED_IN_PHI)
+          }
           return yPrime
         }
       }
@@ -461,12 +477,12 @@ class InstructionGraph private constructor(
         }
         if (x != newVersion) {
           // Update uses
-          defUseChains.getOrPut(x, ::mutableSetOf) -= blockId to index
-          defUseChains.getOrPut(newVersion, ::mutableSetOf) += blockId to index
-          liveSets = computeLiveSetsByVar()
+          defUseChains.getOrPut(x, ::mutableSetOf) -= label
+          defUseChains.getOrPut(newVersion, ::mutableSetOf) += label
         }
       }
     }
+    liveSets = computeLiveSetsByVar()
   }
 
   /**
@@ -480,14 +496,16 @@ class InstructionGraph private constructor(
       idom[block.seqId] = cfg.doms[node]!!.nodeId
     }
     nodes[returnBlock.id] = returnBlock
+    adjacency[returnBlock.id] = mutableSetOf()
+    transposed[returnBlock.id] = mutableSetOf()
     for (node in cfg.domTreePreorder) {
       adjacency[node.nodeId] = node.successors.mapTo(mutableSetOf()) { nodes.getValue(it.nodeId) }
       transposed[node.nodeId] = node.preds.mapTo(mutableSetOf()) { nodes.getValue(it.nodeId) }
+      if (node.terminator is ImpossibleJump) {
+        transposed.getValue(returnBlock.id) += nodes.getValue(node.nodeId)
+      }
     }
-    adjacency[returnBlock.id] = mutableSetOf()
-    // Technically the transposed edges is not empty for returnBlock, but we kinda want to crash in that case
-    dominanceFrontiers +=
-        cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
+    dominanceFrontiers += cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
     variableDefs += cfg.definitions.mapValues { it.value.first.nodeId }
     defUseChains = findDefUseChains()
     liveSets = computeLiveSetsByVar()

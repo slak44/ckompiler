@@ -21,6 +21,17 @@ class InstrBlock(
   val phiDefs get() = phi.keys
   val phiUses get() = phi.values.flatMap { it.values }
 
+  /**
+   * Bypass the [InstructionGraph.updateIndices] calls in this object's [MutableList] implementation to get the
+   * underlying object.
+   *
+   * This is useful for post-allocation phases, where liveness data is no longer useful, and the index updates are a
+   * waste.
+   *
+   * Still, callers beware.
+   */
+  fun unsafelyGetInstructions() = instructions
+
   override fun remove(element: MachineInstruction): Boolean {
     return removeAll(listOf(element))
   }

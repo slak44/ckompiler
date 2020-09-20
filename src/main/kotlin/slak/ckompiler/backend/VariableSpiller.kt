@@ -43,7 +43,7 @@ private fun TargetFunGenerator.findRegisterPressure(
     for ((index, mi) in block.withIndex()) {
       val dyingHere = mi.uses
           .filterIsInstance<AllocatableValue>()
-          .filter { graph.isDyingAt(it, InstrLabel(blockId, index)) }
+          .filter { graph.isDeadAfter(it, InstrLabel(blockId, index)) }
       // Reduce pressure for values that die at this label
       for (value in dyingHere) {
         val classOf = target.registerClassOf(value.type)
@@ -91,7 +91,7 @@ private fun TargetFunGenerator.spillClass(
         .ofClass()
         .filter { it !is StackVariable && it !is MemoryLocation }
         .filter {
-          (it is AllocatableValue && graph.isDyingAt(it, InstrLabel(block.id, index))) || it is PhysicalRegister
+          (it is AllocatableValue && graph.isDeadAfter(it, InstrLabel(block.id, index))) || it is PhysicalRegister
         }
     for (value in dyingHere) {
       q -= value

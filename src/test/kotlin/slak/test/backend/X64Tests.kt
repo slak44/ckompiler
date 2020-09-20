@@ -243,4 +243,21 @@ class X64Tests {
       liveIn.getValue(final.id).hasVars("x2")
     }
   }
+
+  @Test
+  fun `LiveSets Liveness Is Correct 4`() {
+    val cfg = prepareCFG(resource("e2e/calls/ifCall.c"), source)
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val gen = X64Generator(cfg, target)
+    gen.graph.assertIsSSA()
+    val (liveIn, liveOut) = gen.graph.liveSets
+
+    with(gen.graph) {
+      liveOut.getValue(startId).hasVars("x1")
+      val (ifBlock, final) = successors(startId).toList()
+      liveIn.getValue(ifBlock.id).hasVars("x1")
+      liveOut.getValue(ifBlock.id).hasVars("x1")
+      liveIn.getValue(final.id).hasVars("x1")
+    }
+  }
 }
