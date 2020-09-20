@@ -436,11 +436,9 @@ class InstructionGraph private constructor(
           val incoming = predecessors(uBlock).map { it.id }
               .associateWithTo(mutableMapOf()) { findDef(InstrLabel(u, DEFINED_IN_PHI), it, variable) }
           uBlock.phi[yPrime] = incoming
-          // Add φ definition
-          variableDefs[yPrime] = blockId
           // Update def-use chains for the vars used in the φ
           for ((_, incVar) in incoming) {
-            defUseChains.getOrPut(incVar, ::mutableSetOf) += InstrLabel(blockId, DEFINED_IN_PHI)
+            defUseChains.getOrPut(incVar, ::mutableSetOf) += InstrLabel(uBlock.id, DEFINED_IN_PHI)
           }
           return yPrime
         }
