@@ -21,7 +21,8 @@ private fun printNotBlank(text: String?) {
 
 fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) {
   val genInitial = X64Generator(createCFG(), target)
-  val (graph) = genInitial.regAlloc(debugNoReplaceParallel = true, debugNoCheckAlloc = true)
+  val initialAlloc = genInitial.regAlloc(debugNoPostColoring = true, debugNoCheckAlloc = true)
+  val (graph) = initialAlloc
   printHeader("Initial MachineInstructions (with parallel copies)")
   for (blockId in graph.blocks - graph.returnBlock.id) {
     val block = graph[blockId]
@@ -41,9 +42,9 @@ fun printMIDebug(target: X64Target, showDummies: Boolean, createCFG: () -> CFG) 
     println("allocate $value to $register")
   }
   printHeader("Allocation violations")
-  realAllocation.walkGraphAllocs { register, (block, index), type ->
+  initialAlloc.walkGraphAllocs { register, (block, index), type ->
     println("[$type] coloring violation for $register at (block $block, index $index)")
-    println(finalGraph[block][index].toString().lines().joinToString("\n") { "-->$it" })
+    println(graph[block][index].toString().lines().joinToString("\n") { "-->$it" })
     false
   }
   printHeader("Processed MachineInstructions (with applied allocation)")

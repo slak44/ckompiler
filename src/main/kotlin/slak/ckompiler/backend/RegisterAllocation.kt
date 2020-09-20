@@ -446,12 +446,12 @@ private fun RegisterAllocationContext.replaceParallelInstructions() {
  * Performs target-independent spilling and register allocation.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
- * @param debugNoReplaceParallel only for debugging: if true, [replaceParallelInstructions] will not be called
- * @param debugNoCheckAlloc only for debugging: if true, do not crash when [walkGraphAllocs] finds a hard violation
+ * @param debugNoPostColoring only for debugging: if true, post-coloring transforms will not be applied
+ * @param debugNoCheckAlloc only for debugging: if true, do not run [walkGraphAllocs]
  * @see runSpiller
  */
 fun TargetFunGenerator.regAlloc(
-    debugNoReplaceParallel: Boolean = false,
+    debugNoPostColoring: Boolean = false,
     debugNoCheckAlloc: Boolean = false
 ): AllocationResult {
   runSpiller()
@@ -460,20 +460,20 @@ fun TargetFunGenerator.regAlloc(
   val ctx = RegisterAllocationContext(this)
   ctx.doAllocation()
   val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
+  val result = AllocationResult(graph, allocations, ctx.registerUseMap)
 
   if (!debugNoCheckAlloc) {
-    val initial = AllocationResult(graph, allocations, ctx.registerUseMap)
-    val failedCheck = initial.walkGraphAllocs { register, (blockId, index), type ->
+    val failedCheck = result.walkGraphAllocs { register, (blockId, index), type ->
       if (type == ViolationType.SOFT) return@walkGraphAllocs false
       logger.error("Hard violation of allocation for $register at (block: $blockId, index $index)")
       return@walkGraphAllocs true
     }
     check(!failedCheck) { "Hard violation. See above errors." }
   }
+  if (debugNoPostColoring) return result
 
-  if (!debugNoReplaceParallel) ctx.replaceParallelInstructions()
-  val intermediate = AllocationResult(graph, allocations, ctx.registerUseMap)
-  return removePhi(intermediate)
+  ctx.replaceParallelInstructions()
+  return removePhi(result)
 }
 
 /**
