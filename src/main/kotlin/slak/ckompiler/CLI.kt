@@ -238,6 +238,7 @@ class CLI(private val stdinStream: InputStream) :
       "Choose which function to print debug data for", initialValue = "main")
 
   private val showDummies by cli.flagArgument("--show-dummies", "Show all dummy allocations")
+  private val miHtmlOutput by cli.flagArgument("--mi-html", "Generate pretty HTML debug view")
 
   init {
     cli.helpGroup("Compiler debug options")
@@ -402,7 +403,7 @@ class CLI(private val stdinStream: InputStream) :
 
     if (isMIDebugOnly) {
       val function = allFuncs.findNamedFunction(miDebugFuncName) ?: return null
-      printMIDebug(target, showDummies) {
+      val miText = generateMIDebug(target, relPath, text, showDummies = showDummies, generateHtml = miHtmlOutput) {
         CFG(
             f = function,
             targetData = MachineTargetData.x64,
@@ -411,6 +412,11 @@ class CLI(private val stdinStream: InputStream) :
             forceAllNodes = false,
             forceReturnZero = function.name == "main"
         )
+      }
+      if (output.isPresent) {
+        fileFrom(output.get()).writeText(miText)
+      } else {
+        println(miText)
       }
       return null
     }
