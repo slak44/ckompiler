@@ -233,6 +233,8 @@ class InstructionGraph private constructor(
    * Use this function with care: [nodes], [adjacency], [transposed] and maybe other state must be updated.
    */
   private fun newBlock(treeHeight: Int, instrs: List<MachineInstruction>): InstrBlock {
+    // Increase size of idom array, because the seqId is nodes.size
+    idom += 0
     return InstrBlock(BasicBlock.nodeCounter(), nodes.size, treeHeight, this, instrs.toMutableList(), mutableMapOf())
   }
 
@@ -266,6 +268,11 @@ class InstructionGraph private constructor(
     val newBlock = newBlock(dest.domTreeHeight, listOf(createJump(dest)))
     replaceJump(src, dest, newBlock)
     nodes[newBlock.id] = newBlock
+    // Update dominator tree
+    idom[newBlock.seqId] = src.id
+    if (idom[dest.seqId] == src.id) {
+      idom[dest.seqId] = newBlock.id
+    }
     // Adjust existing edges
     adjacency.getValue(src.id) -= dest
     transposed.getValue(dest.id) -= src
