@@ -175,10 +175,13 @@ data class MachineInstruction(
     val constrainedResText = constrainedResList.joinToString("\n\t", prefix = "\n\t") {
       "[result ${it.value} constrained to ${it.target}]"
     }.trimIfEmpty()
-    val dummyArgs = argUndefined.joinToString(", ") { it.target.regName }
-    val dummyRes = resUndefined.joinToString(", ") { it.target.regName }
+    val truncateTo = 10
+    val extraTextArgs = if (argUndefined.size > truncateTo) " + ${argUndefined.size - truncateTo} others" else ""
+    val extraTextRes = if (resUndefined.size > truncateTo) " + ${resUndefined.size - truncateTo} others" else ""
+    val dummyArgs = argUndefined.take(truncateTo).joinToString(", ") { it.target.regName }
+    val dummyRes = resUndefined.take(truncateTo).joinToString(", ") { it.target.regName }
     val dummyLine = if (argUndefined.isNotEmpty() && resUndefined.isNotEmpty()) {
-      "\n\t[dummy args: $dummyArgs | dummy res: $dummyRes]"
+      "\n\t[dummy args: $dummyArgs$extraTextArgs | dummy res: $dummyRes$extraTextRes]"
     } else {
       ""
     }
