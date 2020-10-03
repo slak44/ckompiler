@@ -169,7 +169,7 @@ class InstructionGraph private constructor(
     // Live-through
     if (isLiveIn && isLiveOut) return false
 
-    val lastUseHere = defUseChains.getValue(value).filter { it.first == block }.maxBy { it.second }
+    val lastUseHere = defUseChains.getValue(value).filter { it.first == block }.maxByOrNull { it.second }
 
     // Killed in block, check if index is after last use
     if (isLiveIn && !isLiveOut) {
