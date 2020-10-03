@@ -23,6 +23,9 @@ class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : 
       "rbx", "rsp", "rbp", "r12", "r13", "r14", "r15"
   ).mapTo(mutableSetOf(), this::registerByName)
 
+  /**
+   * System V ABI: figure 3.4, page 23
+   */
   val callerSaved = registers - calleeSaved
 
   /**

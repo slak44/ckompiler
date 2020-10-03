@@ -25,11 +25,22 @@ typealias RegisterAlias = Pair<String, Int>
 
 fun alias(name: String, size: Int): RegisterAlias = name to size
 
+/**
+ * Target-independent register representation.
+ */
 interface MachineRegister {
+  /**
+   * Unique per instance.
+   */
   val id: AtomicId
+
   val regName: String
   val sizeBytes: Int
   val valueClass: MachineRegisterClass
+
+  /**
+   * For overlapping registers files (like x64), other name+size aliases of this same register.
+   */
   val aliases: List<RegisterAlias>
 }
 
