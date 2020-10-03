@@ -21,6 +21,9 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       parallelCopies.filterValues { it.any { variable -> variable.id in ids } }.map { it.key }
   val f = iteratedDominanceFrontier(blocks, ids)
 
+  // Track which blocks had their φ changed, so we can easily eliminate dead φ copies
+  val hasAlteredPhi = mutableSetOf<Pair<AtomicId, Variable>>()
+
   /**
    * This function looks for the closest definition of [variable].
    *
@@ -104,6 +107,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
         val incoming = predecessors(uBlock).map { it.id }
             .associateWithTo(mutableMapOf()) { findDef(InstrLabel(u, DEFINED_IN_PHI), it, variable) }
         uBlock.phi[yPrime] = incoming
+        hasAlteredPhi += uBlock.id to yPrime
         // Update def-use chains for the vars used in the φ
         for ((_, incVar) in incoming) {
           defUseChains.getOrPut(incVar, ::mutableSetOf) += InstrLabel(uBlock.id, DEFINED_IN_PHI)
@@ -125,11 +129,13 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       // Call findDef to get the latest definition for this use, and update the use with the version of the definition
       val newVersion = if (index == DEFINED_IN_PHI) {
         // If it's a φuse, then call findDef with the correct predecessor to search for defs in
-        val incoming = block.phi.entries.first { it.key.id == x.id }.value
+        val phiEntry = block.phi.entries.first { it.key.id == x.id }
+        val incoming = phiEntry.value
         val target = incoming.entries.first { it.value == x }.key
         val newVersion = findDef(label, target, x)
         // If already wired correctly, don't bother updating anything
         if (x == newVersion) continue
+        hasAlteredPhi += blockId to phiEntry.key
         incoming[target] = newVersion
         newVersion
       } else {
@@ -148,5 +154,56 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       }
     }
   }
+  eliminateDeadPhis(hasAlteredPhi)
   liveSets = computeLiveSetsByVar()
+}
+
+/**
+ * Erase instructions of the form `signed int i v6 ← φ(n6 v5, n7 v5)`, and rewrite all uses of the deleted value.
+ *
+ * If multiple versions need to be rewritten (like v5 -> v4, and v6 -> v5), we directly rewrite to the final values
+ * (v5 -> v4, v6 -> v4).
+ *
+ * This function can also create further eliminations. Consider `signed int x v4 ← φ(n2 v2, n3 v3)` and
+ * `signed int x v3 ← φ(n1 v2, n5 v2)`. The second φ is useless, and so we replace v3 <- v2. This makes the first φ
+ * useless as well. This function also deals with this case, by calling itself recursively if a φ was rewritten.
+ */
+private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, Variable>>) {
+  if (alteredPhis.isEmpty()) return
+
+  val variableRewrites = mutableMapOf<Variable, Variable>()
+  for ((blockId, variable) in alteredPhis) {
+    val versions = this[blockId].phi.getValue(variable).map { it.value.version }
+    // All versions are identical, φ is useless for this variable
+    if (versions.distinct().size == 1) {
+      val rewritten = variable.copy(version = versions[0])
+      // If rewritten itself is marked for rewrite, go directly to the re-rewritten version
+      val realRewritten = if (rewritten in variableRewrites) variableRewrites.getValue(rewritten) else rewritten
+      // Mark it for rewrite
+      variableRewrites += variable to realRewritten
+      // And get rid of the φ
+      this[blockId].phi -= variable
+      defUseChains.getOrPut(rewritten, ::mutableSetOf) -= InstrLabel(blockId, DEFINED_IN_PHI)
+      variableDefs -= variable
+    }
+  }
+  val recursiveAlterations = mutableSetOf<Pair<AtomicId, Variable>>()
+  for ((originalVariable, rewritten) in variableRewrites) {
+    // Rewrite all uses of the original variable
+    for ((blockId, index) in defUseChains.getValue(originalVariable)) {
+      if (index == DEFINED_IN_PHI) {
+        val phiEntry = this[blockId].phi.entries.first { it.key.id == originalVariable.id }
+        val incoming = phiEntry.value
+        val target = incoming.entries.first { it.value == originalVariable }.key
+        incoming[target] = rewritten
+        recursiveAlterations += blockId to phiEntry.key
+      } else {
+        this[blockId][index] = this[blockId][index].rewriteBy(mapOf(originalVariable to rewritten))
+      }
+    }
+    // Move all the uses over to the rewritten var
+    defUseChains.getOrPut(rewritten, ::mutableSetOf) += defUseChains.getValue(originalVariable)
+    defUseChains.getValue(originalVariable).clear()
+  }
+  eliminateDeadPhis(recursiveAlterations)
 }
