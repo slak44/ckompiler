@@ -11,6 +11,6 @@ int main() {
     x = 0;
     // live-out: x2, y1
   }
-  // live-in: x1, x2, y1, y2, x3, y3X
+  // live-in: x1, x2, y1, y2, x3, y3
   return x + y;
 }
