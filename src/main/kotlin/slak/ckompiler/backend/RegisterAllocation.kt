@@ -161,6 +161,8 @@ private fun TargetFunGenerator.prepareForColoring() {
     // Track which variables are alive at any point in this block
     // Initialize with the block live-ins, and with φ vars
     val alive: MutableSet<AllocatableValue> = graph.liveInsOf(blockId).toMutableSet()
+    // The φ-uses are not alive at index 0; they die at the φ itself
+    alive -= block.phiUses
 
     var index = 0
 
