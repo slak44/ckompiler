@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import slak.test.compileAndRun
 import slak.test.expect
 import slak.test.justExitCode
+import slak.test.resource
 
 class X64ConstrainedDivTests {
   @Test
@@ -183,5 +184,10 @@ class X64ConstrainedDivTests {
         return 0;
       }
     """.trimIndent()).expect(stdout = (a / b).toString())
+  }
+
+  @Test
+  fun `Constrained Div Test Spilling`() {
+    compileAndRun(resource("ssa/spillWIthConstrained.c")).justExitCode(9)
   }
 }
