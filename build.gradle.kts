@@ -3,8 +3,9 @@ import java.util.Properties
 
 plugins {
   application
-  kotlin("jvm") version "1.4.0"
+  kotlin("jvm") version "1.4.10"
   `maven-publish`
+  id("org.jetbrains.dokka") version "1.4.10"
 }
 
 group = "ckompiler"
