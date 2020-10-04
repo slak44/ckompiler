@@ -70,11 +70,13 @@ class InstructionGraph private constructor(
     }
     val toUpdate = defUseChains.map { (v, uses) -> v to uses.filter { it.first == block && it.second >= index } }
     for ((modifiedValue, oldLabels) in toUpdate) {
+      val updated = mutableListOf<InstrLabel>()
       for (oldLabel in oldLabels) {
         val nextIdx = if (oldLabel.second == Int.MAX_VALUE) Int.MAX_VALUE else oldLabel.second + inserted
         defUseChains[modifiedValue]!! -= oldLabel
-        defUseChains[modifiedValue]!! += InstrLabel(block, nextIdx)
+        updated += InstrLabel(block, nextIdx)
       }
+      defUseChains[modifiedValue]!! += updated
     }
     liveSets = computeLiveSetsByVar()
   }
