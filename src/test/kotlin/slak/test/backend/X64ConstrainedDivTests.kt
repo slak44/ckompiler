@@ -185,9 +185,4 @@ class X64ConstrainedDivTests {
       }
     """.trimIndent()).expect(stdout = (a / b).toString())
   }
-
-  @Test
-  fun `Constrained Div Test Spilling`() {
-    compileAndRun(resource("ssa/spillWIthConstrained.c")).justExitCode(9)
-  }
 }

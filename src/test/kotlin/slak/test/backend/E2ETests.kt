@@ -437,4 +437,9 @@ class E2ETests {
       }
     """.trimIndent()).justExitCode(2)
   }
+
+  @Test
+  fun `Constrained Spilling`() {
+    compileAndRun(resource("e2e/spillWIthConstrained.c")).justExitCode(9)
+  }
 }
