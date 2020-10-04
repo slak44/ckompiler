@@ -161,18 +161,20 @@ data class MachineInstruction(
 
   override fun toString(): String {
     if (template is ParallelCopyTemplate) return template.toString()
-    fun String.trimIfEmpty() = if (this.isBlank()) "" else this
+    val linkPrefix = "├─ "
+    fun String.trimIfEmpty() = if (this.replace(linkPrefix, "").isBlank()) "" else this
     val linkedBefore = links
         .filter { it.pos == LinkPosition.BEFORE }
-        .joinToString("\n\t", prefix = "\t", postfix = "\n") { it.mi.toString() }
+        .joinToString("\n$linkPrefix", prefix = linkPrefix, postfix = "\n") { it.mi.toString() }
         .trimIfEmpty()
+        .replaceFirst(linkPrefix, "┌─ ")
     val initial = template.name + operands.joinToString(", ", prefix = " ")
     val (constrainedArgList, argUndefined) = constrainedArgs.partition { !it.value.isUndefined }
-    val constrainedArgsText = constrainedArgList.joinToString("\n\t", prefix = "\n\t") {
+    val constrainedArgsText = constrainedArgList.joinToString("\n$linkPrefix", prefix = "\n$linkPrefix") {
       "[constrains ${it.value} to ${it.target}]"
     }.trimIfEmpty()
     val (constrainedResList, resUndefined) = constrainedRes.partition { !it.value.isUndefined }
-    val constrainedResText = constrainedResList.joinToString("\n\t", prefix = "\n\t") {
+    val constrainedResText = constrainedResList.joinToString("\n$linkPrefix", prefix = "\n$linkPrefix") {
       "[result ${it.value} constrained to ${it.target}]"
     }.trimIfEmpty()
     val truncateTo = 10
@@ -181,15 +183,20 @@ data class MachineInstruction(
     val dummyArgs = argUndefined.take(truncateTo).joinToString(", ") { it.target.regName }
     val dummyRes = resUndefined.take(truncateTo).joinToString(", ") { it.target.regName }
     val dummyLine = if (argUndefined.isNotEmpty() && resUndefined.isNotEmpty()) {
-      "\n\t[dummy args: $dummyArgs$extraTextArgs | dummy res: $dummyRes$extraTextRes]"
+      "\n$linkPrefix[dummy args: $dummyArgs$extraTextArgs | dummy res: $dummyRes$extraTextRes]"
     } else {
       ""
     }
     val linkedAfter = links
         .filter { it.pos == LinkPosition.AFTER }
-        .joinToString("\n\t", prefix = "\n\t") { it.mi.toString() }
+        .joinToString("\n$linkPrefix", prefix = "\n$linkPrefix") { it.mi.toString() }
         .trimIfEmpty()
-    return linkedBefore + initial + constrainedArgsText + constrainedResText + dummyLine + linkedAfter
+    val allLinesAfter = (constrainedArgsText + constrainedResText + dummyLine + linkedAfter)
+        .reversed()
+        .replaceFirst(linkPrefix.reversed(), "└─ ".reversed())
+        .reversed()
+
+    return linkedBefore + initial + allLinesAfter
   }
 }
 
