@@ -312,11 +312,15 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
    * new ones.
    *
    * This is a target-dependent operation, because it is basically a localized instruction selection.
+   *
+   * @param spilled set of [Variable.id]
    */
   fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>)
 
   /**
    * Run [rewriteSpill] on every block, except for the [InstructionGraph.returnBlock], since that block is synthetic.
+   *
+   * @param spilled set of [Variable.id]
    */
   fun insertSpillCode(spilled: Set<AtomicId>) {
     for (blockId in graph.blocks - graph.returnBlock.id) {

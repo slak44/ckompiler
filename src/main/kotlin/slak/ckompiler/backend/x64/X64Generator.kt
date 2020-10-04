@@ -68,8 +68,12 @@ class X64Generator private constructor(
       if (!shouldChange) continue
 
       // Remove all MIs generated from this IR, both behind and forward
+      // Leave the iterator in the correct position to insert the new instructions
+      val originalIndex = it.previousIndex()
       while (it.hasPrevious() && it.previous().irLabelIndex == mi.irLabelIndex) it.remove()
       while (it.hasNext() && it.next().irLabelIndex == mi.irLabelIndex) it.remove()
+      // There is an edge case when rewriting the first instruction in a block
+      if (originalIndex == 0) it.previous()
 
       // Find original IR from basic block
       val actualIR = if (mi.irLabelIndex > bb.ir.size) {
