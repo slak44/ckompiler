@@ -107,6 +107,7 @@ private fun TargetFunGenerator.spillClass(
         // Spill the furthest use
         val spilled = q
             .filterIsInstance<AllocatableValue>()
+            .filter { !it.isUndefined }
             .maxByOrNull { useDistance(graph, InstrLabel(block.id, index), it) }
             ?: TODO("No variable/virtual can be spilled! Maybe conflicting pre-coloring. see ref")
         q -= spilled
