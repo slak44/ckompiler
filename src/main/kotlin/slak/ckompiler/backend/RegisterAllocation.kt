@@ -69,6 +69,18 @@ fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableVa
 }
 
 /**
+ * Get the values used in this [mi], that die at this instruction.
+ */
+private fun InstructionGraph.dyingAt(label: InstrLabel, mi: MachineInstruction): List<AllocatableValue> {
+  val uses = mi.uses.filterIsInstance<AllocatableValue>()
+  return if (mi.template is ParallelCopyTemplate) {
+    uses
+  } else {
+    uses.filter { isDeadAfter(it, label) }
+  }
+}
+
+/**
  * Insert a copy.
  *
  * [value] is a constrained argument of [constrainedInstr].
@@ -168,8 +180,7 @@ private fun TargetFunGenerator.prepareForColoring() {
 
     fun updateAlive(index: Int) {
       val mi = block[index]
-      val dyingHere = mi.uses.filterIsInstance<AllocatableValue>()
-          .filter { graph.isDeadAfter(it, InstrLabel(blockId, index)) }
+      val dyingHere = graph.dyingAt(InstrLabel(blockId, index), mi)
       alive += mi.defs.filterIsInstance<AllocatableValue>().filter { graph.isUsed(it) }
       alive -= dyingHere
     }
@@ -182,11 +193,19 @@ private fun TargetFunGenerator.prepareForColoring() {
         continue
       }
 
+      splitLiveRanges(graph, alive, index, block)
+      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
+      // The parallel copy needs to have updateAlive run on it, before skipping it
+      updateAlive(index)
+      index++
+
+      val startMi = block[index]
       val startIndex = index
-      for ((value, target) in mi.constrainedArgs) {
+      for ((value, target) in startMi.constrainedArgs) {
         // Result constrained to same register as live-though constrained variable: copy must be made
-        if (graph.livesThrough(value, InstrLabel(blockId, index)) && target in mi.constrainedRes.map { it.target }) {
-          insertSingleCopy(block, index, value, mi)
+        if (graph.livesThrough(value, InstrLabel(blockId, index)) &&
+            target in startMi.constrainedRes.map { it.target }) {
+          insertSingleCopy(block, index, value, startMi)
           index++
         }
       }
@@ -196,14 +215,9 @@ private fun TargetFunGenerator.prepareForColoring() {
         updateAlive(copyIdx)
       }
       // We don't want to rewrite the constrained instr in this case
-      block[index] = mi
+      block[index] = startMi
 
-      splitLiveRanges(graph, alive, index, block)
-      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
-      // The parallel copy needs to have updateAlive run on it, before skipping it
-      updateAlive(index)
-      index++
-      // Same with the original constrained label
+      // Update and skip the original constrained label
       updateAlive(index)
       index++
     }
@@ -303,12 +317,7 @@ private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi:
  * Deallocate registers of values that die at the specified label.
  */
 private fun RegisterAllocationContext.unassignDyingAt(label: InstrLabel, mi: MachineInstruction) {
-  val uses = mi.uses.filterIsInstance<AllocatableValue>()
-  val dyingHere = if (mi.template is ParallelCopyTemplate) {
-    uses
-  } else {
-    uses.filter { graph.isDeadAfter(it, label) }
-  }
+  val dyingHere = graph.dyingAt(label, mi)
   for (value in dyingHere) {
     val color = coloring[value] ?: continue
     assigned -= color
@@ -332,17 +341,21 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
 
   val (block, index) = label
   require(index > 0) { "No parallel copy found for constrained instruction" }
-  val phi = graph[block][index - 1]
 
-  val phiTemplate = phi.template
-  require(phiTemplate is ParallelCopyTemplate) { "Instruction preceding constrained is not a parallel copy" }
-  val phiMap = phiTemplate.values
+  val phiIdx = graph[block].take(index).indexOfLast { it.template is ParallelCopyTemplate }
+  require(phiIdx >= 0) { "No parallel copy preceding constrained" }
+  val phi = graph[block][phiIdx]
+
+  val phiMap = (phi.template as ParallelCopyTemplate).values
+
+  // There should be exclusively copies defined in this interval
+  val extraCopies = graph[block].subList(phiIdx + 1, index).flatMap { it.defs }.filterIsInstance<AllocatableValue>()
 
   constrainedColoring(label, mi)
   unassignDyingAt(label, mi)
-  // Correctly color copies inserted by the live range split
-  // See last paragraph of section 4.6.4
-  val copies = phiMap.values
+  // Correctly color copies inserted by the live range split (and the other copies from 4.6.1)
+  // See last paragraph of section 4.6.4 for why we have to do this
+  val copies = phiMap.values + extraCopies
   val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
   val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
   val colorsAtL = (definedAtL + usedAtL).mapTo(mutableSetOf()) { coloring.getValue(it) }
@@ -354,7 +367,7 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
     assigned += color
   }
   // Create the copy sequence to replace the parallel copy
-  parallelCopies[InstrLabel(block, index - 1)] = generator.replaceParallel(phi, coloring, assigned)
+  parallelCopies[InstrLabel(block, phiIdx)] = generator.replaceParallel(phi, coloring, assigned)
 
   for (def in definedAtL.filter(graph::isUsed)) {
     val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
