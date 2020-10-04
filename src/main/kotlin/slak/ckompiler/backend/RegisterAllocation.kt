@@ -184,10 +184,8 @@ private fun TargetFunGenerator.prepareForColoring() {
 
       val startIndex = index
       for ((value, target) in mi.constrainedArgs) {
-        // If it doesn't die after this instruction, it's not live-through, so leave it alone
-        if (!graph.livesThrough(value, InstrLabel(blockId, index))) continue
         // Result constrained to same register as live-though constrained variable: copy must be made
-        if (target in mi.constrainedRes.map { it.target }) {
+        if (graph.livesThrough(value, InstrLabel(blockId, index)) && target in mi.constrainedRes.map { it.target }) {
           insertSingleCopy(block, index, value, mi)
           index++
         }
