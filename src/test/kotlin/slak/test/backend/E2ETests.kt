@@ -304,6 +304,11 @@ class E2ETests {
     }.expect(stdout = int)
   }
 
+  @Test
+  fun `Lots Of Int Parameters And Calls`() {
+    compileAndRun(resource("e2e/calls/manyParamsAndCalls.c")).justExitCode(1)
+  }
+
   @ParameterizedTest
   @ValueSource(strings = [
     "-1.0000", "-2.0000", "100.0000", "9999999.0000", "0.0000",
