@@ -273,6 +273,10 @@ private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi:
   for ((value, target) in mi.constrainedArgs) {
     cA += target
     a -= value
+    val oldColor = coloring[value]
+    if (oldColor != null && oldColor != target) {
+      assigned -= oldColor
+    }
     coloring[value] = target
     if (value in t) {
       assigned += target
@@ -366,8 +370,16 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
     coloring[copy] = color
     assigned += color
   }
+  // assigned is a set because each reg can only be assigned to one value at a time, making it safe to add/remove the
+  // entry in assigned when the value is gen'd/killed
+  // The loop above then assumes it can remove old colors from assigned, since they were reallocated, but that's not
+  // necessarily true for values in usedAtL, because they might be live-through the constrained label
+  for (inUse in usedAtL) {
+    assigned += coloring.getValue(inUse)
+  }
+
   // Create the copy sequence to replace the parallel copy
-  parallelCopies[InstrLabel(block, phiIdx)] = generator.replaceParallel(phi, coloring, assigned)
+  parallelCopies[InstrLabel(block, phiIdx)] = generator.replaceParallel(phi, coloring, assigned + colorsAtL)
 
   for (def in definedAtL.filter(graph::isUsed)) {
     val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
