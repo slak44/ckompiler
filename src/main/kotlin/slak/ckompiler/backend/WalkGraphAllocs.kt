@@ -37,8 +37,9 @@ inline fun AllocationResult.walkGraphAllocs(
           .filter { graph.isUsed(it as AllocatableValue) && !it.isUndefined }
           .map { allocations.getValue(it) } +
           mi.defs.filterIsInstance<PhysicalRegister>().map { it.reg }
-      val regsDyingHere = mi.uses.intersect(allocated)
-          .filter { graph.isDeadAfter(it as AllocatableValue, InstrLabel(blockId, index)) }
+      val regsDyingHere = graph.dyingAt(InstrLabel(blockId, index), mi)
+          .intersect(allocated)
+          .filter { !it.isUndefined }
           .map { allocations.getValue(it) } +
           mi.uses.filterIsInstance<PhysicalRegister>().map { it.reg }
       val useDefRegs = mi

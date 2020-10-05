@@ -71,7 +71,7 @@ fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableVa
 /**
  * Get the values used in this [mi], that die at this instruction.
  */
-private fun InstructionGraph.dyingAt(label: InstrLabel, mi: MachineInstruction): List<AllocatableValue> {
+fun InstructionGraph.dyingAt(label: InstrLabel, mi: MachineInstruction): List<AllocatableValue> {
   val uses = mi.uses.filterIsInstance<AllocatableValue>()
   return if (mi.template is ParallelCopyTemplate) {
     uses
