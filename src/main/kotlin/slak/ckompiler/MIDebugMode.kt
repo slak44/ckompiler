@@ -101,6 +101,19 @@ private class MIDebugMode(
     }
   }
 
+  fun printTitle(text: String) {
+    if (generateHtml) {
+      body.apply {
+        h1 { +text }
+      }
+    } else {
+      println()
+      println(text)
+      println("=".repeat(text.length))
+      println()
+    }
+  }
+
   fun FlowContent.nasm(block: CODE.() -> Unit) {
     apply {
       pre {
@@ -159,7 +172,9 @@ private class MIDebugMode(
 }
 
 private fun MIDebugMode.generateMIDebugInternal() {
-  val genInitial = X64Generator(createCFG(), target)
+  val cfgInit = createCFG()
+  printTitle("Allocation for function ${cfgInit.f.name} of type ${cfgInit.f.functionType}")
+  val genInitial = X64Generator(cfgInit, target)
   val initialAlloc = genInitial.regAlloc(debugNoPostColoring = true, debugNoCheckAlloc = true)
   val (graph) = initialAlloc
   printHeader("Initial MachineInstructions (with parallel copies)")
