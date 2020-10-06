@@ -36,9 +36,9 @@ private fun TargetFunGenerator.findRegisterPressure(
   val current = target.registerClasses.associateWithTo(mutableMapOf()) { 0 }
   for (blockId in graph.domTreePreorder) {
     val block = graph[blockId]
-    for (liveIn in graph.liveInsOf(blockId)) {
+    for (liveIn in (graph.liveInsOf(blockId) - block.phiUses)) {
       val classOf = target.registerClassOf(liveIn.type)
-      current[classOf] = 1
+      current[classOf] = current.getValue(classOf) + 1
     }
     for ((index, mi) in block.withIndex()) {
       val dyingHere = mi.uses
@@ -50,6 +50,8 @@ private fun TargetFunGenerator.findRegisterPressure(
         current[classOf] = current.getValue(classOf) - 1
       }
       val defined = mi.defs.filterIsInstance<AllocatableValue>()
+      // FIXME: undefineds can actually take up space if they're constraints
+      //   especially for SSE class, where a call marks the entire class as constrained via dummies
       // Increase pressure for values defined at this label
       // If never used, then it shouldn't increase pressure, nor should undefined
       for (definition in defined.filter { graph.isUsed(it) && !it.isUndefined }) {
@@ -81,7 +83,7 @@ private fun TargetFunGenerator.spillClass(
 
   fun Sequence<IRValue>.ofClass() = filter { target.registerClassOf(it.type) == registerClass }
 
-  val p = graph.liveInsOf(block.id).asSequence().ofClass().toList()
+  val p = (graph.liveInsOf(block.id) - block.phiUses).asSequence().ofClass().toList()
   require(p.size <= k)
   val q = mutableSetOf<IRValue>()
   q += p
