@@ -447,4 +447,9 @@ class E2ETests {
   fun `Constrained Spilling`() {
     compileAndRun(resource("e2e/spillWIthConstrained.c")).justExitCode(9)
   }
+
+  @Test
+  fun `Constrained In Large Loop`() {
+    compileAndRun(resource("e2e/calls/callInLargeLoopCFG.c")).justExitCode(1)
+  }
 }
