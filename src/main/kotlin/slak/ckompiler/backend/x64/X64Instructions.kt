@@ -61,8 +61,6 @@ data class X64InstrTemplate(
     override val name: String,
     val operands: List<Operand>,
     override val operandUse: List<VariableUse>,
-    override val implicitOperands: List<MachineRegister> = emptyList(),
-    override val implicitResults: List<MachineRegister> = emptyList()
 ) : InstructionTemplate
 
 sealed class X64Value
@@ -148,16 +146,6 @@ private class ICBuilder(
 
   @JvmName("l_instr")
   fun List<VariableUse>.instr(vararg operands: Operand): Unit = instr(this, *operands)
-
-  fun instr(
-      implicitOperands: List<MachineRegister>,
-      implicitResults: List<MachineRegister>,
-      operandUse: List<VariableUse> = emptyList(),
-      vararg operands: Operand
-  ) {
-    instructions +=
-        X64InstrTemplate(name, operands.toList(), operandUse, implicitOperands, implicitResults)
-  }
 }
 
 private fun instructionClass(
@@ -342,17 +330,17 @@ val imul = instructionClass("imul", listOf(VariableUse.DEF_USE, VariableUse.USE,
   twoOp.instr(R64, RM64)
   // 1 operand M form
   val oneOp = listOf(VariableUse.DEF_USE)
-  instr(listOf(rax), listOf(rax, rdx), oneOp, RM8)
-  instr(listOf(rax), listOf(rax, rdx), oneOp, RM16)
-  instr(listOf(rax), listOf(rax, rdx), oneOp, RM32)
-  instr(listOf(rax), listOf(rax, rdx), oneOp, RM64)
+  oneOp.instr(RM8)
+  oneOp.instr(RM16)
+  oneOp.instr(RM32)
+  oneOp.instr(RM64)
 }
 
 private val division: ICBuilder.() -> Unit = {
-  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse!!, RM8)
-  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse, RM16)
-  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse, RM32)
-  instr(listOf(rax, rdx), listOf(rax, rdx), defaultUse, RM64)
+  instr(RM8)
+  instr(RM16)
+  instr(RM32)
+  instr(RM64)
 }
 
 val div = instructionClass("div", listOf(VariableUse.USE), division)

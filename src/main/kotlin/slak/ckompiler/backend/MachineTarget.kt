@@ -95,16 +95,6 @@ interface InstructionTemplate {
    * @see MachineInstruction.operands
    */
   val operandUse: List<VariableUse>
-
-  /**
-   * Operand constraints. For instance, in x64 the div instruction expects an operand in rdx:rax.
-   */
-  val implicitOperands: List<MachineRegister>
-
-  /**
-   * Result constraints. For instance, in x64 the div instruction leaves the result in rdx:rax.
-   */
-  val implicitResults: List<MachineRegister>
 }
 
 /**
@@ -211,8 +201,6 @@ data class MachineInstruction(
 data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableValue>) : InstructionTemplate {
   override val name = toString()
   override val operandUse = List(values.size) { VariableUse.USE } + List(values.size) { VariableUse.DEF }
-  override val implicitOperands: List<MachineRegister> = emptyList()
-  override val implicitResults: List<MachineRegister> = emptyList()
 
   override fun toString(): String {
     val old = values.keys.joinToString(", ")
