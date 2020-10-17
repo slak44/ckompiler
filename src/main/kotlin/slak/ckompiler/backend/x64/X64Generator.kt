@@ -76,7 +76,7 @@ class X64Generator private constructor(
       if (originalIndex == 0) it.previous()
 
       // Find original IR from basic block
-      val actualIR = if (mi.irLabelIndex > bb.ir.size) {
+      val actualIR = if (mi.irLabelIndex >= bb.ir.size) {
         val idxInTerm = mi.irLabelIndex - bb.ir.size
         when (val term = bb.terminator) {
           is CondJump -> term.cond[idxInTerm]
