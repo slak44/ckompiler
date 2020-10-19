@@ -449,6 +449,11 @@ class E2ETests {
   }
 
   @Test
+  fun `Spill Existing Variables For Caller-Saved Registers`() {
+    compileAndRun(resource("e2e/calls/spillExistingForCall.c")).expect(exitCode = 7, stdout = "2 8")
+  }
+
+  @Test
   fun `Constrained In Large Loop`() {
     compileAndRun(resource("e2e/calls/callInLargeLoopCFG.c")).justExitCode(1)
   }
