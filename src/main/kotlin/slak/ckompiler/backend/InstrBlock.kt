@@ -57,6 +57,21 @@ class InstrBlock(
     }
   }
 
+  override fun listIterator(): MutableListIterator<MachineInstruction> {
+    val it = instructions.listIterator()
+    return object : MutableListIterator<MachineInstruction> by it {
+      override fun remove() {
+        it.remove()
+        graph.updateIndices(id, it.nextIndex(), -1)
+      }
+
+      override fun add(element: MachineInstruction) {
+        it.add(element)
+        graph.updateIndices(id, it.previousIndex(), 1)
+      }
+    }
+  }
+
   override fun hashCode() = id
   override fun equals(other: Any?) = id == (other as? InstrBlock)?.id
 

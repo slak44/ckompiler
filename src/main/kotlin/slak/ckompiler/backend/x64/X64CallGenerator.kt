@@ -91,7 +91,7 @@ class X64CallGenerator(val target: X64Target, val registerIds: IdCounter) : Func
 
     // FIXME: maybe when calling our other functions, we could track what regs they use, and not save them if we know
     //  they won't be clobbered
-    fun makeDummy() = VirtualRegister(registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
+    fun makeDummy() = VirtualRegister(registerIds(), target.machineTargetData.ptrDiffType, VRegType.CONSTRAINED)
     val dummies = List(target.callerSaved.size) { makeDummy() }
     val callerSavedConstraints = dummies.zip(target.callerSaved).map { (dummy, reg) -> dummy constrainedTo reg }
 

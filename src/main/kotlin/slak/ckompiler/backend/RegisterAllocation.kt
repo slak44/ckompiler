@@ -363,9 +363,13 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
   val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
   val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
   val colorsAtL = (definedAtL + usedAtL).mapTo(mutableSetOf()) { coloring.getValue(it) }
-  for (copy in copies - usedAtL) {
-    val oldColor = checkNotNull(coloring[copy])
-    assigned -= oldColor
+  val toRecolor = copies - usedAtL
+  // First, un-assign all the old colors
+  assigned -= toRecolor.map { checkNotNull(coloring[it]) }
+  // And only then allocate them again
+  // If an old assignment would have been in rax, and the recoloring puts a value in rax before the old assignment is
+  // processed, rax would have gotten removed from assigned, even though the recoloring assigned something to there
+  for (copy in toRecolor) {
     val color = target.selectRegisterBlacklist(assigned + colorsAtL, copy)
     coloring[copy] = color
     assigned += color
@@ -374,14 +378,14 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
   // entry in assigned when the value is gen'd/killed
   // The loop above then assumes it can remove old colors from assigned, since they were reallocated, but that's not
   // necessarily true for values in usedAtL, because they might be live-through the constrained label
-  for (inUse in usedAtL) {
+  for (inUse in usedAtL.filterNot { it.isUndefined }) {
     assigned += coloring.getValue(inUse)
   }
 
   // Create the copy sequence to replace the parallel copy
   parallelCopies[InstrLabel(block, phiIdx)] = generator.replaceParallel(phi, coloring, assigned + colorsAtL)
 
-  for (def in definedAtL.filter(graph::isUsed)) {
+  for (def in definedAtL.filter { graph.isUsed(it) && !it.isUndefined }) {
     val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
     assigned += color
   }

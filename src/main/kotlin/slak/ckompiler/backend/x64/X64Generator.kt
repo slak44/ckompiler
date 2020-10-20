@@ -64,16 +64,33 @@ class X64Generator private constructor(
     val it = block.listIterator()
     while (it.hasNext()) {
       val mi = it.next()
-      val shouldChange = mi.operands.any { it is Variable && it.id in spilled }
+      val constrained = (mi.constrainedArgs + mi.constrainedRes).map { it.value }
+      val shouldChange = (mi.operands + constrained).any { it is Variable && it.id in spilled }
       if (!shouldChange) continue
 
       // Remove all MIs generated from this IR, both behind and forward
       // Leave the iterator in the correct position to insert the new instructions
-      val originalIndex = it.previousIndex()
-      while (it.hasPrevious() && it.previous().irLabelIndex == mi.irLabelIndex) it.remove()
-      while (it.hasNext() && it.next().irLabelIndex == mi.irLabelIndex) it.remove()
-      // There is an edge case when rewriting the first instruction in a block
-      if (originalIndex == 0) it.previous()
+      while (it.hasPrevious()) {
+        val instr = it.previous()
+        if (instr.irLabelIndex == mi.irLabelIndex) {
+          it.remove()
+        } else {
+          if (it.hasNext()) it.next()
+          break
+        }
+      }
+      while (it.hasNext()) {
+        val instr = it.next()
+        if (instr.irLabelIndex == mi.irLabelIndex) {
+          it.remove()
+        } else {
+          if (it.hasPrevious()) it.previous()
+          break
+        }
+      }
+      if (Thread::class.java.desiredAssertionStatus()) {
+        check(block.none { it.irLabelIndex == mi.irLabelIndex }) { "Failed to correctly remove all IR of this index" }
+      }
 
       // Find original IR from basic block
       val actualIR = if (mi.irLabelIndex >= bb.ir.size) {
@@ -432,7 +449,7 @@ class X64Generator private constructor(
     val rax = target.registerByName("rax")
     val rdx = target.registerByName("rdx")
     val (resultReg, otherReg) = if (i.op == IntegralBinaryOps.REM) rdx to rax else rax to rdx
-    val dummy = VirtualRegister(graph.registerIds(), target.machineTargetData.ptrDiffType, isUndefined = true)
+    val dummy = VirtualRegister(graph.registerIds(), target.machineTargetData.ptrDiffType, VRegType.CONSTRAINED)
     val actualDividend = if (i.lhs is AllocatableValue) i.lhs else VirtualRegister(graph.registerIds(), i.lhs.type)
     val actualDivisor = if (i.rhs is ConstantValue) VirtualRegister(graph.registerIds(), i.rhs.type) else i.rhs
     return listOfNotNull(

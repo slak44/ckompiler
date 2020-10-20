@@ -278,6 +278,10 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
   override fun toString() = name
 }
 
+enum class VRegType {
+  REGULAR, UNDEFINED, CONSTRAINED
+}
+
 /**
  * A virtual register where an [IRInstruction]'s result is stored. These registers abide by SSA, so
  * they are only written to once. They also cannot escape the [BasicBlock] they're declared in.
@@ -285,8 +289,10 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
 data class VirtualRegister(
     val id: AtomicId,
     override val type: TypeName,
-    override val isUndefined: Boolean = false
+    val kind: VRegType = VRegType.REGULAR
 ) : AllocatableValue() {
+  override val isUndefined: Boolean = kind != VRegType.REGULAR
+
   override val name = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
   override fun toString() = name
 

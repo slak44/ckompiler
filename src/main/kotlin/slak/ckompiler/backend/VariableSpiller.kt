@@ -50,19 +50,47 @@ private fun TargetFunGenerator.findRegisterPressure(
         current[classOf] = current.getValue(classOf) - 1
       }
       val defined = mi.defs.filterIsInstance<AllocatableValue>()
-      // FIXME: undefineds can actually take up space if they're constraints
-      //   especially for SSE class, where a call marks the entire class as constrained via dummies
       // Increase pressure for values defined at this label
       // If never used, then it shouldn't increase pressure, nor should undefined
       for (definition in defined.filter { graph.isUsed(it) && !it.isUndefined }) {
         val classOf = target.registerClassOf(definition.type)
         current[classOf] = current.getValue(classOf) + 1
       }
+      val constraintsMap = (mi.constrainedArgs + mi.constrainedRes)
+          .toSet()
+          .filter { it.value is VirtualRegister && it.value.kind == VRegType.CONSTRAINED }
+          .groupBy { it.target.valueClass }
+          .mapValues { it.value.size }
+      for ((classOf, count) in constraintsMap) {
+        current[classOf] = current.getValue(classOf) + count
+      }
+      // Result constrained to same register as live-though constrained variable: copy will be made
+      // The two versions are certainly both alive at the constrained MI, but one of them also dies there
+      // We don't really care about which, only that one does, so we accurately model register pressure
+      // See TargetFunGenerator#prepareForColoring
+      val duplicateCount = mi.constrainedArgs
+          .groupBy { it.target.valueClass }
+          .mapValues {
+            it.value.count { (value, target) ->
+              graph.livesThrough(value, InstrLabel(blockId, index)) &&
+                  target in mi.constrainedRes.map(Constraint::target)
+            }
+          }
+      for ((classOf, count) in duplicateCount) {
+        current[classOf] = current.getValue(classOf) + count
+      }
+
       // If pressure is too high, add it to the list
       for (mrc in target.registerClasses) {
         if (current.getValue(mrc) > maxPressure.getValue(mrc)) {
           pressure.getValue(mrc) += InstrLabel(blockId, index)
         }
+      }
+      for ((classOf, count) in constraintsMap) {
+        current[classOf] = current.getValue(classOf) - count
+      }
+      for ((classOf, count) in duplicateCount) {
+        current[classOf] = current.getValue(classOf) - count
       }
     }
     current.replaceAll { _, _ -> 0 }
@@ -81,15 +109,14 @@ private fun TargetFunGenerator.spillClass(
   require(k > 0)
   val markedSpill = mutableListOf<IRValue>()
 
-  fun Sequence<IRValue>.ofClass() = filter { target.registerClassOf(it.type) == registerClass }
+  fun Iterable<IRValue>.ofClass() = filter { target.registerClassOf(it.type) == registerClass }
 
-  val p = (graph.liveInsOf(block.id) - block.phiUses).asSequence().ofClass().toList()
+  val p = (graph.liveInsOf(block.id) - block.phiUses).ofClass()
   require(p.size <= k)
   val q = mutableSetOf<IRValue>()
   q += p
   for ((index, mi) in block.withIndex()) {
     val dyingHere = mi.uses
-        .asSequence()
         .ofClass()
         .filter { it !is StackVariable && it !is MemoryLocation }
         .filter {
@@ -98,24 +125,39 @@ private fun TargetFunGenerator.spillClass(
     for (value in dyingHere) {
       q -= value
     }
+    val undefinedDefs = (mi.constrainedArgs + mi.constrainedRes).filter {
+      it.value is VirtualRegister && it.value.kind == VRegType.CONSTRAINED && it.target.valueClass == registerClass
+    }.map { it.value }
+    q += undefinedDefs
+    val duplicatedDefs = mi.constrainedArgs
+        .filter { (value, target) ->
+          graph.livesThrough(value, InstrLabel(block.id, index)) &&
+              target in mi.constrainedRes.map(Constraint::target) &&
+              target.valueClass == registerClass
+        }
+        .map { VirtualRegister(graph.registerIds(), it.value.type, VRegType.UNDEFINED) }
+    q += duplicatedDefs
     val defined = mi.defs
-        .asSequence()
         .ofClass()
         .filterIsInstance<AllocatableValue>()
         .filter { graph.isUsed(it) && it !in alreadySpilled }
-    for (definition in defined) {
-      q += definition
-      if (q.size > k) {
-        // Spill the furthest use
-        val spilled = q
-            .filterIsInstance<AllocatableValue>()
-            .filter { !it.isUndefined }
-            .maxByOrNull { useDistance(graph, InstrLabel(block.id, index), it) }
-            ?: TODO("No variable/virtual can be spilled! Maybe conflicting pre-coloring. see ref")
-        q -= spilled
-        markedSpill += spilled
+    q += defined
+
+    while (q.size > k) {
+      // Spill the furthest use
+      val spilled = q
+          .filterIsInstance<AllocatableValue>()
+          .filter { !it.isUndefined }
+          .maxByOrNull { useDistance(graph, InstrLabel(block.id, index), it) }
+      checkNotNull(spilled) {
+        "No variable/virtual can be spilled! Maybe conflicting pre-coloring. see ref"
       }
+      q -= spilled
+      markedSpill += spilled
     }
+
+    q -= undefinedDefs
+    q -= duplicatedDefs
   }
   return markedSpill
 }
