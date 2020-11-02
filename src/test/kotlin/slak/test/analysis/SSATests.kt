@@ -232,4 +232,20 @@ class SSATests {
     assertEquals(correctOrder, sequence.toList())
     assertEquals(correctForInstr, instrSequence.toList())
   }
+
+  @Test
+  fun `Reverse Post Order For InstructionGraph Is Correct`() {
+    val cfg = prepareCFG(resource("ssa/domsTest.c"), source)
+    cfg.assertIsSSA()
+    val gen = X64Generator(cfg, X64Target())
+    val loopedBlocks = gen.graph.blocks.filter {
+      gen.graph.successors(it).intersect(gen.graph.predecessors(it)).isNotEmpty()
+    }
+    assertEquals(2, loopedBlocks.size)
+    val revPostOrder = gen.graph.postOrder().reversed()
+    assertEquals(5, revPostOrder.size)
+    assert(loopedBlocks.intersect(revPostOrder.takeLast(2)).size == 2)
+    assert(gen.graph.successors(gen.graph.startId).map { it.id }.intersect(revPostOrder.drop(1).take(2)).size == 2)
+    assertEquals(gen.graph.startId, revPostOrder[0])
+  }
 }

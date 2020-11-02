@@ -126,6 +126,28 @@ class InstructionGraph private constructor(
     }
 
   /**
+   * Produces a postorder traversal of this instruction graph's nodes.
+   */
+  fun postOrder(): List<AtomicId> {
+    val postOrder = mutableListOf<AtomicId>()
+    val visited = mutableSetOf<AtomicId>()
+    val stack = mutableListOf<AtomicId>()
+    stack += startId
+    while (stack.isNotEmpty()) {
+      val v = stack.last()
+      val next = successors(v).map(InstrBlock::id).find { it !in visited }
+      if (next == null) {
+        stack.removeLast()
+        postOrder += v
+      } else {
+        visited += next
+        stack += next
+      }
+    }
+    return postOrder
+  }
+
+  /**
    * Traverse the dominator tree from a certain node ([beginAt]) upwards to the root of the tree.
    */
   fun traverseDominatorTree(beginAt: AtomicId): Iterator<AtomicId> = iterator {
