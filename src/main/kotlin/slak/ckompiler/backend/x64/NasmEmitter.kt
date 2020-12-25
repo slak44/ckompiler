@@ -96,10 +96,10 @@ class NasmEmitter(
   private fun generateFunction(function: TargetFunGenerator) {
     prelude += "global ${function.graph.f.name}"
     val allocationResult = function.regAlloc()
-    val asmMap = function.applyAllocation(allocationResult)
     text += instrGen {
       label(function.graph.f.name)
       emit(genAsm(function.genFunctionPrologue(allocationResult)))
+      val asmMap = function.applyAllocation(allocationResult)
       for (block in function.graph.blocks - function.graph.returnBlock.id) {
         label(block.label)
         @Suppress("UNCHECKED_CAST")

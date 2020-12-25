@@ -72,6 +72,12 @@ data class ImmediateValue(val value: ConstantValue) : X64Value() {
 data class RegisterValue(val register: MachineRegister, val size: Int) : X64Value() {
   constructor(phys: PhysicalRegister) : this(phys.reg, MachineTargetData.x64.sizeOf(phys.type))
 
+  init {
+    require(register.valueClass != Memory) {
+      "RegisterValue cannot refer to memory: $register"
+    }
+  }
+
   override fun toString(): String {
     if (register.sizeBytes == size) return register.regName
     return register.aliases.first { it.second == size }.first
@@ -175,7 +181,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
     is MemoryLocation, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
-    is VirtualRegister, is Variable, is StackVariable -> {
+    is VirtualRegister, is Variable, is StackVariable, is StackValue -> {
       this is Register ||
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
     }
@@ -494,12 +500,14 @@ val pop = instructionClass("pop", listOf(VariableUse.DEF)) {
   instr(R64)
 }
 
-val movss = instructionClass("movss", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
+val movss = instructionClass("movss", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(M32, XMM_SS)
   instr(XMM_SS, XMM_SS)
   instr(XMM_SS, M32)
 }
 
-val movsd = instructionClass("movsd", listOf(VariableUse.DEF_USE, VariableUse.USE)) {
+val movsd = instructionClass("movsd", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(M64, XMM_SD)
   instr(XMM_SD, XMM_SD)
   instr(XMM_SD, M64)
 }

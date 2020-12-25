@@ -592,6 +592,7 @@ especially to the C standard.
 - [A simple, fast dominance algorithm, Cooper et al][dom_algo]
 - [Register Allocation for Programs in SSA Form, Sebastian Hack][hack]
 - [Computing Liveness Sets for SSA-Form Programs, Brander et al][liveness_sets]
+- [Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack][spilling_ref]
 
 [impl_defs]: ./ListOfBehaviours.md
 [log4j2_xml]: ./src/main/resources/log4j2.xml
@@ -635,3 +636,4 @@ https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_met
 [regalloc]: ./src/main/kotlin/slak/ckompiler/backend/RegisterAllocation.kt
 [igraph]: ./src/main/kotlin/slak/ckompiler/backend/InstructionGraph.kt
 [liveness_sets]: https://hal.inria.fr/inria-00558509/
+[spilling_ref]: https://link.springer.com/content/pdf/10.1007/978-3-642-00722-4_13.pdf

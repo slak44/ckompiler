@@ -1,28 +1,271 @@
 package slak.ckompiler.backend
 
+import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
+
+typealias Location = Pair<AllocatableValue, InstrLabel>
+typealias BlockLocations = List<Location>
+
+data class MinResult(val spills: BlockLocations, val reloads: BlockLocations)
+
+private fun TargetFunGenerator.insertSpill(
+  value: AllocatableValue,
+  location: InstrLabel,
+  stackValue: StackValue?
+): StackValue {
+  val (blockId, idx) = location
+  val targetStackValue = stackValue ?: StackValue(stackValueIds(), value.type)
+  val copy = createIRCopy(MemoryLocation(targetStackValue), value)
+  graph[blockId].add(idx, copy)
+  return targetStackValue
+}
+
+private fun TargetFunGenerator.insertReload(
+    original: AllocatableValue,
+    toReload: StackValue,
+    location: InstrLabel
+): AllocatableValue {
+  val (blockId, idx) = location
+  val copyTarget = graph.createCopyOf(original, graph[blockId])
+  val copy = createIRCopy(copyTarget, MemoryLocation(toReload))
+  graph[blockId].add(idx, copy)
+  return copyTarget
+}
+
+private fun TargetFunGenerator.nextUse(location: InstrLabel, v: AllocatableValue): Int {
+  val (blockId, index) = location
+  val nextUseIdx = graph[blockId].drop(index).indexOfFirst { mi -> v in mi.uses }
+  if (nextUseIdx < 0) {
+    return Int.MAX_VALUE
+  }
+  return nextUseIdx
+}
+
+/**
+ * Apply the MIN algorithm on a block. While this implementation is based on the reference below, it does differ by
+ * working on multiple register classes at the same time (ie int and float regs), and by the handling of constraints.
+ * It is also significantly less sophisticated (it doesn't consider loops separately).
+ *
+ * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack
+ *
+ * @param maxPressure max register pressure for each register class
+ */
+private class BlockSpiller(
+    val targetFunGenerator: TargetFunGenerator,
+    val blockId: AtomicId,
+    val maxPressure: Map<MachineRegisterClass, Int>,
+    wBlockEntry: Map<MachineRegisterClass, MutableList<AllocatableValue>>,
+    sBlockEntry: Set<AllocatableValue>
+) {
+  private val reloads = mutableListOf<Location>()
+  private val spills = mutableListOf<Location>()
+
+  val minResult get() = MinResult(spills, reloads)
+
+  /**
+   * The set of values that are in a register. Initially set to the values in a register at the start of the block.
+   */
+  private val w = wBlockEntry.toMutableMap()
+
+  val wExit: Map<MachineRegisterClass, List<AllocatableValue>> get() = w
+
+  /**
+   * The set of values that were already spilled once (and only once is enough because SSA).
+   */
+  private val s = sBlockEntry.toMutableSet()
+
+  val sExit: Set<AllocatableValue> get() = s
+
+  /**
+   * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
+   */
+  private fun TargetFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
+    val wClass = w.getValue(valueClass)
+    wClass.sortBy { nextUse(InstrLabel(blockId, insnIndex), it) }
+    for (v in wClass.drop(m.coerceAtLeast(0))) {
+      if (v !in s && nextUse(InstrLabel(blockId, insnIndex), v) != Int.MAX_VALUE) {
+        spills += Location(v, InstrLabel(blockId, insnIndex))
+      }
+      s -= v
+      wClass -= v
+    }
+  }
+
+  /**
+   * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
+   */
+  private fun TargetFunGenerator.minAlgorithm(maxPressure: Map<MachineRegisterClass, Int>) {
+    val phiDefs = graph[blockId].phiDefs.groupBy { target.registerClassOf(it.type) }
+    for ((valueClass, k) in maxPressure) {
+      val wClass = w.getValue(valueClass)
+      limit(valueClass, 0, k - (phiDefs[valueClass]?.size ?: 0))
+      wClass += phiDefs[valueClass] ?: emptyList()
+    }
+
+    val it = graph[blockId].listIterator()
+    while (it.hasNext()) {
+      val insnIndex = it.nextIndex()
+      val insn = it.next()
+      val insnUses = insn.uses
+          .filterIsInstance<AllocatableValue>()
+          .groupBy { target.registerClassOf(it.type) }
+      val insnDefs = insn.defs
+          .filterIsInstance<AllocatableValue>()
+          .filter { !it.isUndefined }
+          .groupBy { target.registerClassOf(it.type) }
+      val constraintsMap = (insn.constrainedArgs + insn.constrainedRes)
+          .toSet()
+          .filter { it.value is VirtualRegister && it.value.kind == VRegType.CONSTRAINED }
+          .groupBy { it.target.valueClass }
+          .mapValues { it.value.size }
+      // Result constrained to same register as live-though constrained variable: copy will be made
+      // The two versions are certainly both alive at the constrained MI, but one of them also dies there
+      // We don't really care about which, only that one does, so we accurately model register pressure
+      // See TargetFunGenerator#prepareForColoring
+      val duplicateCount = insn.constrainedArgs
+          .groupBy { it.target.valueClass }
+          .mapValues {
+            it.value.count { (value, target) ->
+              graph.livesThrough(value, InstrLabel(blockId, insnIndex)) &&
+                  target in insn.constrainedRes.map(Constraint::target)
+            }
+          }
+      for ((valueClass, k) in maxPressure) {
+        val wClass = w.getValue(valueClass)
+        val actualK = k - (constraintsMap[valueClass] ?: 0) - (duplicateCount[valueClass] ?: 0)
+        // R is the set of reloaded variables at insn
+        // Since they are reloads to registers, they are obviously in w
+        val r = if (valueClass !in insnUses) {
+          emptyList()
+        } else {
+          insnUses.getValue(valueClass).filter { !it.isUndefined } - wClass
+        }
+        wClass += r
+        s += r
+        // Make room for insn's uses
+        limit(valueClass, insnIndex, actualK)
+        // Make room for insn's defs
+        limit(valueClass, it.nextIndex(), actualK - (insnDefs[valueClass]?.size ?: 0))
+        // Since we made space for the defs, they are now in w
+        wClass += insnDefs[valueClass] ?: emptyList()
+        for (value in r) {
+          reloads += Location(value, InstrLabel(blockId, it.previousIndex()))
+        }
+      }
+    }
+  }
+
+  fun runSpill() {
+    targetFunGenerator.minAlgorithm(maxPressure)
+  }
+}
+
+/**
+ * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 4.2, Algorithm 2
+ */
+private fun TargetFunGenerator.initUsual(
+    maxPressure: Map<MachineRegisterClass, Int>,
+    blockId: AtomicId,
+    spillers: Map<AtomicId, BlockSpiller>
+): Map<MachineRegisterClass, MutableList<AllocatableValue>> {
+  val freq = mutableMapOf<MachineRegisterClass, MutableMap<AllocatableValue, Int>>()
+  val take = mutableMapOf<MachineRegisterClass, MutableList<AllocatableValue>>()
+  val cand = mutableMapOf<MachineRegisterClass, MutableList<AllocatableValue>>()
+
+  val preds = graph.predecessors(blockId)
+  for (pred in preds) {
+    val spiller = spillers[pred.id] ?: continue
+    for ((valueClass, wEnd) in spiller.wExit.entries) {
+      for (variable in wEnd) {
+        val map = freq.getOrPut(valueClass, ::mutableMapOf)
+        if (variable in map) {
+          val value = map.getValue(variable)
+          map[variable] = value + 1
+          if (value + 1 == preds.size) {
+            cand.getOrPut(valueClass, ::mutableListOf) -= variable
+            take.getOrPut(valueClass, ::mutableListOf) += variable
+          }
+        } else {
+          map[variable] = 0
+        }
+        cand.getOrPut(valueClass, ::mutableListOf) += variable
+      }
+    }
+  }
+  for ((valueClass, classCand) in cand) {
+    val toTake = take.getOrPut(valueClass, ::mutableListOf)
+    val k = maxPressure.getValue(valueClass)
+    if (toTake.size >= k) {
+      // No need to sort, none in cand will be taken
+      continue
+    }
+    classCand.sortByDescending { nextUse(InstrLabel(blockId, 0), it) }
+    toTake += classCand.take(k - toTake.size)
+  }
+
+  for (valueClass in target.registerClasses) {
+    take.putIfAbsent(valueClass, mutableListOf())
+  }
+
+  return take
+}
+
+private fun TargetFunGenerator.initSpilled(
+    blockId: AtomicId,
+    spillers: Map<AtomicId, BlockSpiller>,
+    wBlockEntry: Map<MachineRegisterClass, MutableList<AllocatableValue>>
+): Set<AllocatableValue> {
+  val sJoin = graph.predecessors(blockId).flatMap { spillers[it.id]?.sExit ?: emptyList() }
+  return sJoin.intersect(wBlockEntry.values.flatten())
+}
+
+typealias SpillResult = Map<AtomicId, MinResult>
 
 /**
  * Pre-allocation spilling. Reduces register pressure such that coloring will succeed.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 3.1.5.2
  */
-fun TargetFunGenerator.runSpiller() {
-  val maxPressure = target.registerClasses.associateWith { mrc ->
-    (target.registers - target.forbidden).count { it.valueClass == mrc }
+fun TargetFunGenerator.runSpiller(): SpillResult {
+  val maxPressure = (target.registers - target.forbidden).groupBy { it.valueClass }.mapValues { it.value.size }
+
+  val spillers = mutableMapOf<AtomicId, BlockSpiller>()
+
+  for (blockId in graph.postOrder().asReversed()) {
+    val initialW = initUsual(maxPressure, blockId, spillers)
+    val initialS = initSpilled(blockId, spillers, initialW)
+    val spiller = BlockSpiller(this, blockId, maxPressure, initialW, initialS)
+    spillers[blockId] = spiller
+    spiller.runSpill()
   }
-  val pressure = findRegisterPressure(maxPressure)
-  val allSpills = mutableSetOf<IRValue>()
-  for ((machineClass, labels) in pressure) {
-    for ((block) in labels) {
-      allSpills += spillClass(allSpills, machineClass, maxPressure.getValue(machineClass), graph[block])
+
+  return spillers.mapValues { it.value.minResult }
+}
+
+/**
+ * Inserts the spill and reload code at the locations found by [runSpiller].
+ *
+ * @return the stack values used for each spilled value
+ */
+fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Map<AllocatableValue, StackValue> {
+  val spilled = mutableMapOf<AllocatableValue, StackValue>()
+
+  val allSpills = result.flatMap { it.value.spills }
+  for ((spilledVar, location) in allSpills) {
+    spilled[spilledVar] = insertSpill(spilledVar, location, spilled[spilledVar])
+  }
+
+  val allReloads = result.flatMap { it.value.reloads }
+  for ((spilledVar, location) in allReloads) {
+    val toReload = checkNotNull(spilled[spilledVar]) {
+      "Trying to reload something that was never spilled: $spilledVar"
     }
+    insertReload(spilledVar, toReload, location)
   }
-  check(pressure.all { it.value.isEmpty() } || allSpills.isNotEmpty()) {
-    "Either there is no pressure, or there are spills, can't have pressure but no spills"
-  }
-  // FIXME: deal with spilled virtuals, don't just filter them
-  insertSpillCode(allSpills.filterIsInstance<Variable>().mapTo(mutableSetOf()) { it.id })
+
+  graph.ssaReconstruction(allSpills.map { it.first }.filterIsInstance<Variable>().toSet())
+
+  return spilled
 }
 
 /**

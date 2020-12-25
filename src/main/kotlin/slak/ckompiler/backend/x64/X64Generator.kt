@@ -1,7 +1,7 @@
 package slak.ckompiler.backend.x64
 
 import org.apache.logging.log4j.LogManager
-import slak.ckompiler.AtomicId
+import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
@@ -16,7 +16,10 @@ class X64Generator private constructor(
 ) : TargetFunGenerator,
     FunctionAssembler by funAsm,
     FunctionCallGenerator by X64CallGenerator(target, cfg.registerIds) {
-  constructor(cfg: CFG, target: X64Target) : this(cfg, target, X64FunAssembler(target, cfg))
+  constructor(cfg: CFG, target: X64Target) : this(cfg, target, X64FunAssembler(target, cfg, IdCounter()))
+
+  override val stackValueIds = IdCounter()
+  override val stackSlotIds = funAsm.stackSlotIds
 
   override val graph: InstructionGraph = InstructionGraph.partiallyInitialize(cfg)
 
@@ -57,63 +60,6 @@ class X64Generator private constructor(
     val indexToInsert = (jmpInstrs + 1).coerceAtLeast(0)
     // This is clearly post-allocation, so it's ok
     block.unsafelyGetInstructions().addAll(indexToInsert, copies)
-  }
-
-  override fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>) {
-    val bb = cfg.nodes.first { it.nodeId == block.id }
-    val it = block.listIterator()
-    while (it.hasNext()) {
-      val mi = it.next()
-      val constrained = (mi.constrainedArgs + mi.constrainedRes).map { it.value }
-      val shouldChange = (mi.operands + constrained).any { it is Variable && it.id in spilled }
-      if (!shouldChange) continue
-
-      // Remove all MIs generated from this IR, both behind and forward
-      // Leave the iterator in the correct position to insert the new instructions
-      while (it.hasPrevious()) {
-        val instr = it.previous()
-        if (instr.irLabelIndex == mi.irLabelIndex) {
-          it.remove()
-        } else {
-          if (it.hasNext()) it.next()
-          break
-        }
-      }
-      while (it.hasNext()) {
-        val instr = it.next()
-        if (instr.irLabelIndex == mi.irLabelIndex) {
-          it.remove()
-        } else {
-          if (it.hasPrevious()) it.previous()
-          break
-        }
-      }
-      if (Thread::class.java.desiredAssertionStatus()) {
-        check(block.none { it.irLabelIndex == mi.irLabelIndex }) { "Failed to correctly remove all IR of this index" }
-      }
-
-      // Find original IR from basic block
-      val actualIR = if (mi.irLabelIndex >= bb.ir.size) {
-        val idxInTerm = mi.irLabelIndex - bb.ir.size
-        when (val term = bb.terminator) {
-          is CondJump -> term.cond[idxInTerm]
-          is SelectJump -> term.cond[idxInTerm]
-          is ImpossibleJump -> term.returned!![idxInTerm]
-          else -> logger.throwICE("irLabelIndex points to terminator without IR")
-        }
-      } else {
-        bb.ir[mi.irLabelIndex]
-      }
-
-      // Replace spills
-      val rewrittenIR = spilled.replaceSpilled(actualIR)
-
-      // Match and insert new MIs
-      val newMIs = expandMacroFor(rewrittenIR).onEach { it.irLabelIndex = mi.irLabelIndex }
-      for (newMI in newMIs) {
-        it.add(newMI)
-      }
-    }
   }
 
   private fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction> {

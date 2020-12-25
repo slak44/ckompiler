@@ -452,6 +452,19 @@ data class MemoryLocation(val ptr: IRValue) : LoadableValue() {
 }
 
 /**
+ * Like [VirtualRegister] for stack slots. Much like [StackVariable], this is a _value_, and it represents a pointer.
+ */
+class StackValue(val id: AtomicId, initialType: TypeName) : LoadableValue() {
+  override val name get() = "stackval$id"
+  override val type: PointerType = PointerType(initialType, emptyList())
+  override val isUndefined = false
+
+  override fun toString() = "stack value $type $name"
+  override fun equals(other: Any?) = (other as? StackValue)?.id == id
+  override fun hashCode() = id
+}
+
+/**
  * Is basically a pointer to the variable, like &x. To actually use the value of x, it must be
  * loaded to a [VirtualRegister] using [LoadMemory], then modified with [StoreMemory].
  *
@@ -481,6 +494,7 @@ fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = wh
     }
   is MemoryLocation -> TODO()
   is StackVariable -> TODO()
+  is StackValue -> TODO()
   is IntConstant -> value.copy(type = type) // FIXME: check type limits
   is FltConstant -> TODO()
   is StrConstant -> TODO()

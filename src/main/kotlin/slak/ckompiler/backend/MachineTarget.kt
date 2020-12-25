@@ -1,6 +1,7 @@
 package slak.ckompiler.backend
 
 import slak.ckompiler.AtomicId
+import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.TypeName
@@ -47,14 +48,30 @@ interface MachineRegister {
 /**
  * Fake register that's actually a stack slot in the function's frame.
  */
-class StackSlot(value: StackVariable, mtd: MachineTargetData) : MachineRegister {
-  override val id = value.id
+interface StackSlot : MachineRegister
+
+/**
+ * A transient [StackSlot]. Like [VirtualRegister] for stack slots.
+ */
+class SpillSlot(value: StackValue, override val id: AtomicId, mtd: MachineTargetData) : StackSlot {
   override val regName = value.name
   override val sizeBytes = mtd.sizeOf(value.type.referencedType)
   override val valueClass = Memory
   override val aliases = emptyList<RegisterAlias>()
 
-  override fun toString() = "stack slot $id"
+  override fun toString() = "stack slot $id (spill)"
+}
+
+/**
+ * A [StackSlot] that will be exclusively used by the linked [StackVariable].
+ */
+class FullVariableSlot(value: StackVariable, override val id: AtomicId, mtd: MachineTargetData) : StackSlot {
+  override val regName = value.name
+  override val sizeBytes = mtd.sizeOf(value.type.referencedType)
+  override val valueClass = Memory
+  override val aliases = emptyList<RegisterAlias>()
+
+  override fun toString() = "stack slot $id (full)"
 }
 
 class RegisterBuilder<T : MachineRegister>(
@@ -271,6 +288,16 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
   val graph: InstructionGraph
 
   /**
+   * The function's pool of [StackValue] ids.
+   */
+  val stackValueIds: IdCounter
+
+  /**
+   * The function's pool of [StackSlot] ids.
+   */
+  val stackSlotIds: IdCounter
+
+  /**
    * Create a [MachineInstruction] to copy [src] to [dest]. The [InstructionTemplate] is target-specific, which is why
    * this is needed. This is for pre-coloring stages.
    *
@@ -301,27 +328,6 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
    * why this function is here.
    */
   fun insertPhiCopies(block: InstrBlock, copies: List<MachineInstruction>)
-
-  /**
-   * If any instruction uses a [Variable] with an id from [spilled], replace all the affected MIs in the [block] with
-   * new ones.
-   *
-   * This is a target-dependent operation, because it is basically a localized instruction selection.
-   *
-   * @param spilled set of [Variable.id]
-   */
-  fun rewriteSpill(block: InstrBlock, spilled: Set<AtomicId>)
-
-  /**
-   * Run [rewriteSpill] on every block, except for the [InstructionGraph.returnBlock], since that block is synthetic.
-   *
-   * @param spilled set of [Variable.id]
-   */
-  fun insertSpillCode(spilled: Set<AtomicId>) {
-    for (blockId in graph.blocks - graph.returnBlock.id) {
-      rewriteSpill(graph[blockId], spilled)
-    }
-  }
 }
 
 /**

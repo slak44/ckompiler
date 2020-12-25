@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.x64
 
 import slak.ckompiler.AtomicId
+import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Target.Companion.ALIGNMENT_BYTES
@@ -15,7 +16,7 @@ import slak.ckompiler.parser.SignedIntType
 import slak.ckompiler.parser.UnsignedLongType
 import kotlin.properties.Delegates
 
-class X64FunAssembler(private val target: X64Target, val cfg: CFG) : FunctionAssembler {
+class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlotIds: IdCounter) : FunctionAssembler {
   /**
    * If this is set to true, it means this function does not make any calls (ie is a leaf function).
    * This is useful for knowing whether to use the red zone or not.
@@ -44,7 +45,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG) : FunctionAss
 
   /**
    * Stores actual stack values for function parameters passed on the stack. That is, it maps the
-   * id of the relevant [Variable]/[StackVariable]/[StackSlot] to its `[rbp + 0x123]` [MemoryValue].
+   * id of the relevant [Variable]/[StackVariable]/[FullVariableSlot] to its `[rbp + 0x123]` [MemoryValue].
    */
   private val stackParamOffsets = mutableMapOf<AtomicId, MemoryValue>()
 
@@ -81,7 +82,8 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG) : FunctionAss
       val type = variable.type.unqualify().normalize()
       val stackVar = StackVariable(variable.tid)
       parameterMap[ParameterReference(index, type)] = stackVar
-      stackParamOffsets[stackVar.id] = MemoryValue.frameAbs(StackSlot(stackVar, target.machineTargetData), paramOffset)
+      stackParamOffsets[stackVar.id] =
+          MemoryValue.frameAbs(FullVariableSlot(stackVar, stackSlotIds(), target.machineTargetData), paramOffset)
       val varSize = target.machineTargetData.sizeOf(type)
       paramOffset += varSize.coerceAtLeast(EIGHTBYTE) alignTo EIGHTBYTE
     }
@@ -221,7 +223,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG) : FunctionAss
       is PhysicalRegister -> unwrapped.reg
       else -> alloc.allocations.getValue(unwrapped)
     }
-    if (value is MemoryLocation && value.ptr !is StackVariable) {
+    if (value is MemoryLocation && value.ptr !is StackVariable && value.ptr !is StackValue) {
       return MemoryValue(typeSize, RegisterValue(machineRegister, target.machineTargetData.sizeOf(unwrapped.type)))
     }
     if (machineRegister !is StackSlot) {

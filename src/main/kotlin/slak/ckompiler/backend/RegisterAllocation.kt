@@ -242,7 +242,6 @@ private class RegisterAllocationContext(val generator: TargetFunGenerator) {
 
   /** Begin a DFS from the starting block. */
   fun doAllocation() {
-    require(coloring.isEmpty())
     for (blockId in graph.domTreePreorder) {
       allocBlock(graph[blockId])
     }
@@ -418,11 +417,13 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
   val colored = mutableSetOf<IRValue>()
   for ((index, mi) in block.withIndex()) {
     val label = InstrLabel(block.id, index)
+    val stackVariables = mi.operands
+        .map { if (it is MemoryLocation) it.ptr else it }
+        .filterIsInstance<StackVariable>()
     // Also add stack variables to coloring
-    coloring += mi.operands
-        .filter { it is StackVariable || it is MemoryLocation }
-        .mapNotNull { if (it is MemoryLocation) it.ptr as? StackVariable else it }
-        .associateWith { StackSlot(it as StackVariable, target.machineTargetData) }
+    coloring += stackVariables.associateWith {
+      FullVariableSlot(it, generator.stackSlotIds(), target.machineTargetData)
+    }
     if (mi.isConstrained) {
       allocConstrainedMI(label, mi)
       continue
@@ -433,9 +434,13 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
         .asSequence()
         .filter { it !in colored }
         .filterIsInstance<AllocatableValue>()
-    // Allocate registers for values defined at this label
+
     for (definition in defined) {
+      // This is already spilled, no need to allocate
+      if (coloring[definition] is StackSlot) continue
+      // Allocate registers for values defined at this label
       val color = target.selectRegisterBlacklist(assigned, definition)
+      // Coloring the same thing twice is almost always a bug (and for the cases it's not, we have the "colored" list)
       if (coloring[definition] != null) {
         logger.throwICE("Coloring the same definition twice") {
           "def: $definition, old color: ${coloring[definition]}, new color: $color"
@@ -478,15 +483,22 @@ private fun RegisterAllocationContext.replaceParallelInstructions() {
  * @param debugNoPostColoring only for debugging: if true, post-coloring transforms will not be applied
  * @param debugNoCheckAlloc only for debugging: if true, do not run [walkGraphAllocs]
  * @see runSpiller
+ * @see insertSpillReloadCode
+ * @see prepareForColoring
+ * @see replaceParallelInstructions
+ * @see removePhi
  */
 fun TargetFunGenerator.regAlloc(
     debugNoPostColoring: Boolean = false,
     debugNoCheckAlloc: Boolean = false
 ): AllocationResult {
-  runSpiller()
+  val spillMap = insertSpillReloadCode(runSpiller())
   prepareForColoring()
   // FIXME: coalescing
   val ctx = RegisterAllocationContext(this)
+  for ((_, stackValue) in spillMap) {
+    ctx.coloring[stackValue] = SpillSlot(stackValue, stackSlotIds(), target.machineTargetData)
+  }
   ctx.doAllocation()
   val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
   val result = AllocationResult(graph, allocations, ctx.registerUseMap)

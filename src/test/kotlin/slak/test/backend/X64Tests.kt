@@ -80,8 +80,9 @@ class X64Tests {
     RSP(X64Target().registerByName("rsp"), true),
     R10(X64Target().registerByName("r10"), false),
     XMM5(X64Target().registerByName("xmm5"), false),
-    STACK_SLOT(StackSlot(
+    STACK_SLOT(FullVariableSlot(
         StackVariable(TypedIdentifier("fake", SignedIntType)),
+      123,
         MachineTargetData.x64
     ), false)
   }
