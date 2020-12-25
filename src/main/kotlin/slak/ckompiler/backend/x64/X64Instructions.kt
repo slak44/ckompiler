@@ -318,10 +318,7 @@ val dummyUse = dummyInstructionClass("USE", listOf(VariableUse.USE)) {
   instr(R64)
 }
 
-private val rax = X64Target().registerByName("rax")
-private val rdx = X64Target().registerByName("rdx")
-
-val imul = instructionClass("imul", listOf(VariableUse.DEF_USE, VariableUse.USE, VariableUse.USE)) {
+val imul = instructionClass("imul", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
   // 3 operand RMI form
   instr(R16, RM16, IMM8)
   instr(R32, RM32, IMM8)
