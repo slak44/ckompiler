@@ -148,6 +148,7 @@ private fun String.unescape(): String =
     replace("\\b", "\\\\b")
         .replace("\\t", "\\\\t")
         .replace("\\n", "\\\\n")
+        .replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
