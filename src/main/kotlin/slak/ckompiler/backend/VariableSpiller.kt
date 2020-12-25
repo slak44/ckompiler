@@ -136,11 +136,7 @@ private class BlockSpiller(
         val actualK = k - (constraintsMap[valueClass] ?: 0) - (duplicateCount[valueClass] ?: 0)
         // R is the set of reloaded variables at insn
         // Since they are reloads to registers, they are obviously in w
-        val r = if (valueClass !in insnUses) {
-          emptyList()
-        } else {
-          insnUses.getValue(valueClass) - wClass
-        }
+        val r = (insnUses[valueClass] ?: emptyList()) - wClass
         wClass += r
         s += r
         // Make room for insn's uses
