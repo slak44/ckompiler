@@ -108,6 +108,7 @@ private class BlockSpiller(
       val insn = it.next()
       val insnUses = insn.uses
           .filterIsInstance<AllocatableValue>()
+          .filter { !it.isUndefined }
           .groupBy { target.registerClassOf(it.type) }
       val insnDefs = insn.defs
           .filterIsInstance<AllocatableValue>()
@@ -138,7 +139,7 @@ private class BlockSpiller(
         val r = if (valueClass !in insnUses) {
           emptyList()
         } else {
-          insnUses.getValue(valueClass).filter { !it.isUndefined } - wClass
+          insnUses.getValue(valueClass) - wClass
         }
         wClass += r
         s += r
