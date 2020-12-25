@@ -95,4 +95,10 @@ class SpillTests {
     val cfg = prepareCFG(resource("spilling/noSpillCall.c"), source)
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
+
+  @Test
+  fun `Live-In Value Isn't Reloaded`() {
+    val cfg = prepareCFG(resource("spilling/noReloadLiveIn.c"), source)
+    X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
+  }
 }
