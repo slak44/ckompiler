@@ -82,8 +82,8 @@ private class BlockSpiller(
   private fun TargetFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
     val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, insnIndex), it) }
     for (v in wClass.drop(m.coerceAtLeast(0))) {
-      if (v !in s && nextUse(InstrLabel(blockId, insnIndex), v) != Int.MAX_VALUE) {
-        spills += Location(v, InstrLabel(blockId, insnIndex))
+      if (v !in s && !graph.isDeadAfter(v, InstrLabel(blockId, insnIndex))) {
+        spills += Location(v, InstrLabel(blockId, (insnIndex - 1).coerceAtLeast(0)))
       }
       s -= v
       // Instead of keeping the first m like in the algorithm, we remove items after the first m, to get the same effect
