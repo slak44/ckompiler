@@ -240,6 +240,7 @@ private fun MIDebugMode.generateMIDebugInternal() {
 
   if (spillOutput) {
     val pressure = genInitial.findRegisterPressure()
+    val maxPressure = target.maxPressure
     printHeader("Register pressure")
     for ((regClass, pressureMap) in pressure) {
       println("Class: $regClass")
@@ -248,7 +249,13 @@ private fun MIDebugMode.generateMIDebugInternal() {
         val ordered = locations.sortedBy { it.second }
         for (location in ordered) {
           printNasm(genInitial.graph[blockId][location.second].toString())
-          println("pressure: ${pressureMap[location]}")
+          val maxHere = maxPressure[regClass] ?: Int.MAX_VALUE
+          val pressureHere = pressureMap.getValue(location)
+          if (pressureHere > maxHere) {
+            printError("pressure (max is $maxHere): $pressureHere")
+          } else {
+            println("pressure: $pressureHere")
+          }
         }
       }
       println()
