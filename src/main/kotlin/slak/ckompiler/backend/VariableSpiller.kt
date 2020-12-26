@@ -54,7 +54,7 @@ private class BlockSpiller(
     val targetFunGenerator: TargetFunGenerator,
     val blockId: AtomicId,
     val maxPressure: Map<MachineRegisterClass, Int>,
-    wBlockEntry: Map<MachineRegisterClass, MutableList<AllocatableValue>>,
+    wBlockEntry: Map<MachineRegisterClass, MutableSet<AllocatableValue>>,
     sBlockEntry: Set<AllocatableValue>
 ) {
   private val reloads = mutableListOf<Location>()
@@ -67,7 +67,7 @@ private class BlockSpiller(
    */
   private val w = wBlockEntry.toMutableMap()
 
-  val wExit: Map<MachineRegisterClass, List<AllocatableValue>> get() = w
+  val wExit: Map<MachineRegisterClass, Set<AllocatableValue>> get() = w
 
   /**
    * The set of values that were already spilled once (and only once is enough because SSA).
@@ -80,15 +80,14 @@ private class BlockSpiller(
    * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
    */
   private fun TargetFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
-    val wClass = w.getValue(valueClass)
-    wClass.sortBy { nextUse(InstrLabel(blockId, insnIndex), it) }
+    val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, insnIndex), it) }
     for (v in wClass.drop(m.coerceAtLeast(0))) {
       if (v !in s && nextUse(InstrLabel(blockId, insnIndex), v) != Int.MAX_VALUE) {
         spills += Location(v, InstrLabel(blockId, insnIndex))
       }
       s -= v
       // Instead of keeping the first m like in the algorithm, we remove items after the first m, to get the same effect
-      wClass -= v
+      w.getValue(valueClass) -= v
     }
   }
 
@@ -165,10 +164,10 @@ private fun TargetFunGenerator.initUsual(
     maxPressure: Map<MachineRegisterClass, Int>,
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>
-): Map<MachineRegisterClass, MutableList<AllocatableValue>> {
+): Map<MachineRegisterClass, MutableSet<AllocatableValue>> {
   val freq = mutableMapOf<MachineRegisterClass, MutableMap<AllocatableValue, Int>>()
-  val take = mutableMapOf<MachineRegisterClass, MutableList<AllocatableValue>>()
-  val cand = mutableMapOf<MachineRegisterClass, MutableList<AllocatableValue>>()
+  val take = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
+  val cand = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
 
   val preds = graph.predecessors(blockId)
   for (pred in preds) {
@@ -180,29 +179,28 @@ private fun TargetFunGenerator.initUsual(
           val value = map.getValue(variable)
           map[variable] = value + 1
           if (value + 1 == preds.size) {
-            cand.getOrPut(valueClass, ::mutableListOf) -= variable
-            take.getOrPut(valueClass, ::mutableListOf) += variable
+            cand.getOrPut(valueClass, ::mutableSetOf) -= variable
+            take.getOrPut(valueClass, ::mutableSetOf) += variable
           }
         } else {
           map[variable] = 0
         }
-        cand.getOrPut(valueClass, ::mutableListOf) += variable
+        cand.getOrPut(valueClass, ::mutableSetOf) += variable
       }
     }
   }
   for ((valueClass, classCand) in cand) {
-    val toTake = take.getOrPut(valueClass, ::mutableListOf)
+    val toTake = take.getOrPut(valueClass, ::mutableSetOf)
     val k = maxPressure.getValue(valueClass)
     if (toTake.size >= k) {
       // No need to sort, none in cand will be taken
       continue
     }
-    classCand.sortByDescending { nextUse(InstrLabel(blockId, 0), it) }
-    toTake += classCand.take(k - toTake.size)
+    toTake += classCand.asSequence().sortedByDescending { nextUse(InstrLabel(blockId, 0), it) }.take(k - toTake.size)
   }
 
   for (valueClass in target.registerClasses) {
-    take.putIfAbsent(valueClass, mutableListOf())
+    take.putIfAbsent(valueClass, mutableSetOf())
   }
 
   return take
@@ -211,7 +209,7 @@ private fun TargetFunGenerator.initUsual(
 private fun TargetFunGenerator.initSpilled(
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>,
-    wBlockEntry: Map<MachineRegisterClass, MutableList<AllocatableValue>>
+    wBlockEntry: Map<MachineRegisterClass, MutableSet<AllocatableValue>>
 ): Set<AllocatableValue> {
   val sJoin = graph.predecessors(blockId).flatMap { spillers[it.id]?.sExit ?: emptyList() }
   return sJoin.intersect(wBlockEntry.values.flatten())
