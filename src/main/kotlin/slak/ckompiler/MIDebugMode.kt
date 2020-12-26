@@ -5,10 +5,7 @@ import kotlinx.html.stream.createHTML
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.IRValue
 import slak.ckompiler.analysis.LoadableValue
-import slak.ckompiler.backend.MachineRegister
-import slak.ckompiler.backend.findRegisterPressure
-import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.walkGraphAllocs
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Instruction
 import slak.ckompiler.backend.x64.X64PeepholeOpt
@@ -58,12 +55,17 @@ private class MIDebugMode(
           unsafe {
             +"pre { margin: 0; }"
             +"code { white-space: pre-wrap; }"
-            +"body { font-size: 16px !important; font-family: 'Fira Code', monospace !important; }"
+            +"body, table { font-size: 16px !important; font-family: 'Fira Code', monospace !important; }"
             +"table { border-collapse: collapse; }"
-            +"td { border-bottom: 1px solid #CCCCCC; }"
+            +".alloc-table td { border-bottom: 1px solid #CCCCCC; }"
+            +".left { text-align: left; }"
             +".right { text-align: right; }"
             +".arrow { padding: 0 8px; }"
             +".red { color: #F56764; }"
+            +".code-table code { padding: 0; }"
+            +".code-table td:first-of-type { padding-right: 8px; border-right: 1px solid #CCCCCC; }"
+            +".code-table td:nth-of-type(2) { margin-left: 8px; display: inline-block; }"
+            +".code-table td:last-of-type { padding-left: 48px; }"
           }
         }
       }
@@ -139,7 +141,7 @@ private class MIDebugMode(
   fun printAllocs(allocs: Map<IRValue, MachineRegister>) {
     if (generateHtml) {
       body.apply {
-        table {
+        table(classes = "alloc-table") {
           thead {
             tr {
               th { +"IRValue" }
@@ -162,6 +164,42 @@ private class MIDebugMode(
       for ((value, register) in allocs) {
         println("allocate $value to $register")
       }
+    }
+  }
+
+  fun printBlock(block: InstrBlock, minResult: MinResult) {
+    if (generateHtml) {
+      body.apply {
+        table(classes = "code-table") {
+          thead {
+            tr {
+              th()
+              th(classes = "left") { +"MachineInstruction" }
+              th(classes = "left") { +"Spill/Reload" }
+            }
+          }
+          tbody {
+            for ((idx, miCode) in block.map { it.toString() }.withIndex()) {
+              tr {
+                td(classes = "right") { +(idx.toString()) }
+                td { nasm { +miCode } }
+                td {
+                  val maybeSpill = minResult.spills.firstOrNull { it.second.second == idx }
+                  val maybeReload = minResult.reloads.firstOrNull { it.second.second == idx }
+                  if (maybeSpill != null) {
+                    +"[spill ${maybeSpill.first}]"
+                  }
+                  if (maybeReload != null) {
+                    +"[reload ${maybeReload.first}]"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      printNasm(block.joinToString(separator = "\n", postfix = "\n"))
     }
   }
 
@@ -218,7 +256,7 @@ private fun MIDebugMode.generateMIDebugInternal() {
   }
 
   val initialAlloc = genInitial.regAlloc(debugNoPostColoring = true, debugNoCheckAlloc = true)
-  val (graph) = initialAlloc
+  val (graph, _, _, spillResult) = initialAlloc
   printHeader("Initial MachineInstructions (with parallel copies)")
   for (blockId in graph.blocks - graph.returnBlock.id) {
     val block = graph[blockId]
@@ -227,8 +265,9 @@ private fun MIDebugMode.generateMIDebugInternal() {
       val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.version}" }
       "$variable ← φ($incStr)"
     })
-    printNasm(block.joinToString(separator = "\n", postfix = "\n"))
+    printBlock(block, spillResult.getValue(blockId))
   }
+
   printHeader("Register allocation")
   val gen = X64Generator(createCFG(), target)
   val realAllocation = gen.regAlloc(debugNoCheckAlloc = true)

@@ -19,7 +19,8 @@ typealias RegisterUseMap = Map<InstrBlock, List<MachineRegister>>
 data class AllocationResult(
     val graph: InstructionGraph,
     val allocations: AllocationMap,
-    val registerUseMap: RegisterUseMap
+    val registerUseMap: RegisterUseMap,
+    val spillResult: SpillResult
 ) {
   val stackSlots get() = allocations.values.filterIsInstance<StackSlot>()
 }
@@ -492,7 +493,8 @@ fun TargetFunGenerator.regAlloc(
     debugNoPostColoring: Boolean = false,
     debugNoCheckAlloc: Boolean = false
 ): AllocationResult {
-  val spillMap = insertSpillReloadCode(runSpiller())
+  val spillResult = runSpiller()
+  val spillMap = insertSpillReloadCode(spillResult)
   prepareForColoring()
   // FIXME: coalescing
   val ctx = RegisterAllocationContext(this)
@@ -501,7 +503,7 @@ fun TargetFunGenerator.regAlloc(
   }
   ctx.doAllocation()
   val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
-  val result = AllocationResult(graph, allocations, ctx.registerUseMap)
+  val result = AllocationResult(graph, allocations, ctx.registerUseMap, spillResult)
 
   if (!debugNoCheckAlloc) {
     val failedCheck = result.walkGraphAllocs { register, (blockId, index), type ->
