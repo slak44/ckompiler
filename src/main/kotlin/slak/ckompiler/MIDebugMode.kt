@@ -63,6 +63,7 @@ private class MIDebugMode(
             +"td { border-bottom: 1px solid #CCCCCC; }"
             +".right { text-align: right; }"
             +".arrow { padding: 0 8px; }"
+            +".red { color: #F56764; }"
           }
         }
       }
@@ -164,12 +165,26 @@ private class MIDebugMode(
     }
   }
 
+  fun printError(string: String) {
+    if (generateHtml) {
+      body.apply {
+        pre(classes = "red") {
+          +string
+        }
+      }
+    } else {
+      text.append(string)
+      text.append('\n')
+    }
+  }
+
   fun getOutput(): String {
     try {
       generateMIDebugInternal()
     } catch (e: Exception) {
-      e.printStackTrace()
-      // Ignore errors, just try and print as much as possible
+      // Ignore errors, print as much as possible + the error
+      printHeader("Debug mode error. Stopping here.")
+      printError(e.stackTraceToString())
     }
 
     return if (generateHtml) {
