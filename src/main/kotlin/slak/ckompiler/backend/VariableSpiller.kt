@@ -87,6 +87,7 @@ private class BlockSpiller(
         spills += Location(v, InstrLabel(blockId, insnIndex))
       }
       s -= v
+      // Instead of keeping the first m like in the algorithm, we remove items after the first m, to get the same effect
       wClass -= v
     }
   }
