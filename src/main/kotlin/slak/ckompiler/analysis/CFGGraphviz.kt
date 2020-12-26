@@ -128,9 +128,19 @@ private fun CFG.mapBlocksToString(
     }
     val nodes = graph.domTreePreorder.asSequence().toList()
     val instrGraphMap = nodes.associateWith {
-      graph[it].joinToString(separator = sep, postfix = sep) { mi ->
+      val phiStr = graph[it].phi.entries.joinToString(separator = sep) { (variable, uses) ->
+        "$variable = φ(${uses.entries.joinToString(", ")})"
+      }
+
+      val miStr = graph[it].joinToString(separator = sep, postfix = sep) { mi ->
         val color = if (mi.irLabelIndex % 2 == 0) MI_COLOR_A else MI_COLOR_B
         "<font color=\"$color\">${mi.toString().unescape()}</font>"
+      }
+
+      return@associateWith if (phiStr.isNotBlank()) {
+        phiStr + sep + miStr
+      } else {
+        miStr
       }
     }
     return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
