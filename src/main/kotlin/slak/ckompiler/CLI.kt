@@ -239,6 +239,7 @@ class CLI(private val stdinStream: InputStream) :
 
   private val showDummies by cli.flagArgument("--show-dummies", "Show all dummy allocations")
   private val miHtmlOutput by cli.flagArgument("--mi-html", "Generate pretty HTML debug view")
+  private val spillOutput by cli.flagArgument("--mi-spill", "Generate spill debug info")
 
   init {
     cli.helpGroup("Compiler debug options")
@@ -403,7 +404,14 @@ class CLI(private val stdinStream: InputStream) :
 
     if (isMIDebugOnly) {
       val function = allFuncs.findNamedFunction(miDebugFuncName) ?: return null
-      val miText = generateMIDebug(target, relPath, text, showDummies = showDummies, generateHtml = miHtmlOutput) {
+      val miText = generateMIDebug(
+          target,
+          relPath,
+          text,
+          showDummies = showDummies,
+          generateHtml = miHtmlOutput,
+          spillOutput = spillOutput
+      ) {
         CFG(
             f = function,
             targetData = MachineTargetData.x64,

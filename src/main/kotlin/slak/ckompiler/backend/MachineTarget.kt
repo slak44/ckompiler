@@ -362,6 +362,12 @@ interface MachineTarget {
   fun isPreservedAcrossCalls(register: MachineRegister): Boolean
 
   fun registerClassOf(type: TypeName): MachineRegisterClass
+
+  /**
+   * Get the maximum register pressure in each [MachineRegisterClass] for this target.
+   */
+  val maxPressure: Map<MachineRegisterClass, Int> get() =
+      (registers - forbidden).groupBy { it.valueClass }.mapValues { it.value.size }
 }
 
 fun MachineTarget.registerByName(name: String): MachineRegister {

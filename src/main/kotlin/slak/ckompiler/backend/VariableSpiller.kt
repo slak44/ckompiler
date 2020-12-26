@@ -225,7 +225,7 @@ typealias SpillResult = Map<AtomicId, MinResult>
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 3.1.5.2
  */
 fun TargetFunGenerator.runSpiller(): SpillResult {
-  val maxPressure = (target.registers - target.forbidden).groupBy { it.valueClass }.mapValues { it.value.size }
+  val maxPressure = target.maxPressure
 
   val spillers = mutableMapOf<AtomicId, BlockSpiller>()
 
@@ -267,13 +267,10 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Map<Allocatab
 }
 
 /**
- * Find all labels in the program, for which a [MachineRegisterClass] has higher pressure than there
- * are registers of that class.
+ * Find the register pressure for all the labels in the program, and for all register classes.
  */
-private fun TargetFunGenerator.findRegisterPressure(
-    maxPressure: Map<MachineRegisterClass, Int>
-): Map<MachineRegisterClass, Set<InstrLabel>> {
-  val pressure = target.registerClasses.associateWith { mutableSetOf<InstrLabel>() }
+fun TargetFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<InstrLabel, Int>> {
+  val pressure = target.registerClasses.associateWith { mutableMapOf<InstrLabel, Int>() }
   val current = target.registerClasses.associateWithTo(mutableMapOf()) { 0 }
   for (blockId in graph.domTreePreorder) {
     val block = graph[blockId]
@@ -321,11 +318,8 @@ private fun TargetFunGenerator.findRegisterPressure(
         current[classOf] = current.getValue(classOf) + count
       }
 
-      // If pressure is too high, add it to the list
       for (mrc in target.registerClasses) {
-        if (current.getValue(mrc) > maxPressure.getValue(mrc)) {
-          pressure.getValue(mrc) += InstrLabel(blockId, index)
-        }
+        pressure.getValue(mrc)[InstrLabel(blockId, index)] = current.getValue(mrc)
       }
       for ((classOf, count) in constraintsMap) {
         current[classOf] = current.getValue(classOf) - count

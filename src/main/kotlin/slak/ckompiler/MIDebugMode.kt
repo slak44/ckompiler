@@ -6,12 +6,14 @@ import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.IRValue
 import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.backend.MachineRegister
+import slak.ckompiler.backend.findRegisterPressure
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.walkGraphAllocs
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Instruction
 import slak.ckompiler.backend.x64.X64PeepholeOpt
 import slak.ckompiler.backend.x64.X64Target
+import java.lang.Exception
 
 fun generateMIDebug(
     target: X64Target,
@@ -19,9 +21,10 @@ fun generateMIDebug(
     srcText: String,
     showDummies: Boolean,
     generateHtml: Boolean,
+    spillOutput: Boolean,
     createCFG: () -> CFG
 ): String {
-  return MIDebugMode(target, srcFileName, srcText, showDummies, generateHtml, createCFG).getOutput()
+  return MIDebugMode(target, srcFileName, srcText, showDummies, generateHtml, spillOutput, createCFG).getOutput()
 }
 
 private class MIDebugMode(
@@ -30,6 +33,7 @@ private class MIDebugMode(
     val srcText: String,
     val showDummies: Boolean,
     val generateHtml: Boolean,
+    val spillOutput: Boolean,
     val createCFG: () -> CFG
 ) {
   val text = StringBuilder()
@@ -161,7 +165,12 @@ private class MIDebugMode(
   }
 
   fun getOutput(): String {
-    generateMIDebugInternal()
+    try {
+      generateMIDebugInternal()
+    } catch (e: Exception) {
+      e.printStackTrace()
+      // Ignore errors, just try and print as much as possible
+    }
 
     return if (generateHtml) {
       document.finalize()
@@ -175,6 +184,24 @@ private fun MIDebugMode.generateMIDebugInternal() {
   val cfgInit = createCFG()
   printTitle("Allocation for function ${cfgInit.f.name} of type ${cfgInit.f.functionType}")
   val genInitial = X64Generator(cfgInit, target)
+
+  if (spillOutput) {
+    val pressure = genInitial.findRegisterPressure()
+    printHeader("Register pressure")
+    for ((regClass, pressureMap) in pressure) {
+      println("Class: $regClass")
+      val byBlock = pressureMap.keys.groupBy { it.first }
+      for ((blockId, locations) in byBlock) {
+        val ordered = locations.sortedBy { it.second }
+        for (location in ordered) {
+          printNasm(genInitial.graph[blockId][location.second].toString())
+          println("pressure: ${pressureMap[location]}")
+        }
+      }
+      println()
+    }
+  }
+
   val initialAlloc = genInitial.regAlloc(debugNoPostColoring = true, debugNoCheckAlloc = true)
   val (graph) = initialAlloc
   printHeader("Initial MachineInstructions (with parallel copies)")
