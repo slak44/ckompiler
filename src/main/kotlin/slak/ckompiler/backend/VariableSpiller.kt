@@ -141,6 +141,9 @@ private class BlockSpiller(
         s += r
         // Make room for insn's uses
         limit(valueClass, insnIndex, actualK)
+        // Stuff that dies at this index should not count as "in a register"
+        val dyingHere = insnUses[valueClass]?.filter { graph.isDeadAfter(it, InstrLabel(blockId, insnIndex)) }
+        wClass -= dyingHere ?: emptyList()
         // Make room for insn's defs
         limit(valueClass, it.nextIndex(), actualK - (insnDefs[valueClass]?.size ?: 0))
         // Since we made space for the defs, they are now in w
