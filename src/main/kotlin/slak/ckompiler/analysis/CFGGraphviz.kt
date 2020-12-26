@@ -129,7 +129,10 @@ private fun CFG.mapBlocksToString(
     val nodes = graph.domTreePreorder.asSequence().toList()
     val instrGraphMap = nodes.associateWith {
       val phiStr = graph[it].phi.entries.joinToString(separator = sep) { (variable, uses) ->
-        "$variable = φ(${uses.entries.joinToString(", ")})"
+        val options = uses.entries.joinToString(", ") { (predId, variable) ->
+          "n$predId v${variable.version}"
+        }
+        "$variable = φ($options)"
       }
 
       val miStr = graph[it].joinToString(separator = sep, postfix = sep) { mi ->
