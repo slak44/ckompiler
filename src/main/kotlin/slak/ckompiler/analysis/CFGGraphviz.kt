@@ -1,11 +1,15 @@
 package slak.ckompiler.analysis
 
+import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.parser.Expression
+import java.lang.Exception
+
+private val logger = LogManager.getLogger()
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,
@@ -116,7 +120,12 @@ private fun CFG.mapBlocksToString(
   val sep = "<br align=\"left\"/>"
   if (print == CodePrintingMethods.MI_TO_STRING) {
     val gen = X64Generator(this, target)
-    val (graph) = gen.regAlloc()
+    val graph = try {
+      gen.regAlloc().graph
+    } catch (e: Exception) {
+      logger.error("Reg alloc failed, fall back to initial graph", e)
+      gen.graph
+    }
     val nodes = graph.domTreePreorder.asSequence().toList()
     val instrGraphMap = nodes.associateWith {
       graph[it].joinToString(separator = sep, postfix = sep) { mi ->
