@@ -115,8 +115,8 @@ private class BlockSpiller(
           .filter { !it.isUndefined }
           .groupBy { target.registerClassOf(it.type) }
       val constraintsMap = (insn.constrainedArgs + insn.constrainedRes)
-          .toSet()
           .filter { it.value is VirtualRegister && it.value.kind == VRegType.CONSTRAINED }
+          .distinctBy { it.target }
           .groupBy { it.target.valueClass }
           .mapValues { it.value.size }
       // Result constrained to same register as live-though constrained variable: copy will be made
