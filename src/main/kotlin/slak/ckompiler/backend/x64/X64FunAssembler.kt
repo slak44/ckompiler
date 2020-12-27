@@ -229,8 +229,8 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
     if (machineRegister !is StackSlot) {
       return RegisterValue(machineRegister, typeSize)
     }
-    return if (machineRegister.id in stackParamOffsets) {
-      stackParamOffsets.getValue(machineRegister.id)
+    return if (machineRegister is FullVariableSlot && machineRegister.value.id in stackParamOffsets) {
+      stackParamOffsets.getValue(machineRegister.value.id)
     } else {
       MemoryValue.inFrame(machineRegister, stackOffsets.getValue(machineRegister))
     }

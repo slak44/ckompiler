@@ -65,7 +65,7 @@ class SpillSlot(value: StackValue, override val id: AtomicId, mtd: MachineTarget
 /**
  * A [StackSlot] that will be exclusively used by the linked [StackVariable].
  */
-class FullVariableSlot(value: StackVariable, override val id: AtomicId, mtd: MachineTargetData) : StackSlot {
+class FullVariableSlot(val value: StackVariable, override val id: AtomicId, mtd: MachineTargetData) : StackSlot {
   override val regName = value.name
   override val sizeBytes = mtd.sizeOf(value.type.referencedType)
   override val valueClass = Memory
