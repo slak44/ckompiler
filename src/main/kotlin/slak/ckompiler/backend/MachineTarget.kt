@@ -226,10 +226,14 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
     val new = values.values.map { it.toString() }
     val newLength = new.map { it.length }.maxOrNull() ?: 0
 
+    if (old.isEmpty()) {
+      return "parallel copy [empty]"
+    }
+
     val copyStr = old.zip(new).withIndex().joinToString("\n") { (idx, pair) ->
       val (newStr, oldStr) = pair
-      val part1 = "  $newStr${" ".repeat(newLength - newStr.length)}  "
-      val part2 = "  $oldStr${" ".repeat(oldLength - oldStr.length)}  "
+      val part1 = "  $newStr${" ".repeat((newLength - newStr.length).coerceAtLeast(0))}  "
+      val part2 = "  $oldStr${" ".repeat((oldLength - oldStr.length).coerceAtLeast(0))}  "
 
       when (idx) {
         0 -> "[${part1.drop(1)}   [${part2.drop(1)}"
