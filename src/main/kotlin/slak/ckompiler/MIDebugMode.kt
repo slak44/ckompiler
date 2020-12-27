@@ -233,7 +233,7 @@ private class MIDebugMode(
 
 private fun MIDebugMode.generateMIDebugInternal() {
   val cfgInit = createCFG()
-  printTitle("Allocation for function ${cfgInit.f.name} of type ${cfgInit.f.functionType}")
+  printTitle("Allocation for function ${cfgInit.f.funcIdent}")
   val genInitial = X64Generator(cfgInit, target)
 
   if (spillOutput) {
