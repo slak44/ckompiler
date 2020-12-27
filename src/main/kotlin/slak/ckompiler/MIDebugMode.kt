@@ -35,7 +35,7 @@ private class MIDebugMode(
   val document = createHTML()
   lateinit var body: BODY
 
-  init {
+  private fun buildHTMLWrapper(content: BODY.() -> Unit) {
     document.html {
       head {
         title(srcFileName.takeLastWhile { it != '/' })
@@ -69,6 +69,7 @@ private class MIDebugMode(
       }
       body(classes = "hljs") {
         this@MIDebugMode.body = this
+        content()
       }
     }
   }
@@ -215,12 +216,14 @@ private class MIDebugMode(
   }
 
   fun getOutput(): String {
-    try {
-      generateMIDebugInternal()
-    } catch (e: Exception) {
-      // Ignore errors, print as much as possible + the error
-      printHeader("Debug mode error. Stopping here.")
-      printError(e.stackTraceToString())
+    buildHTMLWrapper {
+      try {
+        generateMIDebugInternal()
+      } catch (e: Exception) {
+        // Ignore errors, print as much as possible + the error
+        printHeader("Debug mode error. Stopping here.")
+        printError(e.stackTraceToString())
+      }
     }
 
     return if (generateHtml) {
