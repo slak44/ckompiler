@@ -17,6 +17,7 @@ private fun TargetFunGenerator.insertSpill(
   val targetStackValue = stackValue ?: StackValue(stackValueIds(), value.type)
   val copy = createIRCopy(MemoryLocation(targetStackValue), value)
   graph[blockId].add(idx, copy)
+  graph.defUseChains.getOrPut(value, ::mutableSetOf) += location
   return targetStackValue
 }
 
