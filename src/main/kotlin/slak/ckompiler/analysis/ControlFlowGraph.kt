@@ -424,6 +424,7 @@ fun Iterable<AtomicId>.replaceSpilled(i: IRInstruction): IRInstruction = when (i
   }
 }
 
+// FIXME: this needs to go away. calling it in codegen is ??? and calling it for &x expressions is iffy at best
 fun CFG.insertSpillCode(spilled: List<AtomicId>) = nodes.forEach { node ->
   val newIR = node.ir.map(spilled::replaceSpilled)
   node.ir.clear()
