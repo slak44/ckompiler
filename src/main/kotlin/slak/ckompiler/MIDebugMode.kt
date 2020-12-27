@@ -51,9 +51,15 @@ private class MIDebugMode(
         }
         style {
           unsafe {
+            +"""
+              body, table {
+                font-size: 16px !important;
+                font-family: 'Fira Code', monospace !important;
+                line-height: 1.4;
+              }
+            """.trimIndent()
             +"pre { margin: 0; }"
             +"code { white-space: pre-wrap; }"
-            +"body, table { font-size: 16px !important; font-family: 'Fira Code', monospace !important; }"
             +"table { border-collapse: collapse; }"
             +".alloc-table td { border-bottom: 1px solid #CCCCCC; }"
             +".left { text-align: left; }"
