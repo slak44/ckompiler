@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test
 import slak.test.compileAndRun
 import slak.test.expect
 import slak.test.justExitCode
-import slak.test.resource
 
 class X64ConstrainedDivTests {
   @Test
@@ -89,6 +88,27 @@ class X64ConstrainedDivTests {
         return live_through;
       }
     """.trimIndent()).expect(stdout = (a / b).toString(), exitCode = lt)
+  }
+
+  @Test
+  fun `Constrained Div Test With Multiple Live Through Variables`() {
+    val (x1, x2, x3, x4) = listOf(45, 5, 34, -7)
+    val (a1, a2, a3, a4) = listOf(-88, 5, -4, 86)
+    val res = 6
+    compileAndRun("""
+      int main() {
+        int res = $res;
+        int a1 = $a1, a2 = $a2, a3 = $a3, a4 = $a4;
+        int x1 = $x1, x2 = $x2, x3 = $x3, x4 = $x4;
+        res += (a1 + a2 + a3 + a4);
+        res += x3 / x2;
+        res += (a1 + a2 + a3 + a4);
+        res += x1 / x4;
+        res += (a1 + a2 + a3 + a4);
+        res += (a1 + a2 + a3 + a4);
+        return res;
+      }
+    """.trimIndent()).justExitCode(res + x3 / x2 + x1 / x4 + 4 * (a1 + a2 + a3 + a4))
   }
 
   @Test
