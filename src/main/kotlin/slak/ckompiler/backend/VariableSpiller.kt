@@ -97,10 +97,12 @@ private class BlockSpiller(
    */
   private fun TargetFunGenerator.minAlgorithm(maxPressure: Map<MachineRegisterClass, Int>) {
     val phiDefs = graph[blockId].phiDefs.groupBy { target.registerClassOf(it.type) }
+    val phiUses = graph[blockId].phiUses.groupBy { target.registerClassOf(it.type) }
     for ((valueClass, k) in maxPressure) {
       val wClass = w.getValue(valueClass)
       limit(valueClass, 0, k - (phiDefs[valueClass]?.size ?: 0))
       wClass += phiDefs[valueClass] ?: emptyList()
+      wClass -= phiUses[valueClass] ?: emptyList()
     }
 
     val it = graph[blockId].listIterator()
