@@ -201,7 +201,9 @@ class InstructionGraph private constructor(
     }
 
     val definitionHere = this[block].indexOfFirst { value in it.defs }
-    check(definitionHere != -1) { "Not live-in, but there is no definition of this variable here" }
+    check(definitionHere != -1) {
+      "Not live-in, but there is no definition of this variable here (value=$value, label=$label)"
+    }
 
     // Defined in this block, check definition index
     if (!isLiveIn && isLiveOut) {
