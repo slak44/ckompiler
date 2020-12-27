@@ -2,9 +2,7 @@ package slak.ckompiler
 
 import kotlinx.html.*
 import kotlinx.html.stream.createHTML
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.IRValue
-import slak.ckompiler.analysis.LoadableValue
+import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Instruction
@@ -167,7 +165,7 @@ private class MIDebugMode(
     }
   }
 
-  fun printBlock(block: InstrBlock, minResult: MinResult) {
+  fun printBlock(block: InstrBlock) {
     if (generateHtml) {
       body.apply {
         table(classes = "code-table") {
@@ -184,13 +182,13 @@ private class MIDebugMode(
                 td(classes = "right") { +(idx.toString()) }
                 td { nasm { +miCode } }
                 td {
-                  val maybeSpill = minResult.spills.firstOrNull { it.second.second == idx }
-                  val maybeReload = minResult.reloads.firstOrNull { it.second.second == idx }
-                  if (maybeSpill != null) {
-                    +"[spill ${maybeSpill.first}]"
+                  val maybeSpill = block[idx].defs.indexOfFirst { it is MemoryLocation && it.ptr is StackValue }
+                  val maybeReload = block[idx].uses.indexOfFirst { it is MemoryLocation && it.ptr is StackValue }
+                  if (maybeSpill >= 0) {
+                    +"[spill ${block[idx].operands[1]}]"
                   }
-                  if (maybeReload != null) {
-                    +"[reload ${maybeReload.first}]"
+                  if (maybeReload >= 0) {
+                    +"[reload ${block[idx].operands[0]}]"
                   }
                 }
               }
@@ -263,7 +261,7 @@ private fun MIDebugMode.generateMIDebugInternal() {
   }
 
   val initialAlloc = genInitial.regAlloc(debugNoPostColoring = true, debugNoCheckAlloc = true)
-  val (graph, _, _, spillResult) = initialAlloc
+  val (graph) = initialAlloc
   printHeader("Initial MachineInstructions (with parallel copies)")
   for (blockId in graph.blocks - graph.returnBlock.id) {
     val block = graph[blockId]
@@ -272,7 +270,7 @@ private fun MIDebugMode.generateMIDebugInternal() {
       val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.version}" }
       "$variable ← φ($incStr)"
     })
-    printBlock(block, spillResult.getValue(blockId))
+    printBlock(block)
   }
 
   printHeader("Register allocation")
