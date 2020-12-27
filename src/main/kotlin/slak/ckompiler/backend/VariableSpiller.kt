@@ -249,20 +249,35 @@ fun TargetFunGenerator.runSpiller(): SpillResult {
 fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Map<AllocatableValue, StackValue> {
   val spilled = mutableMapOf<AllocatableValue, StackValue>()
 
-  val allSpills = result.flatMap { it.value.spills }
-  for ((spilledVar, location) in allSpills) {
-    spilled[spilledVar] = insertSpill(spilledVar, location, spilled[spilledVar])
-  }
+  for ((blockId, minResult) in result.entries) {
+    // All the labels in minResult contain indices from before inserting spill/reload instructions
+    // We keep track of how many new instructions we inserted, so the original indices can be offset correctly
+    var insnInserted = 0
 
-  val allReloads = result.flatMap { it.value.reloads }
-  for ((spilledVar, location) in allReloads) {
-    val toReload = checkNotNull(spilled[spilledVar]) {
-      "Trying to reload something that was never spilled: $spilledVar"
+    // The value, the index inside the current block, and whether it's a spill (true) or a reload (false)
+    // This is ordered by the original index, so we can use insnInserted as an offset
+    val modifications: List<Triple<AllocatableValue, Int, Boolean>> =
+        (minResult.spills.map { (variable, label) -> Triple(variable, label.second, true) } +
+            minResult.reloads.map { (variable, label) -> Triple(variable, label.second, false) })
+            .sortedBy { it.second }
+
+    for ((variable, originalIdx, isSpill) in modifications) {
+      val offsetLabel = InstrLabel(blockId, originalIdx + insnInserted)
+
+      if (isSpill) {
+        spilled[variable] = insertSpill(variable, offsetLabel, spilled[variable])
+      } else {
+        val toReload = checkNotNull(spilled[variable]) {
+          "Trying to reload something that was never spilled: $variable"
+        }
+        insertReload(variable, toReload, offsetLabel)
+      }
+
+      insnInserted++
     }
-    insertReload(spilledVar, toReload, location)
   }
 
-  graph.ssaReconstruction(allSpills.map { it.first }.filterIsInstance<Variable>().toSet())
+  graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<Variable>().toSet())
 
   return spilled
 }
