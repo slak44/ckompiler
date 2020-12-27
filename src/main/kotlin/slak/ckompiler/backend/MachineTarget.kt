@@ -220,9 +220,25 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
   override val operandUse = List(values.size) { VariableUse.USE } + List(values.size) { VariableUse.DEF }
 
   override fun toString(): String {
-    val old = values.keys.joinToString(", ")
-    val new = values.values.joinToString(", ")
-    return "parallel copy [$new] ← [$old]"
+    val old = values.keys.map { it.toString() }
+    val oldLength = old.map { it.length }.maxOrNull() ?: 0
+
+    val new = values.values.map { it.toString() }
+    val newLength = new.map { it.length }.maxOrNull() ?: 0
+
+    val copyStr = old.zip(new).withIndex().joinToString("\n") { (idx, pair) ->
+      val (newStr, oldStr) = pair
+      val part1 = "  $newStr${" ".repeat(newLength - newStr.length)}  "
+      val part2 = "  $oldStr${" ".repeat(oldLength - oldStr.length)}  "
+
+      when (idx) {
+        0 -> "[${part1.drop(1)}   [${part2.drop(1)}"
+        old.size / 2 -> "$part1 ← $part2"
+        old.size - 1 -> "${part1.dropLast(1)}]   ${part2.dropLast(1)}]"
+        else -> "$part1   $part2"
+      }
+    }
+    return "parallel copy\n$copyStr"
   }
 
   companion object {
