@@ -219,6 +219,11 @@ class E2ETests {
     compileAndRun(resource("e2e/calls/ifCall.c")).expect(exitCode = 2, stdout = "2")
   }
 
+  @Test
+  fun `Function With Params On The Stack`() {
+    compileAndRun(resource("e2e/stackParams.c")).justExitCode(6)
+  }
+
   @Suppress("unused")
   enum class AddDifferentTypes(val type1: TypeName, val type2: TypeName) {
     INT_LONG(SignedIntType, SignedLongType),
