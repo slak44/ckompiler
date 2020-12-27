@@ -84,7 +84,7 @@ private class BlockSpiller(
     val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, insnIndex), it) }
     for (v in wClass.drop(m.coerceAtLeast(0))) {
       if (v !in s && !graph.isDeadAfter(v, InstrLabel(blockId, insnIndex))) {
-        spills += Location(v, InstrLabel(blockId, (insnIndex - 1).coerceAtLeast(0)))
+        spills += Location(v, InstrLabel(blockId, insnIndex))
       }
       s -= v
       // Instead of keeping the first m like in the algorithm, we remove items after the first m, to get the same effect
