@@ -80,11 +80,16 @@ private class BlockSpiller(
   /**
    * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
    */
-  private fun TargetFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
+  private fun TargetFunGenerator.limit(
+      valueClass: MachineRegisterClass,
+      insnIndex: Int,
+      m: Int,
+      spillTargetIndex: Int = insnIndex
+  ) {
     val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, insnIndex), it) }
     for (v in wClass.drop(m.coerceAtLeast(0))) {
       if (v !in s && !graph.isDeadAfter(v, InstrLabel(blockId, insnIndex))) {
-        spills += Location(v, InstrLabel(blockId, insnIndex))
+        spills += Location(v, InstrLabel(blockId, spillTargetIndex))
       }
       s -= v
       // Instead of keeping the first m like in the algorithm, we remove items after the first m, to get the same effect
@@ -148,7 +153,7 @@ private class BlockSpiller(
         val dyingHere = insnUses[valueClass]?.filter { graph.isDeadAfter(it, InstrLabel(blockId, insnIndex)) }
         wClass -= dyingHere ?: emptyList()
         // Make room for insn's defs
-        limit(valueClass, it.nextIndex(), actualK - (insnDefs[valueClass]?.size ?: 0))
+        limit(valueClass, it.nextIndex(), actualK - (insnDefs[valueClass]?.size ?: 0), insnIndex)
         // Since we made space for the defs, they are now in w
         wClass += insnDefs[valueClass] ?: emptyList()
         for (value in r) {

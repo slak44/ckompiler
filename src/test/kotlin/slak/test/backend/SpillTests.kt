@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.backend.Location
 import slak.ckompiler.backend.SpillResult
+import slak.ckompiler.backend.insertSpillReloadCode
 import slak.ckompiler.backend.runSpiller
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64RegisterClass
@@ -100,5 +101,17 @@ class SpillTests {
   fun `Live-In Value Isn't Reloaded`() {
     val cfg = prepareCFG(resource("spilling/noReloadLiveIn.c"), source)
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
+  }
+
+  @Test
+  fun `Spill Int With Constrained`() {
+    val cfg = prepareCFG(resource("e2e/spillWithConstrained.c"), source)
+    val target = X64Target()
+    val gen = X64Generator(cfg, target)
+    val spillResult = gen.runSpiller()
+    gen.insertSpillReloadCode(spillResult)
+    assert(spillResult.isNotEmpty()) { "Nothing was spilled" }
+    val (spills, _) = assertNotNull(spillResult[gen.graph.startId])
+    assert(spills.size >= 4)
   }
 }
