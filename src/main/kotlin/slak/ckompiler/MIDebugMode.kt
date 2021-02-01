@@ -61,6 +61,7 @@ private class MIDebugMode(
             +"pre { margin: 0; }"
             +"code { white-space: pre-wrap; }"
             +"table { border-collapse: collapse; }"
+            +"table + table { margin-top: 32px; }"
             +".alloc-table td { border-bottom: 1px solid #CCCCCC; }"
             +".left { text-align: left; }"
             +".right { text-align: right; }"
@@ -144,6 +145,8 @@ private class MIDebugMode(
   }
 
   fun printAllocs(allocs: Map<IRValue, MachineRegister>) {
+    val inverted = allocs.entries.groupBy { it.value }.mapValues { entry -> entry.value.map { it.key } }
+
     if (generateHtml) {
       body.apply {
         table(classes = "alloc-table") {
@@ -160,6 +163,25 @@ private class MIDebugMode(
                 td(classes = "right") { nasm { +(value.toString()) } }
                 td(classes = "arrow") { +"→" }
                 td { nasm { +(register.toString()) } }
+              }
+            }
+          }
+        }
+
+        table(classes = "alloc-table") {
+          thead {
+            tr {
+              th { +"MachineRegister" }
+              th { +"" }
+              th { +"IRValue" }
+            }
+          }
+          tbody {
+            for ((register, values) in inverted) {
+              tr {
+                td(classes = "right") { nasm { +(register.toString()) } }
+                td(classes = "arrow") { +"←" }
+                td { nasm { +(values.sortedBy { it.toString() }.joinToString("\n")) } }
               }
             }
           }
