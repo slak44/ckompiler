@@ -586,7 +586,9 @@ private fun TargetFunGenerator.removeOnePhi(
   for ((variable, incoming) in phis) {
     // predIncoming is β(y) in the paper
     val predIncoming = incoming.getValue(pred.id)
-    adjacency.getValue(coloring.getValue(predIncoming)) += coloring.getValue(variable)
+    val rhoY = coloring.getValue(variable)
+    val rhoBetaY = coloring.getValue(predIncoming)
+    adjacency.getValue(rhoBetaY) += rhoY
   }
   // Step 2: the unused register set F
   val free =
@@ -615,9 +617,10 @@ private fun TargetFunGenerator.replaceParallel(
   // Adjacency lists for T
   val adjacency = mutableMapOf<MachineRegister, MutableSet<MachineRegister>>()
   for (it in regs) adjacency[it] = mutableSetOf()
-  for (key in phiMap.keys) {
-    val target = coloring.getValue(phiMap.getValue(key))
-    adjacency.getValue(coloring.getValue(key)) += target
+  for ((old, new) in phiMap) {
+    val rhoBetaY = coloring.getValue(old)
+    val rhoY = coloring.getValue(new)
+    adjacency.getValue(rhoBetaY) += rhoY
   }
   // Step 2: the unused register set F
   val free = (target.registers - target.forbidden - assigned).toMutableList()
@@ -627,7 +630,7 @@ private fun TargetFunGenerator.replaceParallel(
 /**
  * Common steps for register transfer graph solving.
  *
- * @see removeOnePhi
+ * @param adjacency this represents the value transfer. That means that the keys are copy sources.
  * @see replaceParallel
  */
 private fun TargetFunGenerator.solveTransferGraph(
@@ -668,17 +671,7 @@ private fun TargetFunGenerator.solveTransferGraph(
       val freeTemp = free.firstOrNull { it.valueClass == r1.valueClass }
       if (freeTemp != null) {
         // Step 4b: F is not empty
-        var rLast: MachineRegister = freeTemp
-        var nextInCycle = r1
-        do {
-          if (adjacency.getValue(nextInCycle).size > 1) TODO("deal with multiple cycles")
-          copies += createRegisterCopy(rLast, nextInCycle)
-          rLast = nextInCycle
-          val next = adjacency.getValue(nextInCycle).single()
-          adjacency.getValue(nextInCycle).clear()
-          nextInCycle = next
-        } while (nextInCycle != r1)
-        copies += createRegisterCopy(rLast, freeTemp)
+        copies += solveTransferGraphCycle(adjacency, r1, freeTemp)
       } else {
         // Step 4c: F is empty
         TODO("implement this")
@@ -687,4 +680,46 @@ private fun TargetFunGenerator.solveTransferGraph(
     // While T is not empty
   } while (adjacency.values.any { it.isNotEmpty() })
   return copies
+}
+
+/**
+ * Create the copy sequence for a cycle in the register transfer graph.
+ *
+ * The copies inside this function are created in reverse order.
+ *
+ * This is because a graph edge like `rax → rcx` actually means `mov rcx, rax`, which would hint that we need to
+ * operate on the transposed graph T'. It is, however, far cheaper and easier to reverse things than to it is
+ * to transpose the graph.
+ *
+ * We reverse the copy operand order, so the edge `rLast → nextInCycle` creates the copy `mov nextInCycle, rLast`, and
+ * we also reverse the instruction order (see after the loop).
+ *
+ * Not dealing with T' can work in many (most?) common cases, where the cycle has only 2 nodes, but do not be fooled:
+ * it definitely produces wrong results for >2 nodes.
+ *
+ * @param adjacency the graph T
+ * @param firstInCycle any node in the cycle, it is irrelevant which
+ * @param freeTemp a free register to be used as a temporary for swaps
+ *
+ * @see solveTransferGraph
+ */
+private fun TargetFunGenerator.solveTransferGraphCycle(
+    adjacency: MutableMap<MachineRegister, MutableSet<MachineRegister>>,
+    firstInCycle: MachineRegister,
+    freeTemp: MachineRegister
+): List<MachineInstruction> {
+  var rLast: MachineRegister = freeTemp
+  var nextInCycle = firstInCycle
+  val cycleCopies = mutableListOf<MachineInstruction>()
+  do {
+    if (adjacency.getValue(nextInCycle).size > 1) TODO("deal with multiple cycles")
+    cycleCopies += createRegisterCopy(nextInCycle, rLast)
+    rLast = nextInCycle
+    val next = adjacency.getValue(nextInCycle).single()
+    adjacency.getValue(nextInCycle).clear()
+    nextInCycle = next
+  } while (nextInCycle != firstInCycle)
+  cycleCopies += createRegisterCopy(freeTemp, rLast)
+
+  return cycleCopies.asReversed()
 }
