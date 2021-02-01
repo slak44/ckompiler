@@ -7,6 +7,22 @@ import slak.test.justExitCode
 
 class X64ConstrainedDivTests {
   @Test
+  fun `Simple Constrained Div Test`() {
+    val a = 231
+    val b = 53
+    compileAndRun("""
+      int main() {
+        int res = 0;
+        int a = $a;
+        int b = $b;
+        res += a / b;
+        res += a / b;
+        return res;
+      }
+    """.trimIndent()).justExitCode(2 * (a / b))
+  }
+
+  @Test
   fun `Multiple Constrained Div Test`() {
     val x = mapOf(2 to -1, -231 to 53, 343 to 7)
     val defs = x.entries.withIndex().joinToString(", ") {
