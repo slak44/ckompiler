@@ -450,7 +450,7 @@ class E2ETests {
 
   @Test
   fun `Constrained Spilling`() {
-    compileAndRun(resource("e2e/spillWIthConstrained.c")).justExitCode(9)
+    compileAndRun(resource("e2e/spillWithConstrained.c")).justExitCode(9)
   }
 
   @Test
