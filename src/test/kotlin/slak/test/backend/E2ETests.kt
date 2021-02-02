@@ -462,4 +462,9 @@ class E2ETests {
   fun `Constrained In Large Loop`() {
     compileAndRun(resource("e2e/calls/callInLargeLoopCFG.c")).justExitCode(1)
   }
+
+  @Test
+  fun `Constrained Calls With High Nesting`() {
+    compileAndRun(resource("e2e/calls/callInNestedBlocks.c")).justExitCode(1)
+  }
 }
