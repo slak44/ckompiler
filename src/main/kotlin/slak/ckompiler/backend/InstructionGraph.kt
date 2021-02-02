@@ -200,6 +200,15 @@ class InstructionGraph private constructor(
       return lastUseHere == null || index > lastUseHere.second
     }
 
+    // If the variable is:
+    // - Not defined in this block
+    // - Not used in this block
+    // - Not live-in and not live-out
+    // it is most definitely dead.
+    if (variableDefs.getValue(value) != block && lastUseHere == null && !isLiveIn && !isLiveOut) {
+      return true
+    }
+
     val definitionHere = this[block].indexOfFirst { value in it.defs }
     check(definitionHere != -1) {
       "Not live-in, but there is no definition of this variable here (value=$value, label=$label)"
