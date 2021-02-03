@@ -67,6 +67,7 @@ private class MIDebugMode(
             +".right { text-align: right; }"
             +".arrow { padding: 0 8px; }"
             +".red { color: #F56764; }"
+            +".code-table { margin-bottom: 16px; }"
             +".code-table code { padding: 0; }"
             +".code-table td:first-of-type { padding-right: 8px; border-right: 1px solid #CCCCCC; }"
             +".code-table td:nth-of-type(2) { margin-left: 8px; display: inline-block; }"
