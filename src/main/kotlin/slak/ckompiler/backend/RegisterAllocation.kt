@@ -637,6 +637,8 @@ private fun TargetFunGenerator.solveTransferGraph(
     adjacency: MutableMap<MachineRegister, MutableSet<MachineRegister>>,
     free: MutableList<MachineRegister>
 ): List<MachineInstruction> {
+  if (adjacency.isEmpty()) return emptyList()
+
   val copies = mutableListOf<MachineInstruction>()
   // Step 3: For each edge e = (r, s), r ≠ s, out degree of s == 0
   // We do this for as long as an edge e with the above property exists
