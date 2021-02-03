@@ -137,7 +137,7 @@ private fun CFG.mapBlocksToString(
 
       val miStr = graph[it].joinToString(separator = sep, postfix = sep) { mi ->
         val color = if (mi.irLabelIndex % 2 == 0) MI_COLOR_A else MI_COLOR_B
-        "<font color=\"$color\">${mi.toString().unescape()}</font>"
+        "<font color=\"$color\">${mi.toString().unescape().replace("\n", sep)}</font>"
       }
 
       return@associateWith if (phiStr.isNotBlank()) {
