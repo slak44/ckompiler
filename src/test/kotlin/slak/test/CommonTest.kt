@@ -36,15 +36,19 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   return Parser(pp.tokens, source, s, MachineTargetData.x64)
 }
 
-internal fun prepareCFG(s: String, source: SourceFileName): CFG {
+internal fun prepareCFG(s: String, source: SourceFileName, functionName: String? = null): CFG {
   val p = prepareCode(s, source)
   p.assertNoDiagnostics()
-  return CFG(p.root.decls.firstFun(), MachineTargetData.x64, source, s,
-      forceReturnZero = true, forceAllNodes = false)
+  val func = if (functionName == null) {
+    p.root.decls.firstFun()
+  } else {
+    p.root.decls.first { it is FunctionDefinition && it.name == functionName } as FunctionDefinition
+  }
+  return CFG(func, MachineTargetData.x64, source, s, forceReturnZero = true, forceAllNodes = false)
 }
 
-internal fun prepareCFG(file: File, source: SourceFileName): CFG {
-  return prepareCFG(file.readText(), source)
+internal fun prepareCFG(file: File, source: SourceFileName, functionName: String? = null): CFG {
+  return prepareCFG(file.readText(), source, functionName)
 }
 
 @JvmName("cli_array")

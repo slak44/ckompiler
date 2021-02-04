@@ -472,4 +472,9 @@ class E2ETests {
   fun `High Nesting With Constrained Calls`() {
     compileAndRun(resource("e2e/calls/callInNestedBlocks.c")).justExitCode(1)
   }
+
+  @Test
+  fun `Small Nesting With Constrained Calls`() {
+    compileAndRun(resource("e2e/calls/callInNestedBlocksSimple.c")).justExitCode(2)
+  }
 }
