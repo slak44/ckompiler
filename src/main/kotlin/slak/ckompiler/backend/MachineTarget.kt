@@ -239,7 +239,9 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
       val part1 = "  $newStr${" ".repeat((newLength - newStr.length).coerceAtLeast(0))}  "
       val part2 = "  $oldStr${" ".repeat((oldLength - oldStr.length).coerceAtLeast(0))}  "
 
-      when (idx) {
+      if (old.size == 2 && idx == old.size - 1) {
+        "${part1.dropLast(1)}] ← ${part2.dropLast(1)}]"
+      } else when (idx) {
         0 -> "[${part1.drop(1)}   [${part2.drop(1)}"
         old.size / 2 -> "$part1 ← $part2"
         old.size - 1 -> "${part1.dropLast(1)}]   ${part2.dropLast(1)}]"
