@@ -22,8 +22,8 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
   val liveIn = mutableMapOf<AtomicId, MutableSet<Variable>>()
   val liveOut = mutableMapOf<AtomicId, MutableSet<Variable>>()
 
-  fun InstrPhi.predByVar(v: Variable): AtomicId? {
-    return entries.firstOrNull { it.key.id == v.id }?.value?.entries?.firstOrNull { it.value == v }?.key
+  fun InstrPhi.predsByVar(v: Variable): List<AtomicId>? {
+    return entries.firstOrNull { it.key.id == v.id }?.value?.entries?.filter { it.value == v }?.map { it.key }
   }
 
   fun upAndMarkStack(B: AtomicId, v: Variable, fromPhi: Boolean = false) {
@@ -34,7 +34,7 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
     val list = if (!fromPhi) {
       predecessors(B)
     } else {
-      listOf(this[this[B].phi.predByVar(v)!!])
+      this[B].phi.predsByVar(v)!!.map { this[it] }
     }
     for (P in list) {
       if (liveOut.getOrPut(P.id, ::mutableSetOf).lastOrNull() != v) {
@@ -48,7 +48,7 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
   for (v in defUseChains.keys.filterIsInstance<Variable>().filter { !it.isUndefined }) {
     val uses = defUseChains.getValue(v)
     for ((B, index) in uses) {
-      if (successors(B).any { succ -> succ.phi.predByVar(v) == B }) {
+      if (successors(B).any { succ -> B in succ.phi.predsByVar(v) ?: emptyList() }) {
         liveOut.getOrPut(B, ::mutableSetOf) += v
       }
       upAndMarkStack(B, v, index == DEFINED_IN_PHI)
