@@ -127,17 +127,34 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       val (blockId, index) = label
       val block = this[blockId]
       // Call findDef to get the latest definition for this use, and update the use with the version of the definition
-      val newVersion = if (index == DEFINED_IN_PHI) {
-        // If it's a φuse, then call findDef with the correct predecessor to search for defs in
+      if (index == DEFINED_IN_PHI) {
+        // If it's a φuse, then call findDef with the correct predecessor(s) to search for defs in
         val phiEntry = block.phi.entries.first { it.key.id == x.id }
         val incoming = phiEntry.value
-        val target = incoming.entries.first { it.value == x }.key
-        val newVersion = findDef(label, target, x)
-        // If already wired correctly, don't bother updating anything
-        if (x == newVersion) continue
-        hasAlteredPhi += blockId to phiEntry.key
-        incoming[target] = newVersion
-        newVersion
+        val stillUsed = mutableSetOf<Variable>()
+        // Our version of x might come from multiple preds, each must be replaced separately
+        // For example: φ(n0 v1, n1 v2, n3 v2)
+        for ((targetPred, _) in incoming.entries.filter { it.value == x }) {
+          val newVersion = findDef(label, targetPred, x)
+          // If already wired correctly, don't bother updating anything
+          if (x == newVersion) {
+            stillUsed += x
+            continue
+          }
+          hasAlteredPhi += blockId to phiEntry.key
+          incoming[targetPred] = newVersion
+          if (x != newVersion) {
+            // Remove old use, add new use
+            defUseChains.getOrPut(x, ::mutableSetOf) -= label
+            defUseChains.getOrPut(newVersion, ::mutableSetOf) += label
+          }
+        }
+        // If one predecessor version is updated, but another is not, the uses must be fixed
+        // Consider the case where n1 v2 is not updated, but n3 v2 is updated to another version
+        // For n3, the use set of v2 is updated to remove this label, but it is still used by the n1
+        for (varUsed in stillUsed) {
+          defUseChains.getOrPut(varUsed, ::mutableSetOf) += label
+        }
       } else {
         // Otherwise just go up the dominator tree looking for definitions
         val newVersion = findDef(label, null, x)
@@ -145,12 +162,11 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
         if (x == newVersion) continue
         // Rewrite use
         block[index] = block[index].rewriteBy(mapOf(x to newVersion))
-        newVersion
-      }
-      if (x != newVersion) {
-        // Update uses
-        defUseChains.getOrPut(x, ::mutableSetOf) -= label
-        defUseChains.getOrPut(newVersion, ::mutableSetOf) += label
+        if (x != newVersion) {
+          // Remove old use, add new use
+          defUseChains.getOrPut(x, ::mutableSetOf) -= label
+          defUseChains.getOrPut(newVersion, ::mutableSetOf) += label
+        }
       }
     }
   }
