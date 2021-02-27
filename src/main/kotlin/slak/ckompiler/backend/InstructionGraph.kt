@@ -315,7 +315,7 @@ class InstructionGraph private constructor(
     transposed.getValue(dest.id) += newBlock
     // Add new edge
     adjacency[newBlock.id] = mutableSetOf(dest)
-    transposed.getValue(dest.id) += newBlock
+    transposed[newBlock.id] = mutableSetOf(src)
     // Update successor's φs, for which the old block was incoming (now newBlock should be in incoming)
     for ((_, incoming) in dest.phi) {
       incoming[newBlock.id] = incoming[src.id] ?: continue
