@@ -24,9 +24,7 @@ data class TypedefName(
   override val kindName = "typedef"
 
   fun typedefedToString(): String {
-    // The storage class is "typedef", and we don't want to print it
-    val dsNoStorage = declSpec.copy(storageClass = null)
-    return "$dsNoStorage $type"
+    return type.toString()
   }
 }
 
