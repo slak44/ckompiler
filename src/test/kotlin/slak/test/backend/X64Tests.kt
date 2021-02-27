@@ -82,7 +82,7 @@ class X64Tests {
     XMM5(X64Target().registerByName("xmm5"), false),
     STACK_SLOT(FullVariableSlot(
         StackVariable(TypedIdentifier("fake", SignedIntType)),
-      123,
+        123,
         MachineTargetData.x64
     ), false)
   }

@@ -8,10 +8,12 @@ typealias BlockLocations = List<Location>
 
 data class MinResult(val spills: BlockLocations, val reloads: BlockLocations)
 
+typealias WBlockMap = Map<MachineRegisterClass, MutableSet<AllocatableValue>>
+
 private fun TargetFunGenerator.insertSpill(
-  value: AllocatableValue,
-  location: InstrLabel,
-  stackValue: StackValue?
+    value: AllocatableValue,
+    location: InstrLabel,
+    stackValue: StackValue?
 ): StackValue {
   val (blockId, idx) = location
   val targetStackValue = stackValue ?: StackValue(stackValueIds(), value.type)
@@ -55,7 +57,7 @@ private class BlockSpiller(
     val targetFunGenerator: TargetFunGenerator,
     val blockId: AtomicId,
     val maxPressure: Map<MachineRegisterClass, Int>,
-    wBlockEntry: Map<MachineRegisterClass, MutableSet<AllocatableValue>>,
+    wBlockEntry: WBlockMap,
     sBlockEntry: Set<AllocatableValue>
 ) {
   private val reloads = mutableListOf<Location>()
@@ -66,7 +68,7 @@ private class BlockSpiller(
   /**
    * The set of values that are in a register. Initially set to the values in a register at the start of the block.
    */
-  private val w = wBlockEntry.toMutableMap()
+  private val w = wBlockEntry
 
   val wExit: Map<MachineRegisterClass, Set<AllocatableValue>> get() = w
 
@@ -175,7 +177,7 @@ private fun TargetFunGenerator.initUsual(
     maxPressure: Map<MachineRegisterClass, Int>,
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>
-): Map<MachineRegisterClass, MutableSet<AllocatableValue>> {
+): WBlockMap {
   val freq = mutableMapOf<MachineRegisterClass, MutableMap<AllocatableValue, Int>>()
   val take = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
   val cand = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
@@ -184,7 +186,7 @@ private fun TargetFunGenerator.initUsual(
   for (pred in preds) {
     val spiller = spillers[pred.id] ?: continue
     for ((valueClass, wEnd) in spiller.wExit.entries) {
-      for (variable in wEnd) {
+      for (variable in wEnd.filterIsInstance<Variable>()) {
         val map = freq.getOrPut(valueClass, ::mutableMapOf)
         if (variable in map) {
           val value = map.getValue(variable)
@@ -220,10 +222,68 @@ private fun TargetFunGenerator.initUsual(
 private fun TargetFunGenerator.initSpilled(
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>,
-    wBlockEntry: Map<MachineRegisterClass, MutableSet<AllocatableValue>>
+    wBlockEntry: WBlockMap
 ): Set<AllocatableValue> {
   val sJoin = graph.predecessors(blockId).flatMap { spillers[it.id]?.sExit ?: emptyList() }
   return sJoin.intersect(wBlockEntry.values.flatten())
+}
+
+/**
+ * Find all variables that should be in a register in [blockId], but aren't in a register coming from [predId].
+ * If there are any, split the edge and insert the required reloads there.
+ *
+ * Find all variables that are in a register in [predId], but shouldn't be in a register coming into [blockId].
+ * If there are any, split the edge and insert the required spills there.
+ *
+ * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 4.3
+ */
+private fun TargetFunGenerator.findEdgeSpillsReloads(
+    blockId: AtomicId,
+    wEntryB: WBlockMap,
+    sEntryB: Set<AllocatableValue>,
+    predId: AtomicId,
+    wExitP: Map<MachineRegisterClass, Set<AllocatableValue>>,
+    sExitP: Set<AllocatableValue>,
+): SpillResult {
+  // Find which variables in phi are for other paths, se we can remove them
+  // This is because we care only about variables from our specific predecessor
+  val otherPathVersions = graph[blockId].phi.values.flatMap { incoming ->
+    incoming.entries.filter { it.key != predId }.map { it.value }
+  }
+
+  var splitBlock: InstrBlock? = null
+
+  val toSpill = (sEntryB - sExitP - otherPathVersions).intersect(wExitP.values.flatten()).filterIsInstance<Variable>()
+
+  if (toSpill.isNotEmpty()) {
+    splitBlock = graph.splitEdge(graph[predId], graph[blockId], this::createJump)
+  }
+
+  val edgeReloads = mutableListOf<Variable>()
+
+  for ((valueClass, wExit) in wExitP) {
+    // Make deep clone, because this is used by the spiller, and we don't actually want to modify it
+    val forClass = wEntryB.getValue(valueClass).toMutableSet()
+    forClass -= wExit
+    forClass -= otherPathVersions
+    // Only consider things that are actually used by our block
+    val aliveAndNotInW = forClass.intersect(graph.liveInsOf(blockId))
+    if (aliveAndNotInW.isNotEmpty()) {
+      if (splitBlock == null) {
+        splitBlock = graph.splitEdge(graph[predId], graph[blockId], this::createJump)
+      }
+      edgeReloads += aliveAndNotInW.filterIsInstance<Variable>()
+    }
+  }
+
+  if (splitBlock == null) return emptyMap()
+
+  val syntheticResult = MinResult(
+      toSpill.map { it to InstrLabel(splitBlock.id, 0) },
+      edgeReloads.map { it to InstrLabel(splitBlock.id, 0) }
+  )
+
+  return mapOf(splitBlock.id to syntheticResult)
 }
 
 typealias SpillResult = Map<AtomicId, MinResult>
@@ -238,15 +298,48 @@ fun TargetFunGenerator.runSpiller(): SpillResult {
 
   val spillers = mutableMapOf<AtomicId, BlockSpiller>()
 
+  val splitEdgeResults = mutableMapOf<AtomicId, MinResult>()
+
+  data class EdgeProcessData(
+      val predId: AtomicId,
+      val blockId: AtomicId,
+      val wBlockEntry: WBlockMap,
+      val sBlockEntry: Set<AllocatableValue>
+  )
+
+  val unprocessedEdges = mutableListOf<EdgeProcessData>()
+
   for (blockId in graph.postOrder().asReversed()) {
     val initialW = initUsual(maxPressure, blockId, spillers)
     val initialS = initSpilled(blockId, spillers, initialW)
+
+    // Make copy, since we might split an edge and thus modify predecessors
+    for (pred in graph.predecessors(blockId).toMutableList()) {
+      val predSpiller = spillers[pred.id]
+      if (predSpiller == null) {
+        // This is mutable, and BlockSpiller actually mutates it
+        val wBlockEntryCopy = initialW.toMutableMap().mapValues { it.value.toMutableSet() }
+        unprocessedEdges += EdgeProcessData(pred.id, blockId, wBlockEntryCopy, initialS)
+        continue
+      }
+      splitEdgeResults +=
+          findEdgeSpillsReloads(blockId, initialW, initialS, pred.id, predSpiller.wExit, predSpiller.sExit)
+    }
+
     val spiller = BlockSpiller(this, blockId, maxPressure, initialW, initialS)
     spillers[blockId] = spiller
     spiller.runSpill()
   }
 
-  return spillers.mapValues { it.value.minResult }
+  // Loop headers do not have all preds available on the first pass, for obvious reasons
+  // Deal with the remaining edges here
+  for ((predId, blockId, wBlockEntry, sBlockEntry) in unprocessedEdges) {
+    val predSpiller = spillers.getValue(predId)
+    splitEdgeResults +=
+        findEdgeSpillsReloads(blockId, wBlockEntry, sBlockEntry, predId, predSpiller.wExit, predSpiller.sExit)
+  }
+
+  return spillers.mapValues { it.value.minResult } + splitEdgeResults
 }
 
 /**
@@ -264,6 +357,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Map<Allocatab
 
     // The value, the index inside the current block, and whether it's a spill (true) or a reload (false)
     // This is ordered by the original index, so we can use insnInserted as an offset
+    // We also want spills before reloads if their idx is the same. sortedBy is stable, and spills are added first.
     val modifications: List<Triple<AllocatableValue, Int, Boolean>> =
         (minResult.spills.map { (variable, label) -> Triple(variable, label.second, true) } +
             minResult.reloads.map { (variable, label) -> Triple(variable, label.second, false) })

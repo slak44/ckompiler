@@ -545,7 +545,11 @@ private fun TargetFunGenerator.removePhi(allocationResult: AllocationResult): Al
 }
 
 /**
- * To avoid the "lost copies" problem, critical edges must be split, and the copies inserted there.
+ * If the edge between [src] and [dest] is critical, insert a new block between them and return it. Otherwise, return
+ * [src].
+ *
+ * This is to avoid the "lost copies" problem, the copies must be inserted "on the edge". This can be done by inserting
+ * in the predecessor, as long as the edge is not critical.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 2.2.3
  */
@@ -558,7 +562,7 @@ private fun TargetFunGenerator.splitCriticalForCopies(src: InstrBlock, dest: Ins
 }
 
 /**
- * Creates the register transfer graph for one φ instruction (that means all of [BasicBlock.phi]),
+ * Creates the register transfer graph for one φ instruction (that means all of [InstrBlock.phi]),
  * for a given predecessor, and generates the correct copy sequence to replace the φ with.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 4.4, pp 55-58

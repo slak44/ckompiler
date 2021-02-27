@@ -343,7 +343,7 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
   fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction
 
   /**
-   * Create a jump instruction. Useful for post-coloring stages.
+   * Create an (unconditional) jump instruction.
    */
   fun createJump(target: InstrBlock): MachineInstruction
 

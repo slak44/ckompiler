@@ -296,6 +296,11 @@ class InstructionGraph private constructor(
   /**
    * Split an edge in the graph, and insert another [InstrBlock] there.
    *
+   * Useful for inserting φ copies.
+   *
+   * Also useful in the spiller, where coupling code must be inserted if the [src] register file differs from the
+   * [dest] register file (eg a variable is spilled in [src] but not in [dest]).
+   *
    * @param createJump should generate an unconditional jump to the given block
    */
   fun splitEdge(src: InstrBlock, dest: InstrBlock, createJump: (InstrBlock) -> MachineInstruction): InstrBlock {
@@ -308,6 +313,7 @@ class InstructionGraph private constructor(
     if (idom[dest.seqId] == src.id) {
       idom[dest.seqId] = newBlock.id
     }
+    dominanceFrontiers[newBlock.id] = dominanceFrontiers.getValue(dest.id) + dest.id
     // Adjust existing edges
     adjacency.getValue(src.id) -= dest
     transposed.getValue(dest.id) -= src
