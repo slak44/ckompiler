@@ -3,7 +3,7 @@ import java.util.Properties
 
 plugins {
   application
-  kotlin("jvm") version "1.4.10"
+  kotlin("jvm") version "1.4.30"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.10"
 }
