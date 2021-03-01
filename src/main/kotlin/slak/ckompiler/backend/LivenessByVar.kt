@@ -27,11 +27,12 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
   }
 
   fun upAndMarkStack(B: AtomicId, v: Variable, fromPhi: Boolean = false) {
-    // v killed in B <=> def(v) ∈ B (φ excluded) OR v spilled in B
-    if ((variableDefs.getValue(v) == B && v !in this[B].phiDefs) || spillBlocks[v] == B) return
+    // def(v) ∈ B (φ excluded)
+    if (variableDefs.getValue(v) == B && v !in this[B].phiDefs) return
     if (liveIn.getOrPut(B, ::mutableSetOf).lastOrNull() == v) return
     liveIn[B]!! += v
-    if (v in this[B].phiDefs) return
+    // defined in φ or spilled in this block, might still be live-in, so check that before returning
+    if (v in this[B].phiDefs || spillBlocks[v] == B) return
     val list = if (!fromPhi) {
       predecessors(B)
     } else {
