@@ -342,13 +342,19 @@ fun TargetFunGenerator.runSpiller(): SpillResult {
   return spillers.mapValues { it.value.minResult } + splitEdgeResults
 }
 
+/** Maps a spilled value to a pointer to the stack where it was spilled. */
+typealias SpillMap = Map<AllocatableValue, StackValue>
+/** Maps a spilled value to the [InstrBlock] where it was spilled. */
+typealias SpillBlocks = Map<AllocatableValue, AtomicId>
+
 /**
  * Inserts the spill and reload code at the locations found by [runSpiller].
  *
  * @return the stack values used for each spilled value
  */
-fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Map<AllocatableValue, StackValue> {
+fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap, SpillBlocks> {
   val spilled = mutableMapOf<AllocatableValue, StackValue>()
+  val spillBlocks = mutableMapOf<AllocatableValue, AtomicId>()
 
   for ((blockId, minResult) in result.entries) {
     // All the labels in minResult contain indices from before inserting spill/reload instructions
@@ -368,6 +374,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Map<Allocatab
 
       if (isSpill) {
         spilled[variable] = insertSpill(variable, offsetLabel, spilled[variable])
+        spillBlocks[variable] = blockId
       } else {
         val toReload = checkNotNull(spilled[variable]) {
           "Trying to reload something that was never spilled: $variable"
@@ -381,7 +388,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Map<Allocatab
 
   graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<Variable>().toSet())
 
-  return spilled
+  return spilled to spillBlocks
 }
 
 /**

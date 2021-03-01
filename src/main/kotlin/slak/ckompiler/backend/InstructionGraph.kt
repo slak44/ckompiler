@@ -54,10 +54,16 @@ class InstructionGraph private constructor(
 
   val virtualDeaths = mutableMapOf<VirtualRegister, InstrLabel>()
 
-  /**
-   * @see computeLiveSetsByVar
-   */
+  /** @see computeLiveSetsByVar */
   lateinit var liveSets: LiveSets
+
+  /**
+   * Used to determine if a variable died in a block due to being spilled there. This is empty before spilling runs.
+   *
+   * @see computeLiveSetsByVar
+   * @see insertSpillReloadCode
+   */
+  var spillBlocks: SpillBlocks = emptyMap()
 
   /**
    * This function incrementally some maps, by updating all the indices that were pushed due to an instruction (or more)
