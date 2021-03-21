@@ -163,7 +163,13 @@ class InitializerTests {
   }
 
   @Test
-  fun `List Initializer On Incomplete Type`() {
+  fun `Initializer List On Incomplete Type`() {
+    val p = prepareCode("struct a; struct a asdasdasd = { 23 };", source)
+    p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
+  }
+
+  @Test
+  fun `Initializer List On Incomplete Type With Designator`() {
     val p = prepareCode("struct a; struct a asdasdasd = { .sad = 23 };", source)
     p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
   }

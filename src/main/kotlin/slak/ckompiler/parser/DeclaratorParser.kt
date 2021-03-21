@@ -40,8 +40,10 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    * this property ([SpecParser] doesn't maintain its own state).
    */
   internal lateinit var specParser: SpecParser
+
   /** @see specParser */
   internal lateinit var expressionParser: ExpressionParser
+
   /** @see expressionParser */
   internal lateinit var constExprParser: ConstantExprParser
 
@@ -76,9 +78,11 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
           .withRange(startTok..safeToken(0))
     }
     // This fast path is here because parseNestedDeclarator thinks "()" is an error, and it isn't
-    if (tokensLeft >= 2 &&
-        current().asPunct() == Punctuators.LPAREN &&
-        relative(1).asPunct() == Punctuators.RPAREN) {
+    if (
+      tokensLeft >= 2 &&
+      current().asPunct() == Punctuators.LPAREN &&
+      relative(1).asPunct() == Punctuators.RPAREN
+    ) {
       return@tokenContext AbstractDeclarator.base(pointers, parseSuffixes(it.size))
           .withRange(startTok..safeToken(0))
     }
@@ -328,7 +332,8 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         TODO("possible unimplemented grammar (old-style K&R functions?)")
       }
       val paramEndIdx = firstOutsideParens(
-          Punctuators.COMMA, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false)
+          Punctuators.COMMA, Punctuators.LPAREN, Punctuators.RPAREN, stopAtSemi = false
+      )
       val declarator = parseAbstractDeclarator(paramEndIdx, true)
       if (declarator.isBlank()) declarator.withRange(specs..tokenAt(paramEndIdx - 1))
       params += ParameterDeclaration(specs, declarator).withRange(declarator)
@@ -340,6 +345,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       // Initializers are not allowed here, so catch them and error
       if (isNotEaten() && current().asPunct() == Punctuators.ASSIGN) {
         val assignTok = current() as Punctuator
+        eat() // Get rid of "="
         val initializer = parseInitializer(assignTok, ErrorType, paramEndIdx)
         diagnostic {
           id = DiagnosticId.NO_DEFAULT_ARGS
@@ -375,9 +381,12 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         currentObjectType.elementType
       } else {
         if (!currentObjectType.isCompleteObjectType()) {
-          TODO("for top-level types, a diagnostic is emitted, but we should call validate assignment for this too probably")
+          // TODO: for top-level types, a diagnostic is emitted, but we should call validate assignment for this too probably
+          val startTok = current()
+          eatUntil(tokenCount)
+          return DesignatedInitializer(null, ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0)))
         } else if (currentObjectType is StructureType) {
-          currentObjectType.members!![defaultSubObject].second
+          currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
         } else if (currentObjectType is UnionType) {
           currentObjectType.members!!.first().second
         } else if (currentObjectType.isScalar()) {
@@ -414,7 +423,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         }
         initializers += di
       }
-      if (current().asPunct() == Punctuators.COMMA) {
+      if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         eat()
       }
     }
@@ -427,7 +436,11 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     }
 
     // TODO: this doesn't work well with nested designated initializers like { .x.y = 2 } or { .x[0] = 3 }
-    if (currentObjectType is StructureType && initializers.size > currentObjectType.members!!.size) {
+    if (
+      currentObjectType is StructureType &&
+      currentObjectType.isCompleteObjectType() &&
+      initializers.size > currentObjectType.members!!.size
+    ) {
       diagnostic {
         id = DiagnosticId.EXCESS_INITIALIZERS
         errorOn(initializers[currentObjectType.members.size]..initializers.last())
@@ -442,7 +455,6 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       initializerFor: TypeName,
       endIdx: Int
   ): Initializer {
-    eat() // Get rid of "="
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
       diagnostic {

@@ -94,6 +94,7 @@ internal infix fun <T> TypedIdentifier.plusAssign(it: T) =
     BinaryExpression(BinaryOperators.PLUS_ASSIGN, this, parseDSLElement(it), type).zeroRange()
 
 internal infix fun String.assign(it: InitializerList) = nameDecl(this) to it
+internal infix fun Declarator.assign(it: InitializerList) = this to it
 
 internal fun <T : Any> initializerList(vararg initializers: T): InitializerList {
   val parsed = initializers.toList().map {

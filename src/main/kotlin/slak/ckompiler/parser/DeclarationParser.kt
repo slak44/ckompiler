@@ -105,13 +105,14 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
   ): Initializer? {
     if (current().asPunct() != Punctuators.ASSIGN) return null
     val assignTok = current() as Punctuator
+    eat() // Get rid of "="
     val initializer = parseInitializer(assignTok, expectedType, endIdx)
     if (!ds.isTypedef()) return initializer
     diagnostic {
       id = DiagnosticId.TYPEDEF_NO_INITIALIZER
       errorOn(assignTok..initializer)
     }
-    return ExpressionInitializer(error<ErrorExpression>(), assignTok)
+    return ErrorDeclInitializer(assignTok)
   }
 
   /**
