@@ -377,21 +377,26 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     } else if (current().asPunct() == Punctuators.LSQPAREN) {
       TODO("designators")
     } else {
-      val typeToInit = if (currentObjectType is ArrayType) {
-        currentObjectType.elementType
-      } else {
-        if (!currentObjectType.isCompleteObjectType()) {
-          // TODO: for top-level types, a diagnostic is emitted, but we should call validate assignment for this too probably
+      val typeToInit = when {
+        currentObjectType is ArrayType -> {
+          currentObjectType.elementType
+        }
+        !currentObjectType.isCompleteObjectType() -> {
+          // TODO: for top-level types, a diagnostic is emitted, but we should call validate assignment for this too (probably)
           val startTok = current()
           eatUntil(tokenCount)
           return DesignatedInitializer(null, ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0)))
-        } else if (currentObjectType is StructureType) {
+        }
+        currentObjectType is StructureType -> {
           currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
-        } else if (currentObjectType is UnionType) {
+        }
+        currentObjectType is UnionType -> {
           currentObjectType.members!!.first().second
-        } else if (currentObjectType.isScalar()) {
+        }
+        currentObjectType.isScalar() -> {
           currentObjectType
-        } else {
+        }
+        else -> {
           TODO("what else could even get here?")
         }
       }
