@@ -119,6 +119,12 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   MEMBER_REFERENCE_NOT_PTR(ERROR, "Member reference type '%s' is not a pointer"),
   MEMBER_BASE_NOT_TAG(ERROR, "Attempt to access member '%s' in non-struct non-union type '%s'"),
   MEMBER_NAME_NOT_FOUND(ERROR, "No such member '%s' in '%s'"),
+  DESIGNATOR_FOR_SCALAR(ERROR, "Designator found in initializer for scalar type '%s'"),
+  EXCESS_INITIALIZERS_SCALAR(WARNING, "Excess initializers in scalar initializer list"),
+  EXCESS_INITIALIZERS(WARNING, "Excess initializers in tag initializer list"),
+  ARRAY_DESIGNATOR_NON_ARRAY(ERROR, "Array designator cannot initialize non-array type '%s'"),
+  DOT_DESIGNATOR_NON_TAG(ERROR, "Field designator cannot initialize non-struct, non-union type '%s'"),
+  DOT_DESIGNATOR_NO_FIELD(ERROR, "Field designator '%s' does not refer to any field in type '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

@@ -103,6 +103,98 @@ class DeclarationTests {
   }
 
   @Test
+  fun `Initializer List For Scalar`() {
+    val p = prepareCode("int a = { 2 };", source)
+    p.assertNoDiagnostics()
+    int declare ("a" assign initializerList(2)) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Excess Initializer List For Scalar`() {
+    val p = prepareCode("int a = { 2, 43 };", source)
+    int declare ("a" assign initializerList(2, 43)) assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS_SCALAR)
+  }
+
+  @Test
+  fun `Designator In Initializer List For Scalar Not Allowed`() {
+    val p = prepareCode("int a = { .a = 2 };", source)
+    int declare ("a" assign initializerList("a" designates 2)) assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.DESIGNATOR_FOR_SCALAR)
+  }
+
+  @Test
+  fun `Simple Struct Initializer`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { 56, 3 };", source)
+    val vec2 = struct("vec2",
+        int declare "x",
+        int declare "y"
+    ).toSpec()
+    vec2 declare ("thing" assign initializerList(56, 3)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Simple Struct Initializer With Designators`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { .y = 3, .x = 56 };", source)
+    val vec2 = struct("vec2",
+        int declare "x",
+        int declare "y"
+    ).toSpec()
+    vec2 declare ("thing" assign initializerList("y" designates 3, "x" designates 56)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Simple Struct Mixed`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { .x = 56, 3 };", source)
+    val vec2 = struct("vec2",
+        int declare "x",
+        int declare "y"
+    ).toSpec()
+    vec2 declare ("thing" assign initializerList("x" designates 56, 3)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Array Initializer`() {
+    val p = prepareCode("int a[2] = { 2, 3 };", source)
+    int declare (nameDecl("a")[2] assign initializerList(2, 3)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Array Initializer With No Size`() {
+    val p = prepareCode("int a[] = { 2, 3 };", source)
+    int declare (nameDecl("a")[NoSize] assign initializerList(2, 3)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Array Initializer On Struct`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { [0] = 56, 3 };", source)
+    p.assertDiags(DiagnosticId.ARRAY_DESIGNATOR_NON_ARRAY)
+  }
+
+  @Test
+  fun `Tag Initializer On Array`() {
+    val p = prepareCode("int a[2] = { .x = 56, 3 };", source)
+    p.assertDiags(DiagnosticId.DOT_DESIGNATOR_NON_TAG)
+  }
+
+  @Test
+  fun `List Initializer On Incomplete Type`() {
+    val p = prepareCode("struct a; struct a asdasdasd = { .sad = 23 };", source)
+    p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
+  }
+
+  @Test
+  fun `Excess Initializer List For Struct`() {
+    val p = prepareCode("struct { int x, y; } a = { 2, 3, 4 };", source)
+    p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS)
+  }
+
+  @Test
   fun `Declaration With Bad Name`() {
     val p = prepareCode("int default = 1;", source)
     assertEquals(DiagnosticId.EXPECTED_IDENT_OR_PAREN, p.diags[0].id)

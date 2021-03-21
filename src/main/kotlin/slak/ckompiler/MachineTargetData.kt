@@ -91,8 +91,8 @@ data class MachineTargetData(
       size * sizeOf(type.elementType)
     }
     is BitfieldType -> TODO()
-    is StructureType -> type.members?.values?.sumBy(::sizeOf) ?: 0
-    is UnionType -> type.members?.values?.maxBy(::sizeOf)?.let(::sizeOf) ?: 0
+    is StructureType -> type.members?.map { it.second }?.sumBy(::sizeOf) ?: 0
+    is UnionType -> type.members?.map { it.second }?.maxByOrNull(::sizeOf)?.let(::sizeOf) ?: 0
     SignedCharType, UnsignedCharType -> 1
     SignedShortType, UnsignedShortType -> shortSizeBytes
     SignedIntType, UnsignedIntType -> intSizeBytes
@@ -109,7 +109,7 @@ data class MachineTargetData(
   //   this is just brute force
   fun offsetOf(tagType: StructureType, member: IdentifierNode): Int {
     val members = requireNotNull(tagType.members)
-    return members.entries.asSequence().takeWhile { it.key != member }.sumBy { sizeOf(it.value) }
+    return members.asSequence().takeWhile { it.first != member }.sumBy { sizeOf(it.second) }
   }
 
   companion object {

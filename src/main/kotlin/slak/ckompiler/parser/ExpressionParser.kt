@@ -365,7 +365,7 @@ class ExpressionParser(
       return error<ErrorExpression>()
     }
     // If the members are null, something is bad in either spec parser or scope handing for tags
-    val memberType = requireNotNull(baseUnqual.members)[ident]
+    val memberType = requireNotNull(baseUnqual.members).find { it.first == ident }?.second
     if (memberType == null) {
       diagnostic {
         id = DiagnosticId.MEMBER_NAME_NOT_FOUND

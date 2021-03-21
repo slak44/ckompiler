@@ -610,7 +610,6 @@ class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl {
   override val indirection = emptyList<Indirection>()
 }
 
-// FIXME: initializer (6.7.9/A.2.2) can be either expression or initializer-list
 sealed class Initializer : ASTNode() {
   abstract val assignTok: Punctuator
 }
@@ -625,6 +624,27 @@ data class ExpressionInitializer(
 
   override fun toString() = expr.toString()
 }
+
+sealed class Designator : ASTNode()
+
+data class DotDesignator(val identifier: IdentifierNode) : Designator()
+data class ArrayDesignator(val intConstantExpr: ExprConstantNode) : Designator()
+
+data class Designation(val designators: List<Designator>) : ASTNode() {
+  init {
+    require(designators.isNotEmpty())
+  }
+}
+
+data class DesignatedInitializer(val designation: Designation?, val initializer: Initializer) : ASTNode()
+
+@Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
+class ErrorDeclInitializer(override val assignTok: Punctuator) : Initializer(), ErrorNode by ErrorNodeImpl
+
+data class InitializerList(
+    val initializers: List<DesignatedInitializer>,
+    override val assignTok: Punctuator
+) : Initializer()
 
 data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode()
 

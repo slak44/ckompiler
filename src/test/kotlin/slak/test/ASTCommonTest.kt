@@ -93,6 +93,26 @@ internal infix fun <T> TypedIdentifier.assign(it: T) =
 internal infix fun <T> TypedIdentifier.plusAssign(it: T) =
     BinaryExpression(BinaryOperators.PLUS_ASSIGN, this, parseDSLElement(it), type).zeroRange()
 
+internal infix fun String.assign(it: InitializerList) = nameDecl(this) to it
+
+internal fun <T : Any> initializerList(vararg initializers: T): InitializerList {
+  val parsed = initializers.toList().map {
+    when (it) {
+      is DesignatedInitializer -> it
+      else -> DesignatedInitializer(null, ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct))
+    }
+  }
+  return InitializerList(parsed, Punctuators.ASSIGN.pct)
+}
+
+internal infix fun <T : Any> String.designates(initializerValue: T): DesignatedInitializer {
+  val initializer = when (initializerValue) {
+    is Initializer -> initializerValue
+    else -> ExpressionInitializer(parseDSLElement(initializerValue).zeroRange(), Punctuators.ASSIGN.pct)
+  }
+  return DesignatedInitializer(Designation(listOf(DotDesignator(name(this)))), initializer)
+}
+
 internal typealias DeclInit = Pair<Declarator, Initializer?>
 
 internal infix fun DeclarationSpecifier.declare(decl: DeclInit) =

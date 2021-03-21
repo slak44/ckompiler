@@ -22,7 +22,7 @@ private fun typeNameOfTag(tagSpecifier: TagSpecifier): UnqualifiedTypeName {
     it.declaratorList.map { (declarator, _) ->
       declarator.name to typeNameOf(it.declSpecs, declarator)
     }
-  }?.toMap()
+  }
   return if (tagSpecifier.kind.value == Keywords.STRUCT) {
     StructureType(tagSpecifier.name, memberTypes)
   } else {
@@ -264,7 +264,7 @@ object ErrorType : UnqualifiedTypeName() {
  */
 sealed class TagType : UnqualifiedTypeName() {
   abstract val name: IdentifierNode?
-  abstract val members: Map<IdentifierNode, TypeName>?
+  abstract val members: List<Pair<IdentifierNode, TypeName>>?
   abstract val isComplete: Boolean
   abstract val kind: String
 
@@ -276,7 +276,7 @@ sealed class TagType : UnqualifiedTypeName() {
 
 data class StructureType(
     override val name: IdentifierNode?,
-    override val members: Map<IdentifierNode, TypeName>?
+    override val members: List<Pair<IdentifierNode, TypeName>>?
 ) : TagType() {
   override val isComplete = members != null
   override val kind = "struct"
@@ -285,7 +285,7 @@ data class StructureType(
 
 data class UnionType(
     override val name: IdentifierNode?,
-    override val members: Map<IdentifierNode, TypeName>?
+    override val members: List<Pair<IdentifierNode, TypeName>>?
 ) : TagType() {
   override val isComplete = members != null
   override val kind = "union"

@@ -361,6 +361,82 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return@tokenContext ParameterTypeList(params, scope, isVariadic)
   }
 
+  private fun parseDesignatedInitializer(
+      parentAssignTok: Punctuator,
+      currentObjectType: TypeName,
+      defaultSubObject: Int
+  ): DesignatedInitializer {
+    if (current().asPunct() == Punctuators.DOT) {
+      TODO("designators")
+    } else if (current().asPunct() == Punctuators.LSQPAREN) {
+      TODO("designators")
+    } else {
+      val typeToInit = if (currentObjectType is ArrayType) {
+        currentObjectType.elementType
+      } else {
+        if (!currentObjectType.isCompleteObjectType()) {
+          TODO("for top-level types, a diagnostic is emitted, but we should call validate assignment for this too probably")
+        } else if (currentObjectType is StructureType) {
+          currentObjectType.members!![defaultSubObject].second
+        } else if (currentObjectType is UnionType) {
+          currentObjectType.members!!.first().second
+        } else if (currentObjectType.isScalar()) {
+          currentObjectType
+        } else {
+          TODO("what else could even get here?")
+        }
+      }
+      val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
+      return DesignatedInitializer(null, initializer).withRange(initializer)
+    }
+  }
+
+  private fun parseInitializerList(
+      parentAssignTok: Punctuator,
+      currentObjectType: TypeName,
+      endIdx: Int
+  ): InitializerList = tokenContext(endIdx) {
+    val initializers = mutableListOf<DesignatedInitializer>()
+    var currentIdx = 0
+
+    while (isNotEaten()) {
+      // TODO: this pretends commas can't appear in assignment expressions, or in array designated initializer constant expressions
+      val initializerEndIdx = firstOutsideParens(Punctuators.COMMA, Punctuators.LBRACKET, Punctuators.RBRACKET, false)
+      tokenContext(initializerEndIdx) {
+        val di = parseDesignatedInitializer(parentAssignTok, currentObjectType, currentIdx)
+        if (di.designation == null) {
+          currentIdx++
+        } else {
+          when (di.designation.designators[0]) {
+            is ArrayDesignator -> TODO()
+            is DotDesignator -> TODO()
+          }
+        }
+        initializers += di
+      }
+      if (current().asPunct() == Punctuators.COMMA) {
+        eat()
+      }
+    }
+
+    if (initializers.size > 1 && currentObjectType.isScalar()) {
+      diagnostic {
+        id = DiagnosticId.EXCESS_INITIALIZERS_SCALAR
+        errorOn(initializers[1]..initializers.last())
+      }
+    }
+
+    // TODO: this doesn't work well with nested designated initializers like { .x.y = 2 } or { .x[0] = 3 }
+    if (currentObjectType is StructureType && initializers.size > currentObjectType.members!!.size) {
+      diagnostic {
+        id = DiagnosticId.EXCESS_INITIALIZERS
+        errorOn(initializers[currentObjectType.members.size]..initializers.last())
+      }
+    }
+
+    return@tokenContext InitializerList(initializers, parentAssignTok)
+  }
+
   protected fun parseInitializer(
       assignTok: Punctuator,
       initializerFor: TypeName,
@@ -377,7 +453,16 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     }
     // Parse initializer-list
     if (current().asPunct() == Punctuators.LBRACKET) {
-      TODO("parse initializer-list (A.2.2/6.7.9)")
+      val lbracket = current()
+      val rbracket = findParenMatch(Punctuators.LBRACKET, Punctuators.RBRACKET)
+      eat() // The {
+      if (rbracket == -1) {
+        eatToSemi()
+        return ErrorDeclInitializer(assignTok).withRange(lbracket..current())
+      }
+      val initList = parseInitializerList(assignTok, initializerFor, rbracket).withRange(lbracket..current())
+      eat() // The }
+      return initList
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here

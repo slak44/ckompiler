@@ -104,7 +104,7 @@ private fun GraphingContext.transformInitializer(
         .withRange(ident.tid..init.expr)
     graphExprRegular(root, current, initAssign)
   }
-//  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
+  else -> TODO("only expression initializers are implemented; see SyntaxTreeModel")
 }
 
 private fun processExpression(

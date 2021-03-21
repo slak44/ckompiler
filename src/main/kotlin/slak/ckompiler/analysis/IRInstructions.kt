@@ -263,7 +263,9 @@ sealed class LoadableValue : IRValue() {
 }
 
 /**
- * A [LoadableValue] that will sit in a register after it is allocated.
+ * These are [LoadableValue]s that represent SSA definitions.
+ *
+ * FIXME: include StackValue as a subclass of this as it belongs here. Rewrite affected, notably phis
  */
 sealed class AllocatableValue : LoadableValue()
 
