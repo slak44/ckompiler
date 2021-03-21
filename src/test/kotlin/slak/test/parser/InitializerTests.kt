@@ -2,12 +2,8 @@ package slak.test.parser
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.parser.ErrorExpression
-import slak.ckompiler.parser.ErrorType
-import slak.ckompiler.parser.NoSize
+import slak.ckompiler.parser.*
 import slak.test.*
-import slak.test.assign
-import slak.test.source
 import kotlin.test.assertEquals
 
 class InitializerTests {
@@ -87,6 +83,12 @@ class InitializerTests {
     val p = prepareCode("int a = { 2 };", source)
     p.assertNoDiagnostics()
     int declare ("a" assign initializerList(2)) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Initializer List For Scalar Of Wrong Type`() {
+    val p = prepareCode("struct test { int a, b; } x; int fail = { x };", source)
+    assert(p.diags.isNotEmpty())
   }
 
   @Test
