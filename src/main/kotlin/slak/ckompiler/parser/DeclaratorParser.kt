@@ -367,41 +367,39 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return@tokenContext ParameterTypeList(params, scope, isVariadic)
   }
 
+  /**
+   * C standard: 6.7.9
+   */
   private fun parseDesignatedInitializer(
       parentAssignTok: Punctuator,
       currentObjectType: TypeName,
       defaultSubObject: Int
   ): DesignatedInitializer {
-    if (current().asPunct() == Punctuators.DOT) {
-      TODO("designators")
-    } else if (current().asPunct() == Punctuators.LSQPAREN) {
-      TODO("designators")
-    } else {
-      val typeToInit = when {
-        currentObjectType is ArrayType -> {
-          currentObjectType.elementType
-        }
-        !currentObjectType.isCompleteObjectType() -> {
-          // TODO: for top-level types, a diagnostic is emitted, but we should call validate assignment for this too (probably)
-          val startTok = current()
-          eatUntil(tokenCount)
-          return DesignatedInitializer(null, ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0)))
-        }
-        currentObjectType is StructureType -> {
-          currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
-        }
-        currentObjectType is UnionType -> {
-          currentObjectType.members!!.first().second
-        }
-        currentObjectType.isScalar() -> {
-          currentObjectType
-        }
-        else -> {
-          TODO("what else could even get here?")
-        }
+    if (currentObjectType !is ArrayType && !currentObjectType.isCompleteObjectType()) {
+      // TODO: for top-level types, a diagnostic is emitted, but we should call validate assignment for this too (probably)
+      val startTok = current()
+      eatUntil(tokenCount)
+      return DesignatedInitializer(null, ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0)))
+    }
+
+    when {
+      current().asPunct() == Punctuators.DOT -> {
+        TODO("designators")
       }
-      val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
-      return DesignatedInitializer(null, initializer).withRange(initializer)
+      current().asPunct() == Punctuators.LSQPAREN -> {
+        TODO("designators")
+      }
+      else -> {
+        val typeToInit = when {
+          currentObjectType is ArrayType -> currentObjectType.elementType
+          currentObjectType is StructureType -> currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
+          currentObjectType is UnionType -> currentObjectType.members!!.first().second
+          currentObjectType.isScalar() -> currentObjectType
+          else -> TODO("what else could even get here?")
+        }
+        val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
+        return DesignatedInitializer(null, initializer).withRange(initializer)
+      }
     }
   }
 
