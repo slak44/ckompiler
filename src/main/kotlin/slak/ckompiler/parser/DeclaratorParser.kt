@@ -487,7 +487,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
             }
             errorValue
           } else {
-            return maybeRecurse(type.members!![idx].second, idx)
+            maybeRecurse(type.members!![idx].second, idx)
           }
         }
       }
@@ -500,7 +500,28 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
           }
           errorValue
         }
-        is ArrayDesignator -> TODO("designatedTypeOf arrays")
+        is ArrayDesignator -> {
+          val index = designator.index.value
+          when {
+            index < 0 -> {
+              diagnostic {
+                id = DiagnosticId.ARRAY_DESIGNATOR_NEGATIVE
+                formatArgs(index)
+              }
+              errorValue
+            }
+            type.size is ConstantArraySize && index > (type.size.size as IntegerConstantNode).value -> {
+              diagnostic {
+                id = DiagnosticId.ARRAY_DESIGNATOR_BOUNDS
+                formatArgs(index, (type.size.size as IntegerConstantNode).value)
+              }
+              errorValue
+            }
+            else -> {
+              maybeRecurse(type.elementType, index.toInt())
+            }
+          }
+        }
       }
       else -> logger.throwICE("Unhandled type $type")
     }
