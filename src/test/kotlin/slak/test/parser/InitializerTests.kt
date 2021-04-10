@@ -88,7 +88,13 @@ class InitializerTests {
   @Test
   fun `Initializer List For Scalar Of Wrong Type`() {
     val p = prepareCode("struct test { int a, b; } x; int fail = { x };", source)
-    assert(p.diags.isNotEmpty())
+    p.assertDiags(DiagnosticId.INITIALIZER_TYPE_MISMATCH)
+  }
+
+  @Test
+  fun `Initializer List For Scalar Error Expression Produces Correct Diagnostics`() {
+    val p = prepareCode("int fail = { 1 + };", source)
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
   }
 
   @Test

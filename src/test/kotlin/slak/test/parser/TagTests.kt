@@ -6,7 +6,6 @@ import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.Enumerator
-import slak.ckompiler.parser.ErrorExpression
 import slak.test.*
 import kotlin.test.assertEquals
 
@@ -20,7 +19,7 @@ class TagTests {
 
   @Test
   fun `Struct Declaration`() {
-    val p = prepareCode("struct x a = 1;", source)
+    val p = prepareCode("struct x a = {};", source)
     p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
     assertEquals(struct("x").typeSpec, (p.root.decls[0] as Declaration).declSpecs.typeSpec)
   }

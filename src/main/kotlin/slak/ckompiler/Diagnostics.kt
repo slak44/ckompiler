@@ -125,6 +125,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   ARRAY_DESIGNATOR_NON_ARRAY(ERROR, "Array designator cannot initialize non-array type '%s'"),
   DOT_DESIGNATOR_NON_TAG(ERROR, "Field designator cannot initialize non-struct, non-union type '%s'"),
   DOT_DESIGNATOR_NO_FIELD(ERROR, "Field designator '%s' does not refer to any field in type '%s'"),
+  INITIALIZER_TYPE_MISMATCH(ERROR, "Expression of type '%s' cannot initialize type '%s'"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

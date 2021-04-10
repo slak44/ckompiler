@@ -482,6 +482,17 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
     val expr = expressionParser.parseExpr(endIdx) ?: error<ErrorExpression>()
+    // Only do initializer type checking if the types are actually valid
+    if (expr.type.unqualify() !is ErrorType && initializerFor.unqualify() !is ErrorType) {
+      val (_, commonType) = BinaryOperators.ASSIGN.applyTo(initializerFor, expr.type)
+      if (commonType is ErrorType) {
+        diagnostic {
+          id = DiagnosticId.INITIALIZER_TYPE_MISMATCH
+          formatArgs(expr.type, initializerFor)
+          errorOn(expr)
+        }
+      }
+    }
     return ExpressionInitializer(convertToCommon(initializerFor, expr), assignTok)
   }
 
