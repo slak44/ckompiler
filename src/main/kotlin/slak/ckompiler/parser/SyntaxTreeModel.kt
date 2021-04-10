@@ -630,9 +630,10 @@ sealed class Designator : ASTNode()
 data class DotDesignator(val identifier: IdentifierNode) : Designator()
 data class ArrayDesignator(val intConstantExpr: ExprConstantNode) : Designator()
 
-data class Designation(val designators: List<Designator>) : ASTNode() {
+data class Designation(val designators: List<Designator>, val designatedType: TypeName, val designationIndices: List<Int>) : ASTNode() {
   init {
     require(designators.isNotEmpty())
+    require(designators.size == designationIndices.size)
   }
 }
 

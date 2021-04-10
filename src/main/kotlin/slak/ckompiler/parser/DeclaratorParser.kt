@@ -368,6 +368,55 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
   }
 
   /**
+   * @return null on parse error, the designator otherwise
+   */
+  private fun parseDotDesignator(dot: Punctuator): Designator? {
+    if (isEaten()) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_DOT_DESIGNATOR
+        errorOn(dot)
+      }
+      return null
+    }
+
+    val maybeIdent = current()
+    if (maybeIdent !is Identifier) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_DOT_DESIGNATOR
+        errorOn(dot..maybeIdent)
+      }
+      return null
+    }
+    eat() // The designator identifier
+
+    return DotDesignator(IdentifierNode.from(maybeIdent)).withRange(dot..maybeIdent)
+  }
+
+  /**
+   * Find the designated type, and its index list within the designated object type initialization order.
+   *
+   * The index list has the same length as the receiver designator list, and represents an index at each designation level.
+   * Consider this example, which looks contrived, but can easily occur with named structs nested in other named structs:
+   * ```
+   * struct my_struct {
+   *   int x;
+   *   struct {
+   *     int value1;
+   *     int value2;
+   *     struct {
+   *       float final1[500];
+   *       int final2;
+   *     } value3;
+   *   } y;
+   * };
+   * ```
+   * For the designator list `.y.value3.final1[42]`, the index list is `[1, 2, 0, 42]`, and the type is `float`.
+   */
+  private fun List<Designator>.designatedTypeOf(type: TypeName): Pair<TypeName, List<Int>> {
+    TODO("implement designatedTypeOf")
+  }
+
+  /**
    * C standard: 6.7.9
    */
   private fun parseDesignatedInitializer(
@@ -379,28 +428,61 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       // TODO: for top-level types, a diagnostic is emitted, but we should call validate assignment for this too (probably)
       val startTok = current()
       eatUntil(tokenCount)
-      return DesignatedInitializer(null, ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0)))
+      val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0))
+      return DesignatedInitializer(null, errorDecl).withRange(errorDecl)
     }
 
-    when {
-      current().asPunct() == Punctuators.DOT -> {
-        TODO("designators")
-      }
-      current().asPunct() == Punctuators.LSQPAREN -> {
-        TODO("designators")
-      }
-      else -> {
-        val typeToInit = when {
-          currentObjectType is ArrayType -> currentObjectType.elementType
-          currentObjectType is StructureType -> currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
-          currentObjectType is UnionType -> currentObjectType.members!!.first().second
-          currentObjectType.isScalar() -> currentObjectType
-          else -> TODO("what else could even get here?")
+    val designators = mutableListOf<Designator>()
+
+    while (true) {
+      if (isEaten()) break
+      val tok = current() as? Punctuator
+      when (tok?.asPunct()) {
+        Punctuators.DOT -> {
+          eat()
+          val designator = parseDotDesignator(tok)
+          if (designator == null) {
+            eatUntil(tokenCount)
+            val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(tok..safeToken(0))
+            return DesignatedInitializer(null, errorDecl).withRange(errorDecl)
+          } else {
+            designators += designator
+          }
         }
-        val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
-        return DesignatedInitializer(null, initializer).withRange(initializer)
+        Punctuators.LSQPAREN -> {
+          TODO("array designators")
+        }
+        else -> break
       }
     }
+
+    if (designators.isNotEmpty()) {
+      val (designatedType, designationIndex) = designators.designatedTypeOf(currentObjectType)
+      val designation = Designation(designators, designatedType, designationIndex).withRange(designators.first()..designators.last())
+
+      if (isEaten() || current().asPunct() != Punctuators.ASSIGN) {
+        diagnostic {
+          id = DiagnosticId.EXPECTED_NEXT_DESIGNATOR
+          colPastTheEnd(0)
+        }
+        eatUntil(tokenCount)
+        return DesignatedInitializer(designation, ErrorDeclInitializer(parentAssignTok).withRange(designation)).withRange(designation)
+      }
+      val assignTok = current() as Punctuator
+      eat()
+      val initializer = parseInitializer(assignTok, designatedType, tokenCount)
+      return DesignatedInitializer(designation, initializer).withRange(designation..initializer)
+    }
+
+    val typeToInit = when {
+      currentObjectType is ArrayType -> currentObjectType.elementType
+      currentObjectType is StructureType -> currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
+      currentObjectType is UnionType -> currentObjectType.members!!.first().second
+      currentObjectType.isScalar() -> currentObjectType
+      else -> TODO("what else could even get here?")
+    }
+    val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
+    return DesignatedInitializer(null, initializer).withRange(initializer)
   }
 
   private fun parseInitializerList(
@@ -420,8 +502,8 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
           currentIdx++
         } else {
           when (di.designation.designators[0]) {
-            is ArrayDesignator -> TODO()
-            is DotDesignator -> TODO()
+            is ArrayDesignator -> TODO("designator should advance current initialization")
+            is DotDesignator -> TODO("designator should advance current initialization")
           }
         }
         initializers += di

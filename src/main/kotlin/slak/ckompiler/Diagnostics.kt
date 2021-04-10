@@ -126,6 +126,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   DOT_DESIGNATOR_NON_TAG(ERROR, "Field designator cannot initialize non-struct, non-union type '%s'"),
   DOT_DESIGNATOR_NO_FIELD(ERROR, "Field designator '%s' does not refer to any field in type '%s'"),
   INITIALIZER_TYPE_MISMATCH(ERROR, "Expression of type '%s' cannot initialize type '%s'"),
+  EXPECTED_DOT_DESIGNATOR(ERROR, "Expected a designator of the form '.field' in this initializer list"),
+  EXPECTED_NEXT_DESIGNATOR(ERROR, "Expected '=' or another designator"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

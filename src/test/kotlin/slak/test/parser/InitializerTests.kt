@@ -107,7 +107,7 @@ class InitializerTests {
   @Test
   fun `Designator In Initializer List For Scalar Not Allowed`() {
     val p = prepareCode("int a = { .a = 2 };", source)
-    int declare ("a" assign initializerList("a" designates 2)) assertEquals p.root.decls[0]
+    int declare ("a" assign initializerList(("a" ofType int at 0) designates 2)) assertEquals p.root.decls[0]
     p.assertDiags(DiagnosticId.DESIGNATOR_FOR_SCALAR)
   }
 
@@ -123,13 +123,40 @@ class InitializerTests {
   }
 
   @Test
+  fun `Dot Designator Without Identifier Is Error`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { . };", source)
+    p.assertDiags(DiagnosticId.EXPECTED_DOT_DESIGNATOR)
+  }
+
+  @Test
+  fun `Dot Designator And Non-Identifier Is Error`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { .return };", source)
+    p.assertDiags(DiagnosticId.EXPECTED_DOT_DESIGNATOR)
+  }
+
+  @Test
+  fun `Dot Designator That Is Actually Float Is Allowed`() {
+    val p = prepareCode("struct vec2 { float x; float y; } thing = { .123 };", source)
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Designated Initializer Should Have Initializer, Not Just Designators`() {
+    val p = prepareCode("struct vec2 { float x; float y; } thing = { .x };", source)
+    p.assertDiags(DiagnosticId.EXPECTED_NEXT_DESIGNATOR)
+  }
+
+  @Test
   fun `Simple Struct Initializer With Designators`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { .y = 3, .x = 56 };", source)
     val vec2 = struct("vec2",
         int declare "x",
         int declare "y"
     ).toSpec()
-    vec2 declare ("thing" assign initializerList("y" designates 3, "x" designates 56)) assertEquals p.root.decls[0]
+    vec2 declare ("thing" assign initializerList(
+        ("y" ofType int at 1) designates 3,
+        ("x" ofType int at 0) designates 56
+    )) assertEquals p.root.decls[0]
     p.assertNoDiagnostics()
   }
 
@@ -140,7 +167,7 @@ class InitializerTests {
         int declare "x",
         int declare "y"
     ).toSpec()
-    vec2 declare ("thing" assign initializerList("x" designates 56, 3)) assertEquals p.root.decls[0]
+    vec2 declare ("thing" assign initializerList(("x" ofType int at 0) designates 56, 3)) assertEquals p.root.decls[0]
     p.assertNoDiagnostics()
   }
 

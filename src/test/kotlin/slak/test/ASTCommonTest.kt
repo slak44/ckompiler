@@ -106,12 +106,18 @@ internal fun <T : Any> initializerList(vararg initializers: T): InitializerList 
   return InitializerList(parsed, Punctuators.ASSIGN.pct)
 }
 
-internal infix fun <T : Any> String.designates(initializerValue: T): DesignatedInitializer {
+internal data class DesignationTestData(val name: String, val type: TypeName, val idx: Int)
+
+internal infix fun String.ofType(spec: DeclarationSpecifier): Pair<String, TypeName> = this to typeNameOf(spec, nameDecl(this))
+
+internal infix fun Pair<String, TypeName>.at(idx: Int) = DesignationTestData(first, second, idx)
+
+internal infix fun <T : Any> DesignationTestData.designates(initializerValue: T): DesignatedInitializer {
   val initializer = when (initializerValue) {
     is Initializer -> initializerValue
     else -> ExpressionInitializer(parseDSLElement(initializerValue).zeroRange(), Punctuators.ASSIGN.pct)
   }
-  return DesignatedInitializer(Designation(listOf(DotDesignator(name(this)))), initializer)
+  return DesignatedInitializer(Designation(listOf(DotDesignator(name(this.name))), type, listOf(idx)), initializer)
 }
 
 internal typealias DeclInit = Pair<Declarator, Initializer?>
