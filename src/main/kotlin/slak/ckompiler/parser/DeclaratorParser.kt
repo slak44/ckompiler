@@ -371,10 +371,36 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return type.members!!.indexOfFirst { it.first.name == designator.identifier.name }
   }
 
+  private fun parseArrayDesignator(): ArrayDesignator? {
+    val lParen = current()
+    val rParenIdx = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
+    if (rParenIdx == -1) {
+      eatToSemi()
+      return null
+    }
+    eat() // The [
+
+    val expr = expressionParser.parseExpr(rParenIdx) ?: error<ErrorExpression>()
+    val (constExpr, diags) = constExprParser.evaluateExpr(expr)
+
+    val rParen = current()
+    eat() // The ]
+
+    return if (diags.isEmpty() && constExpr is IntegerConstantNode) {
+      ArrayDesignator(constExpr).withRange(lParen..rParen)
+    } else {
+      diagnostic {
+        id = DiagnosticId.EXPR_NOT_CONSTANT_INT
+        errorOn(lParen..rParen)
+      }
+      null
+    }
+  }
+
   /**
    * @return null on parse error, the designator otherwise
    */
-  private fun parseDotDesignator(dot: Punctuator): Designator? {
+  private fun parseDotDesignator(dot: Punctuator): DotDesignator? {
     if (isEaten()) {
       diagnostic {
         id = DiagnosticId.EXPECTED_DOT_DESIGNATOR
@@ -500,22 +526,22 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     while (true) {
       if (isEaten()) break
       val tok = current() as? Punctuator
-      when (tok?.asPunct()) {
+      val designator = when (tok?.asPunct()) {
         Punctuators.DOT -> {
           eat()
-          val designator = parseDotDesignator(tok)
-          if (designator == null) {
-            eatUntil(tokenCount)
-            val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(tok..safeToken(0))
-            return DesignatedInitializer(null, errorDecl).withRange(errorDecl)
-          } else {
-            designators += designator
-          }
+          parseDotDesignator(tok)
         }
         Punctuators.LSQPAREN -> {
-          TODO("array designators")
+          parseArrayDesignator()
         }
         else -> break
+      }
+      if (designator == null) {
+        eatUntil(tokenCount)
+        val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(tok..safeToken(0))
+        return DesignatedInitializer(null, errorDecl).withRange(errorDecl)
+      } else {
+        designators += designator
       }
     }
 
@@ -549,6 +575,9 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return DesignatedInitializer(null, initializer).withRange(initializer)
   }
 
+  /**
+   * C standard: 6.7.9.0.17
+   */
   private fun parseInitializerList(
       parentAssignTok: Punctuator,
       currentObjectType: TypeName,

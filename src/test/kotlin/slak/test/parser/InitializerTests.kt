@@ -204,6 +204,12 @@ class InitializerTests {
   }
 
   @Test
+  fun `Array Initializer Non-Constant`() {
+    val p = prepareCode("int a = 1; int x[123] = { [a] = 6 };", source)
+    p.assertDiags(DiagnosticId.EXPR_NOT_CONSTANT_INT)
+  }
+
+  @Test
   fun `Tag Initializer On Array`() {
     val p = prepareCode("int a[2] = { .x = 56, 3 };", source)
     p.assertDiags(DiagnosticId.DOT_DESIGNATOR_NON_TAG)

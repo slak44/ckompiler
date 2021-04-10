@@ -79,6 +79,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
       "Too few arguments to function call, expected at least '%d', got '%d'"),
   CONTINUE_OUTSIDE_LOOP(ERROR, "'continue' statement found outside loop"),
   BREAK_OUTSIDE_LOOP_SWITCH(ERROR, "'break' statement found outside loop or switch"),
+  EXPECTED_DOT_DESIGNATOR(ERROR, "Expected a designator of the form '.field' in this initializer list"),
+  EXPECTED_NEXT_DESIGNATOR(ERROR, "Expected '=' or another designator"),
 
   // Type system
   CALL_OBJECT_TYPE(ERROR, "Called object type '%s' is not a function or function pointer"),
@@ -126,8 +128,6 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   DOT_DESIGNATOR_NON_TAG(ERROR, "Field designator cannot initialize non-struct, non-union type '%s'"),
   DOT_DESIGNATOR_NO_FIELD(ERROR, "Field designator '%s' does not refer to any field in type '%s'"),
   INITIALIZER_TYPE_MISMATCH(ERROR, "Expression of type '%s' cannot initialize type '%s'"),
-  EXPECTED_DOT_DESIGNATOR(ERROR, "Expected a designator of the form '.field' in this initializer list"),
-  EXPECTED_NEXT_DESIGNATOR(ERROR, "Expected '=' or another designator"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

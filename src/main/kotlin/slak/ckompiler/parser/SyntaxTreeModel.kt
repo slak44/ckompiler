@@ -631,7 +631,7 @@ data class DotDesignator(val identifier: IdentifierNode) : Designator() {
   override fun toString() = ".$identifier"
 }
 
-data class ArrayDesignator(val intConstantExpr: ExprConstantNode) : Designator() {
+data class ArrayDesignator(val intConstantExpr: IntegerConstantNode) : Designator() {
   override fun toString() = "[$intConstantExpr]"
 }
 
