@@ -107,7 +107,7 @@ class InitializerTests {
   @Test
   fun `Designator In Initializer List For Scalar Not Allowed`() {
     val p = prepareCode("int a = { .a = 2 };", source)
-    int declare ("a" assign initializerList(("a" ofType int at 0) designates 2)) assertEquals p.root.decls[0]
+    int declare ("a" assign initializerList(("a" ofType ErrorType at 0) designates 2)) assertEquals p.root.decls[0]
     p.assertDiags(DiagnosticId.DESIGNATOR_FOR_SCALAR)
   }
 

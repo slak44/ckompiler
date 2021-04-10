@@ -109,6 +109,7 @@ internal fun <T : Any> initializerList(vararg initializers: T): InitializerList 
 internal data class DesignationTestData(val name: String, val type: TypeName, val idx: Int)
 
 internal infix fun String.ofType(spec: DeclarationSpecifier): Pair<String, TypeName> = this to typeNameOf(spec, nameDecl(this))
+internal infix fun String.ofType(type: TypeName): Pair<String, TypeName> = this to type
 
 internal infix fun Pair<String, TypeName>.at(idx: Int) = DesignationTestData(first, second, idx)
 

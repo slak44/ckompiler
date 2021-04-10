@@ -486,7 +486,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
   private fun parseDesignatedInitializer(
       parentAssignTok: Punctuator,
       currentObjectType: TypeName,
-      defaultSubObject: Int
+      currentSubObjectIdx: Int
   ): DesignatedInitializer {
     if (currentObjectType.isNotAllowedToDesignate()) {
       val startTok = current()
@@ -534,12 +534,13 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       val assignTok = current() as Punctuator
       eat()
       val initializer = parseInitializer(assignTok, designatedType, tokenCount)
+
       return DesignatedInitializer(designation, initializer).withRange(designation..initializer)
     }
 
     val typeToInit = when {
       currentObjectType is ArrayType -> currentObjectType.elementType
-      currentObjectType is StructureType -> currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
+      currentObjectType is StructureType -> currentObjectType.members!!.getOrNull(currentSubObjectIdx)?.second ?: ErrorType
       currentObjectType is UnionType -> currentObjectType.members!!.first().second
       currentObjectType.isScalar() -> currentObjectType
       else -> logger.throwICE("Unhandled type $currentObjectType")
@@ -554,20 +555,21 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       endIdx: Int
   ): InitializerList = tokenContext(endIdx) {
     val initializers = mutableListOf<DesignatedInitializer>()
-    var currentIdx = 0
+    var currentSubObjectIdx = 0
+    val excessInitializers = mutableListOf<DesignatedInitializer>()
 
     while (isNotEaten()) {
       // TODO: this pretends commas can't appear in assignment expressions, or in array designated initializer constant expressions
       val initializerEndIdx = firstOutsideParens(Punctuators.COMMA, Punctuators.LBRACKET, Punctuators.RBRACKET, false)
       tokenContext(initializerEndIdx) {
-        val di = parseDesignatedInitializer(parentAssignTok, currentObjectType, currentIdx)
+        val di = parseDesignatedInitializer(parentAssignTok, currentObjectType, currentSubObjectIdx)
         if (di.designation == null) {
-          currentIdx++
-        } else {
-          when (di.designation.designators[0]) {
-            is ArrayDesignator -> TODO("designator should advance current initialization")
-            is DotDesignator -> TODO("designator should advance current initialization")
+          currentSubObjectIdx++
+          if (currentObjectType is StructureType && currentObjectType.isValidMemberIdx(currentSubObjectIdx)) {
+            excessInitializers += di
           }
+        } else {
+          currentSubObjectIdx = di.designation.designationIndices.first() + 1
         }
         initializers += di
       }
@@ -583,15 +585,10 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       }
     }
 
-    // TODO: this doesn't work well with nested designated initializers like { .x.y = 2 } or { .x[0] = 3 }
-    if (
-      currentObjectType is StructureType &&
-      currentObjectType.isCompleteObjectType() &&
-      initializers.size > currentObjectType.members!!.size
-    ) {
+    if (excessInitializers.isNotEmpty()) {
       diagnostic {
         id = DiagnosticId.EXCESS_INITIALIZERS
-        errorOn(initializers[currentObjectType.members.size]..initializers.last())
+        errorOn(excessInitializers.first()..excessInitializers.last())
       }
     }
 

@@ -286,6 +286,10 @@ data class StructureType(
   override val isComplete = members != null
   override val kind = "struct"
   override fun toString() = super.toString()
+
+  fun isValidMemberIdx(idx: Int): Boolean {
+    return isComplete && idx >= 0 && idx < members!!.size
+  }
 }
 
 data class UnionType(
