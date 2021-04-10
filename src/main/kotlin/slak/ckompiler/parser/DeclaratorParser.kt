@@ -564,10 +564,14 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       tokenContext(initializerEndIdx) {
         val di = parseDesignatedInitializer(parentAssignTok, currentObjectType, currentSubObjectIdx)
         if (di.designation == null) {
-          currentSubObjectIdx++
-          if (currentObjectType is StructureType && currentObjectType.isValidMemberIdx(currentSubObjectIdx)) {
+          if (
+            currentObjectType is StructureType &&
+            !currentObjectType.isValidMemberIdx(currentSubObjectIdx) &&
+            di.initializer !is ErrorDeclInitializer
+          ) {
             excessInitializers += di
           }
+          currentSubObjectIdx++
         } else {
           currentSubObjectIdx = di.designation.designationIndices.first() + 1
         }

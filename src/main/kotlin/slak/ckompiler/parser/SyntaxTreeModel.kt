@@ -635,6 +635,9 @@ data class ArrayDesignator(val intConstantExpr: ExprConstantNode) : Designator()
   override fun toString() = "[$intConstantExpr]"
 }
 
+/**
+ * The indices array is of the same length as the designator array, and indexes into [designatedType]'s sub-objects.
+ */
 data class Designation(val designators: List<Designator>, val designatedType: TypeName, val designationIndices: List<Int>) : ASTNode() {
   init {
     require(designators.isNotEmpty())
