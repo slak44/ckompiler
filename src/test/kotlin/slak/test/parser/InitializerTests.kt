@@ -184,10 +184,68 @@ class InitializerTests {
   }
 
   @Test
+  fun `Struct Wrong Name`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { .lalalal = 56, 3 };", source)
+    val vec2 = struct("vec2",
+        int declare "x",
+        int declare "y"
+    ).toSpec()
+    vec2 declare ("thing" assign initializerList(("lalalal" ofType ErrorType at 0) designates 56, 3)) assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.DOT_DESIGNATOR_NO_FIELD)
+  }
+
+  @Test
   fun `Array Initializer`() {
     val p = prepareCode("int a[2] = { 2, 3 };", source)
     int declare (nameDecl("a")[2] assign initializerList(2, 3)) assertEquals p.root.decls[0]
     p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Array Initializer With Designators`() {
+    val p = prepareCode("int a[2] = { [0] = 2, [1] = 3 };", source)
+    val type = ArrayType(SignedIntType, ConstantSize(int(2)))
+    int declare (nameDecl("a")[2] assign initializerList(type[0] designates 2, type[1] designates 3)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Array Initializer With Designators Not In Order`() {
+    val p = prepareCode("int a[2] = { [1] = 3, [0] = 2 };", source)
+    val type = ArrayType(SignedIntType, ConstantSize(int(2)))
+    int declare (nameDecl("a")[2] assign initializerList(type[1] designates 3, type[0] designates 2)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Array Initializer With Mixed Designators`() {
+    val p = prepareCode("int a[100] = { [1] = 3, 2, [10] = 5, 11 };", source)
+    val type = ArrayType(SignedIntType, ConstantSize(int(100)))
+    int declare (nameDecl("a")[100] assign initializerList(
+        type[1] designates 3,
+        2,
+        type[10] designates 5,
+        11
+    )) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Array Negative Index`() {
+    val p = prepareCode("int x[123] = { [-1] = 6 };", source)
+    p.assertDiags(DiagnosticId.ARRAY_DESIGNATOR_NEGATIVE)
+  }
+
+  @Test
+  fun `Array Out Of Bounds Index`() {
+    val p = prepareCode("int x[123] = { [124] = 6 };", source)
+    p.assertDiags(DiagnosticId.ARRAY_DESIGNATOR_BOUNDS)
+  }
+
+  @Test
+  fun `Array Out Of Bounds Excess Initializer`() {
+    val p = prepareCode("int x[123] = { [122] = 6, 56 };", source)
+    p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS_ARRAY)
   }
 
   @Test

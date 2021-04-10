@@ -103,7 +103,14 @@ internal fun <T : Any> initializerList(vararg initializers: T): InitializerList 
       else -> DesignatedInitializer(null, ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct))
     }
   }
-  return InitializerList(parsed, Punctuators.ASSIGN.pct)
+  return InitializerList(parsed, Punctuators.ASSIGN.pct).zeroRange()
+}
+
+private fun <T : Any> initializerFromExpr(initializerValue: T): Initializer {
+  return when (initializerValue) {
+    is Initializer -> initializerValue
+    else -> ExpressionInitializer(parseDSLElement(initializerValue).zeroRange(), Punctuators.ASSIGN.pct).zeroRange()
+  }
 }
 
 internal data class DesignationTestData(val name: String, val type: TypeName, val idx: Int)
@@ -114,11 +121,17 @@ internal infix fun String.ofType(type: TypeName): Pair<String, TypeName> = this 
 internal infix fun Pair<String, TypeName>.at(idx: Int) = DesignationTestData(first, second, idx)
 
 internal infix fun <T : Any> DesignationTestData.designates(initializerValue: T): DesignatedInitializer {
-  val initializer = when (initializerValue) {
-    is Initializer -> initializerValue
-    else -> ExpressionInitializer(parseDSLElement(initializerValue).zeroRange(), Punctuators.ASSIGN.pct)
-  }
-  return DesignatedInitializer(Designation(listOf(DotDesignator(name(this.name))), type, listOf(idx)), initializer)
+  val initializer = initializerFromExpr(initializerValue)
+  return DesignatedInitializer(Designation(listOf(DotDesignator(name(this.name)).zeroRange()), type, listOf(idx)).zeroRange(), initializer)
+}
+
+internal operator fun ArrayType.get(nr: Long): Pair<ArrayDesignator, ArrayType> {
+  return ArrayDesignator(int(nr)).zeroRange() to this
+}
+
+internal infix fun <T : Any> Pair<ArrayDesignator, ArrayType>.designates(initializerValue: T): DesignatedInitializer {
+  val initializer = initializerFromExpr(initializerValue)
+  return DesignatedInitializer(Designation(listOf(first), second, listOf(first.intConstantExpr.value.toInt())).zeroRange(), initializer)
 }
 
 internal typealias DeclInit = Pair<Declarator, Initializer?>

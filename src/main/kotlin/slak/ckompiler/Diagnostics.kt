@@ -124,10 +124,13 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   DESIGNATOR_FOR_SCALAR(ERROR, "Designator found in initializer for scalar type '%s'"),
   EXCESS_INITIALIZERS_SCALAR(WARNING, "Excess initializers in scalar initializer list"),
   EXCESS_INITIALIZERS(WARNING, "Excess initializers in tag initializer list"),
+  EXCESS_INITIALIZERS_ARRAY(WARNING, "Excess initializers in array initializer list"),
   ARRAY_DESIGNATOR_NON_ARRAY(ERROR, "Array designator cannot initialize non-array type '%s'"),
   DOT_DESIGNATOR_NON_TAG(ERROR, "Field designator cannot initialize non-struct, non-union type '%s'"),
   DOT_DESIGNATOR_NO_FIELD(ERROR, "Field designator '%s' does not refer to any field in type '%s'"),
   INITIALIZER_TYPE_MISMATCH(ERROR, "Expression of type '%s' cannot initialize type '%s'"),
+  ARRAY_DESIGNATOR_NEGATIVE(ERROR, "Array designator index %d is negative"),
+  ARRAY_DESIGNATOR_BOUNDS(ERROR, "Array designator index %d is out of bounds for this array (%d)"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
