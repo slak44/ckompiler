@@ -65,7 +65,7 @@ data class MachineTargetData(
       map["__INTPTR_T_SIZE"] = ptrSizeBytes.toBits().toString()
     }
     // C standard: 7.20.1.5
-    ints.maxBy { it.key }!!.also {
+    ints.maxByOrNull { it.key }!!.also {
       map["__INTMAX_T_TYPE"] = it.value
       map["__INTMAX_T_SIZE"] = it.key.toBits().toString()
     }

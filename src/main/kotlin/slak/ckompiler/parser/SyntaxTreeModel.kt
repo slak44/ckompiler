@@ -91,7 +91,7 @@ interface StringClassName {
  * @see StringClassName
  */
 private object StringClassNameImpl : StringClassName {
-  override fun toString() = javaClass.simpleName!!
+  override fun toString() = javaClass.simpleName
 }
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */

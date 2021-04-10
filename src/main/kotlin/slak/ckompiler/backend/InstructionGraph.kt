@@ -110,7 +110,7 @@ class InstructionGraph private constructor(
     }
   }
 
-  fun domTreeChildren(id: AtomicId) = (nodes.keys - returnBlock.id)
+  private fun domTreeChildren(id: AtomicId) = (nodes.keys - returnBlock.id)
       .filter { idom[this[it].seqId] == id }
       .sortedBy { this[it].domTreeHeight }
       .asReversed()
@@ -189,7 +189,7 @@ class InstructionGraph private constructor(
     return transposed.getValue(blockId)
   }
 
-  fun isDeadAt(value: Variable, label: InstrLabel): Boolean {
+  private fun isDeadAt(value: Variable, label: InstrLabel): Boolean {
     if (value.isUndefined || !isUsed(value)) return true
 
     val (block, index) = label

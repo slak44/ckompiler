@@ -373,7 +373,7 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
    *
    * Returns [IScopeHandler.createTag] of the parsed specifier.
    */
-  private fun parseTag(): TagSpecifier? {
+  private fun parseTag(): TagSpecifier {
     val tagKindKeyword = current() as Keyword
     eat() // struct or union or enum
     val name = if (current() is Identifier) IdentifierNode.from(current()) else null

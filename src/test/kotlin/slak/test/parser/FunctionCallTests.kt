@@ -5,7 +5,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.DoubleType
-import slak.ckompiler.parser.SignedIntType
 import slak.ckompiler.parser.UnaryOperators
 import slak.test.*
 

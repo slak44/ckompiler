@@ -11,7 +11,7 @@ object ConstExprIdents : IdentSearchable, TypeNameParser {
     return null
   }
 
-  override fun searchIdent(target: String): OrdinaryIdentifier? {
+  override fun searchIdent(target: String): OrdinaryIdentifier {
     return TypedIdentifier(target, SignedIntType)
   }
 }

@@ -11,7 +11,7 @@ import java.io.InputStream
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
-internal fun Preprocessor.assertNoDiagnostics() = assertEquals(emptyList<Diagnostic>(), diags)
+internal fun Preprocessor.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun IDebugHandler.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
