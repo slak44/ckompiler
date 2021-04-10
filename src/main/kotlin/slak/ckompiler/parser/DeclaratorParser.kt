@@ -596,6 +596,13 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return DesignatedInitializer(null, initializer).withRange(initializer)
   }
 
+  private fun isArrayIndexInExcess(currentObjectType: TypeName, currentSubObjectIdx: Int): Boolean {
+    return currentObjectType is ArrayType &&
+        currentObjectType.size is ConstantArraySize &&
+        currentObjectType.size.size is IntegerConstantNode &&
+        currentSubObjectIdx > (currentObjectType.size.size as IntegerConstantNode).value
+  }
+
   /**
    * C standard: 6.7.9.0.17
    */
@@ -625,6 +632,9 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
         } else {
           currentSubObjectIdx = di.designation.designationIndices.first() + 1
         }
+        if (isArrayIndexInExcess(currentObjectType, currentSubObjectIdx)) {
+          excessInitializers += di
+        }
         initializers += di
       }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
@@ -641,7 +651,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
 
     if (excessInitializers.isNotEmpty()) {
       diagnostic {
-        id = DiagnosticId.EXCESS_INITIALIZERS
+        id = if (currentObjectType is ArrayType) DiagnosticId.EXCESS_INITIALIZERS_ARRAY else DiagnosticId.EXCESS_INITIALIZERS
         errorOn(excessInitializers.first()..excessInitializers.last())
       }
     }
