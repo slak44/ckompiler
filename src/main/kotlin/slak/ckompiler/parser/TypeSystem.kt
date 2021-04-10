@@ -125,6 +125,11 @@ sealed class TypeName {
       (this as? ArrayType)?.size !is NoSize && (unqualify() as? TagType)?.isComplete != false
 
   /**
+   * If the current type can contain designated initializers in its initializer list.
+   */
+  fun isNotAllowedToDesignate() = (this !is ArrayType && !isCompleteObjectType()) || this is BitfieldType
+
+  /**
    * Applies conversions specified by the standard (functions & arrays to pointers).
    *
    * C standard: 6.3.2.1.0.3, 6.3.2.1.0.4

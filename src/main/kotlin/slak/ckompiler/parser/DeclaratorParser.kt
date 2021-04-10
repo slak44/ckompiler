@@ -367,6 +367,10 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return@tokenContext ParameterTypeList(params, scope, isVariadic)
   }
 
+  private fun indexOfDesignatorInTag(type: TagType, designator: DotDesignator): Int {
+    return type.members!!.indexOfFirst { it.first.name == designator.identifier.name }
+  }
+
   /**
    * @return null on parse error, the designator otherwise
    */
@@ -413,7 +417,67 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    * For the designator list `.y.value3.final1[42]`, the index list is `[1, 2, 0, 42]`, and the type is `float`.
    */
   private fun List<Designator>.designatedTypeOf(type: TypeName): Pair<TypeName, List<Int>> {
-    TODO("implement designatedTypeOf")
+    require(isNotEmpty()) { "Receiver designator list must not be empty" }
+    require(type !is QualifiedType) { "Must call TypeName#unqualify before using this function" }
+
+    val errorValue = ErrorType to this.map { 0 }
+    val designator = first()
+
+    fun maybeRecurse(foundType: TypeName, foundIdx: Int): Pair<TypeName, List<Int>> {
+      return if (size == 1) {
+        foundType to listOf(foundIdx)
+      } else {
+        val (finalType, indices) = drop(1).designatedTypeOf(foundType)
+        finalType to (listOf(foundIdx) + indices)
+      }
+    }
+
+    return when {
+      type.isNotAllowedToDesignate() || type is ErrorType -> errorValue
+      type.isScalar() -> {
+        diagnostic {
+          id = DiagnosticId.DESIGNATOR_FOR_SCALAR
+          formatArgs(type)
+          errorOn(designator)
+        }
+        errorValue
+      }
+      type is TagType -> when (designator) {
+        is ArrayDesignator -> {
+          diagnostic {
+            id = DiagnosticId.ARRAY_DESIGNATOR_NON_ARRAY
+            formatArgs(type)
+            errorOn(designator)
+          }
+          errorValue
+        }
+        is DotDesignator -> {
+          val idx = indexOfDesignatorInTag(type, designator)
+          if (idx < 0) {
+            diagnostic {
+              id = DiagnosticId.DOT_DESIGNATOR_NO_FIELD
+              formatArgs(designator, type)
+              errorOn(designator)
+            }
+            errorValue
+          } else {
+            return maybeRecurse(type.members!![idx].second, idx)
+          }
+        }
+      }
+      type is ArrayType -> when (designator) {
+        is DotDesignator -> {
+          diagnostic {
+            id = DiagnosticId.DOT_DESIGNATOR_NON_TAG
+            formatArgs(type)
+            errorOn(designator)
+          }
+          errorValue
+        }
+        is ArrayDesignator -> TODO("designatedTypeOf arrays")
+      }
+      else -> logger.throwICE("Unhandled type $type")
+    }
   }
 
   /**
@@ -424,8 +488,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       currentObjectType: TypeName,
       defaultSubObject: Int
   ): DesignatedInitializer {
-    if (currentObjectType !is ArrayType && !currentObjectType.isCompleteObjectType()) {
-      // TODO: for top-level types, a diagnostic is emitted, but we should call validate assignment for this too (probably)
+    if (currentObjectType.isNotAllowedToDesignate()) {
       val startTok = current()
       eatUntil(tokenCount)
       val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0))
@@ -479,7 +542,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       currentObjectType is StructureType -> currentObjectType.members!!.getOrNull(defaultSubObject)?.second ?: ErrorType
       currentObjectType is UnionType -> currentObjectType.members!!.first().second
       currentObjectType.isScalar() -> currentObjectType
-      else -> TODO("what else could even get here?")
+      else -> logger.throwICE("Unhandled type $currentObjectType")
     }
     val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
     return DesignatedInitializer(null, initializer).withRange(initializer)

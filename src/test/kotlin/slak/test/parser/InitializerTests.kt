@@ -112,6 +112,18 @@ class InitializerTests {
   }
 
   @Test
+  fun `Incomplete Type Initializer`() {
+    val p = prepareCode("struct point; struct point x = { .x = 1, 2 };", source)
+    p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
+  }
+
+  @Test
+  fun `Incomplete Type Initializer For Local Variable`() {
+    val p = prepareCode("struct point; int main() { struct point x = { .x = 1, 2 }; }", source)
+    p.assertDiags(DiagnosticId.VARIABLE_TYPE_INCOMPLETE)
+  }
+
+  @Test
   fun `Simple Struct Initializer`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { 56, 3 };", source)
     val vec2 = struct("vec2",
