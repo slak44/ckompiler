@@ -131,7 +131,7 @@ internal operator fun ArrayType.get(nr: Long): Pair<ArrayDesignator, ArrayType> 
 
 internal infix fun <T : Any> Pair<ArrayDesignator, ArrayType>.designates(initializerValue: T): DesignatedInitializer {
   val initializer = initializerFromExpr(initializerValue)
-  return DesignatedInitializer(Designation(listOf(first), second, listOf(first.index.value.toInt())).zeroRange(), initializer)
+  return DesignatedInitializer(Designation(listOf(first), second.elementType, listOf(first.index.value.toInt())).zeroRange(), initializer)
 }
 
 internal typealias DeclInit = Pair<Declarator, Initializer?>
