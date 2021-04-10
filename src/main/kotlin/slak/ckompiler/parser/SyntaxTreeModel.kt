@@ -627,14 +627,21 @@ data class ExpressionInitializer(
 
 sealed class Designator : ASTNode()
 
-data class DotDesignator(val identifier: IdentifierNode) : Designator()
-data class ArrayDesignator(val intConstantExpr: ExprConstantNode) : Designator()
+data class DotDesignator(val identifier: IdentifierNode) : Designator() {
+  override fun toString() = ".$identifier"
+}
+
+data class ArrayDesignator(val intConstantExpr: ExprConstantNode) : Designator() {
+  override fun toString() = "[$intConstantExpr]"
+}
 
 data class Designation(val designators: List<Designator>, val designatedType: TypeName, val designationIndices: List<Int>) : ASTNode() {
   init {
     require(designators.isNotEmpty())
     require(designators.size == designationIndices.size)
   }
+
+  override fun toString() = designators.joinToString("")
 }
 
 data class DesignatedInitializer(val designation: Designation?, val initializer: Initializer) : ASTNode()
