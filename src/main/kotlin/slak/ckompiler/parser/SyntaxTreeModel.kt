@@ -659,7 +659,9 @@ data class Designation(val designators: List<Designator>, val designatedType: Ty
   override fun toString() = designators.joinToString("")
 }
 
-data class DesignatedInitializer(val designation: Designation?, val initializer: Initializer) : ASTNode()
+data class DesignatedInitializer(val designation: Designation?, val initializer: Initializer) : ASTNode() {
+  override fun toString(): String = if (designation != null) "$designation = $initializer" else initializer.toString()
+}
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorDeclInitializer(override val assignTok: Punctuator) : Initializer(), ErrorNode by ErrorNodeImpl
@@ -678,6 +680,11 @@ data class InitializerList(
 ) : Initializer() {
   fun deducedArraySize(): ConstantSize {
     return ConstantSize(IntegerConstantNode(maximumSubObjectIdx.toLong()))
+  }
+
+  override fun toString(): String {
+    val inits = initializers.joinToString(", ")
+    return "{ [maxSize: $maximumSubObjectIdx], $inits }"
   }
 }
 
