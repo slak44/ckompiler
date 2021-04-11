@@ -132,6 +132,8 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   INITIALIZER_TYPE_MISMATCH(ERROR, "Expression of type '%s' cannot initialize type '%s'"),
   ARRAY_DESIGNATOR_NEGATIVE(ERROR, "Array designator index %d is negative"),
   ARRAY_DESIGNATOR_BOUNDS(ERROR, "Array designator index %d is out of bounds for this array (%d)"),
+  INITIALIZER_OVERRIDES_PRIOR(WARNING, "Initializer overrides prior initialization of this subobject"),
+  PRIOR_INITIALIZER(OTHER, "Previous initialization is here"),
 
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),

@@ -525,6 +525,7 @@ private fun <T> parseDSLElement(it: T): Expression {
   return when (it) {
     is Expression -> it
     is Int -> int(it.toLong())
+    is Float -> float(it.toDouble())
     is Double -> double(it.toDouble())
     is FunctionDefinition -> it.toRef()
     is Declaration -> throw IllegalArgumentException("Bad types (did you mean to use a nameRef?)")
