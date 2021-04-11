@@ -319,6 +319,7 @@ sealed class ArithmeticType : BasicType() {
 sealed class IntegralType : ArithmeticType(), Comparable<IntegralType> {
   /** C standard: 6.3.1.1.0.1 */
   abstract val conversionRank: Int
+
   /**
    * The same type with opposite signedness. Examples:
    * [SignedLongLongType] -> [UnsignedLongLongType]
@@ -672,6 +673,10 @@ private fun applyAssign(lhs: TypeName, rhs: TypeName): TypeName {
     // FIXME: actually check things (6.5.16.1)
     return if (rhs !is PointerType) ErrorType else lhs
   }
+  // An example for this case is char x[] = "hello";
+  if (lhs is ArrayType && rhs is ArrayType && lhs.elementType.isCompatibleWith(rhs.elementType) && rhs.size is ConstantArraySize) {
+    return lhs
+  }
   return ErrorType
 }
 
@@ -891,9 +896,7 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
   if (successType is ArithmeticType && failureType is ArithmeticType) {
     return usualArithmeticConversions(successType, failureType)
   }
-  if (successType is StructureType &&
-      failureType is StructureType &&
-      successType == failureType) {
+  if (successType is StructureType && failureType is StructureType && successType == failureType) {
     return successType
   }
   if (successType is UnionType && failureType is UnionType && successType == failureType) {
@@ -937,6 +940,9 @@ fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
   if (opType is PointerType || commonType is PointerType) return operand
   // FIXME: this also does not seem terribly correct, but why would we cast int to const int?
   if (commonType.unqualify() == opType.unqualify()) return operand
+  if (commonType is ArrayType && opType is ArrayType && opType.size is ConstantArraySize) {
+    return operand
+  }
   return CastExpression(operand, commonType).withRange(operand)
 }
 

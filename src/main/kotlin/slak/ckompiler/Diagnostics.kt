@@ -125,6 +125,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   EXCESS_INITIALIZERS_SCALAR(WARNING, "Excess initializers in scalar initializer list"),
   EXCESS_INITIALIZERS(WARNING, "Excess initializers in tag initializer list"),
   EXCESS_INITIALIZERS_ARRAY(WARNING, "Excess initializers in array initializer list"),
+  EXCESS_INITIALIZER_SIZE(WARNING, "Initializer array value has size %d which is longer than target array size %d"),
   ARRAY_DESIGNATOR_NON_ARRAY(ERROR, "Array designator cannot initialize non-array type '%s'"),
   DOT_DESIGNATOR_NON_TAG(ERROR, "Field designator cannot initialize non-struct, non-union type '%s'"),
   DOT_DESIGNATOR_NO_FIELD(ERROR, "Field designator '%s' does not refer to any field in type '%s'"),

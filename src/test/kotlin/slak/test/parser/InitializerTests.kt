@@ -299,6 +299,13 @@ class InitializerTests {
   }
 
   @Test
+  fun `Char Array Initializer From Too Long String`() {
+    val p = prepareCode("char a[2] = \"Hello\";", source)
+    char declare (nameDecl("a")[2] assign strLit("Hello")) assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.EXCESS_INITIALIZER_SIZE)
+  }
+
+  @Test
   fun `Array Initializer On Struct`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { [0] = 56, 3 };", source)
     p.assertDiags(DiagnosticId.ARRAY_DESIGNATOR_NON_ARRAY)

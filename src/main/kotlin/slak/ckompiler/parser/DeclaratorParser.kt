@@ -510,10 +510,10 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
               }
               errorValue
             }
-            type.size is ConstantArraySize && index > (type.size.size as IntegerConstantNode).value -> {
+            type.size is ConstantArraySize && index > type.size.asValue -> {
               diagnostic {
                 id = DiagnosticId.ARRAY_DESIGNATOR_BOUNDS
-                formatArgs(index, (type.size.size as IntegerConstantNode).value)
+                formatArgs(index, type.size.asValue)
               }
               errorValue
             }
@@ -600,7 +600,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     return currentObjectType is ArrayType &&
         currentObjectType.size is ConstantArraySize &&
         currentObjectType.size.size is IntegerConstantNode &&
-        currentSubObjectIdx > (currentObjectType.size.size as IntegerConstantNode).value
+        currentSubObjectIdx > currentObjectType.size.asValue
   }
 
   /**
@@ -690,12 +690,21 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     val expr = expressionParser.parseExpr(endIdx) ?: error<ErrorExpression>()
     // Only do initializer type checking if the types are actually valid
     if (expr.type.unqualify() !is ErrorType && initializerFor.unqualify() !is ErrorType) {
-      val (_, commonType) = BinaryOperators.ASSIGN.applyTo(initializerFor, expr.type)
+      val rhs = expr.type
+      val (_, commonType) = BinaryOperators.ASSIGN.applyTo(initializerFor, rhs)
       if (commonType is ErrorType) {
         diagnostic {
           id = DiagnosticId.INITIALIZER_TYPE_MISMATCH
-          formatArgs(expr.type, initializerFor)
+          formatArgs(rhs, initializerFor)
           errorOn(expr)
+        }
+      } else if (initializerFor is ArrayType && rhs is ArrayType) {
+        if (initializerFor.size is ConstantArraySize && rhs.size is ConstantArraySize && rhs.size.asValue > initializerFor.size.asValue) {
+          diagnostic {
+            id = DiagnosticId.EXCESS_INITIALIZER_SIZE
+            formatArgs(rhs.size.asValue, initializerFor.size.asValue)
+            errorOn(expr)
+          }
         }
       }
     }

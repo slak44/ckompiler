@@ -156,13 +156,16 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
       val expectedType = typeNameOf(ds, declarator)
       val initializer = parseDeclarationInitializer(expectedType, ds, endIdx)
       val finalDeclarator = when {
-        initializer is InitializerList && expectedType is ArrayType && expectedType.size is NoSize -> {
-          // Automatic detection of array size
-          declarator.alterArraySize(initializer.deducedArraySize().withRange(declarator.getArrayTypeSize()))
-        }
-        initializer is ExpressionInitializer && initializer.expr is StringLiteralNode -> {
-          // Take array size from string
-          declarator.alterArraySize(initializer.expr.type.size)
+        expectedType is ArrayType && expectedType.size is NoSize -> when {
+          initializer is InitializerList -> {
+            // Automatic detection of array size
+            declarator.alterArraySize(initializer.deducedArraySize().withRange(declarator.getArrayTypeSize()))
+          }
+          initializer is ExpressionInitializer && initializer.expr is StringLiteralNode -> {
+            // Take array size from string
+            declarator.alterArraySize(initializer.expr.type.size)
+          }
+          else -> declarator
         }
         else -> declarator
       }

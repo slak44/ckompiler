@@ -87,8 +87,7 @@ data class MachineTargetData(
     is ArrayType -> {
       val arrSize = type.size as ConstantArraySize
       // FIXME: validate max array sizes somewhere
-      val size = (arrSize.size as IntegerConstantNode).value.toInt()
-      size * sizeOf(type.elementType)
+      arrSize.asValue.toInt() * sizeOf(type.elementType)
     }
     is BitfieldType -> TODO()
     is StructureType -> type.members?.map { it.second }?.sumBy(::sizeOf) ?: 0

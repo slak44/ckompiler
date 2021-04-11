@@ -631,7 +631,7 @@ fun Declarator.alterArraySize(newSize: ArrayTypeSize): Declarator {
     is AbstractDeclarator -> this.copy(suffixes = newSuffixes)
     is NamedDeclarator -> this.copy(suffixes = newSuffixes)
     is ErrorDeclarator -> logger.throwICE("Unreachable code, errors cannot pass the isArray check above")
-  }
+  }.withRange(this)
 }
 
 sealed class Initializer : ASTNode() {
@@ -736,6 +736,8 @@ sealed class VariableArraySize : ArrayTypeSize()
 
 sealed class ConstantArraySize : ArrayTypeSize() {
   abstract val size: ExprConstantNode
+
+  val asValue get() = (size as IntegerConstantNode).value
 }
 
 /**
