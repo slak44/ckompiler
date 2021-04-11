@@ -614,6 +614,28 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     val initializers = mutableListOf<DesignatedInitializer>()
     var currentSubObjectIdx = 0
     val excessInitializers = mutableListOf<DesignatedInitializer>()
+    val encounteredDesignations = mutableMapOf<Designation, DesignatedInitializer>()
+
+    fun checkAlreadyEncountered(latest: DesignatedInitializer) {
+      requireNotNull(latest.designation)
+
+      if (latest.designation in encounteredDesignations || (currentObjectType is UnionType && initializers.isNotEmpty())) {
+        diagnostic {
+          id = DiagnosticId.INITIALIZER_OVERRIDES_PRIOR
+          errorOn(latest.initializer)
+        }
+        diagnostic {
+          id = DiagnosticId.PRIOR_INITIALIZER
+          if (currentObjectType is UnionType) {
+            errorOn(encounteredDesignations.values.last().initializer)
+          } else {
+            errorOn(encounteredDesignations.getValue(latest.designation).initializer)
+          }
+        }
+      } else {
+        encounteredDesignations[latest.designation] = latest
+      }
+    }
 
     while (isNotEaten()) {
       // TODO: this pretends commas can't appear in assignment expressions, or in array designated initializer constant expressions
@@ -630,6 +652,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
           }
           currentSubObjectIdx++
         } else {
+          checkAlreadyEncountered(di)
           currentSubObjectIdx = di.designation.designationIndices.first() + 1
         }
         if (isArrayIndexInExcess(currentObjectType, currentSubObjectIdx)) {
