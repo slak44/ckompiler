@@ -118,6 +118,8 @@ internal fun <T : Any> initializerList(vararg initializers: T): InitializerList 
   return InitializerList(parsed, Punctuators.ASSIGN.pct, idx).zeroRange()
 }
 
+internal fun getErrorInitializer() = DesignatedInitializer(null, ErrorDeclInitializer(Punctuators.ASSIGN.pct)).zeroRange()
+
 private fun <T : Any> initializerFromExpr(initializerValue: T): Initializer {
   return when (initializerValue) {
     is Initializer -> initializerValue

@@ -2,6 +2,7 @@ package slak.test.parser
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
@@ -300,6 +301,13 @@ class InitializerTests {
   fun `Array Out Of Bounds Excess Initializer`() {
     val p = prepareCode("int x[123] = { [122] = 6, 56 };", source)
     p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS_ARRAY)
+  }
+
+  @Test
+  fun `Array Initializer With Syntax Error`() {
+    val p = prepareCode("int a[2] = { [1 + ] = 2 };", source)
+    int declare (nameDecl("a")[2] assign initializerList(getErrorInitializer())) assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.EXPECTED_EXPR)
   }
 
   /**
