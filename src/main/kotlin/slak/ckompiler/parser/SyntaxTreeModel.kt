@@ -659,10 +659,10 @@ data class ArrayDesignator(val index: IntegerConstantNode) : Designator() {
   override fun toString() = "[$index]"
 }
 
-/** @see DeclaratorParser.designatedTypeOf */
+/** @see InitializerParser.designatedTypeOf */
 typealias DesignationIndices = List<Int>
 
-/** @see DeclaratorParser.designatedTypeOf */
+/** @see InitializerParser.designatedTypeOf */
 typealias DesignationKey = Pair<TypeName, DesignationIndices>
 
 /**

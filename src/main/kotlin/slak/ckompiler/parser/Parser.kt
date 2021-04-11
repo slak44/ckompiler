@@ -48,12 +48,17 @@ class Parser(
     val scopeHandler = ScopeHandler(debugHandler)
     val parenMatcher = ParenMatcher(debugHandler, tokenHandler)
     val declParser = DeclarationParser(parenMatcher, scopeHandler)
-    declParser.expressionParser =
-        ExpressionParser(parenMatcher, declParser, declParser, machineTargetData)
-    declParser.constExprParser =
+    declParser.expressionParser = ExpressionParser(parenMatcher, declParser, declParser, machineTargetData)
+    declParser.constExprParser = ConstantExprParser(ConstantExprType.DECLARATOR_ARRAY_SIZE, declParser.expressionParser)
+    declParser.specParser = SpecParser(
+        declParser,
+        ConstantExprParser(ConstantExprType.INTEGER_CONSTANT, declParser.expressionParser)
+    )
+    declParser.initializerParser = InitializerParser(
+        parenMatcher,
+        scopeHandler,
         ConstantExprParser(ConstantExprType.DECLARATOR_ARRAY_SIZE, declParser.expressionParser)
-    declParser.specParser = SpecParser(declParser,
-        ConstantExprParser(ConstantExprType.INTEGER_CONSTANT, declParser.expressionParser))
+    )
     val controlKeywordParser = ControlKeywordParser(declParser.expressionParser)
     val statementParser = StatementParser(
         declParser,
