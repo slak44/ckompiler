@@ -656,7 +656,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       }
     }
 
-    return@tokenContext InitializerList(initializers, parentAssignTok)
+    return@tokenContext InitializerList(initializers, parentAssignTok, currentSubObjectIdx)
   }
 
   protected fun parseInitializer(

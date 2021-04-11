@@ -248,6 +248,42 @@ class InitializerTests {
     p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS_ARRAY)
   }
 
+  /**
+   * C standard: 6.7.9.0.26
+   */
+  @Test
+  fun `Array 2D Initializer Fully Bracketed`() {
+    val p = prepareCode("""
+      int y[4][3] = {
+        { 1, 3, 5 },
+        { 2, 4, 6 },
+        { 3, 5, 7 },
+      };
+    """.trimIndent(), source)
+    int declare (nameDecl("y")[4][3] assign initializerList(
+        initializerList(1, 3, 5),
+        initializerList(2, 4, 6),
+        initializerList(3, 5, 7),
+    )) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  /**
+   * C standard: 6.7.9.0.26
+   */
+  @Test
+  fun `Array 2D Initializer Not Bracketed`() {
+    val p = prepareCode("""
+      int y[4][3] = {
+        1, 3, 5, 2, 4, 6, 3, 5, 7
+      };
+    """.trimIndent(), source)
+    int declare (nameDecl("y")[4][3] assign initializerList(
+        1, 3, 5, 2, 4, 6, 3, 5, 7
+    )) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
   @Test
   fun `Array Initializer With No Size`() {
     val p = prepareCode("int a[] = { 2, 3 };", source)

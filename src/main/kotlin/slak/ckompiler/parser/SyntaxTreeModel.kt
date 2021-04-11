@@ -610,6 +610,18 @@ class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl {
   override val indirection = emptyList<Indirection>()
 }
 
+fun Declarator.alterArraySize(newSize: ArrayTypeSize): Declarator {
+  require(isArray()) { "Trying to change array size for a declarator that is not an array" }
+  val newFirstTier = listOf(newSize) + suffixes[0].drop(1)
+  val newSuffixes = listOf(newFirstTier) + suffixes.drop(1)
+
+  return when (this) {
+    is AbstractDeclarator -> this.copy(suffixes = newSuffixes)
+    is NamedDeclarator -> this.copy(suffixes = newSuffixes)
+    is ErrorDeclarator -> logger.throwICE("Unreachable code, errors cannot pass the isArray check above")
+  }
+}
+
 sealed class Initializer : ASTNode() {
   abstract val assignTok: Punctuator
 }
@@ -652,10 +664,22 @@ data class DesignatedInitializer(val designation: Designation?, val initializer:
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorDeclInitializer(override val assignTok: Punctuator) : Initializer(), ErrorNode by ErrorNodeImpl
 
+/**
+ * An `initializer-list` from the standard. Each object in [initializers] can be designated or not, as [DesignatedInitializer] can have a
+ * null [Designation]. [maximumSubObjectIdx] is mostly relevant for arrays, and it represents the highest index of a designated array
+ * initializer (`[123] = 45` would be 123), or the highest deduced index (`{ 1, 2, 3 }` would be 2).
+ *
+ * C standard: 6.7.9
+ */
 data class InitializerList(
     val initializers: List<DesignatedInitializer>,
-    override val assignTok: Punctuator
-) : Initializer()
+    override val assignTok: Punctuator,
+    val maximumSubObjectIdx: Int,
+) : Initializer() {
+  fun deducedArraySize(): ConstantSize {
+    return ConstantSize(IntegerConstantNode(maximumSubObjectIdx.toLong()))
+  }
+}
 
 data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode()
 
@@ -701,7 +725,8 @@ sealed class ConstantArraySize : ArrayTypeSize() {
  * This can mean multiple things:
  * 1. If on a [ExternalDeclaration]'s declarator, it's a tentative array definition
  * 2. If on a function parameter, it's basically a pointer
- * 3. If on a local declarator, it's an error
+ * 3. If on a local declarator, it might be a constant size set by the initializer list
+ * 4. Otherwise, an error
  */
 object NoSize : ArrayTypeSize() {
   override fun toString() = "[]"

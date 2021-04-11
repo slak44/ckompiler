@@ -99,11 +99,23 @@ internal infix fun Declarator.assign(it: InitializerList) = this to it
 internal fun <T : Any> initializerList(vararg initializers: T): InitializerList {
   val parsed = initializers.toList().map {
     when (it) {
+      is InitializerList -> DesignatedInitializer(null, it)
       is DesignatedInitializer -> it
       else -> DesignatedInitializer(null, ExpressionInitializer(parseDSLElement(it).zeroRange(), Punctuators.ASSIGN.pct))
     }
   }
-  return InitializerList(parsed, Punctuators.ASSIGN.pct).zeroRange()
+
+  // See DeclaratorParser#parseInitializerList
+  var idx = 0
+  for (init in parsed) {
+    if (init.designation == null) {
+      idx++
+    } else {
+      idx = init.designation!!.designationIndices.first() + 1
+    }
+  }
+
+  return InitializerList(parsed, Punctuators.ASSIGN.pct, idx).zeroRange()
 }
 
 private fun <T : Any> initializerFromExpr(initializerValue: T): Initializer {

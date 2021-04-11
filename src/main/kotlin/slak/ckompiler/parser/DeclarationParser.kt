@@ -154,7 +154,14 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
         return true
       }
       val expectedType = typeNameOf(ds, declarator)
-      declaratorList += declarator to parseDeclarationInitializer(expectedType, ds, endIdx)
+      val initializer = parseDeclarationInitializer(expectedType, ds, endIdx)
+      val newDeclarator = if (initializer is InitializerList && expectedType is ArrayType && expectedType.size is NoSize) {
+        // Automatic detection of array size
+        declarator.alterArraySize(initializer.deducedArraySize().withRange(declarator.getArrayTypeSize()))
+      } else {
+        declarator
+      }
+      declaratorList += newDeclarator to initializer
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
         eat()
