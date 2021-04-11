@@ -154,7 +154,16 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
     val rParen = current()
     eat() // The ]
 
-    return if (diags.isEmpty() && constExpr is IntegerConstantNode) {
+    if (diags.isNotEmpty()) {
+      eatUntil(tokenCount)
+      return null
+    }
+
+    if (expr.type is ErrorType) {
+      return null
+    }
+
+    return if (constExpr is IntegerConstantNode) {
       ArrayDesignator(constExpr).withRange(lParen..rParen)
     } else {
       diagnostic {
