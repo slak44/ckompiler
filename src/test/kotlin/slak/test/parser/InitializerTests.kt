@@ -2,7 +2,6 @@ package slak.test.parser
 
 import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
@@ -181,6 +180,19 @@ class InitializerTests {
         int declare "y"
     ).toSpec()
     vec2 declare ("thing" assign initializerList("x" ofType int at 0 designates 56, 3)) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
+  fun `Initialize Subaggregate Without Braces`() {
+    val p = prepareCode("""
+      struct vec2 { int x; int y; };
+      struct big { struct vec2 a; struct vec2 b; };
+      struct big thing = { 1, 2, 3, 4 };
+    """.trimIndent(), source)
+    val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
+    val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
+    big declare ("thing" assign initializerList(1, 2, 3, 4)) assertEquals p.root.decls[0]
     p.assertNoDiagnostics()
   }
 
