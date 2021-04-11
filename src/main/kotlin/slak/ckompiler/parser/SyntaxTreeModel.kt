@@ -422,13 +422,15 @@ data class CharacterConstantNode(
 /**
  * FIXME: UTF-8 handling. Array size is not string.length
  * FIXME: wchar_t & friends should have more specific element type
+ *
+ * C standard: 6.4.5
  */
 data class StringLiteralNode(
     val string: String,
     val encoding: StringEncoding
 ) : ExprConstantNode() {
   override val type = ArrayType(when (encoding) {
-    StringEncoding.CHAR, StringEncoding.UTF8 -> UnsignedIntType
+    StringEncoding.CHAR, StringEncoding.UTF8 -> SignedCharType
     else -> UnsignedLongLongType
   }, ConstantSize(IntegerConstantNode(string.length.toLong())))
 
