@@ -606,7 +606,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
   }
 
   /**
-   * C standard: 6.7.9.0.17
+   * C standard: 6.7.9
    */
   private fun parseInitializerList(
       parentAssignTok: Punctuator,
