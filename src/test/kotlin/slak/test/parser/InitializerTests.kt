@@ -198,6 +198,21 @@ class InitializerTests {
   }
 
   @Test
+  fun `Struct With Duplicate Initializers Indirectly`() {
+    val p = prepareCode("struct vec2 { int x; int y; } thing = { .y = 56, .x = 3, 785 };", source)
+    val vec2 = struct("vec2",
+        int declare "x",
+        int declare "y"
+    ).toSpec()
+    vec2 declare ("thing" assign initializerList(
+        "y" ofType int at 1 designates 56,
+        "x" ofType int at 0 designates 3,
+        785
+    )) assertEquals p.root.decls[0]
+    p.assertDiags(DiagnosticId.INITIALIZER_OVERRIDES_PRIOR, DiagnosticId.PRIOR_INITIALIZER)
+  }
+
+  @Test
   fun `Union With Initializers`() {
     val p = prepareCode("union stuff { int x; float y; } thing = { .x = 56 };", source)
     val stuff = union("stuff",

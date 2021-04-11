@@ -659,10 +659,20 @@ data class ArrayDesignator(val index: IntegerConstantNode) : Designator() {
   override fun toString() = "[$index]"
 }
 
+/** @see DeclaratorParser.designatedTypeOf */
+typealias DesignationIndices = List<Int>
+
+/** @see DeclaratorParser.designatedTypeOf */
+typealias DesignationKey = Pair<TypeName, DesignationIndices>
+
 /**
  * The indices array is of the same length as the designator array, and indexes into [designatedType]'s sub-objects.
  */
-data class Designation(val designators: List<Designator>, val designatedType: TypeName, val designationIndices: List<Int>) : ASTNode() {
+data class Designation(
+    val designators: List<Designator>,
+    val designatedType: TypeName,
+    val designationIndices: DesignationIndices
+) : ASTNode() {
   init {
     require(designators.isNotEmpty())
     require(designators.size == designationIndices.size)
@@ -672,6 +682,19 @@ data class Designation(val designators: List<Designator>, val designatedType: Ty
 }
 
 data class DesignatedInitializer(val designation: Designation?, val initializer: Initializer) : ASTNode() {
+  /**
+   * This is equivalent to [Designation.designatedType] + [Designation.designationIndices].
+   *
+   * Those properties are intrinsic to the parsed structure, as they are parsed explicitly. This resolved designation is a value computed
+   * by the compiler as an analogue. This allows us to keep [designation] null (to reflect the source text), and to keep this value out of
+   * the data class equality, which should not be applied to this.
+   */
+  var resolvedDesignation: DesignationKey? = null
+    set(value) {
+      require(designation == null) { "Cannot add resolved designation to explicitly designated initializer" }
+      field = value
+    }
+
   override fun toString(): String = if (designation != null) "$designation = $initializer" else initializer.toString()
 }
 

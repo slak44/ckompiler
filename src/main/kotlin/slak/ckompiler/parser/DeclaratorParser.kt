@@ -442,7 +442,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    * ```
    * For the designator list `.y.value3.final1[42]`, the index list is `[1, 2, 0, 42]`, and the type is `float`.
    */
-  private fun List<Designator>.designatedTypeOf(type: TypeName): Pair<TypeName, List<Int>> {
+  private fun List<Designator>.designatedTypeOf(type: TypeName): DesignationKey {
     require(isNotEmpty()) { "Receiver designator list must not be empty" }
     require(type !is QualifiedType) { "Must call TypeName#unqualify before using this function" }
 
@@ -593,7 +593,9 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
       else -> logger.throwICE("Unhandled type $currentObjectType")
     }
     val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
-    return DesignatedInitializer(null, initializer).withRange(initializer)
+    val designatedInitializer = DesignatedInitializer(null, initializer).withRange(initializer)
+    designatedInitializer.resolvedDesignation = typeToInit to listOf(currentSubObjectIdx)
+    return designatedInitializer
   }
 
   private fun isArrayIndexInExcess(currentObjectType: TypeName, currentSubObjectIdx: Int): Boolean {
@@ -614,12 +616,17 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
     val initializers = mutableListOf<DesignatedInitializer>()
     var currentSubObjectIdx = 0
     val excessInitializers = mutableListOf<DesignatedInitializer>()
-    val encounteredDesignations = mutableMapOf<Designation, DesignatedInitializer>()
+    val encounteredDesignations = mutableMapOf<DesignationKey, DesignatedInitializer>()
 
     fun checkAlreadyEncountered(latest: DesignatedInitializer) {
-      requireNotNull(latest.designation)
+      val key = if (latest.designation != null) {
+        latest.designation.designatedType to latest.designation.designationIndices
+      } else {
+        // The resolvedDesignation might not be set on some errored initializers
+        latest.resolvedDesignation ?: return
+      }
 
-      if (latest.designation in encounteredDesignations || (currentObjectType is UnionType && initializers.isNotEmpty())) {
+      if (key in encounteredDesignations || (currentObjectType is UnionType && initializers.isNotEmpty())) {
         diagnostic {
           id = DiagnosticId.INITIALIZER_OVERRIDES_PRIOR
           errorOn(latest.initializer)
@@ -629,11 +636,11 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
           if (currentObjectType is UnionType) {
             errorOn(encounteredDesignations.values.last().initializer)
           } else {
-            errorOn(encounteredDesignations.getValue(latest.designation).initializer)
+            errorOn(encounteredDesignations.getValue(key).initializer)
           }
         }
       } else {
-        encounteredDesignations[latest.designation] = latest
+        encounteredDesignations[key] = latest
       }
     }
 
@@ -652,12 +659,12 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
           }
           currentSubObjectIdx++
         } else {
-          checkAlreadyEncountered(di)
           currentSubObjectIdx = di.designation.designationIndices.first() + 1
         }
         if (isArrayIndexInExcess(currentObjectType, currentSubObjectIdx)) {
           excessInitializers += di
         }
+        checkAlreadyEncountered(di)
         initializers += di
       }
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
