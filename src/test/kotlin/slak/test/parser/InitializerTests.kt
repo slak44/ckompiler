@@ -292,6 +292,13 @@ class InitializerTests {
   }
 
   @Test
+  fun `Char Array Initializer From String`() {
+    val p = prepareCode("char a[] = \"Hello\";", source)
+    char declare (nameDecl("a")[NoSize] assign strLit("Hello")) assertEquals p.root.decls[0]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
   fun `Array Initializer On Struct`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { [0] = 56, 3 };", source)
     p.assertDiags(DiagnosticId.ARRAY_DESIGNATOR_NON_ARRAY)
