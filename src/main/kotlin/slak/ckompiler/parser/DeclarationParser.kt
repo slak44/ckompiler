@@ -155,13 +155,23 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
       }
       val expectedType = typeNameOf(ds, declarator)
       val initializer = parseDeclarationInitializer(expectedType, ds, endIdx)
-      val newDeclarator = if (initializer is InitializerList && expectedType is ArrayType && expectedType.size is NoSize) {
-        // Automatic detection of array size
-        declarator.alterArraySize(initializer.deducedArraySize().withRange(declarator.getArrayTypeSize()))
-      } else {
-        declarator
+      val finalDeclarator = when {
+        initializer is InitializerList && expectedType is ArrayType && expectedType.size is NoSize -> {
+          // Automatic detection of array size
+          declarator.alterArraySize(initializer.deducedArraySize().withRange(declarator.getArrayTypeSize()))
+        }
+        initializer is ExpressionInitializer && initializer.expr is StringLiteralNode -> {
+          // Take array size from string
+          declarator.alterArraySize(initializer.expr.type.size)
+        }
+        else -> declarator
       }
-      declaratorList += newDeclarator to initializer
+      // Only care about the new declarator type if it actually is a new declarator
+      if (finalDeclarator !== declarator) {
+        val finalType = typeNameOf(ds, finalDeclarator)
+        overwriteTypeInCurrentScope(finalDeclarator.name.name, finalType)
+      }
+      declaratorList += finalDeclarator to initializer
       if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
         // Expected case; there are chained `init-declarator`s
         eat()
@@ -180,6 +190,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
       }
       return false
     }
+
     // If firstDecl is null, we act as if it was already processed
     var firstDeclUsed = firstDecl == null
     while (true) {

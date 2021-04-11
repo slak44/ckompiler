@@ -199,6 +199,16 @@ data class TypedIdentifier(
     return other
   }
 
+  /**
+   * Makes a copy of this [TypedIdentifier], that has the same [id], and forces the use of the given type.
+   * This is useful for types that change after initialization (stuff like `int a = a;` is valid, and for arrays the type might change).
+   */
+  fun forceTypeCast(type: TypeName): TypedIdentifier {
+    val other = TypedIdentifier(name, type)
+    other.id = id
+    return other.withRange(this)
+  }
+
   override fun toString(): String {
     return if (type is FunctionType) {
       type.toString().replace("${type.returnType} ", "${type.returnType} $name")

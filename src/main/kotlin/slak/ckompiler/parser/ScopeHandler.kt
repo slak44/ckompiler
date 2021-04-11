@@ -129,6 +129,15 @@ interface IScopeHandler : IdentSearchable {
   fun newIdentifier(id: OrdinaryIdentifier)
 
   /**
+   * Strictly in the current scope (not in parents), update an existing name to refer to the updated identifier with the same name.
+   *
+   * Only works for [TypedIdentifier]s.
+   *
+   * Useful for declarations whose type is influenced by their initializers.
+   */
+  fun overwriteTypeInCurrentScope(name: String, type: TypeName)
+
+  /**
    * [newIdentifier] for labels.
    * @see newIdentifier
    */
@@ -232,6 +241,15 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       }
     }
     return tag
+  }
+
+  override fun overwriteTypeInCurrentScope(name: String, type: TypeName) {
+    val idents = scopeStack.peek().idents
+    val idx = idents.indexOfFirst { it.name == name }
+    check(idx >= 0) { "Cannot overwrite non-existent name ${name}, check your usage of this function" }
+    val old = idents[idx]
+    check(old is TypedIdentifier) { "This function only operates on TypedIdentifiers" }
+    idents[idx] = old.forceTypeCast(type)
   }
 
   override fun newIdentifier(id: OrdinaryIdentifier) {
