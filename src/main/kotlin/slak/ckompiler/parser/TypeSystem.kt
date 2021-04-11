@@ -274,8 +274,9 @@ sealed class TagType : UnqualifiedTypeName() {
   abstract val kind: String
 
   override fun toString(): String {
-    val nameStr = if (name == null) "" else "$name "
-    return "$kind $nameStr{...}"
+    val nameStr = if (name == null) "" else " $name"
+    val withContents = if (isComplete) " {...}" else ""
+    return "$kind$nameStr$withContents"
   }
 }
 
