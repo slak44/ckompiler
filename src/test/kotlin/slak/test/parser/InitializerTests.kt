@@ -11,7 +11,7 @@ class InitializerTests {
   fun `Simple Initializer`() {
     val p = prepareCode("int a = 1;", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign 1)), p.root.decls)
+    int declare ("a" assign 1) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -39,7 +39,7 @@ class InitializerTests {
   fun `Identifier Initializer`() {
     val p = prepareCode("int a = someVariable;", source)
     p.assertDiags(DiagnosticId.USE_UNDECLARED)
-    assertEquals(listOf(int declare ("a" assign nameRef("someVariable", ErrorType))), p.root.decls)
+    int declare ("a" assign nameRef("someVariable", ErrorType)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -54,28 +54,28 @@ class InitializerTests {
     val p = prepareCode("int a = 1 + 2 * 2 * (3 - 4) / 5 / 6;", source)
     p.assertNoDiagnostics()
     val expr = 1 add (2 mul 2 mul (3 sub 4) div 5 div 6)
-    assertEquals(listOf(int declare ("a" assign expr)), p.root.decls)
+    int declare ("a" assign expr) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Simple Paren Initializer`() {
     val p = prepareCode("int a = (1);", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign 1)), p.root.decls)
+    int declare ("a" assign 1) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Expression In Paren Initializer`() {
     val p = prepareCode("int a = (1 + 1);", source)
     p.assertNoDiagnostics()
-    assertEquals(listOf(int declare ("a" assign (1 add 1))), p.root.decls)
+    int declare ("a" assign (1 add 1)) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Bad Initializer`() {
     val p = prepareCode("int a = 1 + ;", source)
     assertEquals(DiagnosticId.EXPECTED_PRIMARY, p.diags[0].id)
-    assertEquals(listOf(int declare ("a" assign ErrorExpression())), p.root.decls)
+    int declare ("a" assign ErrorExpression()) assertEquals p.root.decls[0]
   }
 
   @Test
