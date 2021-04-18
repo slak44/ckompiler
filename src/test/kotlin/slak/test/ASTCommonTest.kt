@@ -71,6 +71,8 @@ internal fun nameRef(s: String, t: TypeName) = TypedIdentifier(s, t).zeroRange()
 internal fun FunctionDefinition.toRef() = nameRef(name, ptr(functionType))
 internal fun intVar(s: String) = nameRef(s, SignedIntType)
 
+internal fun typed(t: DeclarationSpecifier, s: String) = nameRef(s, typeNameOf(t, nameDecl(s)))
+
 internal fun nameDecl(s: String) =
     NamedDeclarator.base(name(s), emptyList(), emptyList()).zeroRange()
 
@@ -115,7 +117,7 @@ internal fun <T : Any> initializerList(vararg initializers: T): InitializerList 
     }
   }
 
-  return InitializerList(parsed, Punctuators.ASSIGN.pct, idx).zeroRange()
+  return InitializerList(parsed, Punctuators.ASSIGN.pct, (idx - 1).coerceAtLeast(0)).zeroRange()
 }
 
 internal fun getErrorInitializer() = DesignatedInitializer(null, ErrorDeclInitializer(Punctuators.ASSIGN.pct)).zeroRange()
