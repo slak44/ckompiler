@@ -212,6 +212,21 @@ class InitializerTests {
   }
 
   @Test
+  fun `Partial Un-Bracketed Subobject Initialization`() {
+    val p = prepareCode("""
+      struct vec2 { int x; int y; };
+      struct big { struct vec2 a; struct vec2 b; };
+      struct vec2 p = { 1, 2 };
+      struct big thing = { p, 3 };
+    """.trimIndent(), source)
+    val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
+    val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
+    vec2 declare ("p" assign initializerList(1, 2)) assertEquals p.root.decls[0]
+    big declare ("thing" assign initializerList(typed(vec2, "p"), 3)) assertEquals p.root.decls[1]
+    p.assertNoDiagnostics()
+  }
+
+  @Test
   fun `Struct With Duplicate Initializers`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { .x = 56, .x = 3 };", source)
     val vec2 = struct("vec2",
