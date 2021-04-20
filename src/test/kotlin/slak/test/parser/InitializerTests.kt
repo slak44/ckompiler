@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.parser.*
 import slak.test.*
-import kotlin.test.assertEquals
 
 class InitializerTests {
   @Test
@@ -74,7 +73,7 @@ class InitializerTests {
   @Test
   fun `Bad Initializer`() {
     val p = prepareCode("int a = 1 + ;", source)
-    assertEquals(DiagnosticId.EXPECTED_PRIMARY, p.diags[0].id)
+    p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
     int declare ("a" assign ErrorExpression()) assertEquals p.root.decls[0]
   }
 
@@ -100,15 +99,15 @@ class InitializerTests {
   @Test
   fun `Excess Initializer List For Scalar`() {
     val p = prepareCode("int a = { 2, 43 };", source)
-    int declare ("a" assign initializerList(2, 43)) assertEquals p.root.decls[0]
     p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS_SCALAR)
+    int declare ("a" assign initializerList(2, 43)) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Designator In Initializer List For Scalar Not Allowed`() {
     val p = prepareCode("int a = { .a = 2 };", source)
-    int declare ("a" assign initializerList(("a" ofType ErrorType at 0) designates 2)) assertEquals p.root.decls[0]
     p.assertDiags(DiagnosticId.DESIGNATOR_FOR_SCALAR)
+    int declare ("a" assign initializerList(("a" ofType ErrorType at 0) designates 2)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -126,12 +125,12 @@ class InitializerTests {
   @Test
   fun `Simple Struct Initializer`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { 56, 3 };", source)
+    p.assertNoDiagnostics()
     val vec2 = struct("vec2",
         int declare "x",
         int declare "y"
     ).toSpec()
     vec2 declare ("thing" assign initializerList(56, 3)) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
@@ -161,6 +160,7 @@ class InitializerTests {
   @Test
   fun `Simple Struct Initializer With Designators`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { .y = 3, .x = 56 };", source)
+    p.assertNoDiagnostics()
     val vec2 = struct("vec2",
         int declare "x",
         int declare "y"
@@ -169,18 +169,17 @@ class InitializerTests {
         ("y" ofType int at 1) designates 3,
         ("x" ofType int at 0) designates 56
     )) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
   fun `Simple Struct Mixed`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { .x = 56, 3 };", source)
+    p.assertNoDiagnostics()
     val vec2 = struct("vec2",
         int declare "x",
         int declare "y"
     ).toSpec()
     vec2 declare ("thing" assign initializerList("x" ofType int at 0 designates 56, 3)) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
@@ -190,10 +189,10 @@ class InitializerTests {
       struct big { struct vec2 a; struct vec2 b; };
       struct big thing = { 1, 2, 3, 4 };
     """.trimIndent(), source)
+    p.assertNoDiagnostics()
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
     big declare ("thing" assign initializerList(1, 2, 3, 4)) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
@@ -204,11 +203,11 @@ class InitializerTests {
       struct vec2 p = { 1, 2 };
       struct big thing = { p, 3, 4 };
     """.trimIndent(), source)
+    p.assertNoDiagnostics()
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
     vec2 declare ("p" assign initializerList(1, 2)) assertEquals p.root.decls[0]
     big declare ("thing" assign initializerList(typed(vec2, "p"), 3, 4)) assertEquals p.root.decls[1]
-    p.assertNoDiagnostics()
   }
 
   @Test
@@ -219,16 +218,17 @@ class InitializerTests {
       struct vec2 p = { 1, 2 };
       struct big thing = { p, 3 };
     """.trimIndent(), source)
+    p.assertNoDiagnostics()
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
     vec2 declare ("p" assign initializerList(1, 2)) assertEquals p.root.decls[0]
     big declare ("thing" assign initializerList(typed(vec2, "p"), 3)) assertEquals p.root.decls[1]
-    p.assertNoDiagnostics()
   }
 
   @Test
   fun `Struct With Duplicate Initializers`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { .x = 56, .x = 3 };", source)
+    p.assertDiags(DiagnosticId.INITIALIZER_OVERRIDES_PRIOR, DiagnosticId.PRIOR_INITIALIZER)
     val vec2 = struct("vec2",
         int declare "x",
         int declare "y"
@@ -237,12 +237,12 @@ class InitializerTests {
         "x" ofType int at 0 designates 56,
         "x" ofType int at 0 designates 3
     )) assertEquals p.root.decls[0]
-    p.assertDiags(DiagnosticId.INITIALIZER_OVERRIDES_PRIOR, DiagnosticId.PRIOR_INITIALIZER)
   }
 
   @Test
   fun `Struct With Duplicate Initializers Indirectly`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { .y = 56, .x = 3, 785 };", source)
+    p.assertDiags(DiagnosticId.INITIALIZER_OVERRIDES_PRIOR, DiagnosticId.PRIOR_INITIALIZER)
     val vec2 = struct("vec2",
         int declare "x",
         int declare "y"
@@ -252,23 +252,23 @@ class InitializerTests {
         "x" ofType int at 0 designates 3,
         785
     )) assertEquals p.root.decls[0]
-    p.assertDiags(DiagnosticId.INITIALIZER_OVERRIDES_PRIOR, DiagnosticId.PRIOR_INITIALIZER)
   }
 
   @Test
   fun `Union With Initializers`() {
     val p = prepareCode("union stuff { int x; float y; } thing = { .x = 56 };", source)
+    p.assertNoDiagnostics()
     val stuff = union("stuff",
         int declare "x",
         float declare "y"
     ).toSpec()
     stuff declare ("thing" assign initializerList("x" ofType int at 0 designates 56)) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
   fun `Union With Multiple Initializers`() {
     val p = prepareCode("union stuff { int x; float y; } thing = { .x = 56, .y = 3.5f };", source)
+    p.assertDiags(DiagnosticId.INITIALIZER_OVERRIDES_PRIOR, DiagnosticId.PRIOR_INITIALIZER)
     val stuff = union("stuff",
         int declare "x",
         float declare "y"
@@ -277,46 +277,46 @@ class InitializerTests {
         "x" ofType int at 0 designates 56,
         "y" ofType float at 1 designates 3.5f
     )) assertEquals p.root.decls[0]
-    p.assertDiags(DiagnosticId.INITIALIZER_OVERRIDES_PRIOR, DiagnosticId.PRIOR_INITIALIZER)
   }
 
   @Test
   fun `Struct Wrong Name`() {
     val p = prepareCode("struct vec2 { int x; int y; } thing = { .lalalal = 56, 3 };", source)
+    p.assertDiags(DiagnosticId.DOT_DESIGNATOR_NO_FIELD)
     val vec2 = struct("vec2",
         int declare "x",
         int declare "y"
     ).toSpec()
     vec2 declare ("thing" assign initializerList(("lalalal" ofType ErrorType at 0) designates 56, 3)) assertEquals p.root.decls[0]
-    p.assertDiags(DiagnosticId.DOT_DESIGNATOR_NO_FIELD)
   }
 
   @Test
   fun `Array Initializer`() {
     val p = prepareCode("int a[2] = { 2, 3 };", source)
-    int declare (nameDecl("a")[2] assign initializerList(2, 3)) assertEquals p.root.decls[0]
     p.assertNoDiagnostics()
+    int declare (nameDecl("a")[2] assign initializerList(2, 3)) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Array Initializer With Designators`() {
     val p = prepareCode("int a[2] = { [0] = 2, [1] = 3 };", source)
+    p.assertNoDiagnostics()
     val type = ArrayType(SignedIntType, ConstantSize(int(2)))
     int declare (nameDecl("a")[2] assign initializerList(type[0] designates 2, type[1] designates 3)) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
   fun `Array Initializer With Designators Not In Order`() {
     val p = prepareCode("int a[2] = { [1] = 3, [0] = 2 };", source)
+    p.assertNoDiagnostics()
     val type = ArrayType(SignedIntType, ConstantSize(int(2)))
     int declare (nameDecl("a")[2] assign initializerList(type[1] designates 3, type[0] designates 2)) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
   fun `Array Initializer With Mixed Designators`() {
     val p = prepareCode("int a[100] = { [1] = 3, 2, [10] = 5, 11 };", source)
+    p.assertNoDiagnostics()
     val type = ArrayType(SignedIntType, ConstantSize(int(100)))
     int declare (nameDecl("a")[100] assign initializerList(
         type[1] designates 3,
@@ -324,7 +324,6 @@ class InitializerTests {
         type[10] designates 5,
         11
     )) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
@@ -348,8 +347,8 @@ class InitializerTests {
   @Test
   fun `Array Initializer With Syntax Error`() {
     val p = prepareCode("int a[2] = { [1 + ] = 2 };", source)
-    int declare (nameDecl("a")[2] assign initializerList(getErrorInitializer())) assertEquals p.root.decls[0]
     p.assertDiags(DiagnosticId.EXPECTED_EXPR)
+    int declare (nameDecl("a")[2] assign initializerList(getErrorInitializer())) assertEquals p.root.decls[0]
   }
 
   /**
@@ -364,12 +363,12 @@ class InitializerTests {
         { 3, 5, 7 },
       };
     """.trimIndent(), source)
+    p.assertNoDiagnostics()
     int declare (nameDecl("y")[4][3] assign initializerList(
         initializerList(1, 3, 5),
         initializerList(2, 4, 6),
         initializerList(3, 5, 7),
     )) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   /**
@@ -382,31 +381,31 @@ class InitializerTests {
         1, 3, 5, 2, 4, 6, 3, 5, 7
       };
     """.trimIndent(), source)
+    p.assertNoDiagnostics()
     int declare (nameDecl("y")[4][3] assign initializerList(
         1, 3, 5, 2, 4, 6, 3, 5, 7
     )) assertEquals p.root.decls[0]
-    p.assertNoDiagnostics()
   }
 
   @Test
   fun `Array Initializer With No Size`() {
     val p = prepareCode("int a[] = { 2, 3 };", source)
-    int declare (nameDecl("a")[NoSize] assign initializerList(2, 3)) assertEquals p.root.decls[0]
     p.assertNoDiagnostics()
+    int declare (nameDecl("a")[NoSize] assign initializerList(2, 3)) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Char Array Initializer From String`() {
     val p = prepareCode("char a[] = \"Hello\";", source)
-    char declare (nameDecl("a")[NoSize] assign strLit("Hello")) assertEquals p.root.decls[0]
     p.assertNoDiagnostics()
+    char declare (nameDecl("a")[NoSize] assign strLit("Hello")) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Char Array Initializer From Too Long String`() {
     val p = prepareCode("char a[2] = \"Hello\";", source)
-    char declare (nameDecl("a")[2] assign strLit("Hello")) assertEquals p.root.decls[0]
     p.assertDiags(DiagnosticId.EXCESS_INITIALIZER_SIZE)
+    char declare (nameDecl("a")[2] assign strLit("Hello")) assertEquals p.root.decls[0]
   }
 
   @Test
