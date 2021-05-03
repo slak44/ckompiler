@@ -264,6 +264,16 @@ class E2ETests {
   }
 
   @Test
+  fun `Initialize Bool With Int`() {
+    compileAndRun("""
+      int main() {
+        _Bool m = 1;
+        return m;
+      }
+    """.trimIndent()).justExitCode(1)
+  }
+
+  @Test
   fun `For Loop Summing Test`() {
     compileAndRun(resource("loops/forLoopTest.c")).justExitCode(86)
   }
