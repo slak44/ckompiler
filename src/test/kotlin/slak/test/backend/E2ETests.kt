@@ -107,9 +107,9 @@ class E2ETests {
         int a = 12;
         int* b = &a;
         if (1) {
-          a = 33;
+          *b = 33;
         } else {
-          a = 44;
+          *b = 44;
         }
         return a;
       }
