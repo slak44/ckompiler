@@ -18,9 +18,9 @@ private data class InitializerListContext(
     val encounteredDesignations: MutableMap<DesignationKey, DesignatedInitializer> = mutableMapOf()
 )
 
-private fun IDebugHandler.validateExprInitializer(expr: Expression, initializerFor: TypeName) {
+private fun IDebugHandler.validateExprInitializer(expr: Expression, initializerFor: TypeName): TypeName {
   // Only do initializer type checking if the types are actually valid
-  if (expr.type.unqualify() is ErrorType || initializerFor.unqualify() is ErrorType) return
+  if (expr.type.unqualify() is ErrorType || initializerFor.unqualify() is ErrorType) return ErrorType
 
   val rhs = expr.type
   val (_, commonType) = BinaryOperators.ASSIGN.applyTo(initializerFor, rhs)
@@ -30,20 +30,27 @@ private fun IDebugHandler.validateExprInitializer(expr: Expression, initializerF
       formatArgs(rhs, initializerFor)
       errorOn(expr)
     }
-  } else if (initializerFor is ArrayType && rhs is ArrayType) {
-    if (initializerFor.size is ConstantArraySize && rhs.size is ConstantArraySize && rhs.size.asValue > initializerFor.size.asValue) {
-      diagnostic {
-        id = DiagnosticId.EXCESS_INITIALIZER_SIZE
-        formatArgs(rhs.size.asValue, initializerFor.size.asValue)
-        errorOn(expr)
-      }
+    return ErrorType
+  }
+
+  if (
+    initializerFor is ArrayType && rhs is ArrayType &&
+    initializerFor.size is ConstantArraySize && rhs.size is ConstantArraySize &&
+    rhs.size.asValue > initializerFor.size.asValue
+  ) {
+    diagnostic {
+      id = DiagnosticId.EXCESS_INITIALIZER_SIZE
+      formatArgs(rhs.size.asValue, initializerFor.size.asValue)
+      errorOn(expr)
     }
   }
+
+  return commonType
 }
 
 private fun IDebugHandler.convertToInitializer(expr: Expression, assignTok: Punctuator, initializerFor: TypeName): ExpressionInitializer {
-  validateExprInitializer(expr, initializerFor)
-  return ExpressionInitializer(expr, assignTok)
+  val commonType = validateExprInitializer(expr, initializerFor)
+  return ExpressionInitializer(convertToCommon(commonType, expr), assignTok)
 }
 
 /**
