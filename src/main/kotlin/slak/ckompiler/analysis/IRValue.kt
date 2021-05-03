@@ -51,8 +51,10 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
 enum class VRegType {
   /** Your average temporary variable, created from stuff like 1 + 2 + 3. */
   REGULAR,
+
   /** Contents are undefined, like using a variable before initializing it. */
   UNDEFINED,
+
   /** Like [UNDEFINED], referring to a "constraint". For example, a caller saved register after a function call. */
   CONSTRAINED,
 }
@@ -139,10 +141,13 @@ data class JumpTargetConstant(val target: AtomicId) : ConstantValue() {
 
 data class NamedConstant(override val name: String, override val type: TypeName) : ConstantValue() {
   override fun toString() = name
-}/**
+}
+
+/**
  * An index inside a basic block's labels.
  */
 typealias LabelIndex = Int
+
 /**
  * Identifies a label inside a block.
  */
