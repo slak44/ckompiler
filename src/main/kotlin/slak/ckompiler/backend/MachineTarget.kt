@@ -137,7 +137,7 @@ data class MachineInstruction(
 ) {
   val isConstrained = constrainedArgs.isNotEmpty() || constrainedRes.isNotEmpty()
 
-  fun filterOperands(test: (IRValue, VariableUse) -> Boolean): List<IRValue> {
+  fun filterOperands(test: (IRValue, VariableUse) -> Boolean): Sequence<IRValue> {
     require(operands.size == template.operandUse.size)
     return operands
         .zip(template.operandUse)
@@ -145,7 +145,6 @@ data class MachineInstruction(
         .filter { test(it.first, it.second) }
         .map { it.first }
         .filter { it !is ConstantValue && it !is ParameterReference }
-        .toList()
   }
 
   /**
@@ -153,8 +152,8 @@ data class MachineInstruction(
    */
   val uses: List<IRValue> by lazy {
     require(operands.size == template.operandUse.size)
-    return@lazy filterOperands { _, use -> use == VariableUse.USE || use == VariableUse.DEF_USE } +
-        constrainedArgs.map { it.value }
+    return@lazy (filterOperands { _, use -> use == VariableUse.USE || use == VariableUse.DEF_USE } +
+        constrainedArgs.map { it.value }).toList()
   }
 
   /**
@@ -162,8 +161,8 @@ data class MachineInstruction(
    */
   val defs: List<IRValue> by lazy {
     require(operands.size == template.operandUse.size)
-    return@lazy filterOperands { _, use -> use == VariableUse.DEF || use == VariableUse.DEF_USE } +
-        constrainedRes.map { it.value }
+    return@lazy (filterOperands { _, use -> use == VariableUse.DEF || use == VariableUse.DEF_USE } +
+        constrainedRes.map { it.value }).toList()
   }
 
   override fun toString(): String {
