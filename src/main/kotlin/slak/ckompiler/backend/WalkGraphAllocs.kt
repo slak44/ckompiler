@@ -43,7 +43,8 @@ inline fun AllocationResult.walkGraphAllocs(
           .map { allocations.getValue(it) } +
           mi.uses.filterIsInstance<PhysicalRegister>().map { it.reg }
       val useDefRegs = mi
-          .filterOperands { value, variableUse -> variableUse == VariableUse.DEF_USE && value is AllocatableValue }
+          .filterOperands(listOf(VariableUse.DEF_USE))
+          .filterIsInstance<AllocatableValue>()
           .map { allocations.getValue(it) }
       alive -= regsDyingHere
       for (definedHere in regsDefinedHere) {
