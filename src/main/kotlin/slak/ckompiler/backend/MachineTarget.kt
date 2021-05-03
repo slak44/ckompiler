@@ -143,7 +143,17 @@ data class MachineInstruction(
         .zip(template.operandUse)
         .asSequence()
         .filter { it.second in wantedUses || (takeIndirectUses && it.first is MemoryLocation) }
-        .map { it.first }
+        .flatMap { (value, use) ->
+          if (takeIndirectUses && value is MemoryLocation) {
+            return@flatMap if (use == VariableUse.USE) {
+              listOf(value, value.ptr)
+            } else {
+              listOf(value.ptr)
+            }
+          }
+
+          listOf(value)
+        }
         .filter { it !is ConstantValue && it !is ParameterReference }
   }
 
@@ -312,11 +322,6 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
    * Resulting graph to generate code for. The output of this generator.
    */
   val graph: InstructionGraph
-
-  /**
-   * The function's pool of [StackValue] ids.
-   */
-  val stackValueIds: IdCounter
 
   /**
    * The function's pool of [StackSlot] ids.

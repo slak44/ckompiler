@@ -197,6 +197,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
   ): X64Instruction {
     require(mi.template is X64InstrTemplate)
     val ops = mi.operands.map { operandToX64(it, alloc, stackOffsets) }
+    println(ops)
     return X64Instruction(mi.template, ops)
   }
 

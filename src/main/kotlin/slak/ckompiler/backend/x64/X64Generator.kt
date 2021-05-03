@@ -18,7 +18,6 @@ class X64Generator private constructor(
     FunctionCallGenerator by X64CallGenerator(target, cfg.registerIds) {
   constructor(cfg: CFG, target: X64Target) : this(cfg, target, X64FunAssembler(target, cfg, IdCounter()))
 
-  override val stackValueIds = IdCounter()
   override val stackSlotIds = funAsm.stackSlotIds
 
   override val graph: InstructionGraph = InstructionGraph.partiallyInitialize(cfg)

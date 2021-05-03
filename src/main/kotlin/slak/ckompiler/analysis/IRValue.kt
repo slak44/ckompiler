@@ -34,8 +34,6 @@ sealed class LoadableValue : IRValue() {
 
 /**
  * These are [LoadableValue]s that represent SSA definitions.
- *
- * FIXME: include StackValue as a subclass of this as it belongs here. Rewrite affected, notably phis
  */
 sealed class AllocatableValue : LoadableValue()
 
@@ -51,25 +49,42 @@ data class ParameterReference(val index: Int, override val type: TypeName) : IRV
 }
 
 enum class VRegType {
-  REGULAR, UNDEFINED, CONSTRAINED
+  /** Your average temporary variable, created from stuff like 1 + 2 + 3. */
+  REGULAR,
+  /** Contents are undefined, like using a variable before initializing it. */
+  UNDEFINED,
+  /** Like [UNDEFINED], referring to a "constraint". For example, a caller saved register after a function call. */
+  CONSTRAINED,
 }
 
 /**
  * A virtual register where an [IRInstruction]'s result is stored. These registers abide by SSA, so
  * they are only written to once. They also cannot escape the [BasicBlock] they're declared in.
+ *
+ * @see VRegType
  */
-data class VirtualRegister(
+open class VirtualRegister(
     val id: AtomicId,
     override val type: TypeName,
     val kind: VRegType = VRegType.REGULAR
 ) : AllocatableValue() {
-  override val isUndefined: Boolean = kind != VRegType.REGULAR
+  final override val isUndefined: Boolean = kind == VRegType.UNDEFINED || kind == VRegType.CONSTRAINED
 
-  override val name = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
+  override val name get() = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
   override fun toString() = name
 
   override fun equals(other: Any?) = (other as? VirtualRegister)?.id == id
   override fun hashCode() = id
+}
+
+/**
+ * [VirtualRegister] for stack slots. Much like [StackVariable], this is a _value_, and it represents a pointer.
+ */
+class StackValue(id: AtomicId, valueType: TypeName) : VirtualRegister(id, PointerType(valueType, emptyList())) {
+  override val type: PointerType = super.type as PointerType
+
+  override val name get() = "stackval ${super.name}"
+  override fun toString() = name
 }
 
 /**
@@ -220,19 +235,6 @@ data class MemoryLocation(val ptr: IRValue) : LoadableValue() {
 }
 
 /**
- * Like [VirtualRegister] for stack slots. Much like [StackVariable], this is a _value_, and it represents a pointer.
- */
-class StackValue(val id: AtomicId, initialType: TypeName) : LoadableValue() {
-  override val name get() = "stackval$id"
-  override val type: PointerType = PointerType(initialType, emptyList())
-  override val isUndefined = false
-
-  override fun toString() = "stack value $type $name"
-  override fun equals(other: Any?) = (other as? StackValue)?.id == id
-  override fun hashCode() = id
-}
-
-/**
  * Is basically a pointer to the variable, like &x. To actually use the value of x, it must be
  * loaded to a [VirtualRegister] using [LoadMemory], then modified with [StoreMemory].
  *
@@ -252,7 +254,7 @@ data class StackVariable(val tid: TypedIdentifier) : LoadableValue() {
  * Return a copy of an [IRValue], coercing its type to the provided parameter.
  */
 fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = when (value) {
-  is VirtualRegister -> value.copy(type = type)
+  is VirtualRegister -> VirtualRegister(value.id, type, value.kind)
   is Variable -> Variable(value.tid.copy(type = type))
   is PhysicalRegister ->
     if (sizeOf(type) in value.reg.aliases.map { it.second } || sizeOf(type) == value.reg.sizeBytes) {
