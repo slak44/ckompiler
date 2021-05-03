@@ -6,6 +6,55 @@ import slak.ckompiler.lexer.Identifier
 import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.asPunct
+import kotlin.math.max
+
+private data class InitializerListContext(
+    val parentAssignTok: Punctuator,
+    val currentObjectType: TypeName,
+    val initializers: List<DesignatedInitializer>,
+    val designatedIndices: MutableList<Int> = mutableListOf(0),
+    var maxRootIndex: Int = 0,
+    val excessInitializers: MutableList<DesignatedInitializer> = mutableListOf(),
+    val encounteredDesignations: MutableMap<DesignationKey, DesignatedInitializer> = mutableMapOf()
+)
+
+private fun IDebugHandler.validateExprInitializer(expr: Expression, initializerFor: TypeName) {
+  // Only do initializer type checking if the types are actually valid
+  if (expr.type.unqualify() is ErrorType || initializerFor.unqualify() is ErrorType) return
+
+  val rhs = expr.type
+  val (_, commonType) = BinaryOperators.ASSIGN.applyTo(initializerFor, rhs)
+  if (commonType is ErrorType) {
+    diagnostic {
+      id = DiagnosticId.INITIALIZER_TYPE_MISMATCH
+      formatArgs(rhs, initializerFor)
+      errorOn(expr)
+    }
+  } else if (initializerFor is ArrayType && rhs is ArrayType) {
+    if (initializerFor.size is ConstantArraySize && rhs.size is ConstantArraySize && rhs.size.asValue > initializerFor.size.asValue) {
+      diagnostic {
+        id = DiagnosticId.EXCESS_INITIALIZER_SIZE
+        formatArgs(rhs.size.asValue, initializerFor.size.asValue)
+        errorOn(expr)
+      }
+    }
+  }
+}
+
+private fun IDebugHandler.convertToInitializer(expr: Expression, assignTok: Punctuator, initializerFor: TypeName): ExpressionInitializer {
+  validateExprInitializer(expr, initializerFor)
+  return ExpressionInitializer(expr, assignTok)
+}
+
+/**
+ * Intermediate union result type `Initializer | Expression`.
+ *
+ * @see InitializerParser.parseInitializerInternal
+ */
+private sealed class InternalInitializer {
+  data class Actual(val initializer: Initializer) : InternalInitializer()
+  data class Expr(val expr: Expression) : InternalInitializer()
+}
 
 interface IInitializerParser {
   /**
@@ -139,6 +188,108 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
     }
   }
 
+  /**
+   * Given pre-computed designation indices, find the type name that is referred to. This differs from the other overload, which reads
+   * parsed [Designator]s.
+   *
+   * @see designatedTypeOf
+   */
+  private fun DesignationIndices.designatedTypeOf(currentObjectType: TypeName): TypeName {
+    var workingType = currentObjectType
+    for (indexTier in this) {
+      workingType = when {
+        workingType is ArrayType -> workingType.elementType
+        workingType is StructureType -> workingType.members!!.getOrNull(indexTier)?.second ?: ErrorType
+        workingType is UnionType -> workingType.members!!.first().second
+        workingType.isScalar() -> workingType
+        else -> logger.throwICE("Unhandled type $workingType")
+      }
+    }
+    return workingType
+  }
+
+  /**
+   * Advances the current indices to the next thing to be initialized. Basically, next item for array, next element for struct,
+   * next in parent for union.
+   *
+   * C standard: 6.7.9.0.17, 6.7.9.0.20, note 149
+   */
+  private fun InitializerListContext.advanceIndices(itemType: TypeName) {
+    val lastIdx = designatedIndices.removeLast()
+    val parentType = designatedIndices.designatedTypeOf(currentObjectType)
+
+    if (designatedIndices.isEmpty() || parentType.isNotAllowedToDesignate() || parentType.isScalar()) {
+      designatedIndices += (lastIdx + 1)
+      return
+    }
+
+    when (parentType) {
+      is UnionType -> {
+        // For unions, the next subobject is never inside the union
+        // Instead, it is the next subobject of the union's parent type
+        // This is identical to the "last element in structure" case below
+        advanceIndices(parentType)
+      }
+      is StructureType -> {
+        if (lastIdx == parentType.members!!.size - 1) {
+          // Last item in structure, don't add next index at this level
+          advanceIndices(parentType)
+        } else {
+          // There are items left to initialize in structure, increment index at current level
+          designatedIndices += (lastIdx + 1)
+        }
+      }
+      is ArrayType -> when (parentType.size) {
+        is NoSize -> {
+          // For these, we can initialize items as long as there are initializers available
+          designatedIndices += (lastIdx + 1)
+        }
+        is ConstantArraySize -> {
+          if (lastIdx >= parentType.size.asValue) {
+            // Finished initializing this array, move on
+            advanceIndices(parentType)
+          } else {
+            // Next array item
+            designatedIndices += (lastIdx + 1)
+          }
+        }
+        else -> logger.throwICE("Non constant, non empty array size can't be inside aggregate initializer")
+      }
+      else -> logger.throwICE("Unreachable, scalar should not get here")
+    }
+  }
+
+  private tailrec fun InitializerListContext.trySubObjectInitialization(expr: Expression, initializerFor: TypeName): TypeName? {
+    val rhs = expr.type
+    val (_, commonType) = BinaryOperators.ASSIGN.applyTo(initializerFor, rhs)
+    if (commonType !is ErrorType) {
+      return commonType
+    }
+
+    if (initializerFor is ArrayType || initializerFor is StructureType || initializerFor is UnionType) {
+      val nestedType = listOf(designatedIndices.last()).designatedTypeOf(initializerFor)
+      designatedIndices += 0
+      return trySubObjectInitialization(expr, nestedType)
+    }
+
+    return null
+  }
+
+  private fun InitializerListContext.unwrapInternal(
+      internalInitializer: InternalInitializer,
+      designatedType: TypeName,
+      assignTok: Punctuator,
+  ): Initializer {
+    return when (internalInitializer) {
+      is InternalInitializer.Actual -> internalInitializer.initializer
+      is InternalInitializer.Expr -> {
+        val maybeType = trySubObjectInitialization(internalInitializer.expr, designatedType)
+        // If no subobject can be initialized with this value, use the designated type itself, which will produce a diagnostic
+        convertToInitializer(internalInitializer.expr, assignTok, maybeType ?: designatedType)
+      }
+    }
+  }
+
   private fun parseArrayDesignator(): ArrayDesignator? {
     val lParen = current()
     val rParenIdx = findParenMatch(Punctuators.LSQPAREN, Punctuators.RSQPAREN)
@@ -200,20 +351,17 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
   }
 
   /**
+   * Parse a `designator-list` from the standard.
+   *
+   * This is a list of [Designator]s, not a [Designation], as it is not dependent on types.
+   *
+   * An empty list => no designators were found.
+   *
    * C standard: 6.7.9
+   *
+   * @return null on parse error and diagnostic printed, the list otherwise
    */
-  private fun parseDesignatedInitializer(
-      parentAssignTok: Punctuator,
-      currentObjectType: TypeName,
-      currentSubObjectIdx: Int
-  ): DesignatedInitializer {
-    if (currentObjectType.isNotAllowedToDesignate()) {
-      val startTok = current()
-      eatUntil(tokenCount)
-      val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0))
-      return DesignatedInitializer(null, errorDecl).withRange(errorDecl)
-    }
-
+  private fun parseDesignatorList(): List<Designator>? {
     val designators = mutableListOf<Designator>()
 
     while (true) {
@@ -230,120 +378,77 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
         else -> break
       }
       if (designator == null) {
-        eatUntil(tokenCount)
-        val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(tok..safeToken(0))
-        return DesignatedInitializer(null, errorDecl).withRange(errorDecl)
+        // This is the case where one of the designators returned null and created a diagnostic
+        return null
       } else {
         designators += designator
       }
     }
 
-    if (designators.isNotEmpty()) {
-      val (designatedType, designationIndex) = designators.designatedTypeOf(currentObjectType)
-      val designation = Designation(designators, designatedType, designationIndex).withRange(designators.first()..designators.last())
-
-      if (isEaten() || current().asPunct() != Punctuators.ASSIGN) {
-        diagnostic {
-          id = DiagnosticId.EXPECTED_NEXT_DESIGNATOR
-          colPastTheEnd(0)
-        }
-        eatUntil(tokenCount)
-        return DesignatedInitializer(designation, ErrorDeclInitializer(parentAssignTok).withRange(designation)).withRange(designation)
-      }
-      val assignTok = current() as Punctuator
-      eat()
-      val initializer = parseInitializer(assignTok, designatedType, tokenCount)
-
-      return DesignatedInitializer(designation, initializer).withRange(designation..initializer)
-    }
-
-    val typeToInit = when {
-      currentObjectType is ArrayType -> currentObjectType.elementType
-      currentObjectType is StructureType -> currentObjectType.members!!.getOrNull(currentSubObjectIdx)?.second ?: ErrorType
-      currentObjectType is UnionType -> currentObjectType.members!!.first().second
-      currentObjectType.isScalar() -> currentObjectType
-      else -> logger.throwICE("Unhandled type $currentObjectType")
-    }
-    val initializer = parseInitializer(parentAssignTok, typeToInit, tokenCount)
-    val designatedInitializer = DesignatedInitializer(null, initializer).withRange(initializer)
-    designatedInitializer.resolvedDesignation = typeToInit to listOf(currentSubObjectIdx)
-    return designatedInitializer
+    return designators
   }
 
-  private fun isArrayIndexInExcess(currentObjectType: TypeName, currentSubObjectIdx: Int): Boolean {
-    return currentObjectType is ArrayType &&
-        currentObjectType.size is ConstantArraySize &&
-        currentObjectType.size.size is IntegerConstantNode &&
-        currentSubObjectIdx > currentObjectType.size.asValue
+  private fun errorDesignatedInitializer(parentAssignTok: Punctuator): DesignatedInitializer {
+    val startTok = safeToken(0)
+    eatUntil(tokenCount)
+    val errorDecl = ErrorDeclInitializer(parentAssignTok).withRange(startTok..safeToken(0))
+    return DesignatedInitializer(null, errorDecl).withRange(errorDecl)
+  }
+
+  private fun isArrayIndexInExcess(maybeArrayType: TypeName, currentSubObjectIdx: Int): Boolean {
+    return maybeArrayType is ArrayType &&
+        maybeArrayType.size is ConstantArraySize &&
+        maybeArrayType.size.size is IntegerConstantNode &&
+        currentSubObjectIdx >= maybeArrayType.size.asValue
+  }
+
+  private fun isStructIndexInExcess(di: DesignatedInitializer, maybeStructType: TypeName, currentSubObjectIdx: Int): Boolean {
+    return di.designation == null &&
+        maybeStructType is StructureType &&
+        !maybeStructType.isValidMemberIdx(currentSubObjectIdx) &&
+        di.initializer !is ErrorDeclInitializer
+  }
+
+  private fun isIndexInExcess(di: DesignatedInitializer, currentObjectType: TypeName, currentSubObjectIdx: Int): Boolean {
+    return isStructIndexInExcess(di, currentObjectType, currentSubObjectIdx) || isArrayIndexInExcess(currentObjectType, currentSubObjectIdx)
   }
 
   /**
-   * C standard: 6.7.9
+   * Emits a warning if there are 2 initializers (designated or not) for the same object/subobject.
    */
-  private fun parseInitializerList(
-      parentAssignTok: Punctuator,
-      currentObjectType: TypeName,
-      endIdx: Int
-  ): InitializerList = tokenContext(endIdx) {
-    val initializers = mutableListOf<DesignatedInitializer>()
-    var currentSubObjectIdx = 0
-    val excessInitializers = mutableListOf<DesignatedInitializer>()
-    val encounteredDesignations = mutableMapOf<DesignationKey, DesignatedInitializer>()
-
-    fun checkAlreadyEncountered(latest: DesignatedInitializer) {
-      val key = if (latest.designation != null) {
-        latest.designation.designatedType to latest.designation.designationIndices
-      } else {
-        // The resolvedDesignation might not be set on some errored initializers
-        latest.resolvedDesignation ?: return
-      }
-
-      if (key in encounteredDesignations || (currentObjectType is UnionType && initializers.isNotEmpty())) {
-        diagnostic {
-          id = DiagnosticId.INITIALIZER_OVERRIDES_PRIOR
-          errorOn(latest.initializer)
-        }
-        diagnostic {
-          id = DiagnosticId.PRIOR_INITIALIZER
-          if (currentObjectType is UnionType) {
-            errorOn(encounteredDesignations.values.last().initializer)
-          } else {
-            errorOn(encounteredDesignations.getValue(key).initializer)
-          }
-        }
-      } else {
-        encounteredDesignations[key] = latest
-      }
+  private fun InitializerListContext.checkAlreadyEncountered(latest: DesignatedInitializer) {
+    val key = if (latest.designation != null) {
+      // Make copy of list, as it is mutable
+      latest.designation.designatedType to latest.designation.designationIndices.toList()
+    } else {
+      // The resolvedDesignation might not be set on some errored initializers
+      latest.resolvedDesignation ?: return
     }
 
-    while (isNotEaten()) {
-      // TODO: this pretends commas can't appear in assignment expressions, or in array designated initializer constant expressions
-      val initializerEndIdx = firstOutsideParens(Punctuators.COMMA, Punctuators.LBRACKET, Punctuators.RBRACKET, false)
-      tokenContext(initializerEndIdx) {
-        val di = parseDesignatedInitializer(parentAssignTok, currentObjectType, currentSubObjectIdx)
-        if (di.designation == null) {
-          if (
-            currentObjectType is StructureType &&
-            !currentObjectType.isValidMemberIdx(currentSubObjectIdx) &&
-            di.initializer !is ErrorDeclInitializer
-          ) {
-            excessInitializers += di
-          }
-          currentSubObjectIdx++
+    if (key.first is ErrorType) return
+
+    if (key in encounteredDesignations || (currentObjectType is UnionType && initializers.isNotEmpty())) {
+      diagnostic {
+        id = DiagnosticId.INITIALIZER_OVERRIDES_PRIOR
+        errorOn(latest.initializer)
+      }
+      diagnostic {
+        id = DiagnosticId.PRIOR_INITIALIZER
+        if (currentObjectType is UnionType) {
+          errorOn(encounteredDesignations.values.last().initializer)
         } else {
-          currentSubObjectIdx = di.designation.designationIndices.first() + 1
+          errorOn(encounteredDesignations.getValue(key).initializer)
         }
-        if (isArrayIndexInExcess(currentObjectType, currentSubObjectIdx)) {
-          excessInitializers += di
-        }
-        checkAlreadyEncountered(di)
-        initializers += di
       }
-      if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
-        eat()
-      }
+    } else {
+      encounteredDesignations[key] = latest
     }
+  }
 
+  /**
+   * Emits some warnings for excess initializers after an [InitializerList]'s contents were parsed.
+   */
+  private fun InitializerListContext.checkExcessInitializers() {
     if (initializers.size > 1 && currentObjectType.isScalar()) {
       diagnostic {
         id = DiagnosticId.EXCESS_INITIALIZERS_SCALAR
@@ -357,18 +462,115 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
         errorOn(excessInitializers.first()..excessInitializers.last())
       }
     }
-
-    return@tokenContext InitializerList(initializers, parentAssignTok, currentSubObjectIdx)
   }
 
-  override fun parseInitializer(assignTok: Punctuator, initializerFor: TypeName, endIdx: Int): Initializer {
+  private fun InitializerListContext.parseExplicitlyDesignated(designators: List<Designator>): DesignatedInitializer {
+    val (designatedType, designationIndex) = designators.designatedTypeOf(currentObjectType)
+    val designation = Designation(designators, designatedType, designationIndex).withRange(designators.first()..designators.last())
+
+    if (isEaten() || current().asPunct() != Punctuators.ASSIGN) {
+      diagnostic {
+        id = DiagnosticId.EXPECTED_NEXT_DESIGNATOR
+        colPastTheEnd(0)
+      }
+      eatUntil(tokenCount)
+      return DesignatedInitializer(designation, ErrorDeclInitializer(parentAssignTok).withRange(designation)).withRange(designation)
+    }
+
+    val assignTok = current() as Punctuator
+    eat()
+    val internalInitializer = parseInitializerInternal(assignTok, designatedType, tokenCount)
+
+    // Move indices to the explicitly designated type
+    designatedIndices.clear()
+    designatedIndices += designation.designationIndices
+    maxRootIndex = max(maxRootIndex, designatedIndices[0])
+    if (designation.designatedType !is ErrorType) {
+      advanceIndices(designation.designatedType)
+    }
+
+    val initializer = unwrapInternal(internalInitializer, designatedType, assignTok)
+
+    return DesignatedInitializer(designation, initializer).withRange(designation..initializer)
+  }
+
+  private fun InitializerListContext.parseImplicitlyDesignated(): DesignatedInitializer {
+    val typeToInit = designatedIndices.designatedTypeOf(currentObjectType)
+    val internalInitializer = parseInitializerInternal(parentAssignTok, typeToInit, tokenCount)
+
+    val initializer = unwrapInternal(internalInitializer, typeToInit, parentAssignTok)
+
+    val designatedInitializer = DesignatedInitializer(null, initializer).withRange(initializer)
+    designatedInitializer.resolvedDesignation = designatedIndices.designatedTypeOf(currentObjectType) to designatedIndices.toList()
+
+    maxRootIndex = max(maxRootIndex, designatedIndices[0])
+
+    if (isIndexInExcess(designatedInitializer, currentObjectType, designatedIndices[0])) excessInitializers += designatedInitializer
+    if (designatedInitializer.resolvedDesignation != null && designatedInitializer.resolvedDesignation!!.first !is ErrorType) {
+      advanceIndices(designatedInitializer.resolvedDesignation!!.first)
+    }
+
+    return designatedInitializer
+  }
+
+  /**
+   * C standard: 6.7.9
+   */
+  private fun InitializerListContext.parseDesignatedInitializer(
+      initializerEndIdx: Int
+  ): DesignatedInitializer = tokenContext(initializerEndIdx) {
+    if (currentObjectType.isNotAllowedToDesignate()) {
+      return@tokenContext errorDesignatedInitializer(parentAssignTok)
+    }
+
+    val designators = parseDesignatorList() ?: return@tokenContext errorDesignatedInitializer(parentAssignTok)
+
+    val designatedInitializer = if (designators.isNotEmpty()) {
+      parseExplicitlyDesignated(designators)
+    } else {
+      parseImplicitlyDesignated()
+    }
+
+    checkAlreadyEncountered(designatedInitializer)
+
+    return@tokenContext designatedInitializer
+  }
+
+  /**
+   * C standard: 6.7.9
+   */
+  private fun parseInitializerList(
+      parentAssignTok: Punctuator,
+      currentObjectType: TypeName,
+      endIdx: Int
+  ): InitializerList = tokenContext(endIdx) {
+    val initializers = mutableListOf<DesignatedInitializer>()
+    val context = InitializerListContext(parentAssignTok, currentObjectType, initializers)
+
+    while (isNotEaten()) {
+      // TODO: this pretends commas can't appear in assignment expressions, or in array designated initializer constant expressions
+      val initializerEndIdx = firstOutsideParens(Punctuators.COMMA, Punctuators.LBRACKET, Punctuators.RBRACKET, false)
+      initializers += context.parseDesignatedInitializer(initializerEndIdx)
+
+      // Trailing commas are allowed in initializer lists
+      if (isNotEaten() && current().asPunct() == Punctuators.COMMA) {
+        eat()
+      }
+    }
+
+    context.checkExcessInitializers()
+
+    return@tokenContext InitializerList(initializers, context.parentAssignTok, context.maxRootIndex)
+  }
+
+  private fun parseInitializerInternal(assignTok: Punctuator, initializerFor: TypeName, endIdx: Int): InternalInitializer {
     // Error case, no initializer here
     if (current().asPunct() == Punctuators.COMMA || current().asPunct() == Punctuators.SEMICOLON) {
       diagnostic {
         id = DiagnosticId.EXPECTED_EXPR
         errorOn(safeToken(0))
       }
-      return ExpressionInitializer(error<ErrorExpression>(), assignTok)
+      return InternalInitializer.Actual(ExpressionInitializer(error<ErrorExpression>(), assignTok))
     }
     // Parse initializer-list
     if (current().asPunct() == Punctuators.LBRACKET) {
@@ -377,36 +579,23 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
       eat() // The {
       if (rbracket == -1) {
         eatToSemi()
-        return ErrorDeclInitializer(assignTok).withRange(lbracket..current())
+        return InternalInitializer.Actual(ErrorDeclInitializer(assignTok).withRange(lbracket..current()))
       }
       val initList = parseInitializerList(assignTok, initializerFor, rbracket).withRange(lbracket..current())
       eat() // The }
-      return initList
+      return InternalInitializer.Actual(initList)
     }
     // Simple expression
     // parseExpr should print out the diagnostic in case there is no expr here
     val expr = parseExpr(endIdx) ?: error<ErrorExpression>()
-    // Only do initializer type checking if the types are actually valid
-    if (expr.type.unqualify() !is ErrorType && initializerFor.unqualify() !is ErrorType) {
-      val rhs = expr.type
-      val (_, commonType) = BinaryOperators.ASSIGN.applyTo(initializerFor, rhs)
-      if (commonType is ErrorType) {
-        diagnostic {
-          id = DiagnosticId.INITIALIZER_TYPE_MISMATCH
-          formatArgs(rhs, initializerFor)
-          errorOn(expr)
-        }
-      } else if (initializerFor is ArrayType && rhs is ArrayType) {
-        if (initializerFor.size is ConstantArraySize && rhs.size is ConstantArraySize && rhs.size.asValue > initializerFor.size.asValue) {
-          diagnostic {
-            id = DiagnosticId.EXCESS_INITIALIZER_SIZE
-            formatArgs(rhs.size.asValue, initializerFor.size.asValue)
-            errorOn(expr)
-          }
-        }
-      }
+    return InternalInitializer.Expr(expr)
+  }
+
+  override fun parseInitializer(assignTok: Punctuator, initializerFor: TypeName, endIdx: Int): Initializer {
+    return when (val init = parseInitializerInternal(assignTok, initializerFor, endIdx)) {
+      is InternalInitializer.Actual -> init.initializer
+      is InternalInitializer.Expr -> convertToInitializer(init.expr, assignTok, initializerFor)
     }
-    return ExpressionInitializer(convertToCommon(initializerFor, expr), assignTok)
   }
 
   companion object {

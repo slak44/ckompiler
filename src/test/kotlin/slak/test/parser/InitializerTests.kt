@@ -81,7 +81,7 @@ class InitializerTests {
   fun `Initializer List For Scalar`() {
     val p = prepareCode("int a = { 2 };", source)
     p.assertNoDiagnostics()
-    int declare ("a" assign initializerList(2)) assertEquals p.root.decls[0]
+    int declare ("a" assign initializerList(2, size = 1)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -100,14 +100,14 @@ class InitializerTests {
   fun `Excess Initializer List For Scalar`() {
     val p = prepareCode("int a = { 2, 43 };", source)
     p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS_SCALAR)
-    int declare ("a" assign initializerList(2, 43)) assertEquals p.root.decls[0]
+    int declare ("a" assign initializerList(2, 43, size = 2)) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Designator In Initializer List For Scalar Not Allowed`() {
     val p = prepareCode("int a = { .a = 2 };", source)
     p.assertDiags(DiagnosticId.DESIGNATOR_FOR_SCALAR)
-    int declare ("a" assign initializerList(("a" ofType ErrorType at 0) designates 2)) assertEquals p.root.decls[0]
+    int declare ("a" assign initializerList(("a" ofType ErrorType at 0) designates 2, size = 1)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -130,7 +130,7 @@ class InitializerTests {
         int declare "x",
         int declare "y"
     ).toSpec()
-    vec2 declare ("thing" assign initializerList(56, 3)) assertEquals p.root.decls[0]
+    vec2 declare ("thing" assign initializerList(56, 3, size = 2)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -167,7 +167,8 @@ class InitializerTests {
     ).toSpec()
     vec2 declare ("thing" assign initializerList(
         ("y" ofType int at 1) designates 3,
-        ("x" ofType int at 0) designates 56
+        ("x" ofType int at 0) designates 56,
+        size = 2
     )) assertEquals p.root.decls[0]
   }
 
@@ -179,7 +180,7 @@ class InitializerTests {
         int declare "x",
         int declare "y"
     ).toSpec()
-    vec2 declare ("thing" assign initializerList("x" ofType int at 0 designates 56, 3)) assertEquals p.root.decls[0]
+    vec2 declare ("thing" assign initializerList("x" ofType int at 0 designates 56, 3, size = 2)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -192,7 +193,7 @@ class InitializerTests {
     p.assertNoDiagnostics()
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
-    big declare ("thing" assign initializerList(1, 2, 3, 4)) assertEquals p.root.decls[0]
+    big declare ("thing" assign initializerList(1, 2, 3, 4, size = 2)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -206,8 +207,8 @@ class InitializerTests {
     p.assertNoDiagnostics()
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
-    vec2 declare ("p" assign initializerList(1, 2)) assertEquals p.root.decls[0]
-    big declare ("thing" assign initializerList(typed(vec2, "p"), 3, 4)) assertEquals p.root.decls[1]
+    vec2 declare ("p" assign initializerList(1, 2, size = 2)) assertEquals p.root.decls[0]
+    big declare ("thing" assign initializerList(typed(vec2, "p"), 3, 4, size = 2)) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -221,8 +222,8 @@ class InitializerTests {
     p.assertNoDiagnostics()
     val vec2 = struct("vec2", int declare "x", int declare "y").toSpec()
     val big = struct("big", vec2 declare "a", vec2 declare "b").toSpec()
-    vec2 declare ("p" assign initializerList(1, 2)) assertEquals p.root.decls[0]
-    big declare ("thing" assign initializerList(typed(vec2, "p"), 3)) assertEquals p.root.decls[1]
+    vec2 declare ("p" assign initializerList(1, 2, size = 2)) assertEquals p.root.decls[0]
+    big declare ("thing" assign initializerList(typed(vec2, "p"), 3, size = 2)) assertEquals p.root.decls[1]
   }
 
   @Test
@@ -235,7 +236,8 @@ class InitializerTests {
     ).toSpec()
     vec2 declare ("thing" assign initializerList(
         "x" ofType int at 0 designates 56,
-        "x" ofType int at 0 designates 3
+        "x" ofType int at 0 designates 3,
+        size = 1
     )) assertEquals p.root.decls[0]
   }
 
@@ -250,7 +252,8 @@ class InitializerTests {
     vec2 declare ("thing" assign initializerList(
         "y" ofType int at 1 designates 56,
         "x" ofType int at 0 designates 3,
-        785
+        785,
+        size = 2
     )) assertEquals p.root.decls[0]
   }
 
@@ -262,7 +265,7 @@ class InitializerTests {
         int declare "x",
         float declare "y"
     ).toSpec()
-    stuff declare ("thing" assign initializerList("x" ofType int at 0 designates 56)) assertEquals p.root.decls[0]
+    stuff declare ("thing" assign initializerList("x" ofType int at 0 designates 56, size = 1)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -275,7 +278,8 @@ class InitializerTests {
     ).toSpec()
     stuff declare ("thing" assign initializerList(
         "x" ofType int at 0 designates 56,
-        "y" ofType float at 1 designates 3.5f
+        "y" ofType float at 1 designates 3.5f,
+        size = 2
     )) assertEquals p.root.decls[0]
   }
 
@@ -287,14 +291,18 @@ class InitializerTests {
         int declare "x",
         int declare "y"
     ).toSpec()
-    vec2 declare ("thing" assign initializerList(("lalalal" ofType ErrorType at 0) designates 56, 3)) assertEquals p.root.decls[0]
+    vec2 declare ("thing" assign initializerList(
+        ("lalalal" ofType ErrorType at 0) designates 56,
+        3,
+        size = 1
+    )) assertEquals p.root.decls[0]
   }
 
   @Test
   fun `Array Initializer`() {
     val p = prepareCode("int a[2] = { 2, 3 };", source)
     p.assertNoDiagnostics()
-    int declare (nameDecl("a")[2] assign initializerList(2, 3)) assertEquals p.root.decls[0]
+    int declare (nameDecl("a")[2] assign initializerList(2, 3, size = 2)) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -302,7 +310,11 @@ class InitializerTests {
     val p = prepareCode("int a[2] = { [0] = 2, [1] = 3 };", source)
     p.assertNoDiagnostics()
     val type = ArrayType(SignedIntType, ConstantSize(int(2)))
-    int declare (nameDecl("a")[2] assign initializerList(type[0] designates 2, type[1] designates 3)) assertEquals p.root.decls[0]
+    int declare (nameDecl("a")[2] assign initializerList(
+        type[0] designates 2,
+        type[1] designates 3,
+        size = 2
+    )) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -310,7 +322,24 @@ class InitializerTests {
     val p = prepareCode("int a[2] = { [1] = 3, [0] = 2 };", source)
     p.assertNoDiagnostics()
     val type = ArrayType(SignedIntType, ConstantSize(int(2)))
-    int declare (nameDecl("a")[2] assign initializerList(type[1] designates 3, type[0] designates 2)) assertEquals p.root.decls[0]
+    int declare (nameDecl("a")[2] assign initializerList(
+        type[1] designates 3,
+        type[0] designates 2,
+        size = 2
+    )) assertEquals p.root.decls[0]
+  }
+
+  @Test
+  fun `Array Initializer With Excess Designator Inside`() {
+    val p = prepareCode("int a[2] = { [1] = 2, 4, [0] = 3 };", source)
+    p.assertDiags(DiagnosticId.EXCESS_INITIALIZERS_ARRAY)
+    val type = ArrayType(SignedIntType, ConstantSize(int(2)))
+    int declare (nameDecl("a")[2] assign initializerList(
+        type[1] designates 2,
+        4,
+        type[0] designates 3,
+        size = 3
+    )) assertEquals p.root.decls[0]
   }
 
   @Test
@@ -322,7 +351,8 @@ class InitializerTests {
         type[1] designates 3,
         2,
         type[10] designates 5,
-        11
+        11,
+        size = 12
     )) assertEquals p.root.decls[0]
   }
 
@@ -348,7 +378,7 @@ class InitializerTests {
   fun `Array Initializer With Syntax Error`() {
     val p = prepareCode("int a[2] = { [1 + ] = 2 };", source)
     p.assertDiags(DiagnosticId.EXPECTED_EXPR)
-    int declare (nameDecl("a")[2] assign initializerList(getErrorInitializer())) assertEquals p.root.decls[0]
+    int declare (nameDecl("a")[2] assign initializerList(getErrorInitializer(), size = 1)) assertEquals p.root.decls[0]
   }
 
   /**
@@ -365,9 +395,10 @@ class InitializerTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int declare (nameDecl("y")[4][3] assign initializerList(
-        initializerList(1, 3, 5),
-        initializerList(2, 4, 6),
-        initializerList(3, 5, 7),
+        initializerList(1, 3, 5, size = 3),
+        initializerList(2, 4, 6, size = 3),
+        initializerList(3, 5, 7, size = 3),
+        size = 3
     )) assertEquals p.root.decls[0]
   }
 
@@ -383,7 +414,7 @@ class InitializerTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics()
     int declare (nameDecl("y")[4][3] assign initializerList(
-        1, 3, 5, 2, 4, 6, 3, 5, 7
+        1, 3, 5, 2, 4, 6, 3, 5, 7, size = 3
     )) assertEquals p.root.decls[0]
   }
 
@@ -391,7 +422,7 @@ class InitializerTests {
   fun `Array Initializer With No Size`() {
     val p = prepareCode("int a[] = { 2, 3 };", source)
     p.assertNoDiagnostics()
-    int declare (nameDecl("a")[NoSize] assign initializerList(2, 3)) assertEquals p.root.decls[0]
+    int declare (nameDecl("a")[NoSize] assign initializerList(2, 3, size = 2)) assertEquals p.root.decls[0]
   }
 
   @Test

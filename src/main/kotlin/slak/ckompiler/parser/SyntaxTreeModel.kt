@@ -714,12 +714,12 @@ data class InitializerList(
     val maximumSubObjectIdx: Int,
 ) : Initializer() {
   fun deducedArraySize(): ConstantSize {
-    return ConstantSize(IntegerConstantNode(maximumSubObjectIdx.toLong()))
+    return ConstantSize(IntegerConstantNode(maximumSubObjectIdx.toLong() + 1))
   }
 
   override fun toString(): String {
     val inits = initializers.joinToString(", ")
-    return "{ [maxSize: $maximumSubObjectIdx], $inits }"
+    return "{ maxSize: ${maximumSubObjectIdx + 1} | $inits }"
   }
 }
 
