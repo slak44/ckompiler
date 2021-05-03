@@ -221,7 +221,7 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
    *
    * C standard: 6.7.9.0.17, 6.7.9.0.20, note 149
    */
-  private fun InitializerListContext.advanceIndices(itemType: TypeName) {
+  private fun InitializerListContext.advanceIndices() {
     val lastIdx = designatedIndices.removeLast()
     val parentType = designatedIndices.designatedTypeOf(currentObjectType)
 
@@ -235,12 +235,12 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
         // For unions, the next subobject is never inside the union
         // Instead, it is the next subobject of the union's parent type
         // This is identical to the "last element in structure" case below
-        advanceIndices(parentType)
+        advanceIndices()
       }
       is StructureType -> {
         if (lastIdx == parentType.members!!.size - 1) {
           // Last item in structure, don't add next index at this level
-          advanceIndices(parentType)
+          advanceIndices()
         } else {
           // There are items left to initialize in structure, increment index at current level
           designatedIndices += (lastIdx + 1)
@@ -254,7 +254,7 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
         is ConstantArraySize -> {
           if (lastIdx >= parentType.size.asValue) {
             // Finished initializing this array, move on
-            advanceIndices(parentType)
+            advanceIndices()
           } else {
             // Next array item
             designatedIndices += (lastIdx + 1)
@@ -493,7 +493,7 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
     designatedIndices += designation.designationIndices
     maxRootIndex = max(maxRootIndex, designatedIndices[0])
     if (designation.designatedType !is ErrorType) {
-      advanceIndices(designation.designatedType)
+      advanceIndices()
     }
 
     val initializer = unwrapInternal(internalInitializer, designatedType, assignTok)
@@ -514,7 +514,7 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
 
     if (isIndexInExcess(designatedInitializer, currentObjectType, designatedIndices[0])) excessInitializers += designatedInitializer
     if (designatedInitializer.resolvedDesignation != null && designatedInitializer.resolvedDesignation!!.first !is ErrorType) {
-      advanceIndices(designatedInitializer.resolvedDesignation!!.first)
+      advanceIndices()
     }
 
     return designatedInitializer
