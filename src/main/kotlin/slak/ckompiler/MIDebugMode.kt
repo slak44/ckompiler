@@ -313,12 +313,15 @@ private fun MIDebugMode.generateMIDebugInternal() {
     value is LoadableValue && (!value.isUndefined || showDummies)
   }
   printAllocs(allocs)
+
   printHeader("Allocation violations")
-  initialAlloc.walkGraphAllocs { register, (block, index), type ->
+  val didFindAny = initialAlloc.walkGraphAllocs { register, (block, index), type ->
     println("[$type] coloring violation for $register at (block $block, index $index)")
     printNasm(graph[block][index].toString().lines().joinToString("\n") { "-->$it" })
-    false
+    true
   }
+  if (!didFindAny) println("No violations found :)")
+
   printHeader("Processed MachineInstructions (with applied allocation)")
   val final = gen.applyAllocation(realAllocation)
   for ((blockId, list) in final) {
