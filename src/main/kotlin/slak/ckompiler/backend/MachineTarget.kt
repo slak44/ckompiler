@@ -142,9 +142,11 @@ data class MachineInstruction(
     return operands
         .zip(template.operandUse)
         .asSequence()
-        .filter { it.second in wantedUses || (takeIndirectUses && it.first is MemoryLocation) }
+        .filter { (value, use) ->
+          use in wantedUses || (takeIndirectUses && value is MemoryLocation && value.ptr is AllocatableValue)
+        }
         .flatMap { (value, use) ->
-          if (takeIndirectUses && value is MemoryLocation) {
+          if (takeIndirectUses && value is MemoryLocation && value.ptr is AllocatableValue) {
             return@flatMap if (use == VariableUse.USE) {
               listOf(value, value.ptr)
             } else {
