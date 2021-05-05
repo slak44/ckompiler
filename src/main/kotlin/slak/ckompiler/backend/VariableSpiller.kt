@@ -377,7 +377,9 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap
         spillBlocks[variable] = blockId
       } else {
         val toReload = checkNotNull(spilled[variable]) {
-          "Trying to reload something that was never spilled: $variable"
+          """|Trying to reload something that was never spilled: $variable
+             |${graph[blockId]}
+             |${graph[blockId].joinToString(separator = "\n", postfix = "\n")}""".trimMargin()
         }
         insertReload(variable, toReload, offsetLabel)
       }
