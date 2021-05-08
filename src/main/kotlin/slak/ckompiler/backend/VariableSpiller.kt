@@ -16,7 +16,7 @@ private fun TargetFunGenerator.insertSpill(
     stackValue: StackValue?
 ): StackValue {
   val (blockId, idx) = location
-  val targetStackValue = stackValue ?: StackValue(graph.registerIds(), value.type)
+  val targetStackValue = stackValue ?: StackValue(value.type)
   val copy = createIRCopy(MemoryLocation(targetStackValue), value)
   graph[blockId].add(idx, copy)
   graph.defUseChains.getOrPut(value, ::mutableSetOf) += location
@@ -245,7 +245,7 @@ private fun TargetFunGenerator.findEdgeSpillsReloads(
     wExitP: Map<MachineRegisterClass, Set<AllocatableValue>>,
     sExitP: Set<AllocatableValue>,
 ): SpillResult {
-  // Find which variables in phi are for other paths, se we can remove them
+  // Find which variables in phi are for other paths, so we can remove them
   // This is because we care only about variables from our specific predecessor
   val otherPathVersions = graph[blockId].phi.values.flatMap { incoming ->
     incoming.entries.filter { it.key != predId }.map { it.value }
@@ -376,11 +376,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap
         spilled[variable] = insertSpill(variable, offsetLabel, spilled[variable])
         spillBlocks[variable] = blockId
       } else {
-        val toReload = checkNotNull(spilled[variable]) {
-          """|Trying to reload something that was never spilled: $variable
-             |${graph[blockId]}
-             |${graph[blockId].joinToString(separator = "\n", postfix = "\n")}""".trimMargin()
-        }
+        val toReload = spilled[variable] ?: continue
         insertReload(variable, toReload, offsetLabel)
       }
 
