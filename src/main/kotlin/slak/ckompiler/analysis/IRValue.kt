@@ -90,7 +90,7 @@ class VirtualRegister(
 class StackValue(valueType: TypeName) : Variable(TypedIdentifier("__synth", PointerType(valueType, emptyList()))) {
   override val type: PointerType = super.type as PointerType
 
-  override val name get() = "stackval ${super.name}"
+  override val name get() = "stackval${super.id}"
   override fun toString() = name
 }
 
