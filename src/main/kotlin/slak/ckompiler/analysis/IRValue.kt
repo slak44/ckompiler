@@ -65,12 +65,12 @@ enum class VRegType {
  *
  * @see VRegType
  */
-open class VirtualRegister(
+class VirtualRegister(
     val id: AtomicId,
     override val type: TypeName,
     val kind: VRegType = VRegType.REGULAR
 ) : AllocatableValue() {
-  final override val isUndefined: Boolean = kind == VRegType.UNDEFINED || kind == VRegType.CONSTRAINED
+  override val isUndefined: Boolean = kind == VRegType.UNDEFINED || kind == VRegType.CONSTRAINED
 
   override val name get() = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
   override fun toString() = name
@@ -80,9 +80,14 @@ open class VirtualRegister(
 }
 
 /**
- * [VirtualRegister] for stack slots. Much like [StackVariable], this is a _value_, and it represents a pointer.
+ * Much like [StackVariable], this is a _value_, and it represents a pointer.
+ *
+ * The primary difference between this and [StackVariable] is that [StackValue] gets created by the spiller, dynamically, for any
+ * [AllocatableValue] that might get spilled, while [StackVariable] is "pre-spilled" by the code generator.
+ *
+ * They could, in theory, become the same type.
  */
-class StackValue(id: AtomicId, valueType: TypeName) : VirtualRegister(id, PointerType(valueType, emptyList())) {
+class StackValue(valueType: TypeName) : Variable(TypedIdentifier("__synth", PointerType(valueType, emptyList()))) {
   override val type: PointerType = super.type as PointerType
 
   override val name get() = "stackval ${super.name}"
@@ -118,7 +123,7 @@ data class ReachingDefinition(
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-class Variable(val tid: TypedIdentifier) : AllocatableValue() {
+open class Variable(val tid: TypedIdentifier) : AllocatableValue() {
   val id get() = tid.id
 
   override val name get() = tid.name
