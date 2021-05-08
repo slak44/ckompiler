@@ -487,4 +487,9 @@ class E2ETests {
   fun `Small Nesting With Constrained Calls`() {
     compileAndRun(resource("e2e/calls/callInNestedBlocksSimple.c")).justExitCode(2)
   }
+
+  @Test
+  fun `Phi At Spill Limit`() {
+    compileAndRun(resource("e2e/calls/phiAtSpillLimit.c")).justExitCode(11)
+  }
 }
