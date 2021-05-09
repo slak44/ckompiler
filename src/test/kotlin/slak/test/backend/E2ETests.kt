@@ -492,4 +492,9 @@ class E2ETests {
   fun `Phi At Spill Limit`() {
     compileAndRun(resource("e2e/calls/phiAtSpillLimit.c")).justExitCode(11)
   }
+
+  @Test
+  fun `Cross Block Spill Reload`() {
+    compileAndRun(resource("e2e/crossBlockSpillReload.c")).justExitCode(1)
+  }
 }
