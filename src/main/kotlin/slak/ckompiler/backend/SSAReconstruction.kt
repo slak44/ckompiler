@@ -2,8 +2,7 @@ package slak.ckompiler.backend
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.AtomicId
-import slak.ckompiler.analysis.DEFINED_IN_PHI
-import slak.ckompiler.analysis.Variable
+import slak.ckompiler.analysis.*
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
@@ -90,7 +89,9 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       val uBlock = this[u]
       // Ignore things after our given label (including the label)
       for (mi in uBlock.take(if (u == blockId) index else Int.MAX_VALUE).asReversed()) {
-        val maybeDefined = mi.defs.filterIsInstance<Variable>().firstOrNull { it.identityId == variable.identityId }
+        val maybeDefined = mi.defs.firstOrNull {
+          (it as? Variable)?.identityId == variable.identityId || (it as? MemoryLocation)?.hasSameIdentityAs(variable) == true
+        } as? Variable // FIXME: allow memorylocation
         if (maybeDefined != null) {
           return maybeDefined
         }

@@ -51,7 +51,7 @@ sealed class AllocatableValue : LoadableValue() {
    * A SSA-transcendent id for this value. SSA constrains us to one definition per SSA variable. However, we're interested in linking
    * different versions using this id, that will be the same for all versions of a variable.
    */
-  protected abstract val identityId: Int
+  abstract val identityId: Int
 }
 
 enum class VRegType {
@@ -87,14 +87,20 @@ class VirtualRegister(
 }
 
 /**
- * Much like [StackVariable], this is a _value_, and it represents a pointer.
+ * Much like [StackVariable], this is a _value_, and it represents a pointer. It is not a pointer to [referenceTo]. Rather, it's a pointer
+ * into a stack slot. [referenceTo] is the value that will get spilled/moved into that stack slot.
  *
  * The primary difference between this and [StackVariable] is that [StackValue] gets created by the spiller, dynamically, for any
  * [AllocatableValue] that might get spilled, while [StackVariable] is "pre-spilled" by the code generator.
  *
  * They could, in theory, become the same type.
  */
-class StackValue(valueType: TypeName) : Variable(TypedIdentifier("__synth", PointerType(valueType, emptyList()))) {
+class StackValue(val referenceTo: AllocatableValue) : Variable(TypedIdentifier("__synth", PointerType(referenceTo.type, emptyList()))) {
+  init {
+    // These are defined, always
+    version = 1
+  }
+
   override val type: PointerType = super.type as PointerType
 
   override val name get() = "stackval ${super.identityId} v${version}"
@@ -131,7 +137,7 @@ data class ReachingDefinition(
  * @see ReachingDefinition
  */
 open class Variable(val tid: TypedIdentifier) : AllocatableValue() {
-  public override val identityId get() = tid.id
+  override val identityId get() = tid.id
 
   override val name get() = tid.name
   override val type get() = tid.type
@@ -188,6 +194,10 @@ open class Variable(val tid: TypedIdentifier) : AllocatableValue() {
 data class MemoryLocation(val ptr: IRValue) : LoadableValue() {
   init {
     require(ptr.type is PointerType)
+  }
+
+  fun hasSameIdentityAs(variable: Variable): Boolean {
+    return (ptr as? StackValue)?.referenceTo?.identityId == variable.identityId
   }
 
   override val name = ptr.name

@@ -215,6 +215,7 @@ class InstructionGraph private constructor(
       return true
     }
 
+    // This check doesn't consider MemoryLocations, because there will be no use without reload anyway
     val definitionHere = this[block].indexOfFirst { value in it.defs }
     check(definitionHere != -1) {
       "Not live-in, but there is no definition of this variable here (value=$value, label=$label)"
