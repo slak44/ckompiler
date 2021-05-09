@@ -69,7 +69,7 @@ class SSATests {
     val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
     cfg.assertIsSSA()
     for ((key, value) in cfg.exprDefinitions) {
-      println("$key (${key.id}) defined in \n\t${value.joinToString("\n\t")}")
+      println("$key (${key.identityId}) defined in \n\t${value.joinToString("\n\t")}")
     }
     val realDefs = cfg.exprDefinitions
     assertEquals(3, realDefs.size)
@@ -190,8 +190,8 @@ class SSATests {
     val variable = cfg.definitions.keys.first { it.name == "x" && it.version == 2 }
     val gen = X64Generator(cfg, X64Target())
     with(gen.graph) {
-      val iteratedFront = iteratedDominanceFrontier(listOf(block1.nodeId), setOf(variable.id))
-      val actualIterated = cfg.nodes.filter { it.phi.any { (variable1) -> variable1.id == variable.id } }.toSet()
+      val iteratedFront = iteratedDominanceFrontier(listOf(block1.nodeId), setOf(variable.identityId))
+      val actualIterated = cfg.nodes.filter { it.phi.any { (variable1) -> variable1.identityId == variable.identityId } }.toSet()
       assertEquals(actualIterated.map { it.nodeId }.toSet(), iteratedFront)
     }
   }

@@ -90,7 +90,7 @@ class CFG(
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
       val stackVarIds = stackVariables.map { it.id }
-      insertPhiFunctions(exprDefinitions.filter { it.key.id !in stackVarIds })
+      insertPhiFunctions(exprDefinitions.filter { it.key.identityId !in stackVarIds })
       insertSpillCode(stackVarIds)
       renamer.variableRenaming()
     } else {
@@ -169,9 +169,9 @@ private class VariableRenamer(val cfg: CFG) {
   val latestVersions = mutableMapOf<AtomicId, Int>().withDefault { 0 }
   /** @see latestVersions */
   private var Variable.latestVersion: Int
-    get() = latestVersions.getValue(id)
+    get() = latestVersions.getValue(identityId)
     set(value) {
-      latestVersions[id] = value
+      latestVersions[identityId] = value
     }
   /**
    * Maps each variable to its [ReachingDefinition].
@@ -385,11 +385,11 @@ private class VariableRenamer(val cfg: CFG) {
 }
 
 private fun Iterable<AtomicId>.maybeReplace(it: IRValue): IRValue {
-  return if (it is Variable && it.id in this) MemoryLocation(StackVariable(it.tid)) else it
+  return if (it is Variable && it.identityId in this) MemoryLocation(StackVariable(it.tid)) else it
 }
 
 private fun Iterable<AtomicId>.maybeReplace(it: LoadableValue): LoadableValue {
-  return if (it is Variable && it.id in this) MemoryLocation(StackVariable(it.tid)) else it
+  return if (it is Variable && it.identityId in this) MemoryLocation(StackVariable(it.tid)) else it
 }
 
 // FIXME: this is possibly the dumbest way to implement this
@@ -414,9 +414,9 @@ fun Iterable<AtomicId>.replaceSpilled(i: IRInstruction): IRInstruction = when (i
   is MoveInstr -> {
     val result = i.result
     val value = i.value
-    if (result is Variable && result.id in this) {
+    if (result is Variable && result.identityId in this) {
       StoreMemory(MemoryLocation(StackVariable(result.tid)), value)
-    } else if (value is Variable && value.id in this) {
+    } else if (value is Variable && value.identityId in this) {
       LoadMemory(result, MemoryLocation(StackVariable(value.tid)))
     } else {
       i

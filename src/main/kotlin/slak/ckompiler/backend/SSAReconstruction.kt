@@ -16,9 +16,9 @@ private val logger = LogManager.getLogger()
 fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
   // vars is the set D in the algorithm
   val vars = reconstruct.toMutableSet()
-  val ids = vars.mapTo(mutableSetOf()) { it.id }
-  val blocks = vars.flatMap { variableDefs.filterKeys { defVar -> defVar.id == it.id }.values }.toMutableSet() +
-      parallelCopies.filterValues { it.any { variable -> variable.id in ids } }.map { it.key }
+  val ids = vars.mapTo(mutableSetOf()) { it.identityId }
+  val blocks = vars.flatMap { variableDefs.filterKeys { defVar -> defVar.identityId == it.identityId }.values }.toMutableSet() +
+      parallelCopies.filterValues { it.any { variable -> variable.identityId in ids } }.map { it.key }
   val f = iteratedDominanceFrontier(blocks, ids)
 
   // Track which blocks had their φ changed, so we can easily eliminate dead φ copies
@@ -90,12 +90,12 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       val uBlock = this[u]
       // Ignore things after our given label (including the label)
       for (mi in uBlock.take(if (u == blockId) index else Int.MAX_VALUE).asReversed()) {
-        val maybeDefined = mi.defs.filterIsInstance<Variable>().firstOrNull { it.id == variable.id }
+        val maybeDefined = mi.defs.filterIsInstance<Variable>().firstOrNull { it.identityId == variable.identityId }
         if (maybeDefined != null) {
           return maybeDefined
         }
       }
-      val maybeDefinedPhi = uBlock.phi.entries.firstOrNull { it.key.id == variable.id }
+      val maybeDefinedPhi = uBlock.phi.entries.firstOrNull { it.key.identityId == variable.identityId }
       if (maybeDefinedPhi != null) {
         return maybeDefinedPhi.key
       }
@@ -129,7 +129,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       // Call findDef to get the latest definition for this use, and update the use with the version of the definition
       if (index == DEFINED_IN_PHI) {
         // If it's a φuse, then call findDef with the correct predecessor(s) to search for defs in
-        val phiEntry = block.phi.entries.first { it.key.id == x.id }
+        val phiEntry = block.phi.entries.first { it.key.identityId == x.identityId }
         val incoming = phiEntry.value
         val stillUsed = mutableSetOf<Variable>()
         // Our version of x might come from multiple preds, each must be replaced separately
@@ -208,7 +208,7 @@ private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, V
     // Rewrite all uses of the original variable
     for ((blockId, index) in defUseChains.getValue(originalVariable)) {
       if (index == DEFINED_IN_PHI) {
-        val phiEntry = this[blockId].phi.entries.first { it.key.id == originalVariable.id }
+        val phiEntry = this[blockId].phi.entries.first { it.key.identityId == originalVariable.identityId }
         val incoming = phiEntry.value
         val target = incoming.entries.first { it.value == originalVariable }.key
         incoming[target] = rewritten

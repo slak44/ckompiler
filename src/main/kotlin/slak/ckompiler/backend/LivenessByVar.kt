@@ -23,7 +23,7 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
   val liveOut = mutableMapOf<AtomicId, MutableSet<Variable>>()
 
   fun InstrPhi.predsByVar(v: Variable): List<AtomicId>? {
-    return entries.firstOrNull { it.key.id == v.id }?.value?.entries?.filter { it.value == v }?.map { it.key }
+    return entries.firstOrNull { it.key.identityId == v.identityId }?.value?.entries?.filter { it.value == v }?.map { it.key }
   }
 
   fun upAndMarkStack(B: AtomicId, v: Variable, fromPhi: Boolean = false) {

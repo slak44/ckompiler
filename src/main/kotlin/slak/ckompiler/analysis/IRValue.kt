@@ -46,7 +46,13 @@ sealed class LoadableValue : IRValue() {
 /**
  * These are [LoadableValue]s that represent SSA definitions.
  */
-sealed class AllocatableValue : LoadableValue()
+sealed class AllocatableValue : LoadableValue() {
+  /**
+   * A SSA-transcendent id for this value. SSA constrains us to one definition per SSA variable. However, we're interested in linking
+   * different versions using this id, that will be the same for all versions of a variable.
+   */
+  protected abstract val identityId: Int
+}
 
 enum class VRegType {
   /** Your average temporary variable, created from stuff like 1 + 2 + 3. */
@@ -60,23 +66,24 @@ enum class VRegType {
 }
 
 /**
- * A virtual register where an [IRInstruction]'s result is stored. These registers abide by SSA, so
- * they are only written to once. They also cannot escape the [BasicBlock] they're declared in.
+ * These are one-version variables, they are only written to once. They cannot escape the block they're declared in.
  *
  * @see VRegType
  */
 class VirtualRegister(
-    val id: AtomicId,
+    val registerId: AtomicId,
     override val type: TypeName,
     val kind: VRegType = VRegType.REGULAR
 ) : AllocatableValue() {
+  override val identityId: AtomicId = -1 * registerId
+
   override val isUndefined: Boolean = kind == VRegType.UNDEFINED || kind == VRegType.CONSTRAINED
 
-  override val name get() = "${if (isUndefined) "dummy" else type.toString()} vreg$id"
+  override val name get() = "${if (isUndefined) "dummy" else type.toString()} vreg$registerId"
   override fun toString() = name
 
-  override fun equals(other: Any?) = (other as? VirtualRegister)?.id == id
-  override fun hashCode() = id
+  override fun equals(other: Any?) = (other as? VirtualRegister)?.registerId == registerId
+  override fun hashCode() = registerId
 }
 
 /**
@@ -90,7 +97,7 @@ class VirtualRegister(
 class StackValue(valueType: TypeName) : Variable(TypedIdentifier("__synth", PointerType(valueType, emptyList()))) {
   override val type: PointerType = super.type as PointerType
 
-  override val name get() = "stackval${super.id}"
+  override val name get() = "stackval ${super.identityId} v${version}"
   override fun toString() = name
 }
 
@@ -124,13 +131,13 @@ data class ReachingDefinition(
  * @see ReachingDefinition
  */
 open class Variable(val tid: TypedIdentifier) : AllocatableValue() {
-  val id get() = tid.id
+  public override val identityId get() = tid.id
 
   override val name get() = tid.name
   override val type get() = tid.type
 
   var version = 0
-    private set
+    protected set
 
   /**
    * Returns true if this variable is not defined, either from use before definition, or as a dummy
@@ -264,7 +271,7 @@ data class NamedConstant(override val name: String, override val type: TypeName)
  * Return a copy of an [IRValue], coercing its type to the provided parameter.
  */
 fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = when (value) {
-  is VirtualRegister -> VirtualRegister(value.id, type, value.kind)
+  is VirtualRegister -> VirtualRegister(value.registerId, type, value.kind)
   is Variable -> Variable(value.tid.copy(type = type))
   is PhysicalRegister ->
     if (sizeOf(type) in value.reg.aliases.map { it.second } || sizeOf(type) == value.reg.sizeBytes) {

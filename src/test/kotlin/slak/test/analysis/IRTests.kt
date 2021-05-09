@@ -13,7 +13,7 @@ class IRTests {
     val (instrs, _) = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter())
     val registerIds = instrs
         .filter { it !is StoreMemory }
-        .mapNotNull { (it.result as? VirtualRegister)?.id }
+        .mapNotNull { (it.result as? VirtualRegister)?.registerId }
     // No virtual register is stored to twice
     assert(registerIds.distinct() == registerIds)
     return instrs

@@ -94,8 +94,8 @@ class InstructionGraph private constructor(
     if (value.isUndefined) return value
     return when (value) {
       is Variable -> {
-        val oldVersion = latestVersions.getValue(value.id)
-        latestVersions[value.id] = oldVersion + 1
+        val oldVersion = latestVersions.getValue(value.identityId)
+        latestVersions[value.identityId] = oldVersion + 1
         val copy = value.copy(oldVersion + 1)
         // Also update definitions for variables
         variableDefs[copy] = block.id
@@ -384,8 +384,8 @@ class InstructionGraph private constructor(
       val blockFront = dominanceFrontiers.getValue(block)
       iteratedFront += blockFront
       for (frontierBlock in blockFront.filter { node ->
-        nodes.getValue(node).phiDefs.any { it.id in variableDefIds } ||
-            parallelCopies[node]?.any { it.id in variableDefIds } == true
+        nodes.getValue(node).phiDefs.any { it.identityId in variableDefIds } ||
+            parallelCopies[node]?.any { it.identityId in variableDefIds } == true
       }) {
         iterate(frontierBlock)
       }

@@ -75,7 +75,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
       parameterMap[ParameterReference(sseVar.index, type)] = targetRegister
     }
     val stackVars = vars - integral.take(intArgRegNames.size) - sse.take(sseArgRegNames.size)
-    cfg.insertSpillCode(stackVars.map { it.value.id })
+    cfg.insertSpillCode(stackVars.map { it.value.identityId })
     // FIXME: deal with X87 here
     var paramOffset = INITIAL_MEM_ARG_OFFSET
     for ((index, variable) in stackVars) {
