@@ -95,7 +95,7 @@ private class BlockSpiller(
       }
       s -= v
     }
-    val firstM = w.getValue(valueClass).take(m)
+    val firstM = wClass.take(m)
     w.getValue(valueClass).clear()
     w.getValue(valueClass) += firstM
   }
