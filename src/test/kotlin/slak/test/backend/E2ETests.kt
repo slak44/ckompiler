@@ -495,6 +495,6 @@ class E2ETests {
 
   @Test
   fun `Cross Block Spill Reload`() {
-    compileAndRun(resource("e2e/crossBlockSpillReload.c")).justExitCode(1)
+    compileAndRun(resource("e2e/crossBlockSpillReload.c")).justExitCode(3)
   }
 }

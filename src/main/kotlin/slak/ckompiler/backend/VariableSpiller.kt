@@ -88,15 +88,16 @@ private class BlockSpiller(
       m: Int,
       spillTargetIndex: Int = insnIndex
   ) {
-    val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, insnIndex), it) }
+    val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, spillTargetIndex), it) }
     for (v in wClass.drop(m.coerceAtLeast(0))) {
       if (v !in s && !graph.isDeadAfter(v, InstrLabel(blockId, insnIndex))) {
         spills += Location(v, InstrLabel(blockId, spillTargetIndex))
       }
       s -= v
-      // Instead of keeping the first m like in the algorithm, we remove items after the first m, to get the same effect
-      w.getValue(valueClass) -= v
     }
+    val firstM = w.getValue(valueClass).take(m)
+    w.getValue(valueClass).clear()
+    w.getValue(valueClass) += firstM
   }
 
   /**
