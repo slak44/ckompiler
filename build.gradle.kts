@@ -1,4 +1,3 @@
-import java.net.URI
 import java.util.Properties
 
 plugins {
@@ -27,15 +26,11 @@ tasks.installDist {
 
 repositories {
   mavenCentral()
-  maven { url = URI("https://dl.bintray.com/orangy/maven") }
 }
 
 dependencies {
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
-  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-cli-jvm", version = "0.1.0-dev-5") {
-    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
-  }
   implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-html-jvm", version = "0.7.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")

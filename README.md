@@ -24,9 +24,10 @@ they're expected to do.
 The CLI also supports various debugging options, such as the
 `--cfg-mode`-related opts, or the `--print-asm-comm` flag.
 
-The argument parsing is done using [kotlinx.cli][kotlinxcli], along with a bunch
-of custom extensions that can be found in [CLIExtensions.kt][cli_exts]. The
-actual code that powers the command line can be found in the [CLI][cli] class.
+The argument parsing is done using an older version of [kotlinx.cli][kotlinxcli]
+(see kotlinx.cli package) along with a bunch of custom extensions that can be
+found in [CLIExtensions.kt][cli_exts]. The actual code that powers the command
+line can be found in the [CLI][cli] class.
 
 ## Overview of implementation details
 
