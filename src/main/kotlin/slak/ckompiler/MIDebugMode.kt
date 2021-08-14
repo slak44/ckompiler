@@ -231,6 +231,18 @@ private class MIDebugMode(
     }
   }
 
+  fun printGraph(instructionGraph: InstructionGraph) {
+    for (blockId in instructionGraph.blocks - instructionGraph.returnBlock.id) {
+      val block = instructionGraph[blockId]
+      println(block)
+      printNasm(block.phi.entries.joinToString(separator = "\n") { (variable, incoming) ->
+        val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.version}" }
+        "$variable ← φ($incStr)"
+      })
+      printBlock(block)
+    }
+  }
+
   fun printError(string: String) {
     if (generateHtml) {
       body.apply {
@@ -269,6 +281,9 @@ private fun MIDebugMode.generateMIDebugInternal() {
   val genInitial = X64Generator(cfgInit, target)
 
   if (spillOutput) {
+    printHeader("Initial MachineInstructions (no alloc)")
+    printGraph(genInitial.graph)
+
     val pressure = genInitial.findRegisterPressure()
     val maxPressure = target.maxPressure
     printHeader("Register pressure")
@@ -295,15 +310,7 @@ private fun MIDebugMode.generateMIDebugInternal() {
   val initialAlloc = genInitial.regAlloc(debugNoPostColoring = true, debugNoCheckAlloc = true)
   val (graph) = initialAlloc
   printHeader("Initial MachineInstructions (with parallel copies)")
-  for (blockId in graph.blocks - graph.returnBlock.id) {
-    val block = graph[blockId]
-    println(block)
-    printNasm(block.phi.entries.joinToString(separator = "\n") { (variable, incoming) ->
-      val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.version}" }
-      "$variable ← φ($incStr)"
-    })
-    printBlock(block)
-  }
+  printGraph(graph)
 
   printHeader("Register allocation")
   val gen = X64Generator(createCFG(), target)
