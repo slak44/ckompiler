@@ -91,9 +91,13 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       for (mi in uBlock.take(if (u == blockId) index else Int.MAX_VALUE).asReversed()) {
         val maybeDefined = mi.defs.firstOrNull {
           (it as? Variable)?.identityId == variable.identityId || (it as? MemoryLocation)?.hasSameIdentityAs(variable) == true
-        } as? Variable // FIXME: allow memorylocation
-        if (maybeDefined != null) {
-          return maybeDefined
+        }
+        val maybeDefinedVar = maybeDefined as? Variable // FIXME: allow memorylocation
+        if (maybeDefinedVar != null) {
+          return maybeDefinedVar
+        }
+        if (maybeDefined != null && maybeDefined !is Variable) {
+          logger.throwICE("Phi operations currently fail to consider memory in reconstruction")
         }
       }
       val maybeDefinedPhi = uBlock.phi.entries.firstOrNull { it.key.identityId == variable.identityId }
