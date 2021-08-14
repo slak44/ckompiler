@@ -1,4 +1,4 @@
-import java.util.Properties
+import java.util.*
 
 plugins {
   application
@@ -26,6 +26,7 @@ tasks.installDist {
 
 repositories {
   mavenCentral()
+  maven { url = uri("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven") }
 }
 
 dependencies {
