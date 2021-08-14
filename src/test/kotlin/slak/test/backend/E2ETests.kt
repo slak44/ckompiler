@@ -502,4 +502,9 @@ class E2ETests {
   fun `Spill Register Value For Immediate`() {
     compileAndRun(resource("e2e/spillForImmediate.c")).justExitCode(13)
   }
+
+  @Test
+  fun `Register Transfer Graph Solve With No Free Registers`() {
+    compileAndRun(resource("e2e/transferGraphFull.c")).justExitCode(13)
+  }
 }
