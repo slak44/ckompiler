@@ -14,7 +14,7 @@ version = "SNAPSHOT5"
 val includePath = "usr/include/ckompiler-$version"
 
 application {
-  mainClassName = "slak.ckompiler.MainKt"
+  mainClass.set("slak.ckompiler.MainKt")
   applicationName = "ckompiler"
   executableDir = "usr/bin"
   applicationDistribution.from(File(rootDir, "stdlib/include")).into(includePath)
@@ -26,7 +26,6 @@ tasks.installDist {
 }
 
 repositories {
-  jcenter()
   mavenCentral()
   maven { url = URI("https://dl.bintray.com/orangy/maven") }
 }

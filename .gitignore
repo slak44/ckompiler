@@ -6,4 +6,5 @@ build/
 .idea/dictionaries
 .idea/markdown-navigator*
 .idea/markdown-exported-files.xml
+.idea/dataSources.local.xml
 publish-token
