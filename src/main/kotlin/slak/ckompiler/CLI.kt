@@ -39,7 +39,7 @@ class CLI(private val stdinStream: InputStream) :
     return if (file.isAbsolute) file else File(currentDir, path)
   }
 
-  private val cli = object : CommandLineInterface("ckompiler", "ckompiler", """
+  private val cli = object : CommandLineInterface("ckompiler", "ckompiler [options] [-] FILES...", """
     A C compiler written in Kotlin.
     This command line interface tries to stay consistent with gcc and clang as much as possible.
     """.trimIndent(), "See project on GitHub: https://github.com/slak44/ckompiler"),
