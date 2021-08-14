@@ -288,6 +288,7 @@ private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi:
     coloring[value] = target
   }
   for (x in a) {
+    val oldColor = coloring[x]
     // We differ here a bit, because cD - cA might have a register, but of the wrong class
     val reg = target.selectRegisterWhitelist(cD - cA, x)
     if (reg != null) {
@@ -295,13 +296,20 @@ private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi:
     } else {
       coloring[x] = target.selectRegisterBlacklist(assigned + cA, x)
     }
+    if (oldColor != null && oldColor != target) {
+      assigned -= oldColor
+    }
   }
   for (x in d) {
+    val oldColor = coloring[x]
     val reg = target.selectRegisterWhitelist(cA - cD, x)
     if (reg != null) {
       coloring[x] = reg
     } else {
       coloring[x] = target.selectRegisterBlacklist(assigned + cD, x)
+    }
+    if (oldColor != null && oldColor != target) {
+      assigned -= oldColor
     }
   }
 

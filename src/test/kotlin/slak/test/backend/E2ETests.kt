@@ -497,4 +497,9 @@ class E2ETests {
   fun `Cross Block Spill Reload`() {
     compileAndRun(resource("e2e/crossBlockSpillReload.c")).justExitCode(3)
   }
+
+  @Test
+  fun `Spill Register Value For Immediate`() {
+    compileAndRun(resource("e2e/spillForImmediate.c")).justExitCode(13)
+  }
 }
