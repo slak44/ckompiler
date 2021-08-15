@@ -689,7 +689,16 @@ private fun TargetFunGenerator.solveTransferGraph(
         copies += solveTransferGraphCycle(adjacency, r1, freeTemp)
       } else {
         // Step 4c: F is empty
-        TODO("implement this")
+        // Make r1 free, and remove one edge of the cycle from the graph
+        copies += createLocalPush(r1)
+        val nextR1 = adjacency.getValue(r1).first()
+        adjacency.getValue(r1) -= nextR1
+        // Use r1 as the free temporary
+        copies += solveTransferGraphCycle(adjacency, nextR1, r1)
+        // The final copy of the cycle moves r1 into nextR1, which is redundant
+        copies.removeLast()
+        // Since the edge was r1 -> nextR1, we pop the stored r1 into nextR1
+        copies += createLocalPop(nextR1)
       }
     }
     // While T is not empty
@@ -714,7 +723,8 @@ private fun TargetFunGenerator.solveTransferGraph(
  *
  * @param adjacency the graph T
  * @param firstInCycle any node in the cycle, it is irrelevant which
- * @param freeTemp a free register to be used as a temporary for swaps
+ * @param freeTemp a free register to be used as a temporary for swaps. This register can also be part of the cycle, if
+ * edges going out from it are handled.
  *
  * @see solveTransferGraph
  */
@@ -733,7 +743,7 @@ private fun TargetFunGenerator.solveTransferGraphCycle(
     val next = adjacency.getValue(nextInCycle).single()
     adjacency.getValue(nextInCycle).clear()
     nextInCycle = next
-  } while (nextInCycle != firstInCycle)
+  } while (nextInCycle != firstInCycle && nextInCycle != freeTemp)
   cycleCopies += createRegisterCopy(freeTemp, rLast)
 
   return cycleCopies.asReversed()

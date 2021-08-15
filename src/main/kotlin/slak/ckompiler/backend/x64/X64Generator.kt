@@ -47,6 +47,26 @@ class X64Generator private constructor(
     return matchTypedMov(PhysicalRegister(dest, type), PhysicalRegister(src, type))
   }
 
+  override fun createLocalPush(src: MachineRegister): MachineInstruction {
+    val valueClass = src.valueClass
+    require(valueClass is X64RegisterClass) { "Must be an x64 register" }
+    return when (valueClass) {
+      X64RegisterClass.INTEGER -> push.match(PhysicalRegister(src, PointerType(UnsignedLongType, emptyList())))
+      X64RegisterClass.SSE -> TODO()
+      X64RegisterClass.X87 -> TODO()
+    }
+  }
+
+  override fun createLocalPop(dest: MachineRegister): MachineInstruction {
+    val valueClass = dest.valueClass
+    require(valueClass is X64RegisterClass) { "Must be an x64 register" }
+    return when (valueClass) {
+      X64RegisterClass.INTEGER -> pop.match(PhysicalRegister(dest, PointerType(UnsignedLongType, emptyList())))
+      X64RegisterClass.SSE -> TODO()
+      X64RegisterClass.X87 -> TODO()
+    }
+  }
+
   override fun createJump(target: InstrBlock): MachineInstruction {
     return jmp.match(JumpTargetConstant(target.id))
   }

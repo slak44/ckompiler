@@ -349,6 +349,22 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
   fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction
 
   /**
+   * Create an instruction to push the contents of [src] to the stack. This is intended only for local operations, ones
+   * which control all instructions between the push and the pop, and can guarantee there will be no other memory
+   * accesses on the stack from them.
+   *
+   * @see createLocalPop
+   */
+  fun createLocalPush(src: MachineRegister): MachineInstruction
+
+  /**
+   * Create an instruction to pop the contents from the top of the stack into [dest].
+   *
+   * @see createLocalPush
+   */
+  fun createLocalPop(dest: MachineRegister): MachineInstruction
+
+  /**
    * Create an (unconditional) jump instruction.
    */
   fun createJump(target: InstrBlock): MachineInstruction
