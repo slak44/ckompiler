@@ -2,9 +2,9 @@ import java.util.*
 
 plugins {
   application
-  kotlin("jvm") version "1.4.30"
+  kotlin("jvm") version "1.5.21"
   `maven-publish`
-  id("org.jetbrains.dokka") version "1.4.10"
+  id("org.jetbrains.dokka") version "1.4.30"
 }
 
 group = "ckompiler"
