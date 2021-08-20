@@ -72,6 +72,7 @@ private class MIDebugMode(
             +".code-table td:first-of-type { padding-right: 8px; border-right: 1px solid #CCCCCC; }"
             +".code-table td:nth-of-type(2) { margin-left: 8px; display: inline-block; }"
             +".code-table td:last-of-type { padding-left: 48px; }"
+            +".code-table th:last-of-type { padding-left: 48px; }"
           }
         }
       }
