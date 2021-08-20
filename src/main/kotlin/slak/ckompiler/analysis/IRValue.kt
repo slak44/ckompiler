@@ -95,15 +95,11 @@ class VirtualRegister(
  *
  * They could, in theory, become the same type.
  */
-class StackValue(val referenceTo: AllocatableValue) : Variable(TypedIdentifier("__synth", PointerType(referenceTo.type, emptyList()))) {
-  init {
-    // These are defined, always
-    version = 1
-  }
+class StackValue(val referenceTo: AllocatableValue) : LoadableValue() {
+  override val type: PointerType = PointerType(referenceTo.type.normalize(), emptyList())
+  override val isUndefined: Boolean = false
 
-  override val type: PointerType = super.type as PointerType
-
-  override val name get() = "stackval ${super.identityId} v${version}"
+  override val name get() = "stackval ${referenceTo.identityId}"
   override fun toString() = name
 }
 
@@ -136,14 +132,14 @@ data class ReachingDefinition(
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-open class Variable(val tid: TypedIdentifier) : AllocatableValue() {
+class Variable(val tid: TypedIdentifier) : AllocatableValue() {
   override val identityId get() = tid.id
 
   override val name get() = tid.name
   override val type get() = tid.type
 
   var version = 0
-    protected set
+    private set
 
   /**
    * Returns true if this variable is not defined, either from use before definition, or as a dummy

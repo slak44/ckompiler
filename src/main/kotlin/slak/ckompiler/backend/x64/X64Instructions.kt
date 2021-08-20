@@ -181,7 +181,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
     is MemoryLocation, is StrConstant, is FltConstant -> {
       this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
-    is VirtualRegister, is Variable, is StackVariable -> {
+    is VirtualRegister, is Variable, is StackVariable, is StackValue -> {
       this is Register ||
           (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
     }
