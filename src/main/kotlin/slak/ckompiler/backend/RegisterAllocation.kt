@@ -2,6 +2,7 @@ package slak.ckompiler.backend
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.*
+import slak.ckompiler.exhaustive
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
@@ -100,14 +101,15 @@ private fun TargetFunGenerator.insertSingleCopy(
   // This is the case where the value is an undefined dummy
   // We want to keep the original and correct last use, instead of destroying it here
   if (value === copiedValue) return
-  // The value is a constrained argument: it is still used at the constrained MI, after the copy
-  // We know that is the last use, because all the ones afterwards were just rewritten
-  // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
-  if (value is Variable) {
-    graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
-    return
+  return when (value) {
+    is Variable -> {
+      // The value is a constrained argument: it is still used at the constrained MI, after the copy
+      // We know that is the last use, because all the ones afterwards were just rewritten
+      // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
+      graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
+    }
+    is VirtualRegister, is DerefStackValue -> graph.virtualDeaths[value] = InstrLabel(block.id, index)
   }
-  graph.virtualDeaths[value as VirtualRegister] = InstrLabel(block.id, index)
 }
 
 /**
@@ -137,7 +139,7 @@ private fun splitLiveRanges(
 
   for ((value, rewritten) in rewriteMap) {
     when (value) {
-      is VirtualRegister -> {
+      is VirtualRegister, is DerefStackValue -> {
         // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
         graph.virtualDeaths[value] = InstrLabel(block.id, atIndex)
       }
@@ -149,7 +151,7 @@ private fun splitLiveRanges(
         // We also need to setup the copy's use at the rewritten instruction:
         graph.defUseChains.getOrPut(rewritten, ::mutableSetOf) += InstrLabel(block.id, atIndex + 1)
       }
-    }
+    }.exhaustive
   }
   // Don't rebuild liveness, ssaReconstruction will do it for us
 }

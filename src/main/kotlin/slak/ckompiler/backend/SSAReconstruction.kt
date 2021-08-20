@@ -12,7 +12,7 @@ private val logger = LogManager.getLogger()
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.2.1.2, Algorithm 4.1
  */
-fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
+fun InstructionGraph.ssaReconstruction(reconstruct: Set<VersionedValue>) {
   // vars is the set D in the algorithm
   val vars = reconstruct.toMutableSet()
   val ids = vars.mapTo(mutableSetOf()) { it.identityId }
@@ -21,7 +21,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
   val f = iteratedDominanceFrontier(blocks, ids)
 
   // Track which blocks had their φ changed, so we can easily eliminate dead φ copies
-  val hasAlteredPhi = mutableSetOf<Pair<AtomicId, Variable>>()
+  val hasAlteredPhi = mutableSetOf<Pair<AtomicId, VersionedValue>>()
 
   /**
    * This function looks for the closest definition of [variable].
@@ -81,7 +81,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
    * know the incoming from the other blocks. This is exactly why this complicated SSA reconstruction is required
    * rather than some simple copy-and-paste of the new version at the uses.
    */
-  fun findDef(label: InstrLabel, p: AtomicId?, variable: Variable): Variable {
+  fun findDef(label: InstrLabel, p: AtomicId?, variable: VersionedValue): VersionedValue {
     // p indicates the "path" to take at a phi
     val (blockId, index) = if (label.second == DEFINED_IN_PHI) InstrLabel(p!!, Int.MAX_VALUE) else label
 
@@ -89,15 +89,9 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       val uBlock = this[u]
       // Ignore things after our given label (including the label)
       for (mi in uBlock.take(if (u == blockId) index else Int.MAX_VALUE).asReversed()) {
-        val maybeDefined = mi.defs.firstOrNull {
-          (it as? Variable)?.identityId == variable.identityId || (it as? MemoryLocation)?.hasSameIdentityAs(variable) == true
-        }
-        val maybeDefinedVar = maybeDefined as? Variable // FIXME: allow memorylocation
-        if (maybeDefinedVar != null) {
-          return maybeDefinedVar
-        }
-        if (maybeDefined != null && maybeDefined !is Variable) {
-          logger.throwICE("Phi operations currently fail to consider memory in reconstruction")
+        val maybeDefined = mi.defs.filterIsInstance<VersionedValue>().firstOrNull { it.identityId == variable.identityId }
+        if (maybeDefined != null) {
+          return maybeDefined
         }
       }
       val maybeDefinedPhi = uBlock.phi.entries.firstOrNull { it.key.identityId == variable.identityId }
@@ -106,7 +100,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
       }
       if (u in f) {
         // Insert new φ for variable
-        val yPrime = createCopyOf(variable, uBlock) as Variable
+        val yPrime = createCopyOf(variable, uBlock) as VersionedValue
         uBlock.phi[yPrime] = mutableMapOf()
         vars += yPrime
         val incoming = predecessors(uBlock).map { it.id }
@@ -136,7 +130,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
         // If it's a φuse, then call findDef with the correct predecessor(s) to search for defs in
         val phiEntry = block.phi.entries.first { it.key.identityId == x.identityId }
         val incoming = phiEntry.value
-        val stillUsed = mutableSetOf<Variable>()
+        val stillUsed = mutableSetOf<VersionedValue>()
         // Our version of x might come from multiple preds, each must be replaced separately
         // For example: φ(n0 v1, n1 v2, n3 v2)
         for ((targetPred, _) in incoming.entries.filter { it.value == x }) {
@@ -189,15 +183,19 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>) {
  * `signed int x v3 ← φ(n1 v2, n5 v2)`. The second φ is useless, and so we replace v3 <- v2. This makes the first φ
  * useless as well. This function also deals with this case, by calling itself recursively if a φ was rewritten.
  */
-private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, Variable>>) {
+private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, VersionedValue>>) {
   if (alteredPhis.isEmpty()) return
 
-  val variableRewrites = mutableMapOf<Variable, Variable>()
+  val variableRewrites = mutableMapOf<VersionedValue, VersionedValue>()
   for ((blockId, variable) in alteredPhis) {
-    val versions = this[blockId].phi.getValue(variable).map { it.value.version }
+    if (variable !is Variable) {
+      // FIXME: is this correct?
+      continue
+    }
+    val versions = this[blockId].phi.getValue(variable).map { (it.value as? VersionedValue)?.version }
     // All versions are identical, φ is useless for this variable
-    if (versions.distinct().size == 1) {
-      val rewritten = variable.copy(version = versions[0])
+    if (versions.distinct().size == 1 && versions[0] != null) {
+      val rewritten = variable.copy(version = versions[0]!!)
       // If rewritten itself is marked for rewrite, go directly to the re-rewritten version
       val realRewritten = if (rewritten in variableRewrites) variableRewrites.getValue(rewritten) else rewritten
       // Mark it for rewrite
@@ -208,7 +206,7 @@ private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, V
       variableDefs -= variable
     }
   }
-  val recursiveAlterations = mutableSetOf<Pair<AtomicId, Variable>>()
+  val recursiveAlterations = mutableSetOf<Pair<AtomicId, VersionedValue>>()
   for ((originalVariable, rewritten) in variableRewrites) {
     // Rewrite all uses of the original variable
     for ((blockId, index) in defUseChains.getValue(originalVariable)) {

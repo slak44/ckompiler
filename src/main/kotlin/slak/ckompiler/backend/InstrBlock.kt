@@ -2,13 +2,14 @@ package slak.ckompiler.backend
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.AtomicId
+import slak.ckompiler.analysis.AllocatableValue
 import slak.ckompiler.analysis.BasicBlock
-import slak.ckompiler.analysis.Variable
+import slak.ckompiler.analysis.VersionedValue
 import slak.ckompiler.throwICE
 
 private val logger = LogManager.getLogger()
 
-typealias InstrPhi = MutableMap<Variable, MutableMap<AtomicId, Variable>>
+typealias InstrPhi = MutableMap<VersionedValue, MutableMap<AtomicId, VersionedValue>>
 
 class InstrBlock(
     val id: AtomicId,
@@ -84,6 +85,9 @@ class InstrBlock(
       require(bb.height != -1 && bb.postOrderId != -1)
       val transformedPhi =
           bb.phi.associate { it.variable to it.incoming.mapKeys { (key) -> key.nodeId }.toMutableMap() }.toMutableMap()
+      // The type of transformedPhi should be covariant with InstrPhi, but the compiler can't guarantee that
+      @Suppress("UNCHECKED_CAST")
+      transformedPhi as InstrPhi
       return InstrBlock(bb.nodeId, bb.postOrderId, bb.height, graph, instrs.toMutableList(), transformedPhi)
     }
   }

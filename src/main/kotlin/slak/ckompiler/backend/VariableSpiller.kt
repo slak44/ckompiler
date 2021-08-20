@@ -17,7 +17,7 @@ private fun TargetFunGenerator.insertSpill(
 ): StackValue {
   val (blockId, idx) = location
   val targetStackValue = stackValue ?: StackValue(value)
-  val copy = createIRCopy(MemoryLocation(targetStackValue), value)
+  val copy = createIRCopy(DerefStackValue(targetStackValue), value)
   graph[blockId].add(idx, copy)
   graph.defUseChains.getOrPut(value, ::mutableSetOf) += location
   return targetStackValue
@@ -30,7 +30,7 @@ private fun TargetFunGenerator.insertReload(
 ): AllocatableValue {
   val (blockId, idx) = location
   val copyTarget = graph.createCopyOf(original, graph[blockId])
-  val copy = createIRCopy(copyTarget, MemoryLocation(toReload))
+  val copy = createIRCopy(copyTarget, DerefStackValue(toReload))
   graph[blockId].add(idx, copy)
   return copyTarget
 }
@@ -385,7 +385,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap
     }
   }
 
-  graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<Variable>().toSet())
+  graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<VersionedValue>().toSet())
 
   return spilled to spillBlocks
 }
@@ -455,99 +455,4 @@ fun TargetFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<Ins
     current.replaceAll { _, _ -> 0 }
   }
   return pressure
-}
-
-private typealias UseDistance = Int
-
-private fun TargetFunGenerator.spillClass(
-    alreadySpilled: Set<IRValue>,
-    registerClass: MachineRegisterClass,
-    k: Int,
-    block: InstrBlock
-): List<IRValue> {
-  require(k > 0)
-  val markedSpill = mutableListOf<IRValue>()
-
-  fun Iterable<IRValue>.ofClass() = filter { target.registerClassOf(it.type) == registerClass }
-
-  val p = (graph.liveInsOf(block.id) - block.phiUses).ofClass()
-  require(p.size <= k)
-  val q = mutableSetOf<IRValue>()
-  q += p
-  for ((index, mi) in block.withIndex()) {
-    val dyingHere = mi.uses
-        .ofClass()
-        .filter { it !is StackVariable && it !is MemoryLocation }
-        .filter {
-          (it is AllocatableValue && graph.isDeadAfter(it, InstrLabel(block.id, index))) || it is PhysicalRegister
-        }
-    for (value in dyingHere) {
-      q -= value
-    }
-    val undefinedDefs = (mi.constrainedArgs + mi.constrainedRes).filter {
-      it.value is VirtualRegister && it.value.kind == VRegType.CONSTRAINED && it.target.valueClass == registerClass
-    }.map { it.value }
-    q += undefinedDefs
-    val duplicatedDefs = mi.constrainedArgs
-        .filter { (value, target) ->
-          graph.livesThrough(value, InstrLabel(block.id, index)) &&
-              target in mi.constrainedRes.map(Constraint::target) &&
-              target.valueClass == registerClass
-        }
-        .map { VirtualRegister(graph.registerIds(), it.value.type, VRegType.UNDEFINED) }
-    q += duplicatedDefs
-    val defined = mi.defs
-        .ofClass()
-        .filterIsInstance<AllocatableValue>()
-        .filter { graph.isUsed(it) && it !in alreadySpilled }
-    q += defined
-
-    while (q.size > k) {
-      // Spill the furthest use
-      val spilled = q
-          .filterIsInstance<AllocatableValue>()
-          .filter { !it.isUndefined }
-          .maxByOrNull { useDistance(graph, InstrLabel(block.id, index), it) }
-      checkNotNull(spilled) {
-        "No variable/virtual can be spilled! Maybe conflicting pre-coloring. see ref"
-      }
-      q -= spilled
-      markedSpill += spilled
-    }
-
-    q -= undefinedDefs
-    q -= duplicatedDefs
-  }
-  return markedSpill
-}
-
-/**
- * Spilling heuristic.
- *
- * Values for creating the permutation σ (see referenced section).
- *
- * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 4.2.4
- */
-private fun useDistance(
-    graph: InstructionGraph,
-    l: InstrLabel,
-    v: AllocatableValue
-): UseDistance {
-  val isUsedAtL = graph[l.first][l.second.coerceAtLeast(0)].uses.any { it == v }
-  if (isUsedAtL) return 0
-  check(graph.isUsed(v))
-  when (v) {
-    is VirtualRegister -> {
-      // Value is live-out, distance is rest of block from l
-      if (graph.virtualDeaths[v]?.second == LabelIndex.MAX_VALUE) return graph[l.first].size - l.second
-      // If l is after the last use, the distance is undefined
-      if (l.first == graph.virtualDeaths[v]?.first && l.second > graph.virtualDeaths[v]?.second!!) return LabelIndex.MAX_VALUE
-      // Simple distance
-      return graph.virtualDeaths.getValue(v).second - l.second
-    }
-    is Variable -> {
-      // FIXME: lol
-      return 7
-    }
-  }
 }

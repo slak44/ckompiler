@@ -236,7 +236,7 @@ private class MIDebugMode(
       val block = instructionGraph[blockId]
       println(block)
       printNasm(block.phi.entries.joinToString(separator = "\n") { (variable, incoming) ->
-        val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId v${variable.version}" }
+        val incStr = incoming.entries.joinToString { (blockId, variable) -> "n$blockId ${variable.versionString()}" }
         "$variable ← φ($incStr)"
       })
       printBlock(block)

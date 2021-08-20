@@ -3,6 +3,7 @@ package slak.test.backend
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import slak.ckompiler.analysis.DerefStackValue
 import slak.ckompiler.backend.Location
 import slak.ckompiler.backend.SpillResult
 import slak.ckompiler.backend.insertSpillReloadCode
@@ -113,5 +114,25 @@ class SpillTests {
     assert(spillResult.isNotEmpty()) { "Nothing was spilled" }
     val (spills, _) = assertNotNull(spillResult[gen.graph.startId])
     assert(spills.size >= 4)
+  }
+
+  @Test
+  fun `Spill Creates Phi With Memory Operands`() {
+    val cfg = prepareCFG(resource("spilling/phiWithMemory.c"), source)
+    val target = X64Target()
+    val gen = X64Generator(cfg, target)
+    val spillResult = gen.runSpiller()
+    gen.insertSpillReloadCode(spillResult)
+    val (ifTrue, ifFalse) = gen.graph.successors(gen.graph.startId).toList()
+    val (spills, _) = assertNotNull(spillResult[ifFalse.id])
+    assert(spills.any { it.first.name == "r13" } && spills.any { it.first.name == "r14" }) {
+      "Must spill r13, r14"
+    }
+    val (finalBlock) = gen.graph.successors(ifTrue).toList()
+    assert(finalBlock.phi.entries.any { (target, incoming) ->
+      target.name == "spilled" && incoming.values.any { it is DerefStackValue }
+    }) {
+      "Variable \"spilled\" must have a stack value on one φ branch"
+    }
   }
 }

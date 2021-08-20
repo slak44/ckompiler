@@ -52,7 +52,8 @@ class InstructionGraph private constructor(
    */
   val parallelCopies = mutableMapOf<AtomicId, MutableList<Variable>>()
 
-  val virtualDeaths = mutableMapOf<VirtualRegister, InstrLabel>()
+  /** Should really be [VirtualRegister] | [DerefStackValue]. */
+  val virtualDeaths = mutableMapOf<AllocatableValue, InstrLabel>()
 
   /** @see computeLiveSetsByVar */
   lateinit var liveSets: LiveSets
@@ -107,6 +108,7 @@ class InstructionGraph private constructor(
         virtualDeaths[copy] = virtualDeaths.getValue(value)
         copy
       }
+      is DerefStackValue -> value
     }
   }
 
@@ -193,8 +195,8 @@ class InstructionGraph private constructor(
     if (value.isUndefined || !isUsed(value)) return true
 
     val (block, index) = label
-    val isLiveIn = value in liveSets.liveIn[block] ?: emptyList()
-    val isLiveOut = value in liveSets.liveOut[block] ?: emptyList()
+    val isLiveIn = value in (liveSets.liveIn[block] ?: emptyList())
+    val isLiveOut = value in (liveSets.liveOut[block] ?: emptyList())
 
     // Live-through
     if (isLiveIn && isLiveOut) return false
@@ -239,7 +241,7 @@ class InstructionGraph private constructor(
 
   fun isDeadAfter(value: AllocatableValue, label: InstrLabel): Boolean {
     return when (value) {
-      is VirtualRegister -> {
+      is VirtualRegister, is DerefStackValue -> {
         // FIXME
         val last = virtualDeaths[value] ?: return true
         last == label
@@ -250,7 +252,7 @@ class InstructionGraph private constructor(
 
   fun livesThrough(value: AllocatableValue, label: InstrLabel): Boolean {
     return when (value) {
-      is VirtualRegister -> {
+      is VirtualRegister, is DerefStackValue -> {
         // FIXME
         val (lastBlock, lastIndex) = virtualDeaths[value] ?: return false
         val (queryBlock, queriedIndex) = label
@@ -263,7 +265,7 @@ class InstructionGraph private constructor(
   }
 
   fun isUsed(value: AllocatableValue): Boolean = when (value) {
-    is VirtualRegister -> value in virtualDeaths
+    is VirtualRegister, is DerefStackValue -> value in virtualDeaths
     is Variable -> value in defUseChains && defUseChains.getValue(value).isNotEmpty()
   }
 

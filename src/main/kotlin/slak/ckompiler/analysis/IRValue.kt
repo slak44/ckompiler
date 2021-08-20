@@ -54,6 +54,15 @@ sealed class AllocatableValue : LoadableValue() {
   abstract val identityId: Int
 }
 
+sealed class VersionedValue : AllocatableValue() {
+  abstract val version: Int?
+
+  fun versionString(): String = when (this) {
+    is Variable -> "v${version}"
+    is DerefStackValue -> name
+  }
+}
+
 enum class VRegType {
   /** Your average temporary variable, created from stuff like 1 + 2 + 3. */
   REGULAR,
@@ -87,23 +96,6 @@ class VirtualRegister(
 }
 
 /**
- * Much like [StackVariable], this is a _value_, and it represents a pointer. It is not a pointer to [referenceTo]. Rather, it's a pointer
- * into a stack slot. [referenceTo] is the value that will get spilled/moved into that stack slot.
- *
- * The primary difference between this and [StackVariable] is that [StackValue] gets created by the spiller, dynamically, for any
- * [AllocatableValue] that might get spilled, while [StackVariable] is "pre-spilled" by the code generator.
- *
- * They could, in theory, become the same type.
- */
-class StackValue(val referenceTo: AllocatableValue) : LoadableValue() {
-  override val type: PointerType = PointerType(referenceTo.type.normalize(), emptyList())
-  override val isUndefined: Boolean = false
-
-  override val name get() = "stackval ${referenceTo.identityId}"
-  override fun toString() = name
-}
-
-/**
  * An index inside a basic block's labels.
  */
 typealias LabelIndex = Int
@@ -132,13 +124,13 @@ data class ReachingDefinition(
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-class Variable(val tid: TypedIdentifier) : AllocatableValue() {
+class Variable(val tid: TypedIdentifier) : VersionedValue() {
   override val identityId get() = tid.id
 
   override val name get() = tid.name
   override val type get() = tid.type
 
-  var version = 0
+  override var version = 0
     private set
 
   /**
@@ -185,15 +177,47 @@ class Variable(val tid: TypedIdentifier) : AllocatableValue() {
 }
 
 /**
+ * Much like [StackVariable], this is a _value_, and it represents a pointer. It is not a pointer to [referenceTo]. Rather, it's a pointer
+ * into a stack slot. [referenceTo] is the value that will get spilled/moved into that stack slot.
+ *
+ * The primary difference between this and [StackVariable] is that [StackValue] gets created by the spiller, dynamically, for any
+ * [AllocatableValue] that might get spilled, while [StackVariable] is "pre-spilled" by the code generator.
+ *
+ * They could, in theory, become the same type.
+ */
+class StackValue(val referenceTo: AllocatableValue) : LoadableValue() {
+  override val type: PointerType = PointerType(referenceTo.type.normalize(), emptyList())
+  override val isUndefined: Boolean = false
+
+  override val name get() = "stackval ${referenceTo.identityId}"
+  override fun toString() = name
+}
+
+/**
+ * Half [MemoryLocation], half [Variable]. This value is functionally equivalent to a [MemoryLocation], as [stackValue] is a pointer, and
+ * this is its dereferenced value.
+ *
+ * This exists as a way to differentiate spill targets (which participate in SSA/φs) from regular pointer dereference ([MemoryLocation]s,
+ * which do not and cannot participate in SSA).
+ *
+ * In a way, it is a roundabout way to use [StackValue.referenceTo].
+ */
+class DerefStackValue(val stackValue: StackValue) : VersionedValue() {
+  override val name: String = stackValue.name
+  override val type: TypeName = stackValue.referenceTo.type
+  override val isUndefined: Boolean = stackValue.referenceTo.isUndefined
+  override val version: Int? = (stackValue.referenceTo as? VersionedValue)?.version
+  override val identityId: Int = stackValue.referenceTo.identityId
+  override fun toString(): String = "mem[$stackValue]"
+}
+
+/**
  * Represents a dereferenced pointer.
  */
 data class MemoryLocation(val ptr: IRValue) : LoadableValue() {
   init {
     require(ptr.type is PointerType)
-  }
-
-  fun hasSameIdentityAs(variable: Variable): Boolean {
-    return (ptr as? StackValue)?.referenceTo?.identityId == variable.identityId
+    require(ptr !is StackValue) { "You probably meant to use DerefStackValue" }
   }
 
   override val name = ptr.name
@@ -285,6 +309,7 @@ fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = wh
     } else {
       TODO()
     }
+  is DerefStackValue -> TODO()
   is MemoryLocation -> TODO()
   is StackVariable -> TODO()
   is StackValue -> TODO()

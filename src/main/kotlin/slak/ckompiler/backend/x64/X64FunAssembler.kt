@@ -218,7 +218,11 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
           .first { reg -> reg.valueClass == target.registerClassOf(value.type) }
       return RegisterValue(reg, typeSize)
     }
-    val unwrapped = if (value is MemoryLocation) value.ptr else value
+    val unwrapped = when (value) {
+      is MemoryLocation -> value.ptr
+      is DerefStackValue -> value.stackValue
+      else -> value
+    }
     val machineRegister = when (unwrapped) {
       is PhysicalRegister -> unwrapped.reg
       else -> alloc.allocations.getValue(unwrapped)
