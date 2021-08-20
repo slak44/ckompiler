@@ -212,8 +212,8 @@ private class MIDebugMode(
                 td(classes = "right") { +(idx.toString()) }
                 td { nasm { +miCode } }
                 td {
-                  val maybeSpill = block[idx].defs.indexOfFirst { it is MemoryLocation && it.ptr is StackValue }
-                  val maybeReload = block[idx].uses.indexOfFirst { it is MemoryLocation && it.ptr is StackValue }
+                  val maybeSpill = block[idx].defs.indexOfFirst { it is DerefStackValue }
+                  val maybeReload = block[idx].uses.indexOfFirst { it is DerefStackValue }
                   if (maybeSpill >= 0) {
                     +"[spill ${block[idx].operands[1]}]"
                   }
