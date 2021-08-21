@@ -446,6 +446,11 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
         .filterIsInstance<AllocatableValue>()
 
     for (definition in defined) {
+      if (definition is DerefStackValue) {
+        // DerefStackValue can only be allocated to the spill slot that it was assigned to
+        coloring[definition] = coloring.getValue(definition.stackValue)
+        continue
+      }
       // This is already spilled, no need to allocate
       if (coloring[definition] is StackSlot) continue
       // Allocate registers for values defined at this label
@@ -692,6 +697,7 @@ private fun TargetFunGenerator.solveTransferGraph(
       } else {
         // Step 4c: F is empty
         // Make r1 free, and remove one edge of the cycle from the graph
+        // FIXME: if r1 has memory value class, this will not work
         copies += createLocalPush(r1)
         val nextR1 = adjacency.getValue(r1).first()
         adjacency.getValue(r1) -= nextR1

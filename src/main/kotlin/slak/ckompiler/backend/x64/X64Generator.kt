@@ -30,21 +30,44 @@ class X64Generator private constructor(
     return matchTypedMov(dest, src)
   }
 
-  override fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction {
-    val dc = dest.valueClass
-    require(dc is X64RegisterClass && dc == src.valueClass) {
-      "Register value classes do not match"
-    }
-    val type = when (dc) {
-      X64RegisterClass.INTEGER -> UnsignedLongType
-      X64RegisterClass.SSE -> when (src.sizeBytes) {
-        4 -> FloatType
-        8 -> DoubleType
-        else -> TODO("type?")
+  private fun transformMachineReg(reg: MachineRegister, sizeHint: Int?): IRValue {
+    when (val vc = reg.valueClass) {
+      is X64RegisterClass -> {
+        val type = when (vc) {
+          X64RegisterClass.INTEGER -> when (sizeHint) {
+            8, null -> UnsignedLongType
+            4 -> UnsignedIntType
+            else -> TODO("good luck")
+          }
+          X64RegisterClass.SSE -> when (reg.sizeBytes) {
+            4 -> FloatType
+            8 -> DoubleType
+            else -> TODO("type?")
+          }
+          X64RegisterClass.X87 -> LongDoubleType
+        }
+        return PhysicalRegister(reg, type)
       }
-      X64RegisterClass.X87 -> LongDoubleType
+      Memory -> {
+        require(reg is SpillSlot)
+        return DerefStackValue(reg.value)
+      }
+      else -> logger.throwICE("Invalid value class")
     }
-    return matchTypedMov(PhysicalRegister(dest, type), PhysicalRegister(src, type))
+  }
+
+  override fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction {
+    val sizeHint = when {
+      dest.valueClass == Memory -> dest.sizeBytes
+      src.valueClass == Memory -> src.sizeBytes
+      else -> null
+    }
+    val destValue = transformMachineReg(dest, sizeHint)
+    val srcValue = transformMachineReg(src, sizeHint)
+    if (dest.valueClass is X64RegisterClass && src.valueClass is X64RegisterClass && dest.valueClass != src.valueClass) {
+      logger.throwICE("Register value classes do not match")
+    }
+    return matchTypedMov(destValue, srcValue)
   }
 
   override fun createLocalPush(src: MachineRegister): MachineInstruction {

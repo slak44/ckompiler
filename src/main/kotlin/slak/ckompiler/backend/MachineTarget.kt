@@ -28,6 +28,8 @@ fun alias(name: String, size: Int): RegisterAlias = name to size
 
 /**
  * Target-independent register representation.
+ *
+ * It also represents abstract memory locations, see [StackSlot]. Memory can be seen as an infinite array of registers.
  */
 interface MachineRegister {
   /**
@@ -48,12 +50,12 @@ interface MachineRegister {
 /**
  * Fake register that's actually a stack slot in the function's frame.
  */
-interface StackSlot : MachineRegister
+sealed interface StackSlot : MachineRegister
 
 /**
  * A transient [StackSlot]. Like [VirtualRegister] for stack slots.
  */
-class SpillSlot(value: StackValue, override val id: AtomicId, mtd: MachineTargetData) : StackSlot {
+class SpillSlot(val value: StackValue, override val id: AtomicId, mtd: MachineTargetData) : StackSlot {
   override val regName = value.name
   override val sizeBytes = mtd.sizeOf(value.type.referencedType)
   override val valueClass = Memory
@@ -343,6 +345,8 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
 
   /**
    * Create a register to register copy instruction. Useful for post-coloring stages.
+   *
+   * And by register, we mean [MachineRegister], which can actually be a stack slot in memory.
    *
    * @see createIRCopy pre-coloring
    */

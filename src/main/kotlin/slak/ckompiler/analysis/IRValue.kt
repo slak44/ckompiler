@@ -303,12 +303,14 @@ data class NamedConstant(override val name: String, override val type: TypeName)
 fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = when (value) {
   is VirtualRegister -> VirtualRegister(value.registerId, type, value.kind)
   is Variable -> Variable(value.tid.copy(type = type))
-  is PhysicalRegister ->
-    if (sizeOf(type) in value.reg.aliases.map { it.second } || sizeOf(type) == value.reg.sizeBytes) {
+  is PhysicalRegister -> {
+    val size = sizeOf(type)
+    if (size in value.reg.aliases.map { it.second } || size == value.reg.sizeBytes) {
       value.copy(type = type)
     } else {
       TODO()
     }
+  }
   is DerefStackValue -> TODO()
   is MemoryLocation -> TODO()
   is StackVariable -> TODO()
