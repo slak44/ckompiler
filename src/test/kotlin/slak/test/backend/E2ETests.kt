@@ -504,6 +504,11 @@ class E2ETests {
   }
 
   @Test
+  fun `Phi With Just Memory Operands`() {
+    compileAndRun(resource("spilling/phiWithDoubleMemory.c")).justExitCode(23)
+  }
+
+  @Test
   fun `Register Transfer Graph Solve With No Free Registers`() {
     compileAndRun(resource("e2e/transferGraphFull.c")).justExitCode(13)
   }
