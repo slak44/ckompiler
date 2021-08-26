@@ -1,7 +1,7 @@
 # Maintainer: Stefan Silviu Alexandru <stefan.silviu.alexandru@gmail.com>
 pkgname=ckompiler
-pkgver=SNAPSHOT5
-pkgrel=2
+pkgver=SNAPSHOT6
+pkgrel=1
 pkgdesc='A C11 compiler written in Kotlin'
 arch=('any')
 url='https://github.com/slak44/ckompiler'
@@ -11,7 +11,7 @@ optdepends=('nasm: for assembling compiled files'
             'graphviz: CFG viewing support')
 provides=('ckompiler')
 source=("https://github.com/slak44/ckompiler/archive/$pkgver.zip")
-sha256sums=('1eba2de5c27d4921eb2699af752f9c4529776cd239be1fd12b0122170e2352e2')
+sha256sums=('7714f02c562d049620e9d13c760afcfa9d8867ed57f42fcc3ec9214a9a393e44')
 
 javaVer="$(archlinux-java get | cut -d '-' -f2)"
 if [ "$javaVer" -lt "11" ]; then
