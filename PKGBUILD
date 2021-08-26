@@ -11,7 +11,7 @@ optdepends=('nasm: for assembling compiled files'
             'graphviz: CFG viewing support')
 provides=('ckompiler')
 source=("https://github.com/slak44/ckompiler/archive/$pkgver.zip")
-sha256sums=('7714f02c562d049620e9d13c760afcfa9d8867ed57f42fcc3ec9214a9a393e44')
+sha256sums=('a71209ed85c7fc0e5894f7f8e884def7c2715161a8db7643066fe4ae9debe65b')
 
 javaVer="$(archlinux-java get | cut -d '-' -f2)"
 if [ "$javaVer" -lt "11" ]; then
