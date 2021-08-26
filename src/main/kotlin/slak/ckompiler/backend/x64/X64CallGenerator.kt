@@ -53,7 +53,7 @@ class X64CallGenerator(val target: X64Target, val registerIds: IdCounter) : Func
     val intStackArgs = intArgs.drop(intArgRegNames.size)
     val fltStackArgs = fltArgs.drop(sseArgRegNames.size)
     val stackArgs = (intStackArgs + fltStackArgs).sortedBy { it.index }
-    val stackArgsSize = stackArgs.sumBy {
+    val stackArgsSize = stackArgs.sumOf {
       target.machineTargetData.sizeOf(it.value.type).coerceAtLeast(EIGHTBYTE)
     }
     if (stackArgsSize % ALIGNMENT_BYTES != 0) {

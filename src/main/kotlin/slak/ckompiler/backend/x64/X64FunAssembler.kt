@@ -101,8 +101,8 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
     calleeSaved = alloc.allocations.values
         .filterIsInstanceTo(mutableSetOf<X64Register>())
         .intersect(target.calleeSaved) as Set<X64Register>
-    stackBeginOffset = calleeSaved.sumBy { it.sizeBytes }
-    finalStackSizeBytes = (stackBeginOffset + alloc.stackSlots.sumBy { it.sizeBytes }) alignTo ALIGNMENT_BYTES
+    stackBeginOffset = calleeSaved.sumOf { it.sizeBytes }
+    finalStackSizeBytes = (stackBeginOffset + alloc.stackSlots.sumOf { it.sizeBytes }) alignTo ALIGNMENT_BYTES
     // See if we can use the red zone
     if (target.options.useRedZone && isLeaf && finalStackSizeBytes <= RED_ZONE_BYTES) {
       // FIXME: we could avoid setting up the stack frame entirely in this case,

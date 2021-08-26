@@ -28,7 +28,7 @@ class X64ConstrainedDivTests {
     val defs = x.entries.withIndex().joinToString(", ") {
       "x${it.index}D = ${it.value.key}, x${it.index}d = ${it.value.value}"
     }
-    val result = x.entries.sumBy { it.key / it.value }
+    val result = x.entries.sumOf { it.key / it.value }
     compileAndRun("""
       int main() {
         int ${defs};

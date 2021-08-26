@@ -602,7 +602,7 @@ class ExpressionParser(
       }
       // FIXME handle enum constants
       is CharLiteral -> {
-        val char = if (tok.data.isNotEmpty()) tok.data[0].toInt() else 0
+        val char = if (tok.data.isNotEmpty()) tok.data[0].code else 0
         return CharacterConstantNode(char, tok.encoding)
       }
       is StringLiteral -> return StringLiteralNode(tok.data, tok.encoding)

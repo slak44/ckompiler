@@ -286,9 +286,9 @@ private fun IDebugHandler.floatingSuffix(
   // Float looks like 123. or 123.23
   s[0].isWhitespace() || s[0] == '.' || isDigit(s[0]) -> FloatingSuffix.NONE
   // Float looks like 123.245E-10F
-  s[0].toUpperCase() == 'F' && s.length == 1 -> FloatingSuffix.FLOAT
+  s[0].uppercaseChar() == 'F' && s.length == 1 -> FloatingSuffix.FLOAT
   // Float looks like 123.245E-10L
-  s[0].toUpperCase() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE
+  s[0].uppercaseChar() == 'L' && s.length == 1 -> FloatingSuffix.LONG_DOUBLE
   else -> {
     diagnostic {
       id = DiagnosticId.INVALID_SUFFIX
@@ -307,7 +307,7 @@ fun IDebugHandler.floatingConstant(s: String, currentOffset: Int): LexicalToken?
   // Not a float: just a dot
   if (s[0] == '.' && s.length == 1) return null
   // Not a float: character after dot must be either suffix or exponent
-  if (s[0] == '.' && !isDigit(s[1]) && s[1].toUpperCase() !in listOf('E', 'F', 'L')) {
+  if (s[0] == '.' && !isDigit(s[1]) && s[1].uppercaseChar() !in listOf('E', 'F', 'L')) {
     return null
   }
   val dotIdx = nextWhitespaceOrPunct(s)
@@ -333,7 +333,7 @@ fun IDebugHandler.floatingConstant(s: String, currentOffset: Int): LexicalToken?
   // If the float is just a dot, it's not actually a float
   if (float == ".") return null
   // Has exponent part
-  if (s[bonusIdx].toUpperCase() == 'E') {
+  if (s[bonusIdx].uppercaseChar() == 'E') {
     val sign = when (s[bonusIdx + 1]) {
       '+' -> '+'
       '-' -> '-'
@@ -344,8 +344,10 @@ fun IDebugHandler.floatingConstant(s: String, currentOffset: Int): LexicalToken?
     val exponentEndIdx = s.drop(exponentStartIdx).indexOfFirst { !isDigit(it) }
     // The rest of the string is the exponent
     if (exponentEndIdx == -1 || exponentStartIdx + exponentEndIdx == s.length) {
-      return FloatingConstant(float, FloatingSuffix.NONE, Radix.DECIMAL,
-          Exponent(s.substring(exponentStartIdx), sign))
+      return FloatingConstant(
+          float, FloatingSuffix.NONE, Radix.DECIMAL,
+          Exponent(s.substring(exponentStartIdx), sign)
+      )
     }
     val exponent = s.slice(exponentStartIdx until exponentStartIdx + exponentEndIdx)
     val totalLengthWithoutSuffix = float.length + 1 + signLen + exponent.length

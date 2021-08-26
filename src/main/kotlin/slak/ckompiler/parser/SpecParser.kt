@@ -489,7 +489,7 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
         }
         Keywords.ENUM, Keywords.STRUCT, Keywords.UNION -> {
           if (typeSpecifier != null) diagIncompat(typeSpecifier.toString(), tok)
-          parseTag()?.also { typeSpecifier = it }
+          typeSpecifier = parseTag()
           // The function deals with eating, so the eat() below should be skipped
           continue@specLoop
         }

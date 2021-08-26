@@ -185,7 +185,7 @@ class DiagnosticTests {
   }
 
   @Test
-  fun `Regular Diagnostic Does Not Produce "Macro Expanded" Diagnostic Text`() {
+  fun `Regular Diagnostic Does Not Produce 'Macro Expanded' Diagnostic Text`() {
     val p = prepareCode("const const int a = 1;", source)
     p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
     assert("|EXPANDED_FROM]" !in p.diags[0].toString())
