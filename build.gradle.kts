@@ -2,7 +2,7 @@ import java.util.*
 
 plugins {
   application
-  kotlin("jvm") version "1.5.21"
+  kotlin("jvm") version "1.6.0"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
 }
@@ -30,20 +30,20 @@ repositories {
 }
 
 dependencies {
-  implementation(kotlin("stdlib"))
-  implementation(kotlin("reflect"))
+  implementation(group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version = "1.6.0")
+  implementation(group = "org.jetbrains.kotlin", name = "kotlin-reflect", version = "1.6.0")
   implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-html-jvm", version = "0.7.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
   testImplementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.5.0")
   testImplementation(group = "org.apache.logging.log4j", name = "log4j-jul", version = "2.11.2")
-  testImplementation(kotlin("test-junit"))
+  testImplementation(group = "org.jetbrains.kotlin", name = "kotlin-test-junit", version = "1.6.0")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
   kotlinOptions {
-    jvmTarget = "13"
+    jvmTarget = "11"
   }
 }
 
