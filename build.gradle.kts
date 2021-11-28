@@ -3,6 +3,7 @@ import java.util.*
 plugins {
   application
   kotlin("jvm") version "1.6.0"
+  kotlin("plugin.serialization") version "1.6.0"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
 }
@@ -33,6 +34,7 @@ dependencies {
   implementation(group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version = "1.6.0")
   implementation(group = "org.jetbrains.kotlin", name = "kotlin-reflect", version = "1.6.0")
   implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-html-jvm", version = "0.7.2")
+  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version = "1.3.1")
   implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
   implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
   implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
