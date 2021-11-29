@@ -369,6 +369,65 @@ int main() {
 produces the following graph
 <p align="center"><img src="readme-resources/graph-example.png" alt="Graph Example"/></p>
 
+###### JSON serialization
+
+The CFG (including BasicBlocks, and the IR) are serializable to JSON, using the
+CLI options `--cfg-mode --export-cfg`.
+
+Here's a sample of a JSON BasicBlock:
+```json
+  {
+    "isRoot": false,
+    "phi": [],
+    "ir": [
+      {
+        "discriminator": "slak.ckompiler.analysis.IntBinary",
+        "result": {
+          "discriminator": "slak.ckompiler.analysis.VirtualRegister",
+          "registerId": 2,
+          "type": "signed int"
+        },
+        "op": "SUB",
+        "lhs": {
+          "discriminator": "slak.ckompiler.analysis.Variable",
+          "type": "signed int",
+          "name": "second",
+          "identityId": 2,
+          "version": 1
+        },
+        "rhs": {
+          "discriminator": "slak.ckompiler.analysis.IntConstant",
+          "value": 22,
+          "type": "signed int"
+        }
+      },
+      {
+        "discriminator": "slak.ckompiler.analysis.MoveInstr",
+        "result": {
+          "discriminator": "slak.ckompiler.analysis.Variable",
+          "type": "signed int",
+          "name": "second",
+          "identityId": 2,
+          "version": 2
+        },
+        "value": {
+          "discriminator": "slak.ckompiler.analysis.VirtualRegister",
+          "registerId": 2,
+          "type": "signed int"
+        }
+      }
+    ],
+    "postOrderId": 9,
+    "nodeId": 2,
+    "predecessors": [0],
+    "successors": [4],
+    "terminator": {
+      "discriminator": "slak.ckompiler.analysis.UncondJump",
+      "target": 4
+    }
+  }
+```
+
 ###### SSA form
 
 The `CFG` class is also responsible for converting the code in its nodes to a
