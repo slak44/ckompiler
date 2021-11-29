@@ -213,8 +213,14 @@ object ConstantJumpSerializer : KSerializer<ConstantJump> {
   }
 }
 
+@Serializable
+private data class CFGExportModel(
+    val startBlock: AtomicId,
+    val allNodes: Set<BasicBlock>
+)
+
 private val json = Json { classDiscriminator = "discriminator" }
 
 fun exportCFG(cfg: CFG): String {
-  return json.encodeToString(cfg.allNodes)
+  return json.encodeToString(CFGExportModel(cfg.startBlock.nodeId, cfg.allNodes))
 }
