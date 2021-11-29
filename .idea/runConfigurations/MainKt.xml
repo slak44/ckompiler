@@ -2,6 +2,7 @@
   <configuration default="false" name="MainKt" type="JetRunConfigurationType" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="slak.ckompiler.MainKt" />
     <module name="ckompiler.main" />
+    <option name="PROGRAM_PARAMETERS" value="--cfg-mode --export-cfg $PROJECT_DIR$/src/test/resources/cfg/cfgTest.c" />
     <shortenClasspath name="NONE" />
     <method v="2">
       <option name="Make" enabled="true" />

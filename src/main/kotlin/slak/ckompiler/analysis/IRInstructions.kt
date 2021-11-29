@@ -1,5 +1,6 @@
 package slak.ckompiler.analysis
 
+import kotlinx.serialization.Serializable
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
@@ -10,6 +11,7 @@ private val logger = LogManager.getLogger()
 /**
  * Common superclass of all IR instructions.
  */
+@Serializable
 sealed class IRInstruction {
   abstract val result: LoadableValue
 }
@@ -18,6 +20,7 @@ sealed class IRInstruction {
  * A φ-function for a particular variable. [incoming] stores the list of versions that the φ has
  * to choose from; that is, it stores which values come from which predecessor [BasicBlock].
  */
+@Serializable(with = PhiInstructionSerializer::class)
 data class PhiInstruction(
     val variable: Variable,
     val incoming: Map<BasicBlock, Variable>
@@ -30,6 +33,7 @@ data class PhiInstruction(
 /**
  * Read the value pointed at by [loadFrom], and store it in [result].
  */
+@Serializable
 data class LoadMemory(
     override val result: LoadableValue,
     val loadFrom: IRValue
@@ -48,6 +52,7 @@ data class LoadMemory(
  * Put [value] at the address pointed to by [storeTo]. [storeTo] must have pointer type, or be a
  * [MemoryLocation].
  */
+@Serializable
 data class StoreMemory(val storeTo: IRValue, val value: IRValue) : IRInstruction() {
   init {
     if (storeTo !is MemoryLocation) {
@@ -63,6 +68,7 @@ data class StoreMemory(val storeTo: IRValue, val value: IRValue) : IRInstruction
 /**
  * Stores the [value] in [result].
  */
+@Serializable
 data class MoveInstr(override val result: LoadableValue, val value: IRValue) : IRInstruction() {
   override fun toString() = "move $result = $value"
 }
@@ -71,6 +77,7 @@ data class MoveInstr(override val result: LoadableValue, val value: IRValue) : I
  * Modifies [operand] to have the type specified by [result]. May fail if the specified conversion
  * is impossible.
  */
+@Serializable
 data class StructuralCast(
     override val result: LoadableValue,
     val operand: IRValue
@@ -82,6 +89,7 @@ data class StructuralCast(
  * Reinterprets [operand]'s data as another type. Basically changes the type without touching the
  * data in memory.
  */
+@Serializable
 data class ReinterpretCast(
     override val result: LoadableValue,
     val operand: IRValue
@@ -94,6 +102,7 @@ data class ReinterpretCast(
  * will exist at link time (that is, it doesn't check if the function named exists, because it might
  * be linked in later).
  */
+@Serializable
 data class NamedCall(
     override val result: LoadableValue,
     val name: NamedConstant,
@@ -105,6 +114,7 @@ data class NamedCall(
 /**
  * A call to the function specified by the function pointer stored in [callable].
  */
+@Serializable
 data class IndirectCall(
     override val result: LoadableValue,
     val callable: VirtualRegister,
@@ -125,6 +135,7 @@ interface BinaryInstruction {
 /**
  * Lists possible comparison orders for arithmetic types.
  */
+@Serializable
 enum class Comparisons(val operator: String) {
   EQUAL(Punctuators.EQUALS.s),
   NOT_EQUAL(Punctuators.NEQUALS.s),
@@ -152,8 +163,10 @@ enum class Comparisons(val operator: String) {
  * Represents instructions that operate on integral arguments. Its operands are of type
  * [slak.ckompiler.parser.IntegralType].
  */
+@Serializable
 sealed class IntegralInstruction : IRInstruction()
 
+@Serializable
 enum class IntegralBinaryOps(val operator: String) {
   ADD(Punctuators.PLUS.s), SUB(Punctuators.MINUS.s),
   MUL(Punctuators.STAR.s), DIV(Punctuators.SLASH.s), REM(Punctuators.PERCENT.s),
@@ -163,6 +176,7 @@ enum class IntegralBinaryOps(val operator: String) {
   override fun toString() = operator
 }
 
+@Serializable
 data class IntBinary(
     override val result: LoadableValue,
     val op: IntegralBinaryOps,
@@ -172,6 +186,7 @@ data class IntBinary(
   override fun toString() = "$result = int op $lhs $op $rhs"
 }
 
+@Serializable
 data class IntCmp(
     override val result: LoadableValue,
     override val lhs: IRValue,
@@ -184,6 +199,7 @@ data class IntCmp(
 /**
  * Flip bits: ~
  */
+@Serializable
 data class IntInvert(
     override val result: LoadableValue,
     val operand: IRValue
@@ -191,6 +207,7 @@ data class IntInvert(
   override fun toString() = "$result = invert $operand"
 }
 
+@Serializable
 data class IntNeg(
     override val result: LoadableValue,
     val operand: IRValue
@@ -202,8 +219,10 @@ data class IntNeg(
  * Represents instructions that operate on float arguments. Its operands are of type
  * [slak.ckompiler.parser.FloatingType].
  */
+@Serializable
 sealed class FloatingPointInstruction : IRInstruction()
 
+@Serializable
 enum class FloatingBinaryOps(val operator: String) {
   ADD(Punctuators.PLUS.s), SUB(Punctuators.MINUS.s),
   MUL(Punctuators.STAR.s), DIV(Punctuators.SLASH.s);
@@ -211,6 +230,7 @@ enum class FloatingBinaryOps(val operator: String) {
   override fun toString() = operator
 }
 
+@Serializable
 data class FltBinary(
     override val result: LoadableValue,
     val op: FloatingBinaryOps,
@@ -220,6 +240,7 @@ data class FltBinary(
   override fun toString() = "$result = flt op $lhs $op $rhs"
 }
 
+@Serializable
 data class FltCmp(
     override val result: LoadableValue,
     override val lhs: IRValue,
@@ -229,6 +250,7 @@ data class FltCmp(
   override fun toString() = "$result = flt cmp $lhs $cmp $rhs"
 }
 
+@Serializable
 data class FltNeg(
     override val result: LoadableValue,
     val operand: IRValue

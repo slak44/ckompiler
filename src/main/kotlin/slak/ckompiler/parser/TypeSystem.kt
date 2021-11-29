@@ -1,7 +1,9 @@
 package slak.ckompiler.parser
 
+import kotlinx.serialization.Serializable
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
+import slak.ckompiler.analysis.TypeNameSerializer
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator
@@ -98,6 +100,7 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
  *
  * C standard: 6.2.5, 6.2.5.0.26
  */
+@Serializable(with = TypeNameSerializer::class)
 sealed class TypeName {
   abstract val typeQuals: TypeQualifierList
   abstract val isStorageRegister: Boolean

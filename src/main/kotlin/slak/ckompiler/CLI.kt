@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
+import slak.ckompiler.analysis.exportCFG
 import slak.ckompiler.backend.TargetOptions
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
@@ -231,6 +232,12 @@ class CLI(private val stdinStream: InputStream) :
       "Force displaying of unreachable basic blocks and impossible edges")
 
   init {
+    cli.helpGroup("CFG debug options (require --cfg-mode)")
+  }
+
+  private val exportCFGAsJSON by cli.flagArgument("--export-cfg", "Export CFG contents as JSON")
+
+  init {
     cli.helpGroup("MI debug options (require --mi-debug)")
   }
 
@@ -439,6 +446,17 @@ class CLI(private val stdinStream: InputStream) :
           forceAllNodes = forceAllNodes,
           forceReturnZero = function.name == "main"
       )
+
+      if (exportCFGAsJSON) {
+        val json = exportCFG(cfg)
+        when {
+          output.isEmpty -> println(json)
+          else -> fileFrom(output.get()).writeText(json)
+        }
+
+        return null
+      }
+
       val graphviz = createGraphviz(cfg, text, !forceUnreachable, printingMethod)
       when {
         displayGraph -> {

@@ -1,5 +1,6 @@
 package slak.ckompiler.analysis
 
+import kotlinx.serialization.Serializable
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
@@ -13,6 +14,7 @@ private val logger = LogManager.getLogger()
 /**
  * Instances represent terminators for [BasicBlock]s.
  */
+@Serializable
 sealed class Jump {
   /**
    * List of blocks that this [Jump] could reach.
@@ -25,6 +27,7 @@ sealed class Jump {
  *
  * @param src debug range for [cond]
  */
+@Serializable(with = CondJumpSerializer::class)
 data class CondJump(
     val cond: List<IRInstruction>,
     val src: Expression,
@@ -40,6 +43,7 @@ data class CondJump(
  *
  * @param src debug range for [cond]
  */
+@Serializable(with = SelectJumpSerializer::class)
 data class SelectJump(
     val cond: List<IRInstruction>,
     val src: Expression,
@@ -54,6 +58,7 @@ data class SelectJump(
 }
 
 /** Unconditionally jump to [target]. */
+@Serializable(with = UncondJumpSerializer::class)
 data class UncondJump(val target: BasicBlock) : Jump() {
   override val successors = listOf(target)
   override fun toString() = "UncondJump<${target.hashCode()}>"
@@ -65,6 +70,7 @@ data class UncondJump(val target: BasicBlock) : Jump() {
  *
  * @param src debug range for [returned] (is null if [returned] is null)
  */
+@Serializable(with = ImpossibleJumpSerializer::class)
 data class ImpossibleJump(
     val target: BasicBlock,
     val returned: List<IRInstruction>?,
@@ -78,12 +84,14 @@ data class ImpossibleJump(
  * Similar to a combination of [UncondJump] and [ImpossibleJump].
  * Always jumps to [target], never to [impossible].
  */
+@Serializable(with = ConstantJumpSerializer::class)
 data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Jump() {
   override val successors = listOf(target)
   override fun toString() = "ConstantJump<${target.hashCode()}>$"
 }
 
 /** Indicates an incomplete [BasicBlock]. */
+@Serializable
 object MissingJump : Jump() {
   override val successors = emptyList<BasicBlock>()
 }
@@ -95,6 +103,7 @@ object MissingJump : Jump() {
  *
  * FIXME: a lot of things in here should not be mutable
  */
+@Serializable(with = BasicBlockSerializer::class)
 class BasicBlock(val isRoot: Boolean = false) {
   /**
    * List of SSA φ-functions at the start of this block. Basically a prefix to [ir].
