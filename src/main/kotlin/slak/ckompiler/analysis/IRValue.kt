@@ -1,8 +1,6 @@
 package slak.ckompiler.analysis
 
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Serializer
 import kotlinx.serialization.Transient
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.AtomicId
