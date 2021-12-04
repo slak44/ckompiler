@@ -20,7 +20,7 @@ private data class BasicBlockSurrogate(
     val phi: Set<PhiInstruction>,
     val ir: List<IRInstruction>,
     val postOrderId: Int,
-    val nodeId: Int,
+    val nodeId: AtomicId,
     val predecessors: List<AtomicId>,
     val successors: List<AtomicId>,
     val terminator: Jump
@@ -73,7 +73,7 @@ object PhiInstructionSerializer : KSerializer<PhiInstruction> {
 private data class VariableSurrogate(
     val type: TypeName,
     val name: String,
-    val identityId: Int,
+    val identityId: AtomicId,
     val version: Int,
 )
 
