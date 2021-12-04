@@ -7,7 +7,6 @@ import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.parser.Expression
-import java.lang.Exception
 
 private val logger = LogManager.getLogger()
 
