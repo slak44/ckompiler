@@ -2,7 +2,7 @@ import java.util.*
 
 plugins {
   application
-  kotlin("jvm") version "1.6.0"
+  kotlin("multiplatform") version "1.6.0"
   kotlin("plugin.serialization") version "1.6.0"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
@@ -20,51 +20,7 @@ application {
   applicationDistribution.from(File(rootDir, "stdlib/include")).into(includePath)
 }
 
-tasks.installDist {
-  val installPath = System.getenv("DESTDIR") ?: ""
-  if (installPath.isNotBlank()) destinationDir = File(installPath)
-}
-
-repositories {
-  mavenCentral()
-  maven { url = uri("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven") }
-}
-
-dependencies {
-  implementation(group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version = "1.6.0")
-  implementation(group = "org.jetbrains.kotlin", name = "kotlin-reflect", version = "1.6.0")
-  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-html-jvm", version = "0.7.2")
-  implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version = "1.3.1")
-  implementation(group = "org.apache.logging.log4j", name = "log4j-api", version = "2.11.2")
-  implementation(group = "org.apache.logging.log4j", name = "log4j-core", version = "2.11.2")
-  implementation(group = "com.github.ajalt", name = "mordant", version = "1.2.0")
-  testImplementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.5.0")
-  testImplementation(group = "org.apache.logging.log4j", name = "log4j-jul", version = "2.11.2")
-  testImplementation(group = "org.jetbrains.kotlin", name = "kotlin-test-junit", version = "1.6.0")
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
-  kotlinOptions {
-    jvmTarget = "11"
-  }
-}
-
-tasks.test {
-  useJUnitPlatform()
-  // Must be present at startup-ish time
-  systemProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager")
-  // Don't put this in junit-properties, because debugging tests in intellij triggers the timeout
-  systemProperty("junit.jupiter.execution.timeout.default", "5s")
-}
-
-sourceSets {
-  for (thing in listOf(main, test)) thing {
-    resources.srcDir(File(buildDir, "resources"))
-    resources.srcDir(File(projectDir, "stdlib"))
-  }
-}
-
-tasks.create("makePropsFile") {
+val makePropsFile: Task by tasks.creating {
   doLast {
     val props = Properties()
     props["version"] = version
@@ -76,8 +32,98 @@ tasks.create("makePropsFile") {
     writer.close()
   }
 }
-tasks.processResources.get().dependsOn("makePropsFile")
-tasks.processTestResources.get().dependsOn("makePropsFile")
+
+tasks.installDist {
+  val installPath = System.getenv("DESTDIR") ?: ""
+  if (installPath.isNotBlank()) destinationDir = File(installPath)
+}
+
+kotlin {
+  jvm {
+    val main by compilations.getting {
+      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFile)
+    }
+
+    val test by compilations.getting {
+      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFile)
+    }
+
+    testRuns.getByName("test") {
+      executionTask {
+        useJUnitPlatform()
+        // Must be present at startup-ish time
+        systemProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager")
+        // Don't put this in junit-properties, because debugging tests in intellij triggers the timeout
+        systemProperty("junit.jupiter.execution.timeout.default", "5s")
+      }
+    }
+  }
+
+  js(IR) {
+    browser {
+      webpackTask {
+      }
+    }
+    binaries.executable()
+  }
+
+  sourceSets {
+    val commonMain by getting {
+      dependencies {
+        implementation(kotlin("stdlib-common"))
+      }
+    }
+
+    val commonTest by getting {
+      dependencies {
+        implementation(kotlin("test-common"))
+        implementation(kotlin("test-annotations-common"))
+      }
+    }
+
+    val jvmMain by getting {
+      kotlin.srcDir("src/main/kotlin")
+      resources.srcDir("src/main/resources")
+      resources.srcDir(File(buildDir, "resources"))
+      resources.srcDir(File(projectDir, "stdlib"))
+
+      dependsOn(commonMain)
+
+      dependencies {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.0")
+        implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2")
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+        implementation("org.apache.logging.log4j:log4j-api:2.11.2")
+        implementation("org.apache.logging.log4j:log4j-core:2.11.2")
+        implementation("com.github.ajalt:mordant:1.2.0")
+      }
+    }
+
+    val jvmTest by getting {
+      kotlin.srcDir("src/test/kotlin")
+      resources.srcDir("src/test/resources")
+
+      dependsOn(jvmMain)
+      dependsOn(commonTest)
+
+      dependencies {
+        implementation("org.junit.jupiter:junit-jupiter:5.5.0")
+        implementation("org.apache.logging.log4j:log4j-jul:2.11.2")
+        implementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.0")
+      }
+    }
+
+    val jsMain by getting {
+      dependsOn(commonMain)
+    }
+  }
+}
+
+repositories {
+  mavenCentral()
+  maven { url = uri("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven") }
+}
 
 publishing {
   repositories {
@@ -93,7 +139,7 @@ publishing {
   }
   publications {
     register("mavenJava", MavenPublication::class) {
-      from(components["java"])
+      from(components["kotlin"])
       pom {
         url.set("https://github.com/slak44/ckompiler.git")
       }
