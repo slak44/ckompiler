@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.MarkerManager
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
-import java.util.*
 
 private val logger = LogManager.getLogger()
 
@@ -487,15 +486,13 @@ fun createDomTreePreOrderNodes(
     nodes: Set<BasicBlock>
 ): Set<BasicBlock> {
   val visited = mutableSetOf<BasicBlock>()
-  val stack = Stack<BasicBlock>()
-  stack.push(root)
+  val stack = mutableListOf<BasicBlock>()
+  stack += root
   while (stack.isNotEmpty()) {
-    val block = stack.pop()
+    val block = stack.removeLast()
     if (block in visited) continue
     visited += block
-    for (child in nodes.filter { doms[it] == block }.sortedBy { it.height }.asReversed()) {
-      stack.push(child)
-    }
+    stack += nodes.filter { doms[it] == block }.sortedBy { it.height }.asReversed()
   }
   return visited
 }
@@ -604,7 +601,7 @@ private fun postOrderNodes(startNode: BasicBlock, nodes: Set<BasicBlock>): Set<B
 
 /** Filter unreachable nodes from the given [nodes] set and return the ones that are reachable. */
 private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBlock> {
-  val checkReachableQueue = LinkedList(nodes)
+  val checkReachableQueue = nodes.toMutableList()
   val visited = mutableSetOf<BasicBlock>()
   val nodesImpl = mutableSetOf<BasicBlock>()
   while (checkReachableQueue.isNotEmpty()) {
@@ -629,7 +626,7 @@ private fun IDebugHandler.filterReachable(nodes: Set<BasicBlock>): Set<BasicBloc
 /** Apply [BasicBlock.collapseEmptyPreds] on an entire graph ([nodes]). */
 @Suppress("ControlFlowWithEmptyBody")
 private fun collapseEmptyBlocks(nodes: Set<BasicBlock>) {
-  val collapseCandidates = LinkedList(nodes)
+  val collapseCandidates = nodes.toMutableList()
   val visited = mutableSetOf<BasicBlock>()
   while (collapseCandidates.isNotEmpty()) {
     val node = collapseCandidates.removeFirst()
