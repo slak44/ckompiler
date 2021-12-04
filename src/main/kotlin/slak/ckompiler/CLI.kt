@@ -18,7 +18,6 @@ import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File
 import java.io.InputStream
-import java.util.*
 
 enum class ExitCodes(val int: Int) {
   NORMAL(0), ERROR(1), EXECUTION_FAILED(2), BAD_COMMAND(4)
@@ -58,11 +57,11 @@ class CLI(private val stdinStream: InputStream) :
     cli.helpSeparator()
   }
 
-  private var output: Optional<String> = Optional.empty()
+  private var output: String? = null
 
   init {
     cli.flagValueAction("-o", "OUTFILE", "Place output in the specified file") {
-      output = Optional.of(it)
+      output = it
     }
   }
 
@@ -315,7 +314,7 @@ class CLI(private val stdinStream: InputStream) :
 
   private fun invokeLink(objFiles: List<File>) {
     val args = mutableListOf("link.exe")
-    args += listOf("/opt", fileFrom(output.orElse("a.out")).absolutePath)
+    args += listOf("/opt", fileFrom(output ?: "a.out").absolutePath)
     args += listOf("msvcrt.dll")
     args += listOf("/entry", "_start")
     args += linkLibDirNames.map { "/LIBPATH:\"$it\"" }
@@ -327,7 +326,7 @@ class CLI(private val stdinStream: InputStream) :
 
   private fun invokeLd(objFiles: List<File>) {
     val args = mutableListOf("ld")
-    args += listOf("-o", fileFrom(output.orElse("a.out")).absolutePath)
+    args += listOf("-o", fileFrom(output ?: "a.out").absolutePath)
     args += listOf("-L/lib", "-lc")
     args += listOf("-dynamic-linker", "/lib/ld-linux-x86-64.so.2")
     args += listOf("-e", "_start")
@@ -428,8 +427,8 @@ class CLI(private val stdinStream: InputStream) :
             forceReturnZero = function.name == "main"
         )
       }
-      if (output.isPresent) {
-        fileFrom(output.get()).writeText(miText)
+      if (output != null) {
+        fileFrom(output!!).writeText(miText)
       } else {
         println(miText)
       }
@@ -449,9 +448,9 @@ class CLI(private val stdinStream: InputStream) :
 
       if (exportCFGAsJSON) {
         val json = exportCFG(cfg)
-        when {
-          output.isEmpty -> println(json)
-          else -> fileFrom(output.get()).writeText(json)
+        when (output) {
+          null -> println(json)
+          else -> fileFrom(output!!).writeText(json)
         }
 
         return null
@@ -466,8 +465,8 @@ class CLI(private val stdinStream: InputStream) :
           invokeDot(src, dest)
           openFileDefault(dest)
         }
-        output.isEmpty -> println(graphviz)
-        else -> fileFrom(output.get()).writeText(graphviz)
+        output == null -> println(graphviz)
+        else -> fileFrom(output!!).writeText(graphviz)
       }
 
       return null
@@ -503,7 +502,7 @@ class CLI(private val stdinStream: InputStream) :
     val nasm = NasmEmitter(declNames, functionsEmit, mainEmit).emitAsm()
 
     if (isCompileOnly) {
-      val asmFile = fileFrom(output.orElse("$baseName.s"))
+      val asmFile = fileFrom(output ?: "$baseName.s")
       asmFile.writeText(nasm)
       return null
     }
@@ -513,7 +512,7 @@ class CLI(private val stdinStream: InputStream) :
     asmFile.writeText(nasm)
 
     if (isAssembleOnly) {
-      val objFile = fileFrom(output.orElse("$baseName.o"))
+      val objFile = fileFrom(output ?: "$baseName.o")
       invokeNasm(objFile, asmFile)
       return null
     }
@@ -553,7 +552,7 @@ class CLI(private val stdinStream: InputStream) :
     }
     val isNotLinking =
         isMIDebugOnly || isCFGOnly || isPreprocessOnly || isCompileOnly || isAssembleOnly
-    if (output.isPresent && isNotLinking && sourceCount > 1) {
+    if (output != null && isNotLinking && sourceCount > 1) {
       diagnostic { id = DiagnosticId.MULTIPLE_FILES_PARTIAL }
       return ExitCodes.EXECUTION_FAILED
     }
@@ -569,7 +568,7 @@ class CLI(private val stdinStream: InputStream) :
     if (!isNotLinking) {
       link(allObjFiles)
       for (objFile in allObjFiles) objFile.delete()
-      fileFrom(output.orElse("a.out")).setExecutable(true)
+      fileFrom(output ?: "a.out").setExecutable(true)
     }
     return if (diags.errors().isNotEmpty()) ExitCodes.EXECUTION_FAILED else ExitCodes.NORMAL
   }
