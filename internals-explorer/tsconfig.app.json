@@ -9,6 +9,7 @@
     "src/polyfills.ts"
   ],
   "include": [
-    "src/**/*.d.ts"
+    "src/**/*.d.ts",
+    "../build/js/packages/ckompiler/kotlin/*.d.ts"
   ]
 }
