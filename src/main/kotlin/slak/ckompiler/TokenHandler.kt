@@ -2,7 +2,6 @@ package slak.ckompiler
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.lexer.LexicalToken
-import java.util.*
 
 interface ITokenHandler {
   /**
@@ -55,69 +54,65 @@ interface ITokenHandler {
 }
 
 class TokenHandler(tokens: List<LexicalToken>) : ITokenHandler {
-  private val tokStack = Stack<List<LexicalToken>>()
-  private val idxStack = Stack<Int>()
+  private val tokStack = mutableListOf<List<LexicalToken>>()
+  private val idxStack = mutableListOf<Int>()
 
   init {
-    tokStack.push(tokens)
-    idxStack.push(0)
+    tokStack += tokens
+    idxStack += 0
   }
 
-  private fun withOffset(offset: Int) = idxStack.peek() + offset
+  private fun withOffset(offset: Int) = idxStack.last() + offset
 
   private fun isValidOffset(offset: Int): Boolean {
     return withOffset(offset) in 0 until tokenCount
   }
 
   override fun safeToken(offset: Int) = when {
-    !isValidOffset(offset) && tokStack.peek().isEmpty() -> tokStack[tokStack.size - 2].last()
-    !isValidOffset(offset) -> tokStack.peek().last()
-    else -> tokStack.peek()[withOffset(offset).coerceIn(0 until tokenCount)]
+    !isValidOffset(offset) && tokStack.last().isEmpty() -> tokStack[tokStack.size - 2].last()
+    !isValidOffset(offset) -> tokStack.last().last()
+    else -> tokStack.last()[withOffset(offset).coerceIn(0 until tokenCount)]
   }
 
   override fun <T> tokenContext(endIdx: Int, block: (List<LexicalToken>) -> T): T {
-    val tokens = tokStack.peek().subList(idxStack.peek(), endIdx)
-    tokStack.push(tokens)
-    idxStack.push(0)
+    val tokens = tokStack.last().subList(idxStack.last(), endIdx)
+    tokStack += tokens
+    idxStack += 0
     val result = block(tokens)
-    tokStack.pop()
-    val eatenInContext = idxStack.pop()
-    idxStack.push(idxStack.pop() + eatenInContext)
+    tokStack.removeLast()
+    val eatenInContext = idxStack.removeLast()
+    idxStack[idxStack.size - 1] += eatenInContext
     return result
   }
 
   override fun indexOfFirst(startIdx: Int, block: (LexicalToken) -> Boolean): Int {
-    val toDrop = if (startIdx == -1) idxStack.peek() else startIdx
-    val idx = tokStack.peek().drop(toDrop).indexOfFirst(block)
+    val toDrop = if (startIdx == -1) idxStack.last() else startIdx
+    val idx = tokStack.last().drop(toDrop).indexOfFirst(block)
     return if (idx == -1) -1 else idx + toDrop
   }
 
-  override fun isEaten(): Boolean = idxStack.peek() >= tokenCount
+  override fun isEaten(): Boolean = idxStack.last() >= tokenCount
 
-  override val currentIdx: Int get() = idxStack.peek()
+  override val currentIdx: Int get() = idxStack.last()
 
-  override val tokenCount: Int get() = tokStack.peek().size
+  override val tokenCount: Int get() = tokStack.last().size
 
-  override val tokensLeft: Int get() = (tokStack.peek().size - idxStack.peek()).coerceAtLeast(0)
+  override val tokensLeft: Int get() = (tokStack.last().size - idxStack.last()).coerceAtLeast(0)
 
-  override fun relative(offset: Int): LexicalToken = tokStack.peek()[withOffset(offset)]
+  override fun relative(offset: Int): LexicalToken = tokStack.last()[withOffset(offset)]
 
-  override fun tokenAt(contextIdx: Int) = tokStack.peek()[contextIdx]
+  override fun tokenAt(contextIdx: Int) = tokStack.last()[contextIdx]
 
   override fun eat() {
-    idxStack.push(idxStack.pop() + 1)
+    idxStack[idxStack.size - 1] += 1
   }
 
   override fun eatUntil(contextIdx: Int) {
-    val old = idxStack.pop()
+    val old = idxStack.removeLast()
     if (contextIdx < old) {
       logger.throwICE("Trying to eat tokens backwards") { "old=$old, contextIdx=$contextIdx" }
     }
-    if (contextIdx > tokenCount) {
-      idxStack.push(tokenCount)
-    } else {
-      idxStack.push(contextIdx)
-    }
+    idxStack += if (contextIdx > tokenCount) tokenCount else contextIdx
   }
 
   companion object {

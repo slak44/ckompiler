@@ -6,7 +6,6 @@ import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.throwICE
-import java.util.*
 
 private val logger = LogManager.getLogger()
 
@@ -118,18 +117,16 @@ class InstructionGraph private constructor(
       .asReversed()
 
   val domTreePreorder
-    get() = iterator<AtomicId> {
+    get() = iterator {
       val visited = mutableSetOf<AtomicId>()
-      val stack = Stack<AtomicId>()
-      stack.push(startId)
+      val stack = mutableListOf<AtomicId>()
+      stack += startId
       while (stack.isNotEmpty()) {
-        val blockId = stack.pop()
+        val blockId = stack.removeLast()
         if (blockId in visited) continue
         yield(blockId)
         visited += blockId
-        for (child in domTreeChildren(blockId)) {
-          stack.push(child)
-        }
+        stack += domTreeChildren(blockId)
       }
     }
 

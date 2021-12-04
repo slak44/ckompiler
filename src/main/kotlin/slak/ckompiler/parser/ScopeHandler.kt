@@ -5,7 +5,6 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.lexer.Keywords
-import java.util.*
 
 /**
  * Stores the data of a scoped `typedef`.
@@ -172,28 +171,28 @@ interface IScopeHandler : IdentSearchable {
 
 /** @see IScopeHandler */
 class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by debugHandler {
-  private val scopeStack = Stack<LexicalScope>()
+  private val scopeStack = mutableListOf<LexicalScope>()
   override val rootScope: LexicalScope get() = scopeStack.first()
 
   init {
-    scopeStack.push(LexicalScope())
+    scopeStack += LexicalScope()
   }
 
-  override fun newScope() = LexicalScope(scopeStack.peek())
+  override fun newScope() = LexicalScope(scopeStack.last())
 
   override fun <R> LexicalScope.withScope(block: LexicalScope.() -> R): R {
-    scopeStack.push(this)
+    scopeStack += this
     val ret = this.block()
-    scopeStack.pop()
+    scopeStack.removeLast()
     return ret
   }
 
   override fun <R> scoped(block: LexicalScope.() -> R): R =
-      LexicalScope(scopeStack.peek()).withScope(block)
+      LexicalScope(scopeStack.last()).withScope(block)
 
   override fun createTag(tag: TagSpecifier): TagSpecifier {
     val name = tag.name ?: return tag
-    val names = scopeStack.peek().tagNames
+    val names = scopeStack.last().tagNames
     val foundTag = names[name]
     val previousDef = searchTag(name)
     // Add enum constants to scope, if required
@@ -244,7 +243,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
   }
 
   override fun overwriteTypeInCurrentScope(name: String, type: TypeName) {
-    val idents = scopeStack.peek().idents
+    val idents = scopeStack.last().idents
     val idx = idents.indexOfFirst { it.name == name }
     check(idx >= 0) { "Cannot overwrite non-existent name ${name}, check your usage of this function" }
     val old = idents[idx]
@@ -253,7 +252,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
   }
 
   override fun newIdentifier(id: OrdinaryIdentifier) {
-    val idents = scopeStack.peek().idents
+    val idents = scopeStack.last().idents
     val found = idents.firstOrNull { it.name == id.name }
     // FIXME: this can be used to maybe give a diagnostic about name shadowing
     // val isShadowed = scopeStack.peek().idents.any { it.name == id.name }
@@ -307,7 +306,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
   }
 
   override fun newLabel(labelIdent: IdentifierNode) {
-    val labels = scopeStack.peek().labels
+    val labels = scopeStack.last().labels
     // FIXME: we really should know more data about these idents
     // FIXME: in particular, a reference to a [LabeledStatement] might be required to be stored
     val foundId = labels.firstOrNull { it.name == labelIdent.name }
