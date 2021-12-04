@@ -17,7 +17,6 @@ import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 import java.io.File
-import java.io.InputStream
 
 enum class ExitCodes(val int: Int) {
   NORMAL(0), ERROR(1), EXECUTION_FAILED(2), BAD_COMMAND(4)
@@ -27,10 +26,8 @@ typealias CLIDefines = Map<String, String>
 
 /**
  * The command line interface for the compiler.
- * @param stdinStream which stream to use for the `-` argument; should be [System.in] for main
  */
-class CLI(private val stdinStream: InputStream) :
-    IDebugHandler by DebugHandler("CLI", "<command line>", "") {
+class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private val currentDir = File(System.getProperty("user.dir")!!)
 
@@ -530,7 +527,11 @@ class CLI(private val stdinStream: InputStream) :
       file.absoluteFile.parentFile
   )
 
-  fun parse(args: Array<String>): ExitCodes {
+  /**
+   * @param args argv for this execution
+   * @param readStdin what text to use for the `-` argument; should read from [System.in] for main
+   */
+  fun parse(args: Array<String>, readStdin: () -> String): ExitCodes {
     @Suppress("TooGenericExceptionCaught")
     try {
       cli.parse(args)
@@ -557,8 +558,7 @@ class CLI(private val stdinStream: InputStream) :
       return ExitCodes.EXECUTION_FAILED
     }
     val stdinObjFile = if (stdin) {
-      val inText = stdinStream.bufferedReader().readText()
-      compile(inText, "-", "-", currentDir)
+      compile(readStdin(), "-", "-", currentDir)
     } else {
       null
     }
