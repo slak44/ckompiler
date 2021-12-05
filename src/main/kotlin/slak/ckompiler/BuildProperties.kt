@@ -10,7 +10,7 @@ private data class Properties(val version: String, @SerialName("include-path") v
 
 object BuildProperties {
   private val logger = LogManager.getLogger()
-  private const val propFileName = "ckompiler.properties"
+  private const val propFileName = "ckompiler.json"
   private val properties by lazy {
     val propsUrl = this::class.java.classLoader.getResource(propFileName)
     if (propsUrl == null) {

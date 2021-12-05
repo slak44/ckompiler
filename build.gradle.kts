@@ -23,7 +23,7 @@ val makePropsFile: Task by tasks.creating {
     val json = "{ \"version\": \"$version\", \"include-path\": \"/$includePath\" }"
     val res = File(buildDir, "resources")
     res.mkdirs()
-    File(res, "ckompiler.properties").writeText(json)
+    File(res, "ckompiler.json").writeText(json)
   }
 }
 
