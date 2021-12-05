@@ -65,6 +65,10 @@ kotlin {
     val commonMain by getting {
       dependencies {
         implementation(kotlin("stdlib-common"))
+        implementation(kotlin("reflect"))
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-html:0.7.2")
+        implementation("com.github.ajalt:mordant:1.2.0")
       }
     }
 
@@ -84,13 +88,8 @@ kotlin {
       dependsOn(commonMain)
 
       dependencies {
-        implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.0")
-        implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.0")
-        implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2")
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
         implementation("org.apache.logging.log4j:log4j-api:2.11.2")
         implementation("org.apache.logging.log4j:log4j-core:2.11.2")
-        implementation("com.github.ajalt:mordant:1.2.0")
       }
     }
 
