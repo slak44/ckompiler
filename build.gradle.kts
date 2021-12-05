@@ -1,5 +1,3 @@
-import java.util.*
-
 plugins {
   application
   kotlin("multiplatform") version "1.6.0"
@@ -22,14 +20,10 @@ application {
 
 val makePropsFile: Task by tasks.creating {
   doLast {
-    val props = Properties()
-    props["version"] = version
-    props["include-path"] = "/$includePath"
+    val json = "{ \"version\": \"$version\", \"include-path\": \"/$includePath\" }"
     val res = File(buildDir, "resources")
     res.mkdirs()
-    val writer = File(res, "ckompiler.properties").bufferedWriter()
-    props.store(writer, null)
-    writer.close()
+    File(res, "ckompiler.properties").writeText(json)
   }
 }
 

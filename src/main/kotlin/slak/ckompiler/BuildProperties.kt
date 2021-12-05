@@ -1,31 +1,26 @@
 package slak.ckompiler
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.apache.logging.log4j.LogManager
-import java.util.*
+
+@Serializable
+private data class Properties(val version: String, @SerialName("include-path") val includePath: String)
 
 object BuildProperties {
   private val logger = LogManager.getLogger()
   private const val propFileName = "ckompiler.properties"
   private val properties by lazy {
     val propsUrl = this::class.java.classLoader.getResource(propFileName)
-    val prop = Properties()
     if (propsUrl == null) {
       logger.error("Bad configuration; $propFileName missing.")
-      return@lazy prop
+      return@lazy Properties("UNKNOWN_VERSION", "/usr/include")
     }
-    prop.load(propsUrl.openStream())
-    return@lazy prop
+
+    return@lazy Json.decodeFromString(Properties.serializer(), propsUrl.readText())
   }
 
-  private fun getProp(propName: String, default: String): String {
-    val value = properties.getProperty(propName)
-    if (value == null) {
-      logger.error("Bad configuration; $propFileName does not have property '$propName'.")
-      return default
-    }
-    return value
-  }
-
-  val version by lazy { getProp("version", "UNKNOWN_VERSION") }
-  val includePath by lazy { getProp("include-path", "/usr/include") }
+  val version get() = properties.version
+  val includePath get() = properties.includePath
 }
