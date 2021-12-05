@@ -93,7 +93,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
 
   /**
    * Parse an initializer for one of this declaration's declarators.
-   * @see DeclaratorParser.parseInitializer
+   * @see InitializerParser.parseInitializer
    */
   private fun parseDeclarationInitializer(
       expectedType: TypeName,
