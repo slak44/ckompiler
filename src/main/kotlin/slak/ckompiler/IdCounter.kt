@@ -1,7 +1,5 @@
 package slak.ckompiler
 
-import java.util.concurrent.atomic.AtomicInteger
-
 /**
  * Unique integer ID. If two objects are tagged with the same ID, they generally compare equal.
  *
