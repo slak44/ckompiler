@@ -11,7 +11,7 @@ private data class Properties(val version: String, @SerialName("include-path") v
 object BuildProperties {
   private val logger = KotlinLogging.logger {}
 
-  private const val propFileName = "ckompiler.json"
+  const val propFileName = "ckompiler.json"
 
   private val properties by lazy {
     val propsText = readResource(propFileName)

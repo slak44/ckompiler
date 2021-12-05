@@ -6,6 +6,7 @@ import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import slak.ckompiler.BuildProperties
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.ExitCodes
 import java.io.ByteArrayOutputStream
@@ -35,9 +36,9 @@ class CLITests {
 
   @Test
   fun `Ckompiler Properties File Exists`() {
-    val fileExists = resource("ckompiler.properties").exists()
+    val fileExists = resource(BuildProperties.propFileName).exists()
     if (!fileExists) {
-      System.err.println("ckompiler.properties file is missing; aborting test process")
+      System.err.println("${BuildProperties.propFileName} file is missing; aborting test process")
       exitProcess(-1)
     }
   }
