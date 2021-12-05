@@ -5,7 +5,6 @@ import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.lexer.asPunct
 import slak.ckompiler.rangeTo
-import java.util.*
 
 interface IDeclarationParser : IDeclaratorParser {
   /**
@@ -16,19 +15,17 @@ interface IDeclarationParser : IDeclaratorParser {
   fun parseDeclaration(validationRules: SpecValidationRules): Declaration? {
     val (declSpec, firstDecl) = preParseDeclarator(validationRules)
     if (declSpec.isBlank()) return null
-    if (!firstDecl!!.isPresent) return Declaration(declSpec, emptyList())
-    return parseDeclaration(declSpec, firstDecl.get())
+    if (firstDecl == null) return Declaration(declSpec, emptyList())
+    return parseDeclaration(declSpec, firstDecl)
   }
 
   /**
    * Parse a [DeclarationSpecifier] and the first [Declarator] that follows.
    * @param validationRules extra checks to be performed on the [DeclarationSpecifier]
-   * @return if [DeclarationSpecifier.isBlank] is true, the [Declarator] will be null, and if there
-   * is no declarator, it will be [Optional.empty]
    */
   fun preParseDeclarator(
       validationRules: SpecValidationRules
-  ): Pair<DeclarationSpecifier, Optional<Declarator>?>
+  ): Pair<DeclarationSpecifier, Declarator?>
 
   /**
    * Parses a declaration where the [DeclarationSpecifier] and the first [Declarator] are already
@@ -44,7 +41,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
 
   override fun preParseDeclarator(
       validationRules: SpecValidationRules
-  ): Pair<DeclarationSpecifier, Optional<Declarator>?> {
+  ): Pair<DeclarationSpecifier, Declarator?> {
     val declSpec = specParser.parseDeclSpecifiers(validationRules)
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
       // This is the case where there is a semicolon after the DeclarationSpecifiers
@@ -62,11 +59,11 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
           errorOn(declSpec)
         }
       }
-      return declSpec to Optional.empty()
+      return declSpec to null
     }
-    if (declSpec.isTag() && isEaten()) return declSpec to Optional.empty()
-    val declarator = if (declSpec.isBlank()) null else Optional.of(parseNamedDeclarator(tokenCount))
-    if (declarator != null && declarator.get().isFunction()) {
+    if (declSpec.isTag() && isEaten()) return declSpec to null
+    val declarator = if (declSpec.isBlank()) null else parseNamedDeclarator(tokenCount)
+    if (declarator != null && declarator.isFunction()) {
       SpecValidationRules.FUNCTION_DECLARATION.validate(specParser, declSpec)
     }
     return declSpec to declarator

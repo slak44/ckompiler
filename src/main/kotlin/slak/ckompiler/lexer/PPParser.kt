@@ -2,8 +2,8 @@ package slak.ckompiler.lexer
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
+import slak.ckompiler.FSPath
 import slak.ckompiler.parser.*
-import java.io.File
 
 typealias ParsedObjectDefines = Map<Identifier, List<LexicalToken>>
 
@@ -17,7 +17,7 @@ class PPParser(
     private val whitespaceBefore: List<String>,
     initialDefines: ParsedObjectDefines,
     private val includePaths: IncludePaths,
-    private val currentDir: File,
+    private val currentDir: FSPath,
     private val ignoreTrigraphs: Boolean,
     private val debugHandler: DebugHandler,
     private val machineTargetData: MachineTargetData

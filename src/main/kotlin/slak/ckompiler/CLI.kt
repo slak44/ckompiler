@@ -374,12 +374,12 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       parentDir: File
   ): File? {
     val includePaths = IncludePaths.defaultPaths +
-        IncludePaths(generalIncludes, systemIncludes + systemIncludesAfter, userIncludes)
+        IncludePaths(generalIncludes.map(::FSPath), (systemIncludes + systemIncludesAfter).map(::FSPath), userIncludes.map(::FSPath))
     includePaths.includeBarrier = includeBarrier
     val pp = Preprocessor(
         sourceText = text,
         srcFileName = relPath,
-        currentDir = parentDir,
+        currentDir = FSPath(parentDir),
         cliDefines = defines,
         includePaths = includePaths,
         ignoreTrigraphs = !useTrigraphs,

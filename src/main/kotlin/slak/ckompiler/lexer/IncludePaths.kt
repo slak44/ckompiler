@@ -1,9 +1,9 @@
 package slak.ckompiler.lexer
 
 import slak.ckompiler.BuildProperties
-import java.io.File
+import slak.ckompiler.FSPath
 
-data class IncludePaths(val general: List<File>, val system: List<File>, val users: List<File>) {
+data class IncludePaths(val general: List<FSPath>, val system: List<FSPath>, val users: List<FSPath>) {
 
   /**
    * Don't consider the current directory for includes.
@@ -17,13 +17,13 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
    *
    * @param parent the source file that included the [headerName]'s parent directory
    */
-  fun search(headerName: String, parent: File, isSystem: Boolean): File? {
+  fun search(headerName: String, parent: FSPath, isSystem: Boolean): FSPath? {
     if (!includeBarrier) {
-      val candidate = File(parent, headerName)
+      val candidate = FSPath(parent, headerName)
       if (candidate.exists()) return candidate
     }
     for (searchPath in if (isSystem) system + general else users + general + system) {
-      val candidate = File(searchPath, headerName)
+      val candidate = FSPath(searchPath, headerName)
       if (candidate.exists()) return candidate
     }
     return null
@@ -38,7 +38,7 @@ data class IncludePaths(val general: List<File>, val system: List<File>, val use
   companion object {
     val defaultPaths = IncludePaths(
         general = emptyList(),
-        system = listOf(File(BuildProperties.includePath)),
+        system = listOf(FSPath(BuildProperties.includePath)),
         users = emptyList()
     )
   }

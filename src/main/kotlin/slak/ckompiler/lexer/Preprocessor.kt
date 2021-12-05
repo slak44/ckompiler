@@ -2,7 +2,7 @@ package slak.ckompiler.lexer
 
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
-import java.io.File
+import slak.ckompiler.FSPath
 
 /**
  * Handles translation phases 1 through 6, inclusive.
@@ -13,7 +13,7 @@ class Preprocessor(
     sourceText: String,
     srcFileName: SourceFileName,
     targetData: MachineTargetData,
-    currentDir: File,
+    currentDir: FSPath,
     cliDefines: CLIDefines = emptyMap(),
     initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
     includePaths: IncludePaths = IncludePaths.defaultPaths,

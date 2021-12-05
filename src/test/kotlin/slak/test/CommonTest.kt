@@ -3,6 +3,7 @@ package slak.test
 import slak.ckompiler.*
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.lexer.*
+import slak.ckompiler.FSPath
 import slak.ckompiler.parser.ExternalDeclaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
@@ -17,15 +18,17 @@ internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
 internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s)!!.file)
 
 internal fun preparePP(s: String, source: SourceFileName): Preprocessor {
-  val incs = IncludePaths(emptyList(),
-      listOf(IncludePaths.resource("include"), IncludePaths.resource("headers/system")),
-      listOf(IncludePaths.resource("headers/users")))
+  val incs = IncludePaths(
+      emptyList(),
+      listOf(FSPath(IncludePaths.resource("include")), FSPath(IncludePaths.resource("headers/system"))),
+      listOf(FSPath(IncludePaths.resource("headers/users")))
+  )
   return Preprocessor(
       sourceText = s,
       srcFileName = source,
       includePaths = incs + IncludePaths.defaultPaths,
       targetData = MachineTargetData.x64,
-      currentDir = File(".")
+      currentDir = FSPath(File("."))
   )
 }
 

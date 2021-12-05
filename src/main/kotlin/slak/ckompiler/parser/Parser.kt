@@ -159,7 +159,7 @@ private class TranslationUnitParser(
   /** C standard: A.2.4, 6.9 */
   private tailrec fun translationUnit() {
     if (isEaten()) return
-    val (declSpec, declaratorOpt) = preParseDeclarator(SpecValidationRules.FILE_SCOPED_VARIABLE)
+    val (declSpec, declarator) = preParseDeclarator(SpecValidationRules.FILE_SCOPED_VARIABLE)
     if (declSpec.isBlank()) {
       // If we got here it means the current thing isn't a translation unit
       // So spit out an error and eat tokens
@@ -171,8 +171,7 @@ private class TranslationUnitParser(
       if (isNotEaten()) eat()
       return translationUnit()
     }
-    if (!declaratorOpt!!.isPresent) return translationUnit()
-    val declarator = declaratorOpt.get()
+    if (declarator == null) return translationUnit()
     checkFunctionReturnType(declSpec, declarator)
     if (declarator.isFunction() && isNotEaten() && current().asPunct() != Punctuators.SEMICOLON) {
       if (declarator.name.name == "main") {
