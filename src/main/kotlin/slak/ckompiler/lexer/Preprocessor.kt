@@ -3,7 +3,6 @@ package slak.ckompiler.lexer
 import org.apache.logging.log4j.LogManager
 import slak.ckompiler.*
 import java.io.File
-import java.util.regex.Pattern
 
 /**
  * Handles translation phases 1 through 6, inclusive.
@@ -108,7 +107,7 @@ private val trigraphs = mapOf("??=" to "#", "??(" to "[", "??/" to "", "??)" to 
 private fun escapeTrigraph(t: String) = "\\${t[0]}\\${t[1]}\\${t[2]}"
 
 /** @see translationPhase1And2 */
-private val trigraphPattern = Pattern.compile("(" +
+private val trigraphPattern = Regex("(" +
     (trigraphs.keys - "\\\n").joinToString("|") { escapeTrigraph(it) } + "|\\\\\n)")
 
 /**
@@ -131,18 +130,18 @@ fun translationPhase1And2(
     srcFileName: SourceFileName
 ): Pair<String, List<Diagnostic>> {
   val dh = DebugHandler("Trigraphs", srcFileName, source)
-  val matcher = trigraphPattern.matcher(source)
-  val sb = StringBuilder()
-  while (matcher.find()) {
-    val replacement = trigraphs.getValue(matcher.group(1))
-    val matchResult = matcher.toMatchResult()
-    matcher.appendReplacement(sb, replacement)
+
+  val replaced = trigraphPattern.replace(source) {
+    val replacement = trigraphs.getValue(it.groupValues[1])
+
     if (replacement.isNotEmpty()) dh.diagnostic {
       id = if (ignoreTrigraphs) DiagnosticId.TRIGRAPH_IGNORED else DiagnosticId.TRIGRAPH_PROCESSED
       if (!ignoreTrigraphs) formatArgs(replacement)
-      columns(matchResult.start() until matchResult.end())
+      columns(it.range)
     }
+
+    replacement
   }
-  matcher.appendTail(sb)
-  return sb.toString() to dh.diags
+
+  return replaced to dh.diags
 }
