@@ -1,13 +1,13 @@
 package slak.ckompiler.analysis
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 /**
  * @param registerIds per-function virtual register counter

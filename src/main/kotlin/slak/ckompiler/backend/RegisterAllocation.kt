@@ -1,11 +1,11 @@
 package slak.ckompiler.backend
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.analysis.*
 import slak.ckompiler.exhaustive
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 /**
  * Coloring of interference graph, assignment of register to [IRValue].

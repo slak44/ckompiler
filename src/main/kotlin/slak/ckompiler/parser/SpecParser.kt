@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.ITokenHandler
 import slak.ckompiler.lexer.*
@@ -533,6 +533,6 @@ class SpecParser(declaratorParser: DeclaratorParser, enumInitParser: ConstantExp
         listOf(Keywords.CONST, Keywords.RESTRICT, Keywords.VOLATILE, Keywords.ATOMIC)
     private val funSpecifiers = listOf(Keywords.NORETURN, Keywords.INLINE)
 
-    private val logger = LogManager.getLogger()
+    private val logger = KotlinLogging.logger {}
   }
 }

@@ -1,6 +1,6 @@
 package slak.ckompiler.backend.x64
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
@@ -9,7 +9,7 @@ import slak.ckompiler.backend.x64.ModRM.*
 import slak.ckompiler.throwICE
 import kotlin.math.absoluteValue
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 enum class OperandType {
   REGISTER, MEMORY, REG_OR_MEM

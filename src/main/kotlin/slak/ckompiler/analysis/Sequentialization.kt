@@ -1,10 +1,10 @@
 package slak.ckompiler.analysis
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 /**
  * A bunch of expressions that should be equivalent to the original expression that was

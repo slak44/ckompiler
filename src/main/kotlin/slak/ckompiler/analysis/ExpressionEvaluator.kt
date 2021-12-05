@@ -1,12 +1,12 @@
 package slak.ckompiler.analysis
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.lexer.FloatingSuffix
 import slak.ckompiler.lexer.IntegralSuffix
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 fun convertToFloat(e: ExprConstantNode): Double = when (e) {
   is IntegerConstantNode -> e.value.toDouble()

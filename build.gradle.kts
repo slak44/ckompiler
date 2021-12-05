@@ -69,6 +69,7 @@ kotlin {
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
         implementation("org.jetbrains.kotlinx:kotlinx-html:0.7.2")
         implementation("com.github.ajalt:mordant:1.2.0")
+        implementation("io.github.microutils:kotlin-logging:2.0.2")
       }
     }
 
@@ -88,8 +89,7 @@ kotlin {
       dependsOn(commonMain)
 
       dependencies {
-        implementation("org.apache.logging.log4j:log4j-api:2.11.2")
-        implementation("org.apache.logging.log4j:log4j-core:2.11.2")
+        implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.14.1")
       }
     }
 

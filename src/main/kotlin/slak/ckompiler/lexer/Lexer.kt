@@ -1,6 +1,6 @@
 package slak.ckompiler.lexer
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.*
 
 /**
@@ -135,6 +135,6 @@ class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceF
   }
 
   companion object {
-    private val logger = LogManager.getLogger()
+    private val logger = KotlinLogging.logger {}
   }
 }

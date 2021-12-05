@@ -1,6 +1,6 @@
 package slak.ckompiler.backend.x64
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
@@ -524,7 +524,7 @@ class X64Generator private constructor(
   }
 
   companion object {
-    private val logger = LogManager.getLogger()
+    private val logger = KotlinLogging.logger {}
 
     private fun Int.toHex() = "${if (sign == -1) "-" else ""}0x${absoluteValue.toString(16)}"
   }

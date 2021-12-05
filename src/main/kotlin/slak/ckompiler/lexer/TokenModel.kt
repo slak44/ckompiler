@@ -1,11 +1,11 @@
 package slak.ckompiler.lexer
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 /**
  * Represents a token from the lexical grammar.

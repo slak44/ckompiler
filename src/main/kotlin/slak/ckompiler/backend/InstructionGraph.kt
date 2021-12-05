@@ -1,13 +1,13 @@
 package slak.ckompiler.backend
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 typealias DefUseChains = MutableMap<AllocatableValue, MutableSet<InstrLabel>>
 typealias InstrLabel = Pair<AtomicId, Int>

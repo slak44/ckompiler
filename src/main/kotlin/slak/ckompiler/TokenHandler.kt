@@ -1,6 +1,6 @@
 package slak.ckompiler
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.lexer.LexicalToken
 
 interface ITokenHandler {
@@ -116,6 +116,6 @@ class TokenHandler(tokens: List<LexicalToken>) : ITokenHandler {
   }
 
   companion object {
-    private val logger = LogManager.getLogger()
+    private val logger = KotlinLogging.logger {}
   }
 }

@@ -1,6 +1,6 @@
 package slak.ckompiler.analysis
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
@@ -8,7 +8,7 @@ import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.parser.Expression
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 private enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,

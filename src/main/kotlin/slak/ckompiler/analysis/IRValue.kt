@@ -2,14 +2,14 @@ package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 /**
  * Represents an operand to an IR instruction.

@@ -1,7 +1,7 @@
 package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
 import slak.ckompiler.parser.ExprConstantNode
@@ -9,7 +9,7 @@ import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 /**
  * Instances represent terminators for [BasicBlock]s.

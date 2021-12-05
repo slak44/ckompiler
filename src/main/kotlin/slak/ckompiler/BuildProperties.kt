@@ -3,14 +3,16 @@ package slak.ckompiler
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 
 @Serializable
 private data class Properties(val version: String, @SerialName("include-path") val includePath: String)
 
 object BuildProperties {
-  private val logger = LogManager.getLogger()
+  private val logger = KotlinLogging.logger {}
+
   private const val propFileName = "ckompiler.json"
+
   private val properties by lazy {
     val propsText = readResource(propFileName)
     if (propsText == null) {

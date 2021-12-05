@@ -1,13 +1,12 @@
 package slak.ckompiler.backend
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.AtomicId
-import slak.ckompiler.analysis.AllocatableValue
 import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.VersionedValue
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 typealias InstrPhi = MutableMap<VersionedValue, MutableMap<AtomicId, VersionedValue>>
 

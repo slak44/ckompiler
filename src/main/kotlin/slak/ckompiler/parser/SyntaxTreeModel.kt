@@ -1,11 +1,11 @@
 package slak.ckompiler.parser
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.Expression.ValueType.*
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 val Declarator.name get() = (this as NamedDeclarator).name
 val ExternalDeclaration.fn get() = this as FunctionDefinition

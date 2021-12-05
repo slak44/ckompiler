@@ -1,11 +1,11 @@
 package slak.ckompiler.analysis
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.parser.*
 import slak.ckompiler.rangeTo
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 fun graph(cfg: CFG) {
   for ((idx, p) in cfg.f.parameters.withIndex()) {

@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 
@@ -504,6 +504,6 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
   }
 
   companion object {
-    private val logger = LogManager.getLogger()
+    private val logger = KotlinLogging.logger {}
   }
 }

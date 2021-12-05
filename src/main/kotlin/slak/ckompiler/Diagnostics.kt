@@ -1,8 +1,7 @@
 package slak.ckompiler
 
 import com.github.ajalt.mordant.TermColors
-import org.apache.logging.log4j.Logger
-import org.apache.logging.log4j.message.ObjectMessage
+import mu.KLogger
 import slak.ckompiler.DiagnosticKind.*
 import kotlin.math.min
 
@@ -436,30 +435,21 @@ class InternalCompilerError : RuntimeException {
   constructor(message: String) : super(message)
 }
 
-inline fun Logger.error(t: Throwable, crossinline msg: () -> Any?) {
-  error({ msg().toObjectMessage() }, t)
-}
-
-fun Any?.toObjectMessage() = ObjectMessage(this)
-
-fun Logger.throwICE(iceMessage: String): Nothing {
+fun KLogger.throwICE(iceMessage: String): Nothing {
   val ice = InternalCompilerError(iceMessage)
-  error(ice)
+  error(ice) {}
   throw ice
 }
 
-inline fun Logger.throwICE(ice: InternalCompilerError, crossinline msg: () -> Any?): Nothing {
+fun KLogger.throwICE(ice: InternalCompilerError, msg: () -> Any?): Nothing {
   error(ice, msg)
   throw ice
 }
 
-inline fun Logger.throwICE(
-    iceMessage: String,
-    cause: Throwable, crossinline msg: () -> Any?
-): Nothing {
+fun KLogger.throwICE(iceMessage: String, cause: Throwable, msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage, cause), msg)
 }
 
-inline fun Logger.throwICE(iceMessage: String, crossinline msg: () -> Any?): Nothing {
+fun KLogger.throwICE(iceMessage: String, msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage), msg)
 }

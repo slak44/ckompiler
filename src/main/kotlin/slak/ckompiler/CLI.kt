@@ -1,7 +1,7 @@
 package slak.ckompiler
 
 import kotlinx.cli.*
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CodePrintingMethods
 import slak.ckompiler.analysis.createGraphviz
@@ -574,6 +574,6 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   companion object {
-    private val logger = LogManager.getLogger()
+    private val logger = KotlinLogging.logger {}
   }
 }

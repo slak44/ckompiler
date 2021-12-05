@@ -1,6 +1,6 @@
 package slak.ckompiler.backend.x64
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
@@ -11,7 +11,7 @@ import slak.ckompiler.backend.x64.X64Target.Companion.sseArgRegNames
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 class X64CallGenerator(val target: X64Target, val registerIds: IdCounter) : FunctionCallGenerator {
   private val al = PhysicalRegister(target.registerByName("rax"), SignedCharType)

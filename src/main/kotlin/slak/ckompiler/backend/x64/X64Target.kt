@@ -1,13 +1,13 @@
 package slak.ckompiler.backend.x64
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
 class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : MachineTarget {
-  private val logger = LogManager.getLogger()
+  private val logger = KotlinLogging.logger {}
 
   override val machineTargetData = MachineTargetData.x64
   override val targetName = "x64"

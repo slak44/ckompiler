@@ -2,7 +2,7 @@
   <configuration default="false" name="MainKt" type="JetRunConfigurationType" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="slak.ckompiler.MainKt" />
     <module name="ckompiler.jvmMain" />
-    <option name="PROGRAM_PARAMETERS" value="--cfg-mode --export-cfg $PROJECT_DIR$/src/test/resources/cfg/cfgTest.c" />
+    <option name="PROGRAM_PARAMETERS" value="$PROJECT_DIR$/src/test/resources/ssa/trivialDiamondGraphTest.c" />
     <shortenClasspath name="NONE" />
     <method v="2">
       <option name="Make" enabled="true" />

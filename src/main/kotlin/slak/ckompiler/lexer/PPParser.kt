@@ -1,6 +1,6 @@
 package slak.ckompiler.lexer
 
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.FSPath
 import slak.ckompiler.parser.*
@@ -664,6 +664,6 @@ class PPParser(
   }
 
   companion object {
-    private val logger = LogManager.getLogger()
+    private val logger = KotlinLogging.logger {}
   }
 }

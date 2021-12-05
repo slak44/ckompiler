@@ -1,7 +1,7 @@
 package slak.ckompiler.parser
 
 import kotlinx.serialization.Serializable
-import org.apache.logging.log4j.LogManager
+import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.analysis.TypeNameSerializer
 import slak.ckompiler.lexer.Keywords
@@ -10,7 +10,7 @@ import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 private fun typeNameOfTag(tagSpecifier: TagSpecifier): UnqualifiedTypeName {
   if (tagSpecifier is EnumSpecifier) {

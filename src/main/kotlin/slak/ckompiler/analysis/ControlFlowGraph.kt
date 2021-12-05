@@ -1,11 +1,11 @@
 package slak.ckompiler.analysis
 
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.MarkerManager
+import mu.KMarkerFactory.getMarker
+import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
 
-private val logger = LogManager.getLogger()
+private val logger = KotlinLogging.logger {}
 
 typealias Definitions = MutableMap<Variable, Label>
 typealias DefUseChains = Map<Variable, List<Label>>
@@ -353,7 +353,7 @@ private class VariableRenamer(val cfg: CFG) {
           "${if (isInPhi) " " else ""}${v.name}${v.version} ${if (isInPhi) "φuse" else "use "}"
               .padStart(TRACE_COL2_LENGTH, ' '),
           "$oldReachingStr updated into $newReachingStr"
-      ).joinToString(" | ").toObjectMessage()
+      ).joinToString(" | ")
     }
   }
 
@@ -373,12 +373,12 @@ private class VariableRenamer(val cfg: CFG) {
           "${bb.hashCode()}",
           "def ${def.name}${def.version}".padEnd(TRACE_COL2_LENGTH, ' '),
           "$oldReachingStr then ${vPrime.name}${vPrime.version}"
-      ).joinToString(" | ").toObjectMessage()
+      ).joinToString(" | ")
     }
   }
 
   companion object {
-    private val varRenamesTrace = MarkerManager.getMarker("ControlFlowVariableRenames")
+    private val varRenamesTrace = getMarker("ControlFlowVariableRenames")
     private const val TRACE_COL2_LENGTH = 11
   }
 }
