@@ -14,7 +14,7 @@ import kotlin.test.assertNotNull
 internal fun Preprocessor.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun Parser.assertNoDiagnostics() = assertEquals(emptyList(), diags)
 internal fun IDebugHandler.assertNoDiagnostics() = assertEquals(emptyList(), diags)
-internal val <T : Any> T.source get() = "<test/${javaClass.simpleName}>"
+internal val <T : Any> T.source get() = "<test/${this::class.simpleName}>"
 internal fun <T : Any> T.resource(s: String) = File(javaClass.classLoader.getResource(s)!!.file)
 
 internal fun preparePP(s: String, source: SourceFileName): Preprocessor {

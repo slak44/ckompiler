@@ -342,7 +342,7 @@ data class Diagnostic(
 
   fun print() = println(printable)
 
-  override fun toString(): String = "${javaClass.simpleName}[\n$printable]"
+  override fun toString(): String = "${this::class.simpleName}[\n$printable]"
 
   companion object {
     // FIXME: this really should not be global

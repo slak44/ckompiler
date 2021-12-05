@@ -266,7 +266,7 @@ class ScopeHandler(debugHandler: DebugHandler) : IScopeHandler, IDebugHandler by
       return
     }
     // Can't redefine name as a different kind of symbol
-    if (id.javaClass != found.javaClass) {
+    if (id::class != found::class) {
       diagnostic {
         this.id = DiagnosticId.REDEFINITION_OTHER_SYM
         formatArgs(found.name, found.kindName, id.kindName)

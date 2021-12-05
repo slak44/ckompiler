@@ -252,7 +252,7 @@ class BasicBlock(val isRoot: Boolean = false) {
   override fun hashCode() = nodeId
 
   override fun toString() =
-      "BasicBlock<id$nodeId/post$postOrderId>(${terminator.javaClass.simpleName})"
+      "BasicBlock<id$nodeId/post$postOrderId>(${terminator::class.simpleName})"
 
   companion object {
     val nodeCounter = IdCounter()

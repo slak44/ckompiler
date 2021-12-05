@@ -93,7 +93,7 @@ data class Identifier(val name: String) : LexicalToken(name.length)
 
 data class IntegralConstant(val n: String, val suffix: IntegralSuffix, val radix: Radix) :
     LexicalToken(radix.prefixLength + n.length + suffix.length) {
-  override fun toString(): String = "${javaClass.simpleName}[$radix $n $suffix]"
+  override fun toString(): String = "${this::class.simpleName}[$radix $n $suffix]"
 
   companion object {
     fun zero() = IntegralConstant("0", IntegralSuffix.NONE, Radix.DECIMAL)
@@ -127,7 +127,7 @@ data class FloatingConstant(
     }
   }
 
-  override fun toString() = "${javaClass.simpleName}[$radix $f ${exponent ?: '_'} $suffix]"
+  override fun toString() = "${this::class.simpleName}[$radix $f ${exponent ?: '_'} $suffix]"
 }
 
 /**

@@ -467,7 +467,7 @@ fun usualArithmeticConversions(
   if (lhs is DoubleType || rhs is DoubleType) return DoubleType
   if (lhs is FloatType || rhs is FloatType) return FloatType
   // Same type, don't bother with anything else
-  if (lhs.javaClass == rhs.javaClass) return lhs
+  if (lhs::class == rhs::class) return lhs
   val lInt = lhs.promotedType as IntegralType
   val rInt = rhs.promotedType as IntegralType
   val big = maxOf(lInt, rInt)

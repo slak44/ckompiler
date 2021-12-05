@@ -16,7 +16,7 @@ internal val Punctuators.pct
 private object ZeroRange : SourcedRange {
   override val expandedName: String? = null
   override val expandedFrom: SourcedRange? = null
-  override val sourceFileName: SourceFileName? = javaClass.simpleName
+  override val sourceFileName: SourceFileName? = this::class.simpleName
   override val sourceText: String = ""
   override val range: IntRange = 0..0
 }

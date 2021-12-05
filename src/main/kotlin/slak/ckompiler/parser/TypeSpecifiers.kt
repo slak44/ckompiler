@@ -59,8 +59,8 @@ data class TagNameSpecifier(
 }
 
 sealed class BasicTypeSpecifier(val first: Keyword) : TypeSpecifier() {
-  override fun equals(other: Any?) = this.javaClass == other?.javaClass
-  override fun hashCode() = javaClass.hashCode()
+  override fun equals(other: Any?) = other != null && this::class == other::class
+  override fun hashCode() = this::class.hashCode()
 }
 
 class VoidTypeSpec(first: Keyword) : BasicTypeSpecifier(first) {

@@ -46,7 +46,7 @@ sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
   }
 
   override fun equals(other: Any?) = other is ASTNode
-  override fun hashCode() = javaClass.hashCode()
+  override fun hashCode() = this::class.hashCode()
 }
 
 /** Sets a node's token range, and returns the node. */
@@ -77,7 +77,7 @@ interface ErrorNode : Terminal {
  */
 private object ErrorNodeImpl : ErrorNode {
   override fun equals(other: Any?) = other is ErrorNode
-  override fun hashCode() = javaClass.hashCode()
+  override fun hashCode() = this::class.hashCode()
   override fun toString() = "<ERROR>"
 }
 
@@ -91,7 +91,7 @@ interface StringClassName {
  * @see StringClassName
  */
 private object StringClassNameImpl : StringClassName {
-  override fun toString() = javaClass.simpleName
+  override fun toString() = this::class.simpleName!!
 }
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
