@@ -12,13 +12,13 @@ object BuildProperties {
   private val logger = LogManager.getLogger()
   private const val propFileName = "ckompiler.json"
   private val properties by lazy {
-    val propsUrl = this::class.java.classLoader.getResource(propFileName)
-    if (propsUrl == null) {
+    val propsText = readResource(propFileName)
+    if (propsText == null) {
       logger.error("Bad configuration; $propFileName missing.")
       return@lazy Properties("UNKNOWN_VERSION", "/usr/include")
     }
 
-    return@lazy Json.decodeFromString(Properties.serializer(), propsUrl.readText())
+    return@lazy Json.decodeFromString(Properties.serializer(), propsText)
   }
 
   val version get() = properties.version
