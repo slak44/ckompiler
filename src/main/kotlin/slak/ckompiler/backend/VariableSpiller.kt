@@ -214,7 +214,7 @@ private fun TargetFunGenerator.initUsual(
   }
 
   for (valueClass in target.registerClasses) {
-    take.putIfAbsent(valueClass, mutableSetOf())
+    take.getOrPut(valueClass, ::mutableSetOf)
   }
 
   return take
@@ -452,7 +452,7 @@ fun TargetFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<Ins
         current[classOf] = current.getValue(classOf) - count
       }
     }
-    current.replaceAll { _, _ -> 0 }
+    current.clear()
   }
   return pressure
 }

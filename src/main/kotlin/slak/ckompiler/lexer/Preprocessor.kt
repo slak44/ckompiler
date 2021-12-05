@@ -4,6 +4,8 @@ import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.FSPath
 
+typealias CLIDefines = Map<String, String>
+
 /**
  * Handles translation phases 1 through 6, inclusive.
  *

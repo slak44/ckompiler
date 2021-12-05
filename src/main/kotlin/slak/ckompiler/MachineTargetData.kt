@@ -1,5 +1,6 @@
 package slak.ckompiler
 
+import slak.ckompiler.lexer.CLIDefines
 import slak.ckompiler.parser.*
 
 /**
@@ -21,7 +22,6 @@ data class MachineTargetData(
     val sizeType: UnqualifiedTypeName,
     val ptrDiffType: UnqualifiedTypeName
 ) {
-  @SuppressWarnings("MagicNumber")
   private fun Int.toBits(): Int = this * 8
 
   private val ints = mapOf(
@@ -90,8 +90,9 @@ data class MachineTargetData(
       arrSize.asValue.toInt() * sizeOf(type.elementType)
     }
     is BitfieldType -> TODO()
-    is StructureType -> type.members?.map { it.second }?.sumOf(::sizeOf) ?: 0
-    is UnionType -> type.members?.map { it.second }?.maxByOrNull(::sizeOf)?.let(::sizeOf) ?: 0
+    // Function references are broken sometimes, use lambdas here: https://youtrack.jetbrains.com/issue/KT-47767
+    is StructureType -> type.members?.map { it.second }?.sumOf { sizeOf(it) } ?: 0
+    is UnionType -> type.members?.map { it.second }?.maxByOrNull { sizeOf(it) }?.let { sizeOf(it) } ?: 0
     SignedCharType, UnsignedCharType -> 1
     SignedShortType, UnsignedShortType -> shortSizeBytes
     SignedIntType, UnsignedIntType -> intSizeBytes

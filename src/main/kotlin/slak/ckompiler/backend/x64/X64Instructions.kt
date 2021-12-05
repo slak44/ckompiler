@@ -7,6 +7,7 @@ import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.Imm.*
 import slak.ckompiler.backend.x64.ModRM.*
 import slak.ckompiler.throwICE
+import kotlin.jvm.JvmName
 import kotlin.math.absoluteValue
 
 private val logger = KotlinLogging.logger {}

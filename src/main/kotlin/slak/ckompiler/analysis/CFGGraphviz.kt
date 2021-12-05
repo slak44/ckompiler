@@ -6,6 +6,7 @@ import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
+import slak.ckompiler.error
 import slak.ckompiler.parser.Expression
 
 private val logger = KotlinLogging.logger {}

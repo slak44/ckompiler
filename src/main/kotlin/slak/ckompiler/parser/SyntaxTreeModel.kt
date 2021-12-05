@@ -4,6 +4,7 @@ import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.Expression.ValueType.*
+import kotlin.jvm.JvmName
 
 private val logger = KotlinLogging.logger {}
 
@@ -64,7 +65,7 @@ interface Terminal
  *
  * All instances of [ErrorNode] should be equal.
  */
-interface ErrorNode : Terminal {
+sealed interface ErrorNode : Terminal {
   override fun equals(other: Any?): Boolean
   override fun hashCode(): Int
   override fun toString(): String

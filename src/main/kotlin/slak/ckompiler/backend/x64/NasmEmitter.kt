@@ -179,7 +179,7 @@ class NasmEmitter(
   private fun createStringConstant(const: StrConstant) {
     val stringPeek = const.value.filter(Char::isLetterOrDigit).take(5)
     stringRefs[const] = "s_${stringPeek}_${stringRefs.size}"
-    val bytes = const.value.toByteArray().joinToString(", ")
+    val bytes = const.value.encodeToByteArray().joinToString(", ")
     data += "; ${const.value}"
     data += "${stringRefs[const]}: db $bytes, 0"
   }

@@ -63,12 +63,15 @@ kotlin {
 
   sourceSets {
     val commonMain by getting {
+      kotlin.srcDir("src/main/kotlin")
+      resources.srcDir("src/main/resources")
+      resources.srcDir(File(buildDir, "resources"))
+      resources.srcDir(File(projectDir, "stdlib"))
+
       dependencies {
         implementation(kotlin("stdlib-common"))
-        implementation(kotlin("reflect"))
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
         implementation("org.jetbrains.kotlinx:kotlinx-html:0.7.2")
-        implementation("com.github.ajalt:mordant:1.2.0")
         implementation("io.github.microutils:kotlin-logging:2.0.2")
       }
     }
@@ -81,14 +84,10 @@ kotlin {
     }
 
     val jvmMain by getting {
-      kotlin.srcDir("src/main/kotlin")
-      resources.srcDir("src/main/resources")
-      resources.srcDir(File(buildDir, "resources"))
-      resources.srcDir(File(projectDir, "stdlib"))
-
       dependsOn(commonMain)
 
       dependencies {
+        implementation("com.github.ajalt:mordant:1.2.0")
         implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.14.1")
       }
     }

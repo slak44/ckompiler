@@ -1,9 +1,18 @@
 package slak.ckompiler
 
-import com.github.ajalt.mordant.TermColors
 import mu.KLogger
+import mu.Marker
 import slak.ckompiler.DiagnosticKind.*
 import kotlin.math.min
+
+expect class DiagnosticColors(useColors: Boolean) {
+  val green: (String) -> String
+  val brightRed: (String) -> String
+  val brightMagenta: (String) -> String
+  val blue: (String) -> String
+}
+
+expect fun String.format(vararg args: Any): String
 
 // FIXME: learn from "http://blog.llvm.org/2010/04/amazing-feats-of-clang-error-recovery.html"
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
@@ -286,12 +295,10 @@ data class Diagnostic(
   }
 
   private val printable: String by lazy {
-    val color = TermColors(if (useColors) TermColors.Level.TRUECOLOR else TermColors.Level.NONE)
+    val color = DiagnosticColors(useColors)
     val (line, col, lineText) =
         if (sourceColumns.isNotEmpty()) dataFor(caret)
         else Triple(-1, -1, "???")
-    // Yes, it makes a copy, but interacting with String.format is basically impossible otherwise
-    @SuppressWarnings("SpreadOperator")
     val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
     val kindText = when (id.kind) {
       ERROR -> color.brightRed
@@ -452,4 +459,20 @@ fun KLogger.throwICE(iceMessage: String, cause: Throwable, msg: () -> Any?): Not
 
 fun KLogger.throwICE(iceMessage: String, msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage), msg)
+}
+
+fun KLogger.trace(marker: Marker, message: String) {
+  trace(marker) { message }
+}
+
+fun KLogger.error(message: String, throwable: Throwable) {
+  error(throwable) { message }
+}
+
+fun KLogger.error(message: String) {
+  error { message }
+}
+
+fun KLogger.warn(message: String) {
+  warn { message }
 }

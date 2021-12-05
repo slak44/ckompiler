@@ -11,6 +11,7 @@ import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
+import slak.ckompiler.lexer.CLIDefines
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
@@ -21,8 +22,6 @@ import java.io.File
 enum class ExitCodes(val int: Int) {
   NORMAL(0), ERROR(1), EXECUTION_FAILED(2), BAD_COMMAND(4)
 }
-
-typealias CLIDefines = Map<String, String>
 
 /**
  * The command line interface for the compiler.

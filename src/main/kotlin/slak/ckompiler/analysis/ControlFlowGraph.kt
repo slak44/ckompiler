@@ -289,8 +289,7 @@ private class VariableRenamer(val cfg: CFG) {
    */
   private fun updateUsesFor(variable: Variable, bb: BasicBlock, idx: LabelIndex) {
     if (variable.reachingDef != null) {
-      defUseChains.putIfAbsent(variable.reachingDef!!.variable, mutableListOf())
-      defUseChains.getValue(variable.reachingDef!!.variable) += bb to idx
+      defUseChains.getOrPut(variable.reachingDef!!.variable, ::mutableListOf) += bb to idx
     }
   }
 

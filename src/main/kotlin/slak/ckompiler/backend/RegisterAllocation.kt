@@ -1,6 +1,7 @@
 package slak.ckompiler.backend
 
 import mu.KotlinLogging
+import slak.ckompiler.error
 import slak.ckompiler.analysis.*
 import slak.ckompiler.exhaustive
 import slak.ckompiler.throwICE

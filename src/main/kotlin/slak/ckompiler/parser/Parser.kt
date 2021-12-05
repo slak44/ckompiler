@@ -25,9 +25,21 @@ fun ITokenHandler.indexOfFirst(vararg t: StaticTokenEnum): Int {
 
 /**
  * Generic way to construct [ErrorNode] instances, like [ErrorExpression] or [ErrorStatement].
+ *
+ * Disgusting hack since Kotlin/JS doesn't actually support reflection.
  */
 inline fun <reified T> ITokenHandler.error(): T where T : ASTNode, T : ErrorNode {
-  return T::class.constructors.first { it.parameters.isEmpty() }.call().withRange(rangeOne())
+  val errorNode: T = when (T::class) {
+    ErrorDeclInitializer::class -> throw IllegalArgumentException("Has arguments, call constructor")
+    ErrorDeclarator::class -> ErrorDeclarator() as T
+    ErrorExpression::class -> ErrorExpression() as T
+    ErrorInitializer::class -> ErrorInitializer() as T
+    ErrorStatement::class -> ErrorStatement() as T
+    ErrorSuffix::class -> ErrorSuffix() as T
+    else -> throw IllegalArgumentException("unreachable")
+  }
+
+  return errorNode.withRange(rangeOne())
 }
 
 /**
