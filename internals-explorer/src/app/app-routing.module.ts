@@ -5,6 +5,10 @@ const routes: Routes = [
   {
     path: 'graph-view',
     loadChildren: () => import('./graph-view/graph-view.module').then(m => m.GraphViewModule)
+  },
+  {
+    path: "**",
+    redirectTo: "/graph-view"
   }
 ];
 
