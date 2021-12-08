@@ -8,7 +8,6 @@ import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.error
 import slak.ckompiler.parser.Expression
-import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
 
@@ -96,7 +95,6 @@ fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
   return blockCode + termCode
 }
 
-@JsExport
 fun BasicBlock.irToString(): String {
   val phi = phi.joinToString("<br/>") { it.toString().unescape() }
       .let { if (it.isBlank()) "" else "$it<br/>" }

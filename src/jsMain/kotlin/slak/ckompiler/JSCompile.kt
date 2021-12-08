@@ -1,6 +1,6 @@
 package slak.ckompiler
 
-import slak.ckompiler.analysis.CFG
+import slak.ckompiler.analysis.*
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
@@ -52,4 +52,20 @@ fun <T> arrayOf(collection: Collection<T>): Array<T> {
 @JsExport
 fun <T> arrayOfIterator(iterator: Iterator<T>): Array<T> {
   return iterator.asSequence().toList().toTypedArray()
+}
+
+@JsExport
+fun BasicBlock.irToString(): String {
+  val phi = phi.joinToString("\n").let { if (it.isBlank()) "" else "$it\n" }
+  val blockCode = ir.joinToString("\n").let { if (it.isBlank()) "" else "$it\n" }
+  val termCode = when (val term = terminator) {
+    is CondJump -> term.cond.joinToString("\n") + " ?"
+    is SelectJump -> term.cond.joinToString("\n") + " ?"
+    is ImpossibleJump -> {
+      if (term.returned == null) "return;"
+      else "return ${term.returned.joinToString("\n")};"
+    }
+    else -> ""
+  }
+  return phi + blockCode + termCode
 }

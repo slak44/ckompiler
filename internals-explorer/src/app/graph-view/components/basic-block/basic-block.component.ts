@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { slak } from '@ckompiler/ckompiler';
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import irToString = slak.ckompiler.analysis.irToString;
+import irToString = slak.ckompiler.irToString;
 
 @Component({
   selector: 'cki-basic-block',
