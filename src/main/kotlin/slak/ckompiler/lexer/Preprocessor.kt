@@ -111,7 +111,7 @@ private val trigraphs = mapOf(
 
 /** @see translationPhase1And2 */
 private val trigraphPattern = Regex("(" +
-    (trigraphs.keys - "\\\n").joinToString("|") { regexEscape(it) } + "|\\\\\n)")
+    (trigraphs.keys - "\\\n").joinToString("|") { regexEscape(it) } + "|\\\\\n)", RegexOption.MULTILINE)
 
 /**
  * The character set mapping is implicit via use of [String].
