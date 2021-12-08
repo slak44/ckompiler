@@ -56,11 +56,25 @@ val setNoCheck: Task by tasks.creating {
 kotlin {
   jvm {
     val main by compilations.getting {
-      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFileJvm)
+      kotlinOptions {
+        jvmTarget = "11"
+      }
+
+      tasks.getByName(processResourcesTaskName) {
+        dependsOn(tasks.getByName("processResources"))
+        dependsOn(makePropsFileJvm)
+      }
     }
 
     val test by compilations.getting {
-      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFileJvm)
+      kotlinOptions {
+        jvmTarget = "11"
+      }
+
+      tasks.getByName(processResourcesTaskName) {
+        dependsOn(tasks.getByName("processResources"))
+        dependsOn(makePropsFileJvm)
+      }
     }
 
     testRuns.getByName("test") {
@@ -110,6 +124,7 @@ kotlin {
       dependsOn(commonMain)
 
       dependencies {
+        implementation(kotlin("stdlib-jdk8"))
         implementation("com.github.ajalt:mordant:1.2.0")
         implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.14.1")
       }
@@ -131,6 +146,7 @@ kotlin {
 
     val jsMain by getting {
       dependsOn(commonMain)
+      languageSettings.optIn("kotlin.js.ExperimentalJsExport")
     }
 
     all {
