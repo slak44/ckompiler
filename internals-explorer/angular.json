@@ -40,7 +40,10 @@
                 "node_modules"
               ]
             },
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "@ckompiler/ckompiler"
+            ]
           },
           "configurations": {
             "production": {
