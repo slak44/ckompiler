@@ -3,6 +3,7 @@ package slak.ckompiler.lexer
 import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.FSPath
+import kotlin.js.JsExport
 
 typealias CLIDefines = Map<String, String>
 
@@ -11,6 +12,7 @@ typealias CLIDefines = Map<String, String>
  *
  * C standard: 5.1.1.2
  */
+@JsExport
 class Preprocessor(
     sourceText: String,
     srcFileName: SourceFileName,
@@ -102,15 +104,14 @@ private val conditionalFeatureMacros: CLIDefines = mapOf(
 )
 
 /** @see translationPhase1And2 */
-private val trigraphs = mapOf("??=" to "#", "??(" to "[", "??/" to "", "??)" to "]", "??'" to "^",
-    "??<" to "}", "??!" to "|", "??>" to "}", "??-" to "~", "\\\n" to "")
-
-/** @see translationPhase1And2 */
-private fun escapeTrigraph(t: String) = "\\${t[0]}\\${t[1]}\\${t[2]}"
+private val trigraphs = mapOf(
+    "??=" to "#", "??(" to "[", "??/" to "", "??)" to "]", "??'" to "^",
+    "??<" to "}", "??!" to "|", "??>" to "}", "??-" to "~", "\\\n" to ""
+)
 
 /** @see translationPhase1And2 */
 private val trigraphPattern = Regex("(" +
-    (trigraphs.keys - "\\\n").joinToString("|") { escapeTrigraph(it) } + "|\\\\\n)")
+    (trigraphs.keys - "\\\n").joinToString("|") { regexEscape(it) } + "|\\\\\n)")
 
 /**
  * The character set mapping is implicit via use of [String].

@@ -9,6 +9,7 @@ import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator
 import slak.ckompiler.parser.BinaryOperators.*
 import slak.ckompiler.parser.UnaryOperators.*
+import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
 
@@ -101,6 +102,7 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
  * C standard: 6.2.5, 6.2.5.0.26
  */
 @Serializable(with = TypeNameSerializer::class)
+@JsExport
 sealed class TypeName {
   abstract val typeQuals: TypeQualifierList
   abstract val isStorageRegister: Boolean
@@ -176,6 +178,7 @@ data class QualifiedType(
   }
 }
 
+@JsExport
 data class FunctionType(
     val returnType: TypeName,
     val params: List<TypeName>,
@@ -631,7 +634,7 @@ fun IDebugHandler.validateAddressOf(expr: UnaryExpression) {
       errorOn(expr)
     }
   }
-  if (expr.operand.valueType == Expression.ValueType.RVALUE) {
+  if (expr.operand.valueType == ValueType.RVALUE) {
     diagnostic {
       id = DiagnosticId.ADDRESS_REQUIRES_LVALUE
       formatArgs(expr.type.toString())
@@ -829,7 +832,7 @@ fun IDebugHandler.validateAssignment(pct: Punctuator, lhs: Expression, rhs: Expr
       errorOn(pct)
       errorOn(lhs)
     }
-    lhs.valueType != Expression.ValueType.MODIFIABLE_LVALUE -> diagnostic {
+    lhs.valueType != ValueType.MODIFIABLE_LVALUE -> diagnostic {
       id = DiagnosticId.EXPRESSION_NOT_ASSIGNABLE
       errorOn(pct)
       errorOn(lhs)
@@ -1074,7 +1077,7 @@ fun IDebugHandler.checkIncDec(operand: Expression, isDec: Boolean, range: Source
     }
     return ErrorType
   }
-  if (operand.valueType != Expression.ValueType.MODIFIABLE_LVALUE) {
+  if (operand.valueType != ValueType.MODIFIABLE_LVALUE) {
     diagnostic {
       id = DiagnosticId.INVALID_MOD_LVALUE_INC_DEC
       errorOn(operand)

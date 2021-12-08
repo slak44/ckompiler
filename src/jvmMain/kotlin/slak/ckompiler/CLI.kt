@@ -350,8 +350,6 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     return File.createTempFile(prefix, suffix, File(System.getProperty("java.io.tmpdir")))
   }
 
-  private fun List<Diagnostic>.errors() = filter { it.id.kind == DiagnosticKind.ERROR }
-
   private fun List<FunctionDefinition>.findNamedFunction(funcName: String): FunctionDefinition? {
     val function = firstOrNull { it.name == funcName }
     if (function == null) {

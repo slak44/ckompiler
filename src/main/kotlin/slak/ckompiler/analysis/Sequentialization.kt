@@ -39,7 +39,7 @@ private fun SequentializationContext.makeAssignmentTarget(
     modified: Expression,
     modExpr: Expression
 ): Expression {
-  require(modified.valueType != Expression.ValueType.RVALUE) {
+  require(modified.valueType != ValueType.RVALUE) {
     "Assignment target can't be an rvalue"
   }
   return if (modified is TypedIdentifier) {

@@ -5,6 +5,7 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.lexer.Keywords
+import kotlin.js.JsExport
 
 /**
  * Stores the data of a scoped `typedef`.

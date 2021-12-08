@@ -18,12 +18,25 @@ application {
   applicationDistribution.from(File(rootDir, "stdlib/include")).into(includePath)
 }
 
-val makePropsFile: Task by tasks.creating {
+val propsFileContents = "{ \"version\": \"$version\", \"include-path\": \"/$includePath\" }"
+
+fun buildPath(file: File, vararg segments: String): File {
+  return File(file, segments.joinToString(System.getProperty("file.separator")))
+}
+
+val makePropsFileJvm: Task by tasks.creating {
   doLast {
-    val json = "{ \"version\": \"$version\", \"include-path\": \"/$includePath\" }"
     val res = File(buildDir, "resources")
     res.mkdirs()
-    File(res, "ckompiler.json").writeText(json)
+    File(res, "ckompiler.json").writeText(propsFileContents)
+  }
+}
+
+val makePropsFileJs: Task by tasks.creating {
+  doLast {
+    val res = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin")
+    res.mkdirs()
+    File(res, "ckompiler.json").writeText(propsFileContents)
   }
 }
 
@@ -32,14 +45,22 @@ tasks.installDist {
   if (installPath.isNotBlank()) destinationDir = File(installPath)
 }
 
+val setNoCheck: Task by tasks.creating {
+  doLast {
+    val tsDefinitions = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin", "ckompiler.d.ts")
+    val newContents = "// @ts-nocheck\n\n" + tsDefinitions.readText()
+    tsDefinitions.writeText(newContents)
+  }
+}
+
 kotlin {
   jvm {
     val main by compilations.getting {
-      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFile)
+      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFileJvm)
     }
 
     val test by compilations.getting {
-      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFile)
+      tasks.getByName(processResourcesTaskName).dependsOn(makePropsFileJvm)
     }
 
     testRuns.getByName("test") {
@@ -56,6 +77,8 @@ kotlin {
   js(IR) {
     browser {
       webpackTask {
+        dependsOn(makePropsFileJs)
+        dependsOn(setNoCheck)
       }
     }
     binaries.executable()
@@ -108,6 +131,10 @@ kotlin {
 
     val jsMain by getting {
       dependsOn(commonMain)
+    }
+
+    all {
+      languageSettings.optIn("kotlin.js.ExperimentalJsExport")
     }
   }
 }

@@ -174,7 +174,7 @@ private fun IRBuilderContext.buildLValuePtr(lvalue: Expression): IRValue = when 
 }
 
 private fun IRBuilderContext.buildAssignment(lhs: Expression, rhs: IRValue): IRInstruction {
-  require(lhs.valueType != Expression.ValueType.RVALUE)
+  require(lhs.valueType != ValueType.RVALUE)
   return when (lhs) {
     is TypedIdentifier -> {
       MoveInstr(Variable(lhs), rhs)

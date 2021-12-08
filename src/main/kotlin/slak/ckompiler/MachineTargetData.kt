@@ -2,6 +2,7 @@ package slak.ckompiler
 
 import slak.ckompiler.lexer.CLIDefines
 import slak.ckompiler.parser.*
+import kotlin.js.JsExport
 
 /**
  * Machine and ISA-dependent information. Used to generate stuff like stdint/stddef, for sizeof, or
@@ -9,6 +10,7 @@ import slak.ckompiler.parser.*
  *
  * FIXME: handle alignment requirements
  */
+@JsExport
 data class MachineTargetData(
     val ptrSizeBytes: Int,
     val shortSizeBytes: Int,

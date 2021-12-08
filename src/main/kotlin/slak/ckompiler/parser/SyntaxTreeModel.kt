@@ -3,7 +3,9 @@ package slak.ckompiler.parser
 import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
-import slak.ckompiler.parser.Expression.ValueType.*
+import slak.ckompiler.parser.ValueType.*
+import kotlin.js.JsExport
+import kotlin.js.JsName
 import kotlin.jvm.JvmName
 
 private val logger = KotlinLogging.logger {}
@@ -17,6 +19,7 @@ val BlockItem.decl get() = (this as DeclarationItem).declaration
  * Base class of all nodes from an Abstract Syntax Tree.
  * @param isRoot set to true if this [ASTNode] is the root node for the tree
  */
+@JsExport
 sealed class ASTNode(val isRoot: Boolean = false) : SourcedRange {
   private var lateTokenRange: IntRange? = null
 
@@ -57,7 +60,7 @@ fun <T : ASTNode> T.withRange(range: SourcedRange): T {
 }
 
 /** Represents a leaf node of an AST (ie an [ASTNode] that is a parent to nobody). */
-interface Terminal
+sealed interface Terminal
 
 /**
  * Signals an error condition in the parser. If some part of the grammar cannot be parsed, an
@@ -96,6 +99,7 @@ private object StringClassNameImpl : StringClassName {
 }
 
 /** The root node of a translation unit. Stores top-level [ExternalDeclaration]s. */
+@JsExport
 class RootNode(val scope: LexicalScope) : ASTNode(isRoot = true) {
   private val declarations = mutableListOf<ExternalDeclaration>()
   val decls: List<ExternalDeclaration> = declarations
@@ -106,14 +110,29 @@ class RootNode(val scope: LexicalScope) : ASTNode(isRoot = true) {
 }
 
 /** C standard: A.2.3, 6.8 */
+@JsExport
 sealed class Statement : ASTNode()
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorStatement : Statement(), ErrorNode by ErrorNodeImpl
 
 /** The standard says no-ops are expressions, but here it is represented separately. */
+@JsExport
 class Noop : Statement(), Terminal {
   override fun toString() = "<no-op>"
+  override fun equals(other: Any?): Boolean = super.equals(other)
+  override fun hashCode(): Int = super.hashCode()
+}
+
+/**
+ * [LVALUE] designates an object.
+ * [MODIFIABLE_LVALUE] is an [LVALUE] with a bunch of restrictions on type.
+ * [RVALUE] is the value of an expression (see note 64).
+ *
+ * C standard: 6.3.2.1.0.1, note 64
+ */
+enum class ValueType {
+  LVALUE, MODIFIABLE_LVALUE, RVALUE
 }
 
 /**
@@ -121,24 +140,15 @@ class Noop : Statement(), Terminal {
  *
  * C standard: A.2.3, 6.8.3
  */
+@JsExport
 sealed class Expression : Statement() {
   /** The [TypeName] of this expression's result. */
   abstract val type: TypeName
   /** @see ValueType */
   abstract val valueType: ValueType
-
-  /**
-   * [LVALUE] designates an object.
-   * [MODIFIABLE_LVALUE] is an [LVALUE] with a bunch of restrictions on type.
-   * [RVALUE] is the value of an expression (see note 64).
-   *
-   * C standard: 6.3.2.1.0.1, note 64
-   */
-  enum class ValueType {
-    LVALUE, MODIFIABLE_LVALUE, RVALUE
-  }
 }
 
+@JsExport
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
 class ErrorExpression : ExprConstantNode(), ErrorNode by ErrorNodeImpl {
   override val type = ErrorType
@@ -147,7 +157,7 @@ class ErrorExpression : ExprConstantNode(), ErrorNode by ErrorNodeImpl {
 /**
  * C standard: 6.3.2.1.0.1
  */
-private fun valueTypeOf(type: TypeName): Expression.ValueType {
+private fun valueTypeOf(type: TypeName): ValueType {
   val isArrayPtr = type is PointerType && type.decayedFrom is ArrayType
   return if (type is PointerType && type.decayedFrom is FunctionType) {
     // Function designators are lvalues
@@ -172,10 +182,12 @@ private fun valueTypeOf(type: TypeName): Expression.ValueType {
  * same name (name shadowing). Creating other instances is fine as long as they are not leaked to
  * the rest of the AST.
  */
+@JsExport
 data class TypedIdentifier(
     override val name: String,
     override val type: TypeName
 ) : Expression(), OrdinaryIdentifier, Terminal {
+  @JsName("TypedIdentifierDecl")
   constructor(
       ds: DeclarationSpecifier,
       decl: NamedDeclarator
@@ -194,6 +206,7 @@ data class TypedIdentifier(
    * Makes a copy of this [TypedIdentifier], that has the same [id].
    * Useful for having a different [range].
    */
+  @JsName("copyWithId")
   fun copy(): TypedIdentifier {
     val other = TypedIdentifier(name, type)
     other.id = id
@@ -223,6 +236,7 @@ data class TypedIdentifier(
   }
 }
 
+@JsExport
 data class TernaryConditional(
     val cond: Expression,
     val success: Expression,
@@ -246,6 +260,7 @@ data class TernaryConditional(
  * @param calledExpr must have [Expression.type] be [FunctionType] (or [PointerType] to a
  * [FunctionType])
  */
+@JsExport
 data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) : Expression() {
   override val type = calledExpr.type.asCallable()?.returnType
       ?: logger.throwICE("Attempt to call non-function") { "$calledExpr($args)" }
@@ -257,6 +272,7 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
  * "unary-operator cast-expression" part of it.
  * C standard: A.2.1
  */
+@JsExport
 data class UnaryExpression(
     val op: UnaryOperators,
     val operand: Expression,
@@ -281,6 +297,7 @@ data class UnaryExpression(
  * @param sizeOfWho which type to take the size of
  * @param type the resulting type of the `sizeof` expression, is `size_t` for the current target
  */
+@JsExport
 data class SizeofTypeName(
     val sizeOfWho: TypeName,
     override val type: UnqualifiedTypeName
@@ -291,6 +308,7 @@ data class SizeofTypeName(
 /**
  * Represents ++x, x++, --x and x--.
  */
+@JsExport
 data class IncDecOperation(
     val expr: Expression,
     val isDecrement: Boolean,
@@ -313,6 +331,7 @@ data class IncDecOperation(
 /**
  * Represents `a.b` and `a->b`.
  */
+@JsExport
 data class MemberAccessExpression(
     val target: Expression,
     val accessOperator: Punctuator,
@@ -333,6 +352,7 @@ data class MemberAccessExpression(
 }
 
 /** Represents a binary operation in an expression. */
+@JsExport
 data class BinaryExpression(
     val op: BinaryOperators,
     val lhs: Expression,
@@ -345,6 +365,7 @@ data class BinaryExpression(
   override val valueType = RVALUE
 }
 
+@JsExport
 data class ArraySubscript(
     val subscripted: Expression,
     val subscript: Expression,
@@ -363,6 +384,7 @@ data class ArraySubscript(
       }
 }
 
+@JsExport
 data class CastExpression(val target: Expression, override val type: TypeName) : Expression() {
   override fun toString() = "($type) $target"
 
@@ -374,14 +396,17 @@ data class CastExpression(val target: Expression, override val type: TypeName) :
   override val valueType = RVALUE
 }
 
+@JsExport
 sealed class ExprConstantNode : Expression(), Terminal {
   override val valueType: ValueType = RVALUE
 }
 
+@JsExport
 class VoidExpression : ExprConstantNode() {
   override val type = VoidType
 }
 
+@JsExport
 data class IntegerConstantNode(
     val value: Long,
     val suffix: IntegralSuffix = IntegralSuffix.NONE
@@ -398,6 +423,7 @@ data class IntegerConstantNode(
   override fun toString() = "$value$suffix"
 }
 
+@JsExport
 data class FloatingConstantNode(
     val value: Double,
     val suffix: FloatingSuffix
@@ -421,6 +447,7 @@ data class FloatingConstantNode(
  *
  * C standard: 6.4.4.4.0.10
  */
+@JsExport
 data class CharacterConstantNode(
     val char: Int,
     val encoding: CharEncoding
@@ -436,6 +463,7 @@ data class CharacterConstantNode(
  *
  * C standard: 6.4.5
  */
+@JsExport
 data class StringLiteralNode(
     val string: String,
     val encoding: StringEncoding
@@ -453,6 +481,7 @@ data class StringLiteralNode(
  *
  * FIXME: alignment specifier (A.2.2/6.7.5)
  */
+@JsExport
 data class DeclarationSpecifier(
     val storageClass: Keyword? = null,
     val threadLocal: Keyword? = null,
@@ -486,9 +515,11 @@ data class DeclarationSpecifier(
   }
 }
 
+@JsExport
 sealed class DeclaratorSuffix : ASTNode()
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
+@JsExport
 class ErrorSuffix : DeclaratorSuffix(), ErrorNode by ErrorNodeImpl
 
 /**
@@ -496,6 +527,7 @@ class ErrorSuffix : DeclaratorSuffix(), ErrorNode by ErrorNodeImpl
  *
  * C standard: 6.7.6.0.1
  */
+@JsExport
 data class ParameterTypeList(
     val params: List<ParameterDeclaration>,
     val scope: LexicalScope,
@@ -508,6 +540,7 @@ data class ParameterTypeList(
   }
 }
 
+@JsExport
 data class ParameterDeclaration(
     val declSpec: DeclarationSpecifier,
     val declarator: Declarator
@@ -515,7 +548,9 @@ data class ParameterDeclaration(
   override fun toString() = "$declSpec $declarator"
 }
 
+@JsExport
 data class IdentifierNode(val name: String) : ASTNode(), Terminal {
+  @JsName("IdentifierNodeLexerIdentifier")
   constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)
 
   override fun toString() = name
@@ -554,6 +589,7 @@ typealias DeclaratorSuffixTier = List<DeclaratorSuffix>
  * Common superclass for "declarators". This exists in an effort to unify what the standard calls
  * `declarator` and `abstract-declarator`.
  */
+@JsExport
 sealed class Declarator : ASTNode() {
   abstract val indirection: List<Indirection>
   abstract val suffixes: List<DeclaratorSuffixTier>
@@ -577,6 +613,7 @@ sealed class Declarator : ASTNode() {
 }
 
 /** C standard: 6.7.6 */
+@JsExport
 data class NamedDeclarator(
     val name: IdentifierNode,
     override val indirection: List<Indirection>,
@@ -599,6 +636,7 @@ data class NamedDeclarator(
 }
 
 /** C standard: 6.7.7.0.1 */
+@JsExport
 data class AbstractDeclarator(
     override val indirection: List<Indirection>,
     override val suffixes: List<DeclaratorSuffixTier>
@@ -618,6 +656,7 @@ data class AbstractDeclarator(
 }
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
+@JsExport
 class ErrorDeclarator : Declarator(), ErrorNode by ErrorNodeImpl {
   override val suffixes = emptyList<DeclaratorSuffixTier>()
   override val indirection = emptyList<Indirection>()
@@ -635,10 +674,12 @@ fun Declarator.alterArraySize(newSize: ArrayTypeSize): Declarator {
   }.withRange(this)
 }
 
+@JsExport
 sealed class Initializer : ASTNode() {
   abstract val assignTok: Punctuator
 }
 
+@JsExport
 data class ExpressionInitializer(
     val expr: Expression,
     override val assignTok: Punctuator
@@ -650,12 +691,15 @@ data class ExpressionInitializer(
   override fun toString() = expr.toString()
 }
 
+@JsExport
 sealed class Designator : ASTNode()
 
+@JsExport
 data class DotDesignator(val identifier: IdentifierNode) : Designator() {
   override fun toString() = ".$identifier"
 }
 
+@JsExport
 data class ArrayDesignator(val index: IntegerConstantNode) : Designator() {
   override fun toString() = "[$index]"
 }
@@ -669,6 +713,7 @@ typealias DesignationKey = Pair<TypeName, DesignationIndices>
 /**
  * The indices array is of the same length as the designator array, and indexes into [designatedType]'s sub-objects.
  */
+@JsExport
 data class Designation(
     val designators: List<Designator>,
     val designatedType: TypeName,
@@ -682,6 +727,7 @@ data class Designation(
   override fun toString() = designators.joinToString("")
 }
 
+@JsExport
 data class DesignatedInitializer(val designation: Designation?, val initializer: Initializer) : ASTNode() {
   /**
    * This is equivalent to [Designation.designatedType] + [Designation.designationIndices].
@@ -700,6 +746,7 @@ data class DesignatedInitializer(val designation: Designation?, val initializer:
 }
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
+@JsExport
 class ErrorDeclInitializer(override val assignTok: Punctuator) : Initializer(), ErrorNode by ErrorNodeImpl
 
 /**
@@ -709,6 +756,7 @@ class ErrorDeclInitializer(override val assignTok: Punctuator) : Initializer(), 
  *
  * C standard: 6.7.9
  */
+@JsExport
 data class InitializerList(
     val initializers: List<DesignatedInitializer>,
     override val assignTok: Punctuator,
@@ -724,8 +772,10 @@ data class InitializerList(
   }
 }
 
+@JsExport
 data class StructMember(val declarator: Declarator, val constExpr: Expression?) : ASTNode()
 
+@JsExport
 data class StructDeclaration(
     val declSpecs: DeclarationSpecifier,
     val declaratorList: List<StructMember>
@@ -734,6 +784,7 @@ data class StructDeclaration(
 /**
  * C standard: 6.7.2.2, 6.7.2.3
  */
+@JsExport
 data class Enumerator(
     val ident: IdentifierNode,
     val value: IntegerConstantNode?,
@@ -754,10 +805,13 @@ data class Enumerator(
  *
  * C standard: 6.7.6.2
  */
+@JsExport
 sealed class ArrayTypeSize : DeclaratorSuffix()
 
+@JsExport
 sealed class VariableArraySize : ArrayTypeSize()
 
+@JsExport
 sealed class ConstantArraySize : ArrayTypeSize() {
   abstract val size: ExprConstantNode
 
@@ -773,6 +827,7 @@ sealed class ConstantArraySize : ArrayTypeSize() {
  * 3. If on a local declarator, it might be a constant size set by the initializer list
  * 4. Otherwise, an error
  */
+@JsExport
 object NoSize : ArrayTypeSize() {
   override fun toString() = "[]"
 }
@@ -786,6 +841,7 @@ object NoSize : ArrayTypeSize() {
  * @param typeQuals the `type-qualifier`s before the *: `int v[const *];`
  * @param vlaStar (diagnostic data) the * in the square brackets: `int v[*];`
  */
+@JsExport
 data class UnconfinedVariableSize(
     val typeQuals: TypeQualifierList,
     val vlaStar: Punctuator
@@ -803,6 +859,7 @@ data class UnconfinedVariableSize(
  * @param typeQuals the `type-qualifier`s between the square brackets
  * @param isStatic if the keyword "static" appears between the square brackets
  */
+@JsExport
 data class FunctionParameterSize(
     val typeQuals: TypeQualifierList,
     val isStatic: Boolean,
@@ -829,6 +886,7 @@ data class FunctionParameterSize(
  * @param typeQuals the `type-qualifier`s between the square brackets
  * @param isStatic if the keyword "static" appears between the square brackets
  */
+@JsExport
 data class FunctionParameterConstantSize(
     val typeQuals: TypeQualifierList,
     val isStatic: Boolean,
@@ -843,6 +901,7 @@ data class FunctionParameterConstantSize(
  * Describes an array type whose size is specified by [expr]. A non-constant [expr] describes a VLA,
  * which this implementation does **not support**.
  */
+@JsExport
 data class ExpressionSize(val expr: Expression) : VariableArraySize() {
   override fun toString() = "$expr"
 }
@@ -851,11 +910,13 @@ data class ExpressionSize(val expr: Expression) : VariableArraySize() {
  * Describes an array type whose size is exactly [size].
  * @param size result of integer constant expression
  */
+@JsExport
 data class ConstantSize(override val size: ExprConstantNode) : ConstantArraySize() {
   override fun toString() = "[$size]"
 }
 
 /** C standard: A.2.4 */
+@JsExport
 sealed class ExternalDeclaration : ASTNode()
 
 /**
@@ -863,6 +924,7 @@ sealed class ExternalDeclaration : ASTNode()
  *
  * C standard: A.2.2
  */
+@JsExport
 data class Declaration(
     val declSpecs: DeclarationSpecifier,
     val declaratorList: List<Pair<Declarator, Initializer?>>
@@ -900,6 +962,7 @@ data class Declaration(
 }
 
 /** C standard: A.2.4 */
+@JsExport
 data class FunctionDefinition(
     val funcIdent: TypedIdentifier,
     val functionType: FunctionType,
@@ -938,12 +1001,15 @@ data class FunctionDefinition(
 }
 
 /** C standard: A.2.3, 6.8.2 */
+@JsExport
 sealed class BlockItem : ASTNode()
 
+@JsExport
 data class DeclarationItem(val declaration: Declaration) : BlockItem() {
   override fun toString() = declaration.toString()
 }
 
+@JsExport
 data class StatementItem(val statement: Statement) : BlockItem() {
   override fun toString() = statement.toString()
 }
@@ -956,6 +1022,7 @@ data class StatementItem(val statement: Statement) : BlockItem() {
  * @param scope the [LexicalScope] of this block. If this is the block for a function definition,
  * this is a reference to the function's scope, that is pre-filled with the function arguments.
  */
+@JsExport
 data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope) : Statement() {
   override fun toString(): String {
     val stuff = items.joinToString(",") { "\n\t$it" }
@@ -964,6 +1031,7 @@ data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope
 }
 
 /** C standard: 6.8.4.1 */
+@JsExport
 data class IfStatement(
     val cond: Expression,
     val success: Statement,
@@ -971,42 +1039,53 @@ data class IfStatement(
 ) : Statement()
 
 /** C standard: 6.8.4.2 */
+@JsExport
 data class SwitchStatement(val controllingExpr: Expression, val statement: Statement) : Statement()
 
 /** C standard: 6.8.1 */
+@JsExport
 sealed class StatementWithLabel : Statement() {
   /** Labeled statement. */
   abstract val statement: Statement
 }
 
 /** C standard: 6.8.1 */
+@JsExport
 data class LabeledStatement(
     val label: IdentifierNode,
     override val statement: Statement
 ) : StatementWithLabel()
 
 /** C standard: 6.8.1 */
+@JsExport
 data class CaseStatement(
     val caseExpr: ExprConstantNode,
     override val statement: Statement
 ) : StatementWithLabel()
 
 /** C standard: 6.8.1 */
+@JsExport
 data class DefaultStatement(override val statement: Statement) : StatementWithLabel()
 
 /** C standard: 6.8.5.1 */
+@JsExport
 data class WhileStatement(val cond: Expression, val loopable: Statement) : Statement()
 
 /** C standard: 6.8.5.2 */
+@JsExport
 data class DoWhileStatement(val cond: Expression, val loopable: Statement) : Statement()
 
+@JsExport
 sealed class ForInitializer : ASTNode()
 
+@JsExport
 class EmptyInitializer : ForInitializer(), Terminal, StringClassName by StringClassNameImpl
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
+@JsExport
 class ErrorInitializer : ForInitializer(), ErrorNode by ErrorNodeImpl
 
+@JsExport
 data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   init {
     withRange(value)
@@ -1015,6 +1094,7 @@ data class DeclarationInitializer(val value: Declaration) : ForInitializer() {
   override fun toString() = value.toString()
 }
 
+@JsExport
 data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
   init {
     withRange(value)
@@ -1022,6 +1102,7 @@ data class ForExpressionInitializer(val value: Expression) : ForInitializer() {
 }
 
 /** C standard: 6.8.5.3 */
+@JsExport
 data class ForStatement(
     val init: ForInitializer,
     val cond: Expression?,
@@ -1031,13 +1112,17 @@ data class ForStatement(
 ) : Statement()
 
 /** C standard: 6.8.6.2 */
+@JsExport
 class ContinueStatement : Statement(), Terminal, StringClassName by StringClassNameImpl
 
 /** C standard: 6.8.6.3 */
+@JsExport
 class BreakStatement : Statement(), Terminal, StringClassName by StringClassNameImpl
 
 /** C standard: 6.8.6.1 */
+@JsExport
 data class GotoStatement(val identifier: IdentifierNode) : Statement()
 
 /** C standard: 6.8.6.4 */
+@JsExport
 data class ReturnStatement(val expr: Expression?) : Statement()

@@ -4,6 +4,7 @@ import mu.KotlinLogging
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.throwICE
+import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
 
@@ -12,6 +13,7 @@ private val logger = KotlinLogging.logger {}
  * @param consumedChars how many characters long was the token in the SOURCE (ie the data in the
  * token might appear shorter or longer than it was in the source)
  */
+@JsExport
 sealed class LexicalToken(val consumedChars: Int) : SourcedRange {
   override var sourceFileName: SourceFileName? = null
   override var sourceText: String? = null

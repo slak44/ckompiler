@@ -5,6 +5,7 @@ import mu.KotlinLogging
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
+import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
 
@@ -12,6 +13,7 @@ private val logger = KotlinLogging.logger {}
  * Common superclass of all IR instructions.
  */
 @Serializable
+@JsExport
 sealed class IRInstruction {
   abstract val result: LoadableValue
 }
@@ -21,6 +23,7 @@ sealed class IRInstruction {
  * to choose from; that is, it stores which values come from which predecessor [BasicBlock].
  */
 @Serializable(with = PhiInstructionSerializer::class)
+@JsExport
 data class PhiInstruction(
     val variable: Variable,
     val incoming: Map<BasicBlock, Variable>
@@ -34,6 +37,7 @@ data class PhiInstruction(
  * Read the value pointed at by [loadFrom], and store it in [result].
  */
 @Serializable
+@JsExport
 data class LoadMemory(
     override val result: LoadableValue,
     val loadFrom: IRValue
@@ -53,6 +57,7 @@ data class LoadMemory(
  * [MemoryLocation].
  */
 @Serializable
+@JsExport
 data class StoreMemory(val storeTo: IRValue, val value: IRValue) : IRInstruction() {
   init {
     if (storeTo !is MemoryLocation) {
@@ -69,6 +74,7 @@ data class StoreMemory(val storeTo: IRValue, val value: IRValue) : IRInstruction
  * Stores the [value] in [result].
  */
 @Serializable
+@JsExport
 data class MoveInstr(override val result: LoadableValue, val value: IRValue) : IRInstruction() {
   override fun toString() = "move $result = $value"
 }
@@ -78,6 +84,7 @@ data class MoveInstr(override val result: LoadableValue, val value: IRValue) : I
  * is impossible.
  */
 @Serializable
+@JsExport
 data class StructuralCast(
     override val result: LoadableValue,
     val operand: IRValue
@@ -90,6 +97,7 @@ data class StructuralCast(
  * data in memory.
  */
 @Serializable
+@JsExport
 data class ReinterpretCast(
     override val result: LoadableValue,
     val operand: IRValue
@@ -103,6 +111,7 @@ data class ReinterpretCast(
  * be linked in later).
  */
 @Serializable
+@JsExport
 data class NamedCall(
     override val result: LoadableValue,
     val name: NamedConstant,
@@ -115,6 +124,7 @@ data class NamedCall(
  * A call to the function specified by the function pointer stored in [callable].
  */
 @Serializable
+@JsExport
 data class IndirectCall(
     override val result: LoadableValue,
     val callable: VirtualRegister,
@@ -164,6 +174,7 @@ enum class Comparisons(val operator: String) {
  * [slak.ckompiler.parser.IntegralType].
  */
 @Serializable
+@JsExport
 sealed class IntegralInstruction : IRInstruction()
 
 @Serializable
@@ -177,6 +188,7 @@ enum class IntegralBinaryOps(val operator: String) {
 }
 
 @Serializable
+@JsExport
 data class IntBinary(
     override val result: LoadableValue,
     val op: IntegralBinaryOps,
@@ -187,6 +199,7 @@ data class IntBinary(
 }
 
 @Serializable
+@JsExport
 data class IntCmp(
     override val result: LoadableValue,
     override val lhs: IRValue,
@@ -200,6 +213,7 @@ data class IntCmp(
  * Flip bits: ~
  */
 @Serializable
+@JsExport
 data class IntInvert(
     override val result: LoadableValue,
     val operand: IRValue
@@ -208,6 +222,7 @@ data class IntInvert(
 }
 
 @Serializable
+@JsExport
 data class IntNeg(
     override val result: LoadableValue,
     val operand: IRValue
@@ -220,6 +235,7 @@ data class IntNeg(
  * [slak.ckompiler.parser.FloatingType].
  */
 @Serializable
+@JsExport
 sealed class FloatingPointInstruction : IRInstruction()
 
 @Serializable
@@ -231,6 +247,7 @@ enum class FloatingBinaryOps(val operator: String) {
 }
 
 @Serializable
+@JsExport
 data class FltBinary(
     override val result: LoadableValue,
     val op: FloatingBinaryOps,
@@ -241,6 +258,7 @@ data class FltBinary(
 }
 
 @Serializable
+@JsExport
 data class FltCmp(
     override val result: LoadableValue,
     override val lhs: IRValue,
@@ -251,6 +269,7 @@ data class FltCmp(
 }
 
 @Serializable
+@JsExport
 data class FltNeg(
     override val result: LoadableValue,
     val operand: IRValue

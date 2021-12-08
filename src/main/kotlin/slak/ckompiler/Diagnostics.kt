@@ -3,6 +3,7 @@ package slak.ckompiler
 import mu.KLogger
 import mu.Marker
 import slak.ckompiler.DiagnosticKind.*
+import kotlin.js.JsExport
 import kotlin.math.min
 
 expect class DiagnosticColors(useColors: Boolean) {
@@ -265,6 +266,9 @@ operator fun SourcedRange.rangeTo(other: SourcedRange): SourcedRange {
   return combineSources(range, this, other)
 }
 
+fun List<Diagnostic>.errors() = filter { it.id.kind == ERROR }
+
+@JsExport
 data class Diagnostic(
     val id: DiagnosticId,
     val messageFormatArgs: List<Any>,
@@ -408,6 +412,7 @@ interface IDebugHandler {
  * This class handles [Diagnostic]s for a particular source (eg [slak.ckompiler.parser.Parser]).
  * It is intended for use with delegation via [IDebugHandler].
  */
+@JsExport
 class DebugHandler(
     private val diagSource: String,
     private val srcFileName: SourceFileName,

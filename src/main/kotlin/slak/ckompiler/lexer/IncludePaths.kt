@@ -2,7 +2,9 @@ package slak.ckompiler.lexer
 
 import slak.ckompiler.BuildProperties
 import slak.ckompiler.FSPath
+import kotlin.js.JsExport
 
+@JsExport
 data class IncludePaths(val general: List<FSPath>, val system: List<FSPath>, val users: List<FSPath>) {
 
   /**

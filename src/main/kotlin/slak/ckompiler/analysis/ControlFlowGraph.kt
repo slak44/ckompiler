@@ -4,6 +4,7 @@ import mu.KMarkerFactory.getMarker
 import mu.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
+import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
 
@@ -24,6 +25,7 @@ typealias DefUseChains = Map<Variable, List<Label>>
  * 8. [insertPhiFunctions]
  * 9. [VariableRenamer.variableRenaming]
  */
+@JsExport
 class CFG(
     val f: FunctionDefinition,
     val targetData: MachineTargetData,

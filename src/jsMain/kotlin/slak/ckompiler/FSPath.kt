@@ -1,5 +1,6 @@
 package slak.ckompiler
 
+@JsExport
 actual class FSPath actual constructor(path: String) {
   actual val isAbsolute: Boolean
     get() = TODO("not implemented")
@@ -16,6 +17,7 @@ actual class FSPath actual constructor(path: String) {
     TODO("not implemented")
   }
 
+  @JsName("FSPathChild")
   actual constructor(parent: FSPath, child: String) : this(TODO()) {
     TODO("not implemented")
   }

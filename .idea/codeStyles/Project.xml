@@ -8,6 +8,9 @@
     </option>
     <option name="LINE_SEPARATOR" value="&#10;" />
     <option name="SOFT_MARGINS" value="120" />
+    <JSCodeStyleSettings version="0">
+      <option name="USE_CHAINED_CALLS_GROUP_INDENTS" value="true" />
+    </JSCodeStyleSettings>
     <JetCodeStyleSettings>
       <option name="CONTINUATION_INDENT_IN_PARAMETER_LISTS" value="true" />
       <option name="CONTINUATION_INDENT_IN_ARGUMENT_LISTS" value="true" />
@@ -23,6 +26,7 @@
     <TypeScriptCodeStyleSettings version="0">
       <option name="SPACES_WITHIN_OBJECT_LITERAL_BRACES" value="true" />
       <option name="SPACES_WITHIN_IMPORTS" value="true" />
+      <option name="USE_CHAINED_CALLS_GROUP_INDENTS" value="true" />
     </TypeScriptCodeStyleSettings>
     <codeStyleSettings language="HTML">
       <indentOptions>
@@ -50,9 +54,10 @@
       <option name="SOFT_MARGINS" value="80,120" />
     </codeStyleSettings>
     <codeStyleSettings language="TypeScript">
+      <option name="ALIGN_MULTILINE_CHAINED_METHODS" value="true" />
+      <option name="ALIGN_MULTILINE_PARAMETERS" value="false" />
       <indentOptions>
         <option name="INDENT_SIZE" value="2" />
-        <option name="CONTINUATION_INDENT_SIZE" value="2" />
         <option name="TAB_SIZE" value="2" />
       </indentOptions>
     </codeStyleSettings>
