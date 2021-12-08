@@ -8,6 +8,7 @@ import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.error
 import slak.ckompiler.parser.Expression
+import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
 
@@ -128,11 +129,12 @@ private fun String.unescape(): String =
  * ckompiler --cfg-mode /tmp/file.c 2> /dev/null | dot -Tpng > /tmp/CFG.png && xdg-open /tmp/CFG.png
  * ```
  */
+@JsExport
 fun createGraphviz(
     graph: CFG,
     sourceCode: String,
     reachableOnly: Boolean,
-    print: CodePrintingMethods,
+    print: CodePrintingMethods = CodePrintingMethods.IR_TO_STRING,
     targetOpts: X64TargetOpts = X64TargetOpts.defaults
 ): String {
   val edges = graph.graphEdges()
