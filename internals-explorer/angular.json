@@ -30,19 +30,26 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "src/favicon.ico",
-              "src/assets"
+              "src/assets",
+              {
+                "glob": "*(graphvizlib.wasm|index.min.js)",
+                "input": "node_modules/@hpcc-js/wasm/dist/",
+                "output": "/assets/graphviz-wasm"
+              }
             ],
             "styles": [
               "src/styles.scss"
             ],
             "stylePreprocessorOptions": {
               "includePaths": [
-                "node_modules"
+                "node_modules",
+                "src/style"
               ]
             },
             "scripts": [],
             "allowedCommonJsDependencies": [
-              "@ckompiler/ckompiler"
+              "@ckompiler/ckompiler",
+              "d3-graphviz"
             ]
           },
           "configurations": {

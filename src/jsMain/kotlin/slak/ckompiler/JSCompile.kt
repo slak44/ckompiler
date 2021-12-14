@@ -1,6 +1,7 @@
 package slak.ckompiler
 
 import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
@@ -68,4 +69,15 @@ fun BasicBlock.irToString(): String {
     else -> ""
   }
   return phi + blockCode + termCode
+}
+
+@JsExport
+fun graphvizOptions(reachableOnly: Boolean, fontSize: Int, fontName: String, print: String): GraphvizOptions {
+  return GraphvizOptions(
+      fontSize = fontSize,
+      fontName = fontName,
+      reachableOnly = reachableOnly,
+      print = CodePrintingMethods.valueOf(print),
+      targetOpts = X64TargetOpts.defaults
+  )
 }

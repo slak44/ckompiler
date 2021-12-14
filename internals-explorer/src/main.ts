@@ -8,5 +8,7 @@ if (environment.production) {
   enableProdMode();
 }
 
+window.__hpcc_wasmFolder = 'assets/graphviz-wasm';
+
 platformBrowserDynamic().bootstrapModule(AppModule)
   .catch(err => console.error(err));

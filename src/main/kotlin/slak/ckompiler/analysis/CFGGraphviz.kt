@@ -121,6 +121,15 @@ private fun String.unescape(): String =
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
+@JsExport
+data class GraphvizOptions(
+    val fontSize: Int = 14,
+    val fontName: String? = null,
+    val reachableOnly: Boolean,
+    val print: CodePrintingMethods = CodePrintingMethods.IR_TO_STRING,
+    val targetOpts: X64TargetOpts = X64TargetOpts.defaults
+)
+
 /**
  * Pretty graph for debugging purposes.
  * Possible usages:
@@ -130,17 +139,11 @@ private fun String.unescape(): String =
  * ```
  */
 @JsExport
-fun createGraphviz(
-    graph: CFG,
-    sourceCode: String,
-    reachableOnly: Boolean,
-    print: CodePrintingMethods = CodePrintingMethods.IR_TO_STRING,
-    targetOpts: X64TargetOpts = X64TargetOpts.defaults
-): String {
+fun createGraphviz(graph: CFG, sourceCode: String, options: GraphvizOptions): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
-  val blockMap = graph.mapBlocksToString(print, sourceCode, targetOpts)
-  val content = (if (reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
+  val blockMap = graph.mapBlocksToString(options.print, sourceCode, options.targetOpts)
+  val content = (if (options.reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
       it.isRoot -> "style=filled,color=$BLOCK_START"
       it.terminator is ImpossibleJump -> "style=filled,color=$BLOCK_RETURN"
@@ -157,12 +160,23 @@ fun createGraphviz(
       EdgeType.COND_MAYBE -> "color=$COND_MAYBE"
       EdgeType.IMPOSSIBLE -> "color=$IMPOSSIBLE"
     }
-    if (reachableOnly && !it.to.isReachable()) {
+    if (options.reachableOnly && !it.to.isReachable()) {
       ""
     } else {
       val props = "$color,label=\"${it.text.unescape()}\",fontcolor=$BLOCK_DEFAULT"
       "node${it.from.hashCode()} -> node${it.to.hashCode()} [$props];"
     }
   }
-  return "digraph CFG {${sep}bgcolor=$BG$sep$content\n}"
+
+  val fontName = "fontname=\"${options.fontName}\""
+  val maybeFont = if (options.fontName == null) "" else fontName
+  val graphAttrs = listOf(
+      maybeFont,
+      "bgcolor=$BG",
+      "fontsize=${options.fontSize}"
+  ).filter { it.isNotBlank() }
+  val graphAttr = "graph[${graphAttrs.joinToString(",")}];"
+  val nodeAttr = "node[$maybeFont,fontsize=${options.fontSize}]"
+
+  return "digraph CFG {$sep$graphAttr$sep$nodeAttr$sep$content\n}"
 }

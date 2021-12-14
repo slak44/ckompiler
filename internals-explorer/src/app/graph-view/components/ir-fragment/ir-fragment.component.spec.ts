@@ -1,20 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { BasicBlockComponent } from './basic-block.component';
+import { IrFragmentComponent } from './ir-fragment.component';
 
-describe('BasicBlockComponent', () => {
-  let component: BasicBlockComponent;
-  let fixture: ComponentFixture<BasicBlockComponent>;
+describe('IrFragmentComponent', () => {
+  let component: IrFragmentComponent;
+  let fixture: ComponentFixture<IrFragmentComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ BasicBlockComponent ]
+      declarations: [ IrFragmentComponent ]
     })
     .compileComponents();
   });
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(BasicBlockComponent);
+    fixture = TestBed.createComponent(IrFragmentComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

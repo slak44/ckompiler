@@ -1,4 +1,13 @@
+@use "colors";
+
 :host {
   display: flex;
   gap: 8px;
+}
+
+.graph-root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: colors.$graph-background;
 }

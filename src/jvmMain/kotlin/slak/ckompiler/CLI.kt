@@ -2,10 +2,7 @@ package slak.ckompiler
 
 import kotlinx.cli.*
 import mu.KotlinLogging
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.CodePrintingMethods
-import slak.ckompiler.analysis.createGraphviz
-import slak.ckompiler.analysis.exportCFG
+import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.TargetOptions
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
@@ -450,7 +447,9 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         return null
       }
 
-      val graphviz = createGraphviz(cfg, text, !forceUnreachable, printingMethod)
+      val options = GraphvizOptions(print = printingMethod, reachableOnly = !forceUnreachable)
+      val graphviz = createGraphviz(cfg, text, options)
+
       when {
         displayGraph -> {
           val src = createTemp("dot_temp", ".tmp")

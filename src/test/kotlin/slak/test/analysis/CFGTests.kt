@@ -24,7 +24,8 @@ class CFGTests {
     val cfg = prepareCFG(text, source)
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
-    createGraphviz(cfg, text, reachableOnly = false, print = CodePrintingMethods.SOURCE_SUBSTRING)
+    val options = GraphvizOptions(reachableOnly = false, print = CodePrintingMethods.SOURCE_SUBSTRING)
+    createGraphviz(cfg, text, options)
   }
 
   @Test
