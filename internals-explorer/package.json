@@ -22,6 +22,8 @@
     "@angular/platform-browser-dynamic": "~13.0.0",
     "@angular/router": "~13.0.0",
     "@hpcc-js/wasm": "^1.12.6",
+    "@ng-web-apis/common": "^1.12.1",
+    "@ng-web-apis/resize-observer": "^1.0.3",
     "d3": "^7.2.0",
     "d3-graphviz": "^4.0.0",
     "ngx-highlightjs": "^6.1.0",

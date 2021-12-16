@@ -1,3 +1,26 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mat-toolbar {
+  flex-shrink: 0;
+}
+
+.mat-tab-group {
+  height: 100%;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+
+  .mat-icon {
+    margin-right: 8px;
+  }
+}
+
+cki-graph-view {
+  height: 100%;
 }

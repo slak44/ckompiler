@@ -7,13 +7,15 @@ import {
   ComponentFactoryResolver,
   ElementRef,
   Injector,
+  Input,
   ViewChild,
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
-import { GraphvizOptions } from 'd3-graphviz';
+import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from './components/ir-fragment/ir-fragment.component';
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import arrayOf = slak.ckompiler.arrayOf;
+import { debounce, of, ReplaySubject, Subject, Subscription, takeUntil, timer } from 'rxjs';
+import { SubscriptionDestroy } from '../utils/subscription-destroy';
+import { BaseType } from 'd3';
 import jsCompile = slak.ckompiler.jsCompile;
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
@@ -32,61 +34,29 @@ function measureTextAscent(text: string): number {
   styleUrls: ['./graph-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GraphViewComponent implements AfterViewInit {
+export class GraphViewComponent extends SubscriptionDestroy implements AfterViewInit {
   @ViewChild('graph')
   private graphRef!: ElementRef<HTMLDivElement>;
 
-  public blocks?: BasicBlock[];
+  @Input()
+  public set sourceCode(code: string | null) {
+    if (code !== null) {
+      this.compileSource(code);
+    }
+  }
 
-  public graphvizText!: string;
+  private textSubscription?: Subscription;
+  private graphviz?: Graphviz<BaseType, unknown, BaseType, unknown>;
+
+  private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
+  private readonly graphVizTextSubject: ReplaySubject<string> = new ReplaySubject<string>(1);
 
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
     private injector: Injector,
     private applicationRef: ApplicationRef,
   ) {
-    const cfgs = jsCompile(`
-    int main() {
-  int first = 123;
-  int second = first / 2;
-  if (first > 5346) {
-    first += 56;
-  } else {
-    second -= 22;
-  }
-
-  while (234 + first) {
-    first--;
-  }
-
-  for (int i = 23; i < 66; i++) {
-    second = first + second / i;
-  }
-
-  double d = 32.23;
-  do {
-    d += 2;
-  } while (d < 123.1234);
-
-  return first * second;
-}
-
-`);
-    if (cfgs == null) {
-      console.error('Compilation failed.');
-      return;
-    }
-
-    const main = cfgs.find(cfg => cfg.f.name === 'main');
-
-    if (!main) {
-      console.error('No main');
-      return;
-    }
-
-    this.blocks = arrayOf<BasicBlock>(main.nodes);
-    const options = graphvizOptions(true, 16, 'Roboto', 'IR_TO_STRING');
-    this.graphvizText = createGraphviz(main, main.f.sourceText as string, options);
+    super();
   }
 
   private replaceTexts(): void {
@@ -116,17 +86,68 @@ export class GraphViewComponent implements AfterViewInit {
     }
   }
 
+  private compileSource(code: string): void {
+    const cfgs = jsCompile(code);
+    if (cfgs == null) {
+      console.error('Compilation failed.');
+      return;
+    }
+
+    const main = cfgs.find(cfg => cfg.f.name === 'main');
+
+    if (!main) {
+      console.error('No main');
+      return;
+    }
+
+    const options = graphvizOptions(true, 16, 'Roboto', 'IR_TO_STRING');
+    const graphvizText = createGraphviz(main, main.f.sourceText as string, options);
+    this.graphVizTextSubject.next(graphvizText);
+  }
+
+  private subscribeToGraphvizText(): void {
+    this.textSubscription?.unsubscribe();
+    this.textSubscription = this.graphVizTextSubject.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(text => {
+      if (this.graphviz) {
+        this.graphviz.renderDot(text, () => this.replaceTexts());
+      }
+    });
+  }
+
   public ngAfterViewInit(): void {
     const options: GraphvizOptions = {
       useWorker: true,
-      height: window.innerHeight,
-      width: window.innerWidth,
       fit: true,
     };
-    const graph = d3Graphviz.graphviz(this.graphRef.nativeElement, options);
 
-    graph.onerror(error => console.error(error));
+    this.graphviz = d3Graphviz.graphviz(this.graphRef.nativeElement, options);
+    this.graphviz.onerror(error => console.error(error));
 
-    graph.renderDot(this.graphvizText, () => this.replaceTexts());
+    let wasFirst = true;
+
+    this.resizeSubject.pipe(
+      debounce(() => {
+        const time$ = wasFirst ? of(0) : timer(500);
+        wasFirst = false;
+        return time$;
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe(rect => {
+      this.graphRef.nativeElement.style.width = `${rect.width}px`;
+      this.graphRef.nativeElement.style.height = `${rect.height}px`;
+      this.graphviz?.width(rect.width);
+      this.graphviz?.height(rect.height);
+
+      this.subscribeToGraphvizText();
+    });
+  }
+
+  public onResize(events: ResizeObserverEntry[]): void {
+    const event = events.find(event => event.target === this.graphRef.nativeElement.parentElement);
+    if (event && event.contentRect.width && event.contentRect.height) {
+      this.resizeSubject.next(event.contentRect);
+    }
   }
 }

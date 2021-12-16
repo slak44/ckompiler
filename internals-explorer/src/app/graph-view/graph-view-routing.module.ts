@@ -1,8 +1,10 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { GraphViewComponent } from './graph-view.component';
+import { LiveCompileComponent } from './components/live-compile/live-compile.component';
 
-const routes: Routes = [{ path: '', component: GraphViewComponent }];
+const routes: Routes = [
+  { path: '', component: LiveCompileComponent }
+];
 
 @NgModule({
   imports: [RouterModule.forChild(routes)],

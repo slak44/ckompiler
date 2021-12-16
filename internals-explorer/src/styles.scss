@@ -1,10 +1,11 @@
 @use '@angular/material' as mat;
 @use 'highlight.js/scss/base16/darcula' as *;
+@use 'colors';
 
 @include mat.core();
 
-$internals-explorer-primary: mat.define-palette(mat.$blue-palette);
-$internals-explorer-accent: mat.define-palette(mat.$deep-orange-palette, A200, A100, A400);
+$internals-explorer-primary: mat.define-palette(mat.$purple-palette);
+$internals-explorer-accent: mat.define-palette(mat.$yellow-palette, A200, A100, A400);
 $internals-explorer-warn: mat.define-palette(mat.$red-palette);
 
 $internals-explorer-theme: mat.define-dark-theme((
@@ -17,6 +18,14 @@ $internals-explorer-theme: mat.define-dark-theme((
 
 @include mat.all-component-themes($internals-explorer-theme);
 
+[hidden] {
+  display: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 html,
 body {
   height: 100%;
@@ -25,9 +34,18 @@ body {
 body {
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: colors.$graph-background;
 }
 
 svg {
   font: unset;
   line-height: unset;
+}
+
+.mat-tab-group {
+  &.fill-height {
+    .mat-tab-body-wrapper {
+      flex-grow: 1;
+    }
+  }
 }

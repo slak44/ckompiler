@@ -1,1 +1,3 @@
-<div #graph class="graph-root"></div>
+<div class="graph-wrapper" (waResizeObserver)="onResize($event)">
+  <div #graph class="graph-root"></div>
+</div>

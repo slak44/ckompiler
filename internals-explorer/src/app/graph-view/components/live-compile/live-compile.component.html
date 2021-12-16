@@ -1,0 +1,25 @@
+<mat-toolbar color="primary">
+  <!-- FIXME: -->
+  <button mat-icon-button [hidden]="true">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <span>CKompiler Internals Explorer</span>
+</mat-toolbar>
+
+<mat-tab-group class="fill-height">
+  <mat-tab>
+    <div *matTabLabel class="tab-label">
+      <mat-icon>code</mat-icon>
+      Source code
+    </div>
+  </mat-tab>
+
+  <mat-tab>
+    <div *matTabLabel class="tab-label">
+      <mat-icon>account_tree</mat-icon>
+      CFG View
+    </div>
+
+    <cki-graph-view [sourceCode]="source$ | async"></cki-graph-view>
+  </mat-tab>
+</mat-tab-group>

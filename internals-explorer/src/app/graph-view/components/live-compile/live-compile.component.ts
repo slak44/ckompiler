@@ -1,4 +1,6 @@
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'cki-live-compile',
@@ -7,7 +9,11 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LiveCompileComponent implements OnInit {
-  constructor() {
+  public readonly source$: Observable<string> = this.httpClient.get('/assets/default.c', { responseType: 'text' });
+
+  constructor(
+    private httpClient: HttpClient,
+  ) {
   }
 
   public ngOnInit(): void {
