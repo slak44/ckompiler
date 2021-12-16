@@ -12,9 +12,9 @@ import {
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
-import { IrFragmentComponent, irFragmentComponentSelector } from './components/ir-fragment/ir-fragment.component';
+import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
 import { debounce, of, ReplaySubject, Subject, Subscription, takeUntil, timer } from 'rxjs';
-import { SubscriptionDestroy } from '../utils/subscription-destroy';
+import { SubscriptionDestroy } from '../../../utils/subscription-destroy';
 import { BaseType } from 'd3';
 import jsCompile = slak.ckompiler.jsCompile;
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
