@@ -9,7 +9,8 @@ import { Observable } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LiveCompileComponent implements OnInit {
-  public readonly source$: Observable<string> = this.httpClient.get('/assets/default.c', { responseType: 'text' });
+  public readonly initialSource$: Observable<string> =
+    this.httpClient.get('/assets/default.c', { responseType: 'text' });
 
   constructor(
     private httpClient: HttpClient,

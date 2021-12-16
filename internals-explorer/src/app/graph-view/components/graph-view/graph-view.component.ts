@@ -13,9 +13,10 @@ import {
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import { debounce, of, ReplaySubject, Subject, Subscription, takeUntil, timer } from 'rxjs';
-import { SubscriptionDestroy } from '../../../utils/subscription-destroy';
+import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
+import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BaseType } from 'd3';
+import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import jsCompile = slak.ckompiler.jsCompile;
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
@@ -125,14 +126,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.graphviz = d3Graphviz.graphviz(this.graphRef.nativeElement, options);
     this.graphviz.onerror(error => console.error(error));
 
-    let wasFirst = true;
-
     this.resizeSubject.pipe(
-      debounce(() => {
-        const time$ = wasFirst ? of(0) : timer(500);
-        wasFirst = false;
-        return time$;
-      }),
+      debounceAfterFirst(500),
       takeUntil(this.destroy$)
     ).subscribe(rect => {
       this.graphRef.nativeElement.style.width = `${rect.width}px`;
