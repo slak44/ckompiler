@@ -19,7 +19,7 @@ $internals-explorer-theme: mat.define-dark-theme((
 @include mat.all-component-themes($internals-explorer-theme);
 
 [hidden] {
-  display: none;
+  display: none !important;
 }
 
 * {
