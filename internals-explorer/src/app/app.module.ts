@@ -6,6 +6,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HIGHLIGHT_OPTIONS } from 'ngx-highlightjs';
 import { HttpClientModule } from '@angular/common/http';
 import { MonacoEditorModule } from 'ngx-monaco-editor';
+import { monacoThemeLoader } from '@cki-utils/monaco-theme-loader';
 
 @NgModule({
   declarations: [
@@ -16,7 +17,7 @@ import { MonacoEditorModule } from 'ngx-monaco-editor';
     AppRoutingModule,
     BrowserAnimationsModule,
     HttpClientModule,
-    MonacoEditorModule.forRoot()
+    MonacoEditorModule.forRoot({ onMonacoLoad: monacoThemeLoader })
   ],
   providers: [
     {

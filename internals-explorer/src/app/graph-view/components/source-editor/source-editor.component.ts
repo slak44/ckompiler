@@ -14,7 +14,7 @@ export class SourceEditorComponent implements OnInit {
   public initialText$?: Observable<string>;
 
   public readonly monacoOptions = {
-    theme: 'vs-dark',
+    theme: 'darcula',
     language: 'c'
   };
 
