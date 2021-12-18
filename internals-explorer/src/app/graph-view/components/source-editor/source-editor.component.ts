@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { Observable } from 'rxjs';
+import { distinctUntilChanged, Observable } from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 
 @Component({
@@ -22,6 +22,7 @@ export class SourceEditorComponent implements OnInit {
 
   public readonly debouncedSource$: Observable<string> = this.sourceControl.valueChanges.pipe(
     debounceAfterFirst(500),
+    distinctUntilChanged()
   );
 
   constructor() {
