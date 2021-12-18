@@ -3,7 +3,7 @@ package slak.ckompiler
 import java.io.File
 
 actual class FSPath constructor(private val file: File) {
-  actual constructor(path: String) : this(File(path))
+  actual constructor(inputPath: String) : this(File(inputPath))
 
   actual val isAbsolute: Boolean get() = file.isAbsolute
   actual val absolutePath: String get() = file.absolutePath

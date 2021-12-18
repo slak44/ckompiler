@@ -9,16 +9,14 @@ plugins {
 group = "ckompiler"
 version = "SNAPSHOT6"
 
-val includePath = "usr/include/ckompiler-$version"
+val jvmIncludePath = "usr/include/ckompiler-$version"
 
 application {
   mainClass.set("slak.ckompiler.MainKt")
   applicationName = "ckompiler"
   executableDir = "usr/bin"
-  applicationDistribution.from(File(rootDir, "stdlib/include")).into(includePath)
+  applicationDistribution.from(File(rootDir, "stdlib/include")).into(jvmIncludePath)
 }
-
-val propsFileContents = "{ \"version\": \"$version\", \"include-path\": \"/$includePath\" }"
 
 fun buildPath(file: File, vararg segments: String): File {
   return File(file, segments.joinToString(System.getProperty("file.separator")))
@@ -26,6 +24,7 @@ fun buildPath(file: File, vararg segments: String): File {
 
 val makePropsFileJvm: Task by tasks.creating {
   doLast {
+    val propsFileContents = "{ \"version\": \"$version\", \"include-path\": \"/$jvmIncludePath\", \"include-files\": null }"
     val res = File(buildDir, "resources")
     res.mkdirs()
     File(res, "ckompiler.json").writeText(propsFileContents)
@@ -33,9 +32,28 @@ val makePropsFileJvm: Task by tasks.creating {
 }
 
 val makePropsFileJs: Task by tasks.creating {
+  fun jsonEscape(value: String): String {
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\t", "\\t")
+        .replace("\r", "\\r")
+        .replace("\b", "\\b")
+        .replace("\u000c", "\\f")
+  }
+
   doLast {
     val res = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin")
     res.mkdirs()
+
+    val includeFolder = File(res, "include")
+    val filesMap = includeFolder.listFiles()?.joinToString(",", "{", "}") { file ->
+      "\"${file.name}\": \"${jsonEscape(file.readText())}\""
+    } ?: "{}"
+
+    val propsFileContents = "{ \"version\": \"$version\", \"include-path\": \"/assets/stdlib\", \"include-files\": $filesMap }"
+
     File(res, "ckompiler.json").writeText(propsFileContents)
   }
 }

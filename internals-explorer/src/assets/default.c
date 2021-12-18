@@ -1,4 +1,8 @@
+#include <stdio.h>
+
 int main() {
+  printf("Hello World!");
+
   int first = 123;
   int second = first / 2;
   if (first > 5346) {

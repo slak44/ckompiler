@@ -6,7 +6,11 @@ import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 
 @Serializable
-private data class Properties(val version: String, @SerialName("include-path") val includePath: String)
+private data class Properties(
+    val version: String,
+    @SerialName("include-path") val includePath: String,
+    @SerialName("include-files") val includeFiles: Map<String, String>?,
+)
 
 object BuildProperties {
   private val logger = KotlinLogging.logger {}
@@ -17,7 +21,7 @@ object BuildProperties {
     val propsText = readResource(propFileName)
     if (propsText == null) {
       logger.error("Bad configuration; $propFileName missing.")
-      return@lazy Properties("UNKNOWN_VERSION", "/usr/include")
+      return@lazy Properties("UNKNOWN_VERSION", "/usr/include", null)
     }
 
     return@lazy Json.decodeFromString(Properties.serializer(), propsText)
@@ -25,4 +29,5 @@ object BuildProperties {
 
   val version get() = properties.version
   val includePath get() = properties.includePath
+  val includeFiles get() = properties.includeFiles
 }

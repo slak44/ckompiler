@@ -1,24 +1,25 @@
 package slak.ckompiler
 
+const val stdlibDir = "/stdlib/include"
+
+val fileSystem = BuildProperties.includeFiles!!.mapKeys { "$stdlibDir/${it.key}" }.toMutableMap()
+
 @JsExport
-actual class FSPath actual constructor(path: String) {
-  actual val isAbsolute: Boolean
-    get() = TODO("not implemented")
-  actual val absolutePath: String
-    get() = TODO("not implemented")
-  actual val parentFile: FSPath
-    get() = TODO("not implemented")
+actual class FSPath actual constructor(inputPath: String) {
+  private val path = inputPath.removeSuffix("/")
+
+  actual val isAbsolute: Boolean get() = true
+  actual val absolutePath: String get() = path
+  actual val parentFile: FSPath get() = FSPath(path.dropLastWhile { it != '/' })
 
   actual fun readText(): String {
-    TODO("not implemented")
+    return fileSystem[path]!!
   }
 
   actual fun exists(): Boolean {
-    TODO("not implemented")
+    return path in fileSystem
   }
 
   @JsName("FSPathChild")
-  actual constructor(parent: FSPath, child: String) : this(TODO()) {
-    TODO("not implemented")
-  }
+  actual constructor(parent: FSPath, child: String) : this(parent.path + "/" + child)
 }

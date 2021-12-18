@@ -1,6 +1,6 @@
 package slak.ckompiler
 
-expect class FSPath(path: String) {
+expect class FSPath(inputPath: String) {
   val isAbsolute: Boolean
   val absolutePath: String
   val parentFile: FSPath

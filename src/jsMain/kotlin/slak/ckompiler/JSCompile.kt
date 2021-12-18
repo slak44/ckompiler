@@ -13,7 +13,7 @@ data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diag
 
 @JsExport
 fun jsCompile(source: String): JSCompileResult {
-  val includePaths = IncludePaths(emptyList(), emptyList(), emptyList())
+  val includePaths = IncludePaths(emptyList(), listOf(FSPath(stdlibDir)), emptyList())
   val pp = Preprocessor(
       sourceText = source,
       srcFileName = "-",
