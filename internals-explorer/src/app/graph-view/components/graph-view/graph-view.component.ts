@@ -1,4 +1,4 @@
-import { slak } from '@ckompiler/ckompiler';
+import { Nullable, slak } from '@ckompiler/ckompiler';
 import {
   AfterViewInit,
   ApplicationRef,
@@ -7,20 +7,18 @@ import {
   ComponentFactoryResolver,
   ElementRef,
   Injector,
-  Input,
   ViewChild,
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
+import { filter, map, Subject, Subscription, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
-import jsCompile = slak.ckompiler.jsCompile;
+import { CompileService } from '../../services/compile.service';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
-import CFG = slak.ckompiler.analysis.CFG;
 
 function measureTextAscent(text: string): number {
   const canvas = document.createElement('canvas');
@@ -40,23 +38,16 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   @ViewChild('graph')
   private graphRef!: ElementRef<HTMLDivElement>;
 
-  @Input()
-  public set sourceCode(code: string | null) {
-    if (code !== null) {
-      this.compileSource(code);
-    }
-  }
-
   private textSubscription?: Subscription;
   private graphviz?: Graphviz<BaseType, unknown, BaseType, unknown>;
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
-  private readonly graphVizTextSubject: ReplaySubject<string> = new ReplaySubject<string>(1);
 
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
     private injector: Injector,
     private applicationRef: ApplicationRef,
+    private compileService: CompileService,
   ) {
     super();
   }
@@ -88,39 +79,24 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     }
   }
 
-  private compileSource(code: string): void {
-    let cfgs: CFG[] | null | undefined = null;
-    try {
-      const result = jsCompile(code);
-      cfgs = result.cfgs;
-    } catch (e) {
-      const err = e as Error & { originalStack?: string };
-      if (err.originalStack) {
-        console.error(err.message, err.originalStack);
-      }
-      console.error(err);
-      return;
-    }
-    if (cfgs == null) {
-      console.error('Compilation failed.');
-      return;
-    }
-
-    const main = cfgs.find(cfg => cfg.f.name === 'main');
-
-    if (!main) {
-      console.error('No main');
-      return;
-    }
-
-    const options = graphvizOptions(true, 16, 'Roboto', 'IR_TO_STRING');
-    const graphvizText = createGraphviz(main, main.f.sourceText as string, options);
-    this.graphVizTextSubject.next(graphvizText);
-  }
-
   private subscribeToGraphvizText(): void {
     this.textSubscription?.unsubscribe();
-    this.textSubscription = this.graphVizTextSubject.pipe(
+    this.textSubscription = this.compileService.compileResult$.pipe(
+      map(compileResult => {
+        if (!compileResult.cfgs) {
+          return;
+        }
+
+        const main = compileResult.cfgs.find(cfg => cfg.f.name === 'main');
+
+        if (!main) {
+          return;
+        }
+
+        const options = graphvizOptions(true, 16, 'Roboto', 'IR_TO_STRING');
+        return createGraphviz(main, main.f.sourceText as string, options);
+      }),
+      filter((text: Nullable<string>): text is string => !!text),
       takeUntil(this.destroy$)
     ).subscribe(text => {
       if (this.graphviz) {

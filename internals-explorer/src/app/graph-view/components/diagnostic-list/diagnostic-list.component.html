@@ -1,0 +1,18 @@
+<ng-container *ngIf="diagnosticStats$ | async as stats">
+  <div *ngIf="stats.errors === 0 && stats.warnings === 0" class="status-text no-diagnostics">
+    <mat-icon>check</mat-icon>
+    Compilation successful.
+  </div>
+
+  <div *ngIf="stats.errors === 0 && stats.warnings !== 0" class="status-text warnings-only">
+    <mat-icon>warning</mat-icon>
+    Compilation completed with {{ stats.warnings }} warnings.
+  </div>
+
+  <div *ngIf="stats.errors > 0" class="status-text with-errors">
+    <mat-icon>error</mat-icon>
+    Compilation completed with {{ stats.errors }} errors and {{ stats.warnings }} warnings.
+  </div>
+</ng-container>
+
+<pre *ngFor="let diagnostic of allDiagnostics$ | async" [innerHTML]="sanitizeDiagnostic(diagnostic)"></pre>

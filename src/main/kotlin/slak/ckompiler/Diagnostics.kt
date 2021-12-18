@@ -298,7 +298,8 @@ data class Diagnostic(
     return Triple(currLine, col.range.first - currLineStart, currLineText)
   }
 
-  private val printable: String by lazy {
+  @Suppress("MemberVisibilityCanBePrivate") // JS-exported
+  val printable: String by lazy {
     val color = DiagnosticColors(useColors)
     val (line, col, lineText) =
         if (sourceColumns.isNotEmpty()) dataFor(caret)

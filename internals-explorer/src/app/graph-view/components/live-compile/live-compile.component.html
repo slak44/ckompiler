@@ -6,22 +6,35 @@
   <span>CKompiler Internals Explorer</span>
 </mat-toolbar>
 
-<mat-tab-group class="fill-height">
+<mat-tab-group class="fill-height" [(selectedIndex)]="selectedTabIndex">
   <mat-tab>
     <div *matTabLabel class="tab-label">
       <mat-icon>code</mat-icon>
       Source code
     </div>
 
-    <cki-source-editor #editor [initialText$]="initialSource$"></cki-source-editor>
+    <cki-source-editor [initialText$]="initialSource$"></cki-source-editor>
   </mat-tab>
 
   <mat-tab>
+    <div *matTabLabel class="tab-label">
+      <mat-icon>error</mat-icon>
+      Diagnostics
+      <mat-chip-list *ngIf="diagnosticStats$ | async as stats" [selectable]="false">
+        <mat-chip *ngIf="stats.errors" class="errors">{{ stats.errors }}</mat-chip>
+        <mat-chip *ngIf="stats.warnings" class="warnings">{{ stats.warnings }}</mat-chip>
+      </mat-chip-list>
+    </div>
+
+    <cki-diagnostic-list></cki-diagnostic-list>
+  </mat-tab>
+
+  <mat-tab [disabled]="hasErrors$ | async">
     <div *matTabLabel class="tab-label">
       <mat-icon>account_tree</mat-icon>
       CFG View
     </div>
 
-    <cki-graph-view [sourceCode]="editor.debouncedSource$ | async"></cki-graph-view>
+    <cki-graph-view></cki-graph-view>
   </mat-tab>
 </mat-tab-group>

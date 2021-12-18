@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { distinctUntilChanged, Observable } from 'rxjs';
-import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
+import { Observable, takeUntil } from 'rxjs';
+import { CompileService } from '../../services/compile.service';
+import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 
 @Component({
   selector: 'cki-source-editor',
@@ -9,26 +10,30 @@ import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
   styleUrls: ['./source-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SourceEditorComponent implements OnInit {
+export class SourceEditorComponent extends SubscriptionDestroy implements OnInit {
   @Input()
   public initialText$?: Observable<string>;
 
   public readonly monacoOptions = {
     theme: 'darcula',
-    language: 'c'
+    language: 'c',
   };
 
   public readonly sourceControl: FormControl = new FormControl('');
 
-  public readonly debouncedSource$: Observable<string> = this.sourceControl.valueChanges.pipe(
-    debounceAfterFirst(500),
-    distinctUntilChanged()
-  );
-
-  constructor() {
+  constructor(
+    private compileService: CompileService,
+  ) {
+    super();
   }
 
   public ngOnInit(): void {
+    this.sourceControl.valueChanges.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe((text: string) => {
+      this.compileService.changeSourceText(text);
+    });
+
     if (this.initialText$) {
       this.initialText$.subscribe(text => this.sourceControl.setValue(text));
     }

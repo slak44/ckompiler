@@ -13,6 +13,8 @@ import { ResizeObserverModule } from '@ng-web-apis/resize-observer';
 import { SourceEditorComponent } from './components/source-editor/source-editor.component';
 import { MonacoEditorModule } from 'ngx-monaco-editor';
 import { ReactiveFormsModule } from '@angular/forms';
+import { DiagnosticListComponent } from './components/diagnostic-list/diagnostic-list.component';
+import { MatChipsModule } from '@angular/material/chips';
 
 @NgModule({
   declarations: [
@@ -20,6 +22,7 @@ import { ReactiveFormsModule } from '@angular/forms';
     IrFragmentComponent,
     LiveCompileComponent,
     SourceEditorComponent,
+    DiagnosticListComponent,
   ],
   imports: [
     CommonModule,
@@ -32,6 +35,7 @@ import { ReactiveFormsModule } from '@angular/forms';
     ResizeObserverModule,
     MonacoEditorModule,
     ReactiveFormsModule,
+    MatChipsModule,
   ],
 })
 export class GraphViewModule {

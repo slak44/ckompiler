@@ -1,3 +1,7 @@
+@use 'colors' as *;
+@use '@angular/material/core/theming/palette' as *;
+@use 'sass:color';
+
 :host {
   display: flex;
   flex-direction: column;
@@ -18,6 +22,24 @@
 
   .mat-icon {
     margin-right: 8px;
+  }
+}
+
+.mat-chip-list {
+  margin-left: 8px;
+
+  .mat-chip {
+    pointer-events: none;
+
+    &.errors {
+      color: $dark-primary-text;
+      background-color: color.adjust($error-red, $whiteness: 20%);
+    }
+
+    &.warnings {
+      color: $dark-primary-text;
+      background-color: color.adjust($warning-amber, $whiteness: 20%);
+    }
   }
 }
 

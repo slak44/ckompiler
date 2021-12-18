@@ -51,6 +51,17 @@ fun jsCompile(source: String): JSCompileResult {
   return JSCompileResult(cfgs.toTypedArray(), beforeCFGDiags.toTypedArray())
 }
 
+@JsExport
+data class DiagnosticsStats(val warnings: Int, val errors: Int)
+
+@JsExport
+fun getDiagnosticsStats(diagnostics: Array<Diagnostic>): DiagnosticsStats {
+  val warnings = diagnostics.count { it.id.kind == DiagnosticKind.WARNING }
+  val errors = diagnostics.count { it.id.kind == DiagnosticKind.ERROR }
+
+  return DiagnosticsStats(warnings, errors)
+}
+
 @Suppress("NON_EXPORTABLE_TYPE")
 @JsExport
 fun <T> arrayOf(collection: Collection<T>): Array<T> {
