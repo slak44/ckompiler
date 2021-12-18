@@ -20,6 +20,7 @@ import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import jsCompile = slak.ckompiler.jsCompile;
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
+import CFG = slak.ckompiler.analysis.CFG;
 
 function measureTextAscent(text: string): number {
   const canvas = document.createElement('canvas');
@@ -88,7 +89,17 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private compileSource(code: string): void {
-    const cfgs = jsCompile(code);
+    let cfgs: CFG[] | null | undefined = null;
+    try {
+      cfgs = jsCompile(code);
+    } catch (e) {
+      const err = e as Error & { originalStack?: string };
+      if (err.originalStack) {
+        console.error(err.message, err.originalStack);
+      }
+      console.error(err);
+      return;
+    }
     if (cfgs == null) {
       console.error('Compilation failed.');
       return;
