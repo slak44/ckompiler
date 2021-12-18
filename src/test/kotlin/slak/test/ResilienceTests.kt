@@ -147,6 +147,7 @@ class ResilienceTests {
         123, Punctuators.PLUS, Punctuators.SEMICOLON
     )
     val p = Parser(l.tokens, source, code, MachineTargetData.x64)
+    p.diags.forEach { it.print() }
     p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
   }
 
@@ -165,6 +166,7 @@ class ResilienceTests {
         123, Punctuators.PLUS, Punctuators.SEMICOLON
     )
     val p = Parser(l.tokens, source, code, MachineTargetData.x64)
+    p.diags.forEach { it.print() }
     p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
   }
 
@@ -182,6 +184,7 @@ class ResilienceTests {
         123, Punctuators.PLUS, Punctuators.SEMICOLON
     )
     val p = Parser(l.tokens, source, code, MachineTargetData.x64)
+    p.diags.forEach { it.print() }
     p.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
   }
 }

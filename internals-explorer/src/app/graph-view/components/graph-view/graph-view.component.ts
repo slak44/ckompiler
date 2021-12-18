@@ -91,7 +91,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private compileSource(code: string): void {
     let cfgs: CFG[] | null | undefined = null;
     try {
-      cfgs = jsCompile(code);
+      const result = jsCompile(code);
+      cfgs = result.cfgs;
     } catch (e) {
       const err = e as Error & { originalStack?: string };
       if (err.originalStack) {

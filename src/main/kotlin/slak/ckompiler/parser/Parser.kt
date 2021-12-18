@@ -109,7 +109,6 @@ private class TranslationUnitParser(
       id = DiagnosticId.TRANSLATION_UNIT_NEEDS_DECL
       column(0)
     }
-    diags.forEach { it.print() }
   }
 
   /**

@@ -98,8 +98,6 @@ class CFG(
       doms = DominatorList(nodes.size)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
     }
-
-    diags.forEach(Diagnostic::print)
   }
 
   fun newBlock(): BasicBlock {

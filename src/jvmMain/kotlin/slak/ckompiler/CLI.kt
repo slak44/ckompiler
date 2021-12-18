@@ -379,6 +379,9 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         ignoreTrigraphs = !useTrigraphs,
         targetData = MachineTargetData.x64
     )
+
+    pp.diags.forEach { it.print() }
+
     if (pp.diags.errors().isNotEmpty()) {
       executionFailed = true
       return null
@@ -390,6 +393,9 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
 
     val p = Parser(pp.tokens, relPath, text, MachineTargetData.x64)
+
+    p.diags.forEach { it.print() }
+
     if (p.diags.errors().isNotEmpty()) {
       executionFailed = true
       return null
@@ -409,7 +415,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           generateHtml = miHtmlOutput,
           spillOutput = spillOutput
       ) {
-        CFG(
+        val cfg = CFG(
             f = function,
             targetData = MachineTargetData.x64,
             srcFileName = relPath,
@@ -417,6 +423,9 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
             forceAllNodes = false,
             forceReturnZero = function.name == "main"
         )
+        cfg.diags.forEach { it.print() }
+
+        return@generateMIDebug cfg
       }
       if (output != null) {
         fileFrom(output!!).writeText(miText)
@@ -436,6 +445,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           forceAllNodes = forceAllNodes,
           forceReturnZero = function.name == "main"
       )
+      cfg.diags.forEach { it.print() }
 
       if (exportCFGAsJSON) {
         val json = exportCFG(cfg)
@@ -478,6 +488,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           forceReturnZero = false,
           forceAllNodes = false
       )
+      cfg.diags.forEach { it.print() }
+
       X64Generator(cfg, target)
     }
     val mainEmit = main?.let {
@@ -489,6 +501,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           forceReturnZero = true,
           forceAllNodes = false
       )
+      cfg.diags.forEach { it.print() }
+
       X64Generator(cfg, target)
     }
 

@@ -7,8 +7,12 @@ import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 
+@Suppress("ArrayInDataClass")
 @JsExport
-fun jsCompile(source: String): Array<CFG>? {
+data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diagnostic>)
+
+@JsExport
+fun jsCompile(source: String): JSCompileResult {
   val includePaths = IncludePaths(emptyList(), emptyList(), emptyList())
   val pp = Preprocessor(
       sourceText = source,
@@ -21,17 +25,19 @@ fun jsCompile(source: String): Array<CFG>? {
   )
 
   if (pp.diags.errors().isNotEmpty()) {
-    return null
+    return JSCompileResult(null, pp.diags.toTypedArray())
   }
 
   val p = Parser(pp.tokens, "-", source, MachineTargetData.x64)
+  val beforeCFGDiags = pp.diags + p.diags
+
   if (p.diags.errors().isNotEmpty()) {
-    return null
+    return JSCompileResult(null, beforeCFGDiags.toTypedArray())
   }
 
   val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
-  return allFuncs.map {
+  val cfgs = allFuncs.map {
     CFG(
         f = it,
         targetData = MachineTargetData.x64,
@@ -40,7 +46,9 @@ fun jsCompile(source: String): Array<CFG>? {
         forceAllNodes = false,
         forceReturnZero = it.name == "main"
     )
-  }.toTypedArray()
+  }
+
+  return JSCompileResult(cfgs.toTypedArray(), beforeCFGDiags.toTypedArray())
 }
 
 @Suppress("NON_EXPORTABLE_TYPE")

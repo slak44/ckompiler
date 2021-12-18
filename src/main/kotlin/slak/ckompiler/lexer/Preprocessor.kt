@@ -57,7 +57,6 @@ class Preprocessor(
     )
     defines = p.objectDefines
     tokens = p.outTokens.mapNotNull(::convert)
-    diags.forEach { it.print() }
   }
 
   /**

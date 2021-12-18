@@ -23,19 +23,26 @@ internal fun preparePP(s: String, source: SourceFileName): Preprocessor {
       listOf(FSPath(IncludePaths.resource("include")), FSPath(IncludePaths.resource("headers/system"))),
       listOf(FSPath(IncludePaths.resource("headers/users")))
   )
-  return Preprocessor(
+
+  val pp = Preprocessor(
       sourceText = s,
       srcFileName = source,
       includePaths = incs + IncludePaths.defaultPaths,
       targetData = MachineTargetData.x64,
       currentDir = FSPath(File("."))
   )
+
+  pp.diags.forEach { it.print() }
+
+  return pp
 }
 
 internal fun prepareCode(s: String, source: SourceFileName): Parser {
   val pp = preparePP(s, source)
   pp.assertNoDiagnostics()
-  return Parser(pp.tokens, source, s, MachineTargetData.x64)
+  val p = Parser(pp.tokens, source, s, MachineTargetData.x64)
+  p.diags.forEach { it.print() }
+  return p
 }
 
 internal fun prepareCFG(s: String, source: SourceFileName, functionName: String? = null): CFG {
@@ -46,7 +53,11 @@ internal fun prepareCFG(s: String, source: SourceFileName, functionName: String?
   } else {
     p.root.decls.first { it is FunctionDefinition && it.name == functionName } as FunctionDefinition
   }
-  return CFG(func, MachineTargetData.x64, source, s, forceReturnZero = true, forceAllNodes = false)
+
+  val cfg = CFG(func, MachineTargetData.x64, source, s, forceReturnZero = true, forceAllNodes = false)
+  cfg.diags.forEach { it.print() }
+
+  return cfg
 }
 
 internal fun prepareCFG(file: File, source: SourceFileName, functionName: String? = null): CFG {
