@@ -147,6 +147,10 @@ kotlin {
     val jsMain by getting {
       dependsOn(commonMain)
       languageSettings.optIn("kotlin.js.ExperimentalJsExport")
+
+      dependencies {
+        implementation(npm("printj", "1.2.2"))
+      }
     }
 
     all {
