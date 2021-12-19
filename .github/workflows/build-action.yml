@@ -59,7 +59,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@4.1.7
         with:
           branch: gh-pages
-          folder: internals-explorer
+          folder: internals-explorer/dist/internals-explorer
 #      - name: Archive Angular artifacts
 #        uses: actions/upload-artifact@v2
 #        with:
