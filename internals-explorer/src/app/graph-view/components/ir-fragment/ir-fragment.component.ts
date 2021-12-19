@@ -13,7 +13,10 @@ export class IrFragmentComponent {
   public color: string = '';
 
   @Input()
-  public irText: string = "";
+  public text: string = '';
+
+  @Input()
+  public printingType: string = 'IR_TO_STRING';
 
   constructor() {
   }

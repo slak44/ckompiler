@@ -88,7 +88,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       foreign.appendChild(replaceableHost);
 
       const comp = componentFactory.create(this.injector, [], replaceableHost);
-      comp.instance.irText = text;
+      comp.instance.text = text;
+      comp.instance.printingType = this.printingControl.value as string;
       comp.instance.color = textElement.getAttribute('fill')!;
       this.applicationRef.attachView(comp.hostView);
 

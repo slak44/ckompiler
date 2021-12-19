@@ -4,3 +4,7 @@
   line-height: initial;
   font-size: 16px;
 }
+
+::ng-deep .hljs {
+  background-color: unset;
+}

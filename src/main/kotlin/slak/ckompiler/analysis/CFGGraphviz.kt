@@ -14,7 +14,7 @@ private val logger = KotlinLogging.logger {}
 
 private enum class GraphvizColors(val color: String) {
   BG("\"#3C3F41ff\""), BLOCK_DEFAULT("\"#ccccccff\""),
-  BLOCK_START("powderblue"), BLOCK_RETURN("mediumpurple2"),
+  BLOCK_START("\"#FFFF00ff\""), BLOCK_RETURN("\"#9C27B0ff\""),
   COND_TRUE("darkolivegreen3"), COND_FALSE("lightcoral"),
   COND_MAYBE("\"#D7BA4A\""),
   IMPOSSIBLE("black"),
@@ -145,8 +145,8 @@ fun createGraphviz(graph: CFG, sourceCode: String, options: GraphvizOptions): St
   val blockMap = graph.mapBlocksToString(options.print, sourceCode, options.targetOpts)
   val content = (if (options.reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
-      it.isRoot -> "style=filled,color=$BLOCK_START"
-      it.terminator is ImpossibleJump -> "style=filled,color=$BLOCK_RETURN"
+      it.isRoot -> "style=solid,penwidth=3,color=$BLOCK_START,fontcolor=$BLOCK_DEFAULT"
+      it.terminator is ImpossibleJump -> "style=solid,penwidth=5,color=$BLOCK_RETURN,fontcolor=$BLOCK_DEFAULT"
       else -> "color=$BLOCK_DEFAULT,fontcolor=$BLOCK_DEFAULT"
     }
     val code = blockMap.getValue(it)
