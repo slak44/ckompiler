@@ -12,13 +12,27 @@ import {
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import { filter, map, Subject, Subscription, takeUntil } from 'rxjs';
+import {
+  combineLatest,
+  filter,
+  map,
+  Observable,
+  shareReplay,
+  startWith,
+  Subject,
+  Subscription,
+  takeUntil,
+} from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { CompileService } from '../../services/compile.service';
+import { FormControl } from '@angular/forms';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
+import codePrintingMethods = slak.ckompiler.codePrintingMethods;
+import getCodePrintingNameJs = slak.ckompiler.getCodePrintingNameJs;
+import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 function measureTextAscent(text: string): number {
   const canvas = document.createElement('canvas');
@@ -43,6 +57,14 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
 
+  public readonly printingControl: FormControl = new FormControl('IR_TO_STRING');
+  private readonly printingValue$: Observable<string> = (this.printingControl.valueChanges as Observable<string>).pipe(
+    startWith(this.printingControl.value as string),
+    shareReplay({ refCount: false, bufferSize: 1 })
+  );
+
+  public readonly codePrintingMethods: string[] = codePrintingMethods;
+
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
     private injector: Injector,
@@ -53,6 +75,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private replaceTexts(): void {
+    return;
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
     const svgTextElements = Array.from(this.graphRef.nativeElement.querySelectorAll('text'));
     const maxAscent = Math.max(...svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '')));
@@ -81,8 +104,11 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   private subscribeToGraphvizText(): void {
     this.textSubscription?.unsubscribe();
-    this.textSubscription = this.compileService.compileResult$.pipe(
-      map(compileResult => {
+    this.textSubscription = combineLatest([
+      this.compileService.compileResult$,
+      this.printingValue$
+    ]).pipe(
+      map(([compileResult, printingType]: [JSCompileResult, string]) => {
         if (!compileResult.cfgs) {
           return;
         }
@@ -93,7 +119,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
           return;
         }
 
-        const options = graphvizOptions(true, 16, 'Roboto', 'IR_TO_STRING');
+        const options = graphvizOptions(true, 16, 'Helvetica', printingType);
         return createGraphviz(main, main.f.sourceText as string, options);
       }),
       filter((text: Nullable<string>): text is string => !!text),
@@ -132,5 +158,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     if (event && event.contentRect.width && event.contentRect.height) {
       this.resizeSubject.next(event.contentRect);
     }
+  }
+
+  public getCodePrintingMethodName(value: string): string {
+    return getCodePrintingNameJs(value);
   }
 }

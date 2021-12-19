@@ -2,6 +2,7 @@
 
 :host {
   display: block;
+  position: relative;
 }
 
 .graph-wrapper {
@@ -14,4 +15,10 @@
   height: 100%;
   overflow: hidden;
   background-color: colors.$graph-background;
+}
+
+.ui-overlay {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }

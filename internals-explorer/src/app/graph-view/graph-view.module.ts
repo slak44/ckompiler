@@ -15,6 +15,8 @@ import { MonacoEditorModule } from 'ngx-monaco-editor';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DiagnosticListComponent } from './components/diagnostic-list/diagnostic-list.component';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 
 @NgModule({
   declarations: [
@@ -36,6 +38,8 @@ import { MatChipsModule } from '@angular/material/chips';
     MonacoEditorModule,
     ReactiveFormsModule,
     MatChipsModule,
+    MatFormFieldModule,
+    MatSelectModule,
   ],
 })
 export class GraphViewModule {

@@ -91,6 +91,20 @@ fun BasicBlock.irToString(): String {
 }
 
 @JsExport
+val codePrintingMethods: Array<String> = CodePrintingMethods.values().map { it.name }.toTypedArray()
+
+@JsExport
+fun getCodePrintingNameJs(print: String): String = getCodePrintingName(CodePrintingMethods.valueOf(print))
+
+fun getCodePrintingName(print: CodePrintingMethods): String = when (print) {
+  CodePrintingMethods.SOURCE_SUBSTRING -> "Source substrings"
+  CodePrintingMethods.EXPR_TO_STRING -> "Expressions"
+  CodePrintingMethods.IR_TO_STRING -> "IR"
+  CodePrintingMethods.MI_TO_STRING -> "Machine instructions"
+  CodePrintingMethods.ASM_TO_STRING -> "Assembly"
+}
+
+@JsExport
 fun graphvizOptions(reachableOnly: Boolean, fontSize: Int, fontName: String, print: String): GraphvizOptions {
   return GraphvizOptions(
       fontSize = fontSize,
