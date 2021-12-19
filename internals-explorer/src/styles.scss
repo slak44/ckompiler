@@ -4,19 +4,7 @@
 
 @include mat.core();
 
-$internals-explorer-primary: mat.define-palette(mat.$purple-palette);
-$internals-explorer-accent: mat.define-palette(mat.$yellow-palette, A200, A100, A400);
-$internals-explorer-warn: mat.define-palette(mat.$red-palette);
-
-$internals-explorer-theme: mat.define-dark-theme((
-  color: (
-    primary: $internals-explorer-primary,
-    accent: $internals-explorer-accent,
-    warn: $internals-explorer-warn,
-  )
-));
-
-@include mat.all-component-themes($internals-explorer-theme);
+@include mat.all-component-themes(colors.$internals-explorer-theme);
 
 [hidden] {
   display: none !important;

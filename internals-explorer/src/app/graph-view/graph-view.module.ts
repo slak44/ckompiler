@@ -17,6 +17,7 @@ import { DiagnosticListComponent } from './components/diagnostic-list/diagnostic
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { GraphLegendComponent } from './components/graph-legend/graph-legend.component';
 
 @NgModule({
   declarations: [
@@ -25,6 +26,7 @@ import { MatSelectModule } from '@angular/material/select';
     LiveCompileComponent,
     SourceEditorComponent,
     DiagnosticListComponent,
+    GraphLegendComponent,
   ],
   imports: [
     CommonModule,

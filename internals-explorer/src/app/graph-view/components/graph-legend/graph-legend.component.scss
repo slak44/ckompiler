@@ -1,0 +1,37 @@
+@use '@angular/material/core/theming/palette' as *;
+@use 'colors';
+
+:host {
+  display: flex;
+  flex-direction: column;
+
+  color: $light-primary-text;
+}
+
+div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+$preview-width: 32px;
+$preview-height: 16px;
+$border-size: 3px;
+
+.start-block {
+  width: $preview-width;
+  height: $preview-height;
+  border: $border-size solid colors.$accent-default;
+}
+
+.exit-block {
+  width: $preview-width;
+  height: $preview-height;
+  border: $border-size solid colors.$primary-default;
+}
+
+.arrow-svg {
+  width: $preview-width;
+  height: $preview-height;
+}

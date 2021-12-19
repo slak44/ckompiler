@@ -18,7 +18,17 @@
 }
 
 .ui-overlay {
-  position: absolute;
-  top: 16px;
-  right: 16px;
+  user-select: none;
+
+  .mat-form-field {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+  }
+
+  cki-graph-legend {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+  }
 }

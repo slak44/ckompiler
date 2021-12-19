@@ -1,4 +1,22 @@
+@use '@angular/material' as mat;
+
 $graph-background: #3C3F41;
 $success-green: #77DA77;
 $warning-amber: #FFD600;
 $error-red: red;
+
+$internals-explorer-primary: mat.define-palette(mat.$purple-palette);
+$internals-explorer-accent: mat.define-palette(mat.$yellow-palette, A200, A100, A400);
+$internals-explorer-warn: mat.define-palette(mat.$red-palette);
+
+$internals-explorer-theme: mat.define-dark-theme((
+  color: (
+    primary: $internals-explorer-primary,
+    accent: $internals-explorer-accent,
+    warn: $internals-explorer-warn,
+  )
+));
+
+$primary-default: map-get($internals-explorer-primary, "default");
+$accent-default: map-get($internals-explorer-accent, "default");
+
