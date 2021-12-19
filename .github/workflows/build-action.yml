@@ -1,0 +1,59 @@
+name: Build Kotlin/JS
+on:
+  push:
+    branches:
+      - master
+jobs:
+  Build-ckompiler-JS-Distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Setup Java 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Build with Gradle and cache
+        uses: burrunan/gradle-cache-action@v1
+        with:
+          arguments: jsBrowserDistribution
+      - name: Archive JS artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ckompiler-js-dist
+          path: |
+            build/js/packages/ckompiler/kotlin
+            !build/js/packages/ckompiler/kotlin/test
+  Build-Internals-Explorer-Angular:
+    runs-on: ubuntu-latest
+    needs: Build-ckompiler-JS-Distribution
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: internals-explorer/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('internals-explorer/package-lock.json') }}
+      - name: Download ckompiler JS artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: ckompiler-js-dist
+      - run: cd internals-explorer
+      - run: npm install
+      - name: Angular Build
+        run: ng build --prod
+      - name: Archive Angular artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ckompiler-angular-dist
+          path: |
+            dist/
+
+concurrency:
+  group: env-${{ github.head_ref }}
+  cancel-in-progress: true
