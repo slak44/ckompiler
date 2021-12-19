@@ -65,6 +65,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   public readonly codePrintingMethods: string[] = codePrintingMethods;
 
+  private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
+
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
     private injector: Injector,
@@ -75,7 +77,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private replaceTexts(): void {
-    return;
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
     const svgTextElements = Array.from(this.graphRef.nativeElement.querySelectorAll('text'));
     const maxAscent = Math.max(...svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '')));
@@ -98,8 +99,16 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
       foreign.setAttribute('transform', `translate(0, -${maxAscent})`);
 
+      this.foreignToTextMap.set(foreign, textElement);
       textElement.replaceWith(foreign);
     }
+  }
+
+  private revertReplacements(): void {
+    for (const [foreign, text] of this.foreignToTextMap) {
+      foreign.replaceWith(text);
+    }
+    this.foreignToTextMap.clear();
   }
 
   private subscribeToGraphvizText(): void {
@@ -126,6 +135,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       takeUntil(this.destroy$)
     ).subscribe(text => {
       if (this.graphviz) {
+        this.revertReplacements();
         this.graphviz.renderDot(text, () => this.replaceTexts());
       }
     });
