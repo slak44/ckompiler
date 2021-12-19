@@ -7,6 +7,16 @@ jobs:
   Build-ckompiler-JS-Distribution:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Cache stuff
+        uses: actions/cache@v2
+        with:
+          path: |
+            ./dot-gradle
+            ./build
+            ./internals-explorer/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('build.gradle.kts') }}
       - name: Setup Java 11
         uses: actions/setup-java@v1
         with:
