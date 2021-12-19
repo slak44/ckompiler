@@ -14,9 +14,10 @@ data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diag
 @JsExport
 fun jsCompile(source: String): JSCompileResult {
   val includePaths = IncludePaths(emptyList(), listOf(FSPath(stdlibDir)), emptyList())
+  val sourceFileName = "editor.c"
   val pp = Preprocessor(
       sourceText = source,
-      srcFileName = "-",
+      srcFileName = sourceFileName,
       currentDir = FSPath("/"),
       cliDefines = emptyMap(),
       includePaths = includePaths,
@@ -41,7 +42,7 @@ fun jsCompile(source: String): JSCompileResult {
     CFG(
         f = it,
         targetData = MachineTargetData.x64,
-        srcFileName = "-",
+        srcFileName = sourceFileName,
         srcText = source,
         forceAllNodes = false,
         forceReturnZero = it.name == "main"
@@ -60,6 +61,17 @@ fun getDiagnosticsStats(diagnostics: Array<Diagnostic>): DiagnosticsStats {
   val errors = diagnostics.count { it.id.kind == DiagnosticKind.ERROR }
 
   return DiagnosticsStats(warnings, errors)
+}
+
+@Suppress("NON_EXPORTABLE_TYPE")
+@JsExport
+fun closedRangeLength(closedRange: ClosedRange<Int>): Int {
+  return closedRange.length()
+}
+
+@JsExport
+fun diagnosticKindString(diagnostic: Diagnostic): String {
+  return diagnostic.id.kind.name
 }
 
 @Suppress("NON_EXPORTABLE_TYPE")

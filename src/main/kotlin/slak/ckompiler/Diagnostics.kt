@@ -269,16 +269,20 @@ operator fun SourcedRange.rangeTo(other: SourcedRange): SourcedRange {
 fun List<Diagnostic>.errors() = filter { it.id.kind == ERROR }
 
 @JsExport
+data class SourceColumnData(val line: Int, val column: Int, val lineText: String)
+
+@JsExport
+@Suppress("MemberVisibilityCanBePrivate") // JS-exported
 data class Diagnostic(
     val id: DiagnosticId,
     val messageFormatArgs: List<Any>,
     val sourceColumns: List<SourcedRange>,
     val origin: String
 ) {
-  private val caret: SourcedRange get() = sourceColumns[0]
+  val caret: SourcedRange get() = sourceColumns[0]
 
-  internal fun dataFor(col: SourcedRange): Triple<Int, Int, String> {
-    if (col.sourceText!!.isEmpty()) return Triple(1, 0, "")
+  fun dataFor(col: SourcedRange): SourceColumnData {
+    if (col.sourceText!!.isEmpty()) return SourceColumnData(1, 0, "")
     var currLine = 1
     var currLineStart = 0
     var currLineText = ""
@@ -295,23 +299,23 @@ data class Diagnostic(
         currLineText = col.sourceText!!.slice(currLineStart until col.sourceText!!.length)
       }
     }
-    return Triple(currLine, col.range.first - currLineStart, currLineText)
+    return SourceColumnData(currLine, col.range.first - currLineStart, currLineText)
   }
 
-  @Suppress("MemberVisibilityCanBePrivate") // JS-exported
+  val formattedMessage get() = id.messageFormat.format(*messageFormatArgs.toTypedArray())
+
   val printable: String by lazy {
     val color = DiagnosticColors(useColors)
     val (line, col, lineText) =
         if (sourceColumns.isNotEmpty()) dataFor(caret)
-        else Triple(-1, -1, "???")
-    val msg = id.messageFormat.format(*messageFormatArgs.toTypedArray())
+        else SourceColumnData(-1, -1, "???")
     val kindText = when (id.kind) {
       ERROR -> color.brightRed
       WARNING -> color.brightMagenta
       OTHER -> color.blue
     }("${id.kind.text}:")
     val srcFileName = if (sourceColumns.isNotEmpty()) caret.sourceFileName else "<unknown>"
-    val firstLine = "$srcFileName:$line:$col: $kindText $msg [$origin|${id.name}]"
+    val firstLine = "$srcFileName:$line:$col: $kindText $formattedMessage [$origin|${id.name}]"
     // Special case where the file is empty
     if (sourceColumns.isEmpty() || caret.sourceText!!.isEmpty()) return@lazy firstLine
     val spacesCount = col.coerceAtLeast(0)
@@ -327,9 +331,9 @@ data class Diagnostic(
         .drop(1)
         .map { it to dataFor(it) }
         // FIXME: add tildes for the sourceColumns on different lines
-        .filter { it.second.first == line }
+        .filter { it.second.line == line }
         .map {
-          val startIdx = it.second.second.coerceAtLeast(0)
+          val startIdx = it.second.column.coerceAtLeast(0)
           startIdx until (startIdx + it.first.length()).coerceAtLeast(1)
         }
         .fold(originalCaretLine) { caretLine, it ->

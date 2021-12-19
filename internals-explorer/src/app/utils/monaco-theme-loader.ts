@@ -1,4 +1,5 @@
-/* eslint-disable */
+import type { editor } from 'monaco-editor';
+
 export async function monacoThemeLoader(): Promise<void> {
   const theme = await import('node_modules/vscode-theme-darcula/themes/darcula.json');
 
@@ -13,7 +14,7 @@ export async function monacoThemeLoader(): Promise<void> {
     }));
   });
 
-  const definedTheme = {
+  const definedTheme: editor.IStandaloneThemeData = {
     base: theme.type === 'light' ? 'vs' : 'vs-dark',
     inherit: true,
     rules: tokenRules,

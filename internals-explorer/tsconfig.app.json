@@ -11,7 +11,6 @@
   "include": [
     "src/**/*.d.ts",
     "node_modules/@types/resize-observer-browser",
-    "node_modules/monaco-editor/monaco.d.ts",
     "../build/js/packages/ckompiler/kotlin/*.d.ts"
   ]
 }

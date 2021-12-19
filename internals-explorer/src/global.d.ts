@@ -1,7 +1,11 @@
+import type { editor } from 'monaco-editor';
+
 declare global {
   interface Window {
     __hpcc_wasmFolder?: string;
-    monaco: any;
+    monaco: {
+      editor: typeof editor
+    };
   }
 }
 
