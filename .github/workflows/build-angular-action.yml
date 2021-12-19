@@ -1,28 +1,14 @@
-name: Build
+name: Angular Build
 on:
-  push:
-    branches:
-      - master
+  workflow_run:
+    workflows: ["Build-ckompiler-JS-Distribution"]
+    branches: [master]
+    types:
+      - completed
 jobs:
-  Build-ckompiler-JS-Distribution:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup Java 11
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
-      - name: Build with gradle
-        run: |
-          ./gradlew -g "./dot-gradle" jsBrowserDistribution
-      - name: Archive JS artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: ckompiler-js-dist
-          path: |
-            build/js/packages/ckompiler/kotlin
-            !build/js/packages/ckompiler/kotlin/test
   Build-Internals-Explorer-Angular:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
