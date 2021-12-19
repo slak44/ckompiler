@@ -43,16 +43,17 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ckompiler-js-dist
-      - run: cd internals-explorer
       - run: npm install
+        working-directory: internals-explorer
       - name: Angular Build
         run: ng build --prod
+        working-directory: internals-explorer
       - name: Archive Angular artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ckompiler-angular-dist
           path: |
-            dist/
+            internals-explorer/dist/
 
 concurrency:
   group: env-${{ github.head_ref }}
