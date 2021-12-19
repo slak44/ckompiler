@@ -27,5 +27,5 @@ jobs:
       - run: echo "Job completed."
 
 concurrency:
-  group: ${{ github.head_ref }}
+  group: env-${{ github.head_ref }}
   cancel-in-progress: true
