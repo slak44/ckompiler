@@ -24,7 +24,6 @@ jobs:
           path: |
             build/js/packages/ckompiler/
             !build/js/packages/ckompiler/node_modules
-            !build/js/packages/ckompiler/package.json
             !build/js/packages/ckompiler/webpack.config.js
             !build/js/packages/ckompiler/kotlin/test
   Build-Internals-Explorer-Angular:
@@ -46,11 +45,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ckompiler-js-dist
-      - name: List files
-        run: ls
       - name: Move artifacts
         shell: bash
         run: mkdir -p build/js/packages/ckompiler/ && mv kotlin/ build/js/packages/ckompiler/
+      - run: npm install
+        working-directory: build/js/packages/ckompiler/
       - run: npm install
         working-directory: internals-explorer
       - name: Angular Build
