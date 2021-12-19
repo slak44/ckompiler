@@ -43,6 +43,8 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ckompiler-js-dist
+      - name: List files
+        run: ls
       - name: Move artifacts
         shell: bash
         run: mkdir -p build/js/packages/ckompiler/ && mv ckompiler-js-dist/* build/js/packages/ckompiler/kotlin/
