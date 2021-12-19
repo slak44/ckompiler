@@ -1,0 +1,31 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+jobs:
+  Build-ckompiler-JS-Distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Setup Java 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Build with gradle
+        run: |
+          ./gradlew -g "./dot-gradle" jsBrowserDistribution
+      - name: Cache stuff
+        uses: actions/cache@v2
+        with:
+          path: |
+            ./dot-gradle
+            ./build
+            ./internals-explorer/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('build.gradle.kts') }}
+      - run: echo "Job completed."
+
+concurrency:
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
