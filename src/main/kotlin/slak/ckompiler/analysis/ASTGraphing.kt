@@ -145,7 +145,6 @@ private fun graphExprTerm(
   val (nextBlock, exprs) = processExpression(root, current, cond)
   val (instrs, stackVars) = createInstructions(exprs, root.targetData, root.registerIds)
   root.stackVariables += stackVars
-  nextBlock.src += exprs
   val l = instrs.last()
   return if (compareWithZero && l !is IntCmp && l !is FltCmp) {
     val res = VirtualRegister(root.registerIds(), SignedIntType)

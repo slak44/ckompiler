@@ -8,6 +8,7 @@ import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.error
 import slak.ckompiler.parser.Expression
+import slak.ckompiler.parser.Terminal
 import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
@@ -29,7 +30,7 @@ enum class CodePrintingMethods {
 
 fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
   fun List<Expression>.sourceSubstr() = joinToString("<br/>") { it.exprToStr() }
-  val blockCode = src.sourceSubstr()
+  val blockCode = src.filter { it !is Terminal }.sourceSubstr()
   val termCode = when (val term = terminator) {
     is CondJump -> term.src.exprToStr() + " ?"
     is SelectJump -> term.src.exprToStr() + " ?"
@@ -38,8 +39,9 @@ fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
       else "return ${term.src!!.exprToStr()};"
     }
     else -> ""
-  }.let { if (it.isBlank()) "" else "<br/>$it" }
-  return blockCode + termCode
+  }
+  val separator = if (blockCode.isNotBlank() && termCode.isNotBlank()) "<br/>" else ""
+  return blockCode + separator + termCode
 }
 
 fun BasicBlock.irToString(): String {
