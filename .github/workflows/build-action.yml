@@ -43,10 +43,13 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ckompiler-js-dist
+      - name: Move artifacts
+        shell: bash
+        run: mkdir -p build/js/packages/ckompiler/ && mv ckompiler-js-dist/* build/js/packages/ckompiler/kotlin/
       - run: npm install
         working-directory: internals-explorer
       - name: Angular Build
-        run: npx ng build --prod
+        run: npx ng build
         working-directory: internals-explorer
       - name: Archive Angular artifacts
         uses: actions/upload-artifact@v2
