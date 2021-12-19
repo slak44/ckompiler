@@ -1,7 +1,7 @@
 name: Angular Build
 on:
   workflow_run:
-    workflows: ["Build-ckompiler-JS-Distribution"]
+    workflows: ["Build Kotlin/JS"]
     branches: [master]
     types:
       - completed
