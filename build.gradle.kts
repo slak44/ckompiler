@@ -18,6 +18,11 @@ application {
   applicationDistribution.from(File(rootDir, "stdlib/include")).into(jvmIncludePath)
 }
 
+tasks.installDist {
+  val installPath = System.getenv("DESTDIR") ?: ""
+  if (installPath.isNotBlank()) destinationDir = File(installPath)
+}
+
 fun buildPath(file: File, vararg segments: String): File {
   return File(file, segments.joinToString(System.getProperty("file.separator")))
 }
@@ -31,8 +36,31 @@ val makePropsFileJvm: Task by tasks.creating {
   }
 }
 
-val makePropsFileJs: Task by tasks.creating {
-  fun jsonEscape(value: String): String {
+@CacheableTask
+abstract class PropsFileJsTask : DefaultTask() {
+  @get:InputDirectory
+  @get:SkipWhenEmpty
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  abstract var includeFolder: File
+
+  @get:OutputFile
+  abstract var output: File
+
+  @get:Input
+  abstract var version: Int
+
+  @TaskAction
+  fun writePropsFile() {
+    val filesMap = includeFolder.listFiles()?.joinToString(",", "{", "}") { file ->
+      "\"${file.name}\": \"${jsonEscape(file.readText())}\""
+    } ?: "{}"
+
+    val propsFileContents = "{ \"version\": \"$version\", \"include-path\": \"/assets/stdlib\", \"include-files\": $filesMap }"
+
+    output.writeText(propsFileContents)
+  }
+
+  private fun jsonEscape(value: String): String {
     return value
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
@@ -42,25 +70,14 @@ val makePropsFileJs: Task by tasks.creating {
         .replace("\b", "\\b")
         .replace("\u000c", "\\f")
   }
-
-  doLast {
-    val res = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin")
-    res.mkdirs()
-
-    val includeFolder = File(res, "include")
-    val filesMap = includeFolder.listFiles()?.joinToString(",", "{", "}") { file ->
-      "\"${file.name}\": \"${jsonEscape(file.readText())}\""
-    } ?: "{}"
-
-    val propsFileContents = "{ \"version\": \"$version\", \"include-path\": \"/assets/stdlib\", \"include-files\": $filesMap }"
-
-    File(res, "ckompiler.json").writeText(propsFileContents)
-  }
 }
 
-tasks.installDist {
-  val installPath = System.getenv("DESTDIR") ?: ""
-  if (installPath.isNotBlank()) destinationDir = File(installPath)
+val makePropsFileJs = "makePropsFileJs"
+tasks.register<PropsFileJsTask>(makePropsFileJs) {
+  this.version = version
+  val res = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin")
+  includeFolder = File(res, "include")
+  output = File(res, "ckompiler.json")
 }
 
 val setNoCheck: Task by tasks.creating {
@@ -109,8 +126,8 @@ kotlin {
   js(IR) {
     browser {
       webpackTask {
-        dependsOn(makePropsFileJs)
-        dependsOn(setNoCheck)
+        finalizedBy(makePropsFileJs)
+        finalizedBy(setNoCheck)
       }
     }
     binaries.executable()

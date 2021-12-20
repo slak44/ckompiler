@@ -16,6 +16,8 @@ jobs:
       - name: Build with Gradle and cache
         uses: burrunan/gradle-cache-action@v1
         with:
+          properties: |
+            kotlin.parallel.tasks.in.project=true
           arguments: jsBrowserDistribution
       - name: Archive JS artifacts
         uses: actions/upload-artifact@v2
