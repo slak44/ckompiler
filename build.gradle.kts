@@ -74,6 +74,7 @@ abstract class PropsFileJsTask : DefaultTask() {
 
 val makePropsFileJs = "makePropsFileJs"
 tasks.register<PropsFileJsTask>(makePropsFileJs) {
+  dependsOn("jsProductionExecutableCompileSync")
   this.version = version
   val res = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin")
   includeFolder = File(res, "include")
