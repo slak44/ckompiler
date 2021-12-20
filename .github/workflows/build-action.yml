@@ -53,7 +53,7 @@ jobs:
       - run: npm install
         working-directory: internals-explorer
       - name: Angular Build
-        run: npx ng build
+        run: npx ng build --base-href /ckompiler/
         working-directory: internals-explorer
       - name: Deploy to Github pages
         uses: JamesIves/github-pages-deploy-action@4.1.7
