@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable, tap } from 'rxjs';
 import { CompileService } from '../../services/compile.service';
@@ -13,7 +14,7 @@ import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 })
 export class LiveCompileComponent {
   public readonly initialSource$: Observable<string> =
-    this.httpClient.get('/assets/default.c', { responseType: 'text' });
+    this.httpClient.get(this.location.prepareExternalUrl('/assets/default.c'), { responseType: 'text' });
 
   public readonly diagnosticStats$: Observable<DiagnosticsStats> = this.compileService.diagnosticStats$;
 
@@ -31,6 +32,7 @@ export class LiveCompileComponent {
   constructor(
     private httpClient: HttpClient,
     private compileService: CompileService,
+    private location: Location,
   ) {
   }
 }

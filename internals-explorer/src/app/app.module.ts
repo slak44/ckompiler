@@ -17,7 +17,7 @@ import { monacoThemeLoader } from '@cki-utils/monaco-theme-loader';
     AppRoutingModule,
     BrowserAnimationsModule,
     HttpClientModule,
-    MonacoEditorModule.forRoot({ onMonacoLoad: monacoThemeLoader })
+    MonacoEditorModule.forRoot({ baseUrl: './assets', onMonacoLoad: monacoThemeLoader })
   ],
   providers: [
     {
