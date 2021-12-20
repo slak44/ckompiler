@@ -126,7 +126,7 @@ kotlin {
   js(IR) {
     browser {
       webpackTask {
-        finalizedBy(makePropsFileJs)
+        dependsOn(makePropsFileJs)
         finalizedBy(setNoCheck)
       }
     }
