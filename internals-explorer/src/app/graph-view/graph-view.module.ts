@@ -11,7 +11,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ResizeObserverModule } from '@ng-web-apis/resize-observer';
 import { SourceEditorComponent } from './components/source-editor/source-editor.component';
-import { MonacoEditorModule } from 'ngx-monaco-editor';
+import { MonacoEditorModule } from 'ng-monaco-editor';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DiagnosticListComponent } from './components/diagnostic-list/diagnostic-list.component';
 import { MatChipsModule } from '@angular/material/chips';

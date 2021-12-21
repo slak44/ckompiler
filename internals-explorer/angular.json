@@ -35,11 +35,6 @@
                 "glob": "*(graphvizlib.wasm|index.min.js)",
                 "input": "node_modules/@hpcc-js/wasm/dist/",
                 "output": "/assets/graphviz-wasm"
-              },
-              {
-                "glob": "**/*",
-                "input": "node_modules/monaco-editor",
-                "output": "/assets/monaco-editor"
               }
             ],
             "styles": [

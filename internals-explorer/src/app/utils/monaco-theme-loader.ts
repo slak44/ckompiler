@@ -21,6 +21,7 @@ export async function monacoThemeLoader(): Promise<void> {
     colors: theme.colors || {}
   };
 
-  window.monaco.editor.defineTheme('darcula', definedTheme);
-  window.monaco.editor.setTheme('darcula');
+  /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+  window.monaco!.editor.defineTheme('darcula', definedTheme);
+  window.monaco!.editor.setTheme('darcula');
 }

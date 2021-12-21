@@ -68,7 +68,8 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
         };
       });
 
-      window.monaco.editor.setModelMarkers(window.monaco.editor.getModels()[0], null!, markers);
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      window.monaco!.editor.setModelMarkers(window.monaco!.editor.getModels()[0], null!, markers);
     });
   }
 }
