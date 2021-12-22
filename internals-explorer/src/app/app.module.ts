@@ -5,8 +5,8 @@ import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HIGHLIGHT_OPTIONS } from 'ngx-highlightjs';
 import { HttpClientModule } from '@angular/common/http';
-import { monacoThemeLoader } from '@cki-utils/monaco-theme-loader';
 import { MonacoEditorModule } from 'ng-monaco-editor';
+import { monacoLoader } from '@cki-utils/monaco-loader';
 
 @NgModule({
   declarations: [
@@ -18,8 +18,8 @@ import { MonacoEditorModule } from 'ng-monaco-editor';
     BrowserAnimationsModule,
     HttpClientModule,
     MonacoEditorModule.forRoot({
-      dynamicImport: () => import('monaco-editor').then(monaco => monacoThemeLoader().then(() => monaco))
-    })
+      dynamicImport: () => import('monaco-editor').then(monacoLoader)
+    }),
   ],
   providers: [
     {

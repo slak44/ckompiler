@@ -1,6 +1,13 @@
-import type { editor } from 'monaco-editor';
+import * as Monaco from 'monaco-editor';
+import { Observable, ReplaySubject } from 'rxjs';
 
-export async function monacoThemeLoader(): Promise<void> {
+const monacoLoadSubject: ReplaySubject<typeof Monaco> = new ReplaySubject(1);
+
+export const monacoLoaded$: Observable<typeof Monaco> = monacoLoadSubject;
+
+export async function monacoLoader(monaco: typeof Monaco): Promise<typeof Monaco> {
+  monacoLoadSubject.next(monaco);
+
   const theme = await import('node_modules/vscode-theme-darcula/themes/darcula.json');
 
   // https://stackoverflow.com/questions/65959169/how-to-use-a-vsc-theme-in-monaco-editor
@@ -14,14 +21,15 @@ export async function monacoThemeLoader(): Promise<void> {
     }));
   });
 
-  const definedTheme: editor.IStandaloneThemeData = {
+  const definedTheme: Monaco.editor.IStandaloneThemeData = {
     base: theme.type === 'light' ? 'vs' : 'vs-dark',
     inherit: true,
     rules: tokenRules,
     colors: theme.colors || {}
   };
 
-  /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-  window.monaco!.editor.defineTheme('darcula', definedTheme);
-  window.monaco!.editor.setTheme('darcula');
+  monaco.editor.defineTheme('darcula', definedTheme);
+  monaco.editor.setTheme('darcula');
+
+  return monaco;
 }

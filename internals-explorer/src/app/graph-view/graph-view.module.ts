@@ -11,13 +11,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ResizeObserverModule } from '@ng-web-apis/resize-observer';
 import { SourceEditorComponent } from './components/source-editor/source-editor.component';
-import { MonacoEditorModule } from 'ng-monaco-editor';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DiagnosticListComponent } from './components/diagnostic-list/diagnostic-list.component';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { GraphLegendComponent } from './components/graph-legend/graph-legend.component';
+import { MonacoEditorModule } from 'ng-monaco-editor';
+import { monacoLoader } from '@cki-utils/monaco-loader';
 
 @NgModule({
   declarations: [

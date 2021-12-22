@@ -1,13 +1,15 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { Observable, takeUntil } from 'rxjs';
+import { first, Observable, takeUntil } from 'rxjs';
 import { CompileService } from '../../services/compile.service';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import type * as Monaco from 'monaco-editor';
 import { editor, MarkerSeverity } from 'monaco-editor';
 import IMarkerData = editor.IMarkerData;
 import { slak } from '@ckompiler/ckompiler';
 import closedRangeLength = slak.ckompiler.closedRangeLength;
 import diagnosticKindString = slak.ckompiler.diagnosticKindString;
+import { monacoLoaded$ } from '@cki-utils/monaco-loader';
 
 @Component({
   selector: 'cki-source-editor',
@@ -43,6 +45,10 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
       this.initialText$.subscribe(text => this.sourceControl.setValue(text));
     }
 
+    monacoLoaded$.pipe(first()).subscribe((monaco) => this.setMarkersFromDiagnostics(monaco));
+  }
+
+  private setMarkersFromDiagnostics(monaco: typeof Monaco): void {
     this.compileService.allDiagnostics$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(diagnostics => {
@@ -68,8 +74,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
         };
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      window.monaco!.editor.setModelMarkers(window.monaco!.editor.getModels()[0], null!, markers);
+      monaco.editor.setModelMarkers(monaco.editor.getModels()[0], null!, markers);
     });
   }
 }

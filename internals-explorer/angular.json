@@ -20,8 +20,11 @@
       "prefix": "cki",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:browser",
+          "builder": "@angular-builders/custom-webpack:browser",
           "options": {
+            "customWebpackConfig": {
+              "path": "./extra-webpack.config.ts"
+            },
             "outputPath": "dist/internals-explorer",
             "index": "src/index.html",
             "main": "src/main.ts",
@@ -38,7 +41,8 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/monaco-editor/min/vs/editor/editor.main.css"
             ],
             "stylePreprocessorOptions": {
               "includePaths": [
@@ -49,7 +53,8 @@
             "scripts": [],
             "allowedCommonJsDependencies": [
               "@ckompiler/ckompiler",
-              "d3-graphviz"
+              "d3-graphviz",
+              "monaco-editor"
             ]
           },
           "configurations": {
@@ -86,8 +91,11 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
+          "builder": "@angular-builders/custom-webpack:dev-server",
           "configurations": {
+            "customWebpackConfig": {
+              "path": "./extra-webpack.config.ts"
+            },
             "production": {
               "browserTarget": "internals-explorer:build:production"
             },
@@ -104,8 +112,11 @@
           }
         },
         "test": {
-          "builder": "@angular-devkit/build-angular:karma",
+          "builder": "@angular-builders/custom-webpack:karma",
           "options": {
+            "customWebpackConfig": {
+              "path": "./extra-webpack.config.ts"
+            },
             "main": "src/test.ts",
             "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.spec.json",
