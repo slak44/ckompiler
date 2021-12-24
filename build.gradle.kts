@@ -75,6 +75,7 @@ abstract class PropsFileJsTask : DefaultTask() {
 val makePropsFileJs = "makePropsFileJs"
 tasks.register<PropsFileJsTask>(makePropsFileJs) {
   dependsOn("jsProductionExecutableCompileSync")
+  dependsOn("processTestResources")
   this.version = version
   val res = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin")
   includeFolder = File(res, "include")
@@ -96,9 +97,10 @@ kotlin {
         jvmTarget = "11"
       }
 
-      tasks.getByName(processResourcesTaskName) {
+      tasks.getByName("jvmProcessResources") {
         dependsOn(tasks.getByName("processResources"))
-        dependsOn(makePropsFileJvm)
+        dependsOn(tasks.getByName("processTestResources"))
+        finalizedBy(makePropsFileJvm)
       }
     }
 
@@ -107,9 +109,10 @@ kotlin {
         jvmTarget = "11"
       }
 
-      tasks.getByName(processResourcesTaskName) {
+      tasks.getByName("jvmTestProcessResources") {
         dependsOn(tasks.getByName("processResources"))
-        dependsOn(makePropsFileJvm)
+        dependsOn(tasks.getByName("processTestResources"))
+        finalizedBy(makePropsFileJvm)
       }
     }
 
@@ -127,11 +130,16 @@ kotlin {
   js(IR) {
     browser {
       webpackTask {
-        dependsOn(makePropsFileJs)
         finalizedBy(setNoCheck)
       }
     }
     binaries.executable()
+
+    tasks.getByName("jsProcessResources") {
+      dependsOn(tasks.getByName("processResources"))
+      dependsOn(tasks.getByName("processTestResources"))
+      finalizedBy(makePropsFileJs)
+    }
   }
 
   sourceSets {
