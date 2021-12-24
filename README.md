@@ -8,6 +8,10 @@ and are assumed to exist in the environment (eg `nasm` and `ld`).
 Run `./gradlew distZip` for the compiler's CLI (will be created in
 `build/distributions/ckompiler-$version.zip`).
 
+Run `./gradlew jsBrowserDistribution` for the JS build of the compiler _only_
+(will be created in `build/js/packages/ckompiler/kotlin`).
+Note that the CLI is JVM-only. 
+
 JUnit tests can be found in the `slak.test` package, in `src/test/kotlin`.
 
 Also, see what was chosen for some
