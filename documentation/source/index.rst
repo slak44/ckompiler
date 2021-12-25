@@ -1,20 +1,12 @@
-.. ckompiler documentation master file, created by
-   sphinx-quickstart on Fri Dec 24 20:44:33 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. include:: _config.rst
 
-Welcome to ckompiler's documentation!
+Welcome to CKompiler's documentation!
 =====================================
 
 .. toctree::
+   introduction.rst
+   targets.rst
+   build-instructions.rst
+   cli.rst
    :maxdepth: 2
-   :caption: Contents:
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   :caption: CKompiler:

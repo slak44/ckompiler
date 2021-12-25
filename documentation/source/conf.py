@@ -28,7 +28,13 @@ author = 'Slak44'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.extlinks'
 ]
+
+extlinks = {
+    'js-path': ('https://github.com/slak44/ckompiler/tree/master/src/jsMain/kotlin/slak/ckompiler/%s', '%s'),
+    'jvm-path': ('https://github.com/slak44/ckompiler/tree/master/src/jvmMain/kotlin/slak/ckompiler/%s', '%s')
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
