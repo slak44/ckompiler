@@ -26,7 +26,7 @@ jobs:
             !build/js/packages/ckompiler/node_modules
             !build/js/packages/ckompiler/webpack.config.js
             !build/js/packages/ckompiler/kotlin/test
-  Build-Deploy-Internals-Explorer-Angular:
+  Build-Internals-Explorer-Angular:
     runs-on: ubuntu-latest
     needs: Build-ckompiler-JS-Distribution
     steps:
@@ -55,35 +55,27 @@ jobs:
       - name: Angular Build
         run: npx ng build --base-href /ckompiler/
         working-directory: internals-explorer
+      - name: Archive Angular artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ckompiler-angular-dist
+          path: internals-explorer/dist/
+  Deploy-GH-Pages:
+    runs-on: ubuntu-latest
+    needs: Build-Internals-Explorer-Angular
+    steps:
+      - name: Get Angular artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: ckompiler-angular-dist
       - name: Fix 404 page for SPA routes
         run: cp index.html 404.html
-        working-directory: internals-explorer/dist/internals-explorer
+        working-directory: internals-explorer
       - name: Deploy to Github pages
         uses: JamesIves/github-pages-deploy-action@4.1.7
         with:
           branch: gh-pages
-          folder: internals-explorer/dist/internals-explorer
-#      - name: Archive Angular artifacts
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: ckompiler-angular-dist
-#          path: |
-#            internals-explorer/dist/
-#  Deploy-GH-Pages:
-#    runs-on: ubuntu-latest
-#    needs: Build-Internals-Explorer-Angular
-#    steps:
-#      - name: Check out repository code
-#        uses: actions/checkout@v2
-#      - name: Get Angular artifacts
-#        uses: actions/download-artifact@v2
-#        with:
-#          name: ckompiler-angular-dist
-#      - name: Deploy to Github pages
-#        uses: JamesIves/github-pages-deploy-action@4.1.7
-#        with:
-#          branch: gh-pages
-#          folder: internals-explorer
+          folder: internals-explorer
 
 concurrency:
   group: env-${{ github.head_ref }}
