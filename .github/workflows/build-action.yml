@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ckompiler-sphinx-docs
-          path: build/html
+          path: documentation/build/html
   Deploy-GH-Pages:
     runs-on: ubuntu-latest
     needs:
