@@ -60,6 +60,19 @@ jobs:
         with:
           name: ckompiler-angular-dist
           path: internals-explorer/dist/
+  Build-Sphinx-Docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - uses: ammaraskar/sphinx-action@0.4
+        with:
+          docs-folder: 'documentation/'
+      - name: Archive Sphinx documentation artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ckompiler-sphinx-docs
+          path: build/html
   Deploy-GH-Pages:
     runs-on: ubuntu-latest
     needs: Build-Internals-Explorer-Angular
@@ -70,6 +83,13 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: ckompiler-angular-dist
+      - run: mkdir documentation
+        working-directory: internals-explorer
+      - name: Get Sphinx artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: ckompiler-sphinx-docs
+          path: internals-explorer/documentation
       - name: Fix 404 page for SPA routes
         run: cp index.html 404.html
         working-directory: internals-explorer
