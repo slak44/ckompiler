@@ -75,7 +75,9 @@ jobs:
           path: build/html
   Deploy-GH-Pages:
     runs-on: ubuntu-latest
-    needs: Build-Internals-Explorer-Angular
+    needs:
+      - Build-Internals-Explorer-Angular
+      - Build-Sphinx-Docs
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
