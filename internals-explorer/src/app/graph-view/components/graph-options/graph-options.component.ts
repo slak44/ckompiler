@@ -18,8 +18,16 @@ export class GraphOptionsComponent {
 
   public readonly printingValue$: Observable<string> = (this.printingControl.valueChanges as Observable<string>).pipe(
     startWith(this.printingControl.value as string),
-    shareReplay({ refCount: false, bufferSize: 1 })
+    shareReplay({ refCount: false, bufferSize: 1 }),
   );
+
+  public readonly showDominatorControl: FormControl = new FormControl(false);
+
+  public readonly showDominator$: Observable<boolean> =
+    (this.showDominatorControl.valueChanges as Observable<boolean>).pipe(
+      startWith(this.showDominatorControl.value as boolean),
+      shareReplay({ refCount: false, bufferSize: 1 }),
+    );
 
   constructor() {
   }

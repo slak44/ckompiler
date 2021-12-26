@@ -20,6 +20,7 @@ import { GraphLegendComponent } from './components/graph-legend/graph-legend.com
 import { MonacoEditorModule } from 'ng-monaco-editor';
 import { monacoLoader } from '@cki-utils/monaco-loader';
 import { GraphOptionsComponent } from './components/graph-options/graph-options.component';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 @NgModule({
   declarations: [
@@ -45,6 +46,7 @@ import { GraphOptionsComponent } from './components/graph-options/graph-options.
     MatChipsModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatCheckboxModule,
   ],
 })
 export class GraphViewModule {
