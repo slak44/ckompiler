@@ -12,26 +12,14 @@ import {
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import {
-  combineLatest,
-  filter,
-  map,
-  Observable,
-  shareReplay,
-  startWith,
-  Subject,
-  Subscription,
-  takeUntil,
-} from 'rxjs';
+import { combineLatest, map, Subject, Subscription, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { CompileService } from '../../services/compile.service';
-import { FormControl } from '@angular/forms';
+import { GraphOptionsComponent } from '../graph-options/graph-options.component';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
-import codePrintingMethods = slak.ckompiler.codePrintingMethods;
-import getCodePrintingNameJs = slak.ckompiler.getCodePrintingNameJs;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 function measureTextAscent(text: string): number {
@@ -49,6 +37,9 @@ function measureTextAscent(text: string): number {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GraphViewComponent extends SubscriptionDestroy implements AfterViewInit {
+  @ViewChild(GraphOptionsComponent)
+  private graphOptions!: GraphOptionsComponent;
+
   @ViewChild('graph')
   private graphRef!: ElementRef<HTMLDivElement>;
 
@@ -56,14 +47,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private graphviz?: Graphviz<BaseType, unknown, BaseType, unknown>;
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
-
-  public readonly printingControl: FormControl = new FormControl('IR_TO_STRING');
-  private readonly printingValue$: Observable<string> = (this.printingControl.valueChanges as Observable<string>).pipe(
-    startWith(this.printingControl.value as string),
-    shareReplay({ refCount: false, bufferSize: 1 })
-  );
-
-  public readonly codePrintingMethods: string[] = codePrintingMethods;
 
   private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
 
@@ -76,7 +59,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     super();
   }
 
-  private replaceTexts(): void {
+  private replaceTexts(printingType: string): void {
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
     const svgTextElements = Array.from(this.graphRef.nativeElement.querySelectorAll('text'));
     const maxAscent = Math.max(...svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '')));
@@ -89,7 +72,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
       const comp = componentFactory.create(this.injector, [], replaceableHost);
       comp.instance.text = text;
-      comp.instance.printingType = this.printingControl.value as string;
+      comp.instance.printingType = printingType;
       comp.instance.color = textElement.getAttribute('fill')!;
       this.applicationRef.attachView(comp.hostView);
 
@@ -116,28 +99,27 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.textSubscription?.unsubscribe();
     this.textSubscription = combineLatest([
       this.compileService.compileResult$,
-      this.printingValue$
+      this.graphOptions.printingValue$
     ]).pipe(
-      map(([compileResult, printingType]: [JSCompileResult, string]) => {
+      map(([compileResult, printingType]: [JSCompileResult, string]): [Nullable<string>, string] => {
         if (!compileResult.cfgs) {
-          return;
+          return [null, printingType];
         }
 
         const main = compileResult.cfgs.find(cfg => cfg.f.name === 'main');
 
         if (!main) {
-          return;
+          return [null, printingType];
         }
 
         const options = graphvizOptions(true, 16, 'Helvetica', printingType);
-        return createGraphviz(main, main.f.sourceText as string, options);
+        return [createGraphviz(main, main.f.sourceText as string, options), printingType];
       }),
-      filter((text: Nullable<string>): text is string => !!text),
       takeUntil(this.destroy$)
-    ).subscribe(text => {
-      if (this.graphviz) {
+    ).subscribe(([text, printingType]: [Nullable<string>, string]): void => {
+      if (this.graphviz && text) {
         this.revertReplacements();
-        this.graphviz.renderDot(text, () => this.replaceTexts());
+        this.graphviz.renderDot(text, () => this.replaceTexts(printingType));
       }
     });
   }
@@ -169,9 +151,5 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     if (event && event.contentRect.width && event.contentRect.height) {
       this.resizeSubject.next(event.contentRect);
     }
-  }
-
-  public getCodePrintingMethodName(value: string): string {
-    return getCodePrintingNameJs(value);
   }
 }

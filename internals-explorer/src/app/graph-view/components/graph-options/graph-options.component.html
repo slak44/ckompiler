@@ -1,0 +1,8 @@
+<mat-form-field appearance="standard" color="accent">
+  <mat-label>Block content</mat-label>
+  <mat-select [formControl]="printingControl">
+    <mat-option *ngFor="let print of codePrintingMethods" [value]="print">
+      {{ getCodePrintingMethodName(print) }}
+    </mat-option>
+  </mat-select>
+</mat-form-field>

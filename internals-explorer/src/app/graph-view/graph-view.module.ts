@@ -19,6 +19,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { GraphLegendComponent } from './components/graph-legend/graph-legend.component';
 import { MonacoEditorModule } from 'ng-monaco-editor';
 import { monacoLoader } from '@cki-utils/monaco-loader';
+import { GraphOptionsComponent } from './components/graph-options/graph-options.component';
 
 @NgModule({
   declarations: [
@@ -28,6 +29,7 @@ import { monacoLoader } from '@cki-utils/monaco-loader';
     SourceEditorComponent,
     DiagnosticListComponent,
     GraphLegendComponent,
+    GraphOptionsComponent,
   ],
   imports: [
     CommonModule,
