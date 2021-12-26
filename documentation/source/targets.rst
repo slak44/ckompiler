@@ -23,5 +23,6 @@ Internals Explorer
 ------------------
 
 This is an Angular app that takes advantage of the JS-compiled version.
-It shows output for arbitrary code at varying stages of the compilation process,
-like the `--cfg-mode` option in the CLI.
+It shows output for arbitrary code at varying stages of the compilation process, like the `--cfg-mode` option in the
+CLI.
+See it live: `Internals Explorer <https://slak44.github.io/ckompiler/>`_

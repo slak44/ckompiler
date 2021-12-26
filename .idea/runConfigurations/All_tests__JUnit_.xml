@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="All tests" type="JUnit" factoryName="JUnit">
+  <configuration default="false" name="All tests (JUnit)" type="JUnit" factoryName="JUnit">
     <module name="ckompiler.jvmTest" />
     <option name="ALTERNATIVE_JRE_PATH" value="14" />
     <option name="PACKAGE_NAME" value="" />
