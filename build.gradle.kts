@@ -170,7 +170,7 @@ kotlin {
       dependencies {
         implementation(kotlin("stdlib-jdk8"))
         implementation("com.github.ajalt:mordant:1.2.0")
-        implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.14.1")
+        implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.17.0")
       }
     }
 
