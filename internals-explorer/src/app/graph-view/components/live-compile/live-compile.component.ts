@@ -6,6 +6,10 @@ import { CompileService } from '../../services/compile.service';
 import { slak } from '@ckompiler/ckompiler';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 
+export const SOURCE_CODE_PATH = 'source-code';
+export const DIAGNOSTICS_PATH = 'diagnostics';
+export const CFG_PATH = 'cfg';
+
 @Component({
   selector: 'cki-live-compile',
   templateUrl: './live-compile.component.html',
@@ -13,6 +17,10 @@ import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LiveCompileComponent {
+  public readonly SOURCE_CODE_PATH = SOURCE_CODE_PATH;
+  public readonly DIAGNOSTICS_PATH = DIAGNOSTICS_PATH;
+  public readonly CFG_PATH = CFG_PATH;
+
   public readonly initialSource$: Observable<string> =
     this.httpClient.get(this.location.prepareExternalUrl('/assets/default.c'), { responseType: 'text' });
 

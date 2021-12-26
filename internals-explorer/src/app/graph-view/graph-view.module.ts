@@ -18,9 +18,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { GraphLegendComponent } from './components/graph-legend/graph-legend.component';
 import { MonacoEditorModule } from 'ng-monaco-editor';
-import { monacoLoader } from '@cki-utils/monaco-loader';
 import { GraphOptionsComponent } from './components/graph-options/graph-options.component';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { TabRoutingModule } from '../tab-routing/tab-routing.module';
 
 @NgModule({
   declarations: [
@@ -47,6 +47,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
     MatFormFieldModule,
     MatSelectModule,
     MatCheckboxModule,
+    TabRoutingModule,
   ],
 })
 export class GraphViewModule {

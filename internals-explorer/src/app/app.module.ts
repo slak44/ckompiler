@@ -18,7 +18,7 @@ import { monacoLoader } from '@cki-utils/monaco-loader';
     BrowserAnimationsModule,
     HttpClientModule,
     MonacoEditorModule.forRoot({
-      dynamicImport: () => import('monaco-editor').then(monacoLoader)
+      dynamicImport: () => import('monaco-editor').then(monacoLoader),
     }),
   ],
   providers: [
