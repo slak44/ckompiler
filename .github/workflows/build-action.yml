@@ -95,6 +95,9 @@ jobs:
       - name: Fix 404 page for SPA routes
         run: cp index.html 404.html
         working-directory: internals-explorer
+      - name: Disable Jekyll Processing
+        run: touch .nojekyll
+        working-directory: internals-explorer
       - name: Deploy to Github pages
         uses: JamesIves/github-pages-deploy-action@4.1.7
         with:
