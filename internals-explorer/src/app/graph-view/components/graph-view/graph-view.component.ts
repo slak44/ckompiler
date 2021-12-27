@@ -6,7 +6,7 @@ import {
   Component,
   ComponentFactoryResolver,
   ElementRef,
-  Injector,
+  Injector, OnDestroy,
   ViewChild,
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
@@ -36,7 +36,7 @@ function measureTextAscent(text: string): number {
   styleUrls: ['./graph-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GraphViewComponent extends SubscriptionDestroy implements AfterViewInit {
+export class GraphViewComponent extends SubscriptionDestroy implements AfterViewInit, OnDestroy {
   @ViewChild(GraphOptionsComponent)
   private graphOptions!: GraphOptionsComponent;
 
@@ -144,6 +144,11 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
       this.subscribeToGraphvizText();
     });
+  }
+
+  public override ngOnDestroy(): void {
+    super.ngOnDestroy();
+    (this.graphviz as unknown as { destroy(): void }).destroy();
   }
 
   public onResize(events: ResizeObserverEntry[]): void {
