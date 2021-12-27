@@ -497,6 +497,7 @@ fun createDomTreePreOrderNodes(
 }
 
 /** A [MutableList] of [BasicBlock]s, indexed by [BasicBlock]s. */
+@JsExport
 class DominatorList(size: Int) {
   private val domsImpl = MutableList<BasicBlock?>(size) { null }
   operator fun get(b: BasicBlock) = domsImpl[b.postOrderId]
