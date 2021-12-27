@@ -20,3 +20,7 @@ $internals-explorer-theme: mat.define-dark-theme((
 $primary-default: map-get($internals-explorer-primary, "default");
 $accent-default: map-get($internals-explorer-accent, "default");
 
+$false-branch: lightcoral;
+$true-branch: #A2CD5A;
+$graph-text: #CCC;
+

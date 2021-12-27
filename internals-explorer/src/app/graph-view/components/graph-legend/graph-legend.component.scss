@@ -34,4 +34,37 @@ $border-size: 3px;
 .arrow-svg {
   width: $preview-width;
   height: $preview-height;
+
+  &.normal {
+    path {
+      stroke: colors.$graph-text;
+    }
+
+    polygon {
+      stroke: colors.$graph-text;
+      fill: colors.$graph-text;
+    }
+  }
+
+  &.false {
+    path {
+      stroke: colors.$false-branch;
+    }
+
+    polygon {
+      stroke: colors.$false-branch;
+      fill: colors.$false-branch;
+    }
+  }
+
+  &.true {
+    path {
+      stroke: colors.$true-branch;
+    }
+
+    polygon {
+      stroke: colors.$true-branch;
+      fill: colors.$true-branch;
+    }
+  }
 }
