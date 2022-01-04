@@ -15,6 +15,30 @@
   height: 100%;
   overflow: hidden;
   background-color: colors.$graph-background;
+
+  ::ng-deep {
+    polygon.node {
+      fill: transparent;
+      transition: fill ease-in-out 150ms;
+
+      &.hovered {
+        fill: rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+      }
+
+      &.clicked {
+        fill: rgba(255, 255, 255, 0.2);
+      }
+
+      &.frontier {
+        fill: rgba(colors.$true-branch, 0.2);
+      }
+
+      &.idom {
+        fill: rgba(colors.$accent-default, 0.2);
+      }
+    }
+  }
 }
 
 .ui-overlay {

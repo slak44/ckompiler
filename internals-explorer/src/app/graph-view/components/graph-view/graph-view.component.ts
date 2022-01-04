@@ -1,4 +1,4 @@
-import { Nullable, slak } from '@ckompiler/ckompiler';
+import { slak } from '@ckompiler/ckompiler';
 import {
   AfterViewInit,
   ApplicationRef,
@@ -6,7 +6,8 @@ import {
   Component,
   ComponentFactoryResolver,
   ElementRef,
-  Injector, OnDestroy,
+  Injector,
+  OnDestroy,
   ViewChild,
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
@@ -21,6 +22,9 @@ import { GraphOptionsComponent } from '../graph-options/graph-options.component'
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
+import CFG = slak.ckompiler.analysis.CFG;
+import arrayOf = slak.ckompiler.arrayOf;
+import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
 function measureTextAscent(text: string): number {
   const canvas = document.createElement('canvas');
@@ -28,6 +32,38 @@ function measureTextAscent(text: string): number {
   ctx.font = '16px "Roboto"';
   const metrics = ctx.measureText(text);
   return metrics.actualBoundingBoxAscent;
+}
+
+interface GraphvizDatum {
+  id: string;
+  key: string;
+  parent: GraphvizDatum;
+  tag: string;
+  text: string;
+  children: GraphvizDatum[];
+  attributes: Record<string, string>;
+  bbox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  center: {
+    x: number;
+    y: number;
+  };
+}
+
+function getNodeById(cfg: CFG, nodeId: number): BasicBlock {
+  return arrayOf<BasicBlock>(cfg.nodes).find(node => node.nodeId === nodeId)!;
+}
+
+function setClassIf(e: Element, className: string, cond: boolean): void {
+  if (cond) {
+    e.classList.add(className);
+  } else {
+    e.classList.remove(className);
+  }
 }
 
 @Component({
@@ -44,11 +80,13 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private graphRef!: ElementRef<HTMLDivElement>;
 
   private textSubscription?: Subscription;
-  private graphviz?: Graphviz<BaseType, unknown, BaseType, unknown>;
+  private graphviz?: Graphviz<BaseType, GraphvizDatum, BaseType, unknown>;
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
 
   private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
+
+  private readonly clickedNodeSubject: Subject<BasicBlock> = new Subject();
 
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
@@ -60,6 +98,11 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private replaceTexts(printingType: string): void {
+    const titles = Array.from(this.graphRef.nativeElement.querySelectorAll('title'));
+    for (const titleElem of titles) {
+      titleElem.textContent = '';
+    }
+
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
     const svgTextElements = Array.from(this.graphRef.nativeElement.querySelectorAll('text'));
     const maxAscent = Math.max(...svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '')));
@@ -82,6 +125,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       foreign.setAttribute('height', '100%');
 
       foreign.setAttribute('transform', `translate(0, -${maxAscent})`);
+      foreign.style.pointerEvents = 'none';
 
       this.foreignToTextMap.set(foreign, textElement);
       textElement.replaceWith(foreign);
@@ -95,31 +139,70 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.foreignToTextMap.clear();
   }
 
+  private configureNode(e: SVGPolygonElement, nodeId: number, cfg: CFG): void {
+    // Someone is overwriting us, somehow
+    setTimeout(() => e.classList.add('node'), 0);
+
+    e.addEventListener('mouseover', () => e.classList.add('hovered'));
+    e.addEventListener('mouseout', () => e.classList.remove('hovered'));
+
+    e.addEventListener('click', () => {
+      const node = getNodeById(cfg, nodeId);
+      this.clickedNodeSubject.next(node);
+    });
+
+    const sub = this.clickedNodeSubject.subscribe((clickedNode) => {
+      setClassIf(e, 'clicked', clickedNode.nodeId === nodeId);
+      const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(block => block.nodeId);
+      setClassIf(e, 'frontier', frontierIds.includes(nodeId));
+      setClassIf(e, 'idom', cfg.doms.get(clickedNode)!.nodeId === nodeId);
+    });
+    this.textSubscription?.add(sub);
+  }
+
+  private attributer(element: BaseType, datum: GraphvizDatum, cfg: CFG): void {
+    const parent = datum.parent;
+    const parentIsG = parent && parent.tag === 'g' && /^node\d+$/.test(parent.key);
+    if (datum.tag === 'polygon' && parentIsG) {
+      const nodeId = parseInt(parent.key.slice('node'.length));
+      this.configureNode(element as SVGPolygonElement, nodeId, cfg);
+    }
+  }
+
   private subscribeToGraphvizText(): void {
     this.textSubscription?.unsubscribe();
     this.textSubscription = combineLatest([
       this.compileService.compileResult$,
-      this.graphOptions.printingValue$
+      this.graphOptions.printingValue$,
     ]).pipe(
-      map(([compileResult, printingType]: [JSCompileResult, string]): [Nullable<string>, string] => {
+      map(([compileResult, printingType]: [JSCompileResult, string]): [CFG | null, string | null, string] => {
         if (!compileResult.cfgs) {
-          return [null, printingType];
+          return [null, null, printingType];
         }
 
         const main = compileResult.cfgs.find(cfg => cfg.f.name === 'main');
 
         if (!main) {
-          return [null, printingType];
+          return [null, null, printingType];
         }
 
         const options = graphvizOptions(true, 16, 'Helvetica', printingType);
-        return [createGraphviz(main, main.f.sourceText as string, options), printingType];
+        return [main, createGraphviz(main, main.f.sourceText as string, options), printingType];
       }),
-      takeUntil(this.destroy$)
-    ).subscribe(([text, printingType]: [Nullable<string>, string]): void => {
-      if (this.graphviz && text) {
+      takeUntil(this.destroy$),
+    ).subscribe(([cfg, text, printingType]: [CFG | null, string | null, string]): void => {
+      if (this.graphviz && text && cfg) {
         this.revertReplacements();
-        this.graphviz.renderDot(text, () => this.replaceTexts(printingType));
+
+        // Required for that API
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const self = this;
+
+        this.graphviz
+          .attributer(function (datum: GraphvizDatum): void {
+            self.attributer(this, datum, cfg);
+          })
+          .renderDot(text, () => this.replaceTexts(printingType));
       }
     });
   }
@@ -135,7 +218,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     this.resizeSubject.pipe(
       debounceAfterFirst(500),
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(rect => {
       this.graphRef.nativeElement.style.width = `${rect.width}px`;
       this.graphRef.nativeElement.style.height = `${rect.height}px`;

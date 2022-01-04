@@ -35,36 +35,47 @@ $border-size: 3px;
   width: $preview-width;
   height: $preview-height;
 
-  &.normal {
+  @mixin arrow-svg($color) {
     path {
-      stroke: colors.$graph-text;
+      stroke: $color;
     }
 
     polygon {
-      stroke: colors.$graph-text;
-      fill: colors.$graph-text;
+      stroke: $color;
+      fill: $color;
     }
+  }
+
+  &.normal {
+    @include arrow-svg(colors.$graph-text);
   }
 
   &.false {
-    path {
-      stroke: colors.$false-branch;
-    }
-
-    polygon {
-      stroke: colors.$false-branch;
-      fill: colors.$false-branch;
-    }
+    @include arrow-svg(colors.$false-branch);
   }
 
   &.true {
-    path {
-      stroke: colors.$true-branch;
-    }
-
-    polygon {
-      stroke: colors.$true-branch;
-      fill: colors.$true-branch;
-    }
+    @include arrow-svg(colors.$true-branch);
   }
+}
+
+$preview-alpha: 2 * colors.$hover-alpha;
+
+@mixin highlight($color) {
+  width: $preview-width;
+  height: $preview-height;
+  color: colors.$graph-text;
+  background-color: rgba($color, $preview-alpha);
+}
+
+.highlight-current {
+  @include highlight(white);
+}
+
+.highlight-idom {
+  @include highlight(colors.$accent-default);
+}
+
+.highlight-frontier {
+  @include highlight(colors.$true-branch);
 }
