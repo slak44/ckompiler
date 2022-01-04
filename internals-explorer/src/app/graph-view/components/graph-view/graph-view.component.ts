@@ -27,10 +27,10 @@ import CFG = slak.ckompiler.analysis.CFG;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
-function measureTextAscent(text: string): number {
+function measureTextAscent(text: string, fontName: string): number {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
-  ctx.font = '16px "Roboto"';
+  ctx.font = `16px "${fontName}"`;
   const metrics = ctx.measureText(text);
   return metrics.actualBoundingBoxAscent;
 }
@@ -86,7 +86,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
     const svgTextElements = Array.from(this.graphRef.nativeElement.querySelectorAll('text'));
-    const maxAscent = Math.max(...svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '')));
+    const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '', 'Fira Code'));
+    const maxAscent = Math.max(...textAscents);
     for (const textElement of svgTextElements) {
       const text = textElement.textContent ?? '';
 
@@ -167,7 +168,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
           return [null, null, printingType];
         }
 
-        const options = graphvizOptions(true, 16, 'Helvetica', printingType);
+        const options = graphvizOptions(true, 16, 'Courier', printingType);
         return [main, createGraphviz(main, main.f.sourceText as string, options), printingType];
       }),
       takeUntil(this.destroy$),
