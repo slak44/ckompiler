@@ -168,7 +168,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
           return [null, null, printingType];
         }
 
-        const options = graphvizOptions(true, 16, 'Courier', printingType);
+        const options = graphvizOptions(true, 16.5, 'Courier New', printingType);
         return [main, createGraphviz(main, main.f.sourceText as string, options), printingType];
       }),
       takeUntil(this.destroy$),
