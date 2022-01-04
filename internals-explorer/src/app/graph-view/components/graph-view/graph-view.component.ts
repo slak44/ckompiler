@@ -19,6 +19,7 @@ import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { CompileService } from '../../services/compile.service';
 import { GraphOptionsComponent } from '../graph-options/graph-options.component';
+import { GraphvizDatum } from './graphviz-datum';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
@@ -32,26 +33,6 @@ function measureTextAscent(text: string): number {
   ctx.font = '16px "Roboto"';
   const metrics = ctx.measureText(text);
   return metrics.actualBoundingBoxAscent;
-}
-
-interface GraphvizDatum {
-  id: string;
-  key: string;
-  parent: GraphvizDatum;
-  tag: string;
-  text: string;
-  children: GraphvizDatum[];
-  attributes: Record<string, string>;
-  bbox: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  center: {
-    x: number;
-    y: number;
-  };
 }
 
 function getNodeById(cfg: CFG, nodeId: number): BasicBlock {
