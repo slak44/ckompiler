@@ -4,13 +4,12 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
   selector: 'cki-graph-legend',
   templateUrl: './graph-legend.component.html',
   styleUrls: ['./graph-legend.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GraphLegendComponent implements OnInit {
-
-  constructor() { }
-
-  ngOnInit(): void {
+  constructor() {
   }
 
+  public ngOnInit(): void {
+  }
 }

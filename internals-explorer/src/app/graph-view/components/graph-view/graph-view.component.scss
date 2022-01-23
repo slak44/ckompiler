@@ -38,6 +38,13 @@
         fill: rgba(colors.$accent-default, 0.2);
       }
     }
+
+    path.frontier-path {
+      pointer-events: none;
+      stroke-width: 3px;
+      stroke: colors.$frontier-line;
+      fill: transparent;
+    }
   }
 }
 

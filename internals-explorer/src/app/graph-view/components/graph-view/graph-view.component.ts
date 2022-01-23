@@ -20,6 +20,7 @@ import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { CompileService } from '../../services/compile.service';
 import { GraphOptionsComponent } from '../graph-options/graph-options.component';
 import { GraphvizDatum } from './graphviz-datum';
+import { catmullRomSplines } from './catmull-rom-splines';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
@@ -47,6 +48,26 @@ function setClassIf(e: Element, className: string, cond: boolean): void {
   }
 }
 
+function generateFrontierPath(frontierNodeIds: number[], graphNodes: GraphvizDatum[]): string {
+  const frontierDatum = graphNodes.filter(datum => {
+    const nodeId = parseInt(datum.id.match(/node(\d+)/)![1], 10);
+
+    return frontierNodeIds.includes(nodeId);
+  });
+
+  const flatPoints: number[] = frontierDatum.flatMap(datum => [datum.center.x, datum.bbox.y]);
+
+  if (flatPoints.length === 0) {
+    return '';
+  }
+
+  const allPoints = [-9999, -999]
+    .concat(flatPoints)
+    .concat(9999, -999);
+
+  return catmullRomSplines(allPoints, 1);
+}
+
 @Component({
   selector: 'cki-graph-view',
   templateUrl: './graph-view.component.html',
@@ -69,6 +90,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   private readonly clickedNodeSubject: Subject<BasicBlock> = new Subject();
 
+  private readonly activeFrontierPath: SVGPathElement =
+    document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
     private injector: Injector,
@@ -76,16 +100,30 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     private compileService: CompileService,
   ) {
     super();
+
+    this.activeFrontierPath.classList.add('frontier-path');
   }
 
-  private replaceTexts(printingType: string): void {
-    const titles = Array.from(this.graphRef.nativeElement.querySelectorAll('title'));
+  private alterGraph(printingType: string, graphNodes: GraphvizDatum[]): void {
+    const graphRef = this.graphRef.nativeElement;
+    const graph = graphRef.querySelector('g.graph')!;
+
+    graph.appendChild(this.activeFrontierPath);
+
+    const sub = this.clickedNodeSubject.subscribe((clickedNode) => {
+      const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(node => node.nodeId);
+
+      this.activeFrontierPath.setAttribute('d', generateFrontierPath(frontierIds, graphNodes));
+    });
+    this.textSubscription?.add(sub);
+
+    const titles = Array.from(graphRef.querySelectorAll('title'));
     for (const titleElem of titles) {
       titleElem.textContent = '';
     }
 
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
-    const svgTextElements = Array.from(this.graphRef.nativeElement.querySelectorAll('text'));
+    const svgTextElements = Array.from(graphRef.querySelectorAll('text'));
     const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '', 'Fira Code'));
     const maxAscent = Math.max(...textAscents);
     for (const textElement of svgTextElements) {
@@ -114,11 +152,18 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     }
   }
 
-  private revertReplacements(): void {
+  private revertAlterations(): void {
     for (const [foreign, text] of this.foreignToTextMap) {
       foreign.replaceWith(text);
     }
     this.foreignToTextMap.clear();
+
+    const pathParent = this.activeFrontierPath.parentNode;
+
+    if (pathParent) {
+      this.activeFrontierPath.setAttribute('d', '');
+      pathParent.removeChild(this.activeFrontierPath);
+    }
   }
 
   private configureNode(e: SVGPolygonElement, nodeId: number, cfg: CFG): void {
@@ -142,12 +187,13 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.textSubscription?.add(sub);
   }
 
-  private attributer(element: BaseType, datum: GraphvizDatum, cfg: CFG): void {
+  private attributer(element: BaseType, datum: GraphvizDatum, cfg: CFG, graphNodes: GraphvizDatum[]): void {
     const parent = datum.parent;
     const parentIsG = parent && parent.tag === 'g' && /^node\d+$/.test(parent.key);
     if (datum.tag === 'polygon' && parentIsG) {
       const nodeId = parseInt(parent.key.slice('node'.length));
       this.configureNode(element as SVGPolygonElement, nodeId, cfg);
+      graphNodes.push(datum);
     }
   }
 
@@ -174,17 +220,19 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       takeUntil(this.destroy$),
     ).subscribe(([cfg, text, printingType]: [CFG | null, string | null, string]): void => {
       if (this.graphviz && text && cfg) {
-        this.revertReplacements();
+        this.revertAlterations();
 
         // Required for that API
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
 
+        const graphNodes: GraphvizDatum[] = [];
+
         this.graphviz
           .attributer(function (datum: GraphvizDatum): void {
-            self.attributer(this, datum, cfg);
+            self.attributer(this, datum, cfg, graphNodes);
           })
-          .renderDot(text, () => this.replaceTexts(printingType));
+          .renderDot(text, () => this.alterGraph(printingType, graphNodes));
       }
     });
   }

@@ -59,6 +59,13 @@ $border-size: 3px;
   }
 }
 
+.frontier-line {
+  width: $preview-width;
+  height: $preview-height;
+
+  stroke: colors.$frontier-line;
+}
+
 $preview-alpha: 2 * colors.$hover-alpha;
 
 @mixin highlight($color) {
