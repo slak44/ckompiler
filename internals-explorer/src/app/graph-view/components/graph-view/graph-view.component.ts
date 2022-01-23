@@ -81,7 +81,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   @ViewChild('graph')
   private graphRef!: ElementRef<HTMLDivElement>;
 
-  private textSubscription?: Subscription;
+  private alterGraphSubscription?: Subscription;
   private graphviz?: Graphviz<BaseType, GraphvizDatum, BaseType, unknown>;
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
@@ -89,6 +89,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
 
   private readonly clickedNodeSubject: Subject<BasicBlock> = new Subject();
+  private readonly clearClickedSubject: Subject<void> = new Subject();
 
   private readonly activeFrontierPath: SVGPathElement =
     document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -104,10 +105,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.activeFrontierPath.classList.add('frontier-path');
   }
 
-  private alterGraph(printingType: string, graphNodes: GraphvizDatum[]): void {
-    const graphRef = this.graphRef.nativeElement;
-    const graph = graphRef.querySelector('g.graph')!;
-
+  private showFrontierPath(graph: Element, graphNodes: GraphvizDatum[]): void {
     graph.appendChild(this.activeFrontierPath);
 
     const sub = this.clickedNodeSubject.subscribe((clickedNode) => {
@@ -115,13 +113,27 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
       this.activeFrontierPath.setAttribute('d', generateFrontierPath(frontierIds, graphNodes));
     });
-    this.textSubscription?.add(sub);
+    this.alterGraphSubscription?.add(sub);
+  }
 
+  private removeTitles(graphRef: HTMLDivElement): void {
     const titles = Array.from(graphRef.querySelectorAll('title'));
     for (const titleElem of titles) {
       titleElem.textContent = '';
     }
+  }
 
+  private handleClearClicked(graph: Element): void {
+    const clearSub = this.clearClickedSubject.subscribe(() => {
+      graph.querySelectorAll('polygon.clicked').forEach(e => e.classList.remove('clicked'));
+      graph.querySelectorAll('polygon.frontier').forEach(e => e.classList.remove('frontier'));
+      graph.querySelectorAll('polygon.idom').forEach(e => e.classList.remove('idom'));
+      this.activeFrontierPath.setAttribute('d', '');
+    });
+    this.alterGraphSubscription?.add(clearSub);
+  }
+
+  private replaceTexts(graphRef: HTMLDivElement, printingType: string): void {
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
     const svgTextElements = Array.from(graphRef.querySelectorAll('text'));
     const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '', 'Fira Code'));
@@ -152,6 +164,16 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     }
   }
 
+  private alterGraph(printingType: string, graphNodes: GraphvizDatum[]): void {
+    const graphRef = this.graphRef.nativeElement;
+    const graph = graphRef.querySelector('g.graph')!;
+
+    this.showFrontierPath(graph, graphNodes);
+    this.handleClearClicked(graph);
+    this.removeTitles(graphRef);
+    this.replaceTexts(graphRef, printingType);
+  }
+
   private revertAlterations(): void {
     for (const [foreign, text] of this.foreignToTextMap) {
       foreign.replaceWith(text);
@@ -159,7 +181,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.foreignToTextMap.clear();
 
     const pathParent = this.activeFrontierPath.parentNode;
-
     if (pathParent) {
       this.activeFrontierPath.setAttribute('d', '');
       pathParent.removeChild(this.activeFrontierPath);
@@ -175,7 +196,12 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     e.addEventListener('click', () => {
       const node = getNodeById(cfg, nodeId);
-      this.clickedNodeSubject.next(node);
+      if (e.classList.contains('clicked')) {
+        // Clicking already selected node should unselect
+        this.clearClickedSubject.next();
+      } else {
+        this.clickedNodeSubject.next(node);
+      }
     });
 
     const sub = this.clickedNodeSubject.subscribe((clickedNode) => {
@@ -184,7 +210,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       setClassIf(e, 'frontier', frontierIds.includes(nodeId));
       setClassIf(e, 'idom', cfg.doms.get(clickedNode)!.nodeId === nodeId);
     });
-    this.textSubscription?.add(sub);
+    this.alterGraphSubscription?.add(sub);
   }
 
   private attributer(element: BaseType, datum: GraphvizDatum, cfg: CFG, graphNodes: GraphvizDatum[]): void {
@@ -198,8 +224,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private subscribeToGraphvizText(): void {
-    this.textSubscription?.unsubscribe();
-    this.textSubscription = combineLatest([
+    this.alterGraphSubscription?.unsubscribe();
+    this.alterGraphSubscription = combineLatest([
       this.compileService.compileResult$,
       this.graphOptions.printingValue$,
     ]).pipe(
