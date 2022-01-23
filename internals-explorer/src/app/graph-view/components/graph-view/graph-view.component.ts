@@ -289,6 +289,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public override ngOnDestroy(): void {
     super.ngOnDestroy();
     (this.graphviz as unknown as { destroy(): void }).destroy();
+    this.alterGraphSubscription?.unsubscribe();
+    this.alterGraphSubscription = undefined;
   }
 
   public onResize(events: ResizeObserverEntry[]): void {
