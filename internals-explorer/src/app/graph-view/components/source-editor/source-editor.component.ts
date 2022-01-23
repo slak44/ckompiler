@@ -11,6 +11,8 @@ import closedRangeLength = slak.ckompiler.closedRangeLength;
 import diagnosticKindString = slak.ckompiler.diagnosticKindString;
 import { monacoLoaded$ } from '@cki-utils/monaco-loader';
 
+const STORAGE_KEY_SOURCE_CODE = 'source-code';
+
 @Component({
   selector: 'cki-source-editor',
   templateUrl: './source-editor.component.html',
@@ -38,10 +40,14 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     this.sourceControl.valueChanges.pipe(
       takeUntil(this.destroy$)
     ).subscribe((text: string) => {
+      localStorage.setItem(STORAGE_KEY_SOURCE_CODE, text);
       this.compileService.changeSourceText(text);
     });
 
-    if (this.initialText$) {
+    const lastText = localStorage.getItem(STORAGE_KEY_SOURCE_CODE);
+    if (lastText) {
+      this.sourceControl.setValue(lastText);
+    } else if (this.initialText$) {
       this.initialText$.subscribe(text => this.sourceControl.setValue(text));
     }
 
