@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
-import { Observable, shareReplay, startWith } from 'rxjs';
+import { map, Observable, shareReplay, startWith } from 'rxjs';
 import codePrintingMethods = slak.ckompiler.codePrintingMethods;
 import getCodePrintingNameJs = slak.ckompiler.getCodePrintingNameJs;
 
@@ -18,6 +18,14 @@ export class GraphOptionsComponent {
 
   public readonly printingValue$: Observable<string> = (this.printingControl.valueChanges as Observable<string>).pipe(
     startWith(this.printingControl.value as string),
+    shareReplay({ refCount: false, bufferSize: 1 }),
+  );
+
+  public readonly uiHiddenControl: FormControl = new FormControl(false);
+
+  public readonly isUIVisible$: Observable<boolean> = (this.uiHiddenControl.valueChanges as Observable<boolean>).pipe(
+    startWith(this.uiHiddenControl.value as boolean),
+    map(isHidden => !isHidden),
     shareReplay({ refCount: false, bufferSize: 1 }),
   );
 
