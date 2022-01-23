@@ -13,7 +13,7 @@ import {
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import { combineLatest, map, Subject, Subscription, takeUntil } from 'rxjs';
+import { combineLatest, distinctUntilChanged, map, Subject, Subscription, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
@@ -273,6 +273,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.graphviz.onerror(error => console.error(error));
 
     this.resizeSubject.pipe(
+      distinctUntilChanged((rect1, rect2) => rect1.width === rect2.width && rect1.height === rect2.height),
       debounceAfterFirst(500),
       takeUntil(this.destroy$),
     ).subscribe(rect => {
