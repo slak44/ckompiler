@@ -190,4 +190,17 @@ class DiagnosticTests {
     p.assertDiags(DiagnosticId.DUPLICATE_DECL_SPEC)
     assert("|EXPANDED_FROM]" !in p.diags[0].toString())
   }
+
+  @Test
+  fun `Expected Semi Has Correct Position In Diagnostic`() {
+    val p = prepareCode("""
+      int main() {
+        int a;
+        1 + a
+        return 0;
+      }
+    """.trimIndent(), source)
+    p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
+    p.diags.assertDiagCaret(diagNr = 0, line = 3, col = 7, colCount = 1)
+  }
 }

@@ -310,7 +310,7 @@ class StatementParser(
       diagnostic {
         id = DiagnosticId.EXPECTED_SEMI_AFTER
         formatArgs("expression")
-        column(colPastTheEnd(0))
+        column(colPastTheEnd(if (isEaten()) 0 else -1))
       }
     } else {
       eat() // The semicolon
