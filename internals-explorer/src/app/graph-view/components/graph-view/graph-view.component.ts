@@ -13,7 +13,7 @@ import {
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import { combineLatest, distinctUntilChanged, map, Subject, Subscription, takeUntil } from 'rxjs';
+import { combineLatest, distinctUntilChanged, map, Observable, Subject, switchMap, takeUntil, tap } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
@@ -81,7 +81,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   @ViewChild('graph')
   private graphRef!: ElementRef<HTMLDivElement>;
 
-  private alterGraphSubscription?: Subscription;
   private graphviz?: Graphviz<BaseType, GraphvizDatum, BaseType, unknown>;
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
@@ -90,6 +89,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   private readonly clickedNodeSubject: Subject<BasicBlock> = new Subject();
   private readonly clearClickedSubject: Subject<void> = new Subject();
+
+  private readonly rerenderSubject: Subject<void> = new Subject();
 
   private readonly activeFrontierPath: SVGPathElement =
     document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -108,12 +109,13 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private showFrontierPath(graph: Element, graphNodes: GraphvizDatum[]): void {
     graph.appendChild(this.activeFrontierPath);
 
-    const sub = this.clickedNodeSubject.subscribe((clickedNode) => {
+    this.clickedNodeSubject.pipe(
+      takeUntil(this.rerenderSubject),
+    ).subscribe((clickedNode) => {
       const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(node => node.nodeId);
 
       this.activeFrontierPath.setAttribute('d', generateFrontierPath(frontierIds, graphNodes));
     });
-    this.alterGraphSubscription?.add(sub);
   }
 
   private removeTitles(graphRef: HTMLDivElement): void {
@@ -124,13 +126,14 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private handleClearClicked(graph: Element): void {
-    const clearSub = this.clearClickedSubject.subscribe(() => {
+    this.clearClickedSubject.pipe(
+      takeUntil(this.rerenderSubject),
+    ).subscribe(() => {
       graph.querySelectorAll('polygon.clicked').forEach(e => e.classList.remove('clicked'));
       graph.querySelectorAll('polygon.frontier').forEach(e => e.classList.remove('frontier'));
       graph.querySelectorAll('polygon.idom').forEach(e => e.classList.remove('idom'));
       this.activeFrontierPath.setAttribute('d', '');
     });
-    this.alterGraphSubscription?.add(clearSub);
   }
 
   private replaceTexts(graphRef: HTMLDivElement, printingType: string): void {
@@ -204,13 +207,14 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       }
     });
 
-    const sub = this.clickedNodeSubject.subscribe((clickedNode) => {
+    this.clickedNodeSubject.pipe(
+      takeUntil(this.rerenderSubject),
+    ).subscribe((clickedNode) => {
       setClassIf(e, 'clicked', clickedNode.nodeId === nodeId);
       const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(block => block.nodeId);
       setClassIf(e, 'frontier', frontierIds.includes(nodeId));
       setClassIf(e, 'idom', cfg.doms.get(clickedNode)!.nodeId === nodeId);
     });
-    this.alterGraphSubscription?.add(sub);
   }
 
   private attributer(element: BaseType, datum: GraphvizDatum, cfg: CFG, graphNodes: GraphvizDatum[]): void {
@@ -223,44 +227,45 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     }
   }
 
-  private subscribeToGraphvizText(): void {
-    this.alterGraphSubscription?.unsubscribe();
-    this.alterGraphSubscription = combineLatest([
+  public rerenderGraph(): Observable<void> {
+    return combineLatest([
       this.compileService.compileResult$,
       this.graphOptions.printingValue$,
     ]).pipe(
-      map(([compileResult, printingType]: [JSCompileResult, string]): [CFG | null, string | null, string] => {
+      map(([compileResult, printingType]: [JSCompileResult, string]): void => {
         if (!compileResult.cfgs) {
-          return [null, null, printingType];
+          return;
         }
 
         const main = compileResult.cfgs.find(cfg => cfg.f.name === 'main');
 
         if (!main) {
-          return [null, null, printingType];
+          return;
         }
 
         const options = graphvizOptions(true, 16.5, 'Courier New', printingType);
-        return [main, createGraphviz(main, main.f.sourceText as string, options), printingType];
-      }),
-      takeUntil(this.destroy$),
-    ).subscribe(([cfg, text, printingType]: [CFG | null, string | null, string]): void => {
-      if (this.graphviz && text && cfg) {
+        const text = createGraphviz(main, main.f.sourceText as string, options);
+
+        if (!(this.graphviz && text && main)) {
+          return;
+        }
+
+        this.rerenderSubject.next();
         this.revertAlterations();
+
+        const graphNodes: GraphvizDatum[] = [];
 
         // Required for that API
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
 
-        const graphNodes: GraphvizDatum[] = [];
-
         this.graphviz
           .attributer(function (datum: GraphvizDatum): void {
-            self.attributer(this, datum, cfg, graphNodes);
+            self.attributer(this, datum, main, graphNodes);
           })
           .renderDot(text, () => this.alterGraph(printingType, graphNodes));
-      }
-    });
+      }),
+    );
   }
 
   public ngAfterViewInit(): void {
@@ -275,22 +280,20 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.resizeSubject.pipe(
       distinctUntilChanged((rect1, rect2) => rect1.width === rect2.width && rect1.height === rect2.height),
       debounceAfterFirst(500),
+      tap(rect => {
+        this.graphRef.nativeElement.style.width = `${rect.width}px`;
+        this.graphRef.nativeElement.style.height = `${rect.height}px`;
+        this.graphviz?.width(rect.width);
+        this.graphviz?.height(rect.height);
+      }),
+      switchMap(() => this.rerenderGraph()),
       takeUntil(this.destroy$),
-    ).subscribe(rect => {
-      this.graphRef.nativeElement.style.width = `${rect.width}px`;
-      this.graphRef.nativeElement.style.height = `${rect.height}px`;
-      this.graphviz?.width(rect.width);
-      this.graphviz?.height(rect.height);
-
-      this.subscribeToGraphvizText();
-    });
+    ).subscribe();
   }
 
   public override ngOnDestroy(): void {
     super.ngOnDestroy();
     (this.graphviz as unknown as { destroy(): void }).destroy();
-    this.alterGraphSubscription?.unsubscribe();
-    this.alterGraphSubscription = undefined;
   }
 
   public onResize(events: ResizeObserverEntry[]): void {
