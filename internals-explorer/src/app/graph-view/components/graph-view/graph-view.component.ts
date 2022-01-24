@@ -13,7 +13,18 @@ import {
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import { combineLatest, distinctUntilChanged, map, Observable, Subject, switchMap, takeUntil, tap } from 'rxjs';
+import {
+  combineLatest,
+  distinctUntilChanged,
+  first,
+  map,
+  Observable,
+  share,
+  Subject,
+  switchMap,
+  takeUntil,
+  tap,
+} from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
@@ -88,6 +99,11 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
 
   private readonly clickedNodeSubject: Subject<BasicBlock> = new Subject();
+  private readonly clickedNode$: Observable<BasicBlock> = this.clickedNodeSubject.pipe(
+    distinctUntilChanged(),
+    share()
+  );
+
   private readonly clearClickedSubject: Subject<void> = new Subject();
 
   private readonly rerenderSubject: Subject<void> = new Subject();
@@ -109,7 +125,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private showFrontierPath(graph: Element, graphNodes: GraphvizDatum[]): void {
     graph.appendChild(this.activeFrontierPath);
 
-    this.clickedNodeSubject.pipe(
+    this.clickedNode$.pipe(
       takeUntil(this.rerenderSubject),
     ).subscribe((clickedNode) => {
       const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(node => node.nodeId);
@@ -194,10 +210,10 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     // Someone is overwriting us, somehow
     setTimeout(() => e.classList.add('node'), 0);
 
-    e.addEventListener('mouseover', () => e.classList.add('hovered'));
-    e.addEventListener('mouseout', () => e.classList.remove('hovered'));
+    const mouseover = () => e.classList.add('hovered');
+    const mouseout = () => e.classList.remove('hovered');
 
-    e.addEventListener('click', () => {
+    const nodeClick = () => {
       const node = getNodeById(cfg, nodeId);
       if (e.classList.contains('clicked')) {
         // Clicking already selected node should unselect
@@ -205,9 +221,19 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       } else {
         this.clickedNodeSubject.next(node);
       }
+    };
+
+    e.addEventListener('mouseover', mouseover);
+    e.addEventListener('mouseout', mouseout);
+    e.addEventListener('click', nodeClick);
+
+    this.rerenderSubject.pipe(first()).subscribe(() => {
+      e.removeEventListener('mouseover', mouseover);
+      e.removeEventListener('mouseout', mouseout);
+      e.removeEventListener('click', nodeClick);
     });
 
-    this.clickedNodeSubject.pipe(
+    this.clickedNode$.pipe(
       takeUntil(this.rerenderSubject),
     ).subscribe((clickedNode) => {
       setClassIf(e, 'clicked', clickedNode.nodeId === nodeId);
