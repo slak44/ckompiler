@@ -161,8 +161,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     });
   }
 
-  private removeTitles(graphRef: HTMLDivElement): void {
-    const titles = Array.from(graphRef.querySelectorAll('title'));
+  private removeTitles(graph: Element): void {
+    const titles = Array.from(graph.querySelectorAll('title'));
     for (const titleElem of titles) {
       titleElem.textContent = '';
     }
@@ -179,9 +179,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     });
   }
 
-  private replaceTexts(graphRef: HTMLDivElement, printingType: string): void {
+  private replaceTexts(graph: Element, printingType: string): void {
     const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
-    const svgTextElements = Array.from(graphRef.querySelectorAll('text'));
+    const svgTextElements = Array.from(graph.querySelectorAll('text'));
     const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '', 'Fira Code'));
     const maxAscent = Math.max(...textAscents);
     for (const textElement of svgTextElements) {
@@ -211,8 +211,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private alterGraph(printingType: string, cfg: CFG): void {
-    const graphRef = this.graphRef.nativeElement;
-    const graph = graphRef.querySelector('g.graph')!;
+    const graph = this.graphRef.nativeElement.querySelector('g.graph')!;
 
     const graphNodesSelection = d3.select(graph)
       .selectAll<SVGPolygonElement, GraphvizDatum>('g > polygon')
@@ -226,8 +225,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     this.showFrontierPath(graph, graphNodesData);
     this.handleClearClicked(graph);
-    this.removeTitles(graphRef);
-    this.replaceTexts(graphRef, printingType);
+    this.removeTitles(graph);
+    this.replaceTexts(graph, printingType);
   }
 
   private revertAlterations(): void {
