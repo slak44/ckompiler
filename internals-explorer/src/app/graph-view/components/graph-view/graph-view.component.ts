@@ -13,18 +13,7 @@ import {
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
-import {
-  combineLatest,
-  distinctUntilChanged,
-  first,
-  map,
-  Observable,
-  share,
-  Subject,
-  switchMap,
-  takeUntil,
-  tap,
-} from 'rxjs';
+import { combineLatest, distinctUntilChanged, first, map, Observable, Subject, switchMap, takeUntil, tap } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import * as d3 from 'd3';
 import { BaseType } from 'd3';
@@ -110,10 +99,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
 
   private readonly clickedNodeSubject: Subject<BasicBlock> = new Subject();
-  private readonly clickedNode$: Observable<BasicBlock> = this.clickedNodeSubject.pipe(
-    distinctUntilChanged(),
-    share()
-  );
 
   private readonly clearClickedSubject: Subject<void> = new Subject();
 
@@ -167,7 +152,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private showFrontierPath(graph: Element, graphNodes: GraphvizDatum[]): void {
     graph.appendChild(this.activeFrontierPath);
 
-    this.clickedNode$.pipe(
+    this.clickedNodeSubject.pipe(
       takeUntil(this.rerenderSubject),
     ).subscribe((clickedNode) => {
       const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(node => node.nodeId);
@@ -267,8 +252,10 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     const nodeClick = () => {
       const node = getNodeById(cfg, nodeId);
+      console.log(node, e.classList.contains('clicked'));
       if (e.classList.contains('clicked')) {
         // Clicking already selected node should unselect
+        e.classList.remove('clicked');
         this.clearClickedSubject.next();
       } else {
         this.clickedNodeSubject.next(node);
@@ -285,7 +272,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       e.removeEventListener('click', nodeClick);
     });
 
-    this.clickedNode$.pipe(
+    this.clickedNodeSubject.pipe(
       takeUntil(this.rerenderSubject),
     ).subscribe((clickedNode) => {
       setClassIf(e, 'clicked', clickedNode.nodeId === nodeId);
