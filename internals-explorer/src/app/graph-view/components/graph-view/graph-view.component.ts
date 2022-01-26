@@ -26,12 +26,15 @@ import {
   tap,
 } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import * as d3 from 'd3';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { CompileService } from '../../services/compile.service';
 import { GraphOptionsComponent } from '../graph-options/graph-options.component';
 import { GraphvizDatum } from './graphviz-datum';
 import { catmullRomSplines } from './catmull-rom-splines';
+import { ZoomTransform } from 'd3-zoom';
+import { ZoomView } from 'd3-interpolate';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
@@ -59,12 +62,14 @@ function setClassIf(e: Element, className: string, cond: boolean): void {
   }
 }
 
-function generateFrontierPath(frontierNodeIds: number[], graphNodes: GraphvizDatum[]): string {
-  const frontierDatum = graphNodes.filter(datum => {
-    const nodeId = parseInt(datum.id.match(/node(\d+)/)![1], 10);
+function getDatumNodeId(datum: GraphvizDatum): number {
+  const match = datum.parent.key.match(/^node(\d+)$/);
+  if (!match) return NaN;
+  return parseInt(match[1], 10);
+}
 
-    return frontierNodeIds.includes(nodeId);
-  });
+function generateFrontierPath(frontierNodeIds: number[], graphNodes: GraphvizDatum[]): string {
+  const frontierDatum = graphNodes.filter(datum => frontierNodeIds.includes(getDatumNodeId(datum)));
 
   const flatPoints: number[] = frontierDatum.flatMap(datum => [datum.center.x, datum.bbox.y]);
 
@@ -77,6 +82,12 @@ function generateFrontierPath(frontierNodeIds: number[], graphNodes: GraphvizDat
     .concat(9999, -999);
 
   return catmullRomSplines(allPoints, 1);
+}
+
+function setZoomOnElement(element: Element, transform: ZoomTransform): void {
+  // Yeah, yeah, messing with library internals is bad, now shut up
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-explicit-any
+  (element as any).__zoom = transform;
 }
 
 @Component({
@@ -120,6 +131,37 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     super();
 
     this.activeFrontierPath.classList.add('frontier-path');
+  }
+
+  private transitionToNode(graph: Element, graphNodes: GraphvizDatum[], targetNode: BasicBlock): void {
+    const svgRef = this.graphRef.nativeElement.querySelector('svg')!;
+
+    const clickedDatum = graphNodes.find(datum => targetNode.nodeId === getDatumNodeId(datum));
+    const { x, y } = clickedDatum!.center;
+
+    const transformFromZoom = ([x, y, k]: ZoomView): string => `scale(${k}) translate(${-x}, ${-y})`;
+    const zoomTransform = d3.zoomTransform(svgRef);
+
+    setZoomOnElement(graph, zoomTransform);
+
+    const from: ZoomView = [zoomTransform.x, zoomTransform.y, zoomTransform.k];
+    const to: ZoomView = [x, -y, zoomTransform.k];
+
+    const interpolator = d3.interpolateZoom(from, to);
+
+    const transition = d3
+      .select(graph)
+      .transition()
+      .delay(50)
+      .duration(500)
+      .attrTween("transform", () => t => transformFromZoom(interpolator(t)))
+      .on('end', () => setZoomOnElement(svgRef, d3.zoomTransform(graph)));
+
+    const zb = this.graphviz!.zoomBehavior()!;
+
+    // Library types are wrong
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument
+    zb.translateTo(transition as any, x, y);
   }
 
   private showFrontierPath(graph: Element, graphNodes: GraphvizDatum[]): void {
@@ -183,11 +225,21 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     }
   }
 
-  private alterGraph(printingType: string, graphNodes: GraphvizDatum[]): void {
+  private alterGraph(printingType: string, cfg: CFG): void {
     const graphRef = this.graphRef.nativeElement;
     const graph = graphRef.querySelector('g.graph')!;
 
-    this.showFrontierPath(graph, graphNodes);
+    const graphNodesSelection = d3.select(graph)
+      .selectAll<SVGPolygonElement, GraphvizDatum>('g > polygon')
+      .filter(datum => !isNaN(getDatumNodeId(datum)));
+    const graphNodesData = graphNodesSelection.data();
+
+    graphNodesSelection.nodes().map((element, idx) => {
+      const nodeId = getDatumNodeId(graphNodesData[idx]);
+      this.configureNode(element, nodeId, cfg);
+    });
+
+    this.showFrontierPath(graph, graphNodesData);
     this.handleClearClicked(graph);
     this.removeTitles(graphRef);
     this.replaceTexts(graphRef, printingType);
@@ -243,16 +295,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     });
   }
 
-  private attributer(element: BaseType, datum: GraphvizDatum, cfg: CFG, graphNodes: GraphvizDatum[]): void {
-    const parent = datum.parent;
-    const parentIsG = parent && parent.tag === 'g' && /^node\d+$/.test(parent.key);
-    if (datum.tag === 'polygon' && parentIsG) {
-      const nodeId = parseInt(parent.key.slice('node'.length));
-      this.configureNode(element as SVGPolygonElement, nodeId, cfg);
-      graphNodes.push(datum);
-    }
-  }
-
   public rerenderGraph(): Observable<void> {
     return combineLatest([
       this.compileService.compileResult$,
@@ -279,17 +321,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
         this.rerenderSubject.next();
         this.revertAlterations();
 
-        const graphNodes: GraphvizDatum[] = [];
-
-        // Required for that API
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const self = this;
-
-        this.graphviz
-          .attributer(function (datum: GraphvizDatum): void {
-            self.attributer(this, datum, main, graphNodes);
-          })
-          .renderDot(text, () => this.alterGraph(printingType, graphNodes));
+        this.graphviz.renderDot(text, () => this.alterGraph(printingType, main));
       }),
     );
   }
