@@ -21,6 +21,7 @@ import { MonacoEditorModule } from 'ng-monaco-editor';
 import { GraphOptionsComponent } from './components/graph-options/graph-options.component';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TabRoutingModule } from '../tab-routing/tab-routing.module';
+import { DefaultGraphViewComponent } from './components/default-graph-view/default-graph-view.component';
 
 @NgModule({
   declarations: [
@@ -31,6 +32,7 @@ import { TabRoutingModule } from '../tab-routing/tab-routing.module';
     DiagnosticListComponent,
     GraphLegendComponent,
     GraphOptionsComponent,
+    DefaultGraphViewComponent,
   ],
   imports: [
     CommonModule,

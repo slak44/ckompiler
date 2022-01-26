@@ -1,18 +1,15 @@
 import { slak } from '@ckompiler/ckompiler';
 import {
   AfterViewInit,
-  ApplicationRef,
   ChangeDetectionStrategy,
   Component,
-  ComponentFactoryResolver,
   ElementRef,
-  Injector,
+  Input,
   OnDestroy,
   ViewChild,
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
-import { IrFragmentComponent, irFragmentComponentSelector } from '../ir-fragment/ir-fragment.component';
 import { combineLatest, distinctUntilChanged, first, map, Observable, Subject, switchMap, takeUntil, tap } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import * as d3 from 'd3';
@@ -20,58 +17,16 @@ import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { CompileService } from '../../services/compile.service';
 import { GraphOptionsComponent } from '../graph-options/graph-options.component';
-import { GraphvizDatum } from './graphviz-datum';
-import { catmullRomSplines } from './catmull-rom-splines';
+import { GraphvizDatum } from '../../models/graphviz-datum.model';
 import { ZoomTransform } from 'd3-zoom';
 import { ZoomView } from 'd3-interpolate';
+import { GraphViewHook } from '../../models/graph-view-hook.model';
+import { getDatumNodeId, getNodeById, setClassIf } from '../../utils';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import CFG = slak.ckompiler.analysis.CFG;
-import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-
-function measureTextAscent(text: string, fontName: string): number {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
-  ctx.font = `16px "${fontName}"`;
-  const metrics = ctx.measureText(text);
-  return metrics.actualBoundingBoxAscent;
-}
-
-function getNodeById(cfg: CFG, nodeId: number): BasicBlock {
-  return arrayOf<BasicBlock>(cfg.nodes).find(node => node.nodeId === nodeId)!;
-}
-
-function setClassIf(e: Element, className: string, cond: boolean): void {
-  if (cond) {
-    e.classList.add(className);
-  } else {
-    e.classList.remove(className);
-  }
-}
-
-function getDatumNodeId(datum: GraphvizDatum): number {
-  const match = datum.parent.key.match(/^node(\d+)$/);
-  if (!match) return NaN;
-  return parseInt(match[1], 10);
-}
-
-function generateFrontierPath(frontierNodeIds: number[], graphNodes: GraphvizDatum[]): string {
-  const frontierDatum = graphNodes.filter(datum => frontierNodeIds.includes(getDatumNodeId(datum)));
-
-  const flatPoints: number[] = frontierDatum.flatMap(datum => [datum.center.x, datum.bbox.y]);
-
-  if (flatPoints.length === 0) {
-    return '';
-  }
-
-  const allPoints = [-9999, -999]
-    .concat(flatPoints)
-    .concat(9999, -999);
-
-  return catmullRomSplines(allPoints, 1);
-}
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -86,6 +41,9 @@ function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GraphViewComponent extends SubscriptionDestroy implements AfterViewInit, OnDestroy {
+  @Input()
+  public hooks: GraphViewHook[] = [];
+
   @ViewChild(GraphOptionsComponent)
   private graphOptions!: GraphOptionsComponent;
 
@@ -96,33 +54,25 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
 
-  private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
-
   private readonly clickedNodeSubject: Subject<BasicBlock> = new Subject();
+  public readonly clickedNode$: Observable<BasicBlock> = this.clickedNodeSubject;
 
   private readonly clearClickedSubject: Subject<void> = new Subject();
+  public readonly clearClicked$: Observable<void> = this.clearClickedSubject;
 
   private readonly rerenderSubject: Subject<void> = new Subject();
-
-  private readonly activeFrontierPath: SVGPathElement =
-    document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  public readonly rerender$: Observable<void> = this.rerenderSubject;
 
   constructor(
-    private componentFactoryResolver: ComponentFactoryResolver,
-    private injector: Injector,
-    private applicationRef: ApplicationRef,
     private compileService: CompileService,
   ) {
     super();
-
-    this.activeFrontierPath.classList.add('frontier-path');
   }
 
-  private transitionToNode(graph: Element, graphNodes: GraphvizDatum[], targetNode: BasicBlock): void {
+  private transitionToNode(graph: Element, target: GraphvizDatum): void {
     const svgRef = this.graphRef.nativeElement.querySelector('svg')!;
 
-    const clickedDatum = graphNodes.find(datum => targetNode.nodeId === getDatumNodeId(datum));
-    const { x, y } = clickedDatum!.center;
+    const { x, y } = target.center;
 
     const transformFromZoom = ([x, y, k]: ZoomView): string => `scale(${k}) translate(${-x}, ${-y})`;
     const zoomTransform = d3.zoomTransform(svgRef);
@@ -149,99 +99,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     zb.translateTo(transition as any, x, y);
   }
 
-  private showFrontierPath(graph: Element, graphNodes: GraphvizDatum[]): void {
-    graph.appendChild(this.activeFrontierPath);
-
-    this.clickedNodeSubject.pipe(
-      takeUntil(this.rerenderSubject),
-    ).subscribe((clickedNode) => {
-      const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(node => node.nodeId);
-
-      this.activeFrontierPath.setAttribute('d', generateFrontierPath(frontierIds, graphNodes));
-    });
-  }
-
-  private removeTitles(graph: Element): void {
-    const titles = Array.from(graph.querySelectorAll('title'));
-    for (const titleElem of titles) {
-      titleElem.textContent = '';
-    }
-  }
-
-  private handleClearClicked(graph: Element): void {
-    this.clearClickedSubject.pipe(
-      takeUntil(this.rerenderSubject),
-    ).subscribe(() => {
-      graph.querySelectorAll('polygon.clicked').forEach(e => e.classList.remove('clicked'));
-      graph.querySelectorAll('polygon.frontier').forEach(e => e.classList.remove('frontier'));
-      graph.querySelectorAll('polygon.idom').forEach(e => e.classList.remove('idom'));
-      this.activeFrontierPath.setAttribute('d', '');
-    });
-  }
-
-  private replaceTexts(graph: Element, printingType: string): void {
-    const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
-    const svgTextElements = Array.from(graph.querySelectorAll('text'));
-    const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '', 'Fira Code'));
-    const maxAscent = Math.max(...textAscents);
-    for (const textElement of svgTextElements) {
-      const text = textElement.textContent ?? '';
-
-      const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-      const replaceableHost = document.createElement(irFragmentComponentSelector);
-      foreign.appendChild(replaceableHost);
-
-      const comp = componentFactory.create(this.injector, [], replaceableHost);
-      comp.instance.text = text;
-      comp.instance.printingType = printingType;
-      comp.instance.color = textElement.getAttribute('fill')!;
-      this.applicationRef.attachView(comp.hostView);
-
-      foreign.setAttribute('x', textElement.getAttribute('x')!);
-      foreign.setAttribute('y', textElement.getAttribute('y')!);
-      foreign.setAttribute('width', '100%');
-      foreign.setAttribute('height', '100%');
-
-      foreign.setAttribute('transform', `translate(0, -${maxAscent})`);
-      foreign.style.pointerEvents = 'none';
-
-      this.foreignToTextMap.set(foreign, textElement);
-      textElement.replaceWith(foreign);
-    }
-  }
-
-  private alterGraph(printingType: string, cfg: CFG): void {
-    const graph = this.graphRef.nativeElement.querySelector('g.graph')!;
-
-    const graphNodesSelection = d3.select(graph)
-      .selectAll<SVGPolygonElement, GraphvizDatum>('g > polygon')
-      .filter(datum => !isNaN(getDatumNodeId(datum)));
-    const graphNodesData = graphNodesSelection.data();
-
-    graphNodesSelection.nodes().map((element, idx) => {
-      const nodeId = getDatumNodeId(graphNodesData[idx]);
-      this.configureNode(element, nodeId, cfg);
-    });
-
-    this.showFrontierPath(graph, graphNodesData);
-    this.handleClearClicked(graph);
-    this.removeTitles(graph);
-    this.replaceTexts(graph, printingType);
-  }
-
-  private revertAlterations(): void {
-    for (const [foreign, text] of this.foreignToTextMap) {
-      foreign.replaceWith(text);
-    }
-    this.foreignToTextMap.clear();
-
-    const pathParent = this.activeFrontierPath.parentNode;
-    if (pathParent) {
-      this.activeFrontierPath.setAttribute('d', '');
-      pathParent.removeChild(this.activeFrontierPath);
-    }
-  }
-
   private configureNode(e: SVGPolygonElement, nodeId: number, cfg: CFG): void {
     // Someone is overwriting us, somehow
     setTimeout(() => e.classList.add('node'), 0);
@@ -251,7 +108,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     const nodeClick = () => {
       const node = getNodeById(cfg, nodeId);
-      console.log(node, e.classList.contains('clicked'));
       if (e.classList.contains('clicked')) {
         // Clicking already selected node should unselect
         e.classList.remove('clicked');
@@ -275,10 +131,40 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       takeUntil(this.rerenderSubject),
     ).subscribe((clickedNode) => {
       setClassIf(e, 'clicked', clickedNode.nodeId === nodeId);
-      const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(block => block.nodeId);
-      setClassIf(e, 'frontier', frontierIds.includes(nodeId));
-      setClassIf(e, 'idom', cfg.doms.get(clickedNode)!.nodeId === nodeId);
     });
+  }
+
+  private handleClearClicked(graph: Element): void {
+    this.clearClickedSubject.pipe(
+      takeUntil(this.rerenderSubject),
+    ).subscribe(() => {
+      graph.querySelectorAll('polygon.clicked').forEach(e => e.classList.remove('clicked'));
+    });
+  }
+
+  private alterGraph(printingType: string, cfg: CFG): void {
+    const graph = this.graphRef.nativeElement.querySelector('g.graph')!;
+
+    const graphNodesSelection = d3.select(graph)
+      .selectAll<SVGPolygonElement, GraphvizDatum>('g > polygon')
+      .filter(datum => !isNaN(getDatumNodeId(datum)));
+    const graphNodesData = graphNodesSelection.data();
+
+    graphNodesSelection.nodes().forEach((node, idx) => {
+      this.configureNode(node, getDatumNodeId(graphNodesData[idx]), cfg);
+    });
+
+    this.handleClearClicked(graph);
+
+    for (const hook of this.hooks) {
+      hook.alterGraph(this, cfg, printingType, graph, graphNodesSelection);
+    }
+  }
+
+  private revertAlterations(): void {
+    for (const hook of this.hooks) {
+      hook.revertAlteration?.();
+    }
   }
 
   public rerenderGraph(): Observable<void> {
