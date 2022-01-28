@@ -37,4 +37,13 @@
 
     <cki-default-graph-view></cki-default-graph-view>
   </mat-tab>
+
+  <mat-tab [ckiRoutedTab]="CFG_PATH" [disabled]="hasErrors$ | async">
+    <div *matTabLabel class="tab-label">
+      <mat-icon>route</mat-icon>
+      φ Insertion
+    </div>
+
+    <cki-phi-insertion-view></cki-phi-insertion-view>
+  </mat-tab>
 </mat-tab-group>

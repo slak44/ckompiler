@@ -22,6 +22,8 @@ import { GraphOptionsComponent } from './components/graph-options/graph-options.
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TabRoutingModule } from '../tab-routing/tab-routing.module';
 import { DefaultGraphViewComponent } from './components/default-graph-view/default-graph-view.component';
+import { GraphUiOverlayComponent } from './components/graph-ui-overlay/graph-ui-overlay.component';
+import { PhiInsertionViewComponent } from './components/phi-insertion-view/phi-insertion-view.component';
 
 @NgModule({
   declarations: [
@@ -33,6 +35,8 @@ import { DefaultGraphViewComponent } from './components/default-graph-view/defau
     GraphLegendComponent,
     GraphOptionsComponent,
     DefaultGraphViewComponent,
+    GraphUiOverlayComponent,
+    PhiInsertionViewComponent,
   ],
   imports: [
     CommonModule,

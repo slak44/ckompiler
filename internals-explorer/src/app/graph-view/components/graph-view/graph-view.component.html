@@ -2,8 +2,4 @@
   <div #graph class="graph-root"></div>
 </div>
 
-<div class="ui-overlay">
-  <cki-graph-options #options></cki-graph-options>
-
-  <cki-graph-legend *ngIf="options.isUIVisible$ | async"></cki-graph-legend>
-</div>
+<ng-content></ng-content>
