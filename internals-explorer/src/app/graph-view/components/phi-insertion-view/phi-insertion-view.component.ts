@@ -9,6 +9,7 @@ import { removeHoverTitles } from '../../graph-view-hooks/remove-hover-titles';
   templateUrl: './phi-insertion-view.component.html',
   styleUrls: ['./phi-insertion-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [ReplaceNodeContentsHook],
 })
 export class PhiInsertionViewComponent {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
@@ -16,7 +17,7 @@ export class PhiInsertionViewComponent {
   public readonly hooks: GraphViewHook[] = [removeHoverTitles, this.replaceNodeContents];
 
   constructor(
-    private replaceNodeContents: ReplaceNodeContentsHook
+    private replaceNodeContents: ReplaceNodeContentsHook,
   ) {
   }
 }

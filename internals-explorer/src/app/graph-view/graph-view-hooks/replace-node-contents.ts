@@ -13,9 +13,7 @@ function measureTextAscent(text: string, fontName: string): number {
   return metrics.actualBoundingBoxAscent;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class ReplaceNodeContentsHook implements GraphViewHook {
   private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
 

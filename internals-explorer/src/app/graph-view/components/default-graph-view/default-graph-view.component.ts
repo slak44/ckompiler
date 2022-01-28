@@ -10,13 +10,14 @@ import { frontierPath } from '../../graph-view-hooks/frontier-path';
   templateUrl: './default-graph-view.component.html',
   styleUrls: ['./default-graph-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [ReplaceNodeContentsHook],
 })
 export class DefaultGraphViewComponent {
   public readonly hooks: GraphViewHook[] = [
     removeHoverTitles,
     nodeClickDominance,
     frontierPath,
-    this.replaceNodeContents
+    this.replaceNodeContents,
   ];
 
   constructor(private replaceNodeContents: ReplaceNodeContentsHook) {
