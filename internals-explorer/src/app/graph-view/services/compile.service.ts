@@ -23,7 +23,7 @@ export class CompileService {
   public readonly compileResult$: Observable<JSCompileResult> = this.sourceText$.pipe(
     map(code => {
       try {
-        return jsCompile(code);
+        return jsCompile(code, false);
       } catch (e) {
         const err = e as Error & { originalStack?: string };
         if (err.originalStack) {

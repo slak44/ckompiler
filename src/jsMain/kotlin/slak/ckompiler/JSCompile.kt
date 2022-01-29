@@ -12,7 +12,7 @@ import slak.ckompiler.parser.Parser
 data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diagnostic>)
 
 @JsExport
-fun jsCompile(source: String): JSCompileResult {
+fun jsCompile(source: String, skipSSAConstruction: Boolean): JSCompileResult {
   val includePaths = IncludePaths(emptyList(), listOf(FSPath(stdlibDir)), emptyList())
   val sourceFileName = "editor.c"
   val pp = Preprocessor(
@@ -39,7 +39,7 @@ fun jsCompile(source: String): JSCompileResult {
   val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
   val cfgs = allFuncs.map {
-    val options = CFGOptions(forceReturnZero = it.name == "main")
+    val options = CFGOptions(forceReturnZero = it.name == "main", skipSSAConstruction = skipSSAConstruction)
 
     CFG(
         f = it,
