@@ -39,13 +39,14 @@ fun jsCompile(source: String): JSCompileResult {
   val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
   val cfgs = allFuncs.map {
+    val options = CFGOptions(forceReturnZero = it.name == "main")
+
     CFG(
         f = it,
         targetData = MachineTargetData.x64,
         srcFileName = sourceFileName,
         srcText = source,
-        forceAllNodes = false,
-        forceReturnZero = it.name == "main"
+        cfgOptions = options
     )
   }
 

@@ -4,6 +4,7 @@ import slak.ckompiler.*
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.lexer.*
 import slak.ckompiler.FSPath
+import slak.ckompiler.analysis.CFGOptions
 import slak.ckompiler.parser.ExternalDeclaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
@@ -54,7 +55,9 @@ internal fun prepareCFG(s: String, source: SourceFileName, functionName: String?
     p.root.decls.first { it is FunctionDefinition && it.name == functionName } as FunctionDefinition
   }
 
-  val cfg = CFG(func, MachineTargetData.x64, source, s, forceReturnZero = true, forceAllNodes = false)
+  val options = CFGOptions(forceReturnZero = true)
+
+  val cfg = CFG(func, MachineTargetData.x64, source, s, options)
   cfg.diags.forEach { it.print() }
 
   return cfg

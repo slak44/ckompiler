@@ -125,8 +125,7 @@ class CFGTests {
   fun `Unterminated Blocks In Function`() {
     val code = "int f() {}"
     val p = prepareCode(code, source)
-    val cfg = CFG(p.root.decls.firstFun(), MachineTargetData.x64, source, code,
-        forceReturnZero = false, forceAllNodes = false)
+    val cfg = CFG(p.root.decls.firstFun(), MachineTargetData.x64, source, code)
     cfg.assertDiags(DiagnosticId.CONTROL_END_OF_NON_VOID)
   }
 

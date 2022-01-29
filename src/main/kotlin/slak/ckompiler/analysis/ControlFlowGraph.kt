@@ -11,6 +11,12 @@ private val logger = KotlinLogging.logger {}
 typealias Definitions = MutableMap<Variable, Label>
 typealias DefUseChains = Map<Variable, List<Label>>
 
+data class CFGOptions(
+    val forceAllNodes: Boolean = false,
+    val forceReturnZero: Boolean = false,
+    val skipSSAConstruction: Boolean = false,
+)
+
 /**
  * An instance of a [FunctionDefinition]'s control flow graph.
  *
@@ -31,8 +37,7 @@ class CFG(
     val targetData: MachineTargetData,
     srcFileName: SourceFileName,
     srcText: String,
-    forceReturnZero: Boolean,
-    forceAllNodes: Boolean,
+    cfgOptions: CFGOptions = CFGOptions(),
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(isRoot = true)
 
@@ -84,25 +89,28 @@ class CFG(
 
   init {
     graph(this)
-    nodes = if (forceAllNodes) {
+    nodes = if (cfgOptions.forceAllNodes) {
       allNodes
     } else {
       collapseEmptyBlocks(allNodes)
       filterReachable(allNodes)
     }
 
-    handleUnterminatedBlocks(forceReturnZero)
+    handleUnterminatedBlocks(cfgOptions.forceReturnZero)
 
     postOrderNodes = postOrderNodes(startBlock, nodes)
 
     // SSA conversion
-    if (!forceAllNodes) {
+    if (!cfgOptions.forceAllNodes) {
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
-      val stackVarIds = stackVariables.map { it.id }
-      insertPhiFunctions(exprDefinitions.filter { it.key.identityId !in stackVarIds })
-      insertSpillCode(stackVarIds)
-      renamer.variableRenaming()
+
+      if (!cfgOptions.skipSSAConstruction) {
+        val stackVarIds = stackVariables.map { it.id }
+        insertPhiFunctions(exprDefinitions.filter { it.key.identityId !in stackVarIds })
+        insertSpillCode(stackVarIds)
+        renamer.variableRenaming()
+      }
     } else {
       doms = DominatorList(nodes.size)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)

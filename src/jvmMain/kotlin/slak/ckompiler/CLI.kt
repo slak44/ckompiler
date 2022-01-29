@@ -113,6 +113,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   private val useColorDiags by cli.toggleableFlagArgument(
       "-fcolor-diagnostics", "-fno-color-diagnostics",
       "Control colors in diagnostic messages", initialValue = true)
+
   // FIXME: stub:
   private val positionIndependentCode by cli.toggleableFlagArgument("-fPIC", "-fno-PIC",
       "Generate position independent code", initialValue = true)
@@ -365,7 +366,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       text: String,
       relPath: String,
       baseName: String,
-      parentDir: File
+      parentDir: File,
   ): File? {
     val includePaths = IncludePaths.defaultPaths +
         IncludePaths(generalIncludes.map(::FSPath), (systemIncludes + systemIncludesAfter).map(::FSPath), userIncludes.map(::FSPath))
@@ -415,13 +416,14 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           generateHtml = miHtmlOutput,
           spillOutput = spillOutput
       ) {
+        val options = CFGOptions(forceReturnZero = function.name == "main")
+
         val cfg = CFG(
             f = function,
             targetData = MachineTargetData.x64,
             srcFileName = relPath,
             srcText = text,
-            forceAllNodes = false,
-            forceReturnZero = function.name == "main"
+            cfgOptions = options,
         )
         cfg.diags.forEach { it.print() }
 
@@ -437,13 +439,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
     if (isCFGOnly) {
       val function = allFuncs.findNamedFunction(targetFunction) ?: return null
+      val cfgOptions = CFGOptions(forceAllNodes = forceAllNodes, forceReturnZero = function.name == "main")
       val cfg = CFG(
           f = function,
           targetData = MachineTargetData.x64,
           srcFileName = relPath,
           srcText = text,
-          forceAllNodes = forceAllNodes,
-          forceReturnZero = function.name == "main"
+          cfgOptions = cfgOptions,
       )
       cfg.diags.forEach { it.print() }
 
@@ -485,8 +487,6 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           targetData = MachineTargetData.x64,
           srcFileName = relPath,
           srcText = text,
-          forceReturnZero = false,
-          forceAllNodes = false
       )
       cfg.diags.forEach { it.print() }
 
@@ -498,8 +498,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           targetData = MachineTargetData.x64,
           srcFileName = relPath,
           srcText = text,
-          forceReturnZero = true,
-          forceAllNodes = false
+          cfgOptions = CFGOptions(forceReturnZero = true),
       )
       cfg.diags.forEach { it.print() }
 
@@ -539,7 +538,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   /**
    * @param args argv for this execution
-   * @param readStdin what text to use for the `-` argument; should read from [System.in] for main
+   * @param readStdin what text to use for the `-` argument; should read from [System. in] for main
    */
   fun parse(args: Array<String>, readStdin: () -> String): ExitCodes {
     @Suppress("TooGenericExceptionCaught")
