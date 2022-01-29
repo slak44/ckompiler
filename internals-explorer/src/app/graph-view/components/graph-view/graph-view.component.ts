@@ -10,23 +10,11 @@ import {
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
-import {
-  combineLatest,
-  distinctUntilChanged,
-  first,
-  map,
-  Observable,
-  of,
-  Subject,
-  switchMap,
-  takeUntil,
-  tap,
-} from 'rxjs';
+import { combineLatest, distinctUntilChanged, first, map, Observable, Subject, switchMap, takeUntil, tap } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import * as d3 from 'd3';
 import { BaseType } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
-import { CompileService } from '../../services/compile.service';
 import { GraphvizDatum } from '../../models/graphviz-datum.model';
 import { ZoomTransform } from 'd3-zoom';
 import { ZoomView } from 'd3-interpolate';
@@ -57,6 +45,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   @Input()
   public printingType$!: Observable<string>;
 
+  @Input()
+  public compileResult$!: Observable<JSCompileResult>;
+
   @ViewChild('graph')
   private graphRef!: ElementRef<HTMLDivElement>;
 
@@ -73,9 +64,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private readonly rerenderSubject: Subject<void> = new Subject();
   public readonly rerender$: Observable<void> = this.rerenderSubject;
 
-  constructor(
-    private compileService: CompileService,
-  ) {
+  constructor() {
     super();
   }
 
@@ -179,7 +168,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   public rerenderGraph(): Observable<void> {
     return combineLatest([
-      this.compileService.compileResult$,
+      this.compileResult$,
       this.printingType$,
     ]).pipe(
       map(([compileResult, printingType]: [JSCompileResult, string]): void => {

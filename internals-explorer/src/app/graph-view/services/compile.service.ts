@@ -9,6 +9,14 @@ import arrayOf = slak.ckompiler.arrayOf;
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import getDiagnosticsStats = slak.ckompiler.getDiagnosticsStats;
 
+export function logCompileError(e: unknown): void {
+  const err = e as Error & { originalStack?: string };
+  if (err.originalStack) {
+    console.error(err.message, err.originalStack);
+  }
+  console.error(err);
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -25,11 +33,7 @@ export class CompileService {
       try {
         return jsCompile(code, false);
       } catch (e) {
-        const err = e as Error & { originalStack?: string };
-        if (err.originalStack) {
-          console.error(err.message, err.originalStack);
-        }
-        console.error(err);
+        logCompileError(e);
         return null;
       }
     }),

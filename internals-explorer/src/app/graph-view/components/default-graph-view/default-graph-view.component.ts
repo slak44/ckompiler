@@ -4,6 +4,10 @@ import { nodeClickDominance } from '../../graph-view-hooks/node-click-dominance'
 import { removeHoverTitles } from '../../graph-view-hooks/remove-hover-titles';
 import { ReplaceNodeContentsHook } from '../../graph-view-hooks/replace-node-contents';
 import { frontierPath } from '../../graph-view-hooks/frontier-path';
+import { CompileService } from '../../services/compile.service';
+import { Observable } from 'rxjs';
+import { slak } from '@ckompiler/ckompiler';
+import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 @Component({
   selector: 'cki-default-graph-view',
@@ -20,6 +24,11 @@ export class DefaultGraphViewComponent {
     this.replaceNodeContents,
   ];
 
-  constructor(private replaceNodeContents: ReplaceNodeContentsHook) {
+  public readonly compileResult$: Observable<JSCompileResult> = this.compileService.compileResult$;
+
+  constructor(
+    private replaceNodeContents: ReplaceNodeContentsHook,
+    private compileService: CompileService,
+  ) {
   }
 }
