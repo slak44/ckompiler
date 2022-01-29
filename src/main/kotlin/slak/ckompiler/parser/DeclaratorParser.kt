@@ -70,7 +70,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    */
   private fun parseAbstractDeclarator(
       endIdx: Int,
-      allowName: Boolean
+      allowName: Boolean,
   ): Declarator = tokenContext(endIdx) {
     if (it.isEmpty()) return@tokenContext AbstractDeclarator.blank()
     val startTok = current()
@@ -157,7 +157,7 @@ open class DeclaratorParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandl
    * @return a [NamedDeclarator], [ErrorDeclarator] on error, null if there is no nesting
    */
   private inline fun <reified T : Declarator> parseNestedDeclarator(
-      allowName: Boolean
+      allowName: Boolean,
   ): Declarator? {
     if (current().asPunct() != Punctuators.LPAREN) return null
     val end = findParenMatch(Punctuators.LPAREN, Punctuators.RPAREN)

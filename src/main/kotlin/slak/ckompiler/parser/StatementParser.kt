@@ -18,14 +18,14 @@ interface IStatementParser {
    */
   fun parseCompoundStatement(
       functionScope: LexicalScope,
-      function: TypedIdentifier
+      function: TypedIdentifier,
   ): Statement?
 }
 
 class StatementParser(
     declarationParser: DeclarationParser,
     controlKeywordParser: ControlKeywordParser,
-    constExprParser: ConstantExprParser
+    constExprParser: ConstantExprParser,
 ) : IStatementParser,
     ITokenHandler by declarationParser,
     IScopeHandler by declarationParser,
@@ -39,13 +39,13 @@ class StatementParser(
       val isInSwitch: Boolean,
       val isInLoop: Boolean,
       val expectedReturnType: TypeName,
-      val funcName: String
+      val funcName: String,
   )
 
   /** @see [IStatementParser.parseCompoundStatement] */
   override fun parseCompoundStatement(
       functionScope: LexicalScope,
-      function: TypedIdentifier
+      function: TypedIdentifier,
   ): Statement? {
     val ctx = StatementContext(
         isInSwitch = false,
@@ -62,7 +62,7 @@ class StatementParser(
    * Pass null to create a new scope, pass a scope to use it as the block's scope.
    */
   private fun StatementContext.parseCompoundStatementImpl(
-      functionScope: LexicalScope?
+      functionScope: LexicalScope?,
   ): Statement? {
     val lbracket = current()
     if (current().asPunct() != Punctuators.LBRACKET) return null
@@ -286,9 +286,11 @@ class StatementParser(
           errorOn(safeToken(0))
         }
         // Attempt to eat the error
-        while (isNotEaten() &&
-            current().asPunct() != Punctuators.SEMICOLON &&
-            current().asKeyword() != Keywords.ELSE) eat()
+        while (
+          isNotEaten() &&
+          current().asPunct() != Punctuators.SEMICOLON &&
+          current().asKeyword() != Keywords.ELSE
+        ) eat()
         error<ErrorStatement>()
       } else {
         statement
@@ -415,7 +417,7 @@ class StatementParser(
    */
   private fun parseForLoopInner(
       rparenIdx: Int,
-      rparen: LexicalToken
+      rparen: LexicalToken,
   ): Triple<ForInitializer, Expression?, Expression?> = tokenContext(rparenIdx) {
     val firstSemi = firstOutsideParens(
         Punctuators.SEMICOLON, Punctuators.LBRACKET, Punctuators.RBRACKET, stopAtSemi = false)
@@ -508,7 +510,7 @@ class StatementParser(
    * @return null if no statement was found, or the [Statement] otherwise
    */
   private fun StatementContext.parseStatement(
-      parseExpressionStatement: Boolean = true
+      parseExpressionStatement: Boolean = true,
   ): Statement? {
     if (isEaten()) return null
     if (current().asPunct() == Punctuators.SEMICOLON) {

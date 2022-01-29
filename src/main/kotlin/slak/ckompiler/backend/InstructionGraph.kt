@@ -16,7 +16,7 @@ class InstructionGraph private constructor(
     val f: FunctionDefinition,
     val startId: AtomicId,
     val registerIds: IdCounter,
-    private val latestVersions: MutableMap<AtomicId, Int>
+    private val latestVersions: MutableMap<AtomicId, Int>,
 ) {
   private val nodes = mutableMapOf<AtomicId, InstrBlock>()
   private val adjacency = mutableMapOf<AtomicId, MutableSet<InstrBlock>>()

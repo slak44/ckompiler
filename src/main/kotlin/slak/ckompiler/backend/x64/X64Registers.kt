@@ -14,7 +14,7 @@ class X64Register(
     override val regName: String,
     override val sizeBytes: Int,
     override val valueClass: MachineRegisterClass,
-    override val aliases: List<RegisterAlias>
+    override val aliases: List<RegisterAlias>,
 ) : MachineRegister {
   override val id = ids()
 
@@ -30,7 +30,7 @@ class X64Register(
 private fun RegisterBuilder<X64Register>.register(
     name: String,
     sizeBytes: Int,
-    vararg aliases: RegisterAlias
+    vararg aliases: RegisterAlias,
 ) {
   regs += X64Register(name, sizeBytes, valueClass, aliases.toList())
 }

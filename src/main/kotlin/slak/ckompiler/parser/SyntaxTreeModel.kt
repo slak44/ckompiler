@@ -144,6 +144,7 @@ enum class ValueType {
 sealed class Expression : Statement() {
   /** The [TypeName] of this expression's result. */
   abstract val type: TypeName
+
   /** @see ValueType */
   abstract val valueType: ValueType
 }
@@ -185,12 +186,12 @@ private fun valueTypeOf(type: TypeName): ValueType {
 @JsExport
 data class TypedIdentifier(
     override val name: String,
-    override val type: TypeName
+    override val type: TypeName,
 ) : Expression(), OrdinaryIdentifier, Terminal {
   @JsName("TypedIdentifierDecl")
   constructor(
       ds: DeclarationSpecifier,
-      decl: NamedDeclarator
+      decl: NamedDeclarator,
   ) : this(decl.name.name, typeNameOf(ds, decl).normalize()) {
     withRange(decl.name)
   }
@@ -240,7 +241,7 @@ data class TypedIdentifier(
 data class TernaryConditional(
     val cond: Expression,
     val success: Expression,
-    val failure: Expression
+    val failure: Expression,
 ) : Expression() {
   override val type = resultOfTernary(success, failure)
 
@@ -276,7 +277,7 @@ data class FunctionCall(val calledExpr: Expression, val args: List<Expression>) 
 data class UnaryExpression(
     val op: UnaryOperators,
     val operand: Expression,
-    override val type: TypeName
+    override val type: TypeName,
 ) : Expression() {
   /**
    * C standard: 6.5.3.2.0.4
@@ -300,7 +301,7 @@ data class UnaryExpression(
 @JsExport
 data class SizeofTypeName(
     val sizeOfWho: TypeName,
-    override val type: UnqualifiedTypeName
+    override val type: UnqualifiedTypeName,
 ) : Expression() {
   override val valueType: ValueType = RVALUE
 }
@@ -312,7 +313,7 @@ data class SizeofTypeName(
 data class IncDecOperation(
     val expr: Expression,
     val isDecrement: Boolean,
-    val isPostfix: Boolean
+    val isPostfix: Boolean,
 ) : Expression() {
   override val type = expr.type
 
@@ -336,7 +337,7 @@ data class MemberAccessExpression(
     val target: Expression,
     val accessOperator: Punctuator,
     val memberName: IdentifierNode,
-    override val type: TypeName
+    override val type: TypeName,
 ) : Expression() {
   /**
    * FIXME: this is semi-broken for a variety of reasons
@@ -357,7 +358,7 @@ data class BinaryExpression(
     val op: BinaryOperators,
     val lhs: Expression,
     val rhs: Expression,
-    override val type: TypeName
+    override val type: TypeName,
 ) : Expression() {
   override fun toString() = "($lhs $op $rhs)"
 
@@ -369,7 +370,7 @@ data class BinaryExpression(
 data class ArraySubscript(
     val subscripted: Expression,
     val subscript: Expression,
-    override val type: TypeName
+    override val type: TypeName,
 ) : Expression() {
   override fun toString() = "$subscripted[$subscript]"
 
@@ -409,7 +410,7 @@ class VoidExpression : ExprConstantNode() {
 @JsExport
 data class IntegerConstantNode(
     val value: Long,
-    val suffix: IntegralSuffix = IntegralSuffix.NONE
+    val suffix: IntegralSuffix = IntegralSuffix.NONE,
 ) : ExprConstantNode() {
   override val type = when (suffix) {
     IntegralSuffix.UNSIGNED -> UnsignedIntType
@@ -426,7 +427,7 @@ data class IntegerConstantNode(
 @JsExport
 data class FloatingConstantNode(
     val value: Double,
-    val suffix: FloatingSuffix
+    val suffix: FloatingSuffix,
 ) : ExprConstantNode() {
   override val type = when (suffix) {
     FloatingSuffix.FLOAT -> FloatType
@@ -450,7 +451,7 @@ data class FloatingConstantNode(
 @JsExport
 data class CharacterConstantNode(
     val char: Int,
-    val encoding: CharEncoding
+    val encoding: CharEncoding,
 ) : ExprConstantNode() {
   override val type = UnsignedIntType
 
@@ -466,7 +467,7 @@ data class CharacterConstantNode(
 @JsExport
 data class StringLiteralNode(
     val string: String,
-    val encoding: StringEncoding
+    val encoding: StringEncoding,
 ) : ExprConstantNode() {
   override val type = ArrayType(when (encoding) {
     StringEncoding.CHAR, StringEncoding.UTF8 -> SignedCharType
@@ -487,7 +488,7 @@ data class DeclarationSpecifier(
     val threadLocal: Keyword? = null,
     val typeQualifiers: List<Keyword> = emptyList(),
     val functionSpecs: List<Keyword> = emptyList(),
-    val typeSpec: TypeSpecifier? = null
+    val typeSpec: TypeSpecifier? = null,
 ) : ASTNode() {
 
   /** @return true if no specifiers were found */
@@ -531,7 +532,7 @@ class ErrorSuffix : DeclaratorSuffix(), ErrorNode by ErrorNodeImpl
 data class ParameterTypeList(
     val params: List<ParameterDeclaration>,
     val scope: LexicalScope,
-    val variadic: Boolean = false
+    val variadic: Boolean = false,
 ) : DeclaratorSuffix() {
   override fun toString(): String {
     val paramStr = params.joinToString(", ")
@@ -543,7 +544,7 @@ data class ParameterTypeList(
 @JsExport
 data class ParameterDeclaration(
     val declSpec: DeclarationSpecifier,
-    val declarator: Declarator
+    val declarator: Declarator,
 ) : ASTNode() {
   override fun toString() = "$declSpec $declarator"
 }
@@ -617,7 +618,7 @@ sealed class Declarator : ASTNode() {
 data class NamedDeclarator(
     val name: IdentifierNode,
     override val indirection: List<Indirection>,
-    override val suffixes: List<DeclaratorSuffixTier>
+    override val suffixes: List<DeclaratorSuffixTier>,
 ) : Declarator() {
   override fun toString(): String {
     val indStr = indirection.joinToString("", prefix = "(") { it.stringify() }
@@ -639,7 +640,7 @@ data class NamedDeclarator(
 @JsExport
 data class AbstractDeclarator(
     override val indirection: List<Indirection>,
-    override val suffixes: List<DeclaratorSuffixTier>
+    override val suffixes: List<DeclaratorSuffixTier>,
 ) : Declarator() {
   override fun toString(): String {
     // Basically abuse NamedDeclarator.toString
@@ -682,7 +683,7 @@ sealed class Initializer : ASTNode() {
 @JsExport
 data class ExpressionInitializer(
     val expr: Expression,
-    override val assignTok: Punctuator
+    override val assignTok: Punctuator,
 ) : Initializer() {
   init {
     withRange(expr)
@@ -717,7 +718,7 @@ typealias DesignationKey = Pair<TypeName, DesignationIndices>
 data class Designation(
     val designators: List<Designator>,
     val designatedType: TypeName,
-    val designationIndices: DesignationIndices
+    val designationIndices: DesignationIndices,
 ) : ASTNode() {
   init {
     require(designators.isNotEmpty())
@@ -778,7 +779,7 @@ data class StructMember(val declarator: Declarator, val constExpr: Expression?) 
 @JsExport
 data class StructDeclaration(
     val declSpecs: DeclarationSpecifier,
-    val declaratorList: List<StructMember>
+    val declaratorList: List<StructMember>,
 ) : ASTNode()
 
 /**
@@ -788,10 +789,11 @@ data class StructDeclaration(
 data class Enumerator(
     val ident: IdentifierNode,
     val value: IntegerConstantNode?,
-    val computedValue: IntegerConstantNode
+    val computedValue: IntegerConstantNode,
 ) : ASTNode(), OrdinaryIdentifier {
   override val name = ident.name
   override val kindName = "enumeration constant"
+
   // FIXME: hardcoded enum type to int
   override val type = SignedIntType
 
@@ -844,7 +846,7 @@ object NoSize : ArrayTypeSize() {
 @JsExport
 data class UnconfinedVariableSize(
     val typeQuals: TypeQualifierList,
-    val vlaStar: Punctuator
+    val vlaStar: Punctuator,
 ) : VariableArraySize() {
   override fun toString() = "[${typeQuals.stringify()} *]"
 }
@@ -863,7 +865,7 @@ data class UnconfinedVariableSize(
 data class FunctionParameterSize(
     val typeQuals: TypeQualifierList,
     val isStatic: Boolean,
-    val expr: Expression?
+    val expr: Expression?,
 ) : VariableArraySize() {
   init {
     if (isStatic && expr == null) logger.throwICE("Array size, static without expr") { this }
@@ -890,7 +892,7 @@ data class FunctionParameterSize(
 data class FunctionParameterConstantSize(
     val typeQuals: TypeQualifierList,
     val isStatic: Boolean,
-    override val size: ExprConstantNode
+    override val size: ExprConstantNode,
 ) : ConstantArraySize() {
   override fun toString(): String {
     return "[${if (isStatic) "static " else ""}${typeQuals.stringify()}$size]"
@@ -927,7 +929,7 @@ sealed class ExternalDeclaration : ASTNode()
 @JsExport
 data class Declaration(
     val declSpecs: DeclarationSpecifier,
-    val declaratorList: List<Pair<Declarator, Initializer?>>
+    val declaratorList: List<Pair<Declarator, Initializer?>>,
 ) : ExternalDeclaration() {
 
   private var lateIdents: Set<TypedIdentifier>? = null
@@ -967,7 +969,7 @@ data class FunctionDefinition(
     val funcIdent: TypedIdentifier,
     val functionType: FunctionType,
     val parameters: List<TypedIdentifier>,
-    val compoundStatement: Statement
+    val compoundStatement: Statement,
 ) : ExternalDeclaration() {
   val name = funcIdent.name
   val block get() = compoundStatement as CompoundStatement
@@ -980,7 +982,7 @@ data class FunctionDefinition(
     operator fun invoke(
         declSpec: DeclarationSpecifier,
         functionDeclarator: Declarator,
-        compoundStatement: Statement
+        compoundStatement: Statement,
     ): FunctionDefinition {
       require(functionDeclarator is NamedDeclarator) { "Declarator missing name" }
       val functionType = typeNameOf(declSpec, functionDeclarator)
@@ -1035,7 +1037,7 @@ data class CompoundStatement(val items: List<BlockItem>, val scope: LexicalScope
 data class IfStatement(
     val cond: Expression,
     val success: Statement,
-    val failure: Statement?
+    val failure: Statement?,
 ) : Statement()
 
 /** C standard: 6.8.4.2 */
@@ -1053,14 +1055,14 @@ sealed class StatementWithLabel : Statement() {
 @JsExport
 data class LabeledStatement(
     val label: IdentifierNode,
-    override val statement: Statement
+    override val statement: Statement,
 ) : StatementWithLabel()
 
 /** C standard: 6.8.1 */
 @JsExport
 data class CaseStatement(
     val caseExpr: ExprConstantNode,
-    override val statement: Statement
+    override val statement: Statement,
 ) : StatementWithLabel()
 
 /** C standard: 6.8.1 */
@@ -1108,7 +1110,7 @@ data class ForStatement(
     val cond: Expression?,
     val loopEnd: Expression?,
     val loopable: Statement,
-    val scope: LexicalScope
+    val scope: LexicalScope,
 ) : Statement()
 
 /** C standard: 6.8.6.2 */

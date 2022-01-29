@@ -42,7 +42,7 @@ sealed class LexicalToken(val consumedChars: Int) : SourcedRange {
       sourceText: String,
       startIdx: Int,
       expandedName: String? = null,
-      expandedFrom: SourcedRange? = null
+      expandedFrom: SourcedRange? = null,
   ): LexicalToken {
     this.startIdx = startIdx
     this.sourceFileName = srcFileName
@@ -119,7 +119,7 @@ data class FloatingConstant(
     val f: String,
     val suffix: FloatingSuffix,
     val radix: Radix,
-    val exponent: Exponent? = null
+    val exponent: Exponent? = null,
 ) :
     LexicalToken(radix.prefixLength + f.length + suffix.length + (exponent?.length ?: 0)) {
   init {
@@ -145,7 +145,7 @@ sealed class CharSequence(realLength: Int, prefixLength: Int) :
 data class StringLiteral(
     val data: String,
     val encoding: StringEncoding,
-    val realLength: Int = data.length
+    val realLength: Int = data.length,
 ) : CharSequence(realLength, encoding.prefix.length) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -168,7 +168,7 @@ data class StringLiteral(
 data class CharLiteral(
     val data: String,
     val encoding: CharEncoding,
-    val realLength: Int = data.length
+    val realLength: Int = data.length,
 ) : CharSequence(realLength, encoding.prefix.length) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

@@ -2,7 +2,6 @@ package slak.ckompiler.lexer
 
 import mu.KotlinLogging
 import slak.ckompiler.*
-import slak.ckompiler.FSPath
 import slak.ckompiler.parser.*
 
 typealias ParsedObjectDefines = Map<Identifier, List<LexicalToken>>
@@ -20,7 +19,7 @@ class PPParser(
     private val currentDir: FSPath,
     private val ignoreTrigraphs: Boolean,
     private val debugHandler: DebugHandler,
-    private val machineTargetData: MachineTargetData
+    private val machineTargetData: MachineTargetData,
 ) : IDebugHandler by debugHandler, ITokenHandler by TokenHandler(ppTokens) {
 
   val outTokens = mutableListOf<LexicalToken>()
@@ -537,9 +536,11 @@ class PPParser(
       return true
     }
     eat() // The definedIdent
-    if (isNotEaten() &&
-        current().asPunct() == Punctuators.LPAREN &&
-        whitespaceBefore[currentIdx].isEmpty()) {
+    if (
+      isNotEaten() &&
+      current().asPunct() == Punctuators.LPAREN &&
+      whitespaceBefore[currentIdx].isEmpty()
+    ) {
       TODO("function-y macros aren't implemented yet")
     }
     // Everything else until the newline is part of the `replacement-list`

@@ -12,7 +12,7 @@ import kotlin.math.sign
 class X64Generator private constructor(
     private val cfg: CFG,
     override val target: X64Target,
-    private val funAsm: X64FunAssembler
+    private val funAsm: X64FunAssembler,
 ) : TargetFunGenerator,
     FunctionAssembler by funAsm,
     FunctionCallGenerator by X64CallGenerator(target, cfg.registerIds) {
@@ -157,7 +157,7 @@ class X64Generator private constructor(
   private fun selectJmp(
       i: BinaryInstruction,
       compare: Comparisons,
-      jumpTrue: JumpTargetConstant
+      jumpTrue: JumpTargetConstant,
   ): MachineInstruction {
     // See matchTypedCmp for why this works
     val isSigned = i.lhs.type.unqualify() is SignedIntType
@@ -370,7 +370,7 @@ class X64Generator private constructor(
    */
   private fun matchNonCommutative(
       i: BinaryInstruction,
-      op: List<X64InstrTemplate>
+      op: List<X64InstrTemplate>,
   ) = when (i.result) {
     // result = result OP rhs
     i.lhs -> {
@@ -453,7 +453,7 @@ class X64Generator private constructor(
 
   private fun matchCommutative(
       i: BinaryInstruction,
-      op: List<X64InstrTemplate>
+      op: List<X64InstrTemplate>,
   ): List<MachineInstruction> = when (i.result) {
     // result = result OP rhs
     i.lhs -> {

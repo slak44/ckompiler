@@ -12,23 +12,21 @@ fun convertToFloat(e: ExprConstantNode): Double = when (e) {
   is IntegerConstantNode -> e.value.toDouble()
   is FloatingConstantNode -> e.value
   is CharacterConstantNode -> e.char.toDouble()
-  is ErrorExpression, is VoidExpression,
-  is StringLiteralNode -> logger.throwICE("This is not allowed here")
+  is ErrorExpression, is VoidExpression, is StringLiteralNode -> logger.throwICE("This is not allowed here")
 }
 
 fun convertToInt(e: ExprConstantNode): Long = when (e) {
   is IntegerConstantNode -> e.value
   is FloatingConstantNode -> e.value.toLong()
   is CharacterConstantNode -> e.char.toLong()
-  is ErrorExpression, is VoidExpression,
-  is StringLiteralNode -> logger.throwICE("This is not allowed here")
+  is ErrorExpression, is VoidExpression, is StringLiteralNode -> logger.throwICE("This is not allowed here")
 }
 
 fun evalBasicArithmetic(
     lhs: ExprConstantNode,
     rhs: ExprConstantNode,
     op: BinaryOperators,
-    resType: TypeName
+    resType: TypeName,
 ) = when (resType) {
   is FloatingType -> {
     val lhsConst = convertToFloat(lhs)
@@ -60,7 +58,7 @@ fun evalBasicArithmetic(
 fun evalLiteralsComparable(
     lhs: StringLiteralNode,
     rhs: StringLiteralNode,
-    op: BinaryOperators
+    op: BinaryOperators,
 ): ExprConstantNode {
   val result = when (op) {
     BinaryOperators.LEQ, BinaryOperators.LT -> true
@@ -78,7 +76,7 @@ fun evalBasicComparable(
     lhs: ExprConstantNode,
     rhs: ExprConstantNode,
     op: BinaryOperators,
-    resType: TypeName
+    resType: TypeName,
 ) = when (resType) {
   is FloatingType -> {
     val lhsConst = convertToFloat(lhs)
@@ -114,7 +112,7 @@ fun evalBasicComparable(
 fun evalIntOnlyOps(
     lhs: ExprConstantNode,
     rhs: ExprConstantNode,
-    op: BinaryOperators
+    op: BinaryOperators,
 ): IntegerConstantNode {
   val lhsConst = convertToInt(lhs)
   val rhsConst = convertToInt(rhs)
@@ -136,10 +134,12 @@ fun evalBinary(
     lhs: ExprConstantNode,
     rhs: ExprConstantNode,
     op: BinaryOperators,
-    resType: TypeName
+    resType: TypeName,
 ): ExprConstantNode = when (op) {
-  BinaryOperators.LT, BinaryOperators.GT, BinaryOperators.LEQ, BinaryOperators.GEQ,
-  BinaryOperators.EQ, BinaryOperators.NEQ -> {
+  BinaryOperators.LT, BinaryOperators.GT,
+  BinaryOperators.LEQ, BinaryOperators.GEQ,
+  BinaryOperators.EQ, BinaryOperators.NEQ,
+  -> {
     if (lhs is StringLiteralNode && rhs is StringLiteralNode) {
       evalLiteralsComparable(lhs, rhs, op)
     } else {
@@ -150,7 +150,8 @@ fun evalBinary(
     evalBasicArithmetic(lhs, rhs, op, resType)
   }
   BinaryOperators.MOD, BinaryOperators.LSH, BinaryOperators.RSH, BinaryOperators.BIT_AND,
-  BinaryOperators.BIT_XOR, BinaryOperators.BIT_OR, BinaryOperators.AND, BinaryOperators.OR -> {
+  BinaryOperators.BIT_XOR, BinaryOperators.BIT_OR, BinaryOperators.AND, BinaryOperators.OR,
+  -> {
     evalIntOnlyOps(lhs, rhs, op)
   }
   else -> logger.throwICE("Illegal constant binary operator") { op }
@@ -158,7 +159,7 @@ fun evalBinary(
 
 fun evalUnary(
     operand: ExprConstantNode,
-    op: UnaryOperators
+    op: UnaryOperators,
 ): ExprConstantNode = when (operand.type) {
   is FloatingType -> {
     val toApply = convertToFloat(operand)

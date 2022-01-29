@@ -19,7 +19,7 @@ fun generateMIDebug(
     showDummies: Boolean,
     generateHtml: Boolean,
     spillOutput: Boolean,
-    createCFG: () -> CFG
+    createCFG: () -> CFG,
 ): String {
   return MIDebugMode(target, srcFileName, srcText, showDummies, generateHtml, spillOutput, createCFG).getOutput()
 }
@@ -31,7 +31,7 @@ private class MIDebugMode(
     val showDummies: Boolean,
     val generateHtml: Boolean,
     val spillOutput: Boolean,
-    val createCFG: () -> CFG
+    val createCFG: () -> CFG,
 ) {
   val text = StringBuilder()
   val document = createHTML()

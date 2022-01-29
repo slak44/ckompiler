@@ -13,6 +13,7 @@ class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceF
     ITextSourceHandler by TextSourceHandler(sourceText, srcFileName) {
 
   val ppTokens = mutableListOf<LexicalToken>()
+
   /**
    * Comments can also be found here, besides the whitespace.
    */
@@ -120,9 +121,11 @@ class Lexer(debugHandler: DebugHandler, sourceText: String, srcFileName: SourceF
     dropChars(token.consumedChars)
 
     // Deal with error/pragma directives to avoid spurious diagnostics
-    if (ppTokens.size >= 2 &&
-        ppTokens[ppTokens.size - 1] in arrayOf(Identifier("error"), Identifier("pragma")) &&
-        ppTokens[ppTokens.size - 2] == Punctuator(Punctuators.HASH)) {
+    if (
+      ppTokens.size >= 2 &&
+      ppTokens[ppTokens.size - 1] in arrayOf(Identifier("error"), Identifier("pragma")) &&
+      ppTokens[ppTokens.size - 2] == Punctuator(Punctuators.HASH)
+    ) {
       val errorMessage = dropCharsWhile { it != '\n' }
       if (errorMessage.isNotEmpty()) {
         ppTokens += Identifier(errorMessage)

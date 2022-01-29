@@ -14,7 +14,7 @@ data class Edge(
     val from: BasicBlock,
     val to: BasicBlock,
     val type: EdgeType = EdgeType.NORMAL,
-    val text: String = ""
+    val text: String = "",
 )
 
 fun CFG.graphEdges(): List<Edge> {

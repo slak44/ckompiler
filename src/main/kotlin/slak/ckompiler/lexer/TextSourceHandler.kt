@@ -9,10 +9,13 @@ import slak.ckompiler.SourceFileName
 interface ITextSourceHandler {
   /** The file name (or some other descriptor) that the [originalSource] came from. */
   val srcFileName: SourceFileName
+
   /** Initial text to handle. */
   val originalSource: String
+
   /** The text from the [originalSource] left unhandled. */
   val currentSrc: String
+
   /** The offset inside the [originalSource] that the [currentSrc] starts at. */
   val currentOffset: Int
 
@@ -35,7 +38,7 @@ interface ITextSourceHandler {
  */
 class TextSourceHandler(
     override val originalSource: String,
-    override val srcFileName: SourceFileName
+    override val srcFileName: SourceFileName,
 ) : ITextSourceHandler {
   override var currentSrc: String = originalSource
   override var currentOffset: Int = 0

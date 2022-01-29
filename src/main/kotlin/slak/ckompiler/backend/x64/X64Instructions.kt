@@ -95,7 +95,7 @@ data class MemoryValue(
     val base: RegisterValue,
     val index: RegisterValue? = null,
     val scale: Int? = null,
-    val displacement: Int? = null
+    val displacement: Int? = null,
 ) : X64Value() {
   init {
     require(scale == null || index != null) {
@@ -135,7 +135,7 @@ data class MemoryValue(
 
 data class X64Instruction(
     override val template: X64InstrTemplate,
-    val operands: List<X64Value>
+    val operands: List<X64Value>,
 ) : AsmInstruction {
   override fun toString() = "${template.name} ${operands.joinToString(", ")}"
 }
@@ -143,7 +143,7 @@ data class X64Instruction(
 private class ICBuilder(
     val instructions: MutableList<X64InstrTemplate>,
     val name: String,
-    val defaultUse: List<VariableUse>? = null
+    val defaultUse: List<VariableUse>? = null,
 ) {
   fun instr(vararg operands: Operand) = instr(defaultUse!!, *operands)
 
@@ -158,7 +158,7 @@ private class ICBuilder(
 private fun instructionClass(
     name: String,
     defaultUse: List<VariableUse>? = null,
-    block: ICBuilder.() -> Unit
+    block: ICBuilder.() -> Unit,
 ): List<X64InstrTemplate> {
   val builder = ICBuilder(mutableListOf(), name, defaultUse)
   builder.block()
@@ -168,7 +168,7 @@ private fun instructionClass(
 private fun dummyInstructionClass(
     name: String,
     defaultUse: List<VariableUse>? = null,
-    block: ICBuilder.() -> Unit
+    block: ICBuilder.() -> Unit,
 ): List<X64InstrTemplate> = instructionClass("DUMMY $name DO NOT EMIT", defaultUse, block)
 
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {

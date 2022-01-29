@@ -16,7 +16,7 @@ class InstrBlock(
     val domTreeHeight: Int,
     private val graph: InstructionGraph,
     private val instructions: MutableList<MachineInstruction>,
-    val phi: InstrPhi
+    val phi: InstrPhi,
 ) : MutableList<MachineInstruction> by instructions {
   val phiDefs get() = phi.keys
   val phiUses get() = phi.values.flatMap { it.values }

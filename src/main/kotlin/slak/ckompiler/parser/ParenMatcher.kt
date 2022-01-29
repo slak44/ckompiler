@@ -24,7 +24,7 @@ interface IParenMatcher {
       rparen: Punctuators,
       startIdx: Int = -1,
       disableDiags: Boolean = false,
-      stopAtSemi: Boolean = true
+      stopAtSemi: Boolean = true,
   ): Int
 
   /**
@@ -36,7 +36,7 @@ interface IParenMatcher {
       end: Keywords,
       startIdx: Int = -1,
       disableDiags: Boolean = false,
-      stopAtSemi: Boolean = true
+      stopAtSemi: Boolean = true,
   ): Int
 
   /**
@@ -50,7 +50,7 @@ interface IParenMatcher {
       target: Punctuators,
       lparen: Punctuators,
       rparen: Punctuators,
-      stopAtSemi: Boolean
+      stopAtSemi: Boolean,
   ): Int
 }
 
@@ -71,7 +71,7 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
       final: E,
       startIdx: Int,
       disableDiags: Boolean,
-      stopAtSemi: Boolean
+      stopAtSemi: Boolean,
   ): Int
       where T : StaticToken, E : StaticTokenEnum {
     var hasParens = false
@@ -132,7 +132,7 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
       rparen: Punctuators,
       startIdx: Int,
       disableDiags: Boolean,
-      stopAtSemi: Boolean
+      stopAtSemi: Boolean,
   ) =
       findMatch<Punctuator, Punctuators>(lparen, rparen, startIdx, disableDiags, stopAtSemi)
 
@@ -141,7 +141,7 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
       end: Keywords,
       startIdx: Int,
       disableDiags: Boolean,
-      stopAtSemi: Boolean
+      stopAtSemi: Boolean,
   ) =
       findMatch<Keyword, Keywords>(begin, end, startIdx, disableDiags, stopAtSemi)
 
@@ -149,7 +149,7 @@ class ParenMatcher(debugHandler: IDebugHandler, tokenHandler: ITokenHandler) :
       target: Punctuators,
       lparen: Punctuators,
       rparen: Punctuators,
-      stopAtSemi: Boolean
+      stopAtSemi: Boolean,
   ): Int {
     val firstThingIdx = indexOfFirst(target, lparen)
     val parenEndIdx = findParenMatch(

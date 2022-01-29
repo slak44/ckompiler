@@ -22,7 +22,7 @@ data class MachineTargetData(
     val doubleSizeBytes: Int,
     val longDoubleSizeBytes: Int,
     val sizeType: UnqualifiedTypeName,
-    val ptrDiffType: UnqualifiedTypeName
+    val ptrDiffType: UnqualifiedTypeName,
 ) {
   private fun Int.toBits(): Int = this * 8
 

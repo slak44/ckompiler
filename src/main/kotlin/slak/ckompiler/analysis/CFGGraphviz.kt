@@ -63,7 +63,7 @@ fun BasicBlock.irToString(): String {
 private fun CFG.mapBlocksToString(
     print: CodePrintingMethods,
     sourceCode: String,
-    targetOpts: X64TargetOpts
+    targetOpts: X64TargetOpts,
 ): Map<BasicBlock, String> {
   val target = X64Target(targetOpts)
   val sep = "<br align=\"left\"/>"
@@ -129,7 +129,7 @@ data class GraphvizOptions(
     val fontName: String? = null,
     val reachableOnly: Boolean,
     val print: CodePrintingMethods = CodePrintingMethods.IR_TO_STRING,
-    val targetOpts: X64TargetOpts = X64TargetOpts.defaults
+    val targetOpts: X64TargetOpts = X64TargetOpts.defaults,
 )
 
 /**

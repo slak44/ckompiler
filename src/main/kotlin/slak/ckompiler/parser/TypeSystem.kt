@@ -169,7 +169,7 @@ sealed class TypeName {
 data class QualifiedType(
     val unqualified: UnqualifiedTypeName,
     override val typeQuals: TypeQualifierList,
-    override val isStorageRegister: Boolean = false
+    override val isStorageRegister: Boolean = false,
 ) : TypeName() {
   override fun toString(): String {
     val typeQualStr = if (typeQuals.isEmpty()) "" else (typeQuals.stringify() + " ")
@@ -182,7 +182,7 @@ data class QualifiedType(
 data class FunctionType(
     val returnType: TypeName,
     val params: List<TypeName>,
-    val variadic: Boolean = false
+    val variadic: Boolean = false,
 ) : TypeName() {
   // FIXME: functions have their own qualifiers
   override val typeQuals: TypeQualifierList = emptyList()
@@ -205,12 +205,12 @@ data class FunctionType(
 data class PointerType(
     val referencedType: TypeName,
     override val typeQuals: TypeQualifierList,
-    override val isStorageRegister: Boolean = false
+    override val isStorageRegister: Boolean = false,
 ) : TypeName() {
   constructor(
       referencedType: TypeName,
       ptrQuals: TypeQualifierList,
-      decayedFrom: TypeName
+      decayedFrom: TypeName,
   ) : this(referencedType, ptrQuals, decayedFrom.isStorageRegister) {
     this.decayedFrom = decayedFrom
   }
@@ -229,7 +229,7 @@ data class PointerType(
 data class ArrayType(
     val elementType: TypeName,
     val size: ArrayTypeSize,
-    override val isStorageRegister: Boolean = false
+    override val isStorageRegister: Boolean = false,
 ) : TypeName() {
   /**
    * Arrays can't be qualified, only their element.
@@ -245,7 +245,7 @@ data class ArrayType(
 data class BitfieldType(
     val elementType: TypeName,
     val size: Expression,
-    override val isStorageRegister: Boolean
+    override val isStorageRegister: Boolean,
 ) : TypeName() {
   override val typeQuals: TypeQualifierList = emptyList()
 }
@@ -288,7 +288,7 @@ sealed class TagType : UnqualifiedTypeName() {
 
 data class StructureType(
     override val name: IdentifierNode?,
-    override val members: List<Pair<IdentifierNode, TypeName>>?
+    override val members: List<Pair<IdentifierNode, TypeName>>?,
 ) : TagType() {
   override val isComplete = members != null
   override val kind = "struct"
@@ -301,7 +301,7 @@ data class StructureType(
 
 data class UnionType(
     override val name: IdentifierNode?,
-    override val members: List<Pair<IdentifierNode, TypeName>>?
+    override val members: List<Pair<IdentifierNode, TypeName>>?,
 ) : TagType() {
   override val isComplete = members != null
   override val kind = "union"
@@ -458,7 +458,7 @@ object VoidType : BasicType() {
  */
 fun usualArithmeticConversions(
     lhs: UnqualifiedTypeName,
-    rhs: UnqualifiedTypeName
+    rhs: UnqualifiedTypeName,
 ): UnqualifiedTypeName {
   if (lhs is ErrorType || rhs is ErrorType) return ErrorType
   if (lhs !is ArithmeticType || rhs !is ArithmeticType) {
@@ -493,7 +493,7 @@ fun usualArithmeticConversions(
 fun IDebugHandler.validateCast(
     originalType: TypeName,
     targetType: TypeName,
-    castParenRange: SourcedRange
+    castParenRange: SourcedRange,
 ) = when {
   targetType is ErrorType -> {
     // Don't report bogus diags for ErrorType
@@ -526,7 +526,7 @@ fun IDebugHandler.validateCast(
 fun IDebugHandler.typeOfSubscript(
     subscripted: Expression,
     subscript: Expression,
-    endSqBracket: LexicalToken
+    endSqBracket: LexicalToken,
 ): Pair<TypeName, Boolean> {
   val fullRange = subscripted..endSqBracket
 
@@ -796,7 +796,8 @@ fun BinaryOperators.applyTo(lhs: TypeName, rhs: TypeName): BinaryResult = when (
   COMMA -> BinaryResult(rhs)
   // Treat compounds as regular assigns, because they're dealt with in sequentialize anyway
   ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, PLUS_ASSIGN, SUB_ASSIGN, LSH_ASSIGN, RSH_ASSIGN,
-  AND_ASSIGN, XOR_ASSIGN, OR_ASSIGN -> BinaryResult(lhs, applyAssign(lhs, rhs))
+  AND_ASSIGN, XOR_ASSIGN, OR_ASSIGN,
+  -> BinaryResult(lhs, applyAssign(lhs, rhs))
 }
 
 /**
@@ -963,7 +964,7 @@ fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
  */
 fun IDebugHandler.matchFunctionArguments(
     calledExpr: Expression,
-    args: List<Expression>
+    args: List<Expression>,
 ): List<Expression>? {
   require(calledExpr.type.isCallable()) { "Called expression is not callable" }
   val funType = calledExpr.type.asCallable()!!
@@ -1032,7 +1033,7 @@ fun defaultArgumentPromotions(sourceArg: Expression): Expression {
 fun IDebugHandler.checkSizeofType(
     typeName: TypeName,
     sizeofRange: SourcedRange,
-    targetRange: SourcedRange
+    targetRange: SourcedRange,
 ): TypeName {
   if (typeName is ErrorType) return ErrorType
   val unconvertedType = if (typeName is PointerType) typeName.decayedFrom ?: typeName else typeName
@@ -1098,7 +1099,7 @@ fun IDebugHandler.validateReturnValue(
     returnKeyword: LexicalToken,
     expr: Expression?,
     expectedType: TypeName,
-    funcName: String
+    funcName: String,
 ): Expression? {
   // Standard says values are converted as if by assignment
   val (_, commonType) = ASSIGN.applyTo(expectedType, expr?.type ?: VoidType)

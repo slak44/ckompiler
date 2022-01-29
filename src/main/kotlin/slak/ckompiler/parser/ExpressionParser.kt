@@ -38,24 +38,30 @@ enum class BinaryOperators(val op: Punctuators, val precedence: Int, val assoc: 
   MOD(Punctuators.PERCENT, 95, Associativity.LEFT_TO_RIGHT),
   ADD(Punctuators.PLUS, 90, Associativity.LEFT_TO_RIGHT),
   SUB(Punctuators.MINUS, 90, Associativity.LEFT_TO_RIGHT),
+
   // Bit-shift
   LSH(Punctuators.LSH, 80, Associativity.LEFT_TO_RIGHT),
   RSH(Punctuators.RSH, 80, Associativity.LEFT_TO_RIGHT),
+
   // Relational
   LT(Punctuators.LT, 70, Associativity.LEFT_TO_RIGHT),
   GT(Punctuators.GT, 70, Associativity.LEFT_TO_RIGHT),
   LEQ(Punctuators.LEQ, 70, Associativity.LEFT_TO_RIGHT),
   GEQ(Punctuators.GEQ, 70, Associativity.LEFT_TO_RIGHT),
+
   // Equality
   EQ(Punctuators.EQUALS, 60, Associativity.LEFT_TO_RIGHT),
   NEQ(Punctuators.NEQUALS, 60, Associativity.LEFT_TO_RIGHT),
+
   // Bitwise
   BIT_AND(Punctuators.AMP, 58, Associativity.LEFT_TO_RIGHT),
   BIT_XOR(Punctuators.CARET, 54, Associativity.LEFT_TO_RIGHT),
   BIT_OR(Punctuators.PIPE, 50, Associativity.LEFT_TO_RIGHT),
+
   // Logical
   AND(Punctuators.AND, 45, Associativity.LEFT_TO_RIGHT),
   OR(Punctuators.OR, 40, Associativity.LEFT_TO_RIGHT),
+
   // Assignment
   ASSIGN(Punctuators.ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
   MUL_ASSIGN(Punctuators.MUL_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
@@ -68,6 +74,7 @@ enum class BinaryOperators(val op: Punctuators, val precedence: Int, val assoc: 
   AND_ASSIGN(Punctuators.AND_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
   XOR_ASSIGN(Punctuators.XOR_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
   OR_ASSIGN(Punctuators.OR_ASSIGN, 20, Associativity.RIGHT_TO_LEFT),
+
   // Comma
   COMMA(Punctuators.COMMA, 10, Associativity.LEFT_TO_RIGHT);
 
@@ -104,7 +111,7 @@ class ExpressionParser(
     parenMatcher: ParenMatcher,
     identSearchable: IdentSearchable,
     typeNameParser: TypeNameParser,
-    val machineTargetData: MachineTargetData
+    val machineTargetData: MachineTargetData,
 ) : IExpressionParser,
     IDebugHandler by parenMatcher,
     ITokenHandler by parenMatcher,
@@ -148,8 +155,9 @@ class ExpressionParser(
         if (isEaten()) break@innerLoop
         val innerOp = current().asBinaryOperator() ?: break@innerLoop
         if (innerOp.precedence <= op.precedence &&
-            !(innerOp.assoc == BinaryOperators.Associativity.RIGHT_TO_LEFT &&
-                innerOp.precedence == op.precedence)) {
+          !(innerOp.assoc == BinaryOperators.Associativity.RIGHT_TO_LEFT &&
+              innerOp.precedence == op.precedence)
+        ) {
           break@innerLoop
         }
         rhs = parseExprImpl(rhs, innerOp.precedence)

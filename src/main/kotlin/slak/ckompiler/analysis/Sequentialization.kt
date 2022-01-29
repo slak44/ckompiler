@@ -17,7 +17,7 @@ private val logger = KotlinLogging.logger {}
  */
 data class SequentialExpression(
     val before: List<Expression>,
-    val remaining: Expression
+    val remaining: Expression,
 ) {
   operator fun iterator(): Iterator<Expression> = iterator {
     yieldAll(before.iterator())
@@ -30,14 +30,14 @@ data class SequentialExpression(
 private data class SequentializationContext(
     val sequencedBefore: MutableList<Expression> = mutableListOf(),
     val modifications: MutableMap<TypedIdentifier, MutableList<Expression>> = mutableMapOf(),
-    val debugHandler: IDebugHandler
+    val debugHandler: IDebugHandler,
 ) : IDebugHandler by debugHandler
 
 private val syntheticIds = IdCounter()
 
 private fun SequentializationContext.makeAssignmentTarget(
     modified: Expression,
-    modExpr: Expression
+    modExpr: Expression,
 ): Expression {
   require(modified.valueType != ValueType.RVALUE) {
     "Assignment target can't be an rvalue"
@@ -60,7 +60,7 @@ private fun dismantleCompound(
     op: BinaryOperators,
     assignTarget: Expression,
     rhs: Expression,
-    range: SourcedRange
+    range: SourcedRange,
 ): BinaryExpression {
   val extraOp = compoundAssignOps.getValue(op)
   val (extraOpType, extraCommon) = extraOp.applyTo(assignTarget.type, rhs.type)
@@ -177,7 +177,8 @@ private fun SequentializationContext.seqImpl(e: Expression): Expression = when (
   }
   is CastExpression -> e.copy(target = seqImpl(e.target)).withRange(e)
   is SizeofTypeName, is TypedIdentifier, is IntegerConstantNode,
-  is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode -> {
+  is FloatingConstantNode, is CharacterConstantNode, is StringLiteralNode,
+  -> {
     // Do nothing. These do not pose the problem of being sequenced before or after.
     e
   }

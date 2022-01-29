@@ -35,7 +35,7 @@ private data class GraphingContext(
     val afterBlock: BasicBlock? = null,
     val cases: MutableMap<ExprConstantNode, BasicBlock> = mutableMapOf(),
     var currentDefaultBlock: BasicBlock? = null,
-    val labels: MutableMap<String, BasicBlock> = mutableMapOf()
+    val labels: MutableMap<String, BasicBlock> = mutableMapOf(),
 ) {
   fun labelBlockFor(labelName: String): BasicBlock {
     return labels.getOrPut(labelName) { root.newBlock() }
@@ -48,7 +48,7 @@ private data class GraphingContext(
 
 private fun GraphingContext.graphCompound(
     current: BasicBlock,
-    compoundStatement: CompoundStatement
+    compoundStatement: CompoundStatement,
 ): BasicBlock {
   var block = current
   for ((name) in compoundStatement.scope.labels) {
@@ -71,7 +71,7 @@ private fun CFG.addDefinition(current: BasicBlock, ident: Variable) {
 private fun GraphingContext.addDeclaration(
     parent: LexicalScope,
     current: BasicBlock,
-    d: Declaration
+    d: Declaration,
 ): BasicBlock {
   val refs = d.idents(parent).map(::Variable)
   val inits = d.declaratorList.map { it.second }
@@ -90,7 +90,7 @@ private fun GraphingContext.addDeclaration(
 private fun GraphingContext.transformInitializer(
     current: BasicBlock,
     ident: Variable,
-    init: Initializer?
+    init: Initializer?,
 ): BasicBlock = when (init) {
   null -> {
     // No initializer, nothing to output
@@ -110,7 +110,7 @@ private fun GraphingContext.transformInitializer(
 private fun processExpression(
     root: CFG,
     current: BasicBlock,
-    expr: Expression
+    expr: Expression,
 ): Pair<BasicBlock, List<Expression>> {
   val sequential = root.sequentialize(expr).toList()
   val ternaries = sequential.filter {
@@ -125,7 +125,7 @@ private fun processExpression(
 private fun graphExprRegular(
     root: CFG,
     current: BasicBlock,
-    expr: Expression
+    expr: Expression,
 ): BasicBlock {
   val (nextBlock, exprs) = processExpression(root, current, expr)
   val (instrs, stackVars) =
@@ -140,7 +140,7 @@ private fun graphExprTerm(
     root: CFG,
     current: BasicBlock,
     cond: Expression,
-    compareWithZero: Boolean = true
+    compareWithZero: Boolean = true,
 ): Pair<BasicBlock, List<IRInstruction>> {
   val (nextBlock, exprs) = processExpression(root, current, cond)
   val (instrs, stackVars) = createInstructions(exprs, root.targetData, root.registerIds)
@@ -159,7 +159,7 @@ private fun graphTernary(
     root: CFG,
     current: BasicBlock,
     target: TypedIdentifier,
-    ternary: TernaryConditional
+    ternary: TernaryConditional,
 ): BasicBlock {
   val ifBlock = root.newBlock()
   val elseBlock = root.newBlock()
@@ -184,10 +184,11 @@ private fun graphTernary(
 private fun GraphingContext.graphStatement(
     scope: LexicalScope,
     current: BasicBlock,
-    s: Statement
+    s: Statement,
 ): BasicBlock = when (s) {
   is ErrorStatement,
-  is ErrorExpression -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
+  is ErrorExpression,
+  -> logger.throwICE("ErrorNode in CFG creation") { "$current/$s" }
   is Expression -> graphExprRegular(root, current, s)
   is Noop -> {
     // Intentionally left empty

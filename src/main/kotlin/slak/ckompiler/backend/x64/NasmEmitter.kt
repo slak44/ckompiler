@@ -34,7 +34,7 @@ private inline fun instrGen(block: InstructionBuilder.() -> Unit): Instructions 
 class NasmEmitter(
     override val externals: List<String>,
     override val functions: List<TargetFunGenerator>,
-    override val mainCfg: TargetFunGenerator?
+    override val mainCfg: TargetFunGenerator?,
 ) : AsmEmitter {
   private val peepholeOptimizer = X64PeepholeOpt()
 
@@ -115,15 +115,17 @@ class NasmEmitter(
       require(i is X64Instruction)
       // lea is special
       val isLea = i.template in lea
-      emit("${i.template.name} ${i.operands.joinToString(", ") {
-        operandToString(it, forgetPrefix = isLea)
-      }}")
+      emit("${i.template.name} ${
+        i.operands.joinToString(", ") {
+          operandToString(it, forgetPrefix = isLea)
+        }
+      }")
     }
   }
 
   private fun operandToString(
       operand: X64Value,
-      forgetPrefix: Boolean = false
+      forgetPrefix: Boolean = false,
   ): String = when (operand) {
     is ImmediateValue -> when (val const = operand.value) {
       is IntConstant -> const.toString()

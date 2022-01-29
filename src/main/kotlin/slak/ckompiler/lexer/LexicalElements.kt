@@ -192,7 +192,7 @@ fun IDebugHandler.charSequence(
     s: String,
     currentOffset: Int,
     quoteChar: Char,
-    prefixLength: Int
+    prefixLength: Int,
 ): Pair<String, Int> {
   val noPrefix = s.drop(1 + prefixLength)
   var idx = 0
@@ -280,7 +280,7 @@ fun IDebugHandler.characterConstant(s: String, currentOffset: Int): CharLiteral?
 private fun IDebugHandler.floatingSuffix(
     s: String,
     currentOffset: Int,
-    nrLength: Int
+    nrLength: Int,
 ): FloatingSuffix? = when {
   s.isEmpty() -> FloatingSuffix.NONE
   // Float looks like 123. or 123.23
@@ -380,10 +380,10 @@ fun IDebugHandler.floatingConstant(s: String, currentOffset: Int): LexicalToken?
 private fun IDebugHandler.integerSuffix(
     s: String,
     currentOffset: Int,
-    nrLength: Int
+    nrLength: Int,
 ): IntegralSuffix {
   if (s.isEmpty()) return IntegralSuffix.NONE
-  val t = s.toUpperCase()
+  val t = s.uppercase()
   val suffix = when {
     t.startsWith("ULL") || t.startsWith("LLU") -> IntegralSuffix.UNSIGNED_LONG_LONG
     t.startsWith("UL") || t.startsWith("LU") -> IntegralSuffix.UNSIGNED_LONG
@@ -404,7 +404,8 @@ private inline fun IDebugHandler.digitSequence(
     s: String,
     currentOffset: Int,
     prefixLength: Int = 0,
-    isValidDigit: (c: Char) -> Boolean): Pair<String, IntegralSuffix> {
+    isValidDigit: (c: Char) -> Boolean,
+): Pair<String, IntegralSuffix> {
   val nrWithSuffix = s.slice(prefixLength until nextWhitespaceOrPunct(s))
   val nrEndIdx = nrWithSuffix.indexOfFirst { !isValidDigit(it) }
   val nrText = nrWithSuffix.slice(0 until if (nrEndIdx == -1) nrWithSuffix.length else nrEndIdx)

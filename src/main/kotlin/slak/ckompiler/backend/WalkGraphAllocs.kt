@@ -9,6 +9,7 @@ import slak.ckompiler.analysis.PhysicalRegister
 enum class ViolationType {
   /** A hard violation is a definite error in the allocation. */
   HARD,
+
   /** A soft violation might have been caused by two-address code, and might still be a correct allocation. */
   SOFT
 }
@@ -23,7 +24,7 @@ enum class ViolationType {
  * @see ViolationType
  */
 inline fun AllocationResult.walkGraphAllocs(
-    violationHandler: (MachineRegister, InstrLabel, ViolationType) -> Boolean
+    violationHandler: (MachineRegister, InstrLabel, ViolationType) -> Boolean,
 ): Boolean {
   var hasFailed = false
   val allocated = allocations.keys.filterIsInstance<AllocatableValue>()

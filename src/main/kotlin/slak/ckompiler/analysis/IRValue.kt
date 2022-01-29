@@ -98,7 +98,7 @@ enum class VRegType {
 class VirtualRegister(
     val registerId: AtomicId,
     override val type: TypeName,
-    val kind: VRegType = VRegType.REGULAR
+    val kind: VRegType = VRegType.REGULAR,
 ) : AllocatableValue() {
   override val identityId: AtomicId = -1 * registerId
 
@@ -130,7 +130,7 @@ typealias Label = Pair<BasicBlock, LabelIndex>
 data class ReachingDefinition(
     val variable: Variable,
     val definedIn: BasicBlock,
-    val definitionIdx: LabelIndex
+    val definitionIdx: LabelIndex,
 )
 
 /**
@@ -279,7 +279,7 @@ data class StackVariable(val tid: TypedIdentifier) : LoadableValue() {
 @JsExport
 data class PhysicalRegister(
     val reg: MachineRegister,
-    override val type: TypeName
+    override val type: TypeName,
 ) : LoadableValue() {
   override val name = reg.regName
   override val isUndefined = false
@@ -298,8 +298,10 @@ sealed class ConstantValue : IRValue()
 data class IntConstant(val value: Long, override val type: TypeName) : ConstantValue() {
   @JsName("IntConstantIntTypeName")
   constructor(int: Int, type: TypeName) : this(int.toLong(), type)
+
   @JsName("IntConstantIntegerConstantNode")
   constructor(int: IntegerConstantNode) : this(int.value, int.type)
+
   @JsName("IntConstantCharacterConstantNode")
   constructor(char: CharacterConstantNode) : this(char.char.toLong(), char.type)
 

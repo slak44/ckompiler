@@ -13,7 +13,7 @@ typealias WBlockMap = Map<MachineRegisterClass, MutableSet<AllocatableValue>>
 private fun TargetFunGenerator.insertSpill(
     value: AllocatableValue,
     location: InstrLabel,
-    stackValue: StackValue?
+    stackValue: StackValue?,
 ): StackValue {
   val (blockId, idx) = location
   val targetStackValue = stackValue ?: StackValue(value)
@@ -26,7 +26,7 @@ private fun TargetFunGenerator.insertSpill(
 private fun TargetFunGenerator.insertReload(
     original: AllocatableValue,
     toReload: StackValue,
-    location: InstrLabel
+    location: InstrLabel,
 ): AllocatableValue {
   val (blockId, idx) = location
   val copyTarget = graph.createCopyOf(original, graph[blockId])
@@ -58,7 +58,7 @@ private class BlockSpiller(
     val blockId: AtomicId,
     val maxPressure: Map<MachineRegisterClass, Int>,
     wBlockEntry: WBlockMap,
-    sBlockEntry: Set<AllocatableValue>
+    sBlockEntry: Set<AllocatableValue>,
 ) {
   private val reloads = mutableListOf<Location>()
   private val spills = mutableListOf<Location>()
@@ -86,7 +86,7 @@ private class BlockSpiller(
       valueClass: MachineRegisterClass,
       insnIndex: Int,
       m: Int,
-      spillTargetIndex: Int = insnIndex
+      spillTargetIndex: Int = insnIndex,
   ) {
     val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, spillTargetIndex), it) }
     for (v in wClass.drop(m.coerceAtLeast(0))) {
@@ -177,7 +177,7 @@ private class BlockSpiller(
 private fun TargetFunGenerator.initUsual(
     maxPressure: Map<MachineRegisterClass, Int>,
     blockId: AtomicId,
-    spillers: Map<AtomicId, BlockSpiller>
+    spillers: Map<AtomicId, BlockSpiller>,
 ): WBlockMap {
   val freq = mutableMapOf<MachineRegisterClass, MutableMap<AllocatableValue, Int>>()
   val take = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
@@ -223,7 +223,7 @@ private fun TargetFunGenerator.initUsual(
 private fun TargetFunGenerator.initSpilled(
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>,
-    wBlockEntry: WBlockMap
+    wBlockEntry: WBlockMap,
 ): Set<AllocatableValue> {
   val sJoin = graph.predecessors(blockId).flatMap { spillers[it.id]?.sExit ?: emptyList() }
   return sJoin.intersect(wBlockEntry.values.flatten())
@@ -305,7 +305,7 @@ fun TargetFunGenerator.runSpiller(): SpillResult {
       val predId: AtomicId,
       val blockId: AtomicId,
       val wBlockEntry: WBlockMap,
-      val sBlockEntry: Set<AllocatableValue>
+      val sBlockEntry: Set<AllocatableValue>,
   )
 
   val unprocessedEdges = mutableListOf<EdgeProcessData>()

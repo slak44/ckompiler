@@ -5,7 +5,6 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.lexer.Keywords
-import kotlin.js.JsExport
 
 /**
  * Stores the data of a scoped `typedef`.
@@ -15,7 +14,7 @@ import kotlin.js.JsExport
  */
 data class TypedefName(
     val declSpec: DeclarationSpecifier,
-    val declarator: NamedDeclarator
+    val declarator: NamedDeclarator,
 ) : OrdinaryIdentifier,
     // Only highlight the typedef's name in diagnostics, not the entire thing:
     SourcedRange by declarator.name {
@@ -36,11 +35,13 @@ data class TypedefName(
  */
 interface OrdinaryIdentifier : SourcedRange {
   val name: String
+
   /**
    * A string that identifies what kind of identifier this is. For example: 'typedef', 'variable'.
    * Is used by diagnostic messages.
    */
   val kindName: String
+
   /**
    * [TypeName] of this identifier. What this property means depends on the kind of identifier.
    */
@@ -61,7 +62,7 @@ class LexicalScope(
     val parentScope: LexicalScope? = null,
     val tagNames: MutableMap<IdentifierNode, TagSpecifier> = mutableMapOf(),
     val idents: MutableList<OrdinaryIdentifier> = mutableListOf(),
-    val labels: MutableList<IdentifierNode> = mutableListOf()
+    val labels: MutableList<IdentifierNode> = mutableListOf(),
 ) {
   override fun toString(): String {
     val identStr = idents.filter { it !is TypedefName }.joinToString(", ") { it.name }

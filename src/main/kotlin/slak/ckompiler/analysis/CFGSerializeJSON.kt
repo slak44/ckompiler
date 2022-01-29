@@ -23,7 +23,7 @@ private data class BasicBlockSurrogate(
     val nodeId: AtomicId,
     val predecessors: List<AtomicId>,
     val successors: List<AtomicId>,
-    val terminator: Jump
+    val terminator: Jump,
 )
 
 object BasicBlockSerializer : KSerializer<BasicBlock> {
@@ -52,7 +52,7 @@ object BasicBlockSerializer : KSerializer<BasicBlock> {
 @SerialName("slak.ckompiler.analysis.PhiInstruction")
 private data class PhiInstructionSurrogate(
     val variable: Variable,
-    val incoming: Map<AtomicId, Variable>
+    val incoming: Map<AtomicId, Variable>,
 )
 
 object PhiInstructionSerializer : KSerializer<PhiInstruction> {
@@ -107,7 +107,7 @@ object TypeNameSerializer : KSerializer<TypeName> {
 private data class CondJumpSurrogate(
     val cond: List<IRInstruction>,
     val target: AtomicId,
-    val other: AtomicId
+    val other: AtomicId,
 )
 
 object CondJumpSerializer : KSerializer<CondJump> {
@@ -130,7 +130,7 @@ object CondJumpSerializer : KSerializer<CondJump> {
 private data class SelectJumpSurrogate(
     val cond: List<IRInstruction>,
     val options: List<AtomicId>,
-    val default: AtomicId
+    val default: AtomicId,
 )
 
 object SelectJumpSerializer : KSerializer<SelectJump> {
@@ -151,7 +151,7 @@ object SelectJumpSerializer : KSerializer<SelectJump> {
 @Serializable
 @SerialName("slak.ckompiler.analysis.UncondJump")
 private data class UncondJumpSurrogate(
-    val target: AtomicId
+    val target: AtomicId,
 )
 
 object UncondJumpSerializer : KSerializer<UncondJump> {
@@ -173,7 +173,7 @@ object UncondJumpSerializer : KSerializer<UncondJump> {
 @SerialName("slak.ckompiler.analysis.ImpossibleJump")
 private data class ImpossibleJumpSurrogate(
     val target: AtomicId,
-    val returned: List<IRInstruction>?
+    val returned: List<IRInstruction>?,
 )
 
 object ImpossibleJumpSerializer : KSerializer<ImpossibleJump> {
@@ -195,7 +195,7 @@ object ImpossibleJumpSerializer : KSerializer<ImpossibleJump> {
 @SerialName("slak.ckompiler.analysis.ConstantJump")
 private data class ConstantJumpSurrogate(
     val target: AtomicId,
-    val impossible: AtomicId
+    val impossible: AtomicId,
 )
 
 object ConstantJumpSerializer : KSerializer<ConstantJump> {
@@ -216,7 +216,7 @@ object ConstantJumpSerializer : KSerializer<ConstantJump> {
 @Serializable
 private data class CFGExportModel(
     val startBlock: AtomicId,
-    val allNodes: Set<BasicBlock>
+    val allNodes: Set<BasicBlock>,
 )
 
 private val json = Json { classDiscriminator = "discriminator" }

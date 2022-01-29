@@ -35,7 +35,7 @@ data class CondJump(
     val cond: List<IRInstruction>,
     val src: Expression,
     val target: BasicBlock,
-    val other: BasicBlock
+    val other: BasicBlock,
 ) : Jump() {
   override val successors = listOf(target, other)
   override fun toString() = "CondJump<${target.hashCode()}, ${other.hashCode()}>$cond"
@@ -52,7 +52,7 @@ data class SelectJump(
     val cond: List<IRInstruction>,
     val src: Expression,
     val options: Map<ExprConstantNode, BasicBlock>,
-    val default: BasicBlock
+    val default: BasicBlock,
 ) : Jump() {
   override val successors = options.values + default
   override fun toString(): String {
@@ -80,7 +80,7 @@ data class UncondJump(val target: BasicBlock) : Jump() {
 data class ImpossibleJump(
     val target: BasicBlock,
     val returned: List<IRInstruction>?,
-    val src: Expression?
+    val src: Expression?,
 ) : Jump() {
   override val successors = emptyList<BasicBlock>()
   override fun toString() = "ImpossibleJump($returned)"
@@ -121,14 +121,17 @@ class BasicBlock(val isRoot: Boolean = false) {
    * [PhiInstruction]s in this set does not matter.
    */
   val phi = mutableSetOf<PhiInstruction>()
+
   /**
    * Contains this block's IR expression list.
    */
   val ir = mutableListOf<IRInstruction>()
+
   /**
    * Debug ranges of the original source code. May not map to [ir].
    */
   val src = mutableListOf<Expression>()
+
   /**
    * Unique for each basic block. No other guarantees are provided about this value; it is opaque.
    *
@@ -140,6 +143,7 @@ class BasicBlock(val isRoot: Boolean = false) {
    * @see equals
    */
   val nodeId: AtomicId = nodeCounter()
+
   /**
    * If not -1, this value represents the post order of [BasicBlock]s in their respective [CFG].
    *
@@ -147,18 +151,23 @@ class BasicBlock(val isRoot: Boolean = false) {
    * a particular [CFG] instance.
    */
   var postOrderId = -1
+
   /**
    * If not -1, this value represents the distance from the start block to this one in a [CFG].
    */
   var height = -1
+
   /**
    * Set of blocks whose terminator leads to this one.
    */
   val preds: MutableSet<BasicBlock> = mutableSetOf()
+
   /** @see [Jump.successors] */
   val successors get() = terminator.successors
+
   /** @see findDomFrontiers */
   val dominanceFrontier: MutableSet<BasicBlock> = mutableSetOf()
+
   /** @see Jump */
   var terminator: Jump = MissingJump
     set(value) {
@@ -178,6 +187,7 @@ class BasicBlock(val isRoot: Boolean = false) {
         }
       }
     }
+
   /**
    * Allows iteration over this [BasicBlock]'s IR, excluding φs, but including [CondJump.cond] and
    * [ImpossibleJump.returned], if available.
@@ -254,6 +264,7 @@ class BasicBlock(val isRoot: Boolean = false) {
   }
 
   override fun equals(other: Any?) = nodeId == (other as? BasicBlock)?.nodeId
+
   /**
    * @see nodeId
    * @see Object.hashCode

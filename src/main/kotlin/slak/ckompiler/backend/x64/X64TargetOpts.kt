@@ -8,7 +8,7 @@ import slak.ckompiler.backend.TargetOptions
 class X64TargetOpts(
     generic: TargetOptions,
     targetOptions: List<String>,
-    debugHandler: IDebugHandler
+    debugHandler: IDebugHandler,
 ) : TargetOptions by generic, IDebugHandler by debugHandler {
   val useRedZone: Boolean
 

@@ -43,6 +43,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   PP_ERROR_DIRECTIVE(ERROR, "%s"),
   MACRO_NAME_MISSING(ERROR, "Macro name missing"),
   MACRO_NAME_NOT_IDENT(ERROR, "Macro name must be an identifier"),
+
   // clang puts up a warning; the standard says we error
   MACRO_REDEFINITION(WARNING, "'%s' macro redefined"),
   EXTRA_TOKENS_DIRECTIVE(WARNING, "Extra tokens at end of %s directive"),
@@ -147,8 +148,10 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   // Declaration Specifier issues
   DUPLICATE_DECL_SPEC(WARNING, "Duplicate '%s' declaration specifier"),
   INCOMPATIBLE_DECL_SPEC(ERROR, "Cannot combine with previous '%s' declaration specifier"),
+
   // clang puts up a warning; the standard says we error
   MISSING_TYPE_SPEC(ERROR, "Type specifier missing"),
+
   // Implementations are allowed to not support complex numbers
   UNSUPPORTED_COMPLEX(ERROR, "_Complex is not supported by this implementation"),
   TYPE_NOT_SIGNED(ERROR, "'%s' cannot be signed or unsigned"),
@@ -197,18 +200,22 @@ interface SourcedRange : ClosedRange<Int> {
    * Name of the translation unit's file. Has other values for test classes. Can be null if unknown.
    */
   val sourceFileName: SourceFileName?
+
   /**
    * Reference to the source text this ranges is sourced from. Can be null if unknown.
    */
   val sourceText: String?
+
   /**
    * Actual range inside [sourceText].
    */
   val range: IntRange
+
   /**
    * Name of the macro this range was expanded from. (null if not macro-expanded)
    */
   val expandedName: String?
+
   /**
    * For macro-expanded ranges, the range in the macro. (null if not macro-expanded)
    * For example:
@@ -236,13 +243,13 @@ private data class ClonedSourcedRange(
     override val sourceText: String?,
     override val range: IntRange,
     override val expandedName: String?,
-    override val expandedFrom: SourcedRange?
+    override val expandedFrom: SourcedRange?,
 ) : SourcedRange
 
 private fun combineSources(
     combinedRange: IntRange,
     src1: SourcedRange,
-    src2: SourcedRange
+    src2: SourcedRange,
 ): SourcedRange = when {
   src1.sourceFileName == null -> {
     ClonedSourcedRange(
@@ -277,7 +284,7 @@ data class Diagnostic(
     val id: DiagnosticId,
     val messageFormatArgs: List<Any>,
     val sourceColumns: List<SourcedRange>,
-    val origin: String
+    val origin: String,
 ) {
   val caret: SourcedRange get() = sourceColumns[0]
 
@@ -421,7 +428,7 @@ interface IDebugHandler {
 class DebugHandler(
     private val diagSource: String,
     private val srcFileName: SourceFileName,
-    private val srcText: String
+    private val srcText: String,
 ) : IDebugHandler {
   override val diags = mutableListOf<Diagnostic>()
 

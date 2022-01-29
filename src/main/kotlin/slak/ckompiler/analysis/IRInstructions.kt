@@ -3,7 +3,8 @@ package slak.ckompiler.analysis
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import slak.ckompiler.lexer.Punctuators
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.BinaryOperators
+import slak.ckompiler.parser.PointerType
 import slak.ckompiler.throwICE
 import kotlin.js.JsExport
 
@@ -26,11 +27,13 @@ sealed class IRInstruction {
 @JsExport
 data class PhiInstruction(
     val variable: Variable,
-    val incoming: Map<BasicBlock, Variable>
+    val incoming: Map<BasicBlock, Variable>,
 ) {
-  override fun toString() = "store $variable = φ(${incoming.entries.joinToString(", ") {
-    "n${it.key.hashCode()} v${it.value.version}"
-  }})"
+  override fun toString() = "store $variable = φ(${
+    incoming.entries.joinToString(", ") {
+      "n${it.key.hashCode()} v${it.value.version}"
+    }
+  })"
 }
 
 /**
@@ -40,7 +43,7 @@ data class PhiInstruction(
 @JsExport
 data class LoadMemory(
     override val result: LoadableValue,
-    val loadFrom: IRValue
+    val loadFrom: IRValue,
 ) : IRInstruction() {
   init {
     if (loadFrom !is MemoryLocation) {
@@ -87,7 +90,7 @@ data class MoveInstr(override val result: LoadableValue, val value: IRValue) : I
 @JsExport
 data class StructuralCast(
     override val result: LoadableValue,
-    val operand: IRValue
+    val operand: IRValue,
 ) : IRInstruction() {
   override fun toString() = "$result = cast $operand to ${result.type}"
 }
@@ -100,7 +103,7 @@ data class StructuralCast(
 @JsExport
 data class ReinterpretCast(
     override val result: LoadableValue,
-    val operand: IRValue
+    val operand: IRValue,
 ) : IRInstruction() {
   override fun toString() = "$result = reinterpret $operand"
 }
@@ -115,7 +118,7 @@ data class ReinterpretCast(
 data class NamedCall(
     override val result: LoadableValue,
     val name: NamedConstant,
-    val args: List<IRValue>
+    val args: List<IRValue>,
 ) : IRInstruction() {
   override fun toString() = "$result = call $name with args ${args.joinToString(", ")}"
 }
@@ -128,7 +131,7 @@ data class NamedCall(
 data class IndirectCall(
     override val result: LoadableValue,
     val callable: VirtualRegister,
-    val args: List<IRValue>
+    val args: List<IRValue>,
 ) : IRInstruction() {
   override fun toString() = "$result = call *($callable) with args ${args.joinToString(", ")}"
 }
@@ -193,7 +196,7 @@ data class IntBinary(
     override val result: LoadableValue,
     val op: IntegralBinaryOps,
     override val lhs: IRValue,
-    override val rhs: IRValue
+    override val rhs: IRValue,
 ) : IntegralInstruction(), BinaryInstruction {
   override fun toString() = "$result = int op $lhs $op $rhs"
 }
@@ -204,7 +207,7 @@ data class IntCmp(
     override val result: LoadableValue,
     override val lhs: IRValue,
     override val rhs: IRValue,
-    val cmp: Comparisons
+    val cmp: Comparisons,
 ) : IntegralInstruction(), BinaryInstruction {
   override fun toString() = "$result = int cmp $lhs $cmp $rhs"
 }
@@ -216,7 +219,7 @@ data class IntCmp(
 @JsExport
 data class IntInvert(
     override val result: LoadableValue,
-    val operand: IRValue
+    val operand: IRValue,
 ) : IntegralInstruction() {
   override fun toString() = "$result = invert $operand"
 }
@@ -225,7 +228,7 @@ data class IntInvert(
 @JsExport
 data class IntNeg(
     override val result: LoadableValue,
-    val operand: IRValue
+    val operand: IRValue,
 ) : IntegralInstruction() {
   override fun toString() = "$result = int negate $operand"
 }
@@ -252,7 +255,7 @@ data class FltBinary(
     override val result: LoadableValue,
     val op: FloatingBinaryOps,
     override val lhs: IRValue,
-    override val rhs: IRValue
+    override val rhs: IRValue,
 ) : FloatingPointInstruction(), BinaryInstruction {
   override fun toString() = "$result = flt op $lhs $op $rhs"
 }
@@ -263,7 +266,7 @@ data class FltCmp(
     override val result: LoadableValue,
     override val lhs: IRValue,
     override val rhs: IRValue,
-    val cmp: Comparisons
+    val cmp: Comparisons,
 ) : FloatingPointInstruction(), BinaryInstruction {
   override fun toString() = "$result = flt cmp $lhs $cmp $rhs"
 }
@@ -272,7 +275,7 @@ data class FltCmp(
 @JsExport
 data class FltNeg(
     override val result: LoadableValue,
-    val operand: IRValue
+    val operand: IRValue,
 ) : FloatingPointInstruction() {
   override fun toString() = "$result = flt negate $operand"
 }

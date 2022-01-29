@@ -15,7 +15,7 @@ private data class InitializerListContext(
     val designatedIndices: MutableList<Int> = mutableListOf(0),
     var maxRootIndex: Int = 0,
     val excessInitializers: MutableList<DesignatedInitializer> = mutableListOf(),
-    val encounteredDesignations: MutableMap<DesignationKey, DesignatedInitializer> = mutableMapOf()
+    val encounteredDesignations: MutableMap<DesignationKey, DesignatedInitializer> = mutableMapOf(),
 )
 
 private fun IDebugHandler.validateExprInitializer(expr: Expression, initializerFor: TypeName): TypeName {
@@ -524,7 +524,7 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
    * C standard: 6.7.9
    */
   private fun InitializerListContext.parseDesignatedInitializer(
-      initializerEndIdx: Int
+      initializerEndIdx: Int,
   ): DesignatedInitializer = tokenContext(initializerEndIdx) {
     if (currentObjectType.isNotAllowedToDesignate()) {
       return@tokenContext errorDesignatedInitializer(parentAssignTok)
@@ -549,7 +549,7 @@ class InitializerParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler, 
   private fun parseInitializerList(
       parentAssignTok: Punctuator,
       currentObjectType: TypeName,
-      endIdx: Int
+      endIdx: Int,
   ): InitializerList = tokenContext(endIdx) {
     val initializers = mutableListOf<DesignatedInitializer>()
     val context = InitializerListContext(parentAssignTok, currentObjectType, initializers)

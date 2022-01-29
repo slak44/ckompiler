@@ -24,7 +24,7 @@ interface IDeclarationParser : IDeclaratorParser {
    * @param validationRules extra checks to be performed on the [DeclarationSpecifier]
    */
   fun preParseDeclarator(
-      validationRules: SpecValidationRules
+      validationRules: SpecValidationRules,
   ): Pair<DeclarationSpecifier, Declarator?>
 
   /**
@@ -40,7 +40,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
     DeclaratorParser(parenMatcher, scopeHandler), IDeclarationParser {
 
   override fun preParseDeclarator(
-      validationRules: SpecValidationRules
+      validationRules: SpecValidationRules,
   ): Pair<DeclarationSpecifier, Declarator?> {
     val declSpec = specParser.parseDeclSpecifiers(validationRules)
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {
@@ -71,7 +71,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
 
   override fun parseDeclaration(
       declSpec: DeclarationSpecifier,
-      declarator: Declarator?
+      declarator: Declarator?,
   ): Declaration {
     val declList = parseInitDeclaratorList(declSpec, declarator)
     declList.forEach { checkArrayType(declSpec, it.first) }
@@ -98,7 +98,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
   private fun parseDeclarationInitializer(
       expectedType: TypeName,
       ds: DeclarationSpecifier,
-      endIdx: Int
+      endIdx: Int,
   ): Initializer? {
     if (current().asPunct() != Punctuators.ASSIGN) return null
     val assignTok = current() as Punctuator
@@ -123,7 +123,7 @@ class DeclarationParser(parenMatcher: ParenMatcher, scopeHandler: ScopeHandler) 
    */
   private fun parseInitDeclaratorList(
       ds: DeclarationSpecifier,
-      firstDecl: Declarator? = null
+      firstDecl: Declarator? = null,
   ): List<Pair<Declarator, Initializer?>> {
     // This is the case where there are no declarators left for this function
     if (isNotEaten() && current().asPunct() == Punctuators.SEMICOLON) {

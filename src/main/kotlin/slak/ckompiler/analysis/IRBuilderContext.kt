@@ -14,7 +14,7 @@ private val logger = KotlinLogging.logger {}
  */
 private class IRBuilderContext(
     val machineTargetData: MachineTargetData,
-    private val registerIds: IdCounter
+    private val registerIds: IdCounter,
 ) {
   val instructions = mutableListOf<IRInstruction>()
   val stackVariables = mutableListOf<StackVariable>()
@@ -56,12 +56,11 @@ private fun IRBuilderContext.buildUnary(expr: UnaryExpression): IRInstruction = 
       else -> logger.throwICE("Impossible branch, checked above")
     }
   }
-  UnaryOperators.REF,
-  UnaryOperators.PLUS -> logger.throwICE("Impossible branch, checked in caller")
+  UnaryOperators.REF, UnaryOperators.PLUS -> logger.throwICE("Impossible branch, checked in caller")
 }
 
 private fun IRBuilderContext.buildBinaryOperands(
-    expr: BinaryExpression
+    expr: BinaryExpression,
 ): Triple<VirtualRegister, IRValue, IRValue> {
   require(expr.lhs.type.unqualify() is ArithmeticType && expr.rhs.type == expr.lhs.type)
   return Triple(newRegister(expr.type), buildOperand(expr.lhs), buildOperand(expr.rhs))
@@ -101,8 +100,10 @@ private fun IRBuilderContext.buildBinary(expr: BinaryExpression): IRInstruction 
   BinaryOperators.ADD, BinaryOperators.SUB, BinaryOperators.DIV, BinaryOperators.MUL -> {
     buildCommonBinary(expr)
   }
-  BinaryOperators.LT, BinaryOperators.GT, BinaryOperators.LEQ, BinaryOperators.GEQ,
-  BinaryOperators.EQ, BinaryOperators.NEQ -> {
+  BinaryOperators.LT, BinaryOperators.GT,
+  BinaryOperators.LEQ, BinaryOperators.GEQ,
+  BinaryOperators.EQ, BinaryOperators.NEQ,
+  -> {
     val (reg, lhs, rhs) = buildBinaryOperands(expr)
     when (expr.lhs.type) {
       is IntegralType -> IntCmp(reg, lhs, rhs, Comparisons.from(expr.op))
@@ -111,7 +112,8 @@ private fun IRBuilderContext.buildBinary(expr: BinaryExpression): IRInstruction 
     }
   }
   BinaryOperators.MOD, BinaryOperators.LSH, BinaryOperators.RSH,
-  BinaryOperators.BIT_AND, BinaryOperators.BIT_XOR, BinaryOperators.BIT_OR -> {
+  BinaryOperators.BIT_AND, BinaryOperators.BIT_XOR, BinaryOperators.BIT_OR,
+  -> {
     require(expr.lhs.type.unqualify() is IntegralType)
     val op = when (expr.op) {
       BinaryOperators.MOD -> IntegralBinaryOps.REM
@@ -129,7 +131,8 @@ private fun IRBuilderContext.buildBinary(expr: BinaryExpression): IRInstruction 
   BinaryOperators.MUL_ASSIGN, BinaryOperators.DIV_ASSIGN, BinaryOperators.MOD_ASSIGN,
   BinaryOperators.PLUS_ASSIGN, BinaryOperators.SUB_ASSIGN, BinaryOperators.LSH_ASSIGN,
   BinaryOperators.RSH_ASSIGN, BinaryOperators.AND_ASSIGN, BinaryOperators.XOR_ASSIGN,
-  BinaryOperators.OR_ASSIGN -> {
+  BinaryOperators.OR_ASSIGN,
+  -> {
     logger.throwICE("Compound assignments must be removed by sequentialize")
   }
   BinaryOperators.AND, BinaryOperators.OR -> {
@@ -196,7 +199,7 @@ private fun IRBuilderContext.buildAssignment(lhs: Expression, rhs: IRValue): IRI
 private fun IRBuilderContext.buildPtrOffset(
     base: IRValue,
     offset: IRValue,
-    resPtrType: TypeName
+    resPtrType: TypeName,
 ): IRValue {
   require(resPtrType is PointerType)
   val baseType = base.type.unqualify().normalize()
@@ -216,7 +219,7 @@ private fun IRBuilderContext.buildPtrOffset(
 private fun IRBuilderContext.buildOffset(
     base: IRValue,
     offset: IRValue,
-    resType: TypeName
+    resType: TypeName,
 ): LoadableValue {
   val offsetPtr = buildPtrOffset(base, offset, PointerType(resType, emptyList()))
   val dereferencePtr = LoadMemory(newRegister(resType), offsetPtr)
@@ -333,7 +336,7 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
 fun createInstructions(
     exprs: List<Expression>,
     targetData: MachineTargetData,
-    registerIds: IdCounter
+    registerIds: IdCounter,
 ): Pair<List<IRInstruction>, List<StackVariable>> {
   val builder = IRBuilderContext(targetData, registerIds)
   for (expr in exprs) {

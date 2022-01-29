@@ -2,7 +2,6 @@ package slak.ckompiler.lexer
 
 import mu.KotlinLogging
 import slak.ckompiler.*
-import slak.ckompiler.FSPath
 import kotlin.js.JsExport
 
 typealias CLIDefines = Map<String, String>
@@ -21,7 +20,7 @@ class Preprocessor(
     cliDefines: CLIDefines = emptyMap(),
     initialDefines: Map<Identifier, List<LexicalToken>> = emptyMap(),
     includePaths: IncludePaths = IncludePaths.defaultPaths,
-    ignoreTrigraphs: Boolean = false
+    ignoreTrigraphs: Boolean = false,
 ) {
 
   private val debugHandler: DebugHandler
@@ -129,7 +128,7 @@ private val trigraphPattern = Regex("(" +
 fun translationPhase1And2(
     ignoreTrigraphs: Boolean,
     source: String,
-    srcFileName: SourceFileName
+    srcFileName: SourceFileName,
 ): Pair<String, List<Diagnostic>> {
   val dh = DebugHandler("Trigraphs", srcFileName, source)
 

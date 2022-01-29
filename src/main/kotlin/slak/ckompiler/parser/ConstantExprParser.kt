@@ -38,7 +38,7 @@ interface IConstantExprParser : IDebugHandler {
 /** C standard: 6.6 */
 class ConstantExprParser(
     val type: ConstantExprType,
-    exprParser: ExpressionParser
+    exprParser: ExpressionParser,
 ) : IConstantExprParser,
     IDebugHandler by exprParser,
     ITokenHandler by exprParser,
@@ -51,7 +51,7 @@ class ConstantExprParser(
       parenMatcher: ParenMatcher,
       identSearchable: IdentSearchable,
       typeNameParser: TypeNameParser,
-      machineTargetData: MachineTargetData
+      machineTargetData: MachineTargetData,
   ) : this(type, ExpressionParser(parenMatcher, identSearchable, typeNameParser, machineTargetData))
 
   override fun parseConstant(endIdx: Int): ExprConstantNode? {
@@ -69,13 +69,11 @@ class ConstantExprParser(
 
   private fun evaluateExprImpl(
       diags: MutableList<Diagnostic>,
-      expr: Expression
+      expr: Expression,
   ): ExprConstantNode = when (expr) {
     is TernaryConditional, is MemberAccessExpression -> TODO("deal with this")
-    is ErrorExpression, is VoidExpression,
-    is IntegerConstantNode, is CharacterConstantNode -> expr as ExprConstantNode
-    is FunctionCall, is ArraySubscript,
-    is IncDecOperation -> {
+    is ErrorExpression, is VoidExpression, is IntegerConstantNode, is CharacterConstantNode -> expr as ExprConstantNode
+    is FunctionCall, is ArraySubscript, is IncDecOperation -> {
       diags += createDiagnostic {
         id = DiagnosticId.EXPR_NOT_CONSTANT
         errorOn(expr)
@@ -87,7 +85,8 @@ class ConstantExprParser(
         logger.throwICE("Impossible to get here; identifiers evaluate to 0 in PP")
       }
       ConstantExprType.INTEGER_CONSTANT,
-      ConstantExprType.DECLARATOR_ARRAY_SIZE -> ErrorExpression().withRange(expr)
+      ConstantExprType.DECLARATOR_ARRAY_SIZE,
+      -> ErrorExpression().withRange(expr)
     }
     is StringLiteralNode, is FloatingConstantNode -> when (type) {
       ConstantExprType.PREPROCESSOR -> {
@@ -101,7 +100,8 @@ class ConstantExprParser(
       // Floats are allowed here in certain places
       // This will check the type of the result anyway
       ConstantExprType.INTEGER_CONSTANT,
-      ConstantExprType.DECLARATOR_ARRAY_SIZE -> expr as ExprConstantNode
+      ConstantExprType.DECLARATOR_ARRAY_SIZE,
+      -> expr as ExprConstantNode
     }
     is CastExpression -> when (type) {
       ConstantExprType.PREPROCESSOR -> {
@@ -109,7 +109,8 @@ class ConstantExprParser(
             " recognized in preprocessor, so casts can't either")
       }
       ConstantExprType.INTEGER_CONSTANT,
-      ConstantExprType.DECLARATOR_ARRAY_SIZE -> {
+      ConstantExprType.DECLARATOR_ARRAY_SIZE,
+      -> {
         evalCast(expr.type, evaluateExprImpl(diags, expr.target))
       }
     }

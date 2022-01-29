@@ -32,22 +32,28 @@ class CFG(
     srcFileName: SourceFileName,
     srcText: String,
     forceReturnZero: Boolean,
-    forceAllNodes: Boolean
+    forceAllNodes: Boolean,
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(isRoot = true)
+
   /** Raw set of nodes as obtained from [graph]. */
   val allNodes = mutableSetOf(startBlock)
+
   /** Filtered set of nodes that only contains reachable, non-empty nodes. */
   val nodes: Set<BasicBlock>
+
   /** [nodes], but sorted in post-order. Not a [Sequence] because we will need it in reverse. */
   private val postOrderNodes: Set<BasicBlock>
+
   /** @see createDomTreePreOrderNodes */
   val domTreePreorder: Set<BasicBlock>
+
   /**
    * Stores the immediate dominator (IDom) of a particular node.
    * @see findDomFrontiers
    */
   val doms: DominatorList
+
   /**
    * List of [Variable] used in this function, with definition locations.
    *
@@ -64,10 +70,13 @@ class CFG(
   val stackVariables = mutableSetOf<StackVariable>()
 
   private val renamer = VariableRenamer(this)
+
   /** @see VariableRenamer.definitions */
   val definitions: Definitions get() = renamer.definitions
+
   /** @see VariableRenamer.defUseChains */
   val defUseChains: DefUseChains get() = renamer.defUseChains
+
   /** @see VariableRenamer.latestVersions */
   val latestVersions: MutableMap<AtomicId, Int> get() = renamer.latestVersions
 
@@ -107,7 +116,7 @@ class CFG(
   }
 
   private fun handleUnterminatedBlocks(
-      forceReturnZero: Boolean
+      forceReturnZero: Boolean,
   ) = nodes.filterNot(BasicBlock::isTerminated).forEach {
     // For some functions (read: for main), it is desirable to return 0 if there are no explicit
     // returns found; so don't print diagnostics and add the relevant IR
@@ -166,12 +175,14 @@ private class VariableRenamer(val cfg: CFG) {
    * @see variableRenaming
    */
   val latestVersions = mutableMapOf<AtomicId, Int>().withDefault { 0 }
+
   /** @see latestVersions */
   private var Variable.latestVersion: Int
     get() = latestVersions.getValue(identityId)
     set(value) {
       latestVersions[identityId] = value
     }
+
   /**
    * Maps each variable to its [ReachingDefinition].
    *
@@ -193,6 +204,7 @@ private class VariableRenamer(val cfg: CFG) {
    * @see variableRenaming
    */
   private val reachingDefs = mutableMapOf<Variable, ReachingDefinition?>()
+
   /**
    * Provides access to [reachingDefs] using property extension syntax (to resemble the original
    * algorithm).
@@ -204,16 +216,19 @@ private class VariableRenamer(val cfg: CFG) {
       // Make a copy, don't bait and switch map keys (Variable.version is mutable)
       reachingDefs[this.copy()] = value
     }
+
   /** @see Variable.reachingDef */
   private var ReachingDefinition.reachingDef: ReachingDefinition?
     get() = variable.reachingDef
     set(value) {
       variable.reachingDef = value
     }
+
   /**
    * Def-use chains for each variable definition. Stores location of all uses.
    */
   val defUseChains = mutableMapOf<Variable, MutableList<Label>>()
+
   /**
    * Map of all versions' definitions, and their exact location.
    */
@@ -339,7 +354,7 @@ private class VariableRenamer(val cfg: CFG) {
       bb: BasicBlock,
       oldReachingVar: Variable?,
       v: Variable,
-      isInPhi: Boolean = false
+      isInPhi: Boolean = false,
   ) {
     if (v.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingStr =
@@ -362,7 +377,7 @@ private class VariableRenamer(val cfg: CFG) {
   private fun traceVarDefinitionRename(
       bb: BasicBlock,
       def: Variable,
-      vPrime: Variable
+      vPrime: Variable,
   ) {
     if (def.name == "x") logger.trace(varRenamesTrace) {
       val oldReachingVar = def.reachingDef?.variable
@@ -482,7 +497,7 @@ private fun insertPhiFunctions(definitions: Map<Variable, MutableSet<BasicBlock>
 fun createDomTreePreOrderNodes(
     doms: DominatorList,
     root: BasicBlock,
-    nodes: Set<BasicBlock>
+    nodes: Set<BasicBlock>,
 ): Set<BasicBlock> {
   val visited = mutableSetOf<BasicBlock>()
   val stack = mutableListOf<BasicBlock>()
@@ -580,6 +595,7 @@ private fun postOrderNodes(startNode: BasicBlock, nodes: Set<BasicBlock>): Set<B
   if (startNode !in nodes) logger.throwICE("startNode not in nodes") { "$startNode/$nodes" }
   val visited = mutableSetOf<BasicBlock>()
   val postOrder = mutableSetOf<BasicBlock>()
+
   // Recursively compute post order
   fun visit(block: BasicBlock, height: Int) {
     visited += block

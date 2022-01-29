@@ -2,7 +2,9 @@ package slak.ckompiler.backend
 
 import mu.KotlinLogging
 import slak.ckompiler.AtomicId
-import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.DEFINED_IN_PHI
+import slak.ckompiler.analysis.Variable
+import slak.ckompiler.analysis.VersionedValue
 import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger {}

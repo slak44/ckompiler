@@ -170,7 +170,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
   private fun blockToX64Instr(
       blockId: AtomicId,
       alloc: AllocationResult,
-      stackOffsets: Map<StackSlot, Int>
+      stackOffsets: Map<StackSlot, Int>,
   ): List<X64Instruction> {
     val result = mutableListOf<X64Instruction>()
     for (mi in alloc.graph[blockId]) {
@@ -193,7 +193,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
   private fun miToX64Instr(
       mi: MachineInstruction,
       alloc: AllocationResult,
-      stackOffsets: Map<StackSlot, Int>
+      stackOffsets: Map<StackSlot, Int>,
   ): X64Instruction {
     require(mi.template is X64InstrTemplate)
     val ops = mi.operands.map { operandToX64(it, alloc, stackOffsets) }
@@ -203,7 +203,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
   private fun operandToX64(
       value: IRValue,
       alloc: AllocationResult,
-      stackOffsets: Map<StackSlot, Int>
+      stackOffsets: Map<StackSlot, Int>,
   ): X64Value {
     if (value is ConstantValue) return ImmediateValue(value)
     val typeSize = target.machineTargetData.sizeOf(value.type)

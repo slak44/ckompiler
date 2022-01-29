@@ -78,7 +78,7 @@ class FullVariableSlot(val value: StackVariable, override val id: AtomicId, mtd:
 
 class RegisterBuilder<T : MachineRegister>(
     val regs: MutableList<T>,
-    val valueClass: MachineRegisterClass
+    val valueClass: MachineRegisterClass,
 )
 
 inline fun <T : MachineRegister> registers(block: MutableList<T>.() -> Unit): List<T> {
@@ -89,7 +89,7 @@ inline fun <T : MachineRegister> registers(block: MutableList<T>.() -> Unit): Li
 
 inline fun <T : MachineRegister> MutableList<T>.ofClass(
     valueClass: MachineRegisterClass,
-    block: RegisterBuilder<T>.() -> Unit
+    block: RegisterBuilder<T>.() -> Unit,
 ) {
   val builder = RegisterBuilder(this, valueClass)
   builder.block()
@@ -135,7 +135,7 @@ data class MachineInstruction(
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX,
     val constrainedArgs: List<Constraint> = emptyList(),
     val constrainedRes: List<Constraint> = emptyList(),
-    val links: List<LinkedInstruction> = emptyList()
+    val links: List<LinkedInstruction> = emptyList(),
 ) {
   val isConstrained = constrainedArgs.isNotEmpty() || constrainedRes.isNotEmpty()
 
@@ -284,7 +284,7 @@ interface FunctionCallGenerator {
   fun createCall(
       result: LoadableValue,
       callable: IRValue,
-      args: List<IRValue>
+      args: List<IRValue>,
   ): List<MachineInstruction>
 
   fun createReturn(retVal: LoadableValue): List<MachineInstruction>
@@ -419,8 +419,8 @@ interface MachineTarget {
   /**
    * Get the maximum register pressure in each [MachineRegisterClass] for this target.
    */
-  val maxPressure: Map<MachineRegisterClass, Int> get() =
-      (registers - forbidden).groupBy { it.valueClass }.mapValues { it.value.size }
+  val maxPressure: Map<MachineRegisterClass, Int>
+    get() = (registers - forbidden).groupBy { it.valueClass }.mapValues { it.value.size }
 }
 
 fun MachineTarget.registerByName(name: String): MachineRegister {

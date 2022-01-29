@@ -1,8 +1,8 @@
 package slak.ckompiler.backend
 
 import mu.KotlinLogging
-import slak.ckompiler.error
 import slak.ckompiler.analysis.*
+import slak.ckompiler.error
 import slak.ckompiler.exhaustive
 import slak.ckompiler.throwICE
 
@@ -21,14 +21,14 @@ typealias RegisterUseMap = Map<InstrBlock, List<MachineRegister>>
 data class AllocationResult(
     val graph: InstructionGraph,
     val allocations: AllocationMap,
-    val registerUseMap: RegisterUseMap
+    val registerUseMap: RegisterUseMap,
 ) {
   val stackSlots get() = allocations.values.filterIsInstance<StackSlot>()
 }
 
 private fun MachineTarget.selectRegisterWhitelist(
     whitelist: Set<MachineRegister>,
-    value: IRValue
+    value: IRValue,
 ): MachineRegister? {
   val validClass = registerClassOf(value.type)
   val validSize = machineTargetData.sizeOf(value.type.unqualify().normalize())
@@ -40,7 +40,7 @@ private fun MachineTarget.selectRegisterWhitelist(
 
 private fun MachineTarget.selectRegisterBlacklist(
     blacklist: Set<MachineRegister>,
-    value: IRValue
+    value: IRValue,
 ) = requireNotNull(selectRegisterWhitelist(registers.toSet() - forbidden - blacklist, value)) {
   "Failed to find an empty register for the given value: $value"
 }
@@ -50,7 +50,7 @@ private fun MachineTarget.selectRegisterBlacklist(
  * the map. Only cares about [VariableUse.USE], and also rewrites constrained args.
  *
  * @see InstructionGraph.ssaReconstruction
-*/
+ */
 fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableValue>): MachineInstruction {
   val newOperands = operands.zip(template.operandUse).map {
     // Explicitly not care about DEF_USE
@@ -91,7 +91,7 @@ private fun TargetFunGenerator.insertSingleCopy(
     block: InstrBlock,
     index: Int,
     value: AllocatableValue,
-    constrainedInstr: MachineInstruction
+    constrainedInstr: MachineInstruction,
 ) {
   // No point in inserting a copy for something that's never used
   if (!graph.isUsed(value)) return
@@ -122,7 +122,7 @@ private fun splitLiveRanges(
     graph: InstructionGraph,
     splitFor: Set<AllocatableValue>,
     atIndex: Int,
-    block: InstrBlock
+    block: InstrBlock,
 ) {
   // No point in making a copy for something that's never used
   val actualValues = splitFor.filter(graph::isUsed)
@@ -206,8 +206,10 @@ private fun TargetFunGenerator.prepareForColoring() {
       val startIndex = index
       for ((value, target) in startMi.constrainedArgs) {
         // Result constrained to same register as live-though constrained variable: copy must be made
-        if (graph.livesThrough(value, InstrLabel(blockId, index)) &&
-            target in startMi.constrainedRes.map { it.target }) {
+        if (
+          graph.livesThrough(value, InstrLabel(blockId, index)) &&
+          target in startMi.constrainedRes.map { it.target }
+        ) {
           insertSingleCopy(block, index, value, startMi)
           index++
         }
@@ -506,7 +508,7 @@ private fun RegisterAllocationContext.replaceParallelInstructions() {
  */
 fun TargetFunGenerator.regAlloc(
     debugNoPostColoring: Boolean = false,
-    debugNoCheckAlloc: Boolean = false
+    debugNoCheckAlloc: Boolean = false,
 ): AllocationResult {
   val spillResult = runSpiller()
   val (spillMap, spillBlocks) = insertSpillReloadCode(spillResult)
@@ -590,7 +592,7 @@ private fun TargetFunGenerator.splitCriticalForCopies(src: InstrBlock, dest: Ins
 private fun TargetFunGenerator.removeOnePhi(
     allocationResult: AllocationResult,
     block: InstrBlock,
-    pred: InstrBlock
+    pred: InstrBlock,
 ): List<MachineInstruction> {
   val (_, coloring, registerUseMap) = allocationResult
   // Step 1: the set of undefined registers U is excluded from the graph
@@ -628,7 +630,7 @@ private fun TargetFunGenerator.removeOnePhi(
 private fun TargetFunGenerator.replaceParallel(
     parallelCopy: MachineInstruction,
     coloring: AllocationMap,
-    assigned: Set<MachineRegister>
+    assigned: Set<MachineRegister>,
 ): List<MachineInstruction> {
   val phiMap = (parallelCopy.template as ParallelCopyTemplate).values
   // Step 1: the set of undefined registers U is excluded from the graph
@@ -656,7 +658,7 @@ private fun TargetFunGenerator.replaceParallel(
  */
 private fun TargetFunGenerator.solveTransferGraph(
     adjacency: MutableMap<MachineRegister, MutableSet<MachineRegister>>,
-    free: MutableList<MachineRegister>
+    free: MutableList<MachineRegister>,
 ): List<MachineInstruction> {
   if (adjacency.isEmpty()) return emptyList()
 
@@ -740,7 +742,7 @@ private fun TargetFunGenerator.solveTransferGraph(
 private fun TargetFunGenerator.solveTransferGraphCycle(
     adjacency: MutableMap<MachineRegister, MutableSet<MachineRegister>>,
     firstInCycle: MachineRegister,
-    freeTemp: MachineRegister
+    freeTemp: MachineRegister,
 ): List<MachineInstruction> {
   var rLast: MachineRegister = freeTemp
   var nextInCycle = firstInCycle

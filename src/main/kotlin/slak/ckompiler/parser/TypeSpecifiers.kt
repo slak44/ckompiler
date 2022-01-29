@@ -11,7 +11,7 @@ sealed class TypeSpecifier
 
 data class TypedefNameSpecifier(
     val name: IdentifierNode,
-    val typedefName: TypedefName
+    val typedefName: TypedefName,
 ) : TypeSpecifier() {
   override fun toString() = "${name.name} (aka ${typedefName.typedefedToString()})"
 }
@@ -23,6 +23,7 @@ data class TypedefNameSpecifier(
  */
 sealed class TagSpecifier : TypeSpecifier() {
   abstract val name: IdentifierNode?
+
   /**
    * Must be [Keywords.STRUCT] or [Keywords.UNION] or [Keywords.ENUM].
    */
@@ -32,7 +33,7 @@ sealed class TagSpecifier : TypeSpecifier() {
 data class EnumSpecifier(
     override val name: IdentifierNode?,
     val enumerators: List<Enumerator>?,
-    override val kind: Keyword
+    override val kind: Keyword,
 ) : TagSpecifier() {
   override fun toString(): String {
     val name = if (name != null) "${name.name} " else ""
@@ -43,7 +44,7 @@ data class EnumSpecifier(
 data class StructUnionDefinitionSpecifier(
     override val name: IdentifierNode?,
     val decls: List<StructDeclaration>,
-    override val kind: Keyword
+    override val kind: Keyword,
 ) : TagSpecifier() {
   override fun toString(): String {
     val name = if (name != null) "${name.name} " else ""
@@ -53,7 +54,7 @@ data class StructUnionDefinitionSpecifier(
 
 data class TagNameSpecifier(
     override val name: IdentifierNode,
-    override val kind: Keyword
+    override val kind: Keyword,
 ) : TagSpecifier() {
   override fun toString() = "${kind.value.keyword} ${name.name}"
 }

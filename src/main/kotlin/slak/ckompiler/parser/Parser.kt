@@ -50,7 +50,7 @@ class Parser(
     tokens: List<LexicalToken>,
     srcFileName: SourceFileName,
     srcText: String,
-    machineTargetData: MachineTargetData
+    machineTargetData: MachineTargetData,
 ) {
   private val trParser: TranslationUnitParser
 
@@ -91,7 +91,7 @@ class Parser(
  */
 private class TranslationUnitParser(
     private val specParser: SpecParser,
-    statementParser: StatementParser
+    statementParser: StatementParser,
 ) : IDebugHandler by statementParser,
     ITokenHandler by statementParser,
     IScopeHandler by statementParser,
@@ -124,7 +124,7 @@ private class TranslationUnitParser(
    */
   private fun parseFunctionDefinition(
       declSpec: DeclarationSpecifier,
-      funDecl: Declarator
+      funDecl: Declarator,
   ): FunctionDefinition {
     if (!funDecl.isFunction()) logger.throwICE("Not a function declarator") { funDecl }
     if (funDecl !is NamedDeclarator) logger.throwICE("Function definition without name") { funDecl }
