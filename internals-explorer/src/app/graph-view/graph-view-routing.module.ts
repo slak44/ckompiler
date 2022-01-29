@@ -4,6 +4,7 @@ import {
   CFG_PATH,
   DIAGNOSTICS_PATH,
   LiveCompileComponent,
+  PHI_PATH,
   SOURCE_CODE_PATH,
 } from './components/live-compile/live-compile.component';
 
@@ -14,14 +15,15 @@ const routes: Routes = [
     children: [
       { path: SOURCE_CODE_PATH },
       { path: DIAGNOSTICS_PATH },
-      { path: CFG_PATH }
-    ]
-  }
+      { path: CFG_PATH },
+      { path: PHI_PATH },
+    ],
+  },
 ];
 
 @NgModule({
   imports: [RouterModule.forChild(routes)],
-  exports: [RouterModule]
+  exports: [RouterModule],
 })
 export class GraphViewRoutingModule {
 }

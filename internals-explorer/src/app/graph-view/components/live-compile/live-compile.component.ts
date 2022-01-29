@@ -9,6 +9,7 @@ import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
 export const CFG_PATH = 'cfg';
+export const PHI_PATH = 'phi';
 
 @Component({
   selector: 'cki-live-compile',
@@ -20,6 +21,7 @@ export class LiveCompileComponent {
   public readonly SOURCE_CODE_PATH = SOURCE_CODE_PATH;
   public readonly DIAGNOSTICS_PATH = DIAGNOSTICS_PATH;
   public readonly CFG_PATH = CFG_PATH;
+  public readonly PHI_PATH = PHI_PATH;
 
   public readonly initialSource$: Observable<string> =
     this.httpClient.get(this.location.prepareExternalUrl('/assets/default.c'), { responseType: 'text' });
