@@ -2,15 +2,15 @@ import { ChangeDetectionStrategy, Component, HostBinding, Input, ValueProvider }
 import { FRAGMENT_COMPONENT, FragmentComponent } from '../../models/fragment-component.model';
 
 @Component({
-  selector: 'cki-graph-view-fragment',
-  templateUrl: './graph-view-fragment.component.html',
-  styleUrls: ['./graph-view-fragment.component.scss'],
+  selector: 'cki-phi-ir-fragment',
+  templateUrl: './phi-ir-fragment.component.html',
+  styleUrls: ['./phi-ir-fragment.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GraphViewFragmentComponent implements FragmentComponent {
+export class PhiIrFragmentComponent implements FragmentComponent {
   public static provider: ValueProvider = {
     provide: FRAGMENT_COMPONENT,
-    useValue: GraphViewFragmentComponent
+    useValue: PhiIrFragmentComponent
   };
 
   @Input()
@@ -19,9 +19,6 @@ export class GraphViewFragmentComponent implements FragmentComponent {
 
   @Input()
   public text: string = '';
-
-  @Input()
-  public printingType: string = 'IR_TO_STRING';
 
   constructor() {
   }

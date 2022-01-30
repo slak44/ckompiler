@@ -7,7 +7,7 @@ import { Nullable, slak } from '@ckompiler/ckompiler';
 import { CompileService, logCompileError } from '../../services/compile.service';
 import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
-import { GraphViewFragmentComponent } from '../graph-view-fragment/graph-view-fragment.component';
+import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import jsCompile = slak.ckompiler.jsCompile;
 import CFG = slak.ckompiler.analysis.CFG;
@@ -19,7 +19,7 @@ import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
   templateUrl: './phi-insertion-view.component.html',
   styleUrls: ['./phi-insertion-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [GraphViewFragmentComponent.provider, ReplaceNodeContentsHook],
+  providers: [PhiIrFragmentComponent.provider, ReplaceNodeContentsHook],
 })
 export class PhiInsertionViewComponent {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');

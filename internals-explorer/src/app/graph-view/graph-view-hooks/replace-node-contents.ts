@@ -49,8 +49,11 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
 
       const comp = this.componentFactory.create(this.injector, [], replaceableHost);
       comp.instance.text = text;
-      comp.instance.printingType = printingType;
       comp.instance.color = textElement.getAttribute('fill')!;
+      if ('printingType' in comp.instance) {
+        comp.instance.printingType = printingType;
+      }
+
       this.applicationRef.attachView(comp.hostView);
 
       foreign.setAttribute('x', textElement.getAttribute('x')!);

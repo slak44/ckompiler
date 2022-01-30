@@ -25,6 +25,7 @@ import { DefaultGraphViewComponent } from './components/default-graph-view/defau
 import { GraphUiOverlayComponent } from './components/graph-ui-overlay/graph-ui-overlay.component';
 import { PhiInsertionViewComponent } from './components/phi-insertion-view/phi-insertion-view.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { PhiIrFragmentComponent } from './components/phi-ir-fragment/phi-ir-fragment.component';
 
 @NgModule({
   declarations: [
@@ -38,6 +39,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     DefaultGraphViewComponent,
     GraphUiOverlayComponent,
     PhiInsertionViewComponent,
+    PhiIrFragmentComponent,
   ],
   imports: [
     CommonModule,
