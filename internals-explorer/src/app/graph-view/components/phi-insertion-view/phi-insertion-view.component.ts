@@ -5,8 +5,12 @@ import { ReplaceNodeContentsHook } from '../../graph-view-hooks/replace-node-con
 import { removeHoverTitles } from '../../graph-view-hooks/remove-hover-titles';
 import { Nullable, slak } from '@ckompiler/ckompiler';
 import { CompileService, logCompileError } from '../../services/compile.service';
+import { FormControl } from '@angular/forms';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import jsCompile = slak.ckompiler.jsCompile;
+import CFG = slak.ckompiler.analysis.CFG;
+import Variable = slak.ckompiler.analysis.Variable;
+import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -30,8 +34,20 @@ export class PhiInsertionViewComponent {
       }
     }),
     filter((compileResult: Nullable<JSCompileResult>): compileResult is JSCompileResult => !!compileResult),
-    shareReplay({ bufferSize: 1, refCount: false })
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
+
+  public readonly cfg$: Observable<CFG> = this.compileResult$.pipe(
+    filter(compileResult => !!compileResult.cfgs),
+    map(compileResult => compileResult.cfgs!.find(cfg => cfg.f.name === 'main')),
+    filter((cfg): cfg is CFG => !!cfg),
+  );
+
+  public readonly variables$: Observable<Variable[]> = this.cfg$.pipe(
+    map(cfg => phiEligibleVariables(cfg)),
+  );
+
+  public readonly variableControl: FormControl = new FormControl(null);
 
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,

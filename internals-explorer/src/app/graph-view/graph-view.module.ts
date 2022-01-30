@@ -24,6 +24,7 @@ import { TabRoutingModule } from '../tab-routing/tab-routing.module';
 import { DefaultGraphViewComponent } from './components/default-graph-view/default-graph-view.component';
 import { GraphUiOverlayComponent } from './components/graph-ui-overlay/graph-ui-overlay.component';
 import { PhiInsertionViewComponent } from './components/phi-insertion-view/phi-insertion-view.component';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @NgModule({
   declarations: [
@@ -54,6 +55,7 @@ import { PhiInsertionViewComponent } from './components/phi-insertion-view/phi-i
     MatSelectModule,
     MatCheckboxModule,
     TabRoutingModule,
+    MatTooltipModule,
   ],
 })
 export class GraphViewModule {

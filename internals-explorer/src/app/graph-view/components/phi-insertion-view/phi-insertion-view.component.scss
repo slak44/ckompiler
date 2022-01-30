@@ -1,3 +1,23 @@
 :host {
   display: contents;
 }
+
+.start-overlay {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+}
+
+.tooltip-container {
+  display: block;
+
+  .mat-raised-button {
+    width: 100%;
+
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}

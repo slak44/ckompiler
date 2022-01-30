@@ -1,1 +1,25 @@
-<cki-graph-view [printingType$]="printingType$" [compileResult$]="compileResult$" [hooks]="hooks"></cki-graph-view>
+<cki-graph-view [printingType$]="printingType$" [compileResult$]="compileResult$" [hooks]="hooks">
+  <div class="start-overlay">
+    <mat-form-field appearance="standard" color="accent">
+      <mat-label>Target variable</mat-label>
+      <mat-select [formControl]="variableControl">
+        <mat-option *ngFor="let variable of variables$ | async" [value]="variable.identityId">
+          {{ variable.tid.name }}
+          <em>{{ ' (id ' + variable.identityId + ')' }}</em>
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="tooltip-container"
+         [matTooltip]="'Select a variable to get started'"
+         [matTooltipDisabled]="!!variableControl.value">
+      <button mat-raised-button
+              color="accent"
+              type="button"
+              [disabled]="!variableControl.value">
+        <mat-icon>play_arrow</mat-icon>
+        <span>START</span>
+      </button>
+    </div>
+  </div>
+</cki-graph-view>
