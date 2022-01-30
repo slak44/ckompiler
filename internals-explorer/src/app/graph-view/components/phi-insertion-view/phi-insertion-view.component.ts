@@ -8,6 +8,7 @@ import { CompileService, logCompileError } from '../../services/compile.service'
 import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
+import { DisableDblClick } from '../../graph-view-hooks/disable-dblclick';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import jsCompile = slak.ckompiler.jsCompile;
 import CFG = slak.ckompiler.analysis.CFG;
@@ -24,7 +25,7 @@ import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 export class PhiInsertionViewComponent {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
-  public readonly hooks: GraphViewHook[] = [removeHoverTitles, this.replaceNodeContents];
+  public readonly hooks: GraphViewHook[] = [removeHoverTitles, new DisableDblClick(), this.replaceNodeContents];
 
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     map(code => {
