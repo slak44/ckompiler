@@ -11,6 +11,7 @@ import jsCompile = slak.ckompiler.jsCompile;
 import CFG = slak.ckompiler.analysis.CFG;
 import Variable = slak.ckompiler.analysis.Variable;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
+import { controlValueStream } from '@cki-utils/form-control-observable';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -48,6 +49,8 @@ export class PhiInsertionViewComponent {
   );
 
   public readonly variableControl: FormControl = new FormControl(null);
+
+  public readonly targetVariable$: Observable<number | null> = controlValueStream<number | null>(this.variableControl);
 
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,
