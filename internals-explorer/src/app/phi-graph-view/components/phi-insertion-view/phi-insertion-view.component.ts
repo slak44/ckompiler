@@ -1,19 +1,15 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { filter, map, Observable, of, shareReplay } from 'rxjs';
-import { Nullable, slak } from '@ckompiler/ckompiler';
+import { Observable, of } from 'rxjs';
+import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
-import { controlValueStream } from '@cki-utils/form-control-observable';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
-import { CompileService, logCompileError } from '@cki-graph-view/services/compile.service';
-import JSCompileResult = slak.ckompiler.JSCompileResult;
-import jsCompile = slak.ckompiler.jsCompile;
-import CFG = slak.ckompiler.analysis.CFG;
+import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import Variable = slak.ckompiler.analysis.Variable;
-import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
+import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -27,36 +23,14 @@ export class PhiInsertionViewComponent {
 
   public readonly hooks: GraphViewHook[] = [removeHoverTitles, new DisableDblClick(), this.replaceNodeContents];
 
-  public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
-    map(code => {
-      try {
-        return jsCompile(code, true);
-      } catch (e) {
-        logCompileError(e);
-        return null;
-      }
-    }),
-    filter((compileResult: Nullable<JSCompileResult>): compileResult is JSCompileResult => !!compileResult),
-    shareReplay({ bufferSize: 1, refCount: false }),
-  );
-
-  public readonly cfg$: Observable<CFG> = this.compileResult$.pipe(
-    filter(compileResult => !!compileResult.cfgs),
-    map(compileResult => compileResult.cfgs!.find(cfg => cfg.f.name === 'main')),
-    filter((cfg): cfg is CFG => !!cfg),
-  );
-
-  public readonly variables$: Observable<Variable[]> = this.cfg$.pipe(
-    map(cfg => phiEligibleVariables(cfg)),
-  );
+  public readonly compileResult$: Observable<JSCompileResult> = this.phiInsertionStateService.compileResult$;
+  public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.variables$;
 
   public readonly variableControl: FormControl = new FormControl(null);
 
-  public readonly targetVariable$: Observable<number | null> = controlValueStream<number | null>(this.variableControl);
-
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,
-    private compileService: CompileService,
+    private phiInsertionStateService: PhiInsertionStateService,
   ) {
   }
 }
