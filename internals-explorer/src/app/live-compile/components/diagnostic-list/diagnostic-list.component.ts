@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CompileService } from '../../services/compile.service';
 import { Observable } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { CompileService } from '@cki-graph-view/services/compile.service';
 import Diagnostic = slak.ckompiler.Diagnostic;
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 

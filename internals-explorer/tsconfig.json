@@ -30,6 +30,9 @@
       ],
       "@cki-utils/*": [
         "src/app/utils/*"
+      ],
+      "@cki-graph-view/*": [
+        "src/app/graph-view/*"
       ]
     }
   },

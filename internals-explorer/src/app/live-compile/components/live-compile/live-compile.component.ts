@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable, tap } from 'rxjs';
-import { CompileService } from '../../services/compile.service';
 import { slak } from '@ckompiler/ckompiler';
+import { CompileService } from '@cki-graph-view/services/compile.service';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 
 export const SOURCE_CODE_PATH = 'source-code';

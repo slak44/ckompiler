@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
   selector: 'cki-graph-legend',
@@ -6,10 +6,7 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
   styleUrls: ['./graph-legend.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GraphLegendComponent implements OnInit {
+export class GraphLegendComponent {
   constructor() {
-  }
-
-  public ngOnInit(): void {
   }
 }

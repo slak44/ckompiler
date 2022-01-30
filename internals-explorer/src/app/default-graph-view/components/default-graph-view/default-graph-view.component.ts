@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { GraphViewHook } from '../../models/graph-view-hook.model';
-import { nodeClickDominance } from '../../graph-view-hooks/node-click-dominance';
-import { removeHoverTitles } from '../../graph-view-hooks/remove-hover-titles';
-import { ReplaceNodeContentsHook } from '../../graph-view-hooks/replace-node-contents';
-import { frontierPath } from '../../graph-view-hooks/frontier-path';
-import { CompileService } from '../../services/compile.service';
 import { Observable } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { GraphViewFragmentComponent } from '../graph-view-fragment/graph-view-fragment.component';
+import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
+import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
+import { frontierPath } from '@cki-graph-view/graph-view-hooks/frontier-path';
+import { nodeClickDominance } from '@cki-graph-view/graph-view-hooks/node-click-dominance';
+import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
+import { CompileService } from '@cki-graph-view/services/compile.service';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 @Component({

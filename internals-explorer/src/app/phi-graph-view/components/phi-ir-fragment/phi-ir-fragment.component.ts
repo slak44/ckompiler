@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostBinding, Input, ValueProvider } from '@angular/core';
-import { FRAGMENT_COMPONENT, FragmentComponent } from '../../models/fragment-component.model';
+import { FRAGMENT_COMPONENT, FragmentComponent } from '@cki-graph-view/models/fragment-component.model';
 
 @Component({
   selector: 'cki-phi-ir-fragment',

@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { first, Observable, takeUntil } from 'rxjs';
-import { CompileService } from '../../services/compile.service';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import type * as Monaco from 'monaco-editor';
 import { editor, MarkerSeverity } from 'monaco-editor';
-import IMarkerData = editor.IMarkerData;
 import { slak } from '@ckompiler/ckompiler';
+import { monacoLoaded$ } from '@cki-utils/monaco-loader';
+import { CompileService } from '@cki-graph-view/services/compile.service';
+import IMarkerData = editor.IMarkerData;
 import closedRangeLength = slak.ckompiler.closedRangeLength;
 import diagnosticKindString = slak.ckompiler.diagnosticKindString;
-import { monacoLoaded$ } from '@cki-utils/monaco-loader';
 
 const STORAGE_KEY_SOURCE_CODE = 'source-code';
 
