@@ -1,6 +1,21 @@
 @use 'graph-fragment';
+@use 'colors';
 
 :host {
   display: block;
   @include graph-fragment.text;
+}
+
+@keyframes colorFade {
+  0% {
+    color: inherit;
+  }
+
+  100% {
+    color: colors.$variable-highlight;
+  }
+}
+
+.highlight-variable {
+  animation: colorFade 150ms ease-in-out forwards;
 }

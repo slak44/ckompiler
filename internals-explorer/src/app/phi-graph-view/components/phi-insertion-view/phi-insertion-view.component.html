@@ -16,7 +16,8 @@
       <button mat-raised-button
               color="accent"
               type="button"
-              [disabled]="!variableControl.value">
+              [disabled]="!variableControl.value"
+              (click)="start()">
         <mat-icon>play_arrow</mat-icon>
         <span>START</span>
       </button>

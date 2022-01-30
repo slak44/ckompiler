@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { filter, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
@@ -10,6 +10,8 @@ import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblcli
 import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
+import { controlValueStream } from '@cki-utils/form-control-observable';
+import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -18,7 +20,7 @@ import JSCompileResult = slak.ckompiler.JSCompileResult;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [PhiIrFragmentComponent.provider, ReplaceNodeContentsHook],
 })
-export class PhiInsertionViewComponent {
+export class PhiInsertionViewComponent extends SubscriptionDestroy {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
   public readonly hooks: GraphViewHook[] = [removeHoverTitles, new DisableDblClick(), this.replaceNodeContents];
@@ -28,9 +30,24 @@ export class PhiInsertionViewComponent {
 
   public readonly variableControl: FormControl = new FormControl(null);
 
+  public readonly variable$: Observable<number> = controlValueStream<number | null>(this.variableControl).pipe(
+    filter((identityId): identityId is number => typeof identityId === 'number')
+  );
+
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,
     private phiInsertionStateService: PhiInsertionStateService,
   ) {
+    super();
+
+    this.variable$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(identityId => {
+      this.phiInsertionStateService.selectedVariableChanged(identityId);
+    });
+  }
+
+  public start(): void {
+
   }
 }

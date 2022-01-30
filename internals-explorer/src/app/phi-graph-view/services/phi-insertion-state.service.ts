@@ -49,7 +49,11 @@ export class PhiInsertionStateService {
   ) {
   }
 
-  public startInsertion(variableIdentityId: number): void {
+  public selectedVariableChanged(variableIdentityId: number): void {
     this.targetVariableIdSubject.next(variableIdentityId);
+  }
+
+  public startInsertion(variableIdentityId: number): void {
+
   }
 }
