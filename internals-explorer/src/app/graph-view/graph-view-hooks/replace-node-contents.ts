@@ -1,5 +1,5 @@
 import { GraphViewHook } from '../models/graph-view-hook.model';
-import { IrFragmentComponent, irFragmentComponentSelector } from '../components/ir-fragment/ir-fragment.component';
+import { GraphViewFragmentComponent, graphViewFragmentSelector } from '../components/graph-view-fragment/graph-view-fragment.component';
 import { ApplicationRef, ComponentFactoryResolver, Injectable, Injector } from '@angular/core';
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
 import { slak } from '@ckompiler/ckompiler';
@@ -25,7 +25,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   }
 
   public alterGraph(graphView: GraphViewComponent, cfg: CFG, printingType: string, graph: Element): void {
-    const componentFactory = this.componentFactoryResolver.resolveComponentFactory(IrFragmentComponent);
+    const componentFactory = this.componentFactoryResolver.resolveComponentFactory(GraphViewFragmentComponent);
     const svgTextElements = Array.from(graph.querySelectorAll('text'));
     const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '', 'Fira Code'));
     const maxAscent = Math.max(...textAscents);
@@ -33,7 +33,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       const text = textElement.textContent ?? '';
 
       const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-      const replaceableHost = document.createElement(irFragmentComponentSelector);
+      const replaceableHost = document.createElement(graphViewFragmentSelector);
       foreign.appendChild(replaceableHost);
 
       const comp = componentFactory.create(this.injector, [], replaceableHost);

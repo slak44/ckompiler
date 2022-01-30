@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular/core';
 
-export const irFragmentComponentSelector = 'cki-ir-fragment';
+export const graphViewFragmentSelector = 'cki-graph-view-fragment';
 
 @Component({
-  selector: irFragmentComponentSelector,
-  templateUrl: './ir-fragment.component.html',
-  styleUrls: ['./ir-fragment.component.scss'],
+  selector: graphViewFragmentSelector,
+  templateUrl: './graph-view-fragment.component.html',
+  styleUrls: ['./graph-view-fragment.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IrFragmentComponent {
+export class GraphViewFragmentComponent {
   @HostBinding('style.color')
   public color: string = '';
 

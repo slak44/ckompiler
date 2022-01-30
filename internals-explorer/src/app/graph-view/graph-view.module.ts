@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { GraphViewRoutingModule } from './graph-view-routing.module';
 import { GraphViewComponent } from './components/graph-view/graph-view.component';
 import { HighlightModule } from 'ngx-highlightjs';
-import { IrFragmentComponent } from './components/ir-fragment/ir-fragment.component';
+import { GraphViewFragmentComponent } from './components/graph-view-fragment/graph-view-fragment.component';
 import { LiveCompileComponent } from './components/live-compile/live-compile.component';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,7 +29,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 @NgModule({
   declarations: [
     GraphViewComponent,
-    IrFragmentComponent,
+    GraphViewFragmentComponent,
     LiveCompileComponent,
     SourceEditorComponent,
     DiagnosticListComponent,

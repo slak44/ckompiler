@@ -1,20 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { IrFragmentComponent } from './ir-fragment.component';
+import { GraphViewFragmentComponent } from './graph-view-fragment.component';
 
 describe('IrFragmentComponent', () => {
-  let component: IrFragmentComponent;
-  let fixture: ComponentFixture<IrFragmentComponent>;
+  let component: GraphViewFragmentComponent;
+  let fixture: ComponentFixture<GraphViewFragmentComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ IrFragmentComponent ]
+      declarations: [ GraphViewFragmentComponent ]
     })
     .compileComponents();
   });
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(IrFragmentComponent);
+    fixture = TestBed.createComponent(GraphViewFragmentComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
