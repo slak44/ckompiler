@@ -7,6 +7,7 @@ import { frontierPath } from '../../graph-view-hooks/frontier-path';
 import { CompileService } from '../../services/compile.service';
 import { Observable } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
+import { GraphViewFragmentComponent } from '../graph-view-fragment/graph-view-fragment.component';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 @Component({
@@ -14,7 +15,7 @@ import JSCompileResult = slak.ckompiler.JSCompileResult;
   templateUrl: './default-graph-view.component.html',
   styleUrls: ['./default-graph-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ReplaceNodeContentsHook],
+  providers: [GraphViewFragmentComponent.provider, ReplaceNodeContentsHook],
 })
 export class DefaultGraphViewComponent {
   public readonly hooks: GraphViewHook[] = [

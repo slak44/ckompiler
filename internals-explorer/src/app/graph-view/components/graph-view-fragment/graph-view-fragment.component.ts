@@ -1,14 +1,18 @@
-import { ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular/core';
-
-export const graphViewFragmentSelector = 'cki-graph-view-fragment';
+import { ChangeDetectionStrategy, Component, HostBinding, Input, ValueProvider } from '@angular/core';
+import { FRAGMENT_COMPONENT, FragmentComponent } from '../../models/fragment-component.model';
 
 @Component({
-  selector: graphViewFragmentSelector,
+  selector: 'cki-graph-view-fragment',
   templateUrl: './graph-view-fragment.component.html',
   styleUrls: ['./graph-view-fragment.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GraphViewFragmentComponent {
+export class GraphViewFragmentComponent implements FragmentComponent {
+  public static provider: ValueProvider = {
+    provide: FRAGMENT_COMPONENT,
+    useValue: GraphViewFragmentComponent
+  };
+
   @HostBinding('style.color')
   public color: string = '';
 

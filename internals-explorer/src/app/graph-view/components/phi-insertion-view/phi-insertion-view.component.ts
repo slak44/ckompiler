@@ -6,19 +6,20 @@ import { removeHoverTitles } from '../../graph-view-hooks/remove-hover-titles';
 import { Nullable, slak } from '@ckompiler/ckompiler';
 import { CompileService, logCompileError } from '../../services/compile.service';
 import { FormControl } from '@angular/forms';
+import { controlValueStream } from '@cki-utils/form-control-observable';
+import { GraphViewFragmentComponent } from '../graph-view-fragment/graph-view-fragment.component';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import jsCompile = slak.ckompiler.jsCompile;
 import CFG = slak.ckompiler.analysis.CFG;
 import Variable = slak.ckompiler.analysis.Variable;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
-import { controlValueStream } from '@cki-utils/form-control-observable';
 
 @Component({
   selector: 'cki-phi-insertion-view',
   templateUrl: './phi-insertion-view.component.html',
   styleUrls: ['./phi-insertion-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ReplaceNodeContentsHook],
+  providers: [GraphViewFragmentComponent.provider, ReplaceNodeContentsHook],
 })
 export class PhiInsertionViewComponent {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
