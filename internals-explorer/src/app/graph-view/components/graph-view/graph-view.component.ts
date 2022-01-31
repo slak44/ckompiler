@@ -161,7 +161,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private revertAlterations(): void {
-    for (const hook of this.hooks) {
+    for (const hook of this.hooks.reverse()) {
       hook.revertAlteration?.();
     }
   }
