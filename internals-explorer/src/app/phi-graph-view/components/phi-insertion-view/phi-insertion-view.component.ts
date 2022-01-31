@@ -7,7 +7,7 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
-import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
+import { PhiInsertionState, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import { controlValueStream } from '@cki-utils/form-control-observable';
@@ -27,6 +27,9 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
 
   public readonly compileResult$: Observable<JSCompileResult> = this.phiInsertionStateService.compileResult$;
   public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.variables$;
+  public readonly phiInsertionState$: Observable<PhiInsertionState> = this.phiInsertionStateService.phiInsertionState$;
+
+  public readonly phiInsertionStates = PhiInsertionState;
 
   public readonly variableControl: FormControl = new FormControl(null);
 
@@ -48,6 +51,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
   }
 
   public start(): void {
-
+    this.phiInsertionStateService.startInsertion();
   }
 }
