@@ -14,7 +14,7 @@ typealias DefUseChains = Map<Variable, List<Label>>
 data class CFGOptions(
     val forceAllNodes: Boolean = false,
     val forceReturnZero: Boolean = false,
-    val skipSSAConstruction: Boolean = false,
+    val skipSSARename: Boolean = false,
 )
 
 /**
@@ -105,9 +105,10 @@ class CFG(
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
 
-      if (!cfgOptions.skipSSAConstruction) {
-        val stackVarIds = stackVariables.map { it.id }
-        insertPhiFunctions(exprDefinitions.filter { it.key.identityId !in stackVarIds })
+      val stackVarIds = stackVariables.map { it.id }
+      insertPhiFunctions(exprDefinitions.filter { it.key.identityId !in stackVarIds })
+
+      if (!cfgOptions.skipSSARename) {
         insertSpillCode(stackVarIds)
         renamer.variableRenaming()
       }
