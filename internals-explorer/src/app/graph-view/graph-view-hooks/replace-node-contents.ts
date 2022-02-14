@@ -13,6 +13,7 @@ import { slak } from '@ckompiler/ckompiler';
 import { FRAGMENT_COMPONENT, FragmentComponent, GENERIC_FRAGMENT_HOST } from '../models/fragment-component.model';
 import { getNodeIdFromElement } from '@cki-graph-view/utils';
 import { Observable } from 'rxjs';
+import { partition } from 'lodash';
 import CFG = slak.ckompiler.analysis.CFG;
 
 function measureTextAscent(text: string, fontName: string): number {
@@ -32,8 +33,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   private readonly componentFactory: ComponentFactory<FragmentComponent> =
     this.componentFactoryResolver.resolveComponentFactory(this.fragmentComponentType);
 
-  private graph: Element | undefined;
-
+  private graph!: Element;
   private maxAscent!: number;
 
   public rerender$!: Observable<void>;
@@ -46,26 +46,39 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   ) {
   }
 
-  private setForeignYPosition(foreignObject: SVGForeignObjectElement, yPosAttr: string): void {
-    const yPos = parseInt(yPosAttr, 10);
+  private setForeignYPosition(foreignObject: SVGForeignObjectElement, yPosAttr: string | number): void {
+    const yPos = +yPosAttr;
     foreignObject.setAttribute('transform', `translate(0, ${-this.maxAscent + yPos})`);
   }
 
   public reLayoutNodeFragments(nodeId: number): void {
-    const node = this.graph!.parentNode!.querySelector(`#node${nodeId}`)!;
+    const node = this.graph.parentNode!.querySelector(`#node${nodeId}`)!;
     const texts = Array.from(node.querySelectorAll('foreignObject'));
 
-    const yPositions = texts.map(text => text.dataset[ORIGINAL_Y]!);
+    if (texts.length === 0) {
+      return;
+    }
 
-    let currentYIndex = 0;
-    for (const foreignObject of texts) {
-      foreignObject.classList.add('transition-transform');
-      const fragmentComponent = foreignObject.firstElementChild!;
-      if (fragmentComponent.classList.contains('hidden-fragment')) {
-        foreignObject.style.display = 'none';
-      } else {
-        this.setForeignYPosition(foreignObject, yPositions[currentYIndex++]);
-      }
+    const [hiddenObjects, visibleObjects] = partition<SVGForeignObjectElement>(
+      texts,
+      foreignObject => foreignObject.firstElementChild!.classList.contains('hidden-fragment'),
+    );
+
+    for (const foreignObject of hiddenObjects) {
+      foreignObject.style.display = 'none';
+    }
+
+    const topY = parseInt(texts[0].dataset[ORIGINAL_Y]!, 10);
+
+    const poly = node.querySelector('polygon')!;
+    const polyHeight = poly.getBBox().height;
+    const elementHeight = polyHeight / texts.length;
+    const emptySpace = polyHeight - elementHeight * visibleObjects.length;
+
+    let currentOffset = topY + emptySpace / 2;
+    for (const foreignObject of visibleObjects) {
+      this.setForeignYPosition(foreignObject, currentOffset);
+      currentOffset += elementHeight;
     }
   }
 
@@ -105,6 +118,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       foreign.setAttribute('height', '100%');
 
       foreign.style.pointerEvents = 'none';
+      foreign.classList.add('transition-transform');
 
       this.foreignToTextMap.set(foreign, textElement);
       textElement.replaceWith(foreign);
