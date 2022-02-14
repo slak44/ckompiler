@@ -1,5 +1,6 @@
 <cki-graph-view [printingType$]="printingType$"
                 [compileResult$]="compileResult$"
+                [includeHtmlBlockHeaders]="true"
                 [hooks]="hooks"
                 [ngSwitch]="phiInsertionState$ | async">
   <div class="start-overlay" *ngSwitchCase="phiInsertionStates.CONFIGURE">

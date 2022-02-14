@@ -43,6 +43,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public hooks: GraphViewHook[] = [];
 
   @Input()
+  public includeHtmlBlockHeaders: boolean = false;
+
+  @Input()
   public printingType$!: Observable<string>;
 
   @Input()
@@ -182,7 +185,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
           return;
         }
 
-        const options = graphvizOptions(true, 16.5, 'Courier New', printingType);
+        const options = graphvizOptions(true, 16.5, 'Courier New', printingType, this.includeHtmlBlockHeaders);
         const text = createGraphviz(main, main.f.sourceText as string, options);
 
         if (!(this.graphviz && text && main)) {
