@@ -1,6 +1,7 @@
 package slak.ckompiler.analysis
 
 import mu.KotlinLogging
+import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.GraphvizColors.*
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
@@ -27,6 +28,8 @@ private enum class GraphvizColors(val color: String) {
 enum class CodePrintingMethods {
   SOURCE_SUBSTRING, EXPR_TO_STRING, IR_TO_STRING, MI_TO_STRING, ASM_TO_STRING
 }
+
+fun blockHeader(id: AtomicId): String = "<span class=\"header\">BB$id:</span>".unescape() + "<br align=\"left\"/>"
 
 fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
   fun List<Expression>.sourceSubstr() = joinToString("<br/>") { it.exprToStr() }
@@ -62,6 +65,7 @@ fun BasicBlock.irToString(): String {
 
 private fun CFG.mapBlocksToString(
     print: CodePrintingMethods,
+    includeBlockHeader: Boolean,
     sourceCode: String,
     targetOpts: X64TargetOpts,
 ): Map<BasicBlock, String> {
@@ -89,11 +93,10 @@ private fun CFG.mapBlocksToString(
         "<font color=\"$color\">${mi.toString().unescape().replace("\n", sep)}</font>"
       }
 
-      return@associateWith if (phiStr.isNotBlank()) {
-        phiStr + sep + miStr
-      } else {
-        miStr
-      }
+      val maybeHeader = if (includeBlockHeader) blockHeader(it) else ""
+      val content = if (phiStr.isNotBlank()) phiStr + sep + miStr else miStr
+
+      return@associateWith maybeHeader + content
     }
     return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   } else if (print == CodePrintingMethods.ASM_TO_STRING) {
@@ -104,7 +107,9 @@ private fun CFG.mapBlocksToString(
     }.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   }
   return allNodes.associateWith {
-    when (print) {
+    val maybeHeader = if (includeBlockHeader) blockHeader(it.nodeId) else ""
+
+    val content = when (print) {
       CodePrintingMethods.SOURCE_SUBSTRING -> it.srcToString {
         (sourceText ?: sourceCode).substring(range).trim().unescape()
       }
@@ -112,6 +117,8 @@ private fun CFG.mapBlocksToString(
       CodePrintingMethods.IR_TO_STRING -> it.irToString()
       else -> throw IllegalStateException("Unreachable")
     }
+
+    maybeHeader + content
   }
 }
 
@@ -129,6 +136,7 @@ data class GraphvizOptions(
     val fontName: String? = null,
     val reachableOnly: Boolean,
     val print: CodePrintingMethods = CodePrintingMethods.IR_TO_STRING,
+    val includeBlockHeader: Boolean = false,
     val targetOpts: X64TargetOpts = X64TargetOpts.defaults,
 )
 
@@ -144,7 +152,7 @@ data class GraphvizOptions(
 fun createGraphviz(graph: CFG, sourceCode: String, options: GraphvizOptions): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
-  val blockMap = graph.mapBlocksToString(options.print, sourceCode, options.targetOpts)
+  val blockMap = graph.mapBlocksToString(options.print, options.includeBlockHeader, sourceCode, options.targetOpts)
   val content = (if (options.reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
       it.isRoot -> "style=solid,penwidth=3,color=$BLOCK_START,fontcolor=$BLOCK_DEFAULT"
