@@ -18,7 +18,7 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
   templateUrl: './phi-insertion-view.component.html',
   styleUrls: ['./phi-insertion-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [PhiIrFragmentComponent.provider, ReplaceNodeContentsHook],
+  providers: [PhiIrFragmentComponent.provider, PhiInsertionStateService, ReplaceNodeContentsHook],
 })
 export class PhiInsertionViewComponent extends SubscriptionDestroy {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');

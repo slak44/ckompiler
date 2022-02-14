@@ -19,3 +19,11 @@
 .highlight-variable {
   animation: colorFade 150ms ease-in-out forwards;
 }
+
+.highlight-disabled {
+  color: colors.$disabled-graph-text;
+}
+
+.highlight-active {
+  color: colors.$accent-default;
+}

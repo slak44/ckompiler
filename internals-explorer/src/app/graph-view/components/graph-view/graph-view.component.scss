@@ -40,6 +40,10 @@
       }
     }
 
+    .transition-transform {
+      transition: transform 200ms ease-out;
+    }
+
     path.frontier-path {
       pointer-events: none;
       stroke-width: 3px;

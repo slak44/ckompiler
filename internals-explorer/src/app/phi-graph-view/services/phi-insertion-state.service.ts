@@ -1,7 +1,10 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, combineLatest, filter, map, Observable, shareReplay, Subject } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, map, Observable, shareReplay, Subject, takeUntil } from 'rxjs';
 import { CompileService, logCompileError } from '@cki-graph-view/services/compile.service';
 import { Nullable, slak } from '@ckompiler/ckompiler';
+import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
+import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import jsCompile = slak.ckompiler.jsCompile;
 import Variable = slak.ckompiler.analysis.Variable;
@@ -14,10 +17,8 @@ export enum PhiInsertionState {
   DONE
 }
 
-@Injectable({
-  providedIn: 'root',
-})
-export class PhiInsertionStateService {
+@Injectable()
+export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     map(code => {
       try {
@@ -45,9 +46,9 @@ export class PhiInsertionStateService {
 
   public readonly targetVariable$: Observable<Variable> = combineLatest([
     this.targetVariableIdSubject,
-    this.cfg$
+    this.cfg$,
   ]).pipe(
-    map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)!)
+    map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)!),
   );
 
   private readonly phiInsertionStateSubject: BehaviorSubject<PhiInsertionState> =
@@ -55,9 +56,20 @@ export class PhiInsertionStateService {
 
   public readonly phiInsertionState$: Observable<PhiInsertionState> = this.phiInsertionStateSubject;
 
+  private readonly reLayoutSubject: Subject<number> = new Subject<number>();
+
   constructor(
     private compileService: CompileService,
+    private replaceNodeContentsHook: ReplaceNodeContentsHook,
   ) {
+    super();
+
+    this.reLayoutSubject.pipe(
+      groupedDebounceByFrame(),
+      takeUntil(this.destroy$),
+    ).subscribe((nodeId: number) => {
+      this.replaceNodeContentsHook.reLayoutNodeFragments(nodeId);
+    });
   }
 
   public selectedVariableChanged(variableIdentityId: number): void {
@@ -66,5 +78,9 @@ export class PhiInsertionStateService {
 
   public startInsertion(): void {
     this.phiInsertionStateSubject.next(PhiInsertionState.WORKLOOP);
+  }
+
+  public triggerReLayout(nodeId: number): void {
+    this.reLayoutSubject.next(nodeId);
   }
 }
