@@ -8,6 +8,7 @@ import jsCompile = slak.ckompiler.jsCompile;
 import arrayOf = slak.ckompiler.arrayOf;
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import getDiagnosticsStats = slak.ckompiler.getDiagnosticsStats;
+import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
 
 export function logCompileError(e: unknown): void {
   const err = e as Error & { originalStack?: string };
@@ -31,6 +32,7 @@ export class CompileService {
   public readonly compileResult$: Observable<JSCompileResult> = this.sourceText$.pipe(
     map(code => {
       try {
+        clearAllAtomicCounters();
         return jsCompile(code, false);
       } catch (e) {
         logCompileError(e);

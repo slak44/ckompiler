@@ -10,6 +10,7 @@ import jsCompile = slak.ckompiler.jsCompile;
 import Variable = slak.ckompiler.analysis.Variable;
 import CFG = slak.ckompiler.analysis.CFG;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
+import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
 
 export enum PhiInsertionState {
   CONFIGURE,
@@ -22,6 +23,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     map(code => {
       try {
+        clearAllAtomicCounters();
         return jsCompile(code, true);
       } catch (e) {
         logCompileError(e);
