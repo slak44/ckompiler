@@ -57,4 +57,8 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
   public start(): void {
     this.phiInsertionStateService.startInsertion();
   }
+
+  public reset(): void {
+    this.phiInsertionStateService.reset();
+  }
 }

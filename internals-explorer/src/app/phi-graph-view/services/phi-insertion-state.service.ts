@@ -101,6 +101,10 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     this.phiInsertionStateSubject.next(PhiInsertionState.WORKLOOP);
   }
 
+  public reset(): void {
+    this.phiInsertionStateSubject.next(PhiInsertionState.CONFIGURE);
+  }
+
   public triggerReLayout(nodeId: number): void {
     this.reLayoutSubject.next(nodeId);
   }

@@ -64,6 +64,10 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       foreignObject => foreignObject.firstElementChild!.classList.contains('hidden-fragment'),
     );
 
+    for (const foreignObject of visibleObjects) {
+      foreignObject.style.display = '';
+    }
+
     for (const foreignObject of hiddenObjects) {
       foreignObject.style.display = 'none';
     }

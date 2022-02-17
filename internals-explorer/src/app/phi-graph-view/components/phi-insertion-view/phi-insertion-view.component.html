@@ -28,17 +28,27 @@
     </div>
   </div>
 
-  <div class="progress-overlay" *ngSwitchCase="phiInsertionStates.WORKLOOP">
-    <div class="worklist">
-      W = [
-      {{ worklist$ | async }}
-      ]
+  <ng-container *ngSwitchCase="phiInsertionStates.WORKLOOP">
+    <div class="progress-overlay">
+      <div class="worklist">
+        W = [
+        {{ worklist$ | async }}
+        ]
+      </div>
+
+      <div class="phi-list">
+        F = [
+
+        ]
+      </div>
     </div>
 
-    <div class="phi-list">
-      F = [
-
-      ]
-    </div>
-  </div>
+    <button mat-flat-button
+            type="button"
+            class="reset-button"
+            (click)="reset()">
+      <mat-icon>restart_alt</mat-icon>
+      <span>Reset</span>
+    </button>
+  </ng-container>
 </cki-graph-view>

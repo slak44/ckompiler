@@ -35,3 +35,13 @@
   line-height: 48px;
   color: colors.$graph-text;
 }
+
+.reset-button {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+
+  mat-icon {
+    margin-right: 8px;
+  }
+}
