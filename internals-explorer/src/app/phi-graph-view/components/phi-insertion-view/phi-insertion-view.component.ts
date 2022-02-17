@@ -33,7 +33,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
 
   public readonly variableControl: FormControl = new FormControl(null);
 
-  public readonly variable$: Observable<number> = controlValueStream<number | null>(this.variableControl).pipe(
+  public readonly variableId$: Observable<number> = controlValueStream<number | null>(this.variableControl).pipe(
     filter((identityId): identityId is number => typeof identityId === 'number'),
   );
 
@@ -47,7 +47,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
   ) {
     super();
 
-    this.variable$.pipe(
+    this.variableId$.pipe(
       takeUntil(this.destroy$),
     ).subscribe(identityId => {
       this.phiInsertionStateService.selectedVariableChanged(identityId);

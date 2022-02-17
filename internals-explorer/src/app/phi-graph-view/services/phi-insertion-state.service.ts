@@ -53,6 +53,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     this.cfg$,
   ]).pipe(
     map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)!),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
 
   private readonly phiInsertionStateSubject: BehaviorSubject<PhiInsertionState> =

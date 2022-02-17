@@ -1,0 +1,22 @@
+@use 'colors';
+
+:host {
+  display: block;
+
+  color: colors.$graph-text;
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: 0.02em;
+
+  em {
+    padding-right: 4px;
+  }
+
+  .indent {
+    display: flex;
+    flex-direction: column;
+    padding-left: 2ch;
+    border-left: 1px solid rgba(colors.$graph-text, 0.5);
+  }
+}
+

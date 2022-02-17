@@ -29,18 +29,26 @@
   </div>
 
   <ng-container *ngSwitchCase="phiInsertionStates.WORKLOOP">
-    <div class="progress-overlay">
+    <div class="progress-overlay large-overlay-text">
       <div class="worklist">
-        W = [
+        W = {{ '{' }}
         {{ worklist$ | async }}
-        ]
+        {{ '}' }}
       </div>
 
       <div class="phi-list">
-        F = [
+        F = {{ '{' }}
 
-        ]
+        {{ '}' }}
       </div>
+    </div>
+
+    <div class="history large-overlay-text">
+
+    </div>
+
+    <div class="algorithm">
+      <cki-insertion-algorithm></cki-insertion-algorithm>
     </div>
 
     <button mat-flat-button

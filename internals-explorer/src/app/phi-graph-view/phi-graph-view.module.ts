@@ -9,11 +9,13 @@ import { GraphViewModule } from '@cki-graph-view/graph-view.module';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { InsertionAlgorithmComponent } from './components/insertion-algorithm/insertion-algorithm.component';
 
 @NgModule({
   declarations: [
     PhiInsertionViewComponent,
     PhiIrFragmentComponent,
+    InsertionAlgorithmComponent,
   ],
   imports: [
     CommonModule,

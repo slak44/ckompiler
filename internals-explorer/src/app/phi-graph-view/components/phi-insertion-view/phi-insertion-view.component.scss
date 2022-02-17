@@ -24,6 +24,20 @@
   }
 }
 
+.large-overlay-text {
+  font-size: 24px;
+  line-height: 48px;
+}
+
+.algorithm {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+
+  display: flex;
+  flex-direction: column;
+}
+
 .progress-overlay {
   display: flex;
   flex-direction: column;
@@ -31,8 +45,6 @@
   top: 16px;
   left: 16px;
 
-  font-size: 24px;
-  line-height: 48px;
   color: colors.$graph-text;
 }
 
