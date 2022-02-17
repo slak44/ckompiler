@@ -1,16 +1,18 @@
-<span class="step"><strong>while</strong>&nbsp;<em>W</em>&nbsp;≠ {{ '{}' }}</span>
-<div class="indent">
-  <span class="step">remove a basic block&nbsp;<em>X</em>&nbsp;from&nbsp;<em>W</em></span>
-  <span class="step"><strong>for</strong>&nbsp;<em>Y</em>&nbsp;: basic block ∈ DF(<em>X</em>)</span>
+<div [@phaseInOut]="">
+  <span class="step"><strong>while</strong>&nbsp;<em>W</em>&nbsp;≠ {{ '{}' }}</span>
   <div class="indent">
-    <span class="step"><strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉&nbsp;<em>F</em>&nbsp;<strong>then</strong></span>
+    <span class="step">remove a basic block&nbsp;<em>X</em>&nbsp;from&nbsp;<em>W</em></span>
+    <span class="step"><strong>for</strong>&nbsp;<em>Y</em>&nbsp;: basic block ∈ DF(<em>X</em>)</span>
     <div class="indent">
-      <span class="step">add <em>{{ variableName$ | async }}</em>&nbsp;← φ(...) at entry of <em>Y</em></span>
-      <span class="step"><em>F</em> ← <em>F</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}</span>
-      <span class="step"><strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉
-        Defs(<em>{{ variableName$ | async }}</em>)&nbsp;<strong>then</strong></span>
+      <span class="step"><strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉&nbsp;<em>F</em>&nbsp;<strong>then</strong></span>
       <div class="indent">
-        <span class="step"><em>W</em> ← <em>W</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}</span>
+        <span class="step">add <em>{{ variableName$ | async }}</em>&nbsp;← φ(...) at entry of <em>Y</em></span>
+        <span class="step"><em>F</em> ← <em>F</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}</span>
+        <span class="step"><strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉
+        Defs(<em>{{ variableName$ | async }}</em>)&nbsp;<strong>then</strong></span>
+        <div class="indent">
+          <span class="step"><em>W</em> ← <em>W</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}</span>
+        </div>
       </div>
     </div>
   </div>
