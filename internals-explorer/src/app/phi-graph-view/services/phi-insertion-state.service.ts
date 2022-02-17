@@ -25,6 +25,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     map(code => {
       try {
+        this.phiInsertionStateSubject.next(PhiInsertionState.CONFIGURE);
         clearAllAtomicCounters();
         return jsCompile(code, true);
       } catch (e) {
