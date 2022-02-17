@@ -72,11 +72,13 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       foreignObject.style.display = 'none';
     }
 
-    const topY = parseInt(texts[0].dataset[ORIGINAL_Y]!, 10);
-
     const poly = node.querySelector('polygon')!;
     const polyHeight = poly.getBBox().height;
-    const elementHeight = polyHeight / texts.length;
+
+    const topY = parseInt(texts[0].dataset[ORIGINAL_Y]!, 10);
+    const secondTopY = parseInt(texts?.[1]?.dataset?.[ORIGINAL_Y] || '', 10) || polyHeight;
+
+    const elementHeight = secondTopY - topY;
     const emptySpace = polyHeight - elementHeight * visibleObjects.length;
 
     let currentOffset = topY + emptySpace / 2;
