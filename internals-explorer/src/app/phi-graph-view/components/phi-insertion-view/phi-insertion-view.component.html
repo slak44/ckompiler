@@ -29,6 +29,16 @@
   </div>
 
   <div class="progress-overlay" *ngSwitchCase="phiInsertionStates.WORKLOOP">
+    <div class="worklist">
+      W = [
+      {{ worklist$ | async }}
+      ]
+    </div>
 
+    <div class="phi-list">
+      F = [
+
+      ]
+    </div>
   </div>
 </cki-graph-view>

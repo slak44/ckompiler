@@ -11,6 +11,8 @@ import Variable = slak.ckompiler.analysis.Variable;
 import CFG = slak.ckompiler.analysis.CFG;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
+import BasicBlock = slak.ckompiler.analysis.BasicBlock;
+import definitionsOf = slak.ckompiler.definitionsOf;
 
 export enum PhiInsertionState {
   CONFIGURE,
@@ -60,6 +62,17 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   private readonly reLayoutSubject: Subject<number> = new Subject<number>();
 
+  private readonly initialWorklist$: Observable<BasicBlock[]> = combineLatest([
+    this.cfg$,
+    this.targetVariable$,
+  ]).pipe(
+    map(([cfg, targetVariable]) => definitionsOf(targetVariable, cfg)),
+  );
+
+  private readonly worklistSubject: BehaviorSubject<BasicBlock[]> = new BehaviorSubject<BasicBlock[]>([]);
+
+  public readonly worklist$: Observable<BasicBlock[]> = this.worklistSubject;
+
   constructor(
     private compileService: CompileService,
     private replaceNodeContentsHook: ReplaceNodeContentsHook,
@@ -71,6 +84,12 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
       takeUntil(this.destroy$),
     ).subscribe((nodeId: number) => {
       this.replaceNodeContentsHook.reLayoutNodeFragments(nodeId);
+    });
+
+    this.initialWorklist$.pipe(
+      takeUntil(this.destroy$),
+    ).subscribe(initialWorklist => {
+      this.worklistSubject.next(initialWorklist);
     });
   }
 

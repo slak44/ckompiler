@@ -1,3 +1,5 @@
+@use 'colors';
+
 :host {
   display: contents;
 }
@@ -20,4 +22,16 @@
       margin-right: 8px;
     }
   }
+}
+
+.progress-overlay {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+
+  font-size: 24px;
+  line-height: 48px;
+  color: colors.$graph-text;
 }

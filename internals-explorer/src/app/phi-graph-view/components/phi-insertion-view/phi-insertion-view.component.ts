@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { filter, Observable, of, takeUntil } from 'rxjs';
+import { filter, map, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
@@ -8,10 +8,10 @@ import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
 import { PhiInsertionState, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
-import Variable = slak.ckompiler.analysis.Variable;
-import JSCompileResult = slak.ckompiler.JSCompileResult;
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import Variable = slak.ckompiler.analysis.Variable;
+import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -34,7 +34,11 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
   public readonly variableControl: FormControl = new FormControl(null);
 
   public readonly variable$: Observable<number> = controlValueStream<number | null>(this.variableControl).pipe(
-    filter((identityId): identityId is number => typeof identityId === 'number')
+    filter((identityId): identityId is number => typeof identityId === 'number'),
+  );
+
+  public readonly worklist$: Observable<string> = this.phiInsertionStateService.worklist$.pipe(
+    map(blocks => blocks.map(block => block.nodeId).join(', ')),
   );
 
   constructor(
@@ -44,7 +48,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
     super();
 
     this.variable$.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(identityId => {
       this.phiInsertionStateService.selectedVariableChanged(identityId);
     });

@@ -60,6 +60,11 @@ fun phiEligibleVariables(cfg: CFG): Array<Variable> {
 }
 
 @JsExport
+fun definitionsOf(variable: Variable, cfg: CFG): Array<BasicBlock> {
+  return cfg.exprDefinitions[variable]!!.toTypedArray()
+}
+
+@JsExport
 data class DiagnosticsStats(val warnings: Int, val errors: Int)
 
 @JsExport
