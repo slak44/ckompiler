@@ -13,7 +13,6 @@ import { slak } from '@ckompiler/ckompiler';
 import { FRAGMENT_COMPONENT, FragmentComponent, GENERIC_FRAGMENT_HOST } from '../models/fragment-component.model';
 import { getNodeIdFromElement } from '@cki-graph-view/utils';
 import { Observable } from 'rxjs';
-import { partition } from 'lodash';
 import CFG = slak.ckompiler.analysis.CFG;
 
 function measureTextAscent(text: string, fontName: string): number {
@@ -59,9 +58,8 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       return;
     }
 
-    const [hiddenObjects, visibleObjects] = partition<SVGForeignObjectElement>(
-      texts,
-      foreignObject => foreignObject.firstElementChild!.classList.contains('hidden-fragment'),
+    const visibleObjects = texts.filter(
+      foreignObject => !foreignObject.firstElementChild!.classList.contains('hidden-fragment')
     );
 
     const poly = node.querySelector('polygon')!;
