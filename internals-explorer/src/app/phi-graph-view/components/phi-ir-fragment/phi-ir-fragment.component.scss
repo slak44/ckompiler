@@ -21,7 +21,7 @@ $transition-duration: 150ms;
   }
 
   100% {
-    color: colors.$variable-highlight;
+    color: colors.$accent-default;
   }
 }
 
@@ -34,5 +34,5 @@ $transition-duration: 150ms;
 }
 
 .highlight-active {
-  color: colors.$accent-default;
+  color: colors.$variable-highlight;
 }
