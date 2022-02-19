@@ -5,7 +5,6 @@ export enum PhiInsertionStep {
   ITERATE_DF,
   CHECK_PROCESSED,
   INSERT_PHI,
-  MARK_PROCESSED,
   CHECK_DEFS,
   ADD_TO_W
 }

@@ -20,7 +20,6 @@ enum class PhiInsertionStep {
   ITERATE_DF,
   CHECK_PROCESSED,
   INSERT_PHI,
-  MARK_PROCESSED,
   CHECK_DEFS,
   ADD_TO_W
 }
@@ -101,22 +100,13 @@ fun generatePhiSteps(cfg: CFG, variable: Variable): String {
         )
 
         val insertedPhi = y.preds.map { buildDefPath(defsV, y, it) }
+        f += y
 
         states += PhiInsertionStepState(
             PhiInsertionStep.INSERT_PHI,
             blockX = x.nodeId,
             blockY = y.nodeId,
             highlightedPhiPaths = insertedPhi,
-            f = cloneSet(f),
-            w = cloneSet(w)
-        )
-
-        f += y
-
-        states += PhiInsertionStepState(
-            PhiInsertionStep.MARK_PROCESSED,
-            blockX = x.nodeId,
-            blockY = y.nodeId,
             f = cloneSet(f),
             w = cloneSet(w)
         )

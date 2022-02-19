@@ -21,10 +21,9 @@
         <strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉&nbsp;<em>F</em>&nbsp;<strong>then</strong>
       </cki-algorithm-step>
       <div class="indent">
-        <cki-algorithm-step [stepIndex]="phiInsertionSteps.INSERT_PHI">
+        <cki-algorithm-step [stepIndex]="phiInsertionSteps.INSERT_PHI" [lines]="2">
           add <em>{{ variableName$ | async }}</em>&nbsp;← φ(...) at entry of <em>Y</em>
-        </cki-algorithm-step>
-        <cki-algorithm-step [stepIndex]="phiInsertionSteps.MARK_PROCESSED">
+          <br/>
           <em>F</em> ← <em>F</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}
         </cki-algorithm-step>
         <cki-algorithm-step [stepIndex]="phiInsertionSteps.CHECK_DEFS">
