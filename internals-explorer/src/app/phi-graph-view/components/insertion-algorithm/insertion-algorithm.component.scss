@@ -6,11 +6,9 @@
   position: relative;
   display: block;
 
-  $line-height: 28px;
-
   color: colors.$graph-text;
   font-size: 20px;
-  line-height: $line-height;
+  line-height: insertion.$line-height;
   letter-spacing: 0.02em;
 
   .indent {
@@ -27,8 +25,8 @@
     left: -$arrow-size;
     font-size: $arrow-size;
 
-    padding-top: math.div($line-height, 2);
-    top: calc((var(--current-line) - 1) * #{$line-height});
+    padding-top: math.div(insertion.$line-height, 2);
+    top: calc((var(--current-line) - 1) * #{insertion.$line-height});
 
     transition: top insertion.$transition-duration ease-in-out;
   }

@@ -91,15 +91,14 @@ fun generatePhiSteps(cfg: CFG, variable: Variable): String {
     for (y in x.dominanceFrontier) {
       states += PhiInsertionStepState(PhiInsertionStep.ITERATE_DF, blockX = x.nodeId, blockY = y.nodeId, f = cloneSet(f), w = cloneSet(w))
 
+      states += PhiInsertionStepState(
+          PhiInsertionStep.CHECK_PROCESSED,
+          blockX = x.nodeId,
+          blockY = y.nodeId,
+          f = cloneSet(f),
+          w = cloneSet(w)
+      )
       if (y !in f) {
-        states += PhiInsertionStepState(
-            PhiInsertionStep.CHECK_PROCESSED,
-            blockX = x.nodeId,
-            blockY = y.nodeId,
-            f = cloneSet(f),
-            w = cloneSet(w)
-        )
-
         val insertedPhi = y.preds.map { buildDefPath(defsV, y, it) }
         f += y
 
@@ -112,15 +111,14 @@ fun generatePhiSteps(cfg: CFG, variable: Variable): String {
             w = cloneSet(w)
         )
 
+        states += PhiInsertionStepState(
+            PhiInsertionStep.CHECK_DEFS,
+            blockX = x.nodeId,
+            blockY = y.nodeId,
+            f = cloneSet(f),
+            w = cloneSet(w)
+        )
         if (y !in defsV) {
-          states += PhiInsertionStepState(
-              PhiInsertionStep.CHECK_DEFS,
-              blockX = x.nodeId,
-              blockY = y.nodeId,
-              f = cloneSet(f),
-              w = cloneSet(w)
-          )
-
           w += y
 
           states += PhiInsertionStepState(PhiInsertionStep.ADD_TO_W, blockX = x.nodeId, blockY = y.nodeId, f = cloneSet(f), w = cloneSet(w))

@@ -14,6 +14,7 @@ export class AlgorithmContainerDirective extends SubscriptionDestroy implements 
   public activeStep$!: Observable<number>;
 
   public readonly stepToLineCount: Record<number, number> = {};
+  public readonly stepToOffset: Record<number, number> = {};
 
   constructor() {
     super();
@@ -21,7 +22,7 @@ export class AlgorithmContainerDirective extends SubscriptionDestroy implements 
 
   public ngAfterContentChecked(): void {
     this.activeStep$.pipe(
-      map(step => sumBy(range(1, step + 1), item => this.stepToLineCount[item])),
+      map(step => sumBy(range(1, step + 1), item => this.stepToLineCount[item]) - this.stepToOffset[step]),
       takeUntil(this.destroy$)
     ).subscribe(currentLineCount => {
       this.currentLine = currentLineCount;

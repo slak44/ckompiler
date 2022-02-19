@@ -17,9 +17,11 @@ export class AlgorithmStepComponent extends SubscriptionDestroy implements OnIni
   public stepIndex!: number;
 
   @Input()
-  public set lines(lines: number) {
-    this.algorithmContainer.stepToLineCount[this.stepIndex] = lines || 1;
-  }
+  public lines: number = 1;
+
+  @Input()
+  @HostBinding('style.--offset-lines')
+  public offsetLines: number = 0;
 
   constructor(
     private algorithmContainer: AlgorithmContainerDirective,
@@ -29,7 +31,8 @@ export class AlgorithmStepComponent extends SubscriptionDestroy implements OnIni
   }
 
   public ngOnInit(): void {
-    this.algorithmContainer.stepToLineCount[this.stepIndex] ??= 1;
+    this.algorithmContainer.stepToLineCount[this.stepIndex] = this.lines || 1;
+    this.algorithmContainer.stepToOffset[this.stepIndex] = this.offsetLines;
 
     this.algorithmContainer.activeStep$.pipe(
       takeUntil(this.destroy$)

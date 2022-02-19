@@ -2,19 +2,35 @@
 @use '../../styles/insertion';
 
 :host {
+  --offset-lines: 0;
+
+  position: relative;
   display: inline-block;
   width: 100%;
+  min-height: insertion.$line-height;
 
   white-space: nowrap;
-  border-bottom: 1px solid;
 
-  transition: background-color insertion.$transition-duration ease-in-out,
-  border-color insertion.$transition-duration ease-in-out;
+  transition: background-color insertion.$transition-duration ease-in-out;
   background-color: transparent;
-  border-color: transparent;
+
+  &::after {
+    position: absolute;
+    width: 100%;
+    bottom: calc(var(--offset-lines) * #{insertion.$line-height});
+
+    display: block;
+    content: ' ';
+
+    transition: border-color insertion.$transition-duration ease-in-out;
+    border-bottom: 1px solid transparent;
+  }
 
   &.active {
     background-color: rgba(colors.$accent-default, 0.1);
-    border-color: rgba(colors.$accent-default, 0.4);
+
+    &::after {
+      border-color: rgba(colors.$accent-default, 0.4);
+    }
   }
 }

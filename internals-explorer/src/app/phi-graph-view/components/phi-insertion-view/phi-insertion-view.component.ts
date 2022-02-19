@@ -10,9 +10,9 @@ import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblcli
 import { PhiInsertionState, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { getNodeById } from '@cki-graph-view/utils';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
-import { getNodeById } from '@cki-graph-view/utils';
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
@@ -53,12 +53,16 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
     this.phiInsertionStateService.cfg$,
   ]).pipe(
     map(([state, cfg]) => {
-      if (!state.blockX) {
+      if (typeof state.blockX !== 'number') {
         return null;
       }
 
       const x = getNodeById(cfg, state.blockX);
       const df = arrayOf<BasicBlock>(x.dominanceFrontier);
+
+      if (df.length === 0) {
+        return ' ';
+      }
 
       return df.map(block => block.nodeId).join(', ');
     }),
