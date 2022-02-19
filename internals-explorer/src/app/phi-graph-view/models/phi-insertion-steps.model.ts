@@ -6,7 +6,8 @@ export enum PhiInsertionStep {
   CHECK_PROCESSED,
   INSERT_PHI,
   CHECK_DEFS,
-  ADD_TO_W
+  ADD_TO_W,
+  DONE
 }
 
 export interface PhiInsertionStepState {

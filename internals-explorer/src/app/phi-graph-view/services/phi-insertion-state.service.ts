@@ -28,7 +28,6 @@ import generatePhiSteps = slak.ckompiler.generatePhiSteps;
 export enum PhiInsertionState {
   CONFIGURE,
   WORKLOOP,
-  DONE
 }
 
 @Injectable()

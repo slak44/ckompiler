@@ -21,7 +21,8 @@ enum class PhiInsertionStep {
   CHECK_PROCESSED,
   INSERT_PHI,
   CHECK_DEFS,
-  ADD_TO_W
+  ADD_TO_W,
+  DONE
 }
 
 object PhiInsertionStepSerializer : KSerializer<PhiInsertionStep> {
@@ -127,6 +128,8 @@ fun generatePhiSteps(cfg: CFG, variable: Variable): String {
       }
     }
   }
+
+  states += PhiInsertionStepState(PhiInsertionStep.DONE, f = cloneSet(f), w = cloneSet(w))
 
   return json.encodeToString(states)
 }
