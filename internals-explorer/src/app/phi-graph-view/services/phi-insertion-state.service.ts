@@ -1,11 +1,22 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, combineLatest, filter, map, Observable, shareReplay, Subject, takeUntil } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  distinctUntilChanged,
+  filter,
+  map,
+  Observable,
+  shareReplay,
+  Subject,
+  takeUntil,
+} from 'rxjs';
 import { CompileService, logCompileError } from '@cki-graph-view/services/compile.service';
 import { Nullable, slak } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
 import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
+import { clamp } from 'lodash-es';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import jsCompile = slak.ckompiler.jsCompile;
 import Variable = slak.ckompiler.analysis.Variable;
@@ -75,9 +86,18 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   public readonly currentStepState$: Observable<PhiInsertionStepState> = combineLatest([
     this.allInsertionSteps$,
-    this.currentStepSubject,
+    this.currentStepSubject.pipe(
+      distinctUntilChanged(),
+    ),
   ]).pipe(
-    map(([steps, index]) => steps[index]),
+    map(([steps, index]) => {
+      const clamped = clamp(index, 0, steps.length - 1);
+      if (clamped !== index) {
+        this.currentStepSubject.next(clamped);
+      }
+
+      return steps[clamped];
+    }),
   );
 
   constructor(
@@ -92,8 +112,6 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     ).subscribe((nodeId: number) => {
       this.replaceNodeContentsHook.reLayoutNodeFragments(nodeId);
     });
-
-    this.allInsertionSteps$.subscribe(console.log);
   }
 
   public selectedVariableChanged(variableIdentityId: number): void {
@@ -102,6 +120,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   public startInsertion(): void {
     this.phiInsertionStateSubject.next(PhiInsertionState.WORKLOOP);
+    this.currentStepSubject.next(0);
   }
 
   public reset(): void {
@@ -110,5 +129,13 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   public triggerReLayout(nodeId: number): void {
     this.reLayoutSubject.next(nodeId);
+  }
+
+  public nextStep(): void {
+    this.currentStepSubject.next(this.currentStepSubject.value + 1);
+  }
+
+  public prevStep(): void {
+    this.currentStepSubject.next(this.currentStepSubject.value - 1);
   }
 }

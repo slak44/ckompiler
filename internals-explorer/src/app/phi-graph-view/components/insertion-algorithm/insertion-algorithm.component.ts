@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { map, Observable, of } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { phaseInOut } from '@cki-utils/phase-in-out';
 import { PhiInsertionStep } from '../../models/phi-insertion-steps.model';
@@ -16,7 +16,9 @@ export class InsertionAlgorithmComponent {
     map(variable => variable.name),
   );
 
-  public readonly activeStep$: Observable<PhiInsertionStep> = of(PhiInsertionStep.INSERT_PHI);
+  public readonly activeStep$: Observable<PhiInsertionStep> = this.phiInsertionStateService.currentStepState$.pipe(
+    map(state => state.step),
+  );
 
   public readonly phiInsertionSteps = PhiInsertionStep;
 

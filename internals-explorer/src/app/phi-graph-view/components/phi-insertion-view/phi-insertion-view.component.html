@@ -29,16 +29,18 @@
   </div>
 
   <ng-container *ngSwitchCase="phiInsertionStates.WORKLOOP">
-    <div class="progress-overlay large-overlay-text">
-      <div class="worklist">
+    <div class="progress-overlay">
+      <span>Blocks left to process:</span>
+      <div class="worklist large-overlay-text">
         W = {{ '{' }}
         {{ worklist$ | async }}
         {{ '}' }}
       </div>
 
-      <div class="phi-list">
+      <span>Blocks already processed:</span>
+      <div class="phi-list large-overlay-text">
         F = {{ '{' }}
-
+        {{ processed$ | async }}
         {{ '}' }}
       </div>
     </div>

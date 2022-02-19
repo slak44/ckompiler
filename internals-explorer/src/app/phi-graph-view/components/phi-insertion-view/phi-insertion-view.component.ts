@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
 import { filter, map, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
@@ -64,5 +64,15 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
 
   public reset(): void {
     this.phiInsertionStateService.reset();
+  }
+
+  @HostListener('document:keydown.arrowright')
+  public onKeyRight(): void {
+    this.phiInsertionStateService.nextStep();
+  }
+
+  @HostListener('document:keydown.arrowleft')
+  public onKeyLeft(): void {
+    this.phiInsertionStateService.prevStep();
   }
 }

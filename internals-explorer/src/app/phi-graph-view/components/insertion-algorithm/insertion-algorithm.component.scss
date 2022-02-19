@@ -28,11 +28,15 @@ $transition-duration: 150ms;
   .step {
     display: inline-block;
     width: 100%;
+    border-bottom: 1px solid;
+
     transition: background-color $transition-duration ease-in-out, border-color $transition-duration ease-in-out;
+    background-color: transparent;
+    border-color: transparent;
 
     &.active {
       background-color: rgba(colors.$accent-default, 0.1);
-      border-bottom: 1px solid rgba(colors.$accent-default, 0.4);
+      border-color: rgba(colors.$accent-default, 0.4);
     }
   }
 
