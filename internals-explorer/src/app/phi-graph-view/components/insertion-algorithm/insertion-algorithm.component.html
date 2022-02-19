@@ -1,33 +1,39 @@
-<div @phaseInOut *ngIf="activeStep$ | async as activeStep">
-  <span class="pointer" [style.--active-step]="activeStep">→</span>
-  <span class="step" [class.active]="activeStep === phiInsertionSteps.WHILE_LOOP">
+<div ckiAlgorithmContainer [activeStep$]="activeStep$" @phaseInOut>
+  <span class="pointer">→</span>
+
+  <cki-algorithm-step [stepIndex]="phiInsertionSteps.PREPARE" [lines]="2">
+    <em>F</em> ← {{ '{}' }}
+    <br/>
+    <em>W</em> ← Defs(<em>{{ variableName$ | async }}</em>)
+  </cki-algorithm-step>
+  <cki-algorithm-step [stepIndex]="phiInsertionSteps.WHILE_LOOP">
     <strong>while</strong>&nbsp;<em>W</em>&nbsp;≠ {{ '{}' }}
-  </span>
+  </cki-algorithm-step>
   <div class="indent">
-    <span class="step" [class.active]="activeStep === phiInsertionSteps.PICK_X_FROM_W">
+    <cki-algorithm-step [stepIndex]="phiInsertionSteps.PICK_X_FROM_W">
       remove a basic block&nbsp;<em>X</em>&nbsp;from&nbsp;<em>W</em>
-    </span>
-    <span class="step" [class.active]="activeStep === phiInsertionSteps.ITERATE_DF">
+    </cki-algorithm-step>
+    <cki-algorithm-step [stepIndex]="phiInsertionSteps.ITERATE_DF">
       <strong>for</strong>&nbsp;<em>Y</em>&nbsp;: basic block ∈ DF(<em>X</em>)
-    </span>
+    </cki-algorithm-step>
     <div class="indent">
-      <span class="step" [class.active]="activeStep === phiInsertionSteps.CHECK_PROCESSED">
+      <cki-algorithm-step [stepIndex]="phiInsertionSteps.CHECK_PROCESSED">
         <strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉&nbsp;<em>F</em>&nbsp;<strong>then</strong>
-      </span>
+      </cki-algorithm-step>
       <div class="indent">
-        <span class="step" [class.active]="activeStep === phiInsertionSteps.INSERT_PHI">
+        <cki-algorithm-step [stepIndex]="phiInsertionSteps.INSERT_PHI">
           add <em>{{ variableName$ | async }}</em>&nbsp;← φ(...) at entry of <em>Y</em>
-        </span>
-        <span class="step" [class.active]="activeStep === phiInsertionSteps.MARK_PROCESSED">
+        </cki-algorithm-step>
+        <cki-algorithm-step [stepIndex]="phiInsertionSteps.MARK_PROCESSED">
           <em>F</em> ← <em>F</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}
-        </span>
-        <span class="step" [class.active]="activeStep === phiInsertionSteps.CHECK_DEFS">
+        </cki-algorithm-step>
+        <cki-algorithm-step [stepIndex]="phiInsertionSteps.CHECK_DEFS">
           <strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉ Defs(<em>{{ variableName$ | async }}</em>)&nbsp;<strong>then</strong>
-        </span>
+        </cki-algorithm-step>
         <div class="indent">
-          <span class="step" [class.active]="activeStep === phiInsertionSteps.ADD_TO_W">
+          <cki-algorithm-step [stepIndex]="phiInsertionSteps.ADD_TO_W">
             <em>W</em> ← <em>W</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}
-          </span>
+          </cki-algorithm-step>
         </div>
       </div>
     </div>

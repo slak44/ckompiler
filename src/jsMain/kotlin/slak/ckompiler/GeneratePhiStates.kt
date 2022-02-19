@@ -14,6 +14,7 @@ import slak.ckompiler.analysis.json
 
 @Serializable(with = PhiInsertionStepSerializer::class)
 enum class PhiInsertionStep {
+  PREPARE,
   WHILE_LOOP,
   PICK_X_FROM_W,
   ITERATE_DF,
@@ -76,6 +77,8 @@ fun generatePhiSteps(cfg: CFG, variable: Variable): String {
 
   val f = mutableSetOf<BasicBlock>()
   val w = mutableSetOf(*defsV.toTypedArray())
+
+  states += PhiInsertionStepState(PhiInsertionStep.PREPARE, f = cloneSet(f), w = cloneSet(w))
 
   while (w.isNotEmpty()) {
     states += PhiInsertionStepState(PhiInsertionStep.WHILE_LOOP, f = cloneSet(f), w = cloneSet(w))

@@ -1,5 +1,6 @@
 export enum PhiInsertionStep {
-  WHILE_LOOP = 1,
+  PREPARE = 1,
+  WHILE_LOOP,
   PICK_X_FROM_W,
   ITERATE_DF,
   CHECK_PROCESSED,

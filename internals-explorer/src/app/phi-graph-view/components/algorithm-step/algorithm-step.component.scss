@@ -1,0 +1,20 @@
+@use 'colors';
+@use '../../styles/insertion';
+
+:host {
+  display: inline-block;
+  width: 100%;
+
+  white-space: nowrap;
+  border-bottom: 1px solid;
+
+  transition: background-color insertion.$transition-duration ease-in-out,
+  border-color insertion.$transition-duration ease-in-out;
+  background-color: transparent;
+  border-color: transparent;
+
+  &.active {
+    background-color: rgba(colors.$accent-default, 0.1);
+    border-color: rgba(colors.$accent-default, 0.4);
+  }
+}

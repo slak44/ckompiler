@@ -1,7 +1,6 @@
 @use 'colors';
 @use 'sass:math';
-
-$transition-duration: 150ms;
+@use '../../styles/insertion';
 
 :host {
   position: relative;
@@ -25,21 +24,6 @@ $transition-duration: 150ms;
     border-left: 1px solid rgba(colors.$graph-text, 0.5);
   }
 
-  .step {
-    display: inline-block;
-    width: 100%;
-    border-bottom: 1px solid;
-
-    transition: background-color $transition-duration ease-in-out, border-color $transition-duration ease-in-out;
-    background-color: transparent;
-    border-color: transparent;
-
-    &.active {
-      background-color: rgba(colors.$accent-default, 0.1);
-      border-color: rgba(colors.$accent-default, 0.4);
-    }
-  }
-
   .pointer {
     $arrow-size: 30px;
 
@@ -48,9 +32,9 @@ $transition-duration: 150ms;
     font-size: $arrow-size;
 
     padding-top: math.div($line-height, 2);
-    top: calc((var(--active-step) - 1) * #{$line-height});
+    top: calc((var(--current-line) - 1) * #{$line-height});
 
-    transition: top $transition-duration ease-in-out;
+    transition: top insertion.$transition-duration ease-in-out;
   }
 }
 

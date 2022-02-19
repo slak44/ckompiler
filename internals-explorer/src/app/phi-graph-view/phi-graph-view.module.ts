@@ -10,12 +10,16 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { InsertionAlgorithmComponent } from './components/insertion-algorithm/insertion-algorithm.component';
+import { AlgorithmStepComponent } from './components/algorithm-step/algorithm-step.component';
+import { AlgorithmContainerDirective } from './directives/algorithm-container.directive';
 
 @NgModule({
   declarations: [
     PhiInsertionViewComponent,
     PhiIrFragmentComponent,
     InsertionAlgorithmComponent,
+    AlgorithmStepComponent,
+    AlgorithmContainerDirective,
   ],
   imports: [
     CommonModule,
