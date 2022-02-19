@@ -37,8 +37,12 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
     filter((identityId): identityId is number => typeof identityId === 'number'),
   );
 
-  public readonly worklist$: Observable<string> = this.phiInsertionStateService.worklist$.pipe(
-    map(blocks => blocks.map(block => block.nodeId).join(', ')),
+  public readonly worklist$: Observable<string> = this.phiInsertionStateService.currentStepState$.pipe(
+    map(state => state.w.join(', ')),
+  );
+
+  public readonly processed$: Observable<string> = this.phiInsertionStateService.currentStepState$.pipe(
+    map(state => state.f.join(', ')),
   );
 
   constructor(

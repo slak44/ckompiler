@@ -219,7 +219,7 @@ private data class CFGExportModel(
     val allNodes: Set<BasicBlock>,
 )
 
-private val json = Json { classDiscriminator = "discriminator" }
+val json = Json { classDiscriminator = "discriminator" }
 
 fun exportCFG(cfg: CFG): String {
   return json.encodeToString(CFGExportModel(cfg.startBlock.nodeId, cfg.allNodes))

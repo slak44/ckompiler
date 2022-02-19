@@ -5,14 +5,14 @@ import { Nullable, slak } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
+import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import jsCompile = slak.ckompiler.jsCompile;
 import Variable = slak.ckompiler.analysis.Variable;
 import CFG = slak.ckompiler.analysis.CFG;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import definitionsOf = slak.ckompiler.definitionsOf;
+import generatePhiSteps = slak.ckompiler.generatePhiSteps;
 
 export enum PhiInsertionState {
   CONFIGURE,
@@ -64,16 +64,21 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   private readonly reLayoutSubject: Subject<number> = new Subject<number>();
 
-  private readonly initialWorklist$: Observable<BasicBlock[]> = combineLatest([
+  private readonly allInsertionSteps$: Observable<PhiInsertionStepState[]> = combineLatest([
     this.cfg$,
     this.targetVariable$,
   ]).pipe(
-    map(([cfg, targetVariable]) => definitionsOf(targetVariable, cfg)),
+    map(([cfg, variable]) => JSON.parse(generatePhiSteps(cfg, variable)) as PhiInsertionStepState[]),
   );
 
-  private readonly worklistSubject: BehaviorSubject<BasicBlock[]> = new BehaviorSubject<BasicBlock[]>([]);
+  private readonly currentStepSubject: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-  public readonly worklist$: Observable<BasicBlock[]> = this.worklistSubject;
+  public readonly currentStepState$: Observable<PhiInsertionStepState> = combineLatest([
+    this.allInsertionSteps$,
+    this.currentStepSubject,
+  ]).pipe(
+    map(([steps, index]) => steps[index]),
+  );
 
   constructor(
     private compileService: CompileService,
@@ -88,11 +93,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
       this.replaceNodeContentsHook.reLayoutNodeFragments(nodeId);
     });
 
-    this.initialWorklist$.pipe(
-      takeUntil(this.destroy$),
-    ).subscribe(initialWorklist => {
-      this.worklistSubject.next(initialWorklist);
-    });
+    this.allInsertionSteps$.subscribe(console.log);
   }
 
   public selectedVariableChanged(variableIdentityId: number): void {

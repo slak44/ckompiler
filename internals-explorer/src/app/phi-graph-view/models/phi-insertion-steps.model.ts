@@ -8,3 +8,12 @@ export enum PhiInsertionStep {
   CHECK_DEFS,
   ADD_TO_W
 }
+
+export interface PhiInsertionStepState {
+  step: PhiInsertionStep;
+  blockX?: number;
+  blockY?: number;
+  highlightedPhiPaths?: number[][];
+  f: number[];
+  w: number[];
+}
