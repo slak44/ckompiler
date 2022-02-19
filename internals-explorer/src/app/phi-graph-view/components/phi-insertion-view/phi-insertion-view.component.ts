@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
-import { filter, map, Observable, of, takeUntil } from 'rxjs';
+import { combineLatest, filter, map, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
@@ -12,6 +12,9 @@ import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
+import { getNodeById } from '@cki-graph-view/utils';
+import arrayOf = slak.ckompiler.arrayOf;
+import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -43,6 +46,22 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
 
   public readonly processed$: Observable<string> = this.phiInsertionStateService.currentStepState$.pipe(
     map(state => state.f.join(', ')),
+  );
+
+  public readonly dominanceFrontierX$: Observable<string | null> = combineLatest([
+    this.phiInsertionStateService.currentStepState$,
+    this.phiInsertionStateService.cfg$,
+  ]).pipe(
+    map(([state, cfg]) => {
+      if (!state.blockX) {
+        return null;
+      }
+
+      const x = getNodeById(cfg, state.blockX);
+      const df = arrayOf<BasicBlock>(x.dominanceFrontier);
+
+      return df.map(block => block.nodeId).join(', ');
+    }),
   );
 
   constructor(

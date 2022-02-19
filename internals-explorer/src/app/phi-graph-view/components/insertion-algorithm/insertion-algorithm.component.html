@@ -2,36 +2,37 @@
   <span class="pointer">→</span>
 
   <cki-algorithm-step [stepIndex]="phiInsertionSteps.PREPARE" [lines]="2">
-    <em>F</em> ← {{ '{}' }}
+    <cki-var>F</cki-var> ← {{ '{}' }}
     <br/>
-    <em>W</em> ← Defs(<em>{{ variableName$ | async }}</em>)
+    <cki-var>W</cki-var> ← Defs(<cki-var>{{ variableName$ | async }}</cki-var>)
   </cki-algorithm-step>
   <cki-algorithm-step [stepIndex]="phiInsertionSteps.WHILE_LOOP">
-    <strong>while</strong>&nbsp;<em>W</em>&nbsp;≠ {{ '{}' }}
+    <strong>while</strong>&nbsp;<cki-var>W</cki-var> ≠ {{ '{}' }}
   </cki-algorithm-step>
   <div class="indent">
     <cki-algorithm-step [stepIndex]="phiInsertionSteps.PICK_X_FROM_W">
-      remove a basic block&nbsp;<em>X</em>&nbsp;from&nbsp;<em>W</em>
+      remove a basic block&nbsp;<cki-var>X</cki-var> from <cki-var>W</cki-var>
     </cki-algorithm-step>
     <cki-algorithm-step [stepIndex]="phiInsertionSteps.ITERATE_DF">
-      <strong>for</strong>&nbsp;<em>Y</em>&nbsp;: basic block ∈ DF(<em>X</em>)
+      <strong>for</strong>&nbsp;<cki-var>Y</cki-var>: basic block ∈ DF(<cki-var>X</cki-var>)
     </cki-algorithm-step>
     <div class="indent">
       <cki-algorithm-step [stepIndex]="phiInsertionSteps.CHECK_PROCESSED">
-        <strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉&nbsp;<em>F</em>&nbsp;<strong>then</strong>
+        <strong>if</strong>&nbsp;<cki-var>Y</cki-var> ∉ <cki-var>F</cki-var>&nbsp;<strong>then</strong>
       </cki-algorithm-step>
       <div class="indent">
         <cki-algorithm-step [stepIndex]="phiInsertionSteps.INSERT_PHI" [lines]="2">
-          add <em>{{ variableName$ | async }}</em>&nbsp;← φ(...) at entry of <em>Y</em>
+          add <cki-var>{{ variableName$ | async }}</cki-var> ← φ(...) at entry of <cki-var>Y</cki-var>
           <br/>
-          <em>F</em> ← <em>F</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}
+          <cki-var>F</cki-var> ← <cki-var>F</cki-var> ∪ {{ '{' }}<cki-var>Y</cki-var>{{ '}' }}
         </cki-algorithm-step>
         <cki-algorithm-step [stepIndex]="phiInsertionSteps.CHECK_DEFS">
-          <strong>if</strong>&nbsp;<em>Y</em>&nbsp;∉ Defs(<em>{{ variableName$ | async }}</em>)&nbsp;<strong>then</strong>
+          <strong>if</strong>&nbsp;<cki-var>Y</cki-var> ∉
+            Defs(<cki-var>{{ variableName$ | async }}</cki-var>) <strong>then</strong>
         </cki-algorithm-step>
         <div class="indent">
           <cki-algorithm-step [stepIndex]="phiInsertionSteps.ADD_TO_W">
-            <em>W</em> ← <em>W</em> ∪ {{ '{' }}<em>Y</em>{{ '}' }}
+            <cki-var>W</cki-var> ← <cki-var>W</cki-var> ∪ {{ '{' }}<cki-var>Y</cki-var>{{ '}' }}
           </cki-algorithm-step>
         </div>
       </div>

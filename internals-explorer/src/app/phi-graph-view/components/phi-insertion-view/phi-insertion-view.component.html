@@ -37,12 +37,21 @@
         {{ '}' }}
       </div>
 
-      <span>Blocks already processed:</span>
+      <span>Blocks with φ inserted:</span>
       <div class="phi-list large-overlay-text">
         F = {{ '{' }}
         {{ processed$ | async }}
         {{ '}' }}
       </div>
+
+      <ng-container *ngIf="dominanceFrontierX$ | async as dfX">
+        <span>Dominance frontier of block <cki-var>X</cki-var>:</span>
+        <div class="phi-list large-overlay-text">
+          DF(<cki-var>X</cki-var>) = {{ '{' }}
+          {{ dfX }}
+          {{ '}' }}
+        </div>
+      </ng-container>
     </div>
 
     <div class="history large-overlay-text">

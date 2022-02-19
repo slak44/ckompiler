@@ -12,6 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { InsertionAlgorithmComponent } from './components/insertion-algorithm/insertion-algorithm.component';
 import { AlgorithmStepComponent } from './components/algorithm-step/algorithm-step.component';
 import { AlgorithmContainerDirective } from './directives/algorithm-container.directive';
+import { VarComponent } from './components/var/var.component';
 
 @NgModule({
   declarations: [
@@ -20,6 +21,7 @@ import { AlgorithmContainerDirective } from './directives/algorithm-container.di
     InsertionAlgorithmComponent,
     AlgorithmStepComponent,
     AlgorithmContainerDirective,
+    VarComponent,
   ],
   imports: [
     CommonModule,
