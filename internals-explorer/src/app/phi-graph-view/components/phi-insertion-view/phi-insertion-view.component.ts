@@ -98,12 +98,12 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
   }
 
   @HostListener('document:keydown.arrowright')
-  public onKeyRight(): void {
+  public nextStep(): void {
     this.phiInsertionStateService.nextStep();
   }
 
   @HostListener('document:keydown.arrowleft')
-  public onKeyLeft(): void {
+  public prevStep(): void {
     this.phiInsertionStateService.prevStep();
   }
 }
