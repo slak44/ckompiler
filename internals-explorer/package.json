@@ -21,6 +21,7 @@
     "@angular/platform-browser": "~13.0.0",
     "@angular/platform-browser-dynamic": "~13.0.0",
     "@angular/router": "~13.0.0",
+    "@fontsource/dejavu-sans": "4.5.2",
     "@hpcc-js/wasm": "^1.12.6",
     "@ng-web-apis/common": "^1.12.1",
     "@ng-web-apis/resize-observer": "^1.0.3",
