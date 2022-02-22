@@ -61,7 +61,11 @@
     <div class="algorithm">
       <div class="controls"
            *ngIf="{ currentStep: (currentStep$ | async) ?? 0, stepCount: insertionStepCount$ | async } as data">
-        <button mat-icon-button color="accent" [disabled]="data.currentStep === 0" (click)="prevStep()">
+        <button mat-icon-button
+                color="accent"
+                matTooltip="Previous step"
+                [disabled]="data.currentStep === 0"
+                (click)="prevStep()">
           <mat-icon>chevron_left</mat-icon>
         </button>
 
@@ -74,7 +78,11 @@
                     (keydown.arrowLeft)="$event.stopPropagation()"
                     (change)="currentStepSliderChange($event)"></mat-slider>
 
-        <button mat-icon-button color="accent" [disabled]="data.currentStep + 1 === data.stepCount" (click)="nextStep()">
+        <button mat-icon-button
+                color="accent"
+                matTooltip="Next step"
+                [disabled]="data.currentStep + 1 === data.stepCount"
+                (click)="nextStep()">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>
