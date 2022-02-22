@@ -1,4 +1,12 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  HostListener,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import { combineLatest, filter, map, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
@@ -13,11 +21,11 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { getNodeById } from '@cki-graph-view/utils';
 import { MatSliderChange } from '@angular/material/slider';
 import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect';
+import { PhiInsertionTourService } from '../../services/phi-insertion-tour.service';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import { PhiInsertionTourService } from '../../services/phi-insertion-tour.service';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -31,7 +39,7 @@ import { PhiInsertionTourService } from '../../services/phi-insertion-tour.servi
     ReplaceNodeContentsHook
   ],
 })
-export class PhiInsertionViewComponent extends SubscriptionDestroy implements AfterViewInit {
+export class PhiInsertionViewComponent extends SubscriptionDestroy implements OnInit, AfterViewInit {
   @ViewChild('anchorStartBlock')
   private readonly anchorStartBlock!: ElementRef<HTMLDivElement>;
 
@@ -95,14 +103,14 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
     private phiInsertionTourService: PhiInsertionTourService,
   ) {
     super();
+  }
 
+  public ngOnInit(): void {
     this.variableId$.pipe(
       takeUntil(this.destroy$),
     ).subscribe(identityId => {
       this.phiInsertionStateService.selectedVariableChanged(identityId);
     });
-
-    this.phiInsertionTourService.start();
   }
 
   public ngAfterViewInit(): void {
@@ -112,6 +120,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
       const top = element.top - graph.top;
       this.anchorStartBlock.nativeElement.style.top = `${top}px`;
       this.anchorStartBlock.nativeElement.style.left = `${element.right}px`;
+      this.phiInsertionTourService.startOnRoute();
     });
   }
 

@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { TourService } from 'ngx-ui-tour-md-menu';
-import { combineLatest, filter, merge, pairwise, takeUntil } from 'rxjs';
+import { combineLatest, filter, pairwise, takeUntil } from 'rxjs';
 import { PhiInsertionState, PhiInsertionStateService } from './phi-insertion-state.service';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { NavigationEnd, Router } from '@angular/router';
+import { PHI_PATH } from '../../live-compile/components/live-compile/live-compile.component';
 
 const STEP_STARTED = 'step-started';
 
@@ -10,11 +12,23 @@ const PHI_TOUR_STORAGE_KEY = 'phi-tour';
 
 @Injectable()
 export class PhiInsertionTourService extends SubscriptionDestroy {
+  private started: boolean = false;
+
   constructor(
     private tourService: TourService,
     private phiInsertionStateService: PhiInsertionStateService,
+    private router: Router,
   ) {
     super();
+  }
+
+  public start(): void {
+    if (localStorage.getItem(PHI_TOUR_STORAGE_KEY) === 'true' || this.started) {
+      // Already viewed tour
+      return;
+    }
+
+    this.started = true;
 
     this.tourService.initialize([
       {
@@ -77,13 +91,6 @@ export class PhiInsertionTourService extends SubscriptionDestroy {
         anchorId: 'anchor-center',
       },
     ]);
-  }
-
-  public start(): void {
-    if (localStorage.getItem(PHI_TOUR_STORAGE_KEY) === 'true') {
-      // Already viewed tour
-      return;
-    }
 
     combineLatest([
       this.tourService.stepShow$,
@@ -104,5 +111,20 @@ export class PhiInsertionTourService extends SubscriptionDestroy {
     ).subscribe(() => localStorage.setItem(PHI_TOUR_STORAGE_KEY, 'true'));
 
     this.tourService.start();
+  }
+
+  public startOnRoute(): void {
+    if (this.router.url.includes(PHI_PATH)) {
+      this.start();
+    }
+
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      takeUntil(this.destroy$),
+    ).subscribe(event => {
+      if (event.url.includes(PHI_PATH)) {
+        this.start();
+      }
+    });
   }
 }
