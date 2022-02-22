@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
-import { combineLatest, filter, map, Observable, of, takeUntil } from 'rxjs';
+import { combineLatest, filter, first, map, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
@@ -105,5 +105,15 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
   @HostListener('document:keydown.arrowleft')
   public prevStep(): void {
     this.phiInsertionStateService.prevStep();
+  }
+
+  @HostListener('document:keydown.home')
+  public jumpToStart(): void {
+    this.phiInsertionStateService.setStep(0);
+  }
+
+  @HostListener('document:keydown.end')
+  public jumpToEnd(): void {
+    this.phiInsertionStateService.setStep(Infinity);
   }
 }
