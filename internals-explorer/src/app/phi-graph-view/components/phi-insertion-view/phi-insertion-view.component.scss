@@ -4,6 +4,20 @@
   display: contents;
 }
 
+.anchor {
+  height: 1px;
+  width: 1px;
+  background-color: transparent;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+
+  &.center {
+    top: 0;
+    left: 50%;
+  }
+}
+
 .start-overlay {
   display: flex;
   flex-direction: column;
@@ -40,9 +54,6 @@
   .controls {
     display: flex;
     align-items: center;
-
-    .mat-icon-button {
-    }
 
     .mat-slider {
       flex-grow: 1;

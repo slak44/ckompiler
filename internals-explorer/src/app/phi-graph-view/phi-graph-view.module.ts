@@ -14,6 +14,7 @@ import { AlgorithmStepComponent } from './components/algorithm-step/algorithm-st
 import { AlgorithmContainerDirective } from './directives/algorithm-container.directive';
 import { VarComponent } from './components/var/var.component';
 import { MatSliderModule } from '@angular/material/slider';
+import { TourMatMenuModule } from 'ngx-ui-tour-md-menu';
 
 @NgModule({
   declarations: [
@@ -34,6 +35,7 @@ import { MatSliderModule } from '@angular/material/slider';
     MatIconModule,
     MatButtonModule,
     MatSliderModule,
+    TourMatMenuModule,
   ],
   exports: [
     PhiInsertionViewComponent,

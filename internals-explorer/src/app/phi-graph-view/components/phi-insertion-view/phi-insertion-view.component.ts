@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
-import { combineLatest, filter, first, map, Observable, of, takeUntil } from 'rxjs';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
+import { combineLatest, filter, map, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
@@ -11,23 +11,40 @@ import { PhiInsertionState, PhiInsertionStateService } from '../../services/phi-
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { getNodeById } from '@cki-graph-view/utils';
+import { MatSliderChange } from '@angular/material/slider';
+import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import { MatSliderChange } from '@angular/material/slider';
+import { PhiInsertionTourService } from '../../services/phi-insertion-tour.service';
 
 @Component({
   selector: 'cki-phi-insertion-view',
   templateUrl: './phi-insertion-view.component.html',
   styleUrls: ['./phi-insertion-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [PhiIrFragmentComponent.provider, PhiInsertionStateService, ReplaceNodeContentsHook],
+  providers: [
+    PhiIrFragmentComponent.provider,
+    PhiInsertionStateService,
+    PhiInsertionTourService,
+    ReplaceNodeContentsHook
+  ],
 })
-export class PhiInsertionViewComponent extends SubscriptionDestroy {
+export class PhiInsertionViewComponent extends SubscriptionDestroy implements AfterViewInit {
+  @ViewChild('anchorStartBlock')
+  private readonly anchorStartBlock!: ElementRef<HTMLDivElement>;
+
+  private readonly startNodeRect: StartNodeRect = new StartNodeRect();
+
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
-  public readonly hooks: GraphViewHook[] = [removeHoverTitles, new DisableDblClick(), this.replaceNodeContents];
+  public readonly hooks: GraphViewHook[] = [
+    removeHoverTitles,
+    new DisableDblClick(),
+    this.replaceNodeContents,
+    this.startNodeRect,
+  ];
 
   public readonly compileResult$: Observable<JSCompileResult> = this.phiInsertionStateService.compileResult$;
   public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.variables$;
@@ -75,6 +92,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,
     private phiInsertionStateService: PhiInsertionStateService,
+    private phiInsertionTourService: PhiInsertionTourService,
   ) {
     super();
 
@@ -82,6 +100,18 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
       takeUntil(this.destroy$),
     ).subscribe(identityId => {
       this.phiInsertionStateService.selectedVariableChanged(identityId);
+    });
+
+    this.phiInsertionTourService.start();
+  }
+
+  public ngAfterViewInit(): void {
+    this.startNodeRect.position$.pipe(
+      takeUntil(this.destroy$),
+    ).subscribe(({ graph, element }) => {
+      const top = element.top - graph.top;
+      this.anchorStartBlock.nativeElement.style.top = `${top}px`;
+      this.anchorStartBlock.nativeElement.style.left = `${element.right}px`;
     });
   }
 

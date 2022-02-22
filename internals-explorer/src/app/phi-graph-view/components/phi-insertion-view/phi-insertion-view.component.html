@@ -1,10 +1,14 @@
+<div #anchorStartBlock class="anchor" tourAnchor="anchor-start-block"></div>
+
 <cki-graph-view [printingType$]="printingType$"
                 [compileResult$]="compileResult$"
                 [includeHtmlBlockHeaders]="true"
                 [hooks]="hooks"
                 [ngSwitch]="phiInsertionState$ | async">
-  <div class="start-overlay" *ngSwitchCase="phiInsertionStates.CONFIGURE">
-    <mat-form-field appearance="standard" color="accent">
+  <div class="anchor center" tourAnchor="anchor-center"></div>
+
+  <div class="start-overlay" tourAnchor="anchor-graph-view" *ngSwitchCase="phiInsertionStates.CONFIGURE">
+    <mat-form-field appearance="standard" color="accent" tourAnchor="anchor-target-variable">
       <mat-label>Target variable</mat-label>
       <mat-select [formControl]="variableControl">
         <mat-option *ngFor="let variable of variables$ | async" [value]="variable.identityId">
@@ -15,6 +19,7 @@
     </mat-form-field>
 
     <div class="tooltip-container"
+         tourAnchor="anchor-start-button"
          [matTooltip]="'Select a variable to get started'"
          [matTooltipDisabled]="!!variableControl.value">
       <button mat-raised-button
@@ -29,7 +34,7 @@
   </div>
 
   <ng-container *ngSwitchCase="phiInsertionStates.WORKLOOP">
-    <div class="progress-overlay">
+    <div class="progress-overlay" tourAnchor="anchor-progress-overlay">
       <span>Blocks left to process:</span>
       <div class="worklist large-overlay-text">
         W = {{ '{' }}
@@ -60,6 +65,7 @@
 
     <div class="algorithm">
       <div class="controls"
+           tourAnchor="anchor-controls"
            *ngIf="{ currentStep: (currentStep$ | async) ?? 0, stepCount: insertionStepCount$ | async } as data">
         <button mat-icon-button
                 color="accent"
@@ -87,7 +93,7 @@
         </button>
       </div>
 
-      <cki-insertion-algorithm></cki-insertion-algorithm>
+      <cki-insertion-algorithm tourAnchor="anchor-insertion-algorithm"></cki-insertion-algorithm>
     </div>
 
     <button mat-flat-button

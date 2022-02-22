@@ -7,6 +7,7 @@ import { HIGHLIGHT_OPTIONS } from 'ngx-highlightjs';
 import { HttpClientModule } from '@angular/common/http';
 import { MonacoEditorModule } from 'ng-monaco-editor';
 import { monacoLoader } from '@cki-utils/monaco-loader';
+import { TourMatMenuModule } from 'ngx-ui-tour-md-menu';
 
 @NgModule({
   declarations: [
@@ -20,6 +21,7 @@ import { monacoLoader } from '@cki-utils/monaco-loader';
     MonacoEditorModule.forRoot({
       dynamicImport: () => import('monaco-editor').then(monacoLoader),
     }),
+    TourMatMenuModule.forRoot(),
   ],
   providers: [
     {
