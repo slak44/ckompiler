@@ -15,6 +15,7 @@ import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
+import { MatSliderChange } from '@angular/material/slider';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -68,6 +69,9 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
     }),
   );
 
+  public readonly currentStep$: Observable<number> = this.phiInsertionStateService.currentStep$;
+  public readonly insertionStepCount$: Observable<number> = this.phiInsertionStateService.insertionStepCount$;
+
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,
     private phiInsertionStateService: PhiInsertionStateService,
@@ -87,6 +91,10 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy {
 
   public reset(): void {
     this.phiInsertionStateService.reset();
+  }
+
+  public currentStepSliderChange(sliderChange: MatSliderChange): void {
+    this.phiInsertionStateService.setStep((sliderChange.value ?? 0) - 1);
   }
 
   @HostListener('document:keydown.arrowright')

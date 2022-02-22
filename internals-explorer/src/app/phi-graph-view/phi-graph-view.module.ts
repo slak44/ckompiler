@@ -13,6 +13,7 @@ import { InsertionAlgorithmComponent } from './components/insertion-algorithm/in
 import { AlgorithmStepComponent } from './components/algorithm-step/algorithm-step.component';
 import { AlgorithmContainerDirective } from './directives/algorithm-container.directive';
 import { VarComponent } from './components/var/var.component';
+import { MatSliderModule } from '@angular/material/slider';
 
 @NgModule({
   declarations: [
@@ -32,6 +33,7 @@ import { VarComponent } from './components/var/var.component';
     MatTooltipModule,
     MatIconModule,
     MatButtonModule,
+    MatSliderModule,
   ],
   exports: [
     PhiInsertionViewComponent,

@@ -8,7 +8,7 @@ import {
   Observable,
   shareReplay,
   Subject,
-  takeUntil,
+  takeUntil, tap,
 } from 'rxjs';
 import { CompileService, logCompileError } from '@cki-graph-view/services/compile.service';
 import { Nullable, slak } from '@ckompiler/ckompiler';
@@ -81,13 +81,19 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     map(([cfg, variable]) => JSON.parse(generatePhiSteps(cfg, variable)) as PhiInsertionStepState[]),
   );
 
+  public readonly insertionStepCount$: Observable<number> = this.allInsertionSteps$.pipe(
+    map(steps => steps.length),
+  );
+
   private readonly currentStepSubject: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+
+  public readonly currentStep$: Observable<number> = this.currentStepSubject.pipe(
+    distinctUntilChanged(),
+  );
 
   public readonly currentStepState$: Observable<PhiInsertionStepState> = combineLatest([
     this.allInsertionSteps$,
-    this.currentStepSubject.pipe(
-      distinctUntilChanged(),
-    ),
+    this.currentStep$
   ]).pipe(
     map(([steps, index]) => {
       const clamped = clamp(index, 0, steps.length - 1);
@@ -136,5 +142,9 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   public prevStep(): void {
     this.currentStepSubject.next(this.currentStepSubject.value - 1);
+  }
+
+  public setStep(value: number): void {
+    this.currentStepSubject.next(value);
   }
 }

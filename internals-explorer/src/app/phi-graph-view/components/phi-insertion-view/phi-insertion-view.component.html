@@ -59,6 +59,16 @@
     </div>
 
     <div class="algorithm">
+      <mat-slider *ngIf="insertionStepCount$ | async as steps"
+                  [thumbLabel]="true"
+                  [step]="1"
+                  [min]="1"
+                  [max]="steps"
+                  [value]="((currentStep$ | async) ?? 0) + 1"
+                  (keydown.arrowRight)="$event.stopPropagation()"
+                  (keydown.arrowLeft)="$event.stopPropagation()"
+                  (change)="currentStepSliderChange($event)"></mat-slider>
+
       <cki-insertion-algorithm></cki-insertion-algorithm>
     </div>
 
