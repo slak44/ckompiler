@@ -8,7 +8,7 @@ import {
   Observable,
   shareReplay,
   Subject,
-  takeUntil, tap,
+  takeUntil,
 } from 'rxjs';
 import { CompileService, logCompileError } from '@cki-graph-view/services/compile.service';
 import { Nullable, slak } from '@ckompiler/ckompiler';
@@ -137,14 +137,23 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   }
 
   public nextStep(): void {
+    if (this.phiInsertionStateSubject.value !== PhiInsertionState.WORKLOOP) {
+      return;
+    }
     this.currentStepSubject.next(this.currentStepSubject.value + 1);
   }
 
   public prevStep(): void {
+    if (this.phiInsertionStateSubject.value !== PhiInsertionState.WORKLOOP) {
+      return;
+    }
     this.currentStepSubject.next(this.currentStepSubject.value - 1);
   }
 
   public setStep(value: number): void {
+    if (this.phiInsertionStateSubject.value !== PhiInsertionState.WORKLOOP) {
+      return;
+    }
     this.currentStepSubject.next(value);
   }
 }

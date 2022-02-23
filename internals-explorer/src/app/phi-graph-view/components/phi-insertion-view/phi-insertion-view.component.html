@@ -49,6 +49,15 @@
         {{ '}' }}
       </div>
 
+      <ng-container *ngIf="{ blockX: blockX$ | async } as data">
+        <ng-container *ngIf="data.blockX !== null">
+          <span>Block <cki-var>X</cki-var>:</span>
+          <div class="phi-list large-overlay-text">
+            X = {{ data.blockX }}
+          </div>
+        </ng-container>
+      </ng-container>
+
       <ng-container *ngIf="dominanceFrontierX$ | async as dfX">
         <span>Dominance frontier of block <cki-var>X</cki-var>:</span>
         <div class="phi-list large-overlay-text">

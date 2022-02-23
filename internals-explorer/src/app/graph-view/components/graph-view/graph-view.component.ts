@@ -71,7 +71,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     super();
   }
 
-  private transitionToNode(graph: Element, target: GraphvizDatum): void {
+  public transitionToNode(graph: Element, target: GraphvizDatum): void {
     const svgRef = this.graphRef.nativeElement.querySelector('svg')!;
 
     const { x, y } = target.center;

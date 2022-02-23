@@ -26,6 +26,7 @@ import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
+import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -36,7 +37,7 @@ import BasicBlock = slak.ckompiler.analysis.BasicBlock;
     PhiIrFragmentComponent.provider,
     PhiInsertionStateService,
     PhiInsertionTourService,
-    ReplaceNodeContentsHook
+    ReplaceNodeContentsHook,
   ],
 })
 export class PhiInsertionViewComponent extends SubscriptionDestroy implements OnInit, AfterViewInit {
@@ -46,13 +47,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
   private readonly startNodeRect: StartNodeRect = new StartNodeRect();
 
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
-
-  public readonly hooks: GraphViewHook[] = [
-    removeHoverTitles,
-    new DisableDblClick(),
-    this.replaceNodeContents,
-    this.startNodeRect,
-  ];
 
   public readonly compileResult$: Observable<JSCompileResult> = this.phiInsertionStateService.compileResult$;
   public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.variables$;
@@ -72,6 +66,11 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
 
   public readonly processed$: Observable<string> = this.phiInsertionStateService.currentStepState$.pipe(
     map(state => state.f.join(', ')),
+  );
+
+  public readonly blockX$: Observable<number> = this.phiInsertionStateService.currentStepState$.pipe(
+    map(state => state.blockX),
+    filter((blockX): blockX is number => typeof blockX === 'number'),
   );
 
   public readonly dominanceFrontierX$: Observable<string | null> = combineLatest([
@@ -96,6 +95,14 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
 
   public readonly currentStep$: Observable<number> = this.phiInsertionStateService.currentStep$;
   public readonly insertionStepCount$: Observable<number> = this.phiInsertionStateService.insertionStepCount$;
+
+  public readonly hooks: GraphViewHook[] = [
+    removeHoverTitles,
+    new DisableDblClick(),
+    this.replaceNodeContents,
+    this.startNodeRect,
+    new PanToSelected(this.blockX$),
+  ];
 
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,
