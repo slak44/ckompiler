@@ -93,6 +93,10 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
     }),
   );
 
+  public readonly blockY$: Observable<number | undefined> = this.phiInsertionStateService.currentStepState$.pipe(
+    map(state => state.blockY),
+  );
+
   public readonly currentStep$: Observable<number> = this.phiInsertionStateService.currentStep$;
   public readonly insertionStepCount$: Observable<number> = this.phiInsertionStateService.insertionStepCount$;
 
