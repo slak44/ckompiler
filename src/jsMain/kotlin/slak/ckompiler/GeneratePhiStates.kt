@@ -56,10 +56,13 @@ data class PhiInsertionStepState(
 fun buildDefPath(defsV: Set<BasicBlock>, start: BasicBlock, pred: BasicBlock): BBPath {
   val path = mutableListOf(start)
 
-  var block = pred
-  while (block !in defsV) {
+  var block: BasicBlock? = pred
+  while (block != null) {
     path += block
-    block = block.preds.first()
+    block = block.preds.firstOrNull()
+    if (block !in defsV) {
+      break
+    }
   }
 
   return path.map { it.nodeId }
