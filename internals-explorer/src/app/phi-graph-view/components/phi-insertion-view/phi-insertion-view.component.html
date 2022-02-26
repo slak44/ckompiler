@@ -50,7 +50,7 @@
       </div>
 
       <ng-container *ngIf="{ blockX: blockX$ | async } as data">
-        <ng-container *ngIf="data.blockX !== null">
+        <ng-container *ngIf="data.blockX !== undefined && data.blockX !== null">
           <span>Block <cki-var>X</cki-var>:</span>
           <div class="phi-list large-overlay-text">
             <cki-var>X</cki-var> = {{ data.blockX }}
@@ -68,7 +68,7 @@
       </ng-container>
 
       <ng-container *ngIf="{ blockY: blockY$ | async } as data">
-        <ng-container *ngIf="data.blockY !== undefined">
+        <ng-container *ngIf="data.blockY !== undefined && data.blockY !== null">
           <span>Block <cki-var>Y</cki-var>:</span>
           <div class="phi-list large-overlay-text">
             <cki-var>Y</cki-var> = {{ data.blockY }}

@@ -7,7 +7,7 @@ import {
   OnInit,
   ViewChild,
 } from '@angular/core';
-import { combineLatest, filter, map, Observable, of, takeUntil } from 'rxjs';
+import { combineLatest, filter, map, merge, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
@@ -68,9 +68,8 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
     map(state => state.f.join(', ')),
   );
 
-  public readonly blockX$: Observable<number> = this.phiInsertionStateService.currentStepState$.pipe(
+  public readonly blockX$: Observable<number | undefined> = this.phiInsertionStateService.currentStepState$.pipe(
     map(state => state.blockX),
-    filter((blockX): blockX is number => typeof blockX === 'number'),
   );
 
   public readonly dominanceFrontierX$: Observable<string | null> = combineLatest([
@@ -100,12 +99,16 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
   public readonly currentStep$: Observable<number> = this.phiInsertionStateService.currentStep$;
   public readonly insertionStepCount$: Observable<number> = this.phiInsertionStateService.insertionStepCount$;
 
+  private readonly selectedNodeId$: Observable<number> = merge(this.blockX$, this.blockY$).pipe(
+    filter((block): block is number => typeof block === 'number'),
+  );
+
   public readonly hooks: GraphViewHook[] = [
     removeHoverTitles,
     new DisableDblClick(),
     this.replaceNodeContents,
     this.startNodeRect,
-    new PanToSelected(this.blockX$),
+    new PanToSelected(this.selectedNodeId$),
   ];
 
   constructor(
