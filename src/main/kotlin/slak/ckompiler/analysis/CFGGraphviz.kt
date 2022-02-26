@@ -83,7 +83,7 @@ private fun CFG.mapBlocksToString(
     val instrGraphMap = nodes.associateWith {
       val phiStr = graph[it].phi.entries.joinToString(separator = sep) { (variable, uses) ->
         val options = uses.entries.joinToString(", ") { (predId, variable) ->
-          "n$predId ${variable.versionString()}"
+          "BB$predId ${variable.versionString()}"
         }
         "$variable = φ($options)"
       }

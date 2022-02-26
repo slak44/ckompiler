@@ -31,7 +31,7 @@ data class PhiInstruction(
 ) {
   override fun toString() = "store $variable = φ(${
     incoming.entries.joinToString(", ") {
-      "n${it.key.hashCode()} v${it.value.version}"
+      "BB${it.key.hashCode()} v${it.value.version}"
     }
   })"
 }
