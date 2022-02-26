@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { TourService } from 'ngx-ui-tour-md-menu';
 import { combineLatest, filter, pairwise, takeUntil } from 'rxjs';
-import { PhiInsertionState, PhiInsertionStateService } from './phi-insertion-state.service';
+import { PhiInsertionPhase, PhiInsertionStateService } from './phi-insertion-state.service';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { NavigationEnd, Router } from '@angular/router';
 import { PHI_PATH } from '../../live-compile/components/live-compile/live-compile.component';
@@ -94,15 +94,15 @@ export class PhiInsertionTourService extends SubscriptionDestroy {
 
     combineLatest([
       this.tourService.stepShow$,
-      this.phiInsertionStateService.phiInsertionState$,
+      this.phiInsertionStateService.phiInsertionPhase$,
     ]).pipe(
-      filter(([stepShow, state]) => stepShow.stepId === STEP_STARTED && state !== PhiInsertionState.WORKLOOP),
+      filter(([stepShow, state]) => stepShow.stepId === STEP_STARTED && state !== PhiInsertionPhase.WORKLOOP),
       takeUntil(this.destroy$),
     ).subscribe(() => this.phiInsertionStateService.startInsertion());
 
-    this.phiInsertionStateService.phiInsertionState$.pipe(
+    this.phiInsertionStateService.phiInsertionPhase$.pipe(
       pairwise(),
-      filter(([prev, curr]) => prev === PhiInsertionState.CONFIGURE && curr === PhiInsertionState.WORKLOOP),
+      filter(([prev, curr]) => prev === PhiInsertionPhase.CONFIGURE && curr === PhiInsertionPhase.WORKLOOP),
       takeUntil(this.destroy$),
     ).subscribe(() => this.tourService.goto(STEP_STARTED));
 

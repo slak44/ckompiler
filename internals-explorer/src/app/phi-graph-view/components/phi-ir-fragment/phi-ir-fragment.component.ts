@@ -7,7 +7,7 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { FRAGMENT_COMPONENT, FragmentComponent } from '@cki-graph-view/models/fragment-component.model';
-import { PhiInsertionState, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
+import { PhiInsertionPhase, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { combineLatest, map, Observable, ReplaySubject, startWith } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
@@ -45,7 +45,7 @@ export class PhiIrFragmentComponent implements FragmentComponent {
   public readonly replacedText$: Observable<SafeHtml> = combineLatest([
     this.textSubject,
     this.phiInsertionStateService.targetVariable$.pipe(startWith(null)),
-    this.phiInsertionStateService.phiInsertionState$,
+    this.phiInsertionStateService.phiInsertionPhase$,
     this.replaceNodeContentsHook.rerender$.pipe(startWith(null)),
   ]).pipe(
     map(([text, variable, state]): SafeHtml => {
@@ -64,7 +64,7 @@ export class PhiIrFragmentComponent implements FragmentComponent {
         const withPhiClass = didReplace ? 'highlight-active' : 'highlight-disabled';
         const phiReplaced = isPhi ? `<span class="${withPhiClass}">${replaced}</span>` : replaced;
 
-        const shouldHide = state !== PhiInsertionState.CONFIGURE && isPhi;
+        const shouldHide = state !== PhiInsertionPhase.CONFIGURE && isPhi;
         if (this.isFragmentHidden !== shouldHide) {
           this.isFragmentHidden = shouldHide;
           this.phiInsertionStateService.triggerReLayout(this.nodeId);

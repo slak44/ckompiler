@@ -25,7 +25,7 @@ import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
 import generatePhiSteps = slak.ckompiler.generatePhiSteps;
 
-export enum PhiInsertionState {
+export enum PhiInsertionPhase {
   CONFIGURE,
   WORKLOOP,
 }
@@ -35,7 +35,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     map(code => {
       try {
-        this.phiInsertionStateSubject.next(PhiInsertionState.CONFIGURE);
+        this.phiInsertionPhaseSubject.next(PhiInsertionPhase.CONFIGURE);
         clearAllAtomicCounters();
         return jsCompile(code, true);
       } catch (e) {
@@ -67,10 +67,10 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     shareReplay({ bufferSize: 1, refCount: false }),
   );
 
-  private readonly phiInsertionStateSubject: BehaviorSubject<PhiInsertionState> =
-    new BehaviorSubject<PhiInsertionState>(PhiInsertionState.CONFIGURE);
+  private readonly phiInsertionPhaseSubject: BehaviorSubject<PhiInsertionPhase> =
+    new BehaviorSubject<PhiInsertionPhase>(PhiInsertionPhase.CONFIGURE);
 
-  public readonly phiInsertionState$: Observable<PhiInsertionState> = this.phiInsertionStateSubject;
+  public readonly phiInsertionPhase$: Observable<PhiInsertionPhase> = this.phiInsertionPhaseSubject;
 
   private readonly reLayoutSubject: Subject<number> = new Subject<number>();
 
@@ -124,12 +124,12 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   }
 
   public startInsertion(): void {
-    this.phiInsertionStateSubject.next(PhiInsertionState.WORKLOOP);
+    this.phiInsertionPhaseSubject.next(PhiInsertionPhase.WORKLOOP);
     this.currentStepSubject.next(0);
   }
 
   public reset(): void {
-    this.phiInsertionStateSubject.next(PhiInsertionState.CONFIGURE);
+    this.phiInsertionPhaseSubject.next(PhiInsertionPhase.CONFIGURE);
   }
 
   public triggerReLayout(nodeId: number): void {
@@ -137,21 +137,21 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   }
 
   public nextStep(): void {
-    if (this.phiInsertionStateSubject.value !== PhiInsertionState.WORKLOOP) {
+    if (this.phiInsertionPhaseSubject.value !== PhiInsertionPhase.WORKLOOP) {
       return;
     }
     this.currentStepSubject.next(this.currentStepSubject.value + 1);
   }
 
   public prevStep(): void {
-    if (this.phiInsertionStateSubject.value !== PhiInsertionState.WORKLOOP) {
+    if (this.phiInsertionPhaseSubject.value !== PhiInsertionPhase.WORKLOOP) {
       return;
     }
     this.currentStepSubject.next(this.currentStepSubject.value - 1);
   }
 
   public setStep(value: number): void {
-    if (this.phiInsertionStateSubject.value !== PhiInsertionState.WORKLOOP) {
+    if (this.phiInsertionPhaseSubject.value !== PhiInsertionPhase.WORKLOOP) {
       return;
     }
     this.currentStepSubject.next(value);

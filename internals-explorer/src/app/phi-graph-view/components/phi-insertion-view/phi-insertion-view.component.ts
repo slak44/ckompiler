@@ -15,7 +15,7 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
-import { PhiInsertionState, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
+import { PhiInsertionPhase, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { getNodeById } from '@cki-graph-view/utils';
@@ -50,9 +50,9 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
 
   public readonly compileResult$: Observable<JSCompileResult> = this.phiInsertionStateService.compileResult$;
   public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.variables$;
-  public readonly phiInsertionState$: Observable<PhiInsertionState> = this.phiInsertionStateService.phiInsertionState$;
+  public readonly phiInsertionPhase$: Observable<PhiInsertionPhase> = this.phiInsertionStateService.phiInsertionPhase$;
 
-  public readonly phiInsertionStates = PhiInsertionState;
+  public readonly phiInsertionPhases = PhiInsertionPhase;
 
   public readonly variableControl: FormControl = new FormControl(null);
 

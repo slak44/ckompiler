@@ -4,10 +4,10 @@
                 [compileResult$]="compileResult$"
                 [includeHtmlBlockHeaders]="true"
                 [hooks]="hooks"
-                [ngSwitch]="phiInsertionState$ | async">
+                [ngSwitch]="phiInsertionPhase$ | async">
   <div class="anchor center" tourAnchor="anchor-center"></div>
 
-  <div class="start-overlay" tourAnchor="anchor-graph-view" *ngSwitchCase="phiInsertionStates.CONFIGURE">
+  <div class="start-overlay" tourAnchor="anchor-graph-view" *ngSwitchCase="phiInsertionPhases.CONFIGURE">
     <mat-form-field appearance="standard" color="accent" tourAnchor="anchor-target-variable">
       <mat-label>Target variable</mat-label>
       <mat-select [formControl]="variableControl">
@@ -33,7 +33,7 @@
     </div>
   </div>
 
-  <ng-container *ngSwitchCase="phiInsertionStates.WORKLOOP">
+  <ng-container *ngSwitchCase="phiInsertionPhases.WORKLOOP">
     <div class="progress-overlay" tourAnchor="anchor-progress-overlay">
       <span>Blocks left to process:</span>
       <div class="worklist large-overlay-text">
