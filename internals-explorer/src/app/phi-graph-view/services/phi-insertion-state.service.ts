@@ -103,6 +103,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
       return steps[clamped];
     }),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
 
   constructor(
