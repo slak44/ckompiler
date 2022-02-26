@@ -19,7 +19,7 @@ import { GraphvizDatum } from '../../models/graphviz-datum.model';
 import { ZoomTransform } from 'd3-zoom';
 import { ZoomView } from 'd3-interpolate';
 import { GraphViewHook } from '../../models/graph-view-hook.model';
-import { getDatumNodeId, getNodeById, setClassIf } from '../../utils';
+import { getPolyDatumNodeId, getNodeById, setClassIf } from '../../utils';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
@@ -67,8 +67,32 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private readonly rerenderSubject: Subject<void> = new Subject();
   public readonly rerender$: Observable<void> = this.rerenderSubject;
 
+  private readonly groupToNodeId: Map<SVGGElement, number> = new Map();
+  private readonly nodeIdToGroup: Map<number, SVGGElement> = new Map();
+
   constructor() {
     super();
+  }
+
+  public getNodeIdByGroup(group: SVGGElement): number {
+    const nodeId = this.groupToNodeId.get(group);
+
+    if (nodeId === undefined) {
+      console.error(group);
+      throw new Error('No such element.');
+    }
+
+    return nodeId;
+  }
+
+  public getGroupByNodeId(nodeId: number): SVGGElement {
+    const element = this.nodeIdToGroup.get(nodeId);
+
+    if (!element) {
+      throw new Error(`No such nodeId: ${nodeId}`);
+    }
+
+    return element;
   }
 
   public transitionToNode(graph: Element, target: GraphvizDatum): void {
@@ -102,6 +126,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private configureNode(e: SVGPolygonElement, nodeId: number, cfg: CFG): void {
+    this.groupToNodeId.set(e.parentNode as SVGGElement, nodeId);
+    this.nodeIdToGroup.set(nodeId, e.parentNode as SVGGElement);
+
     // Someone is overwriting us, somehow
     setTimeout(() => e.classList.add('node'), 0);
 
@@ -149,11 +176,11 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     const graphNodesSelection = d3.select(graph)
       .selectAll<SVGPolygonElement, GraphvizDatum>('g > polygon')
-      .filter(datum => !isNaN(getDatumNodeId(datum)));
+      .filter(datum => !isNaN(getPolyDatumNodeId(datum)));
     const graphNodesData = graphNodesSelection.data();
 
     graphNodesSelection.nodes().forEach((node, idx) => {
-      this.configureNode(node, getDatumNodeId(graphNodesData[idx]), cfg);
+      this.configureNode(node, getPolyDatumNodeId(graphNodesData[idx]), cfg);
     });
 
     this.handleClearClicked(graph);
@@ -167,6 +194,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     for (const hook of this.hooks.reverse()) {
       hook.revertAlteration?.();
     }
+    this.nodeIdToGroup.clear();
+    this.groupToNodeId.clear();
   }
 
   public rerenderGraph(): Observable<void> {

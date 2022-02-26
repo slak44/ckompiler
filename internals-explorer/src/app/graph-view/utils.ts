@@ -4,13 +4,7 @@ import CFG = slak.ckompiler.analysis.CFG;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
-export function getNodeIdFromElement(element: Element): number {
-  const match = element.id.match(/^node(\d+)$/);
-  if (!match) return NaN;
-  return parseInt(match[1], 10);
-}
-
-export function getDatumNodeId(datum: GraphvizDatum): number {
+export function getPolyDatumNodeId(datum: GraphvizDatum): number {
   const match = datum.parent.key.match(/^node(\d+)$/);
   if (!match) return NaN;
   return parseInt(match[1], 10);

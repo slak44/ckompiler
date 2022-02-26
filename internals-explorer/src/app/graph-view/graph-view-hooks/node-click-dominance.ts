@@ -1,5 +1,5 @@
 import { AlterGraphHook, GraphViewHook } from '../models/graph-view-hook.model';
-import { getDatumNodeId, setClassIf } from '../utils';
+import { getPolyDatumNodeId, setClassIf } from '../utils';
 import { takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
@@ -34,7 +34,7 @@ const alterGraph: AlterGraphHook = (graphView, cfg, printingType, graph, graphNo
   const graphNodesData = graphNodesSelection.data();
 
   graphNodesSelection.nodes().map((element, idx) => {
-    const nodeId = getDatumNodeId(graphNodesData[idx]);
+    const nodeId = getPolyDatumNodeId(graphNodesData[idx]);
     configureNode(graphView, element, nodeId, cfg, graph);
   });
 };

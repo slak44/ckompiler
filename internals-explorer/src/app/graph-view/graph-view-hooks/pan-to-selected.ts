@@ -3,7 +3,7 @@ import { GraphViewComponent } from '@cki-graph-view/components/graph-view/graph-
 import { slak } from '@ckompiler/ckompiler';
 import CFG = slak.ckompiler.analysis.CFG;
 import { Observable, takeUntil } from 'rxjs';
-import { getDatumNodeId } from '@cki-graph-view/utils';
+import { getPolyDatumNodeId } from '@cki-graph-view/utils';
 
 export class PanToSelected implements GraphViewHook {
   constructor(
@@ -21,7 +21,7 @@ export class PanToSelected implements GraphViewHook {
     this.selectedNodeId$.pipe(
       takeUntil(graphView.rerender$),
     ).subscribe(nodeId => {
-      const nodeSelection = graphNodes.filter(datum => getDatumNodeId(datum) === nodeId);
+      const nodeSelection = graphNodes.filter(datum => getPolyDatumNodeId(datum) === nodeId);
       const datum = nodeSelection.datum();
 
       graphView.transitionToNode(graph, datum);

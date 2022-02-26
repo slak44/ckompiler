@@ -4,11 +4,11 @@ import { slak } from '@ckompiler/ckompiler';
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import { GraphvizDatum } from '../models/graphviz-datum.model';
-import { getDatumNodeId } from '../utils';
+import { getPolyDatumNodeId } from '../utils';
 import { catmullRomSplines } from '@cki-utils/catmull-rom-splines';
 
 function generateFrontierPath(frontierNodeIds: number[], graphNodes: GraphvizDatum[]): string {
-  const frontierDatum = graphNodes.filter(datum => frontierNodeIds.includes(getDatumNodeId(datum)));
+  const frontierDatum = graphNodes.filter(datum => frontierNodeIds.includes(getPolyDatumNodeId(datum)));
 
   const flatPoints: number[] = frontierDatum.flatMap(datum => [datum.center.x, datum.bbox.y]);
 

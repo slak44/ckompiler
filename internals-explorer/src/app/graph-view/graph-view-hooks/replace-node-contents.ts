@@ -11,7 +11,6 @@ import {
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
 import { slak } from '@ckompiler/ckompiler';
 import { FRAGMENT_COMPONENT, FragmentComponent, GENERIC_FRAGMENT_HOST } from '../models/fragment-component.model';
-import { getNodeIdFromElement } from '@cki-graph-view/utils';
 import { Observable } from 'rxjs';
 import CFG = slak.ckompiler.analysis.CFG;
 
@@ -32,7 +31,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   private readonly componentFactory: ComponentFactory<FragmentComponent> =
     this.componentFactoryResolver.resolveComponentFactory(this.fragmentComponentType);
 
-  private graph!: Element;
+  private graphView!: GraphViewComponent;
   private maxAscent!: number;
 
   public rerender$!: Observable<void>;
@@ -51,7 +50,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   }
 
   public reLayoutNodeFragments(nodeId: number): void {
-    const node = this.graph.parentNode!.querySelector(`#node${nodeId}`)!;
+    const node = this.graphView.getGroupByNodeId(nodeId);
     const texts = Array.from(node.querySelectorAll('foreignObject'));
 
     if (texts.length === 0) {
@@ -80,7 +79,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   }
 
   public alterGraph(graphView: GraphViewComponent, cfg: CFG, printingType: string, graph: Element): void {
-    this.graph = graph;
+    this.graphView = graphView;
     this.rerender$ = graphView.rerender$;
 
     const svgTextElements = Array.from(graph.querySelectorAll('text'));
@@ -94,10 +93,8 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       const replaceableHost = document.createElement(GENERIC_FRAGMENT_HOST);
       foreign.appendChild(replaceableHost);
 
-      const nodeId = getNodeIdFromElement(textElement.parentElement!);
-
       const comp = this.componentFactory.create(this.injector, [], replaceableHost);
-      comp.instance.nodeId = nodeId;
+      comp.instance.nodeId = graphView.getNodeIdByGroup(textElement.parentNode as SVGGElement);
       comp.instance.printingType = printingType;
       comp.instance.text = text;
       comp.instance.color = textElement.getAttribute('fill')!;
