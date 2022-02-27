@@ -18,21 +18,22 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 // Keep in sync with _insertion.scss
 const INSERTION_TRANSITION_MS = 150;
 
-type TwoPoints = [number, number, number, number];
+type EdgePoints = [number, number, number, number, number, number];
 
-function getEdgePath(edge: SVGGElement): TwoPoints {
+function getEdgePath(edge: SVGGElement): EdgePoints {
   const path = edge.querySelector('path')!;
   const arrowTip = edge.querySelector('polygon')!;
   const { x: startX, y: startY } = path.getPointAtLength(0);
+  const { x: pathMiddleX, y: pathMiddleY } = path.getPointAtLength(path.getTotalLength() / 2);
   const { x: targetX, y: targetY, width, height } = arrowTip.getBBox();
 
-  return [targetX + width / 2, targetY + height / 2, startX, startY];
+  return [targetX + width / 2, targetY + height / 2, pathMiddleX, pathMiddleY, startX, startY];
 }
 
 export class NodePath implements GraphViewHook {
   private definitionIdx: Record<number, number> = {};
 
-  private readonly edgePoints: Map<string, TwoPoints> = new Map();
+  private readonly edgePoints: Map<string, EdgePoints> = new Map();
 
   private readonly renderedPaths: SVGPathElement[] = [];
 
@@ -133,7 +134,7 @@ export class NodePath implements GraphViewHook {
     points.unshift(...phiPosition, phiPosition[0], firstEdge[1]);
     points.push(definitionPosition[0], lastEdge[3], ...definitionPosition);
 
-    const spline = catmullRomSplines(points, 0);
+    const spline = catmullRomSplines(points, 0.3);
 
     const svgPath: SVGPathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     svgPath.classList.add('node-path');
