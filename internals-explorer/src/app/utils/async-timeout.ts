@@ -1,20 +1,22 @@
-import { filter, from, map, mergeMap, MonoTypeOperatorFunction, pipe } from 'rxjs';
+import { filter, from, map, mergeMap, MonoTypeOperatorFunction, pipe, share } from 'rxjs';
+import { NgZone } from '@angular/core';
 
-export function requestAnimationFrameAsync(): Promise<DOMHighResTimeStamp> {
-  return new Promise(resolve => requestAnimationFrame(resolve));
+export function requestAnimationFrameAsync(ngZone: NgZone): Promise<DOMHighResTimeStamp> {
+  return ngZone.runOutsideAngular(() => new Promise(resolve => requestAnimationFrame(resolve)));
 }
 
-export function groupedDebounceByFrame(): MonoTypeOperatorFunction<number> {
+export function groupedDebounceByFrame(ngZone: NgZone): MonoTypeOperatorFunction<number> {
   const lastFrameTime: Record<number, DOMHighResTimeStamp> = {};
 
   return pipe(
-    mergeMap(element => from(requestAnimationFrameAsync()).pipe(
+    mergeMap(element => from(requestAnimationFrameAsync(ngZone)).pipe(
       filter(time => {
         const lastTime = lastFrameTime[element];
         lastFrameTime[element] = time;
         return time !== lastTime;
       }),
-      map(() => element)
+      map(() => element),
+      share(),
     )),
   );
 }

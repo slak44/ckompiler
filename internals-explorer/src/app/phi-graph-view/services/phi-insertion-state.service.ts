@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import {
   BehaviorSubject,
   combineLatest,
@@ -109,11 +109,12 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   constructor(
     private compileService: CompileService,
     private replaceNodeContentsHook: ReplaceNodeContentsHook,
+    private ngZone: NgZone,
   ) {
     super();
 
     this.reLayoutSubject.pipe(
-      groupedDebounceByFrame(),
+      groupedDebounceByFrame(this.ngZone),
       takeUntil(this.destroy$),
     ).subscribe((nodeId: number) => {
       this.replaceNodeContentsHook.reLayoutNodeFragments(nodeId);
