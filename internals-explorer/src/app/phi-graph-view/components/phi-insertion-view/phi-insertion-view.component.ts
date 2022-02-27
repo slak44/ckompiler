@@ -98,8 +98,11 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
   );
 
   public readonly highlightedPhiPaths$: Observable<number[][] | undefined> =
-    this.phiInsertionStateService.currentStepState$.pipe(
-      map(state => state.highlightedPhiPaths),
+    combineLatest([
+      this.phiInsertionStateService.currentStepState$,
+      this.phiInsertionStateService.phiInsertionPhase$,
+    ]).pipe(
+      map(([state, phase]) => phase === PhiInsertionPhase.WORKLOOP ? state.highlightedPhiPaths : undefined),
     );
 
   public readonly currentStep$: Observable<number> = this.phiInsertionStateService.currentStep$;
@@ -115,7 +118,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
     this.replaceNodeContents,
     this.startNodeRect,
     new PanToSelected(this.selectedNodeId$),
-    new NodePath(this.replaceNodeContents, this.phiInsertionStateService.targetVariable$, this.highlightedPhiPaths$)
+    new NodePath(this.replaceNodeContents, this.phiInsertionStateService.targetVariable$, this.highlightedPhiPaths$),
   ];
 
   constructor(
