@@ -14,9 +14,10 @@ import { FRAGMENT_COMPONENT, FragmentComponent, GENERIC_FRAGMENT_HOST } from '..
 import { Observable } from 'rxjs';
 import CFG = slak.ckompiler.analysis.CFG;
 
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d')!;
+
 function measureTextAscent(text: string, fontName: string): number {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
   ctx.font = `16px "${fontName}"`;
   const metrics = ctx.measureText(text);
   return metrics.actualBoundingBoxAscent;
