@@ -13,7 +13,10 @@ import Variable = slak.ckompiler.analysis.Variable;
 import getDefinitionLocations = slak.ckompiler.getDefinitionLocations;
 import IRInstruction = slak.ckompiler.analysis.IRInstruction;
 import { measureWidth } from '@cki-utils/measure-text';
-import { ORIGINAL_Y, ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
+import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
+
+// Keep in sync with _insertion.scss
+const INSERTION_TRANSITION_MS = 150;
 
 type TwoPoints = [number, number, number, number];
 
@@ -49,7 +52,7 @@ export class NodePath implements GraphViewHook {
     }
   }
 
-  private positionUntilVariableText(variable: Variable, nodeId: number, text: string): [number, number] {
+  private getFragmentTextAndIndex(isForPhi: boolean, nodeId: number, variable: Variable): [string, number] {
     const node = getNodeById(this.cfg, nodeId);
     const nodePhi = arrayOf<PhiInstruction>(node.phi);
 
@@ -57,38 +60,52 @@ export class NodePath implements GraphViewHook {
     let irString: string;
 
     const irIndex = this.definitionIdx[nodeId];
-    if (irIndex !== undefined && irIndex !== -1) {
+    if (isForPhi || irIndex === undefined || irIndex === -1) {
+      // Definition is in φ
+      index = nodePhi.findIndex(phi => phi.variable.identityId === variable.identityId);
+      if (index === -1) {
+        throw new Error('Cannot find variable in block phis');
+      }
+      irString = nodePhi[index].toString();
+    } else {
       // Definition is in IR
       const irDefinition = arrayOf<IRInstruction>(node.ir)[irIndex];
       index = nodePhi.length + irIndex;
       irString = irDefinition.toString();
-    } else {
-      // Definition is in φ
-      index = nodePhi.findIndex(phi => phi.variable.identityId === variable.identityId);
-      irString = nodePhi[index].toString();
     }
 
     // +1 due to the BBx: header
     index++;
 
-    const middleOfText = irString.indexOf(text) + text.length / 2;
+    return [irString, index];
+  }
+
+  private positionUntilVariableText(fragmentData: [string, number], nodeId: number, searchText: string): [number, number] {
+    const [irString, index] = fragmentData;
+
+    const textIdx = irString.indexOf(searchText);
+    if (textIdx === -1) {
+      console.error(`Cannot find text ${searchText} in ${irString}`);
+    }
+
+    const middleOfText = textIdx + searchText.length / 2;
     const widthUntilText = measureWidth(irString.slice(0, middleOfText));
 
     const nodeElement = this.graphView.getGroupByNodeId(nodeId);
     // nth-type is indexed from 1, so +1
     const fragment: SVGForeignObjectElement = nodeElement.querySelector(`foreignObject:nth-of-type(${index + 1})`)!;
 
-    const xStart = parseInt(fragment.getAttribute('x')!, 10);
+    const xStart = parseFloat(fragment.getAttribute('x')!);
 
-    const yPos = parseInt(fragment.dataset[ORIGINAL_Y]!, 10);
+    const transform = fragment.getAttribute('transform')!;
+    const yTranslate = transform.match(/translate\(.*?,(.*?)\)/)!;
+    const yPos = parseFloat(yTranslate[1]) + this.replaceNodeContents.getMaxAscent();
 
     return [xStart + widthUntilText, yPos];
   }
 
   private newPath(nodeIds: number[], targetVariable: Variable): SVGPathElement {
     const points: number[] = [];
-
-    const varDefNodeId = nodeIds[nodeIds.length - 1];
 
     for (let i = 0; i < nodeIds.length - 1; i++) {
       // Reverse, because the path follows predecessors
@@ -100,19 +117,23 @@ export class NodePath implements GraphViewHook {
     const ascent = this.replaceNodeContents.getMaxAscent();
 
     const firstEdge = points.slice(0, 4);
-    const phiPosition = this.positionUntilVariableText(targetVariable, nodeIds[0], `BB${nodeIds[1]} v0`);
-    const phiPosYCorrection = firstEdge[1] > phiPosition[1] ? ascent : 0;
+    const phiFragmentData = this.getFragmentTextAndIndex(true, nodeIds[0], targetVariable);
+    const phiPosition = this.positionUntilVariableText(phiFragmentData, nodeIds[0], `BB${nodeIds[1]} v0`);
+    // Is edge above phi?
+    const phiPosYCorrection = firstEdge[1] > phiPosition[1] ? 0 : -ascent;
     phiPosition[1] += phiPosYCorrection;
 
+    const varDefNodeId = nodeIds[nodeIds.length - 1];
     const lastEdge = points.slice(-4);
-    const definitionPosition = this.positionUntilVariableText(targetVariable, varDefNodeId, targetVariable.name);
+    const defFragmentData = this.getFragmentTextAndIndex(false, varDefNodeId, targetVariable);
+    const definitionPosition = this.positionUntilVariableText(defFragmentData, varDefNodeId, targetVariable.name);
     const defPosYCorrection = lastEdge[3] > definitionPosition[1] ? 0 : -ascent;
     definitionPosition[1] += defPosYCorrection;
 
     points.unshift(...phiPosition, phiPosition[0], firstEdge[1]);
     points.push(definitionPosition[0], lastEdge[3], ...definitionPosition);
 
-    const spline = catmullRomSplines(points, 0.2);
+    const spline = catmullRomSplines(points, 0);
 
     const svgPath: SVGPathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     svgPath.classList.add('node-path');
@@ -148,11 +169,13 @@ export class NodePath implements GraphViewHook {
         return;
       }
 
-      for (const path of paths) {
-        const svgPath = this.newPath(path, targetVariable);
-        this.renderedPaths.push(svgPath);
-      }
-      graph.append(...this.renderedPaths);
+      setTimeout(() => {
+        for (const path of paths) {
+          const svgPath = this.newPath(path, targetVariable);
+          this.renderedPaths.push(svgPath);
+        }
+        graph.append(...this.renderedPaths);
+      }, INSERTION_TRANSITION_MS);
     });
   }
 

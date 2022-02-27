@@ -15,7 +15,7 @@ import { Observable } from 'rxjs';
 import { measureTextAscent } from '@cki-utils/measure-text';
 import CFG = slak.ckompiler.analysis.CFG;
 
-export const ORIGINAL_Y = 'originalY';
+const ORIGINAL_Y = 'originalY';
 
 @Injectable()
 export class ReplaceNodeContentsHook implements GraphViewHook {
@@ -62,8 +62,8 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
     const polyHeight = poly.getBBox().height;
     const polyStrokeHeight = 7; // determined empirically
 
-    const topY = parseInt(texts[0].dataset[ORIGINAL_Y]!, 10);
-    const secondTopY = parseInt(texts?.[1]?.dataset?.[ORIGINAL_Y] || '', 10) || polyHeight;
+    const topY = parseFloat(texts[0].dataset[ORIGINAL_Y]!);
+    const secondTopY = parseFloat(texts?.[1]?.dataset?.[ORIGINAL_Y] || '') || polyHeight;
 
     const elementHeight = secondTopY - topY;
     const emptySpace = polyHeight - polyStrokeHeight - elementHeight * visibleObjects.length;
