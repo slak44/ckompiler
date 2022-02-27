@@ -109,7 +109,7 @@ export class NodePath implements GraphViewHook {
 
     const lastEdge = points.slice(-4);
     const definitionPosition = this.positionUntilVariableText(targetVariable, varDefNodeId, varDefNodeId);
-    const defPosYCorrection = lastEdge[3] > definitionPosition[1] ? ascent : -ascent;
+    const defPosYCorrection = lastEdge[3] > definitionPosition[1] ? 0 : -ascent;
     definitionPosition[1] += defPosYCorrection;
 
     points.unshift(...phiPosition, phiPosition[0], firstEdge[1]);
