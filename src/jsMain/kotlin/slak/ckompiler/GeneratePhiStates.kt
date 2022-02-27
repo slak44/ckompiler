@@ -53,16 +53,20 @@ data class PhiInsertionStepState(
     val w: Set<AtomicId>,
 )
 
-fun buildDefPath(defsV: Set<BasicBlock>, start: BasicBlock, pred: BasicBlock): BBPath {
+fun buildDefPath(defsV: Set<BasicBlock>, f: Set<BasicBlock>, start: BasicBlock, pred: BasicBlock): BBPath {
   val path = mutableListOf(start)
 
   var block: BasicBlock? = pred
   while (block != null) {
     path += block
-    block = block.preds.firstOrNull()
-    if (block !in defsV) {
+    if (block == start) {
+      // This is a cycle
       break
     }
+    if (block in defsV || block in f) {
+      break
+    }
+    block = block.preds.firstOrNull()
   }
 
   return path.map { it.nodeId }
@@ -102,7 +106,7 @@ fun generatePhiSteps(cfg: CFG, variable: Variable): String {
           w = cloneSet(w)
       )
       if (y !in f) {
-        val insertedPhi = y.preds.map { buildDefPath(defsV, y, it) }
+        val insertedPhi = y.preds.map { buildDefPath(defsV, f, y, it) }
         f += y
 
         states += PhiInsertionStepState(
