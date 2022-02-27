@@ -49,13 +49,12 @@ export class NodePath implements GraphViewHook {
     }
   }
 
-  private positionUntilVariableText(variable: Variable, nodeId: number, varDefNodeId: number): [number, number] {
+  private positionUntilVariableText(variable: Variable, nodeId: number, text: string): [number, number] {
     const node = getNodeById(this.cfg, nodeId);
     const nodePhi = arrayOf<PhiInstruction>(node.phi);
 
     let index: number;
     let irString: string;
-    let text: string;
 
     const irIndex = this.definitionIdx[nodeId];
     if (irIndex !== undefined && irIndex !== -1) {
@@ -63,12 +62,10 @@ export class NodePath implements GraphViewHook {
       const irDefinition = arrayOf<IRInstruction>(node.ir)[irIndex];
       index = nodePhi.length + irIndex;
       irString = irDefinition.toString();
-      text = variable.name;
     } else {
       // Definition is in φ
       index = nodePhi.findIndex(phi => phi.variable.identityId === variable.identityId);
       irString = nodePhi[index].toString();
-      text = `BB${varDefNodeId} v0`;
     }
 
     // +1 due to the BBx: header
@@ -103,12 +100,12 @@ export class NodePath implements GraphViewHook {
     const ascent = this.replaceNodeContents.getMaxAscent();
 
     const firstEdge = points.slice(0, 4);
-    const phiPosition = this.positionUntilVariableText(targetVariable, nodeIds[0], varDefNodeId);
+    const phiPosition = this.positionUntilVariableText(targetVariable, nodeIds[0], `BB${nodeIds[1]} v0`);
     const phiPosYCorrection = firstEdge[1] > phiPosition[1] ? ascent : 0;
     phiPosition[1] += phiPosYCorrection;
 
     const lastEdge = points.slice(-4);
-    const definitionPosition = this.positionUntilVariableText(targetVariable, varDefNodeId, varDefNodeId);
+    const definitionPosition = this.positionUntilVariableText(targetVariable, varDefNodeId, targetVariable.name);
     const defPosYCorrection = lastEdge[3] > definitionPosition[1] ? 0 : -ascent;
     definitionPosition[1] += defPosYCorrection;
 
