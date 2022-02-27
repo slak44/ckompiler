@@ -15,7 +15,7 @@ import { Observable } from 'rxjs';
 import { measureTextAscent } from '@cki-utils/measure-text';
 import CFG = slak.ckompiler.analysis.CFG;
 
-const ORIGINAL_Y = 'originalY';
+export const ORIGINAL_Y = 'originalY';
 
 @Injectable()
 export class ReplaceNodeContentsHook implements GraphViewHook {
@@ -35,6 +35,10 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
     private applicationRef: ApplicationRef,
     @Inject(FRAGMENT_COMPONENT) private fragmentComponentType: Type<FragmentComponent>,
   ) {
+  }
+
+  public getMaxAscent(): number {
+    return this.maxAscent;
   }
 
   private setForeignYPosition(foreignObject: SVGForeignObjectElement, yPosAttr: string | number): void {

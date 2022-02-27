@@ -1,5 +1,6 @@
 package slak.ckompiler
 
+import kotlinx.serialization.encodeToString
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.lexer.IncludePaths
@@ -62,6 +63,18 @@ fun phiEligibleVariables(cfg: CFG): Array<Variable> {
 @JsExport
 fun definitionsOf(variable: Variable, cfg: CFG): Array<BasicBlock> {
   return cfg.exprDefinitions[variable]!!.toTypedArray()
+}
+
+@JsExport
+fun getDefinitionLocations(variable: Variable, cfg: CFG): String {
+  val definitionIdx = mutableMapOf<AtomicId, Int>()
+
+  for (defBlock in cfg.exprDefinitions[variable]!!) {
+    val index = defBlock.ir.indexOfLast { it.result is Variable && (it.result as Variable).identityId == variable.identityId }
+    definitionIdx[defBlock.nodeId] = index
+  }
+
+  return json.encodeToString(definitionIdx)
 }
 
 @JsExport

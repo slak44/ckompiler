@@ -27,6 +27,7 @@ import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
+import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -96,6 +97,11 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
     map(state => state.blockY),
   );
 
+  public readonly highlightedPhiPaths$: Observable<number[][] | undefined> =
+    this.phiInsertionStateService.currentStepState$.pipe(
+      map(state => state.highlightedPhiPaths),
+    );
+
   public readonly currentStep$: Observable<number> = this.phiInsertionStateService.currentStep$;
   public readonly insertionStepCount$: Observable<number> = this.phiInsertionStateService.insertionStepCount$;
 
@@ -109,6 +115,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
     this.replaceNodeContents,
     this.startNodeRect,
     new PanToSelected(this.selectedNodeId$),
+    new NodePath(this.replaceNodeContents, this.phiInsertionStateService.targetVariable$, this.highlightedPhiPaths$)
   ];
 
   constructor(

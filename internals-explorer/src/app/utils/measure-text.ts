@@ -6,3 +6,8 @@ export function measureTextAscent(text: string): number {
   const metrics = ctx.measureText(text);
   return metrics.actualBoundingBoxAscent;
 }
+
+export function measureWidth(text: string): number {
+  const metrics = ctx.measureText(text);
+  return metrics.width;
+}

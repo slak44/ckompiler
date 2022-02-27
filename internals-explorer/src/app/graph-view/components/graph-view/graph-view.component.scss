@@ -50,5 +50,13 @@
       stroke: colors.$frontier-line;
       fill: transparent;
     }
+
+    path.node-path {
+      pointer-events: none;
+      fill: transparent;
+      stroke-width: 8px;
+      stroke-linecap: round;
+      stroke: rgba(colors.$variable-highlight, 0.4);
+    }
   }
 }
