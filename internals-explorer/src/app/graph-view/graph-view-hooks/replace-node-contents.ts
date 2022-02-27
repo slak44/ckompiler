@@ -12,16 +12,8 @@ import { GraphViewComponent } from '../components/graph-view/graph-view.componen
 import { slak } from '@ckompiler/ckompiler';
 import { FRAGMENT_COMPONENT, FragmentComponent, GENERIC_FRAGMENT_HOST } from '../models/fragment-component.model';
 import { Observable } from 'rxjs';
+import { measureTextAscent } from '@cki-utils/measure-text';
 import CFG = slak.ckompiler.analysis.CFG;
-
-const canvas = document.createElement('canvas');
-const ctx = canvas.getContext('2d')!;
-
-function measureTextAscent(text: string, fontName: string): number {
-  ctx.font = `16px "${fontName}"`;
-  const metrics = ctx.measureText(text);
-  return metrics.actualBoundingBoxAscent;
-}
 
 const ORIGINAL_Y = 'originalY';
 
@@ -84,7 +76,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
     this.rerender$ = graphView.rerender$;
 
     const svgTextElements = Array.from(graph.querySelectorAll('text'));
-    const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? '', 'Fira Code'));
+    const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? ''));
     this.maxAscent = Math.max(...textAscents);
 
     for (const textElement of svgTextElements) {
