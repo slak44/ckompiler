@@ -6,14 +6,14 @@ import * as d3 from 'd3';
 import { BaseGraphvizDatum } from '@cki-graph-view/models/graphviz-datum.model';
 import { catmullRomSplines } from '@cki-utils/catmull-rom-splines';
 import { getNodeById } from '@cki-graph-view/utils';
+import { measureWidth } from '@cki-utils/measure-text';
+import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import CFG = slak.ckompiler.analysis.CFG;
 import arrayOf = slak.ckompiler.arrayOf;
 import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 import Variable = slak.ckompiler.analysis.Variable;
 import getDefinitionLocations = slak.ckompiler.getDefinitionLocations;
 import IRInstruction = slak.ckompiler.analysis.IRInstruction;
-import { measureWidth } from '@cki-utils/measure-text';
-import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 
 // Keep in sync with _insertion.scss
 const INSERTION_TRANSITION_MS = 150;
