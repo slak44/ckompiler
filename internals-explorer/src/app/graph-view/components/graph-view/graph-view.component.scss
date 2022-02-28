@@ -51,7 +51,18 @@
       fill: transparent;
     }
 
+    @keyframes opacityFadeIn {
+      0% {
+        opacity: 0;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
     path.node-path {
+      animation: 100ms opacityFadeIn forwards;
       pointer-events: none;
       fill: transparent;
       stroke-width: 8px;
