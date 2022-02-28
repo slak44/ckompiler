@@ -120,8 +120,8 @@ export class NodePath implements GraphViewHook {
     const firstEdge = points.slice(0, 4);
     const phiFragmentData = this.getFragmentTextAndIndex(true, nodeIds[0], targetVariable);
     const phiPosition = this.positionUntilVariableText(phiFragmentData, nodeIds[0], `BB${nodeIds[1]} v0`);
-    // Is edge above phi?
-    const phiPosYCorrection = firstEdge[1] > phiPosition[1] ? 0 : -ascent;
+    const isEdgeAbovePhi = firstEdge[1] > phiPosition[1];
+    const phiPosYCorrection = isEdgeAbovePhi ? 0 : -ascent;
     phiPosition[1] += phiPosYCorrection;
 
     const varDefNodeId = nodeIds[nodeIds.length - 1];
@@ -136,9 +136,19 @@ export class NodePath implements GraphViewHook {
 
     const spline = catmullRomSplines(points, 0.3);
 
+    const firstPoint = phiPosition;
+
+    const arrowXOffset = 10;
+    const arrowYOffset = 7;
+    const direction = isEdgeAbovePhi ? 1 : -1;
+    const leftPoint = [firstPoint[0] - arrowXOffset, firstPoint[1] + direction * arrowYOffset];
+    const rightPoint = [firstPoint[0] + arrowXOffset, firstPoint[1] + direction * arrowYOffset];
+
+    const arrowPath = 'M' + leftPoint.join() + 'L' + firstPoint.join() + 'L' + rightPoint.join();
+
     const svgPath: SVGPathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     svgPath.classList.add('node-path');
-    svgPath.setAttribute('d', spline);
+    svgPath.setAttribute('d', spline + arrowPath);
 
     return svgPath;
   }
