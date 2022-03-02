@@ -32,7 +32,6 @@
     "monaco-editor": "^0.31.1",
     "ng-monaco-editor": "^4.0.3",
     "ngx-highlightjs": "^6.1.0",
-    "ngx-ui-tour-md-menu": "^8.0.1",
     "rxjs": "~7.4.0",
     "tslib": "^2.3.0",
     "vscode-theme-darcula": "rokoroku/vscode-theme-darcula#v1.2.1",

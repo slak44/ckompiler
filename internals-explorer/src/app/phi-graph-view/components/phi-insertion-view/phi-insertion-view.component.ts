@@ -21,7 +21,6 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { getNodeById } from '@cki-graph-view/utils';
 import { MatSliderChange } from '@angular/material/slider';
 import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect';
-import { PhiInsertionTourService } from '../../services/phi-insertion-tour.service';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
@@ -37,7 +36,6 @@ import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
   providers: [
     PhiIrFragmentComponent.provider,
     PhiInsertionStateService,
-    PhiInsertionTourService,
     ReplaceNodeContentsHook,
   ],
 })
@@ -124,7 +122,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,
     private phiInsertionStateService: PhiInsertionStateService,
-    private phiInsertionTourService: PhiInsertionTourService,
   ) {
     super();
   }
@@ -144,7 +141,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
       const top = element.top - graph.top;
       this.anchorStartBlock.nativeElement.style.top = `${top}px`;
       this.anchorStartBlock.nativeElement.style.left = `${element.right}px`;
-      this.phiInsertionTourService.startOnRoute();
     });
   }
 
