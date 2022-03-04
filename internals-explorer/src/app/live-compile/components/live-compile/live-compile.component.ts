@@ -24,7 +24,7 @@ export class LiveCompileComponent {
   public readonly PHI_PATH = PHI_PATH;
 
   public readonly initialSource$: Observable<string> =
-    this.httpClient.get(this.location.prepareExternalUrl('/assets/default.c'), { responseType: 'text' });
+    this.httpClient.get(this.location.prepareExternalUrl('/assets/samples/default.c'), { responseType: 'text' });
 
   public readonly diagnosticStats$: Observable<DiagnosticsStats> = this.compileService.diagnosticStats$;
 
@@ -34,7 +34,7 @@ export class LiveCompileComponent {
       if (hasErrors && this.selectedTabIndex > 1) {
         this.selectedTabIndex = 1;
       }
-    })
+    }),
   );
 
   public selectedTabIndex: number = 0;
