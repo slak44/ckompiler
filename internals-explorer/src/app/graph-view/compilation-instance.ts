@@ -43,7 +43,7 @@ export class CompilationInstance {
   );
 
   constructor(
-    private compileResult$: Observable<JSCompileResult>,
+    public readonly compileResult$: Observable<JSCompileResult>,
   ) {
   }
 }

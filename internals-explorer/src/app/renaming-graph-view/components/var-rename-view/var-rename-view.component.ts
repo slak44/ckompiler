@@ -3,12 +3,10 @@ import { RenamingIrFragmentComponent } from '../renaming-ir-fragment/renaming-ir
 import { Observable, of } from 'rxjs';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { RenamingStateService } from '../../services/renaming-state.service';
-import { slak } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
-import JSCompileResult = slak.ckompiler.JSCompileResult;
-import Variable = slak.ckompiler.analysis.Variable;
+import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -23,8 +21,7 @@ import Variable = slak.ckompiler.analysis.Variable;
 export class VarRenameViewComponent {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
-  public readonly compileResult$: Observable<JSCompileResult> = this.renamingStateService.compileResult$;
-  public readonly variables$: Observable<Variable[]> = this.renamingStateService.compilationInstance.variables$;
+  public readonly instance: CompilationInstance = this.renamingStateService.compilationInstance;
 
   public readonly hooks: GraphViewHook[] = [
     new DisableDblClick(),

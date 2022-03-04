@@ -1,8 +1,8 @@
 <cki-graph-view [includeHtmlBlockHeaders]="true"
-                [compileResult$]="compileResult$"
+                [instance]="instance"
                 [hooks]="hooks"
                 [printingType$]="printingType$">
   <cki-select-variable class="start-overlay"
                        tourAnchor="anchor-graph-view"
-                       [variables$]="variables$"></cki-select-variable>
+                       [variables$]="instance.variables$"></cki-select-variable>
 </cki-graph-view>

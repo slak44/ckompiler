@@ -19,10 +19,10 @@ import { GraphvizDatum } from '../../models/graphviz-datum.model';
 import { ZoomTransform } from 'd3-zoom';
 import { ZoomView } from 'd3-interpolate';
 import { GraphViewHook } from '../../models/graph-view-hook.model';
-import { getPolyDatumNodeId, getNodeById, setClassIf } from '../../utils';
+import { getNodeById, getPolyDatumNodeId, setClassIf } from '../../utils';
+import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import createGraphviz = slak.ckompiler.analysis.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
-import JSCompileResult = slak.ckompiler.JSCompileResult;
 import CFG = slak.ckompiler.analysis.CFG;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
@@ -49,7 +49,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public printingType$!: Observable<string>;
 
   @Input()
-  public compileResult$!: Observable<JSCompileResult>;
+  public instance!: CompilationInstance;
 
   @ViewChild('graph')
   private graphRef!: ElementRef<HTMLDivElement>;
@@ -200,31 +200,21 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   public rerenderGraph(): Observable<void> {
     return combineLatest([
-      this.compileResult$,
+      this.instance.cfg$,
       this.printingType$,
     ]).pipe(
-      map(([compileResult, printingType]: [JSCompileResult, string]): void => {
-        if (!compileResult.cfgs) {
-          return;
-        }
-
-        const main = compileResult.cfgs.find(cfg => cfg.f.name === 'main');
-
-        if (!main) {
-          return;
-        }
-
+      map(([cfg, printingType]: [CFG, string]): void => {
         const options = graphvizOptions(true, 16.5, 'Courier New', printingType, this.includeHtmlBlockHeaders);
-        const text = createGraphviz(main, main.f.sourceText as string, options);
+        const text = createGraphviz(cfg, cfg.f.sourceText as string, options);
 
-        if (!(this.graphviz && text && main)) {
+        if (!(this.graphviz && text)) {
           return;
         }
 
         this.rerenderSubject.next();
         this.revertAlterations();
 
-        this.graphviz.renderDot(text, () => this.alterGraph(printingType, main));
+        this.graphviz.renderDot(text, () => this.alterGraph(printingType, cfg));
       }),
     );
   }

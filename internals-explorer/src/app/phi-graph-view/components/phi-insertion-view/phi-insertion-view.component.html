@@ -1,7 +1,7 @@
 <div #anchorStartBlock class="anchor" tourAnchor="anchor-start-block"></div>
 
 <cki-graph-view [printingType$]="printingType$"
-                [compileResult$]="compileResult$"
+                [instance]="instance"
                 [includeHtmlBlockHeaders]="true"
                 [hooks]="hooks"
                 [ngSwitch]="phiInsertionPhase$ | async">
@@ -10,7 +10,7 @@
   <cki-select-variable *ngSwitchCase="phiInsertionPhases.CONFIGURE"
                        class="start-overlay"
                        tourAnchor="anchor-graph-view"
-                       [variables$]="variables$"
+                       [variables$]="instance.variables$"
                        (identityIdChange)="selectedVariableChanged($event)"
                        (startClick)="start()"></cki-select-variable>
 

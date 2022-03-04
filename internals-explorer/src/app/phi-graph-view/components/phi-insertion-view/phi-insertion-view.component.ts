@@ -13,8 +13,7 @@ import { MatSliderChange } from '@angular/material/slider';
 import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect';
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
-import Variable = slak.ckompiler.analysis.Variable;
-import JSCompileResult = slak.ckompiler.JSCompileResult;
+import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
@@ -37,8 +36,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
 
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
-  public readonly compileResult$: Observable<JSCompileResult> = this.phiInsertionStateService.compileResult$;
-  public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.compilationInstance.variables$;
+  public readonly instance: CompilationInstance = this.phiInsertionStateService.compilationInstance;
   public readonly phiInsertionPhase$: Observable<PhiInsertionPhase> = this.phiInsertionStateService.phiInsertionPhase$;
 
   public readonly phiInsertionPhases = PhiInsertionPhase;
