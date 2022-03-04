@@ -170,7 +170,8 @@ kotlin {
       dependencies {
         implementation(kotlin("stdlib-jdk8"))
         implementation("com.github.ajalt:mordant:1.2.0")
-        implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.17.0")
+        implementation("org.apache.logging.log4j:log4j-core:2.17.2")
+        implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.17.2")
       }
     }
 
@@ -183,7 +184,7 @@ kotlin {
 
       dependencies {
         implementation("org.junit.jupiter:junit-jupiter:5.5.0")
-        implementation("org.apache.logging.log4j:log4j-jul:2.11.2")
+        implementation("org.apache.logging.log4j:log4j-jul:2.17.2")
         implementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.0")
       }
     }
