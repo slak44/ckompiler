@@ -3,7 +3,6 @@ import {
   BehaviorSubject,
   combineLatest,
   distinctUntilChanged,
-  filter,
   map,
   Observable,
   shareReplay,
@@ -11,16 +10,16 @@ import {
   takeUntil,
   tap,
 } from 'rxjs';
-import { compileCode, CompileService } from '@cki-graph-view/services/compile.service';
+import { CompileService } from '@cki-graph-view/services/compile.service';
 import { slak } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
 import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
 import { clamp } from 'lodash-es';
+import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-instance';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import Variable = slak.ckompiler.analysis.Variable;
-import CFG = slak.ckompiler.analysis.CFG;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import generatePhiSteps = slak.ckompiler.generatePhiSteps;
 
@@ -36,21 +35,13 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     compileCode(),
   );
 
-  public readonly cfg$: Observable<CFG> = this.compileResult$.pipe(
-    filter(compileResult => !!compileResult.cfgs),
-    map(compileResult => compileResult.cfgs!.find(cfg => cfg.f.name === 'main')),
-    filter((cfg): cfg is CFG => !!cfg),
-  );
-
-  public readonly variables$: Observable<Variable[]> = this.cfg$.pipe(
-    map(cfg => phiEligibleVariables(cfg)),
-  );
+  public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);
 
   private readonly targetVariableIdSubject: Subject<number> = new Subject<number>();
 
   public readonly targetVariable$: Observable<Variable> = combineLatest([
     this.targetVariableIdSubject,
-    this.cfg$,
+    this.compilationInstance.cfg$,
   ]).pipe(
     map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)!),
     shareReplay({ bufferSize: 1, refCount: false }),
@@ -64,7 +55,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   private readonly reLayoutSubject: Subject<number> = new Subject<number>();
 
   private readonly allInsertionSteps$: Observable<PhiInsertionStepState[]> = combineLatest([
-    this.cfg$,
+    this.compilationInstance.cfg$,
     this.targetVariable$,
   ]).pipe(
     map(([cfg, variable]) => JSON.parse(generatePhiSteps(cfg, variable)) as PhiInsertionStepState[]),

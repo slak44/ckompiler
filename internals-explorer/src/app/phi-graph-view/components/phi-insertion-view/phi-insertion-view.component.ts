@@ -38,7 +38,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
   public readonly compileResult$: Observable<JSCompileResult> = this.phiInsertionStateService.compileResult$;
-  public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.variables$;
+  public readonly variables$: Observable<Variable[]> = this.phiInsertionStateService.compilationInstance.variables$;
   public readonly phiInsertionPhase$: Observable<PhiInsertionPhase> = this.phiInsertionStateService.phiInsertionPhase$;
 
   public readonly phiInsertionPhases = PhiInsertionPhase;
@@ -57,7 +57,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
 
   public readonly dominanceFrontierX$: Observable<string | null> = combineLatest([
     this.phiInsertionStateService.currentStepState$,
-    this.phiInsertionStateService.cfg$,
+    this.phiInsertionStateService.compilationInstance.cfg$,
   ]).pipe(
     map(([state, cfg]) => {
       if (typeof state.blockX !== 'number') {

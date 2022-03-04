@@ -1,47 +1,13 @@
 import { Injectable } from '@angular/core';
-import {
-  distinctUntilChanged,
-  filter,
-  map,
-  Observable,
-  OperatorFunction,
-  pipe,
-  ReplaySubject,
-  shareReplay,
-} from 'rxjs';
+import { distinctUntilChanged, map, Observable, ReplaySubject } from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
-import { Nullable, slak } from '@ckompiler/ckompiler';
+import { slak } from '@ckompiler/ckompiler';
+import { compileCode } from '@cki-graph-view/compilation-instance';
 import Diagnostic = slak.ckompiler.Diagnostic;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
-import jsCompile = slak.ckompiler.jsCompile;
 import arrayOf = slak.ckompiler.arrayOf;
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import getDiagnosticsStats = slak.ckompiler.getDiagnosticsStats;
-import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
-
-export function logCompileError(e: unknown): void {
-  const err = e as Error & { originalStack?: string };
-  if (err.originalStack) {
-    console.error(err.message, err.originalStack);
-  }
-  console.error(err);
-}
-
-export function compileCode(): OperatorFunction<string, JSCompileResult> {
-  return pipe(
-    map(code => {
-      try {
-        clearAllAtomicCounters();
-        return jsCompile(code, true);
-      } catch (e) {
-        logCompileError(e);
-        return null;
-      }
-    }),
-    filter((compileResult: Nullable<JSCompileResult>): compileResult is JSCompileResult => !!compileResult),
-    shareReplay({ bufferSize: 1, refCount: false }),
-  );
-}
 
 @Injectable({
   providedIn: 'root',
