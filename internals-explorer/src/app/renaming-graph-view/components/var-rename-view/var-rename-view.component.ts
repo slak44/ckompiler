@@ -4,8 +4,10 @@ import { Observable, of } from 'rxjs';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { slak } from '@ckompiler/ckompiler';
-import JSCompileResult = slak.ckompiler.JSCompileResult;
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
+import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
+import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
+import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -23,6 +25,8 @@ export class VarRenameViewComponent {
   public readonly compileResult$: Observable<JSCompileResult> = this.renamingStateService.compileResult$;
 
   public readonly hooks: GraphViewHook[] = [
+    new DisableDblClick(),
+    removeHoverTitles,
     this.replaceNodeContentsHook,
   ];
 
