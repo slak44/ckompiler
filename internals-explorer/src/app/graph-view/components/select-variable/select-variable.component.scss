@@ -1,0 +1,17 @@
+:host {
+  display: flex;
+  flex-direction: column;
+}
+
+.tooltip-container {
+  display: block;
+
+  .mat-raised-button {
+    width: 100%;
+
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+

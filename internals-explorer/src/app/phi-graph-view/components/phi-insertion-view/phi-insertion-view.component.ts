@@ -1,32 +1,22 @@
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  HostListener,
-  OnInit,
-  ViewChild,
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { combineLatest, filter, map, merge, Observable, of, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
-import { FormControl } from '@angular/forms';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
 import { PhiInsertionPhase, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
-import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { getNodeById } from '@cki-graph-view/utils';
 import { MatSliderChange } from '@angular/material/slider';
 import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect';
+import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
+import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
 import Variable = slak.ckompiler.analysis.Variable;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
-import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -39,7 +29,7 @@ import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
     ReplaceNodeContentsHook,
   ],
 })
-export class PhiInsertionViewComponent extends SubscriptionDestroy implements OnInit, AfterViewInit {
+export class PhiInsertionViewComponent extends SubscriptionDestroy implements AfterViewInit {
   @ViewChild('anchorStartBlock')
   private readonly anchorStartBlock!: ElementRef<HTMLDivElement>;
 
@@ -52,12 +42,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
   public readonly phiInsertionPhase$: Observable<PhiInsertionPhase> = this.phiInsertionStateService.phiInsertionPhase$;
 
   public readonly phiInsertionPhases = PhiInsertionPhase;
-
-  public readonly variableControl: FormControl = new FormControl(null);
-
-  public readonly variableId$: Observable<number> = controlValueStream<number | null>(this.variableControl).pipe(
-    filter((identityId): identityId is number => typeof identityId === 'number'),
-  );
 
   public readonly worklist$: Observable<string> = this.phiInsertionStateService.currentStepState$.pipe(
     map(state => state.w.join(', ')),
@@ -126,14 +110,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
     super();
   }
 
-  public ngOnInit(): void {
-    this.variableId$.pipe(
-      takeUntil(this.destroy$),
-    ).subscribe(identityId => {
-      this.phiInsertionStateService.selectedVariableChanged(identityId);
-    });
-  }
-
   public ngAfterViewInit(): void {
     this.startNodeRect.position$.pipe(
       takeUntil(this.destroy$),
@@ -150,6 +126,10 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements On
 
   public reset(): void {
     this.phiInsertionStateService.reset();
+  }
+
+  public selectedVariableChanged(identityId: number): void {
+    this.phiInsertionStateService.selectedVariableChanged(identityId);
   }
 
   public currentStepSliderChange(sliderChange: MatSliderChange): void {
