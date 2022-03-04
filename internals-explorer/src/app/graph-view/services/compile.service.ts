@@ -1,5 +1,14 @@
 import { Injectable } from '@angular/core';
-import { distinctUntilChanged, filter, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
+import {
+  distinctUntilChanged,
+  filter,
+  map,
+  Observable,
+  OperatorFunction,
+  pipe,
+  ReplaySubject,
+  shareReplay,
+} from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { Nullable, slak } from '@ckompiler/ckompiler';
 import Diagnostic = slak.ckompiler.Diagnostic;
@@ -18,6 +27,22 @@ export function logCompileError(e: unknown): void {
   console.error(err);
 }
 
+export function compileCode(): OperatorFunction<string, JSCompileResult> {
+  return pipe(
+    map(code => {
+      try {
+        clearAllAtomicCounters();
+        return jsCompile(code, true);
+      } catch (e) {
+        logCompileError(e);
+        return null;
+      }
+    }),
+    filter((compileResult: Nullable<JSCompileResult>): compileResult is JSCompileResult => !!compileResult),
+    shareReplay({ bufferSize: 1, refCount: false }),
+  );
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -29,21 +54,11 @@ export class CompileService {
     distinctUntilChanged(),
   );
 
-  public readonly compileResult$: Observable<JSCompileResult> = this.sourceText$.pipe(
-    map(code => {
-      try {
-        clearAllAtomicCounters();
-        return jsCompile(code, false);
-      } catch (e) {
-        logCompileError(e);
-        return null;
-      }
-    }),
-    filter((compileResult: Nullable<JSCompileResult>): compileResult is JSCompileResult => !!compileResult),
-    shareReplay({ bufferSize: 1, refCount: false })
+  public readonly defaultCompileResult$: Observable<JSCompileResult> = this.sourceText$.pipe(
+    compileCode(),
   );
 
-  public readonly allDiagnostics$: Observable<Diagnostic[]> = this.compileResult$.pipe(
+  public readonly allDiagnostics$: Observable<Diagnostic[]> = this.defaultCompileResult$.pipe(
     map(compileResult => {
       if (!compileResult.cfgs) {
         return compileResult.beforeCFGDiags;

@@ -25,7 +25,7 @@ export class DefaultGraphViewComponent {
     this.replaceNodeContents,
   ];
 
-  public readonly compileResult$: Observable<JSCompileResult> = this.compileService.compileResult$;
+  public readonly compileResult$: Observable<JSCompileResult> = this.compileService.defaultCompileResult$;
 
   constructor(
     private replaceNodeContents: ReplaceNodeContentsHook,

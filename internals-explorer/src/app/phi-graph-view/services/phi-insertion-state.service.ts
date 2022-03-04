@@ -9,20 +9,19 @@ import {
   shareReplay,
   Subject,
   takeUntil,
+  tap,
 } from 'rxjs';
-import { CompileService, logCompileError } from '@cki-graph-view/services/compile.service';
-import { Nullable, slak } from '@ckompiler/ckompiler';
+import { compileCode, CompileService } from '@cki-graph-view/services/compile.service';
+import { slak } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
 import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
 import { clamp } from 'lodash-es';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
-import jsCompile = slak.ckompiler.jsCompile;
 import Variable = slak.ckompiler.analysis.Variable;
 import CFG = slak.ckompiler.analysis.CFG;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
-import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
 import generatePhiSteps = slak.ckompiler.generatePhiSteps;
 
 export enum PhiInsertionPhase {
@@ -33,18 +32,8 @@ export enum PhiInsertionPhase {
 @Injectable()
 export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
-    map(code => {
-      try {
-        this.phiInsertionPhaseSubject.next(PhiInsertionPhase.CONFIGURE);
-        clearAllAtomicCounters();
-        return jsCompile(code, true);
-      } catch (e) {
-        logCompileError(e);
-        return null;
-      }
-    }),
-    filter((compileResult: Nullable<JSCompileResult>): compileResult is JSCompileResult => !!compileResult),
-    shareReplay({ bufferSize: 1, refCount: false }),
+    tap(() => this.phiInsertionPhaseSubject.next(PhiInsertionPhase.CONFIGURE)),
+    compileCode(),
   );
 
   public readonly cfg$: Observable<CFG> = this.compileResult$.pipe(
