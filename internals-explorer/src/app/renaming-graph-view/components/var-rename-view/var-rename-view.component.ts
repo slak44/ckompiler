@@ -8,6 +8,7 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
+import Variable = slak.ckompiler.analysis.Variable;
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -23,6 +24,7 @@ export class VarRenameViewComponent {
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
   public readonly compileResult$: Observable<JSCompileResult> = this.renamingStateService.compileResult$;
+  public readonly variables$: Observable<Variable[]> = this.renamingStateService.compilationInstance.variables$;
 
   public readonly hooks: GraphViewHook[] = [
     new DisableDblClick(),
