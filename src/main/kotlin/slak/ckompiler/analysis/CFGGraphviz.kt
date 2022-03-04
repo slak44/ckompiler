@@ -118,7 +118,7 @@ private fun CFG.mapBlocksToString(
       else -> throw IllegalStateException("Unreachable")
     }
 
-    maybeHeader + content
+    (maybeHeader + content).ifEmpty { "&lt;empty&gt;" }
   }
 }
 
