@@ -16,6 +16,7 @@ import { CompilationInstance } from '@cki-graph-view/compilation-instance';
   providers: [
     RenamingIrFragmentComponent.provider,
     ReplaceNodeContentsHook,
+    RenamingStateService,
   ],
 })
 export class VarRenameViewComponent {

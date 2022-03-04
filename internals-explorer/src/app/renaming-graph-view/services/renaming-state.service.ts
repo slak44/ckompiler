@@ -5,9 +5,7 @@ import { slak } from '@ckompiler/ckompiler';
 import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-instance';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class RenamingStateService {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     compileCode()
