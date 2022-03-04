@@ -5,6 +5,7 @@ import {
   DIAGNOSTICS_PATH,
   LiveCompileComponent,
   PHI_PATH,
+  RENAME_PATH,
   SOURCE_CODE_PATH,
 } from './components/live-compile/live-compile.component';
 
@@ -17,6 +18,7 @@ const routes: Routes = [
       { path: DIAGNOSTICS_PATH },
       { path: CFG_PATH },
       { path: PHI_PATH },
+      { path: RENAME_PATH },
     ],
   },
 ];

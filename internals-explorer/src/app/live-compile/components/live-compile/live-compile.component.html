@@ -46,4 +46,13 @@
 
     <cki-phi-insertion-view></cki-phi-insertion-view>
   </mat-tab>
+
+  <mat-tab [ckiRoutedTab]="RENAME_PATH" [disabled]="hasErrors$ | async">
+    <div *matTabLabel class="tab-label">
+      <mat-icon>edit</mat-icon>
+      Variable Renaming
+    </div>
+
+    <cki-var-rename-view></cki-var-rename-view>
+  </mat-tab>
 </mat-tab-group>

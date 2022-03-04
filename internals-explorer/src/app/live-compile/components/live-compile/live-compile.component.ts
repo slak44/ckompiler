@@ -10,6 +10,7 @@ export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
 export const CFG_PATH = 'cfg';
 export const PHI_PATH = 'phi';
+export const RENAME_PATH = 'rename';
 
 @Component({
   selector: 'cki-live-compile',
@@ -22,6 +23,7 @@ export class LiveCompileComponent {
   public readonly DIAGNOSTICS_PATH = DIAGNOSTICS_PATH;
   public readonly CFG_PATH = CFG_PATH;
   public readonly PHI_PATH = PHI_PATH;
+  public readonly RENAME_PATH = RENAME_PATH;
 
   public readonly initialSource$: Observable<string> =
     this.httpClient.get(this.location.prepareExternalUrl('/assets/samples/default.c'), { responseType: 'text' });

@@ -14,6 +14,7 @@ import { DefaultGraphViewModule } from '../default-graph-view/default-graph-view
 import { PhiGraphViewModule } from '../phi-graph-view/phi-graph-view.module';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { RenamingGraphViewModule } from '../renaming-graph-view/renaming-graph-view.module';
 
 @NgModule({
   declarations: [
@@ -34,6 +35,7 @@ import { MatButtonModule } from '@angular/material/button';
     MatTabsModule,
     MatChipsModule,
     MatButtonModule,
+    RenamingGraphViewModule,
   ],
 })
 export class LiveCompileModule {
