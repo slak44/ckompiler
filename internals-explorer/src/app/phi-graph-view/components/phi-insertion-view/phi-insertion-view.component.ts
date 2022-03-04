@@ -98,7 +98,11 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
     this.replaceNodeContents,
     this.startNodeRect,
     new PanToSelected(this.selectedNodeId$),
-    new NodePath(this.replaceNodeContents, this.phiInsertionStateService.targetVariable$, this.highlightedPhiPaths$),
+    new NodePath(
+      this.replaceNodeContents,
+      this.phiInsertionStateService.varState.targetVariable$,
+      this.highlightedPhiPaths$,
+    ),
   ];
 
   constructor(
@@ -127,7 +131,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   }
 
   public selectedVariableChanged(identityId: number): void {
-    this.phiInsertionStateService.selectedVariableChanged(identityId);
+    this.phiInsertionStateService.varState.selectedVariableChanged(identityId);
   }
 
   public currentStepSliderChange(sliderChange: MatSliderChange): void {

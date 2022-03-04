@@ -35,4 +35,8 @@ export class VarRenameViewComponent {
     private renamingStateService: RenamingStateService,
   ) {
   }
+
+  public selectedVariableChanged(identityId: number): void {
+    this.renamingStateService.varState.selectedVariableChanged(identityId);
+  }
 }

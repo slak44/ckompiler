@@ -3,6 +3,6 @@
                 [hooks]="hooks"
                 [printingType$]="printingType$">
   <cki-select-variable class="start-overlay"
-                       tourAnchor="anchor-graph-view"
-                       [variables$]="instance.variables$"></cki-select-variable>
+                       [variables$]="instance.variables$"
+                       (identityIdChange)="selectedVariableChanged($event)"></cki-select-variable>
 </cki-graph-view>

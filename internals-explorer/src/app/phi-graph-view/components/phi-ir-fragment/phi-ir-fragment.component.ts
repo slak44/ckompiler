@@ -44,7 +44,7 @@ export class PhiIrFragmentComponent implements FragmentComponent {
 
   public readonly replacedText$: Observable<SafeHtml> = combineLatest([
     this.textSubject,
-    this.phiInsertionStateService.targetVariable$.pipe(
+    this.phiInsertionStateService.varState.targetVariable$.pipe(
       startWith(null),
       distinctUntilChanged(),
     ),

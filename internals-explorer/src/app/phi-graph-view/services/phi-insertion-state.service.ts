@@ -18,9 +18,8 @@ import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
 import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
 import { clamp } from 'lodash-es';
 import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-instance';
+import { TargetVariableState } from '@cki-graph-view/target-variable-state';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
-import Variable = slak.ckompiler.analysis.Variable;
-import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import generatePhiSteps = slak.ckompiler.generatePhiSteps;
 
 export enum PhiInsertionPhase {
@@ -37,15 +36,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);
 
-  private readonly targetVariableIdSubject: Subject<number> = new Subject<number>();
-
-  public readonly targetVariable$: Observable<Variable> = combineLatest([
-    this.targetVariableIdSubject,
-    this.compilationInstance.cfg$,
-  ]).pipe(
-    map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)!),
-    shareReplay({ bufferSize: 1, refCount: false }),
-  );
+  public readonly varState: TargetVariableState = new TargetVariableState(this.compilationInstance);
 
   private readonly phiInsertionPhaseSubject: BehaviorSubject<PhiInsertionPhase> =
     new BehaviorSubject<PhiInsertionPhase>(PhiInsertionPhase.CONFIGURE);
@@ -56,7 +47,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   private readonly allInsertionSteps$: Observable<PhiInsertionStepState[]> = combineLatest([
     this.compilationInstance.cfg$,
-    this.targetVariable$,
+    this.varState.targetVariable$,
   ]).pipe(
     map(([cfg, variable]) => JSON.parse(generatePhiSteps(cfg, variable)) as PhiInsertionStepState[]),
   );
@@ -99,10 +90,6 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     ).subscribe((nodeId: number) => {
       this.replaceNodeContentsHook.reLayoutNodeFragments(nodeId);
     });
-  }
-
-  public selectedVariableChanged(variableIdentityId: number): void {
-    this.targetVariableIdSubject.next(variableIdentityId);
   }
 
   public startInsertion(): void {

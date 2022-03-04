@@ -12,7 +12,7 @@ import { PhiInsertionStep } from '../../models/phi-insertion-steps.model';
   animations: [phaseInOut],
 })
 export class InsertionAlgorithmComponent {
-  public readonly variableName$: Observable<string> = this.phiInsertionStateService.targetVariable$.pipe(
+  public readonly variableName$: Observable<string> = this.phiInsertionStateService.varState.targetVariable$.pipe(
     map(variable => variable.name),
   );
 
