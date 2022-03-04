@@ -10,23 +10,19 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { InsertionAlgorithmComponent } from './components/insertion-algorithm/insertion-algorithm.component';
-import { AlgorithmStepComponent } from './components/algorithm-step/algorithm-step.component';
-import { AlgorithmContainerDirective } from './directives/algorithm-container.directive';
-import { VarComponent } from './components/var/var.component';
 import { MatSliderModule } from '@angular/material/slider';
+import { AlgorithmStepperModule } from '../algorithm-stepper/algorithm-stepper.module';
 
 @NgModule({
   declarations: [
     PhiInsertionViewComponent,
     PhiIrFragmentComponent,
     InsertionAlgorithmComponent,
-    AlgorithmStepComponent,
-    AlgorithmContainerDirective,
-    VarComponent,
   ],
   imports: [
     CommonModule,
     GraphViewModule,
+    AlgorithmStepperModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatSelectModule,

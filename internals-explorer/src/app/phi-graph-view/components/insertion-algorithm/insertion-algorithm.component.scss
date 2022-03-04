@@ -33,3 +33,7 @@
   }
 }
 
+cki-algorithm-step {
+  --step-line-height: #{insertion.$line-height};
+  --transition-duration: #{insertion.$transition-duration};
+}

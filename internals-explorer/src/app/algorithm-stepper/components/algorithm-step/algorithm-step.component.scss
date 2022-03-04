@@ -1,5 +1,4 @@
 @use 'colors';
-@use '../../styles/insertion';
 
 :host {
   --offset-lines: 0;
@@ -7,22 +6,22 @@
   position: relative;
   display: inline-block;
   width: 100%;
-  min-height: insertion.$line-height;
+  min-height: var(--step-line-height);
 
   white-space: nowrap;
 
-  transition: background-color insertion.$transition-duration ease-in-out;
+  transition: background-color var(--transition-duration) ease-in-out;
   background-color: transparent;
 
   &::after {
     position: absolute;
     width: 100%;
-    bottom: calc(var(--offset-lines) * #{insertion.$line-height});
+    bottom: calc(var(--offset-lines) * var(--step-line-height));
 
     display: block;
     content: ' ';
 
-    transition: border-color insertion.$transition-duration ease-in-out;
+    transition: border-color var(--transition-duration) ease-in-out;
     border-bottom: 1px solid transparent;
   }
 
