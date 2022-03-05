@@ -1,12 +1,7 @@
 package slak.ckompiler
 
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.Variable
@@ -24,21 +19,6 @@ enum class PhiInsertionStep {
   CHECK_DEFS,
   ADD_TO_W,
   DONE
-}
-
-class EnumOrdinalSerializer<E : Enum<E>> : KSerializer<Enum<E>> {
-  override val descriptor: SerialDescriptor = Int.serializer().descriptor
-
-  override fun deserialize(decoder: Decoder): Enum<E> {
-    throw UnsupportedOperationException("We only care about serialization")
-  }
-
-  override fun serialize(encoder: Encoder, value: Enum<E>) {
-    encoder.encodeSerializableValue(
-        Int.serializer(),
-        value.ordinal + 1
-    )
-  }
 }
 
 typealias BBPath = List<AtomicId>
