@@ -1,47 +1,27 @@
 import { Injectable, NgZone } from '@angular/core';
-import {
-  BehaviorSubject,
-  combineLatest,
-  distinctUntilChanged,
-  map,
-  Observable,
-  shareReplay,
-  Subject,
-  takeUntil,
-  tap,
-} from 'rxjs';
+import { combineLatest, map, Observable, Subject, takeUntil, tap } from 'rxjs';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { slak } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
 import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
-import { clamp } from 'lodash-es';
 import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-instance';
 import { TargetVariableState } from '@cki-graph-view/target-variable-state';
+import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import generatePhiSteps = slak.ckompiler.generatePhiSteps;
-
-export enum PhiInsertionPhase {
-  CONFIGURE,
-  WORKLOOP,
-}
 
 @Injectable()
 export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
-    tap(() => this.phiInsertionPhaseSubject.next(PhiInsertionPhase.CONFIGURE)),
+    tap(() => this.algorithmStepService.reset()),
     compileCode(),
   );
 
   public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);
 
   public readonly varState: TargetVariableState = new TargetVariableState(this.compilationInstance);
-
-  private readonly phiInsertionPhaseSubject: BehaviorSubject<PhiInsertionPhase> =
-    new BehaviorSubject<PhiInsertionPhase>(PhiInsertionPhase.CONFIGURE);
-
-  public readonly phiInsertionPhase$: Observable<PhiInsertionPhase> = this.phiInsertionPhaseSubject;
 
   private readonly reLayoutSubject: Subject<number> = new Subject<number>();
 
@@ -56,28 +36,12 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     map(steps => steps.length),
   );
 
-  private readonly currentStepSubject: BehaviorSubject<number> = new BehaviorSubject<number>(0);
-
-  public readonly currentStep$: Observable<number> = this.currentStepSubject.pipe(
-    distinctUntilChanged(),
-  );
-
-  public readonly currentStepState$: Observable<PhiInsertionStepState> = combineLatest([
-    this.allInsertionSteps$,
-    this.currentStep$
-  ]).pipe(
-    map(([steps, index]) => {
-      const clamped = clamp(index, 0, steps.length - 1);
-      if (clamped !== index) {
-        this.currentStepSubject.next(clamped);
-      }
-
-      return steps[clamped];
-    }),
-    shareReplay({ bufferSize: 1, refCount: false }),
+  public readonly currentStepState$: Observable<PhiInsertionStepState> = this.allInsertionSteps$.pipe(
+    this.algorithmStepService.mapToCurrentStep()
   );
 
   constructor(
+    private algorithmStepService: AlgorithmStepService,
     private compileService: CompileService,
     private replaceNodeContentsHook: ReplaceNodeContentsHook,
     private ngZone: NgZone,
@@ -92,37 +56,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     });
   }
 
-  public startInsertion(): void {
-    this.phiInsertionPhaseSubject.next(PhiInsertionPhase.WORKLOOP);
-    this.currentStepSubject.next(0);
-  }
-
-  public reset(): void {
-    this.phiInsertionPhaseSubject.next(PhiInsertionPhase.CONFIGURE);
-  }
-
   public triggerReLayout(nodeId: number): void {
     this.reLayoutSubject.next(nodeId);
-  }
-
-  public nextStep(): void {
-    if (this.phiInsertionPhaseSubject.value !== PhiInsertionPhase.WORKLOOP) {
-      return;
-    }
-    this.currentStepSubject.next(this.currentStepSubject.value + 1);
-  }
-
-  public prevStep(): void {
-    if (this.phiInsertionPhaseSubject.value !== PhiInsertionPhase.WORKLOOP) {
-      return;
-    }
-    this.currentStepSubject.next(this.currentStepSubject.value - 1);
-  }
-
-  public setStep(value: number): void {
-    if (this.phiInsertionPhaseSubject.value !== PhiInsertionPhase.WORKLOOP) {
-      return;
-    }
-    this.currentStepSubject.next(value);
   }
 }

@@ -4,17 +4,17 @@
                 [instance]="instance"
                 [includeHtmlBlockHeaders]="true"
                 [hooks]="hooks"
-                [ngSwitch]="phiInsertionPhase$ | async">
+                [ngSwitch]="phase$ | async">
   <div class="anchor center" tourAnchor="anchor-center"></div>
 
-  <cki-select-variable *ngSwitchCase="phiInsertionPhases.CONFIGURE"
+  <cki-select-variable *ngSwitchCase="algorithmPhase.PREPARING"
                        class="start-overlay"
                        tourAnchor="anchor-graph-view"
                        [variables$]="instance.variables$"
                        (identityIdChange)="selectedVariableChanged($event)"
                        (startClick)="start()"></cki-select-variable>
 
-  <ng-container *ngSwitchCase="phiInsertionPhases.WORKLOOP">
+  <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
     <div class="progress-overlay" tourAnchor="anchor-progress-overlay">
       <span>Blocks left to process:</span>
       <div class="worklist large-overlay-text">

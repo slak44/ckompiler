@@ -7,10 +7,11 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { FRAGMENT_COMPONENT, FragmentComponent } from '@cki-graph-view/models/fragment-component.model';
-import { PhiInsertionPhase, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
+import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { combineLatest, distinctUntilChanged, map, Observable, ReplaySubject, startWith } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
+import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 
 @Component({
   selector: 'cki-phi-ir-fragment',
@@ -48,7 +49,7 @@ export class PhiIrFragmentComponent implements FragmentComponent {
       startWith(null),
       distinctUntilChanged(),
     ),
-    this.phiInsertionStateService.phiInsertionPhase$.pipe(
+    this.algorithmStepService.phase$.pipe(
       distinctUntilChanged(),
     ),
     this.phiInsertionStateService.currentStepState$.pipe(
@@ -75,7 +76,7 @@ export class PhiIrFragmentComponent implements FragmentComponent {
       const withPhiClass = containsVariable ? 'highlight-active' : 'highlight-disabled';
       const phiReplaced = isPhi ? `<span class="${withPhiClass}">${replaced}</span>` : replaced;
 
-      const shouldHide = phase !== PhiInsertionPhase.CONFIGURE && isPhi && (!containsVariable || !isInF);
+      const shouldHide = phase !== AlgorithmPhase.PREPARING && isPhi && (!containsVariable || !isInF);
       if (this.isFragmentHidden !== shouldHide) {
         this.isFragmentHidden = shouldHide;
         this.phiInsertionStateService.triggerReLayout(this.nodeId);
@@ -88,6 +89,7 @@ export class PhiIrFragmentComponent implements FragmentComponent {
   constructor(
     private replaceNodeContentsHook: ReplaceNodeContentsHook,
     private phiInsertionStateService: PhiInsertionStateService,
+    private algorithmStepService: AlgorithmStepService,
     private sanitizer: DomSanitizer,
   ) {
   }

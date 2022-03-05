@@ -6,7 +6,7 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
-import { PhiInsertionPhase, PhiInsertionStateService } from '../../services/phi-insertion-state.service';
+import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { getNodeById } from '@cki-graph-view/utils';
 import { MatSliderChange } from '@angular/material/slider';
@@ -14,6 +14,7 @@ import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect'
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
@@ -24,6 +25,7 @@ import BasicBlock = slak.ckompiler.analysis.BasicBlock;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     PhiIrFragmentComponent.provider,
+    AlgorithmStepService,
     PhiInsertionStateService,
     ReplaceNodeContentsHook,
   ],
@@ -37,9 +39,9 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   public readonly printingType$: Observable<string> = of('IR_TO_STRING');
 
   public readonly instance: CompilationInstance = this.phiInsertionStateService.compilationInstance;
-  public readonly phiInsertionPhase$: Observable<PhiInsertionPhase> = this.phiInsertionStateService.phiInsertionPhase$;
+  public readonly phase$: Observable<AlgorithmPhase> = this.algorithmStepService.phase$;
 
-  public readonly phiInsertionPhases = PhiInsertionPhase;
+  public readonly algorithmPhase = AlgorithmPhase;
 
   public readonly worklist$: Observable<string> = this.phiInsertionStateService.currentStepState$.pipe(
     map(state => state.w.join(', ')),
@@ -80,12 +82,12 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   public readonly highlightedPhiPaths$: Observable<number[][] | undefined> =
     combineLatest([
       this.phiInsertionStateService.currentStepState$,
-      this.phiInsertionStateService.phiInsertionPhase$,
+      this.algorithmStepService.phase$,
     ]).pipe(
-      map(([state, phase]) => phase === PhiInsertionPhase.WORKLOOP ? state.highlightedPhiPaths : undefined),
+      map(([state, phase]) => phase === AlgorithmPhase.RUNNING ? state.highlightedPhiPaths : undefined),
     );
 
-  public readonly currentStep$: Observable<number> = this.phiInsertionStateService.currentStep$;
+  public readonly currentStep$: Observable<number> = this.algorithmStepService.currentStep$;
   public readonly insertionStepCount$: Observable<number> = this.phiInsertionStateService.insertionStepCount$;
 
   private readonly selectedNodeId$: Observable<number> = merge(this.blockX$, this.blockY$).pipe(
@@ -106,6 +108,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   ];
 
   constructor(
+    private algorithmStepService: AlgorithmStepService,
     private replaceNodeContents: ReplaceNodeContentsHook,
     private phiInsertionStateService: PhiInsertionStateService,
   ) {
@@ -123,11 +126,11 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   }
 
   public start(): void {
-    this.phiInsertionStateService.startInsertion();
+    this.algorithmStepService.start();
   }
 
   public reset(): void {
-    this.phiInsertionStateService.reset();
+    this.algorithmStepService.reset();
   }
 
   public selectedVariableChanged(identityId: number): void {
@@ -135,26 +138,26 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   }
 
   public currentStepSliderChange(sliderChange: MatSliderChange): void {
-    this.phiInsertionStateService.setStep((sliderChange.value ?? 0) - 1);
+    this.algorithmStepService.setStep((sliderChange.value ?? 0) - 1);
   }
 
   @HostListener('document:keydown.arrowright')
   public nextStep(): void {
-    this.phiInsertionStateService.nextStep();
+    this.algorithmStepService.nextStep();
   }
 
   @HostListener('document:keydown.arrowleft')
   public prevStep(): void {
-    this.phiInsertionStateService.prevStep();
+    this.algorithmStepService.prevStep();
   }
 
   @HostListener('document:keydown.home')
   public jumpToStart(): void {
-    this.phiInsertionStateService.setStep(0);
+    this.algorithmStepService.setStep(0);
   }
 
   @HostListener('document:keydown.end')
   public jumpToEnd(): void {
-    this.phiInsertionStateService.setStep(Infinity);
+    this.algorithmStepService.setStep(Infinity);
   }
 }
