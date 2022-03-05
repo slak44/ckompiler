@@ -12,7 +12,8 @@ import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.Variable
 import slak.ckompiler.analysis.json
 
-@Serializable(with = PhiInsertionStepSerializer::class)
+@Suppress("SERIALIZER_TYPE_INCOMPATIBLE")
+@Serializable(with = EnumOrdinalSerializer::class)
 enum class PhiInsertionStep {
   PREPARE,
   WHILE_LOOP,
@@ -25,14 +26,14 @@ enum class PhiInsertionStep {
   DONE
 }
 
-object PhiInsertionStepSerializer : KSerializer<PhiInsertionStep> {
+class EnumOrdinalSerializer<E : Enum<E>> : KSerializer<Enum<E>> {
   override val descriptor: SerialDescriptor = Int.serializer().descriptor
 
-  override fun deserialize(decoder: Decoder): PhiInsertionStep {
+  override fun deserialize(decoder: Decoder): Enum<E> {
     throw UnsupportedOperationException("We only care about serialization")
   }
 
-  override fun serialize(encoder: Encoder, value: PhiInsertionStep) {
+  override fun serialize(encoder: Encoder, value: Enum<E>) {
     encoder.encodeSerializableValue(
         Int.serializer(),
         value.ordinal + 1
