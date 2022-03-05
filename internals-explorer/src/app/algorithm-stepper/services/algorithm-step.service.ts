@@ -29,7 +29,8 @@ export class AlgorithmStepService {
     distinctUntilChanged(),
   );
 
-  constructor() { }
+  constructor() {
+  }
 
   public start(): void {
     this.phaseSubject.next(AlgorithmPhase.RUNNING);

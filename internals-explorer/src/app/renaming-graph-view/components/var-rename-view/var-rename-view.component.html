@@ -9,5 +9,19 @@
                        (identityIdChange)="selectedVariableChanged($event)"
                        (startClick)="start()"></cki-select-variable>
 
-  <cki-rename-algorithm class="algorithm" *ngSwitchCase="algorithmPhase.RUNNING"></cki-rename-algorithm>
+  <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
+    <div class="algorithm">
+      <cki-stepper-controls [stepCount$]="stepCount$"></cki-stepper-controls>
+
+      <cki-rename-algorithm></cki-rename-algorithm>
+    </div>
+
+    <button mat-flat-button
+            type="button"
+            class="reset-button"
+            (click)="reset()">
+      <mat-icon>restart_alt</mat-icon>
+      <span>Reset</span>
+    </button>
+  </ng-container>
 </cki-graph-view>

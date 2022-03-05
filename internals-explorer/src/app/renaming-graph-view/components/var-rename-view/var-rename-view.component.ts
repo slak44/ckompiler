@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
 import { RenamingIrFragmentComponent } from '../renaming-ir-fragment/renaming-ir-fragment.component';
 import { Observable, of } from 'rxjs';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
@@ -30,6 +30,8 @@ export class VarRenameViewComponent {
 
   public readonly algorithmPhase = AlgorithmPhase;
 
+  public readonly stepCount$: Observable<number> = of(10);
+
   public readonly hooks: GraphViewHook[] = [
     new DisableDblClick(),
     removeHoverTitles,
@@ -50,4 +52,29 @@ export class VarRenameViewComponent {
   public start(): void {
     this.algorithmStepService.start();
   }
+
+  public reset(): void {
+    this.algorithmStepService.reset();
+  }
+
+  @HostListener('document:keydown.arrowright')
+  public nextStep(): void {
+    this.algorithmStepService.nextStep();
+  }
+
+  @HostListener('document:keydown.arrowleft')
+  public prevStep(): void {
+    this.algorithmStepService.prevStep();
+  }
+
+  @HostListener('document:keydown.home')
+  public jumpToStart(): void {
+    this.algorithmStepService.setStep(0);
+  }
+
+  @HostListener('document:keydown.end')
+  public jumpToEnd(): void {
+    this.algorithmStepService.setStep(Infinity);
+  }
+
 }

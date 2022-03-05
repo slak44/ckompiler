@@ -5,6 +5,8 @@ import { RenamingIrFragmentComponent } from './components/renaming-ir-fragment/r
 import { GraphViewModule } from '@cki-graph-view/graph-view.module';
 import { RenameAlgorithmComponent } from './components/rename-algorithm/rename-algorithm.component';
 import { AlgorithmStepperModule } from '../algorithm-stepper/algorithm-stepper.module';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 
 
 
@@ -21,6 +23,8 @@ import { AlgorithmStepperModule } from '../algorithm-stepper/algorithm-stepper.m
     CommonModule,
     GraphViewModule,
     AlgorithmStepperModule,
+    MatIconModule,
+    MatButtonModule,
   ],
 })
 export class RenamingGraphViewModule { }

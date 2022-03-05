@@ -13,3 +13,13 @@
   right: 16px;
   top: 16px;
 }
+
+.reset-button {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+
+  mat-icon {
+    margin-right: 8px;
+  }
+}
