@@ -1,0 +1,26 @@
+@use 'colors';
+@use 'sass:math';
+@use '../../styles/algorithm';
+
+:host {
+  display: block;
+
+  font-family: Roboto, 'DejaVu Sans', sans-serif;
+  color: colors.$graph-text;
+  font-size: 20px;
+  line-height: algorithm.$line-height;
+  letter-spacing: 0.02em;
+}
+
+.pointer {
+  $arrow-size: 30px;
+
+  position: absolute;
+  left: -$arrow-size;
+  font-size: $arrow-size;
+
+  padding-top: math.div(algorithm.$line-height, 2);
+  top: calc((var(--current-line) - 1) * #{algorithm.$line-height});
+
+  transition: top algorithm.$transition-duration ease-in-out;
+}

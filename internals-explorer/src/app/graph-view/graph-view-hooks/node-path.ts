@@ -15,7 +15,7 @@ import Variable = slak.ckompiler.analysis.Variable;
 import getDefinitionLocations = slak.ckompiler.getDefinitionLocations;
 import IRInstruction = slak.ckompiler.analysis.IRInstruction;
 
-// Keep in sync with _insertion.scss
+// Keep in sync with _algorithm.scss
 const INSERTION_TRANSITION_MS = 150;
 
 type EdgePoints = [number, number, number, number, number, number];

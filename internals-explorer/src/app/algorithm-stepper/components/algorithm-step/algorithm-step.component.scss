@@ -1,4 +1,5 @@
 @use 'colors';
+@use '../../styles/algorithm';
 
 :host {
   --offset-lines: 0;
@@ -6,22 +7,22 @@
   position: relative;
   display: inline-block;
   width: 100%;
-  min-height: var(--step-line-height);
+  min-height: algorithm.$line-height;
 
   white-space: nowrap;
 
-  transition: background-color var(--transition-duration) ease-in-out;
+  transition: background-color algorithm.$transition-duration ease-in-out;
   background-color: transparent;
 
   &::after {
     position: absolute;
     width: 100%;
-    bottom: calc(var(--offset-lines) * var(--step-line-height));
+    bottom: calc(var(--offset-lines) * #{algorithm.$line-height});
 
     display: block;
     content: ' ';
 
-    transition: border-color var(--transition-duration) ease-in-out;
+    transition: border-color algorithm.$transition-duration ease-in-out;
     border-bottom: 1px solid transparent;
   }
 

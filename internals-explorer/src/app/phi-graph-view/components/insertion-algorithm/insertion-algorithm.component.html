@@ -1,6 +1,4 @@
-<div ckiAlgorithmContainer [activeStep$]="activeStep$" @phaseInOut>
-  <span class="pointer">→</span>
-
+<cki-algorithm-container [activeStep$]="activeStep$">
   <cki-algorithm-step [stepIndex]="phiInsertionSteps.PREPARE" [lines]="2">
     <cki-var>F</cki-var> ← {{ '{}' }}
     <br/>
@@ -46,4 +44,4 @@
   </div>
 
   <cki-algorithm-step [stepIndex]="phiInsertionSteps.DONE"></cki-algorithm-step>
-</div>
+</cki-algorithm-container>

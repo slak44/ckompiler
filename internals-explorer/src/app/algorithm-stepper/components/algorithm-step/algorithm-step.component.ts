@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
-import { AlgorithmContainerDirective } from '../../directives/algorithm-container.directive';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { takeUntil } from 'rxjs';
+import { AlgorithmContainerComponent } from '../algorithm-container/algorithm-container.component';
 
 @Component({
   selector: 'cki-algorithm-step',
@@ -24,7 +24,7 @@ export class AlgorithmStepComponent extends SubscriptionDestroy implements OnIni
   public offsetLines: number = 0;
 
   constructor(
-    private algorithmContainer: AlgorithmContainerDirective,
+    private algorithmContainer: AlgorithmContainerComponent,
     private changeDetectorRef: ChangeDetectorRef,
   ) {
     super();
@@ -35,7 +35,7 @@ export class AlgorithmStepComponent extends SubscriptionDestroy implements OnIni
     this.algorithmContainer.stepToOffset[this.stepIndex] = this.offsetLines;
 
     this.algorithmContainer.activeStep$.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(activeStep => {
       this.isActive = this.stepIndex === activeStep;
       this.changeDetectorRef.markForCheck();

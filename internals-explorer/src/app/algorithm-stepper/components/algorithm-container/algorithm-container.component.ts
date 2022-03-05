@@ -1,14 +1,22 @@
-import { AfterContentChecked, Directive, HostBinding, Input } from '@angular/core';
+import { AfterContentChecked, ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular/core';
 import { map, Observable, takeUntil } from 'rxjs';
-import { range, sumBy } from 'lodash-es';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { range, sumBy } from 'lodash-es';
+import { phaseInOut } from '@cki-utils/phase-in-out';
 
-@Directive({
-  selector: '[ckiAlgorithmContainer]',
+@Component({
+  selector: 'cki-algorithm-container',
+  templateUrl: './algorithm-container.component.html',
+  styleUrls: ['./algorithm-container.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  animations: [phaseInOut],
 })
-export class AlgorithmContainerDirective extends SubscriptionDestroy implements AfterContentChecked {
+export class AlgorithmContainerComponent extends SubscriptionDestroy implements AfterContentChecked {
   @HostBinding('style.--current-line')
   private currentLine?: number;
+
+  @HostBinding('@phaseInOut')
+  private readonly animation: boolean = true;
 
   @Input()
   public activeStep$!: Observable<number>;

@@ -1,39 +1,8 @@
 @use 'colors';
 @use 'sass:math';
-@use '../../styles/insertion';
+@use 'src/app/algorithm-stepper/styles/algorithm';
 
 :host {
   position: relative;
   display: block;
-
-  font-family: Roboto, 'DejaVu Sans', sans-serif;
-  color: colors.$graph-text;
-  font-size: 20px;
-  line-height: insertion.$line-height;
-  letter-spacing: 0.02em;
-
-  .indent {
-    display: flex;
-    flex-direction: column;
-    padding-left: 2ch;
-    border-left: 1px solid rgba(colors.$graph-text, 0.5);
-  }
-
-  .pointer {
-    $arrow-size: 30px;
-
-    position: absolute;
-    left: -$arrow-size;
-    font-size: $arrow-size;
-
-    padding-top: math.div(insertion.$line-height, 2);
-    top: calc((var(--current-line) - 1) * #{insertion.$line-height});
-
-    transition: top insertion.$transition-duration ease-in-out;
-  }
-}
-
-cki-algorithm-step {
-  --step-line-height: #{insertion.$line-height};
-  --transition-duration: #{insertion.$transition-duration};
 }

@@ -1,19 +1,19 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AlgorithmContainerDirective } from './directives/algorithm-container.directive';
 import { AlgorithmStepComponent } from './components/algorithm-step/algorithm-step.component';
 import { VarComponent } from './components/var/var.component';
+import { AlgorithmContainerComponent } from './components/algorithm-container/algorithm-container.component';
 
 @NgModule({
   declarations: [
     AlgorithmStepComponent,
-    AlgorithmContainerDirective,
     VarComponent,
+    AlgorithmContainerComponent,
   ],
   exports: [
     AlgorithmStepComponent,
-    AlgorithmContainerDirective,
     VarComponent,
+    AlgorithmContainerComponent,
   ],
   imports: [
     CommonModule,
