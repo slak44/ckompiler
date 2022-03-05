@@ -7,4 +7,6 @@
                        [variables$]="instance.variables$"
                        (identityIdChange)="selectedVariableChanged($event)"
                        (startClick)="start()"></cki-select-variable>
+
+  <cki-rename-algorithm class="algorithm" *ngIf="isRenaming$ | async"></cki-rename-algorithm>
 </cki-graph-view>
