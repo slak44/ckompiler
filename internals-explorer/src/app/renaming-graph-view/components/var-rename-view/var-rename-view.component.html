@@ -1,12 +1,13 @@
 <cki-graph-view [includeHtmlBlockHeaders]="true"
                 [instance]="instance"
                 [hooks]="hooks"
-                [printingType$]="printingType$">
+                [printingType$]="printingType$"
+                [ngSwitch]="phase$ | async">
   <cki-select-variable class="start-overlay"
-                       *ngIf="(isRenaming$ | async) === false"
+                       *ngSwitchCase="algorithmPhase.PREPARING"
                        [variables$]="instance.variables$"
                        (identityIdChange)="selectedVariableChanged($event)"
                        (startClick)="start()"></cki-select-variable>
 
-  <cki-rename-algorithm class="algorithm" *ngIf="isRenaming$ | async"></cki-rename-algorithm>
+  <cki-rename-algorithm class="algorithm" *ngSwitchCase="algorithmPhase.RUNNING"></cki-rename-algorithm>
 </cki-graph-view>

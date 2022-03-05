@@ -7,6 +7,7 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -15,6 +16,7 @@ import { CompilationInstance } from '@cki-graph-view/compilation-instance';
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     RenamingIrFragmentComponent.provider,
+    AlgorithmStepService,
     ReplaceNodeContentsHook,
     RenamingStateService,
   ],
@@ -24,7 +26,9 @@ export class VarRenameViewComponent {
 
   public readonly instance: CompilationInstance = this.renamingStateService.compilationInstance;
 
-  public readonly isRenaming$: Observable<boolean> = this.renamingStateService.isRenaming$;
+  public readonly phase$: Observable<AlgorithmPhase> = this.algorithmStepService.phase$;
+
+  public readonly algorithmPhase = AlgorithmPhase;
 
   public readonly hooks: GraphViewHook[] = [
     new DisableDblClick(),
@@ -33,6 +37,7 @@ export class VarRenameViewComponent {
   ];
 
   constructor(
+    private algorithmStepService: AlgorithmStepService,
     private replaceNodeContentsHook: ReplaceNodeContentsHook,
     private renamingStateService: RenamingStateService,
   ) {
@@ -43,6 +48,6 @@ export class VarRenameViewComponent {
   }
 
   public start(): void {
-    this.renamingStateService.startRenaming();
+    this.algorithmStepService.start();
   }
 }
