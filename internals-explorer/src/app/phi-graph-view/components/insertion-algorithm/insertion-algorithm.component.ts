@@ -10,9 +10,7 @@ import { PhiInsertionStep } from '../../models/phi-insertion-steps.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InsertionAlgorithmComponent {
-  public readonly variableName$: Observable<string> = this.phiInsertionStateService.varState.targetVariable$.pipe(
-    map(variable => variable.name),
-  );
+  public readonly variableName$: Observable<string> = this.phiInsertionStateService.varState.variableName$;
 
   public readonly activeStep$: Observable<PhiInsertionStep> = this.phiInsertionStateService.currentStepState$.pipe(
     map(state => state.step),

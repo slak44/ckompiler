@@ -1,18 +1,23 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { phaseInOut } from '@cki-utils/phase-in-out';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RenamingStep } from '../../models/renaming-step.model';
+import { Observable, of } from 'rxjs';
+import { RenamingStateService } from '../../services/renaming-state.service';
 
 @Component({
   selector: 'cki-rename-algorithm',
   templateUrl: './rename-algorithm.component.html',
   styleUrls: ['./rename-algorithm.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [phaseInOut],
 })
-export class RenameAlgorithmComponent implements OnInit {
+export class RenameAlgorithmComponent {
+  public readonly renamingSteps = RenamingStep;
 
-  constructor() { }
+  public readonly activeStep$: Observable<RenamingStep> = of(RenamingStep.EACH_BB_PREORDER);
 
-  ngOnInit(): void {
+  public readonly variableName$: Observable<string> = this.renamingStateService.varState.variableName$;
+
+  constructor(
+    private renamingStateService: RenamingStateService,
+  ) {
   }
-
 }

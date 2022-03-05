@@ -1,13 +1,15 @@
-import { combineLatest, map, Observable, shareReplay, Subject } from 'rxjs';
+import { combineLatest, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
+import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import Variable = slak.ckompiler.analysis.Variable;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
-import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 
 export class TargetVariableState {
-  private readonly targetVariableIdSubject: Subject<number> = new Subject<number>();
+  private readonly targetVariableIdSubject: ReplaySubject<number> = new ReplaySubject<number>(1);
 
   public readonly targetVariable$: Observable<Variable>;
+
+  public readonly variableName$: Observable<string>;
 
   constructor(instance: CompilationInstance) {
     this.targetVariable$ = combineLatest([
@@ -16,6 +18,10 @@ export class TargetVariableState {
     ]).pipe(
       map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)!),
       shareReplay({ bufferSize: 1, refCount: false }),
+    );
+
+    this.variableName$ = this.targetVariable$.pipe(
+      map(variable => variable.name),
     );
   }
 
