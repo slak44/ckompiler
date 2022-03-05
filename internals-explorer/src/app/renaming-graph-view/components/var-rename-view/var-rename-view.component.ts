@@ -24,6 +24,8 @@ export class VarRenameViewComponent {
 
   public readonly instance: CompilationInstance = this.renamingStateService.compilationInstance;
 
+  public readonly isRenaming$: Observable<boolean> = this.renamingStateService.isRenaming$;
+
   public readonly hooks: GraphViewHook[] = [
     new DisableDblClick(),
     removeHoverTitles,
@@ -38,5 +40,9 @@ export class VarRenameViewComponent {
 
   public selectedVariableChanged(identityId: number): void {
     this.renamingStateService.varState.selectedVariableChanged(identityId);
+  }
+
+  public start(): void {
+    this.renamingStateService.startRenaming();
   }
 }

@@ -3,6 +3,8 @@
                 [hooks]="hooks"
                 [printingType$]="printingType$">
   <cki-select-variable class="start-overlay"
+                       *ngIf="(isRenaming$ | async) === false"
                        [variables$]="instance.variables$"
-                       (identityIdChange)="selectedVariableChanged($event)"></cki-select-variable>
+                       (identityIdChange)="selectedVariableChanged($event)"
+                       (startClick)="start()"></cki-select-variable>
 </cki-graph-view>
