@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import {
-  BehaviorSubject, combineLatestWith,
+  BehaviorSubject,
+  combineLatestWith,
   distinctUntilChanged,
   map,
   Observable,
   OperatorFunction,
   pipe,
-  shareReplay, tap,
-  withLatestFrom,
+  shareReplay,
 } from 'rxjs';
 import { clamp } from 'lodash-es';
 

@@ -9,7 +9,6 @@ import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblcli
 import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { getNodeById } from '@cki-graph-view/utils';
-import { MatSliderChange } from '@angular/material/slider';
 import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect';
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
@@ -87,7 +86,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
       map(([state, phase]) => phase === AlgorithmPhase.RUNNING ? state.highlightedPhiPaths : undefined),
     );
 
-  public readonly currentStep$: Observable<number> = this.algorithmStepService.currentStep$;
   public readonly insertionStepCount$: Observable<number> = this.phiInsertionStateService.insertionStepCount$;
 
   private readonly selectedNodeId$: Observable<number> = merge(this.blockX$, this.blockY$).pipe(
@@ -135,10 +133,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
 
   public selectedVariableChanged(identityId: number): void {
     this.phiInsertionStateService.varState.selectedVariableChanged(identityId);
-  }
-
-  public currentStepSliderChange(sliderChange: MatSliderChange): void {
-    this.algorithmStepService.setStep((sliderChange.value ?? 0) - 1);
   }
 
   @HostListener('document:keydown.arrowright')

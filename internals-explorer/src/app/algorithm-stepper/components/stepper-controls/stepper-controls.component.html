@@ -1,0 +1,29 @@
+<ng-container *ngIf="{
+    currentStep: (currentStep$ | async) ?? 0,
+    stepCount: stepCount$ | async
+  } as data">
+  <button mat-icon-button
+          color="accent"
+          matTooltip="Previous step"
+          [disabled]="data.currentStep === 0"
+          (click)="prevStep()">
+    <mat-icon>chevron_left</mat-icon>
+  </button>
+
+  <mat-slider [thumbLabel]="true"
+              [step]="1"
+              [min]="1"
+              [max]="data.stepCount"
+              [value]="data.currentStep + 1"
+              (keydown.arrowRight)="$event.stopPropagation()"
+              (keydown.arrowLeft)="$event.stopPropagation()"
+              (change)="currentStepSliderChange($event)"></mat-slider>
+
+  <button mat-icon-button
+          color="accent"
+          matTooltip="Next step"
+          [disabled]="data.currentStep + 1 === data.stepCount"
+          (click)="nextStep()">
+    <mat-icon>chevron_right</mat-icon>
+  </button>
+</ng-container>
