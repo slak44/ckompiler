@@ -3,6 +3,10 @@ package slak.ckompiler
 import kotlinx.cli.*
 import mu.KotlinLogging
 import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.export.CodePrintingMethods
+import slak.ckompiler.analysis.export.GraphvizOptions
+import slak.ckompiler.analysis.export.createGraphviz
+import slak.ckompiler.analysis.export.exportCFG
 import slak.ckompiler.backend.TargetOptions
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator

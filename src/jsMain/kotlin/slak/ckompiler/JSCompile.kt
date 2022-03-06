@@ -2,6 +2,9 @@ package slak.ckompiler
 
 import kotlinx.serialization.encodeToString
 import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.export.CodePrintingMethods
+import slak.ckompiler.analysis.export.GraphvizOptions
+import slak.ckompiler.analysis.export.json
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor

@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.export.CodePrintingMethods
+import slak.ckompiler.analysis.export.GraphvizOptions
+import slak.ckompiler.analysis.export.createGraphviz
 import slak.test.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals

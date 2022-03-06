@@ -1,4 +1,4 @@
-package slak.ckompiler.analysis
+package slak.ckompiler.analysis.export
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -11,6 +11,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import slak.ckompiler.AtomicId
+import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.TypeName
 
 @Serializable

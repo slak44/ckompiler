@@ -1,4 +1,6 @@
-package slak.ckompiler.analysis
+package slak.ckompiler.analysis.export
+
+import slak.ckompiler.analysis.*
 
 enum class EdgeType {
   NORMAL, COND_TRUE, COND_FALSE,

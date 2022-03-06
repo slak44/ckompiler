@@ -3,7 +3,7 @@ package slak.ckompiler.parser
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import slak.ckompiler.*
-import slak.ckompiler.analysis.TypeNameSerializer
+import slak.ckompiler.analysis.export.TypeNameSerializer
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator

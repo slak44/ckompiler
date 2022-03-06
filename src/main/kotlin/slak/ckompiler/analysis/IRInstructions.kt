@@ -2,6 +2,7 @@ package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
+import slak.ckompiler.analysis.export.PhiInstructionSerializer
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.BinaryOperators
 import slak.ckompiler.parser.PointerType

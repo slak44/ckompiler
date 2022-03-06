@@ -3,6 +3,7 @@ package slak.ckompiler
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.export.json
 
 @Suppress("SERIALIZER_TYPE_INCOMPATIBLE")
 @Serializable(with = EnumOrdinalSerializer::class)

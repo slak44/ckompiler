@@ -5,6 +5,7 @@ import kotlinx.serialization.Transient
 import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.MachineTargetData
+import slak.ckompiler.analysis.export.VariableSerializer
 import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE

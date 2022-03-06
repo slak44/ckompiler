@@ -1,8 +1,9 @@
-package slak.ckompiler.analysis
+package slak.ckompiler.analysis.export
 
 import mu.KotlinLogging
 import slak.ckompiler.AtomicId
-import slak.ckompiler.analysis.GraphvizColors.*
+import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.export.GraphvizColors.*
 import slak.ckompiler.backend.regAlloc
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
