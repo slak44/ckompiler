@@ -1,9 +1,10 @@
-package slak.ckompiler
+package slak.ckompiler.analysis.export
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
-import slak.ckompiler.analysis.export.json
+import kotlin.js.JsExport
 
 @Suppress("SERIALIZER_TYPE_INCOMPATIBLE")
 @Serializable(with = EnumOrdinalSerializer::class)

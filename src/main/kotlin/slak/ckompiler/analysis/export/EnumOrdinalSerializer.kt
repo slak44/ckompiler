@@ -1,4 +1,4 @@
-package slak.ckompiler
+package slak.ckompiler.analysis.export
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
