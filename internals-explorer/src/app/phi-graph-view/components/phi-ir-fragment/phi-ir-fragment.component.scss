@@ -1,32 +1,16 @@
 @use 'graph-fragment';
 @use 'colors';
 
-$transition-duration: 150ms;
-
 :host {
   display: block;
   @include graph-fragment.text;
 
-  transition: $transition-duration opacity linear;
+  transition: graph-fragment.$transition-duration opacity linear;
   opacity: 1;
 }
 
 :host(.hidden-fragment) {
   opacity: 0;
-}
-
-@keyframes colorFade {
-  0% {
-    color: inherit;
-  }
-
-  100% {
-    color: colors.$accent-default;
-  }
-}
-
-.highlight-variable {
-  animation: colorFade $transition-duration ease-in-out forwards;
 }
 
 .highlight-disabled {

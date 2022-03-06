@@ -12,6 +12,7 @@ import { combineLatest, distinctUntilChanged, map, Observable, ReplaySubject, st
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
+import { replaceVarInText } from '@cki-graph-view/utils';
 
 @Component({
   selector: 'cki-phi-ir-fragment',
@@ -64,14 +65,8 @@ export class PhiIrFragmentComponent implements FragmentComponent {
         return text;
       }
 
-      const replacePattern = '<span class="highlight-variable">$1</span>';
-      const regexp = new RegExp(`(${variable.toString()})`, 'g');
-      let containsVariable = false;
-      const replaced = text.replace(regexp, (variable) => {
-        containsVariable = true;
+      const [replaced, containsVariable] = replaceVarInText(variable, text);
 
-        return replacePattern.replace('$1', variable);
-      });
       const isPhi = replaced.includes('φ');
       const withPhiClass = containsVariable ? 'highlight-active' : 'highlight-disabled';
       const phiReplaced = isPhi ? `<span class="${withPhiClass}">${replaced}</span>` : replaced;
