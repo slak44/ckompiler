@@ -1,11 +1,18 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="All tests (JUnit)" type="JUnit" factoryName="JUnit">
+    <classpathModifications>
+      <entry path="$PROJECT_DIR$/build/classes/kotlin/jvm/main" />
+    </classpathModifications>
     <module name="ckompiler.jvmTest" />
-    <option name="ALTERNATIVE_JRE_PATH" value="14" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="ALTERNATIVE_JRE_PATH" value="11" />
     <option name="PACKAGE_NAME" value="" />
     <option name="MAIN_CLASS_NAME" value="" />
     <option name="METHOD_NAME" value="" />
     <option name="TEST_OBJECT" value="package" />
+    <option name="TEST_SEARCH_SCOPE">
+      <value defaultName="moduleWithDependencies" />
+    </option>
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
