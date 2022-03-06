@@ -1,4 +1,4 @@
-package slak.ckompiler.analysis.export
+package slak.ckompiler.analysis.external
 
 import slak.ckompiler.analysis.*
 

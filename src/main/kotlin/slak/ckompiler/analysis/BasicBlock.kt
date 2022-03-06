@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
-import slak.ckompiler.analysis.export.*
+import slak.ckompiler.analysis.external.*
 import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.ReturnStatement
