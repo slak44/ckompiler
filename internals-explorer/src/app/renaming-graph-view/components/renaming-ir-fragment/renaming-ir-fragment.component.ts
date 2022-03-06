@@ -57,9 +57,16 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
         return text;
       }
 
-      const [replaced] = replaceVarInText(variable, text);
+      const [replaced, containsVariable] = replaceVarInText(variable, text);
 
-      return this.sanitizer.bypassSecurityTrustHtml(replaced);
+      const isPhi = text.includes('φ');
+      const isMoveInstr = text.startsWith('move ' + variable.tid.toString());
+
+      const defReplaced = containsVariable && (isPhi || isMoveInstr)
+        ? `<span class="variable-definition">${replaced}</span>`
+        : replaced;
+
+      return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
     }),
   );
 

@@ -1,10 +1,11 @@
 @use 'graph-fragment';
+@use 'colors';
 
 :host {
   display: block;
   @include graph-fragment.text;
 }
 
-.highlight-variable {
-
+.variable-definition {
+  color: colors.$variable-highlight;
 }
