@@ -64,7 +64,7 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
     for ((variable, instrIndex, isDef) in orderedLocations) {
       val reachingDef = cfg.definitions.getValue(variable)
 
-      if (instrIndex == DEFINED_IN_PHI && isDef) {
+      if (instrIndex == DEFINED_IN_PHI && !isDef) {
         val matchingPred = bb.phi
             .first { it.variable.identityId == variable.identityId }.incoming.entries
             .first { (_, incomingVersion) -> incomingVersion == variable }
