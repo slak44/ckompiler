@@ -61,7 +61,13 @@ export class NodePath implements GraphViewHook {
     let irString: string;
 
     const irIndex = this.definitionIdx[nodeId];
-    if (isForPhi || irIndex === undefined || irIndex === -1) {
+
+    if (irIndex === -1 && nodeId === this.cfg.startBlock.nodeId) {
+      // This is a use of an undefined variable
+      // Return index "-1" to target the start block header
+      index = -1;
+      irString = variable.toString();
+    } else if (isForPhi || irIndex === undefined || irIndex === -1) {
       // Definition is in φ
       index = nodePhi.findIndex(phi => phi.variable.identityId === variable.identityId);
       if (index === -1) {
