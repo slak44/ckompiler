@@ -15,12 +15,12 @@ function logCompileError(e: unknown): void {
   console.error(err);
 }
 
-export function compileCode(): OperatorFunction<string, JSCompileResult> {
+export function compileCode(skipSSARename: boolean = false): OperatorFunction<string, JSCompileResult> {
   return pipe(
     map(code => {
       try {
         clearAllAtomicCounters();
-        return jsCompile(code, true);
+        return jsCompile(code, skipSSARename);
       } catch (e) {
         logCompileError(e);
         return null;

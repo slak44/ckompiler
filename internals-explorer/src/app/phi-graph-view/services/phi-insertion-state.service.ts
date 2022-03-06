@@ -16,7 +16,7 @@ import generatePhiSteps = slak.ckompiler.analysis.external.generatePhiSteps;
 export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     tap(() => this.algorithmStepService.reset()),
-    compileCode(),
+    compileCode(true),
   );
 
   public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);
