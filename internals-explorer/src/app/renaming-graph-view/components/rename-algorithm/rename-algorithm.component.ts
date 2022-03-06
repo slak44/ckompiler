@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RenamingStep } from '../../models/renaming-step.model';
-import { Observable, of } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { RenamingStateService } from '../../services/renaming-state.service';
 
 @Component({
@@ -12,7 +12,9 @@ import { RenamingStateService } from '../../services/renaming-state.service';
 export class RenameAlgorithmComponent {
   public readonly renamingSteps = RenamingStep;
 
-  public readonly activeStep$: Observable<RenamingStep> = of(RenamingStep.EACH_BB_PREORDER);
+  public readonly activeStep$: Observable<RenamingStep> = this.renamingStateService.currentStepState$.pipe(
+    map(state => state.step),
+  );
 
   public readonly variableName$: Observable<string> = this.renamingStateService.varState.variableName$;
 

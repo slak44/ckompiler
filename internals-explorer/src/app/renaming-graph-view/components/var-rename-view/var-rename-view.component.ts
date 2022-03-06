@@ -30,7 +30,7 @@ export class VarRenameViewComponent {
 
   public readonly algorithmPhase = AlgorithmPhase;
 
-  public readonly stepCount$: Observable<number> = of(10);
+  public readonly stepCount$: Observable<number> = this.renamingStateService.stepCount$;
 
   public readonly hooks: GraphViewHook[] = [
     new DisableDblClick(),
