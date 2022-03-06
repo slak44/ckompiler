@@ -23,7 +23,7 @@ enum class RenamingStep {
 @Serializable
 data class RenamingStepState(
     val step: RenamingStep,
-    val bb: AtomicId,
+    val bb: AtomicId? = null,
     val i: Int? = null,
     val newVersion: Int? = null,
     val reachingDefBlock: AtomicId? = null,
@@ -32,30 +32,106 @@ data class RenamingStepState(
 )
 
 @JsExport
-fun generateRenameSteps(cfg: CFG, variable: Variable): String {
-  val states = mutableListOf<RenamingStepState>()
-
-  val defs = cfg.definitions.entries.groupBy({ it.value.first }, { it.key.version to it.value.second })
+fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
+  val defs = cfg.definitions.entries
+      .filter { it.key.identityId == targetVariable.identityId }
+      .groupBy({ it.value.first }, { it.key to it.value.second })
 
   val uses = cfg.defUseChains.entries
       .flatMap { (key, value) -> value.map { key to it } }
-      .groupBy({ (_, label) -> label.first }, { (variable, label) -> variable.version to label.second })
+      .filter { it.first.identityId == targetVariable.identityId }
+      .groupBy({ (_, label) -> label.first }, { (variable, label) -> variable to label.second })
+
+  val blockStates = mutableMapOf<BasicBlock, MutableList<RenamingStepState>>()
+
+  val phiUseStates = mutableMapOf<BasicBlock, MutableList<RenamingStepState>>()
 
   for (bb in cfg.domTreePreorder) {
-    states += RenamingStepState(RenamingStep.EACH_BB_PREORDER, bb.nodeId)
-
     val bbDefs = defs[bb] ?: emptyList()
     val bbUses = uses[bb] ?: emptyList()
 
     val markedDefs = bbDefs.map { Triple(it.first, it.second, true) }
     val markedUses = bbUses.map { Triple(it.first, it.second, false) }
 
-    val orderedLocations = (markedDefs + markedUses).sortedBy { it.second }
+    val orderedLocations = (markedDefs + markedUses).sortedWith { (_, indexA, isDefA), (_, indexB, _) ->
+      if (indexA == indexB) {
+        if (isDefA) -1 else 1
+      } else {
+        indexA - indexB
+      }
+    }.distinct()
 
-    for ((version, instrIndex, isDef) in orderedLocations) {
-      TODO()
+    for ((variable, instrIndex, isDef) in orderedLocations) {
+      val reachingDef = cfg.definitions.getValue(variable)
+
+      if (instrIndex == DEFINED_IN_PHI && isDef) {
+        val matchingPred = bb.phi
+            .first { it.variable.identityId == variable.identityId }.incoming.entries
+            .first { (_, incomingVersion) -> incomingVersion == variable }
+            .key
+
+        phiUseStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
+            RenamingStep.SUCC_PHI_REPLACE_USE,
+            bb = matchingPred.nodeId,
+            i = instrIndex,
+            newVersion = variable.version,
+            reachingDefBlock = reachingDef.first.nodeId,
+            reachingDefIdx = reachingDef.second,
+            succBB = bb.nodeId,
+        )
+      } else {
+        if (isDef) {
+          blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
+              RenamingStep.CHECK_DEFINED,
+              bb = bb.nodeId,
+              i = instrIndex,
+          )
+
+          blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
+              RenamingStep.INSTR_REPLACE_DEF,
+              bb = bb.nodeId,
+              i = instrIndex,
+              newVersion = variable.version,
+          )
+        } else {
+          blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
+              RenamingStep.CHECK_USED,
+              bb = bb.nodeId,
+              i = instrIndex,
+          )
+
+          blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
+              RenamingStep.INSTR_REPLACE_USE,
+              bb = bb.nodeId,
+              i = instrIndex,
+              newVersion = variable.version,
+              reachingDefBlock = reachingDef.first.nodeId,
+              reachingDefIdx = reachingDef.second,
+          )
+        }
+      }
     }
   }
 
-  return json.encodeToString(states)
+  val states = cfg.domTreePreorder
+      .map {
+        val bbStates = blockStates[it] ?: mutableListOf()
+        if (bbStates.isNotEmpty()) {
+          bbStates.add(0, RenamingStepState(RenamingStep.EACH_INSTR, it.nodeId))
+        }
+
+        val bbSuccPhiStates = phiUseStates[it] ?: mutableListOf()
+        if (bbSuccPhiStates.isNotEmpty()) {
+          bbSuccPhiStates.add(0, RenamingStepState(RenamingStep.EACH_SUCC_PHI, it.nodeId))
+        }
+
+        val forState = RenamingStepState(RenamingStep.EACH_BB_PREORDER, it.nodeId)
+
+        listOf(forState) + bbStates + bbSuccPhiStates
+      }
+      .flatten()
+
+  val done = RenamingStepState(RenamingStep.DONE)
+
+  return json.encodeToString(states + done)
 }

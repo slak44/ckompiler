@@ -9,3 +9,14 @@ export enum RenamingStep {
   SUCC_PHI_REPLACE_USE,
   DONE
 }
+
+export interface RenamingStepState {
+  step: RenamingStep;
+  bb: number | null;
+  i: number | null;
+  newVersion: number | null;
+  reachingDefBlock: number | null;
+  reachingDefIdx: number | null;
+  succBB: number | null;
+}
+
