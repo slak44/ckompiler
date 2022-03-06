@@ -21,7 +21,7 @@ import { ZoomView } from 'd3-interpolate';
 import { GraphViewHook } from '../../models/graph-view-hook.model';
 import { getNodeById, getPolyDatumNodeId, setClassIf } from '../../utils';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
-import createGraphviz = slak.ckompiler.analysis.createGraphviz;
+import createGraphviz = slak.ckompiler.analysis.external.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import CFG = slak.ckompiler.analysis.CFG;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;

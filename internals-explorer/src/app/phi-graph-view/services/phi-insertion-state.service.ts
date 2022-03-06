@@ -10,7 +10,7 @@ import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-in
 import { TargetVariableState } from '@cki-graph-view/target-variable-state';
 import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
-import generatePhiSteps = slak.ckompiler.generatePhiSteps;
+import generatePhiSteps = slak.ckompiler.analysis.external.generatePhiSteps;
 
 @Injectable()
 export class PhiInsertionStateService extends SubscriptionDestroy {
