@@ -23,9 +23,10 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
   @Input()
   public initialText$?: Observable<string>;
 
-  public readonly monacoOptions = {
+  public readonly monacoOptions: editor.IStandaloneEditorConstructionOptions = {
     theme: 'darcula',
     language: 'c',
+    fontFamily: 'Fira Code'
   };
 
   public readonly sourceControl: FormControl = new FormControl('');
