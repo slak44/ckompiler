@@ -1,7 +1,7 @@
 <h2 mat-dialog-title>Settings</h2>
 
 <mat-dialog-content>
-  <mat-slide-toggle color="accent" (change)="onTransparencyChange($event)">
+  <mat-slide-toggle color="accent" [checked]="initialTransparency" (change)="onTransparencyChange($event)">
     Enable algorithm transparency
   </mat-slide-toggle>
 </mat-dialog-content>

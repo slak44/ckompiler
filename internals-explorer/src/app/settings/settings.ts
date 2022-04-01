@@ -26,15 +26,15 @@ export class Setting<T> {
   }
 }
 
-export const hasTransparencyDisabled: Setting<boolean> = new Setting(
+export const hasTransparency: Setting<boolean> = new Setting(
   Settings.TRANSPARENCY,
-  value => value === 'false' || !value,
+  value => value === 'true',
   value => `${value}`,
 );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const settings: Setting<any>[] = [
-  hasTransparencyDisabled,
+  hasTransparency,
 ];
 
 function generateKey(setting: Settings): string {

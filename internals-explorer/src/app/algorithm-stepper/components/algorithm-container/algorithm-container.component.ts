@@ -11,7 +11,7 @@ import { map, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { range, sumBy } from 'lodash-es';
 import { phaseInOut } from '@cki-utils/phase-in-out';
-import { hasTransparencyDisabled } from '@cki-settings';
+import { hasTransparency } from '@cki-settings';
 
 @Component({
   selector: 'cki-algorithm-container',
@@ -22,7 +22,7 @@ import { hasTransparencyDisabled } from '@cki-settings';
 })
 export class AlgorithmContainerComponent extends SubscriptionDestroy implements OnInit, AfterContentChecked {
   @HostBinding('class.disable-transparency')
-  private hasTransparencyDisabled: boolean = false;
+  private hasTransparencyDisabled!: boolean;
 
   @HostBinding('style.--current-line')
   private currentLine?: number;
@@ -43,10 +43,10 @@ export class AlgorithmContainerComponent extends SubscriptionDestroy implements 
   }
 
   public ngOnInit(): void {
-    hasTransparencyDisabled.value$.pipe(
+    hasTransparency.value$.pipe(
       takeUntil(this.destroy$),
-    ).subscribe(hasTransparencyDisabled => {
-      this.hasTransparencyDisabled = hasTransparencyDisabled;
+    ).subscribe(hasTransparency => {
+      this.hasTransparencyDisabled = !hasTransparency;
       this.changeDetectorRef.markForCheck();
     });
   }
