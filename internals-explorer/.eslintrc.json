@@ -46,6 +46,14 @@
             ]
           }
         ],
+        "@typescript-eslint/restrict-template-expressions": [
+          "error",
+          {
+            "allowBoolean": true,
+            "allowNumber": true,
+            "allowNullish": true
+          }
+        ],
         "@angular-eslint/directive-selector": [
           "error",
           {

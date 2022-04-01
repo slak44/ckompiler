@@ -1,1 +1,7 @@
-<p>settings-dialog works!</p>
+<h2 mat-dialog-title>Settings</h2>
+
+<mat-dialog-content>
+  <mat-slide-toggle color="accent" (change)="onTransparencyChange($event)">
+    Enable overlay transparency
+  </mat-slide-toggle>
+</mat-dialog-content>

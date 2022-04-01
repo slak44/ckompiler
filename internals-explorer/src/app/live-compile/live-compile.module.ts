@@ -18,6 +18,7 @@ import { RenamingGraphViewModule } from '../renaming-graph-view/renaming-graph-v
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SettingsDialogComponent } from './components/settings-dialog/settings-dialog.component';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 @NgModule({
   declarations: [
@@ -42,6 +43,7 @@ import { MatDialogModule } from '@angular/material/dialog';
     RenamingGraphViewModule,
     MatTooltipModule,
     MatDialogModule,
+    MatSlideToggleModule,
   ],
 })
 export class LiveCompileModule {
