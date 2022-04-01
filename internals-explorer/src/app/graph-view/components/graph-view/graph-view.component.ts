@@ -46,6 +46,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public includeHtmlBlockHeaders: boolean = false;
 
   @Input()
+  public disableVariableVersions: boolean = false;
+
+  @Input()
   public printingType$!: Observable<string>;
 
   @Input()
@@ -204,8 +207,13 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       this.printingType$,
     ]).pipe(
       map(([cfg, printingType]: [CFG, string]): void => {
+        const saved = slak.ckompiler.printVariableVersions;
+        slak.ckompiler.printVariableVersions = !this.disableVariableVersions;
+
         const options = graphvizOptions(true, 16.5, 'Courier New', printingType, this.includeHtmlBlockHeaders);
         const text = createGraphviz(cfg, cfg.f.sourceText as string, options);
+
+        slak.ckompiler.printVariableVersions = saved;
 
         if (!(this.graphviz && text)) {
           return;

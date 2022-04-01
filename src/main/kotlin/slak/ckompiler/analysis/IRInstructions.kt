@@ -6,6 +6,7 @@ import slak.ckompiler.analysis.external.PhiInstructionSerializer
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.BinaryOperators
 import slak.ckompiler.parser.PointerType
+import slak.ckompiler.printVariableVersions
 import slak.ckompiler.throwICE
 import kotlin.js.JsExport
 
@@ -32,7 +33,11 @@ data class PhiInstruction(
 ) {
   override fun toString() = "store $variable = φ(${
     incoming.entries.joinToString(", ") {
-      "BB${it.key.hashCode()} v${it.value.version}"
+      if (printVariableVersions) {
+        "BB${it.key.hashCode()} v${it.value.version}"
+      } else {
+        "BB${it.key.hashCode()}"
+      }
     }
   })"
 }

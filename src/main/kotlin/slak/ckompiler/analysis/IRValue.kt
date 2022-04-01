@@ -8,6 +8,7 @@ import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.external.VariableSerializer
 import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.parser.*
+import slak.ckompiler.printVariableVersions
 import slak.ckompiler.throwICE
 import kotlin.js.JsExport
 import kotlin.js.JsName
@@ -176,7 +177,7 @@ class Variable(val tid: TypedIdentifier) : VersionedValue() {
     version = newerVersion.variable.version
   }
 
-  override fun toString() = "$tid v$version"
+  override fun toString() = if (printVariableVersions) "$tid v$version" else "$tid"
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
