@@ -1,8 +1,17 @@
-import { AfterContentChecked, ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular/core';
+import {
+  AfterContentChecked,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  HostBinding,
+  Input,
+  OnInit,
+} from '@angular/core';
 import { map, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { range, sumBy } from 'lodash-es';
 import { phaseInOut } from '@cki-utils/phase-in-out';
+import { hasTransparencyDisabled } from '@cki-settings';
 
 @Component({
   selector: 'cki-algorithm-container',
@@ -11,7 +20,10 @@ import { phaseInOut } from '@cki-utils/phase-in-out';
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [phaseInOut],
 })
-export class AlgorithmContainerComponent extends SubscriptionDestroy implements AfterContentChecked {
+export class AlgorithmContainerComponent extends SubscriptionDestroy implements OnInit, AfterContentChecked {
+  @HostBinding('class.disable-transparency')
+  private hasTransparencyDisabled: boolean = false;
+
   @HostBinding('style.--current-line')
   private currentLine?: number;
 
@@ -24,14 +36,25 @@ export class AlgorithmContainerComponent extends SubscriptionDestroy implements 
   public readonly stepToLineCount: Record<number, number> = {};
   public readonly stepToOffset: Record<number, number> = {};
 
-  constructor() {
+  constructor(
+    private changeDetectorRef: ChangeDetectorRef,
+  ) {
     super();
+  }
+
+  public ngOnInit(): void {
+    hasTransparencyDisabled.value$.pipe(
+      takeUntil(this.destroy$),
+    ).subscribe(hasTransparencyDisabled => {
+      this.hasTransparencyDisabled = hasTransparencyDisabled;
+      this.changeDetectorRef.markForCheck();
+    });
   }
 
   public ngAfterContentChecked(): void {
     this.activeStep$.pipe(
       map(step => sumBy(range(1, step + 1), item => this.stepToLineCount[item]) - this.stepToOffset[step]),
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(currentLineCount => {
       this.currentLine = currentLineCount;
     });

@@ -10,6 +10,11 @@
   font-size: 20px;
   line-height: algorithm.$line-height;
   letter-spacing: 0.02em;
+
+  &.disable-transparency {
+    background-color: colors.$graph-background;
+    border: 1px solid rgba(colors.$graph-text, 0.2);
+  }
 }
 
 .pointer {

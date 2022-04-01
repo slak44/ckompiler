@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
-import { generateKey, Settings } from '@cki-settings';
+import { hasTransparencyDisabled } from '@cki-settings';
 
 @Component({
   selector: 'cki-settings-dialog',
@@ -13,6 +13,6 @@ export class SettingsDialogComponent {
   }
 
   public onTransparencyChange(change: MatSlideToggleChange): void {
-    localStorage.setItem(generateKey(Settings.TRANSPARENCY), `${change.checked}`);
+    hasTransparencyDisabled.update(change.checked);
   }
 }
