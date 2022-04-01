@@ -6,7 +6,7 @@ import { slak } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import { MatDialog } from '@angular/material/dialog';
-import { SettingsDialogComponent } from '../settings-dialog/settings-dialog.component';
+import { SettingsDialogComponent } from '../../../settings/components/settings-dialog/settings-dialog.component';
 
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
