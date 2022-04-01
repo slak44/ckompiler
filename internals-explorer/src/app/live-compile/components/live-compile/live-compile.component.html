@@ -3,7 +3,12 @@
   <button mat-icon-button [hidden]="true">
     <mat-icon>menu</mat-icon>
   </button>
+
   <span>CKompiler Internals Explorer</span>
+
+  <button mat-icon-button class="settings-btn" matTooltip="Settings" (click)="openSettings()">
+    <mat-icon>settings</mat-icon>
+  </button>
 </mat-toolbar>
 
 <mat-tab-group ckiRoutedTabGroup class="fill-height" [(selectedIndex)]="selectedTabIndex">

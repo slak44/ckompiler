@@ -5,6 +5,8 @@ import { map, Observable, tap } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
+import { MatDialog } from '@angular/material/dialog';
+import { SettingsDialogComponent } from '../settings-dialog/settings-dialog.component';
 
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
@@ -45,6 +47,13 @@ export class LiveCompileComponent {
     private httpClient: HttpClient,
     private compileService: CompileService,
     private location: Location,
+    private dialog: MatDialog
   ) {
+  }
+
+  public openSettings(): void {
+    this.dialog.open(SettingsDialogComponent, {
+      width: '800px',
+    });
   }
 }

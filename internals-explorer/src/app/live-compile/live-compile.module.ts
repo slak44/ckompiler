@@ -15,12 +15,16 @@ import { PhiGraphViewModule } from '../phi-graph-view/phi-graph-view.module';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { RenamingGraphViewModule } from '../renaming-graph-view/renaming-graph-view.module';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { SettingsDialogComponent } from './components/settings-dialog/settings-dialog.component';
+import { MatDialogModule } from '@angular/material/dialog';
 
 @NgModule({
   declarations: [
     LiveCompileComponent,
     SourceEditorComponent,
     DiagnosticListComponent,
+    SettingsDialogComponent,
   ],
   imports: [
     CommonModule,
@@ -36,6 +40,8 @@ import { RenamingGraphViewModule } from '../renaming-graph-view/renaming-graph-v
     MatChipsModule,
     MatButtonModule,
     RenamingGraphViewModule,
+    MatTooltipModule,
+    MatDialogModule,
   ],
 })
 export class LiveCompileModule {
