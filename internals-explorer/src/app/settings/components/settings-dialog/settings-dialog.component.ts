@@ -1,13 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
-
-enum Settings {
-  TRANSPARENCY = 'transparency'
-}
-
-function generateKey(setting: Settings): string {
-  return `ckompiler-setting-${setting}`;
-}
+import { generateKey, Settings } from '@cki-settings';
 
 @Component({
   selector: 'cki-settings-dialog',

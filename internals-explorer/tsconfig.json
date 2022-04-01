@@ -33,6 +33,9 @@
       ],
       "@cki-graph-view/*": [
         "src/app/graph-view/*"
+      ],
+      "@cki-settings": [
+        "src/app/settings/settings.ts"
       ]
     }
   },
