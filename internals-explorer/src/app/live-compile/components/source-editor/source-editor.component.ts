@@ -26,7 +26,8 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
   public readonly monacoOptions: editor.IStandaloneEditorConstructionOptions = {
     theme: 'darcula',
     language: 'c',
-    fontFamily: 'Fira Code'
+    fontFamily: 'Fira Code',
+    letterSpacing: 0.001,
   };
 
   public readonly sourceControl: FormControl = new FormControl('');
@@ -39,7 +40,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
 
   public ngOnInit(): void {
     this.sourceControl.valueChanges.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe((text: string) => {
       localStorage.setItem(STORAGE_KEY_SOURCE_CODE, text);
       this.compileService.changeSourceText(text);
@@ -57,7 +58,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
 
   private setMarkersFromDiagnostics(monaco: typeof Monaco): void {
     this.compileService.allDiagnostics$.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(diagnostics => {
       const markers = diagnostics.map((diagnostic): IMarkerData => {
         const data = diagnostic.dataFor(diagnostic.caret);
@@ -67,7 +68,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
         const types: Record<string, MarkerSeverity> = {
           ERROR: MarkerSeverity.Error,
           WARNING: MarkerSeverity.Warning,
-          OTHER: MarkerSeverity.Info
+          OTHER: MarkerSeverity.Info,
         };
 
         return {
