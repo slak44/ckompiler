@@ -7,9 +7,11 @@ import { editor, MarkerSeverity } from 'monaco-editor';
 import { slak } from '@ckompiler/ckompiler';
 import { monacoLoaded$ } from '@cki-utils/monaco-loader';
 import { CompileService } from '@cki-graph-view/services/compile.service';
+import { monacoFontSize, monacoViewState } from '@cki-settings';
 import IMarkerData = editor.IMarkerData;
 import closedRangeLength = slak.ckompiler.closedRangeLength;
 import diagnosticKindString = slak.ckompiler.diagnosticKindString;
+import EditorOption = editor.EditorOption;
 
 const STORAGE_KEY_SOURCE_CODE = 'source-code';
 
@@ -27,11 +29,14 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     theme: 'darcula',
     language: 'c',
     fontFamily: 'Fira Code',
+    fontSize: 14, // This is the default font size, reset font size comes back to this value
     useShadowDOM: true,
     renderWhitespace: 'trailing',
   };
 
   public readonly sourceControl: FormControl = new FormControl('');
+
+  private lastUnloadListener: (() => void) | undefined = undefined;
 
   constructor(
     private readonly compileService: CompileService,
@@ -85,5 +90,25 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
 
       monaco.editor.setModelMarkers(monaco.editor.getModels()[0], null!, markers);
     });
+  }
+
+  public onEditorChange(editor: editor.IStandaloneCodeEditor): void {
+    if (this.lastUnloadListener) {
+      window.removeEventListener('unload', this.lastUnloadListener);
+    }
+
+    const existingState = monacoViewState.snapshot;
+    if (existingState) {
+      editor.restoreViewState(existingState);
+    }
+
+    editor.updateOptions({ fontSize: monacoFontSize.snapshot });
+
+    this.lastUnloadListener = () => {
+      monacoViewState.update(editor.saveViewState());
+      monacoFontSize.update(editor.getOption(EditorOption.fontSize));
+    };
+
+    window.addEventListener('unload', this.lastUnloadListener);
   }
 }

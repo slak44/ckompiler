@@ -1,9 +1,12 @@
 import { BehaviorSubject, fromEvent, Observable } from 'rxjs';
 import { identity } from 'lodash-es';
+import { editor } from 'monaco-editor';
 
 export enum Settings {
   TRANSPARENCY = 'TRANSPARENCY',
-  DEFAULT_FUNCTION_NAME = 'DEFAULT_FUNCTION_NAME'
+  DEFAULT_FUNCTION_NAME = 'DEFAULT_FUNCTION_NAME',
+  MONACO_VIEW_STATE = 'MONACO_VIEW_STATE',
+  MONACO_FONT_SIZE = 'MONACO_FONT_SIZE',
 }
 
 export class Setting<T> {
@@ -38,6 +41,18 @@ export const defaultFunctionName: Setting<string> = new Setting<string>(
   Settings.DEFAULT_FUNCTION_NAME,
   value => value ?? 'main',
   identity
+);
+
+export const monacoViewState: Setting<editor.ICodeEditorViewState | null> = new Setting(
+  Settings.MONACO_VIEW_STATE,
+  value => JSON.parse(value!) as editor.ICodeEditorViewState | null,
+  value => JSON.stringify(value)
+);
+
+export const monacoFontSize: Setting<number> = new Setting(
+  Settings.MONACO_FONT_SIZE,
+  value => parseFloat(value ?? '14'),
+  value => `${value}`
 );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
