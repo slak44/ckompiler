@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
 import { RenamingIrFragmentComponent } from '../renaming-ir-fragment/renaming-ir-fragment.component';
-import { Observable, of } from 'rxjs';
+import { filter, map, Observable, of } from 'rxjs';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
@@ -8,6 +8,7 @@ import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblcli
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
+import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -32,10 +33,19 @@ export class VarRenameViewComponent {
 
   public readonly stepCount$: Observable<number> = this.renamingStateService.stepCount$;
 
+  public readonly blockBB$: Observable<number | null> = this.renamingStateService.currentStepState$.pipe(
+    map(state => state.bb),
+  );
+
+  private readonly selectedBlockId$: Observable<number> = this.blockBB$.pipe(
+    filter((block): block is number => typeof block === 'number'),
+  );
+
   public readonly hooks: GraphViewHook[] = [
     new DisableDblClick(),
     removeHoverTitles,
     this.replaceNodeContentsHook,
+    new PanToSelected(this.selectedBlockId$),
   ];
 
   constructor(
