@@ -44,6 +44,7 @@ export class NodePath implements GraphViewHook {
     private readonly replaceNodeContents: ReplaceNodeContentsHook,
     private readonly targetVariable$: Observable<Variable>,
     private readonly paths$: Observable<number[][] | undefined>,
+    private readonly disableVariableVersions: boolean = false,
   ) {
   }
 
@@ -54,6 +55,9 @@ export class NodePath implements GraphViewHook {
   }
 
   private getFragmentTextAndIndex(isForPhi: boolean, nodeId: number, variable: Variable): [string, number] {
+    const saved = slak.ckompiler.printVariableVersions;
+    slak.ckompiler.printVariableVersions = !this.disableVariableVersions;
+
     const node = getNodeById(this.cfg, nodeId);
     const nodePhi = arrayOf<PhiInstruction>(node.phi);
 
@@ -83,6 +87,8 @@ export class NodePath implements GraphViewHook {
 
     // +1 due to the BBx: header
     index++;
+
+    slak.ckompiler.printVariableVersions = saved;
 
     return [irString, index];
   }
@@ -125,7 +131,8 @@ export class NodePath implements GraphViewHook {
 
     const firstEdge = points.slice(0, 4);
     const phiFragmentData = this.getFragmentTextAndIndex(true, nodeIds[0], targetVariable);
-    const phiPosition = this.positionUntilVariableText(phiFragmentData, nodeIds[0], `BB${nodeIds[1]} v0`);
+    const phiBBText = `BB${nodeIds[1]}` + (this.disableVariableVersions ? '' : ' v0');
+    const phiPosition = this.positionUntilVariableText(phiFragmentData, nodeIds[0], phiBBText);
     const isEdgeAbovePhi = firstEdge[1] > phiPosition[1];
     const phiPosYCorrection = isEdgeAbovePhi ? 0 : -ascent;
     phiPosition[1] += phiPosYCorrection;

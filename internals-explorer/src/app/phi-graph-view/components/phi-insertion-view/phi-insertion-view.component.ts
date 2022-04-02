@@ -102,6 +102,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
       this.replaceNodeContents,
       this.phiInsertionStateService.varState.targetVariable$,
       this.highlightedPhiPaths$,
+      true
     ),
   ];
 
