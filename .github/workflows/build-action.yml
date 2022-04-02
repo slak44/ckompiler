@@ -52,6 +52,8 @@ jobs:
         working-directory: build/js/packages/ckompiler/
       - run: npm install
         working-directory: internals-explorer
+      - name: Run eslint
+        run: npx ng lint
       - name: Angular Build
         run: npx ng build --base-href /ckompiler/
         working-directory: internals-explorer
