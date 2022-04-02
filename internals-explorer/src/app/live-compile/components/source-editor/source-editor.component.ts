@@ -27,7 +27,8 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     theme: 'darcula',
     language: 'c',
     fontFamily: 'Fira Code',
-    letterSpacing: 0.001,
+    useShadowDOM: true,
+    renderWhitespace: 'trailing',
   };
 
   public readonly sourceControl: FormControl = new FormControl('');
