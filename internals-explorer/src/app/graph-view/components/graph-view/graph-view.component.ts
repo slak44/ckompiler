@@ -222,6 +222,10 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
         this.rerenderSubject.next();
         this.revertAlterations();
 
+        if (this.graphviz.zoomSelection()) {
+          this.graphviz.resetZoom();
+        }
+
         this.graphviz.renderDot(text, () => this.alterGraph(printingType, cfg));
       }),
     );
