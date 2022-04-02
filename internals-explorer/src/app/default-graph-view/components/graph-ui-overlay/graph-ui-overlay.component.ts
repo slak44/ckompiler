@@ -1,7 +1,8 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, Input, ViewChild } from '@angular/core';
 import { Observable, ReplaySubject, takeUntil } from 'rxjs';
 import { GraphOptionsComponent } from '../graph-options/graph-options.component';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 
 @Component({
   selector: 'cki-graph-ui-overlay',
@@ -10,6 +11,9 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GraphUiOverlayComponent extends SubscriptionDestroy implements AfterViewInit {
+  @Input()
+  public instance!: CompilationInstance;
+
   @ViewChild(GraphOptionsComponent)
   private readonly graphOptions!: GraphOptionsComponent;
 

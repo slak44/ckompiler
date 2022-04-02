@@ -43,6 +43,10 @@ svg {
   font-size: 16px;
 }
 
+.no-top-padding.mat-form-field-appearance-standard .mat-form-field-flex {
+  padding-top: 0;
+}
+
 .hljs {
   background-color: unset;
 }

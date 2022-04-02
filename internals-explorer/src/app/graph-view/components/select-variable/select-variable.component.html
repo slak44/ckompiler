@@ -1,4 +1,4 @@
-<mat-form-field appearance="standard" color="accent" tourAnchor="anchor-target-variable">
+<mat-form-field appearance="standard" color="accent" class="no-top-padding">
   <mat-label>Target variable</mat-label>
   <mat-select [formControl]="variableControl">
     <mat-option *ngFor="let variable of variables$ | async" [value]="variable.identityId">

@@ -3,11 +3,13 @@
                 [hooks]="hooks"
                 [printingType$]="printingType$"
                 [ngSwitch]="phase$ | async">
-  <cki-select-variable class="start-overlay"
-                       *ngSwitchCase="algorithmPhase.PREPARING"
-                       [variables$]="instance.variables$"
-                       (identityIdChange)="selectedVariableChanged($event)"
-                       (startClick)="start()"></cki-select-variable>
+  <div *ngSwitchCase="algorithmPhase.PREPARING" class="start-overlay">
+    <cki-select-function [instance]="instance"></cki-select-function>
+
+    <cki-select-variable [variables$]="instance.variables$"
+                         (identityIdChange)="selectedVariableChanged($event)"
+                         (startClick)="start()"></cki-select-variable>
+  </div>
 
   <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
     <div class="algorithm">

@@ -9,11 +9,13 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { SelectFunctionComponent } from './components/select-function/select-function.component';
 
 @NgModule({
   declarations: [
     GraphViewComponent,
     SelectVariableComponent,
+    SelectFunctionComponent,
   ],
   imports: [
     CommonModule,
@@ -28,6 +30,7 @@ import { MatButtonModule } from '@angular/material/button';
   exports: [
     GraphViewComponent,
     SelectVariableComponent,
+    SelectFunctionComponent,
   ],
 })
 export class GraphViewModule {

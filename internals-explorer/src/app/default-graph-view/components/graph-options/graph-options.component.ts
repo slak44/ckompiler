@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { map, Observable, shareReplay } from 'rxjs';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import codePrintingMethods = slak.ckompiler.codePrintingMethods;
 import getCodePrintingNameJs = slak.ckompiler.getCodePrintingNameJs;
+import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 
 @Component({
   selector: 'cki-graph-options',
@@ -13,6 +14,9 @@ import getCodePrintingNameJs = slak.ckompiler.getCodePrintingNameJs;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GraphOptionsComponent {
+  @Input()
+  public instance!: CompilationInstance;
+
   public readonly codePrintingMethods: string[] = codePrintingMethods;
 
   public readonly printingControl: FormControl = new FormControl('IR_TO_STRING');

@@ -2,6 +2,8 @@
   Hide UI
 </mat-checkbox>
 
+<cki-select-function *ngIf="isUIVisible$ | async" [instance]="instance"></cki-select-function>
+
 <mat-form-field *ngIf="isUIVisible$ | async" appearance="standard" color="accent">
   <mat-label>Block content</mat-label>
   <mat-select [formControl]="printingControl">

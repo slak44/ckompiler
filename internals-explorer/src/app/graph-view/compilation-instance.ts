@@ -1,5 +1,16 @@
-import { filter, map, Observable, OperatorFunction, pipe, shareReplay } from 'rxjs';
+import {
+  distinctUntilChanged,
+  filter,
+  map,
+  Observable,
+  OperatorFunction,
+  pipe,
+  ReplaySubject,
+  shareReplay,
+  tap,
+} from 'rxjs';
 import { Nullable, slak } from '@ckompiler/ckompiler';
+import { defaultFunctionName } from '@cki-settings';
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import Variable = slak.ckompiler.analysis.Variable;
@@ -32,10 +43,16 @@ export function compileCode(skipSSARename: boolean = false): OperatorFunction<st
 }
 
 export class CompilationInstance {
-  public readonly cfg$: Observable<CFG> = this.compileResult$.pipe(
-    filter(compileResult => !!compileResult.cfgs),
-    map(compileResult => compileResult.cfgs!.find(cfg => cfg.f.name === 'main')),
-    filter((cfg): cfg is CFG => !!cfg),
+  private readonly selectedCFGSubject: ReplaySubject<CFG> = new ReplaySubject(1);
+
+  public readonly cfg$: Observable<CFG> = this.selectedCFGSubject;
+
+  public readonly cfgs$: Observable<CFG[]> = this.compileResult$.pipe(
+    distinctUntilChanged(),
+    map(compileResult => compileResult.cfgs),
+    filter((cfgs): cfgs is CFG[] => !!cfgs),
+    tap(cfgs => this.updateSelected(cfgs.find(cfg => cfg.f.name === defaultFunctionName.snapshot) ?? cfgs[0])),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
 
   public readonly variables$: Observable<Variable[]> = this.cfg$.pipe(
@@ -45,5 +62,9 @@ export class CompilationInstance {
   constructor(
     public readonly compileResult$: Observable<JSCompileResult>,
   ) {
+  }
+
+  public updateSelected(cfg: CFG): void {
+    this.selectedCFGSubject.next(cfg);
   }
 }
