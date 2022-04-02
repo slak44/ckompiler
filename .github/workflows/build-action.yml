@@ -54,6 +54,7 @@ jobs:
         working-directory: internals-explorer
       - name: Run eslint
         run: npx eslint 'src/**/*.ts'
+        working-directory: internals-explorer
       - name: Angular Build
         run: npx ng build --base-href /ckompiler/
         working-directory: internals-explorer
