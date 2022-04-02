@@ -1,7 +1,9 @@
 import { BehaviorSubject, fromEvent, Observable } from 'rxjs';
+import { identity } from 'lodash-es';
 
 export enum Settings {
-  TRANSPARENCY = 'transparency'
+  TRANSPARENCY = 'TRANSPARENCY',
+  DEFAULT_FUNCTION_NAME = 'DEFAULT_FUNCTION_NAME'
 }
 
 export class Setting<T> {
@@ -32,9 +34,16 @@ export const hasTransparency: Setting<boolean> = new Setting(
   value => `${value}`,
 );
 
+export const defaultFunctionName: Setting<string> = new Setting<string>(
+  Settings.DEFAULT_FUNCTION_NAME,
+  value => value ?? 'main',
+  identity
+);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const settings: Setting<any>[] = [
   hasTransparency,
+  defaultFunctionName,
 ];
 
 function generateKey(setting: Settings): string {

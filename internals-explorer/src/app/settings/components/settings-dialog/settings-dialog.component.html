@@ -4,4 +4,13 @@
   <mat-slide-toggle color="accent" [checked]="initialTransparency" (change)="onTransparencyChange($event)">
     Enable algorithm transparency
   </mat-slide-toggle>
+
+  <mat-form-field color="accent" appearance="standard">
+    <mat-label>Default function name</mat-label>
+    <input #input
+           matInput
+           type="text"
+           [value]="initialDefaultFunctionName"
+           (input)="onDefaultFunctionNameChange(input.value)"/>
+  </mat-form-field>
 </mat-dialog-content>
