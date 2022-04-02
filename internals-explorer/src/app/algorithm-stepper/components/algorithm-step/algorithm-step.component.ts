@@ -24,8 +24,8 @@ export class AlgorithmStepComponent extends SubscriptionDestroy implements OnIni
   public offsetLines: number = 0;
 
   constructor(
-    private algorithmContainer: AlgorithmContainerComponent,
-    private changeDetectorRef: ChangeDetectorRef,
+    private readonly algorithmContainer: AlgorithmContainerComponent,
+    private readonly changeDetectorRef: ChangeDetectorRef,
   ) {
     super();
   }

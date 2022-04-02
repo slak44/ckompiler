@@ -26,8 +26,8 @@ export class DefaultGraphViewComponent {
   public readonly instance: CompilationInstance = new CompilationInstance(this.compileService.defaultCompileResult$);
 
   constructor(
-    private replaceNodeContents: ReplaceNodeContentsHook,
-    private compileService: CompileService,
+    private readonly replaceNodeContents: ReplaceNodeContentsHook,
+    private readonly compileService: CompileService,
   ) {
   }
 }

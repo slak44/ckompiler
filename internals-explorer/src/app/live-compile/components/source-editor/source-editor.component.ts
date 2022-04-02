@@ -32,7 +32,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
   public readonly sourceControl: FormControl = new FormControl('');
 
   constructor(
-    private compileService: CompileService,
+    private readonly compileService: CompileService,
   ) {
     super();
   }

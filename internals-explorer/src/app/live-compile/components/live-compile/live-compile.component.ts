@@ -44,10 +44,10 @@ export class LiveCompileComponent {
   public selectedTabIndex: number = 0;
 
   constructor(
-    private httpClient: HttpClient,
-    private compileService: CompileService,
-    private location: Location,
-    private dialog: MatDialog
+    private readonly httpClient: HttpClient,
+    private readonly compileService: CompileService,
+    private readonly location: Location,
+    private readonly dialog: MatDialog
   ) {
   }
 

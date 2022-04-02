@@ -54,6 +54,9 @@
             "allowNullish": true
           }
         ],
+        "@typescript-eslint/prefer-readonly": [
+          "error"
+        ],
         "@angular-eslint/directive-selector": [
           "error",
           {

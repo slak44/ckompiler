@@ -16,7 +16,7 @@ export class StepperControlsComponent {
   public readonly currentStep$: Observable<number> = this.algorithmStepService.currentStep$;
 
   constructor(
-    private algorithmStepService: AlgorithmStepService,
+    private readonly algorithmStepService: AlgorithmStepService,
   ) {
   }
 

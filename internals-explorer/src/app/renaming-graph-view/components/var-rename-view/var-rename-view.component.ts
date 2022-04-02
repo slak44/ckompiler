@@ -39,9 +39,9 @@ export class VarRenameViewComponent {
   ];
 
   constructor(
-    private algorithmStepService: AlgorithmStepService,
-    private replaceNodeContentsHook: ReplaceNodeContentsHook,
-    private renamingStateService: RenamingStateService,
+    private readonly algorithmStepService: AlgorithmStepService,
+    private readonly replaceNodeContentsHook: ReplaceNodeContentsHook,
+    private readonly renamingStateService: RenamingStateService,
   ) {
   }
 

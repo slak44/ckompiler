@@ -41,9 +41,9 @@ export class NodePath implements GraphViewHook {
   private graphView!: GraphViewComponent;
 
   constructor(
-    private replaceNodeContents: ReplaceNodeContentsHook,
-    private targetVariable$: Observable<Variable>,
-    private paths$: Observable<number[][] | undefined>,
+    private readonly replaceNodeContents: ReplaceNodeContentsHook,
+    private readonly targetVariable$: Observable<Variable>,
+    private readonly paths$: Observable<number[][] | undefined>,
   ) {
   }
 

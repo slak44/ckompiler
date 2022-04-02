@@ -41,10 +41,10 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
   );
 
   constructor(
-    private algorithmStepService: AlgorithmStepService,
-    private compileService: CompileService,
-    private replaceNodeContentsHook: ReplaceNodeContentsHook,
-    private ngZone: NgZone,
+    private readonly algorithmStepService: AlgorithmStepService,
+    private readonly compileService: CompileService,
+    private readonly replaceNodeContentsHook: ReplaceNodeContentsHook,
+    private readonly ngZone: NgZone,
   ) {
     super();
 

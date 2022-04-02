@@ -17,8 +17,8 @@ export class DiagnosticListComponent {
   public readonly diagnosticStats$: Observable<DiagnosticsStats> = this.compileService.diagnosticStats$;
 
   constructor(
-    private compileService: CompileService,
-    private sanitizer: DomSanitizer,
+    private readonly compileService: CompileService,
+    private readonly sanitizer: DomSanitizer,
   ) {
   }
 

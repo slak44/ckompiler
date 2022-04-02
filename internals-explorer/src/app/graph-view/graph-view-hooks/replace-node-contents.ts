@@ -30,10 +30,10 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   public rerender$!: Observable<void>;
 
   constructor(
-    private componentFactoryResolver: ComponentFactoryResolver,
-    private injector: Injector,
-    private applicationRef: ApplicationRef,
-    @Inject(FRAGMENT_COMPONENT) private fragmentComponentType: Type<FragmentComponent>,
+    private readonly componentFactoryResolver: ComponentFactoryResolver,
+    private readonly injector: Injector,
+    private readonly applicationRef: ApplicationRef,
+    @Inject(FRAGMENT_COMPONENT) private readonly fragmentComponentType: Type<FragmentComponent>,
   ) {
   }
 

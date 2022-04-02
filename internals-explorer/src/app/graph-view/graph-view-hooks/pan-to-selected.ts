@@ -7,7 +7,7 @@ import { getPolyDatumNodeId } from '@cki-graph-view/utils';
 
 export class PanToSelected implements GraphViewHook {
   constructor(
-    private selectedNodeId$: Observable<number>,
+    private readonly selectedNodeId$: Observable<number>,
   ) {
   }
 

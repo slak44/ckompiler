@@ -19,7 +19,7 @@ export class RenameAlgorithmComponent {
   public readonly variableName$: Observable<string> = this.renamingStateService.varState.variableName$;
 
   constructor(
-    private renamingStateService: RenamingStateService,
+    private readonly renamingStateService: RenamingStateService,
   ) {
   }
 }

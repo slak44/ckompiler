@@ -71,10 +71,10 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
   );
 
   constructor(
-    private replaceNodeContentsHook: ReplaceNodeContentsHook,
-    private renamingStateService: RenamingStateService,
-    private algorithmStepService: AlgorithmStepService,
-    private sanitizer: DomSanitizer,
+    private readonly replaceNodeContentsHook: ReplaceNodeContentsHook,
+    private readonly renamingStateService: RenamingStateService,
+    private readonly algorithmStepService: AlgorithmStepService,
+    private readonly sanitizer: DomSanitizer,
   ) {
   }
 }

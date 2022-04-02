@@ -19,7 +19,7 @@ export class InsertionAlgorithmComponent {
   public readonly phiInsertionSteps = PhiInsertionStep;
 
   constructor(
-    private phiInsertionStateService: PhiInsertionStateService,
+    private readonly phiInsertionStateService: PhiInsertionStateService,
   ) {
   }
 }

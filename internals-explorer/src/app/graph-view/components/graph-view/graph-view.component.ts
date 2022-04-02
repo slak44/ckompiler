@@ -55,7 +55,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public instance!: CompilationInstance;
 
   @ViewChild('graph')
-  private graphRef!: ElementRef<HTMLDivElement>;
+  private readonly graphRef!: ElementRef<HTMLDivElement>;
 
   private graphviz?: Graphviz<BaseType, GraphvizDatum, BaseType, unknown>;
 

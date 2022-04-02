@@ -10,14 +10,14 @@ import { filter, ReplaySubject, takeUntil } from 'rxjs';
 })
 export class RoutedTabGroupDirective extends SubscriptionDestroy implements AfterContentInit {
   @ContentChildren(RoutedTabDirective)
-  private routedTabsQl!: QueryList<RoutedTabDirective>;
+  private readonly routedTabsQl!: QueryList<RoutedTabDirective>;
 
   private readonly navigationSubject: ReplaySubject<void> = new ReplaySubject<void>(1);
 
   constructor(
     private matTabGroup: MatTabGroup,
-    private router: Router,
-    private activatedRoute: ActivatedRoute,
+    private readonly router: Router,
+    private readonly activatedRoute: ActivatedRoute,
   ) {
     super();
 

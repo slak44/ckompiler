@@ -106,9 +106,9 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
   ];
 
   constructor(
-    private algorithmStepService: AlgorithmStepService,
-    private replaceNodeContents: ReplaceNodeContentsHook,
-    private phiInsertionStateService: PhiInsertionStateService,
+    private readonly algorithmStepService: AlgorithmStepService,
+    private readonly replaceNodeContents: ReplaceNodeContentsHook,
+    private readonly phiInsertionStateService: PhiInsertionStateService,
   ) {
     super();
   }

@@ -37,7 +37,7 @@ export class AlgorithmContainerComponent extends SubscriptionDestroy implements 
   public readonly stepToOffset: Record<number, number> = {};
 
   constructor(
-    private changeDetectorRef: ChangeDetectorRef,
+    private readonly changeDetectorRef: ChangeDetectorRef,
   ) {
     super();
   }

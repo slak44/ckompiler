@@ -35,8 +35,8 @@ export class RenamingStateService {
   );
 
   constructor(
-    private compileService: CompileService,
-    private algorithmStepService: AlgorithmStepService,
+    private readonly compileService: CompileService,
+    private readonly algorithmStepService: AlgorithmStepService,
   ) {
   }
 }

@@ -82,10 +82,10 @@ export class PhiIrFragmentComponent implements FragmentComponent {
   );
 
   constructor(
-    private replaceNodeContentsHook: ReplaceNodeContentsHook,
-    private phiInsertionStateService: PhiInsertionStateService,
-    private algorithmStepService: AlgorithmStepService,
-    private sanitizer: DomSanitizer,
+    private readonly replaceNodeContentsHook: ReplaceNodeContentsHook,
+    private readonly phiInsertionStateService: PhiInsertionStateService,
+    private readonly algorithmStepService: AlgorithmStepService,
+    private readonly sanitizer: DomSanitizer,
   ) {
   }
 }
