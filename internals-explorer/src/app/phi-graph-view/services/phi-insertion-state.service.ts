@@ -1,5 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
-import { combineLatest, map, Observable, Subject, takeUntil, tap } from 'rxjs';
+import { combineLatest, filter, map, Observable, Subject, takeUntil, tap } from 'rxjs';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { slak } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
@@ -11,6 +11,7 @@ import { TargetVariableState } from '@cki-graph-view/target-variable-state';
 import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import generatePhiSteps = slak.ckompiler.analysis.external.generatePhiSteps;
+import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 
 @Injectable()
 export class PhiInsertionStateService extends SubscriptionDestroy {
@@ -29,6 +30,7 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
     this.compilationInstance.cfg$,
     this.varState.targetVariable$,
   ]).pipe(
+    filter(([cfg, variable]) => phiEligibleVariables(cfg).includes(variable)),
     map(([cfg, variable]) => JSON.parse(generatePhiSteps(cfg, variable)) as PhiInsertionStepState[]),
   );
 

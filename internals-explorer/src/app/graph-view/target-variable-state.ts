@@ -1,4 +1,4 @@
-import { combineLatest, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
+import { combineLatest, filter, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import Variable = slak.ckompiler.analysis.Variable;
@@ -16,7 +16,8 @@ export class TargetVariableState {
       this.targetVariableIdSubject,
       instance.cfg$,
     ]).pipe(
-      map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)!),
+      map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)),
+      filter((variable): variable is Variable => !!variable),
       shareReplay({ bufferSize: 1, refCount: false }),
     );
 

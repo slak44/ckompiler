@@ -1,7 +1,7 @@
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { GraphViewComponent } from '@cki-graph-view/components/graph-view/graph-view.component';
 import { slak } from '@ckompiler/ckompiler';
-import { combineLatest, Observable, takeUntil, tap } from 'rxjs';
+import { combineLatest, filter, Observable, takeUntil, tap } from 'rxjs';
 import * as d3 from 'd3';
 import { BaseGraphvizDatum } from '@cki-graph-view/models/graphviz-datum.model';
 import { catmullRomSplines } from '@cki-utils/catmull-rom-splines';
@@ -14,6 +14,7 @@ import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 import Variable = slak.ckompiler.analysis.Variable;
 import getDefinitionLocations = slak.ckompiler.getDefinitionLocations;
 import IRInstruction = slak.ckompiler.analysis.IRInstruction;
+import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 
 // Keep in sync with _algorithm.scss
 const INSERTION_TRANSITION_MS = 150;
@@ -181,6 +182,7 @@ export class NodePath implements GraphViewHook {
     combineLatest([
       this.paths$,
       this.targetVariable$.pipe(
+        filter((targetVariable) => phiEligibleVariables(cfg).includes(targetVariable)),
         tap(targetVariable => {
           this.definitionIdx = JSON.parse(getDefinitionLocations(targetVariable, cfg)) as Record<number, number>;
         }),
