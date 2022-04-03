@@ -129,5 +129,4 @@ export class VarRenameViewComponent {
   public jumpToEnd(): void {
     this.algorithmStepService.setStep(Infinity);
   }
-
 }
