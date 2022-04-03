@@ -78,7 +78,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
         : replaced;
 
       if (!currentStep) {
-        return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
+        return defReplaced;
       }
 
       const { bb, i, step, succBB } = currentStep;
@@ -86,17 +86,17 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
       const actualBB = [RenamingStep.EACH_SUCC_PHI, RenamingStep.SUCC_PHI_REPLACE_USE].includes(step) ? succBB : bb;
 
       if (typeof actualBB !== 'number' || typeof i !== 'number' || actualBB !== this.nodeId) {
-        return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
+        return defReplaced;
       }
 
       const [, fragmentIndex] = getVariableTextAndIndex(cfg, i === -1, i, actualBB, variable);
 
-      const bgHighlight = fragmentIndex === this.i
+      return  fragmentIndex === this.i
         ? `<span class="highlighted-fragment">${defReplaced}</span>`
         : defReplaced;
-
-      return this.sanitizer.bypassSecurityTrustHtml(bgHighlight);
     }),
+    distinctUntilChanged(),
+    map(html => this.sanitizer.bypassSecurityTrustHtml(html))
   );
 
   constructor(
