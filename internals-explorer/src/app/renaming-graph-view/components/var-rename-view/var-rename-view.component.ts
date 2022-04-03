@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
 import { RenamingIrFragmentComponent } from '../renaming-ir-fragment/renaming-ir-fragment.component';
-import { filter, map, merge, Observable, of } from 'rxjs';
+import { combineLatest, filter, map, merge, Observable, of } from 'rxjs';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
@@ -9,6 +9,11 @@ import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
+import { RenamingStep } from '../../models/renaming-step.model';
+import { getNodeById } from '@cki-graph-view/utils';
+import { slak } from '@ckompiler/ckompiler';
+import arrayOf = slak.ckompiler.arrayOf;
+import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -33,8 +38,27 @@ export class VarRenameViewComponent {
 
   public readonly stepCount$: Observable<number> = this.renamingStateService.stepCount$;
 
+  public readonly variableName$: Observable<string> = this.renamingStateService.varState.variableName$;
+
   public readonly blockBB$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
     map(state => state.bb),
+  );
+
+  public readonly bbSuccessorList$: Observable<number[] | undefined> = combineLatest([
+    this.renamingStateService.currentStepState$,
+    this.renamingStateService.compilationInstance.cfg$,
+  ]).pipe(
+    map(([state, cfg]) => {
+      if (![RenamingStep.EACH_SUCC_PHI, RenamingStep.SUCC_PHI_REPLACE_USE].includes(state.step)) {
+        return undefined;
+      }
+
+      if (typeof state.bb !== 'number') {
+        return undefined;
+      }
+
+      return arrayOf<BasicBlock>(getNodeById(cfg, state.bb).successors).map(succ => succ.nodeId);
+    }),
   );
 
   public readonly succBB$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(

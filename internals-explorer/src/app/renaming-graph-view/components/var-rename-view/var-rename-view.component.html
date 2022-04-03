@@ -22,11 +22,21 @@
         </ng-container>
       </ng-container>
 
+      <ng-container *ngIf="bbSuccessorList$ | async as bbSuccessorList">
+        <ng-container *ngIf="bbSuccessorList !== undefined && bbSuccessorList.length > 0">
+          <span>Successors of <cki-var>BB</cki-var> that use
+            <cki-var>{{ variableName$ | async }}</cki-var> in a φ:</span>
+          <div class="large-overlay-text">
+            Successors(<cki-var>BB</cki-var>) = {{ '{ ' + bbSuccessorList.join(', ') + ' }' }}
+          </div>
+        </ng-container>
+      </ng-container>
+
       <ng-container *ngIf="{ succBB: succBB$ | async } as data">
         <ng-container *ngIf="data.succBB !== undefined && data.succBB !== null">
-          <span>Current successor:</span>
+          <span>Current successor of <cki-var>BB</cki-var>:</span>
           <div class="large-overlay-text">
-            <cki-var>succ</cki-var> = {{ data.succBB }}
+            BB{{ data.succBB }}
           </div>
         </ng-container>
       </ng-container>
