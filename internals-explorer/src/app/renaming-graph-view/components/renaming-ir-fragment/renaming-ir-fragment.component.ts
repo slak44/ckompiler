@@ -82,13 +82,13 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
 
       const { bb, i } = currentStep;
 
-      if (typeof bb !== 'number' || typeof i !== 'number') {
+      if (typeof bb !== 'number' || typeof i !== 'number' || bb !== this.nodeId) {
         return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
       }
 
       const [, fragmentIndex] = getVariableTextAndIndex(cfg, isPhi, i, bb, variable);
 
-      const bgHighlight = bb === this.nodeId && fragmentIndex === this.i
+      const bgHighlight = fragmentIndex === this.i
         ? `<span class="highlighted-fragment">${defReplaced}</span>`
         : defReplaced;
 
