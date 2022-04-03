@@ -13,20 +13,27 @@
 
   <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
     <div class="progress-overlay">
-      <ng-container *ngIf="{ latestVersion: latestVersion$ | async } as data">
-        <ng-container *ngIf="data.latestVersion !== null">
+      <ng-container *ngIf="hasNewDefinition$ | async">
+        <span>New version created:</span>
+        <div class="large-overlay-text">
+          {{ variableName$ | async }} v{{ latestVersion$ | async }}
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="{ reachingDefVersion: reachingDefVersion$ | async } as data">
+        <ng-container *ngIf="data.reachingDefVersion !== null">
           <span>Reaching definition of <cki-var>{{ variableName$ | async }}</cki-var> to <cki-var>i</cki-var>:</span>
           <div class="large-overlay-text version-container">
-            <ng-container *ngIf="showVersionChange$ | async else normalVersion">
-              <span class="old-version">{{ variableName$ | async }} v{{ data.latestVersion - 1 }}</span>
+            <ng-container *ngIf="hasNewDefinition$ | async else normalVersion">
+              <span class="old-version">{{ variableName$ | async }} v{{ data.reachingDefVersion - 1 }}</span>
 
               <mat-icon class="version-arrow">east</mat-icon>
 
-              <span class="new-version">{{ variableName$ | async }} v{{ data.latestVersion }}</span>
+              <span class="new-version">{{ variableName$ | async }} v{{ data.reachingDefVersion }}</span>
             </ng-container>
 
             <ng-template #normalVersion>
-              {{ variableName$ | async }} v{{ data.latestVersion }}
+              {{ variableName$ | async }} v{{ data.reachingDefVersion }}
             </ng-template>
           </div>
         </ng-container>

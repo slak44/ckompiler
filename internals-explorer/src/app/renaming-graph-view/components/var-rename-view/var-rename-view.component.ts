@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
 import { RenamingIrFragmentComponent } from '../renaming-ir-fragment/renaming-ir-fragment.component';
-import { combineLatest, filter, map, merge, Observable, of, startWith } from 'rxjs';
+import { combineLatest, filter, map, merge, Observable, of, pairwise, startWith } from 'rxjs';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
@@ -40,13 +40,18 @@ export class VarRenameViewComponent {
 
   public readonly variableName$: Observable<string> = this.renamingStateService.varState.variableName$;
 
-  public readonly latestVersion$: Observable<number> = this.renamingStateService.currentStepState$.pipe(
+  public readonly reachingDefVersion$: Observable<number> = this.renamingStateService.currentStepState$.pipe(
     map(state => state.newVersion),
     filter((newVersion): newVersion is number => typeof newVersion === 'number'),
     startWith(0),
   );
 
-  public readonly showVersionChange$: Observable<boolean> = this.renamingStateService.currentStepState$.pipe(
+  public readonly latestVersion$: Observable<number> = this.reachingDefVersion$.pipe(
+    pairwise(),
+    map(([oldVersion, newVersion]) => Math.max(oldVersion, newVersion)),
+  );
+
+  public readonly hasNewDefinition$: Observable<boolean> = this.renamingStateService.currentStepState$.pipe(
     map(state => state.step === RenamingStep.INSTR_REPLACE_DEF),
   );
 
