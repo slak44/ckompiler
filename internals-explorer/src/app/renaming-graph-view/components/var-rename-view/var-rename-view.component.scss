@@ -1,3 +1,5 @@
+@use 'colors';
+
 :host {
   display: contents;
 }
@@ -6,6 +8,21 @@
   position: absolute;
   right: 16px;
   top: 16px;
+}
+
+.progress-overlay {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+
+  color: colors.$graph-text;
+}
+
+.large-overlay-text {
+  font-size: 24px;
+  line-height: 48px;
 }
 
 .algorithm {

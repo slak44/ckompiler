@@ -12,6 +12,17 @@
   </div>
 
   <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
+    <div class="progress-overlay">
+      <ng-container *ngIf="{ blockBB: blockBB$ | async } as data">
+        <ng-container *ngIf="data.blockBB !== undefined && data.blockBB !== null">
+          <span>Current block:</span>
+          <div class="large-overlay-text">
+            <cki-var>BB</cki-var> = {{ data.blockBB }}
+          </div>
+        </ng-container>
+      </ng-container>
+    </div>
+
     <div class="algorithm">
       <cki-stepper-controls [stepCount$]="stepCount$"></cki-stepper-controls>
 
