@@ -6,6 +6,7 @@ import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import Variable = slak.ckompiler.analysis.Variable;
 import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 import IRInstruction = slak.ckompiler.analysis.IRInstruction;
+import arrayOfIterator = slak.ckompiler.arrayOfIterator;
 
 export function getPolyDatumNodeId(datum: GraphvizDatum): number {
   const match = datum.parent.key.match(/^node(\d+)$/);
@@ -65,7 +66,7 @@ export function getVariableTextAndIndex(
     irString = nodePhi[index].toString();
   } else {
     // Definition is in IR
-    const irDefinition = arrayOf<IRInstruction>(node.ir)[irIndex];
+    const irDefinition = arrayOfIterator<IRInstruction>(node.instructions)[irIndex];
     index = nodePhi.length + irIndex;
     irString = irDefinition.toString();
   }
