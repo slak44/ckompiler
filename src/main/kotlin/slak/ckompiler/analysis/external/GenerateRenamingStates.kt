@@ -73,7 +73,7 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
         phiUseStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
             RenamingStep.SUCC_PHI_REPLACE_USE,
             bb = matchingPred.nodeId,
-            i = instrIndex,
+            i = DEFINED_IN_PHI,
             newVersion = variable.version,
             reachingDefBlock = reachingDef.first.nodeId,
             reachingDefIdx = reachingDef.second,
