@@ -19,7 +19,7 @@ import { GraphvizDatum } from '../../models/graphviz-datum.model';
 import { ZoomTransform } from 'd3-zoom';
 import { ZoomView } from 'd3-interpolate';
 import { GraphViewHook } from '../../models/graph-view-hook.model';
-import { getNodeById, getPolyDatumNodeId, setClassIf } from '../../utils';
+import { getNodeById, getPolyDatumNodeId, runWithVariableVersions, setClassIf } from '../../utils';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import createGraphviz = slak.ckompiler.analysis.external.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
@@ -207,13 +207,10 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       this.printingType$,
     ]).pipe(
       map(([cfg, printingType]: [CFG, string]): void => {
-        const saved = slak.ckompiler.printVariableVersions;
-        slak.ckompiler.printVariableVersions = !this.disableVariableVersions;
-
-        const options = graphvizOptions(true, 16.5, 'Courier New', printingType, this.includeHtmlBlockHeaders);
-        const text = createGraphviz(cfg, cfg.f.sourceText as string, options);
-
-        slak.ckompiler.printVariableVersions = saved;
+        const text = runWithVariableVersions(this.disableVariableVersions, () => {
+          const options = graphvizOptions(true, 16.5, 'Courier New', printingType, this.includeHtmlBlockHeaders);
+          return createGraphviz(cfg, cfg.f.sourceText as string, options);
+        });
 
         if (!(this.graphviz && text)) {
           return;

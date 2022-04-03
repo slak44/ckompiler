@@ -76,3 +76,14 @@ export function getVariableTextAndIndex(
 
   return [irString, index];
 }
+
+export function runWithVariableVersions<T>(disableVariableVersions: boolean, block: () => T): T {
+  const saved = slak.ckompiler.printVariableVersions;
+  slak.ckompiler.printVariableVersions = !disableVariableVersions;
+
+  const value = block();
+
+  slak.ckompiler.printVariableVersions = saved;
+
+  return value;
+}

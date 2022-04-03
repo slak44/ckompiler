@@ -5,7 +5,7 @@ import { combineLatest, filter, Observable, takeUntil, tap } from 'rxjs';
 import * as d3 from 'd3';
 import { BaseGraphvizDatum } from '@cki-graph-view/models/graphviz-datum.model';
 import { catmullRomSplines } from '@cki-utils/catmull-rom-splines';
-import { getVariableTextAndIndex } from '@cki-graph-view/utils';
+import { getVariableTextAndIndex, runWithVariableVersions } from '@cki-graph-view/utils';
 import { measureWidth } from '@cki-utils/measure-text';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import CFG = slak.ckompiler.analysis.CFG;
@@ -53,16 +53,11 @@ export class NodePath implements GraphViewHook {
   }
 
   private getFragmentTextAndIndex(isForPhi: boolean, nodeId: number, variable: Variable): [string, number] {
-    const saved = slak.ckompiler.printVariableVersions;
-    slak.ckompiler.printVariableVersions = !this.disableVariableVersions;
+    return runWithVariableVersions(this.disableVariableVersions, () => {
+      const irIndex = this.definitionIdx[nodeId];
 
-    const irIndex = this.definitionIdx[nodeId];
-
-    const values = getVariableTextAndIndex(this.cfg, isForPhi, irIndex, nodeId, variable);
-
-    slak.ckompiler.printVariableVersions = saved;
-
-    return values;
+      return getVariableTextAndIndex(this.cfg, isForPhi, irIndex, nodeId, variable);
+    });
   }
 
   private positionUntilVariableText(fragmentData: [string, number], nodeId: number, searchText: string): [number, number] {
