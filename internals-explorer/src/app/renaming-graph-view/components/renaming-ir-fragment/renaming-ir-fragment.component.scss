@@ -10,6 +10,16 @@
   color: colors.$variable-highlight;
 }
 
+@keyframes bgLineFade {
+  0% {
+    background-color: transparent;
+  }
+
+  100% {
+    background-color: rgba(colors.$accent-default, 0.1);
+  }
+}
+
 .highlighted-fragment {
-  background-color: rgba(colors.$accent-default, 0.1);
+  animation: bgLineFade graph-fragment.$transition-duration ease-in-out forwards;
 }
