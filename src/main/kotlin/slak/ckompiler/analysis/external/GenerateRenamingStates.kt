@@ -121,6 +121,7 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
         }
 
         val bbSuccPhiStates = phiUseStates[it] ?: mutableListOf()
+        bbSuccPhiStates.sortBy { step -> step.succBB }
         val succPhiSteps = bbSuccPhiStates.flatMap { step -> listOf(RenamingStepState(RenamingStep.EACH_SUCC_PHI, it.nodeId), step) }
 
         val forState = RenamingStepState(RenamingStep.EACH_BB_PREORDER, it.nodeId)
