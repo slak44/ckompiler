@@ -46,6 +46,10 @@ export class VarRenameViewComponent {
     startWith(0),
   );
 
+  public readonly showVersionChange$: Observable<boolean> = this.renamingStateService.currentStepState$.pipe(
+    map(state => state.step === RenamingStep.INSTR_REPLACE_DEF),
+  );
+
   public readonly blockBB$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
     map(state => state.bb),
   );

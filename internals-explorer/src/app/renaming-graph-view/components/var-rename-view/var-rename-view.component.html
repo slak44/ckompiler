@@ -14,10 +14,22 @@
   <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
     <div class="progress-overlay">
       <ng-container *ngIf="{ latestVersion: latestVersion$ | async } as data">
-        <span>Reaching definition of variable <cki-var>{{ variableName$ | async }}</cki-var>:</span>
-        <div class="large-overlay-text">
-          {{ variableName$ | async }} v{{ data.latestVersion }}
-        </div>
+        <ng-container *ngIf="data.latestVersion !== null">
+          <span>Reaching definition of <cki-var>{{ variableName$ | async }}</cki-var> to <cki-var>i</cki-var>:</span>
+          <div class="large-overlay-text version-container">
+            <ng-container *ngIf="showVersionChange$ | async else normalVersion">
+              <span class="old-version">{{ variableName$ | async }} v{{ data.latestVersion - 1 }}</span>
+
+              <mat-icon class="version-arrow">east</mat-icon>
+
+              <span class="new-version">{{ variableName$ | async }} v{{ data.latestVersion }}</span>
+            </ng-container>
+
+            <ng-template #normalVersion>
+              {{ variableName$ | async }} v{{ data.latestVersion }}
+            </ng-template>
+          </div>
+        </ng-container>
       </ng-container>
 
       <ng-container *ngIf="{ blockBB: blockBB$ | async } as data">

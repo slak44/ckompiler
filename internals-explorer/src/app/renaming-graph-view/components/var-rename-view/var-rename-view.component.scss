@@ -20,6 +20,21 @@
   color: colors.$graph-text;
 }
 
+.version-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  .version-arrow {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  .old-version {
+    text-decoration: rgba(colors.$error-red, 0.5) line-through 2px;
+  }
+}
+
 .large-overlay-text {
   font-size: 24px;
   line-height: 48px;
