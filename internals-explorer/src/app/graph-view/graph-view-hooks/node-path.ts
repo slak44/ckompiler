@@ -5,15 +5,12 @@ import { combineLatest, filter, Observable, takeUntil, tap } from 'rxjs';
 import * as d3 from 'd3';
 import { BaseGraphvizDatum } from '@cki-graph-view/models/graphviz-datum.model';
 import { catmullRomSplines } from '@cki-utils/catmull-rom-splines';
-import { getNodeById } from '@cki-graph-view/utils';
+import { getVariableTextAndIndex } from '@cki-graph-view/utils';
 import { measureWidth } from '@cki-utils/measure-text';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import CFG = slak.ckompiler.analysis.CFG;
-import arrayOf = slak.ckompiler.arrayOf;
-import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 import Variable = slak.ckompiler.analysis.Variable;
 import getDefinitionLocations = slak.ckompiler.getDefinitionLocations;
-import IRInstruction = slak.ckompiler.analysis.IRInstruction;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 
 // Keep in sync with _algorithm.scss
@@ -59,39 +56,13 @@ export class NodePath implements GraphViewHook {
     const saved = slak.ckompiler.printVariableVersions;
     slak.ckompiler.printVariableVersions = !this.disableVariableVersions;
 
-    const node = getNodeById(this.cfg, nodeId);
-    const nodePhi = arrayOf<PhiInstruction>(node.phi);
-
-    let index: number;
-    let irString: string;
-
     const irIndex = this.definitionIdx[nodeId];
 
-    if (irIndex === -1 && nodeId === this.cfg.startBlock.nodeId) {
-      // This is a use of an undefined variable
-      // Return index "-1" to target the start block header
-      index = -1;
-      irString = variable.toString();
-    } else if (isForPhi || irIndex === undefined || irIndex === -1) {
-      // Definition is in φ
-      index = nodePhi.findIndex(phi => phi.variable.identityId === variable.identityId);
-      if (index === -1) {
-        throw new Error('Cannot find variable in block phis');
-      }
-      irString = nodePhi[index].toString();
-    } else {
-      // Definition is in IR
-      const irDefinition = arrayOf<IRInstruction>(node.ir)[irIndex];
-      index = nodePhi.length + irIndex;
-      irString = irDefinition.toString();
-    }
-
-    // +1 due to the BBx: header
-    index++;
+    const values = getVariableTextAndIndex(this.cfg, isForPhi, irIndex, nodeId, variable);
 
     slak.ckompiler.printVariableVersions = saved;
 
-    return [irString, index];
+    return values;
   }
 
   private positionUntilVariableText(fragmentData: [string, number], nodeId: number, searchText: string): [number, number] {

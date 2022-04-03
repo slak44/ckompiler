@@ -12,11 +12,11 @@ export enum RenamingStep {
 
 export interface RenamingStepState {
   step: RenamingStep;
-  bb: number | null;
-  i: number | null;
-  newVersion: number | null;
-  reachingDefBlock: number | null;
-  reachingDefIdx: number | null;
-  succBB: number | null;
+  bb?: number;
+  i?: number;
+  newVersion?: number;
+  reachingDefBlock?: number;
+  reachingDefIdx?: number;
+  succBB?: number;
 }
 

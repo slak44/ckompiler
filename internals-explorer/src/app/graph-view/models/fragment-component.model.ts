@@ -8,5 +8,6 @@ export interface FragmentComponent {
   color: string;
   text: string;
   nodeId?: number;
+  i?: number;
   printingType?: string;
 }

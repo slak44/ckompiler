@@ -4,6 +4,8 @@ import CFG = slak.ckompiler.analysis.CFG;
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import Variable = slak.ckompiler.analysis.Variable;
+import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
+import IRInstruction = slak.ckompiler.analysis.IRInstruction;
 
 export function getPolyDatumNodeId(datum: GraphvizDatum): number {
   const match = datum.parent.key.match(/^node(\d+)$/);
@@ -34,4 +36,42 @@ export function replaceVarInText(variable: Variable, text: string): [string, boo
   });
 
   return [replaced, containsVariable];
+}
+
+export function getVariableTextAndIndex(
+  cfg: CFG,
+  isForPhi: boolean,
+  irIndex: number | undefined,
+  nodeId: number,
+  variable: Variable,
+): [string, number] {
+  const node = getNodeById(cfg, nodeId);
+  const nodePhi = arrayOf<PhiInstruction>(node.phi);
+
+  let index: number;
+  let irString: string;
+
+  if (irIndex === -1 && nodeId === cfg.startBlock.nodeId) {
+    // This is a use of an undefined variable
+    // Return index "-1" to target the start block header
+    index = -1;
+    irString = variable.toString();
+  } else if (isForPhi || irIndex === undefined || irIndex === -1) {
+    // Definition is in φ
+    index = nodePhi.findIndex(phi => phi.variable.identityId === variable.identityId);
+    if (index === -1) {
+      throw new Error('Cannot find variable in block phis');
+    }
+    irString = nodePhi[index].toString();
+  } else {
+    // Definition is in IR
+    const irDefinition = arrayOf<IRInstruction>(node.ir)[irIndex];
+    index = nodePhi.length + irIndex;
+    irString = irDefinition.toString();
+  }
+
+  // +1 due to the BBx: header
+  index++;
+
+  return [irString, index];
 }

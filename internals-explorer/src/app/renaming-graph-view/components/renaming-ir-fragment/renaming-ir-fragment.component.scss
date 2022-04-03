@@ -9,3 +9,7 @@
 .variable-definition {
   color: colors.$variable-highlight;
 }
+
+.highlighted-fragment {
+  background-color: rgba(colors.$accent-default, 0.1);
+}

@@ -12,7 +12,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
-import { replaceVarInText } from '@cki-graph-view/utils';
+import { getVariableTextAndIndex, replaceVarInText } from '@cki-graph-view/utils';
 
 @Component({
   selector: 'cki-renaming-ir-fragment',
@@ -35,6 +35,9 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
   public nodeId!: number;
 
   @Input()
+  public i!: number;
+
+  @Input()
   public set text(value: string) {
     this.textSubject.next(value);
   }
@@ -43,16 +46,23 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
 
   public readonly text$: Observable<SafeHtml> = combineLatest([
     this.textSubject,
+    this.renamingStateService.compilationInstance.cfg$,
     this.renamingStateService.varState.targetVariable$.pipe(
       startWith(null),
       distinctUntilChanged(),
     ),
+    this.renamingStateService.currentStepState$.pipe(
+      startWith(null),
+      distinctUntilChanged((a, b) => a?.bb === b?.bb && a?.i === b?.i)
+    ),
     this.algorithmStepService.phase$.pipe(
       distinctUntilChanged(),
     ),
-    this.replaceNodeContentsHook.rerender$.pipe(startWith(null)),
+    this.replaceNodeContentsHook.rerender$.pipe(
+      startWith(null)
+    ),
   ]).pipe(
-    map(([text, variable]) => {
+    map(([text, cfg, variable, currentStep]) => {
       if (!variable) {
         return text;
       }
@@ -66,7 +76,23 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
         ? `<span class="variable-definition">${replaced}</span>`
         : replaced;
 
-      return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
+      if (!currentStep) {
+        return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
+      }
+
+      const { bb, i } = currentStep;
+
+      if (typeof bb !== 'number' || typeof i !== 'number') {
+        return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
+      }
+
+      const [, fragmentIndex] = getVariableTextAndIndex(cfg, isPhi, i, bb, variable);
+
+      const bgHighlight = bb === this.nodeId && fragmentIndex === this.i
+        ? `<span class="highlighted-fragment">${defReplaced}</span>`
+        : defReplaced;
+
+      return this.sanitizer.bypassSecurityTrustHtml(bgHighlight);
     }),
   );
 

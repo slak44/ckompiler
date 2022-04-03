@@ -33,7 +33,7 @@ export class VarRenameViewComponent {
 
   public readonly stepCount$: Observable<number> = this.renamingStateService.stepCount$;
 
-  public readonly blockBB$: Observable<number | null> = this.renamingStateService.currentStepState$.pipe(
+  public readonly blockBB$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
     map(state => state.bb),
   );
 

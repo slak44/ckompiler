@@ -55,7 +55,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
     }
 
     const visibleObjects = texts.filter(
-      foreignObject => !foreignObject.firstElementChild!.classList.contains('hidden-fragment')
+      foreignObject => !foreignObject.firstElementChild!.classList.contains('hidden-fragment'),
     );
 
     const poly = node.querySelector('polygon')!;
@@ -79,40 +79,47 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
     this.graphView = graphView;
     this.rerender$ = graphView.rerender$;
 
-    const svgTextElements = Array.from(graph.querySelectorAll('text'));
-    const textAscents = svgTextElements.map(svgElem => measureTextAscent(svgElem.textContent ?? ''));
-    this.maxAscent = Math.max(...textAscents);
+    this.maxAscent = -Infinity;
 
-    for (const textElement of svgTextElements) {
-      const text = textElement.textContent ?? '';
+    for (const node of Array.from(graph.querySelectorAll('g.node'))) {
+      const textNodes = node.querySelectorAll('text');
 
-      const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-      const replaceableHost = document.createElement(GENERIC_FRAGMENT_HOST);
-      foreign.appendChild(replaceableHost);
+      for (let i = 0; i < textNodes.length; i++) {
+        const textElement = textNodes[i];
 
-      const comp = this.componentFactory.create(this.injector, [], replaceableHost);
-      comp.instance.nodeId = graphView.getNodeIdByGroup(textElement.parentNode as SVGGElement);
-      comp.instance.printingType = printingType;
-      comp.instance.text = text;
-      comp.instance.color = textElement.getAttribute('fill')!;
+        const text = textElement.textContent ?? '';
 
-      this.applicationRef.attachView(comp.hostView);
+        this.maxAscent = Math.max(this.maxAscent, measureTextAscent(text));
 
-      const originalYAttr = textElement.getAttribute('y')!;
-      foreign.dataset[ORIGINAL_Y] = originalYAttr;
-      foreign.removeAttribute('y');
+        const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+        const replaceableHost = document.createElement(GENERIC_FRAGMENT_HOST);
+        foreign.appendChild(replaceableHost);
 
-      this.setForeignYPosition(foreign, originalYAttr);
+        const comp = this.componentFactory.create(this.injector, [], replaceableHost);
+        comp.instance.nodeId = graphView.getNodeIdByGroup(textElement.parentNode as SVGGElement);
+        comp.instance.i = i;
+        comp.instance.printingType = printingType;
+        comp.instance.text = text;
+        comp.instance.color = textElement.getAttribute('fill')!;
 
-      foreign.setAttribute('x', textElement.getAttribute('x')!);
-      foreign.setAttribute('width', '100%');
-      foreign.setAttribute('height', '100%');
+        this.applicationRef.attachView(comp.hostView);
 
-      foreign.style.pointerEvents = 'none';
-      foreign.classList.add('transition-transform');
+        const originalYAttr = textElement.getAttribute('y')!;
+        foreign.dataset[ORIGINAL_Y] = originalYAttr;
+        foreign.removeAttribute('y');
 
-      this.foreignToTextMap.set(foreign, textElement);
-      textElement.replaceWith(foreign);
+        this.setForeignYPosition(foreign, originalYAttr);
+
+        foreign.setAttribute('x', textElement.getAttribute('x')!);
+        foreign.setAttribute('width', '100%');
+        foreign.setAttribute('height', '100%');
+
+        foreign.style.pointerEvents = 'none';
+        foreign.classList.add('transition-transform');
+
+        this.foreignToTextMap.set(foreign, textElement);
+        textElement.replaceWith(foreign);
+      }
     }
   }
 
