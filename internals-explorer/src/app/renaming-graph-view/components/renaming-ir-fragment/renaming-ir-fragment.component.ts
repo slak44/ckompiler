@@ -13,6 +13,7 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { getVariableTextAndIndex, replaceVarInText } from '@cki-graph-view/utils';
+import { RenamingStep } from '../../models/renaming-step.model';
 
 @Component({
   selector: 'cki-renaming-ir-fragment',
@@ -80,13 +81,15 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
         return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
       }
 
-      const { bb, i } = currentStep;
+      const { bb, i, step, succBB } = currentStep;
 
-      if (typeof bb !== 'number' || typeof i !== 'number' || bb !== this.nodeId) {
+      const actualBB = [RenamingStep.EACH_SUCC_PHI, RenamingStep.SUCC_PHI_REPLACE_USE].includes(step) ? succBB : bb;
+
+      if (typeof actualBB !== 'number' || typeof i !== 'number' || actualBB !== this.nodeId) {
         return this.sanitizer.bypassSecurityTrustHtml(defReplaced);
       }
 
-      const [, fragmentIndex] = getVariableTextAndIndex(cfg, isPhi, i, bb, variable);
+      const [, fragmentIndex] = getVariableTextAndIndex(cfg, i === -1, i, actualBB, variable);
 
       const bgHighlight = fragmentIndex === this.i
         ? `<span class="highlighted-fragment">${defReplaced}</span>`

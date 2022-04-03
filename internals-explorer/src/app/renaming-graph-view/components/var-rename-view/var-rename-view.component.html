@@ -21,6 +21,15 @@
           </div>
         </ng-container>
       </ng-container>
+
+      <ng-container *ngIf="{ succBB: succBB$ | async } as data">
+        <ng-container *ngIf="data.succBB !== undefined && data.succBB !== null">
+          <span>Current successor:</span>
+          <div class="large-overlay-text">
+            <cki-var>succ</cki-var> = {{ data.succBB }}
+          </div>
+        </ng-container>
+      </ng-container>
     </div>
 
     <div class="algorithm">

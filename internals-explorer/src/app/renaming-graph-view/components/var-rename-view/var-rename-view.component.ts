@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
 import { RenamingIrFragmentComponent } from '../renaming-ir-fragment/renaming-ir-fragment.component';
-import { filter, map, Observable, of } from 'rxjs';
+import { filter, map, merge, Observable, of } from 'rxjs';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
@@ -37,7 +37,11 @@ export class VarRenameViewComponent {
     map(state => state.bb),
   );
 
-  private readonly selectedBlockId$: Observable<number> = this.blockBB$.pipe(
+  public readonly succBB$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
+    map(state => state.succBB),
+  );
+
+  private readonly selectedBlockId$: Observable<number> = merge(this.blockBB$, this.succBB$).pipe(
     filter((block): block is number => typeof block === 'number'),
   );
 
