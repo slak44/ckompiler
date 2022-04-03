@@ -9,7 +9,7 @@ import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
-import { RenamingStep } from '../../models/renaming-step.model';
+import { RenamingStep, RenamingStepState } from '../../models/renaming-step.model';
 import { getNodeById } from '@cki-graph-view/utils';
 import { slak } from '@ckompiler/ckompiler';
 import arrayOf = slak.ckompiler.arrayOf;
@@ -40,7 +40,9 @@ export class VarRenameViewComponent {
 
   public readonly variableName$: Observable<string> = this.renamingStateService.varState.variableName$;
 
-  public readonly reachingDefVersion$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
+  public readonly currentStepState$: Observable<RenamingStepState> = this.renamingStateService.currentStepState$;
+
+  public readonly reachingDefVersion$: Observable<number | undefined> = this.currentStepState$.pipe(
     map(state => state.newVersion),
     startWith(0),
   );
@@ -51,16 +53,16 @@ export class VarRenameViewComponent {
     map(([oldVersion, newVersion]) => Math.max(oldVersion, newVersion)),
   );
 
-  public readonly hasNewDefinition$: Observable<boolean> = this.renamingStateService.currentStepState$.pipe(
+  public readonly hasNewDefinition$: Observable<boolean> = this.currentStepState$.pipe(
     map(state => state.step === RenamingStep.INSTR_REPLACE_DEF),
   );
 
-  public readonly blockBB$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
+  public readonly blockBB$: Observable<number | undefined> = this.currentStepState$.pipe(
     map(state => state.bb),
   );
 
   public readonly bbSuccessorList$: Observable<number[] | undefined> = combineLatest([
-    this.renamingStateService.currentStepState$,
+    this.currentStepState$,
     this.renamingStateService.compilationInstance.cfg$,
   ]).pipe(
     map(([state, cfg]) => {
@@ -76,7 +78,7 @@ export class VarRenameViewComponent {
     }),
   );
 
-  public readonly succBB$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
+  public readonly succBB$: Observable<number | undefined> = this.currentStepState$.pipe(
     map(state => state.succBB),
   );
 
