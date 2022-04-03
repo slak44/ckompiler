@@ -21,7 +21,7 @@
       </ng-container>
 
       <ng-container *ngIf="{ reachingDefVersion: reachingDefVersion$ | async } as data">
-        <ng-container *ngIf="data.reachingDefVersion !== null">
+        <ng-container *ngIf="data.reachingDefVersion !== undefined && data.reachingDefVersion !== null">
           <span>Reaching definition of <cki-var>{{ variableName$ | async }}</cki-var> to <cki-var>i</cki-var>:</span>
           <div class="large-overlay-text version-container">
             <ng-container *ngIf="hasNewDefinition$ | async else normalVersion">

@@ -40,13 +40,13 @@ export class VarRenameViewComponent {
 
   public readonly variableName$: Observable<string> = this.renamingStateService.varState.variableName$;
 
-  public readonly reachingDefVersion$: Observable<number> = this.renamingStateService.currentStepState$.pipe(
+  public readonly reachingDefVersion$: Observable<number | undefined> = this.renamingStateService.currentStepState$.pipe(
     map(state => state.newVersion),
-    filter((newVersion): newVersion is number => typeof newVersion === 'number'),
     startWith(0),
   );
 
   public readonly latestVersion$: Observable<number> = this.reachingDefVersion$.pipe(
+    filter((version): version is number => typeof version === 'number'),
     pairwise(),
     map(([oldVersion, newVersion]) => Math.max(oldVersion, newVersion)),
   );
