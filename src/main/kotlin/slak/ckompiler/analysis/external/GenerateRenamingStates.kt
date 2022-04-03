@@ -70,7 +70,7 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
             .first { (_, incomingVersion) -> incomingVersion == variable }
             .key
 
-        phiUseStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
+        phiUseStates.getOrPut(matchingPred, ::mutableListOf) += RenamingStepState(
             RenamingStep.SUCC_PHI_REPLACE_USE,
             bb = matchingPred.nodeId,
             i = DEFINED_IN_PHI,
@@ -121,13 +121,11 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
         }
 
         val bbSuccPhiStates = phiUseStates[it] ?: mutableListOf()
-        if (bbSuccPhiStates.isNotEmpty()) {
-          bbSuccPhiStates.add(0, RenamingStepState(RenamingStep.EACH_SUCC_PHI, it.nodeId))
-        }
+        val succPhiSteps = bbSuccPhiStates.flatMap { step -> listOf(RenamingStepState(RenamingStep.EACH_SUCC_PHI, it.nodeId), step) }
 
         val forState = RenamingStepState(RenamingStep.EACH_BB_PREORDER, it.nodeId)
 
-        listOf(forState) + bbStates + bbSuccPhiStates
+        listOf(forState) + bbStates + succPhiSteps
       }
       .flatten()
 
