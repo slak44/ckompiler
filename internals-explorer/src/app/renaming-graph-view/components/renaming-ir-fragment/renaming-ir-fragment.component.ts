@@ -6,13 +6,13 @@ import {
   ValueProvider,
   ViewEncapsulation,
 } from '@angular/core';
-import { FRAGMENT_COMPONENT, FragmentComponent } from '@cki-graph-view/models/fragment-component.model';
+import { FRAGMENT_COMPONENT, FragmentComponent, FragmentSource } from '@cki-graph-view/models/fragment-component.model';
 import { combineLatest, distinctUntilChanged, map, Observable, ReplaySubject, startWith } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
-import { getVariableTextAndIndex, replaceVarInText } from '@cki-graph-view/utils';
+import { replaceVarInText } from '@cki-graph-view/utils';
 import { RenamingStep } from '../../models/renaming-step.model';
 
 @Component({
@@ -39,6 +39,9 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
   public i!: number;
 
   @Input()
+  public instr?: FragmentSource;
+
+  @Input()
   public set text(value: string) {
     this.textSubject.next(value);
   }
@@ -47,14 +50,12 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
 
   public readonly text$: Observable<SafeHtml> = combineLatest([
     this.textSubject,
-    this.renamingStateService.compilationInstance.cfg$,
     this.renamingStateService.varState.targetVariable$.pipe(
       startWith(null),
       distinctUntilChanged(),
     ),
     this.renamingStateService.currentStepState$.pipe(
       startWith(null),
-      distinctUntilChanged((a, b) => a?.bb === b?.bb && a?.i === b?.i)
     ),
     this.algorithmStepService.phase$.pipe(
       distinctUntilChanged(),
@@ -63,7 +64,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
       startWith(null)
     ),
   ]).pipe(
-    map(([text, cfg, variable, currentStep]) => {
+    map(([text, variable, currentStep]) => {
       if (!variable) {
         return text;
       }
@@ -89,9 +90,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
         return defReplaced;
       }
 
-      const [, fragmentIndex] = getVariableTextAndIndex(cfg, i === -1, i, actualBB, variable);
-
-      return  fragmentIndex === this.i
+      return this.i === i
         ? `<span class="highlighted-fragment">${defReplaced}</span>`
         : defReplaced;
     }),

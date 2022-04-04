@@ -10,10 +10,20 @@ import {
 } from '@angular/core';
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
 import { slak } from '@ckompiler/ckompiler';
-import { FRAGMENT_COMPONENT, FragmentComponent, GENERIC_FRAGMENT_HOST } from '../models/fragment-component.model';
+import {
+  FRAGMENT_COMPONENT,
+  FragmentComponent,
+  FragmentSource,
+  GENERIC_FRAGMENT_HOST,
+} from '../models/fragment-component.model';
 import { Observable } from 'rxjs';
 import { measureTextAscent } from '@cki-utils/measure-text';
 import CFG = slak.ckompiler.analysis.CFG;
+import { getNodeById } from '@cki-graph-view/utils';
+import arrayOfIterator = slak.ckompiler.arrayOfIterator;
+import IRInstruction = slak.ckompiler.analysis.IRInstruction;
+import arrayOf = slak.ckompiler.arrayOf;
+import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 
 const ORIGINAL_Y = 'originalY';
 
@@ -83,9 +93,21 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
 
     for (const node of Array.from(graph.querySelectorAll('g.node'))) {
       const textNodes = node.querySelectorAll('text');
+      const nodeId = graphView.getNodeIdByGroup(node as SVGGElement);
+      const basicBlock = getNodeById(cfg, nodeId);
+
+      const instructions = arrayOfIterator<IRInstruction>(basicBlock.instructions);
+      const phis = arrayOf<PhiInstruction>(basicBlock.phi);
+
+      const sources: FragmentSource[] = [...phis, ...instructions];
+
+      const offset = textNodes.length - sources.length;
 
       for (let i = 0; i < textNodes.length; i++) {
         const textElement = textNodes[i];
+
+        // Assume offset is always at the start
+        const source = i < offset ? undefined : sources[i - offset];
 
         const text = textElement.textContent ?? '';
 
@@ -96,8 +118,9 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
         foreign.appendChild(replaceableHost);
 
         const comp = this.componentFactory.create(this.injector, [], replaceableHost);
-        comp.instance.nodeId = graphView.getNodeIdByGroup(textElement.parentNode as SVGGElement);
-        comp.instance.i = i;
+        comp.instance.nodeId = nodeId;
+        comp.instance.i = i - offset;
+        comp.instance.instr = source;
         comp.instance.printingType = printingType;
         comp.instance.text = text;
         comp.instance.color = textElement.getAttribute('fill')!;
