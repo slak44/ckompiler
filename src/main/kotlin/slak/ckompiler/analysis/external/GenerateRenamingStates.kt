@@ -61,49 +61,60 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
       }
     }.distinct()
 
+    val bbPhi = bb.phi.toList()
+
     for ((variable, instrIndex, isDef) in orderedLocations) {
       val reachingDef = cfg.definitions.getValue(variable)
 
       if (instrIndex == DEFINED_IN_PHI && !isDef) {
-        val matchingPred = bb.phi
-            .first { it.variable.identityId == variable.identityId }.incoming.entries
+        val phiIndex = bbPhi.indexOfFirst { it.variable.identityId == variable.identityId }
+
+        check(phiIndex != -1) { "Phi for $variable not found in node ${bb.nodeId}" }
+
+        val matchingPred = bbPhi[phiIndex].incoming.entries
             .first { (_, incomingVersion) -> incomingVersion == variable }
             .key
 
         phiUseStates.getOrPut(matchingPred, ::mutableListOf) += RenamingStepState(
             RenamingStep.SUCC_PHI_REPLACE_USE,
             bb = matchingPred.nodeId,
-            i = DEFINED_IN_PHI,
+            i = phiIndex,
             newVersion = variable.version,
             reachingDefBlock = reachingDef.first.nodeId,
             reachingDefIdx = reachingDef.second,
             succBB = bb.nodeId,
         )
       } else {
+        val idx = if (instrIndex == DEFINED_IN_PHI) {
+          bbPhi.indexOfFirst { it.variable.identityId == variable.identityId }
+        } else {
+          bbPhi.size + instrIndex
+        }
+
         if (isDef) {
           blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
               RenamingStep.CHECK_DEFINED,
               bb = bb.nodeId,
-              i = instrIndex,
+              i = idx,
           )
 
           blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
               RenamingStep.INSTR_REPLACE_DEF,
               bb = bb.nodeId,
-              i = instrIndex,
+              i = idx,
               newVersion = variable.version,
           )
         } else {
           blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
               RenamingStep.CHECK_USED,
               bb = bb.nodeId,
-              i = instrIndex,
+              i = idx,
           )
 
           blockStates.getOrPut(bb, ::mutableListOf) += RenamingStepState(
               RenamingStep.INSTR_REPLACE_USE,
               bb = bb.nodeId,
-              i = instrIndex,
+              i = idx,
               newVersion = variable.version,
               reachingDefBlock = reachingDef.first.nodeId,
               reachingDefIdx = reachingDef.second,
