@@ -3,16 +3,19 @@ import {
   Component,
   HostBinding,
   Input,
+  OnInit,
   ValueProvider,
   ViewEncapsulation,
 } from '@angular/core';
-import { FRAGMENT_COMPONENT, FragmentComponent } from '@cki-graph-view/models/fragment-component.model';
+import { FRAGMENT_COMPONENT, FragmentComponent, FragmentSource } from '@cki-graph-view/models/fragment-component.model';
 import { PhiInsertionStateService } from '../../services/phi-insertion-state.service';
 import { combineLatest, distinctUntilChanged, map, Observable, ReplaySubject, startWith } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { replaceVarInText } from '@cki-graph-view/utils';
+import { slak } from '@ckompiler/ckompiler';
+import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 
 @Component({
   selector: 'cki-phi-ir-fragment',
@@ -21,7 +24,7 @@ import { replaceVarInText } from '@cki-graph-view/utils';
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.ShadowDom,
 })
-export class PhiIrFragmentComponent implements FragmentComponent {
+export class PhiIrFragmentComponent implements FragmentComponent, OnInit {
   public static provider: ValueProvider = {
     provide: FRAGMENT_COMPONENT,
     useValue: PhiIrFragmentComponent,
@@ -38,9 +41,14 @@ export class PhiIrFragmentComponent implements FragmentComponent {
   public nodeId!: number;
 
   @Input()
+  public instr?: FragmentSource;
+
+  @Input()
   public set text(value: string) {
     this.textSubject.next(value);
   }
+
+  private isPhi!: boolean;
 
   private readonly textSubject: ReplaySubject<string> = new ReplaySubject(1);
 
@@ -67,11 +75,10 @@ export class PhiIrFragmentComponent implements FragmentComponent {
 
       const [replaced, containsVariable] = replaceVarInText(variable, text);
 
-      const isPhi = replaced.includes('φ');
       const withPhiClass = containsVariable ? 'highlight-active' : 'highlight-disabled';
-      const phiReplaced = isPhi ? `<span class="${withPhiClass}">${replaced}</span>` : replaced;
+      const phiReplaced = this.isPhi ? `<span class="${withPhiClass}">${replaced}</span>` : replaced;
 
-      const shouldHide = phase !== AlgorithmPhase.PREPARING && isPhi && (!containsVariable || !isInF);
+      const shouldHide = phase !== AlgorithmPhase.PREPARING && this.isPhi && (!containsVariable || !isInF);
       if (this.isFragmentHidden !== shouldHide) {
         this.isFragmentHidden = shouldHide;
         this.phiInsertionStateService.triggerReLayout(this.nodeId);
@@ -87,5 +94,9 @@ export class PhiIrFragmentComponent implements FragmentComponent {
     private readonly algorithmStepService: AlgorithmStepService,
     private readonly sanitizer: DomSanitizer,
   ) {
+  }
+
+  public ngOnInit(): void {
+    this.isPhi = this.instr instanceof PhiInstruction;
   }
 }

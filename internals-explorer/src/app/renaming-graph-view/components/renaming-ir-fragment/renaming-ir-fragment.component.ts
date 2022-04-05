@@ -3,6 +3,7 @@ import {
   Component,
   HostBinding,
   Input,
+  OnInit,
   ValueProvider,
   ViewEncapsulation,
 } from '@angular/core';
@@ -14,6 +15,9 @@ import { RenamingStateService } from '../../services/renaming-state.service';
 import { AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { replaceVarInText } from '@cki-graph-view/utils';
 import { RenamingStep } from '../../models/renaming-step.model';
+import { slak } from '@ckompiler/ckompiler';
+import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
+import MoveInstr = slak.ckompiler.analysis.MoveInstr;
 
 @Component({
   selector: 'cki-renaming-ir-fragment',
@@ -22,7 +26,7 @@ import { RenamingStep } from '../../models/renaming-step.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.ShadowDom,
 })
-export class RenamingIrFragmentComponent implements FragmentComponent {
+export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
   public static provider: ValueProvider = {
     provide: FRAGMENT_COMPONENT,
     useValue: RenamingIrFragmentComponent,
@@ -45,6 +49,9 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
   public set text(value: string) {
     this.textSubject.next(value);
   }
+
+  private isPhi!: boolean;
+  private isMoveInstr!: boolean;
 
   private readonly textSubject: ReplaySubject<string> = new ReplaySubject(1);
 
@@ -71,10 +78,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
 
       const [replaced, containsVariable] = replaceVarInText(variable, text);
 
-      const isPhi = text.includes('φ');
-      const isMoveInstr = text.startsWith('move ' + variable.tid.toString());
-
-      const defReplaced = containsVariable && (isPhi || isMoveInstr)
+      const defReplaced = containsVariable && (this.isPhi || this.isMoveInstr)
         ? `<span class="variable-definition">${replaced}</span>`
         : replaced;
 
@@ -104,5 +108,10 @@ export class RenamingIrFragmentComponent implements FragmentComponent {
     private readonly algorithmStepService: AlgorithmStepService,
     private readonly sanitizer: DomSanitizer,
   ) {
+  }
+
+  public ngOnInit(): void {
+    this.isPhi = this.instr instanceof PhiInstruction;
+    this.isMoveInstr = this.instr instanceof MoveInstr;
   }
 }
