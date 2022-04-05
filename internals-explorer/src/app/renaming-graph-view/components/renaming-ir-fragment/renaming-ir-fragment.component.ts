@@ -17,7 +17,8 @@ import { replaceVarInText } from '@cki-graph-view/utils';
 import { RenamingStep } from '../../models/renaming-step.model';
 import { slak } from '@ckompiler/ckompiler';
 import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
-import MoveInstr = slak.ckompiler.analysis.MoveInstr;
+import StoreMemory = slak.ckompiler.analysis.StoreMemory;
+import Variable = slak.ckompiler.analysis.Variable;
 
 @Component({
   selector: 'cki-renaming-ir-fragment',
@@ -50,8 +51,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
     this.textSubject.next(value);
   }
 
-  private isPhi!: boolean;
-  private isMoveInstr!: boolean;
+  private resultIdentityId?: number;
 
   private readonly textSubject: ReplaySubject<string> = new ReplaySubject(1);
 
@@ -78,7 +78,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
 
       const [replaced, containsVariable] = replaceVarInText(variable, text);
 
-      const defReplaced = containsVariable && (this.isPhi || this.isMoveInstr)
+      const defReplaced = containsVariable && this.resultIdentityId === variable.identityId
         ? `<span class="variable-definition">${replaced}</span>`
         : replaced;
 
@@ -111,7 +111,10 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
   }
 
   public ngOnInit(): void {
-    this.isPhi = this.instr instanceof PhiInstruction;
-    this.isMoveInstr = this.instr instanceof MoveInstr;
+    if (this.instr instanceof PhiInstruction) {
+      this.resultIdentityId = this.instr.variable.identityId;
+    } else if (this.instr && !(this.instr instanceof StoreMemory) && this.instr.result instanceof Variable) {
+      this.resultIdentityId = this.instr.result.identityId;
+    }
   }
 }
