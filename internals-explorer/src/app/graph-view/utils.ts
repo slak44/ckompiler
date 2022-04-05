@@ -28,7 +28,7 @@ export function setClassIf(e: Element, className: string, cond: boolean): void {
 
 export function replaceVarInText(variable: Variable, text: string): [string, boolean] {
   const replacePattern = '<span class="highlight-variable">$1</span>';
-  const regexp = new RegExp(`(${variable.tid.toString()}(?: ${variable.versionString()})?)`, 'g');
+  const regexp = new RegExp(`(${variable.tid.toString()}(?: v\\d+)?)`, 'g');
   let containsVariable = false;
   const replaced = text.replace(regexp, (variable) => {
     containsVariable = true;
