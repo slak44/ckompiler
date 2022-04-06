@@ -1,7 +1,7 @@
 plugins {
   application
-  kotlin("multiplatform") version "1.6.0"
-  kotlin("plugin.serialization") version "1.6.0"
+  kotlin("multiplatform") version "1.6.20"
+  kotlin("plugin.serialization") version "1.6.20"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
 }
@@ -185,7 +185,7 @@ kotlin {
       dependencies {
         implementation("org.junit.jupiter:junit-jupiter:5.5.0")
         implementation("org.apache.logging.log4j:log4j-jul:2.17.2")
-        implementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.0")
+        implementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.20")
       }
     }
 
