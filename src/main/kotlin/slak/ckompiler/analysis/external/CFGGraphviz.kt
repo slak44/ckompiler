@@ -107,21 +107,20 @@ private fun CFG.mapBlocksToString(
         "<font color=\"$color\">${mi.toString().unescape().replace("\n", sep)}</font>"
       }
 
-      val maybeHeader = if (includeBlockHeader) blockHeader(it) else ""
       val content = if (phiStr.isNotBlank()) phiStr + sep + miStr else miStr
 
-      return@associateWith maybeHeader + content
+      return@associateWith ".block$it:$brLeft$content"
     }
     return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   } else if (print == CodePrintingMethods.ASM_TO_STRING) {
     val gen = X64Generator(this, target)
     val alloc = gen.regAlloc()
     return gen.applyAllocation(alloc).mapValues {
-      it.value.joinToString(separator = sep, postfix = sep)
+      ".block${it.key}:$brLeft" + it.value.joinToString(separator = sep, postfix = sep)
     }.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   }
   return allNodes.associateWith {
-    val maybeHeader = if (includeBlockHeader) blockHeader(it.nodeId) else ""
+    val maybeHeader = if (includeBlockHeader && print != CodePrintingMethods.SOURCE_SUBSTRING) blockHeader(it.nodeId) else ""
 
     val content = when (print) {
       CodePrintingMethods.SOURCE_SUBSTRING -> it.srcToString {

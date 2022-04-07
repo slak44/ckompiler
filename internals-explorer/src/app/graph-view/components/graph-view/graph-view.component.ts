@@ -44,9 +44,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public hooks: GraphViewHook[] = [];
 
   @Input()
-  public includeHtmlBlockHeaders: boolean = false;
-
-  @Input()
   public disableVariableVersions: boolean = false;
 
   @Input()
@@ -214,7 +211,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
             'Courier New',
             true,
             printingType,
-            this.includeHtmlBlockHeaders,
+            true,
             X64TargetOpts.Companion.defaults
           );
           return createGraphviz(cfg, cfg.f.sourceText as string, options);
