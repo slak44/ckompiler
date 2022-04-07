@@ -97,11 +97,6 @@ fun closedRangeLength(closedRange: ClosedRange<Int>): Int {
   return closedRange.length()
 }
 
-@JsExport
-fun diagnosticKindString(diagnostic: Diagnostic): String {
-  return diagnostic.id.kind.name
-}
-
 @Suppress("NON_EXPORTABLE_TYPE")
 @JsExport
 fun <T> arrayOf(collection: Collection<T>): Array<T> {

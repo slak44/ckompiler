@@ -10,8 +10,8 @@ import { CompileService } from '@cki-graph-view/services/compile.service';
 import { monacoFontSize, monacoViewState } from '@cki-settings';
 import IMarkerData = editor.IMarkerData;
 import closedRangeLength = slak.ckompiler.closedRangeLength;
-import diagnosticKindString = slak.ckompiler.diagnosticKindString;
 import EditorOption = editor.EditorOption;
+import DiagnosticKind = slak.ckompiler.DiagnosticKind;
 
 const STORAGE_KEY_SOURCE_CODE = 'source-code';
 
@@ -69,12 +69,12 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
       const markers = diagnostics.map((diagnostic): IMarkerData => {
         const data = diagnostic.dataFor(diagnostic.caret);
         const length = closedRangeLength(diagnostic.caret);
-        const kind = diagnosticKindString(diagnostic);
+        const kind = diagnostic.id.kind.name;
 
         const types: Record<string, MarkerSeverity> = {
-          ERROR: MarkerSeverity.Error,
-          WARNING: MarkerSeverity.Warning,
-          OTHER: MarkerSeverity.Info,
+          [DiagnosticKind.ERROR.name]: MarkerSeverity.Error,
+          [DiagnosticKind.WARNING.name]: MarkerSeverity.Warning,
+          [DiagnosticKind.OTHER.name]: MarkerSeverity.Info,
         };
 
         return {

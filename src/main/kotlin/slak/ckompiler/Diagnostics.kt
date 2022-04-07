@@ -16,6 +16,7 @@ expect class DiagnosticColors(useColors: Boolean) {
 expect fun String.format(vararg args: Any): String
 
 // FIXME: learn from "http://blog.llvm.org/2010/04/amazing-feats-of-clang-error-recovery.html"
+@JsExport
 enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
   UNKNOWN(OTHER, ""),
 
@@ -186,6 +187,7 @@ enum class DiagnosticId(val kind: DiagnosticKind, val messageFormat: String) {
       "Control flow reaches end of function '%s' with non-void return type '%s'")
 }
 
+@JsExport
 enum class DiagnosticKind(val text: String) {
   ERROR("error"), WARNING("warning"), OTHER("note")
 }
