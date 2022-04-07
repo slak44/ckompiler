@@ -56,7 +56,13 @@ data class RenameReplacements(
     val phiRenameReplacements: Map<AtomicId, List<Triple<Int, Int, AtomicId>>>,
     val renameReplacements: Map<Pair<AtomicId, Int>, List<Pair<Int, Replacements>>>,
     val serializedRenameSteps: String,
-)
+) {
+  fun getFor(nodeId: AtomicId, index: Int, stepIndex: Int): Replacements {
+    val replacementList = (renameReplacements[nodeId to index] ?: emptyList()).filter { stepIndex >= it.first }
+
+    return replacementList.map { it.second }.reduceOrNull { acc, r -> acc + r } ?: Replacements.NONE
+  }
+}
 
 @JsExport
 fun generateRenameSteps(cfg: CFG, targetVariable: Variable): RenameReplacements {
@@ -200,6 +206,35 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): RenameReplacements 
 }
 
 @JsExport
+fun getPhiRenameText(
+    phi: PhiInstruction,
+    bb: BasicBlock,
+    index: Int,
+    variable: Variable,
+    stepIndex: Int,
+    replacements: RenameReplacements,
+): String {
+  if (variable.identityId != phi.variable.identityId) {
+    return phi.toString()
+  }
+
+  val phiReplacementList = (replacements.phiRenameReplacements[bb.nodeId] ?: emptyList()).filter { stepIndex >= it.first }
+
+  val incomingStr = phi.incoming.keys.joinToString(", ") { pred ->
+    val version = phiReplacementList.firstOrNull { it.third == pred.nodeId }?.second
+    val versionStr = if (version == null) "" else " v$version"
+
+    "BB${pred.nodeId}$versionStr"
+  }
+
+  val toReplace = replacements.getFor(bb.nodeId, index, stepIndex)
+
+  val target = if (toReplace.hasDef()) phi.variable.toString() else phi.variable.tid.toString()
+
+  return "store $target = φ($incomingStr)"
+}
+
+@JsExport
 fun getRenameText(
     ir: IRInstruction,
     bb: BasicBlock,
@@ -208,9 +243,7 @@ fun getRenameText(
     stepIndex: Int,
     replacements: RenameReplacements,
 ): String {
-  val replacementList = (replacements.renameReplacements[bb.nodeId to index] ?: emptyList()).filter { stepIndex >= it.first }
-
-  val toReplace = replacementList.map { it.second }.reduceOrNull { acc, r -> acc + r } ?: Replacements.NONE
+  val toReplace = replacements.getFor(bb.nodeId, index, stepIndex)
 
   fun replaceUse(value: IRValue): String {
     return if (value is Variable && value.identityId == variable.identityId && !toReplace.hasUse()) {

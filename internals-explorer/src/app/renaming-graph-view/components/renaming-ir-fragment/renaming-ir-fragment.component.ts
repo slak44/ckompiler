@@ -20,6 +20,7 @@ import StoreMemory = slak.ckompiler.analysis.StoreMemory;
 import Variable = slak.ckompiler.analysis.Variable;
 import getRenameText = slak.ckompiler.analysis.external.getRenameText;
 import { getNodeById, replaceVarInText } from '@cki-graph-view/utils';
+import getPhiRenameText = slak.ckompiler.analysis.external.getPhiRenameText;
 
 @Component({
   selector: 'cki-renaming-ir-fragment',
@@ -61,7 +62,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
       startWith(0),
     ),
     this.renamingStateService.renameReplacements$.pipe(
-      startWith(null)
+      startWith(null),
     ),
     this.renamingStateService.compilationInstance.cfg$,
     this.algorithmStepService.phase$.pipe(
@@ -74,12 +75,16 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
     map(([variable, currentStep, currentStepIdx, renameReplacements, cfg]) => {
       let text: string;
 
+      const node = getNodeById(cfg, this.nodeId);
+
       if (!this.instr) {
         text = `BB${this.nodeId}:`;
-      } else if (this.instr instanceof PhiInstruction || !variable || !renameReplacements) {
+      } else if (!variable || !renameReplacements) {
         text = this.instr.toString();
+      } else if (this.instr instanceof PhiInstruction) {
+        text = getPhiRenameText(this.instr, node, this.i, variable, currentStepIdx, renameReplacements);
       } else {
-        text = getRenameText(this.instr, getNodeById(cfg, this.nodeId), this.i, variable, currentStepIdx, renameReplacements);
+        text = getRenameText(this.instr, node, this.i, variable, currentStepIdx, renameReplacements);
       }
 
       if (!variable) {
