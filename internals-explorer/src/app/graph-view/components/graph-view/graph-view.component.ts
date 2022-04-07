@@ -22,10 +22,10 @@ import { GraphViewHook } from '../../models/graph-view-hook.model';
 import { getNodeById, getPolyDatumNodeId, runWithVariableVersions, setClassIf } from '../../utils';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import createGraphviz = slak.ckompiler.analysis.external.createGraphviz;
-import graphvizOptions = slak.ckompiler.graphvizOptions;
 import CFG = slak.ckompiler.analysis.CFG;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
+import X64TargetOpts = slak.ckompiler.backend.x64.X64TargetOpts;
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -119,7 +119,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       .transition()
       .delay(50)
       .duration(500)
-      .attrTween("transform", () => t => transformFromZoom(interpolator(t)))
+      .attrTween('transform', () => t => transformFromZoom(interpolator(t)))
       .on('end', () => setZoomOnElement(svgRef, d3.zoomTransform(graph)));
 
     const zb = this.graphviz!.zoomBehavior()!;
@@ -209,7 +209,14 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     ]).pipe(
       map(([cfg, printingType]: [CFG, CodePrintingMethods]): void => {
         const text = runWithVariableVersions(this.disableVariableVersions, () => {
-          const options = graphvizOptions(true, 16.5, 'Courier New', printingType.name, this.includeHtmlBlockHeaders);
+          const options = new slak.ckompiler.analysis.external.GraphvizOptions(
+            16.5,
+            'Courier New',
+            true,
+            printingType,
+            this.includeHtmlBlockHeaders,
+            X64TargetOpts.Companion.defaults
+          );
           return createGraphviz(cfg, cfg.f.sourceText as string, options);
         });
 

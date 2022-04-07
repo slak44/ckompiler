@@ -4,7 +4,9 @@ import slak.ckompiler.DebugHandler
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.backend.TargetOptions
+import kotlin.js.JsExport
 
+@JsExport
 class X64TargetOpts(
     generic: TargetOptions,
     targetOptions: List<String>,

@@ -124,21 +124,3 @@ fun BasicBlock.irToString(): String {
   }
   return phi + blockCode + termCode
 }
-
-@JsExport
-fun graphvizOptions(
-    reachableOnly: Boolean,
-    fontSize: Int,
-    fontName: String,
-    print: String,
-    includeBlockHeader: Boolean,
-): GraphvizOptions {
-  return GraphvizOptions(
-      fontSize = fontSize,
-      fontName = fontName,
-      reachableOnly = reachableOnly,
-      print = CodePrintingMethods.valueOf(print),
-      includeBlockHeader = includeBlockHeader,
-      targetOpts = X64TargetOpts.defaults
-  )
-}
