@@ -26,6 +26,7 @@ private enum class GraphvizColors(val color: String) {
   override fun toString() = color
 }
 
+@JsExport
 enum class CodePrintingMethods {
   SOURCE_SUBSTRING, EXPR_TO_STRING, IR_TO_STRING, MI_TO_STRING, ASM_TO_STRING
 }

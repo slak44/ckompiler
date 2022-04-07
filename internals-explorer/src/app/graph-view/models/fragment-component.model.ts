@@ -2,6 +2,7 @@ import { InjectionToken, Type } from '@angular/core';
 import { slak } from '@ckompiler/ckompiler';
 import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 import IRInstruction = slak.ckompiler.analysis.IRInstruction;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 export const GENERIC_FRAGMENT_HOST = 'cki-generic-fragment-component';
 
@@ -13,7 +14,7 @@ export interface FragmentComponent {
   nodeId?: number;
   i?: number;
   instr?: FragmentSource;
-  printingType?: string;
+  printingType?: CodePrintingMethods;
 }
 
 export type FragmentSource = PhiInstruction | IRInstruction;

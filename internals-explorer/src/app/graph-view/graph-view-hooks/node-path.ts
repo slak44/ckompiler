@@ -12,6 +12,7 @@ import CFG = slak.ckompiler.analysis.CFG;
 import Variable = slak.ckompiler.analysis.Variable;
 import getDefinitionLocations = slak.ckompiler.getDefinitionLocations;
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 // Keep in sync with _algorithm.scss
 const INSERTION_TRANSITION_MS = 150;
@@ -133,7 +134,7 @@ export class NodePath implements GraphViewHook {
     return svgPath;
   }
 
-  public alterGraph(graphView: GraphViewComponent, cfg: CFG, printingType: string, graph: Element): void {
+  public alterGraph(graphView: GraphViewComponent, cfg: CFG, printingType: CodePrintingMethods, graph: Element): void {
     this.graphView = graphView;
     this.cfg = cfg;
 

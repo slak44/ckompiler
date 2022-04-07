@@ -3,6 +3,8 @@ import { Observable, ReplaySubject, takeUntil } from 'rxjs';
 import { GraphOptionsComponent } from '../graph-options/graph-options.component';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { slak } from '@ckompiler/ckompiler';
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
   selector: 'cki-graph-ui-overlay',
@@ -17,9 +19,9 @@ export class GraphUiOverlayComponent extends SubscriptionDestroy implements Afte
   @ViewChild(GraphOptionsComponent)
   private readonly graphOptions!: GraphOptionsComponent;
 
-  private readonly printingTypeSubject: ReplaySubject<string> = new ReplaySubject(1);
+  private readonly printingTypeSubject: ReplaySubject<CodePrintingMethods> = new ReplaySubject(1);
 
-  public readonly printingType$: Observable<string> = this.printingTypeSubject;
+  public readonly printingType$: Observable<CodePrintingMethods> = this.printingTypeSubject;
 
   constructor() {
     super();

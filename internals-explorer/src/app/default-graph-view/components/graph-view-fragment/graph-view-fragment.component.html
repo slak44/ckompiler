@@ -1,6 +1,6 @@
 <ng-container [ngSwitch]="printingType">
-  <span *ngSwitchCase="'IR_TO_STRING'">{{ text }}</span>
-  <span *ngSwitchCase="'EXPR_TO_STRING'">{{ text }}</span>
-  <span *ngSwitchCase="'SOURCE_SUBSTRING'">{{ text }}</span>
+  <span *ngSwitchCase="CodePrintingMethods.IR_TO_STRING">{{ text }}</span>
+  <span *ngSwitchCase="CodePrintingMethods.EXPR_TO_STRING">{{ text }}</span>
+  <span *ngSwitchCase="CodePrintingMethods.SOURCE_SUBSTRING">{{ text }}</span>
   <span *ngSwitchDefault [highlight]="text" [languages]="['x86asm']"></span>
 </ng-container>

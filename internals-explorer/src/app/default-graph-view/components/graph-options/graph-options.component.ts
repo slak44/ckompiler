@@ -3,9 +3,8 @@ import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { map, Observable, shareReplay } from 'rxjs';
 import { controlValueStream } from '@cki-utils/form-control-observable';
-import codePrintingMethods = slak.ckompiler.codePrintingMethods;
-import getCodePrintingNameJs = slak.ckompiler.getCodePrintingNameJs;
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
   selector: 'cki-graph-options',
@@ -17,13 +16,14 @@ export class GraphOptionsComponent {
   @Input()
   public instance!: CompilationInstance;
 
-  public readonly codePrintingMethods: string[] = codePrintingMethods;
+  public readonly codePrintingMethods: CodePrintingMethods[] = CodePrintingMethods.values();
 
-  public readonly printingControl: FormControl = new FormControl('IR_TO_STRING');
+  public readonly printingControl: FormControl = new FormControl(CodePrintingMethods.IR_TO_STRING);
 
-  public readonly printingValue$: Observable<string> = controlValueStream<string>(this.printingControl).pipe(
-    shareReplay({ refCount: false, bufferSize: 1 }),
-  );
+  public readonly printingValue$: Observable<CodePrintingMethods> =
+    controlValueStream<CodePrintingMethods>(this.printingControl).pipe(
+      shareReplay({ refCount: false, bufferSize: 1 }),
+    );
 
   public readonly uiHiddenControl: FormControl = new FormControl(false);
 
@@ -35,7 +35,18 @@ export class GraphOptionsComponent {
   constructor() {
   }
 
-  public getCodePrintingMethodName(value: string): string {
-    return getCodePrintingNameJs(value);
+  public getCodePrintingMethodName(value: CodePrintingMethods): string {
+    switch (value.name) {
+      case CodePrintingMethods.SOURCE_SUBSTRING.name:
+        return 'Source substrings';
+      case CodePrintingMethods.EXPR_TO_STRING.name:
+        return 'Expressions';
+      case CodePrintingMethods.IR_TO_STRING.name:
+        return 'IR';
+      case CodePrintingMethods.MI_TO_STRING.name:
+        return 'Machine instructions';
+      case CodePrintingMethods.ASM_TO_STRING.name:
+        return 'Assembly';
+    }
   }
 }

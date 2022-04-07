@@ -16,6 +16,7 @@ import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -35,7 +36,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
 
   private readonly startNodeRect: StartNodeRect = new StartNodeRect();
 
-  public readonly printingType$: Observable<string> = of('IR_TO_STRING');
+  public readonly printingType$: Observable<CodePrintingMethods> = of(CodePrintingMethods.IR_TO_STRING);
 
   public readonly instance: CompilationInstance = this.phiInsertionStateService.compilationInstance;
   public readonly phase$: Observable<AlgorithmPhase> = this.algorithmStepService.phase$;

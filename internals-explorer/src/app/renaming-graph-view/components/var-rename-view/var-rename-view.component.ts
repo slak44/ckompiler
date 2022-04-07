@@ -14,6 +14,7 @@ import { getNodeById } from '@cki-graph-view/utils';
 import { slak } from '@ckompiler/ckompiler';
 import arrayOf = slak.ckompiler.arrayOf;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -28,7 +29,7 @@ import BasicBlock = slak.ckompiler.analysis.BasicBlock;
   ],
 })
 export class VarRenameViewComponent {
-  public readonly printingType$: Observable<string> = of('IR_TO_STRING');
+  public readonly printingType$: Observable<CodePrintingMethods> = of(CodePrintingMethods.IR_TO_STRING);
 
   public readonly instance: CompilationInstance = this.renamingStateService.compilationInstance;
 

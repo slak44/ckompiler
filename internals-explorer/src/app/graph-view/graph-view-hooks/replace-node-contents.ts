@@ -18,12 +18,13 @@ import {
 } from '../models/fragment-component.model';
 import { Observable } from 'rxjs';
 import { measureTextAscent } from '@cki-utils/measure-text';
-import CFG = slak.ckompiler.analysis.CFG;
 import { getNodeById } from '@cki-graph-view/utils';
+import CFG = slak.ckompiler.analysis.CFG;
 import arrayOfIterator = slak.ckompiler.arrayOfIterator;
 import IRInstruction = slak.ckompiler.analysis.IRInstruction;
 import arrayOf = slak.ckompiler.arrayOf;
 import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 const ORIGINAL_Y = 'originalY';
 
@@ -85,7 +86,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
     }
   }
 
-  public alterGraph(graphView: GraphViewComponent, cfg: CFG, printingType: string, graph: Element): void {
+  public alterGraph(graphView: GraphViewComponent, cfg: CFG, printingType: CodePrintingMethods, graph: Element): void {
     this.graphView = graphView;
     this.rerender$ = graphView.rerender$;
 

@@ -25,6 +25,7 @@ import createGraphviz = slak.ckompiler.analysis.external.createGraphviz;
 import graphvizOptions = slak.ckompiler.graphvizOptions;
 import CFG = slak.ckompiler.analysis.CFG;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -49,7 +50,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public disableVariableVersions: boolean = false;
 
   @Input()
-  public printingType$!: Observable<string>;
+  public printingType$!: Observable<CodePrintingMethods>;
 
   @Input()
   public instance!: CompilationInstance;
@@ -174,7 +175,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     });
   }
 
-  private alterGraph(printingType: string, cfg: CFG): void {
+  private alterGraph(printingType: CodePrintingMethods, cfg: CFG): void {
     const graph = this.graphRef.nativeElement.querySelector('g.graph')!;
 
     const graphNodesSelection = d3.select(graph)
@@ -206,9 +207,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       this.instance.cfg$,
       this.printingType$,
     ]).pipe(
-      map(([cfg, printingType]: [CFG, string]): void => {
+      map(([cfg, printingType]: [CFG, CodePrintingMethods]): void => {
         const text = runWithVariableVersions(this.disableVariableVersions, () => {
-          const options = graphvizOptions(true, 16.5, 'Courier New', printingType, this.includeHtmlBlockHeaders);
+          const options = graphvizOptions(true, 16.5, 'Courier New', printingType.name, this.includeHtmlBlockHeaders);
           return createGraphviz(cfg, cfg.f.sourceText as string, options);
         });
 

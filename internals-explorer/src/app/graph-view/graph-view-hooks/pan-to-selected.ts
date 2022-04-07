@@ -1,9 +1,10 @@
 import { GraphNodesSelection, GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { GraphViewComponent } from '@cki-graph-view/components/graph-view/graph-view.component';
 import { slak } from '@ckompiler/ckompiler';
-import CFG = slak.ckompiler.analysis.CFG;
 import { Observable, takeUntil } from 'rxjs';
 import { getPolyDatumNodeId } from '@cki-graph-view/utils';
+import CFG = slak.ckompiler.analysis.CFG;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 export class PanToSelected implements GraphViewHook {
   constructor(
@@ -14,7 +15,7 @@ export class PanToSelected implements GraphViewHook {
   public alterGraph(
     graphView: GraphViewComponent,
     cfg: CFG,
-    printingType: string,
+    printingType: CodePrintingMethods,
     graph: Element,
     graphNodes: GraphNodesSelection
   ): void {
