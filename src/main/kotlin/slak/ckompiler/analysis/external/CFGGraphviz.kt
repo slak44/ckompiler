@@ -47,7 +47,7 @@ fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
     }
     else -> ""
   }
-  val separator = if (blockCode.isNotBlank() && termCode.isNotBlank()) brLeft else ""
+  val separator = if (blockCode.isNotBlank()) brLeft else ""
   return blockCode + separator + termCode
 }
 
