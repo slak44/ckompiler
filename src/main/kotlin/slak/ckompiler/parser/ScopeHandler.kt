@@ -5,6 +5,7 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.lexer.Keywords
+import kotlin.js.JsExport
 
 /**
  * Stores the data of a scoped `typedef`.
@@ -33,6 +34,7 @@ data class TypedefName(
  * C standard: 6.2.3.0.1
  * @see LexicalScope
  */
+@JsExport
 interface OrdinaryIdentifier : SourcedRange {
   val name: String
 

@@ -82,10 +82,12 @@ tasks.register<PropsFileJsTask>(makePropsFileJs) {
   output = File(res, "ckompiler.json")
 }
 
-val setNoCheck: Task by tasks.creating {
+val fixDefinitionsFile: Task by tasks.creating {
   doLast {
     val tsDefinitions = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin", "ckompiler.d.ts")
-    val newContents = "// @ts-nocheck\n\n" + tsDefinitions.readText()
+    val regex = Regex("any/\\*.*\\*/", RegexOption.UNIX_LINES)
+    val returnRegex = Regex("\\): any/\\*.*\\*/;", RegexOption.UNIX_LINES)
+    val newContents = "// @ts-nocheck\n\n" + tsDefinitions.readText().replace(returnRegex, "): any;").replace(regex, "any")
     tsDefinitions.writeText(newContents)
   }
 }
@@ -130,7 +132,7 @@ kotlin {
   js(IR) {
     browser {
       webpackTask {
-        finalizedBy(setNoCheck)
+        finalizedBy(fixDefinitionsFile)
       }
     }
     binaries.executable()

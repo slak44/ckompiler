@@ -145,6 +145,7 @@ data class IndirectCall(
 /**
  * Generic instruction with two operands.
  */
+@JsExport
 interface BinaryInstruction {
   val result: LoadableValue
   val lhs: IRValue

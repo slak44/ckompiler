@@ -195,6 +195,7 @@ typealias SourceFileName = String
 /**
  * Marks an object that corresponds to a range of indices in the program source.
  */
+@JsExport
 interface SourcedRange : ClosedRange<Int> {
   /**
    * Name of the translation unit's file. Has other values for test classes. Can be null if unknown.
@@ -411,6 +412,7 @@ class DiagnosticBuilder {
  * Useful for delegation.
  * @see DebugHandler
  */
+@JsExport
 interface IDebugHandler {
   val diags: List<Diagnostic>
   fun createDiagnostic(build: DiagnosticBuilder.() -> Unit): Diagnostic
