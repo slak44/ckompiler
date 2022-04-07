@@ -31,8 +31,35 @@ data class RenamingStepState(
     val succBB: AtomicId? = null,
 )
 
+enum class Replacements(val value: Int) {
+  NONE(0b00),
+  DEF(0b01),
+  USE(0b10),
+  DEF_USE(0b11);
+
+  operator fun plus(other: Replacements): Replacements {
+    return values().first { it.value == (this.value or other.value) }
+  }
+
+  fun hasUse(): Boolean {
+    return (value and USE.value) != 0
+  }
+
+  fun hasDef(): Boolean {
+    return (value and DEF.value) != 0
+  }
+}
+
 @JsExport
-fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
+@Suppress("NON_EXPORTABLE_TYPE")
+data class RenameReplacements(
+    val phiRenameReplacements: Map<AtomicId, List<Triple<Int, Int, AtomicId>>>,
+    val renameReplacements: Map<Pair<AtomicId, Int>, List<Pair<Int, Replacements>>>,
+    val serializedRenameSteps: String,
+)
+
+@JsExport
+fun generateRenameSteps(cfg: CFG, targetVariable: Variable): RenameReplacements {
   val defs = cfg.definitions.entries
       .filter { it.key.identityId == targetVariable.identityId }
       .groupBy({ it.value.first }, { it.key to it.value.second })
@@ -143,5 +170,87 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): String {
 
   val done = RenamingStepState(RenamingStep.DONE)
 
-  return json.encodeToString(states + done)
+  val phiRenameReplacements = mutableMapOf<AtomicId, MutableList<Triple<Int, Int, AtomicId>>>()
+  val renameReplacements = mutableMapOf<Pair<AtomicId, Int>, MutableList<Pair<Int, Replacements>>>()
+
+  for ((idx, state) in states.withIndex()) {
+    if (idx == 0 || state.bb == null || state.i == null) {
+      continue
+    }
+    val label = state.bb to state.i
+    when (state.step) {
+      RenamingStep.SUCC_PHI_REPLACE_USE -> {
+        phiRenameReplacements.getOrPut(state.succBB!!, ::mutableListOf) += Triple(idx, state.newVersion!!, state.bb)
+      }
+      RenamingStep.INSTR_REPLACE_DEF -> {
+        renameReplacements.getOrPut(label, ::mutableListOf) += idx to Replacements.DEF
+      }
+      RenamingStep.INSTR_REPLACE_USE -> {
+        renameReplacements.getOrPut(label, ::mutableListOf) += idx to Replacements.USE
+      }
+      else -> {
+        // Ignore
+      }
+    }
+  }
+
+  val serialized = json.encodeToString(states + done)
+
+  return RenameReplacements(phiRenameReplacements, renameReplacements, serialized)
+}
+
+@JsExport
+fun getRenameText(
+    ir: IRInstruction,
+    bb: BasicBlock,
+    index: Int,
+    variable: Variable,
+    stepIndex: Int,
+    replacements: RenameReplacements,
+): String {
+  val replacementList = (replacements.renameReplacements[bb.nodeId to index] ?: emptyList()).filter { stepIndex >= it.first }
+
+  val toReplace = replacementList.map { it.second }.reduceOrNull { acc, r -> acc + r } ?: Replacements.NONE
+
+  fun replaceUse(value: IRValue): String {
+    return if (value is Variable && value.identityId == variable.identityId && !toReplace.hasUse()) {
+      value.tid.toString()
+    } else {
+      value.toString()
+    }
+  }
+
+  val result = when {
+    ir !is StoreMemory && ir.result is Variable && (ir.result as Variable).identityId == variable.identityId && !toReplace.hasDef() -> {
+      (ir.result as Variable).tid.toString()
+    }
+    else -> ir.result.toString()
+  }
+
+  val irText = when (ir) {
+    is FltBinary -> "$result = flt op ${replaceUse(ir.lhs)} ${ir.op} ${replaceUse(ir.rhs)}"
+    is FltCmp -> "$result = flt cmp ${replaceUse(ir.lhs)} ${ir.cmp} ${replaceUse(ir.rhs)}"
+    is FltNeg -> "$result = flt negate ${replaceUse(ir.operand)}"
+    is IndirectCall -> "$result = call *(${ir.callable}) with args ${ir.args.joinToString(", ") { replaceUse(it) }}"
+    is NamedCall -> "$result = call ${ir.name} with args ${ir.args.joinToString(", ") { replaceUse(it) }}"
+    is IntBinary -> "$result = int op ${replaceUse(ir.lhs)} ${ir.op} ${replaceUse(ir.rhs)}"
+    is IntCmp -> "$result = int cmp ${replaceUse(ir.lhs)} ${ir.cmp} ${replaceUse(ir.rhs)}"
+    is IntInvert -> "$result = invert ${replaceUse(ir.operand)}"
+    is IntNeg -> "$result = int negate ${replaceUse(ir.operand)}"
+    is LoadMemory -> "load $result = *(${replaceUse(ir.loadFrom)})"
+    is StoreMemory -> "store *(${replaceUse(ir.storeTo)}) = ${replaceUse(ir.value)}"
+    is MoveInstr -> "move $result = ${replaceUse(ir.value)}"
+    is ReinterpretCast -> "$result = reinterpret ${ir.operand}"
+    is StructuralCast -> "$result = cast ${ir.operand} to ${ir.result.type}"
+  }
+
+  return if (ir === bb.instructions.asSequence().last()) {
+    when (bb.terminator) {
+      is CondJump, is SelectJump -> "$irText ?"
+      is ImpossibleJump -> "return $irText"
+      else -> irText
+    }
+  } else {
+    irText
+  }
 }

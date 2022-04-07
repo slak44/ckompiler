@@ -8,17 +8,18 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { FRAGMENT_COMPONENT, FragmentComponent, FragmentSource } from '@cki-graph-view/models/fragment-component.model';
-import { combineLatest, distinctUntilChanged, map, Observable, ReplaySubject, startWith } from 'rxjs';
+import { combineLatest, distinctUntilChanged, map, Observable, startWith } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
-import { replaceVarInText } from '@cki-graph-view/utils';
 import { RenamingStep } from '../../models/renaming-step.model';
 import { slak } from '@ckompiler/ckompiler';
 import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
 import StoreMemory = slak.ckompiler.analysis.StoreMemory;
 import Variable = slak.ckompiler.analysis.Variable;
+import getRenameText = slak.ckompiler.analysis.external.getRenameText;
+import { getNodeById, replaceVarInText } from '@cki-graph-view/utils';
 
 @Component({
   selector: 'cki-renaming-ir-fragment',
@@ -46,17 +47,9 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
   @Input()
   public instr?: FragmentSource;
 
-  @Input()
-  public set text(value: string) {
-    this.textSubject.next(value);
-  }
-
   private resultIdentityId?: number;
 
-  private readonly textSubject: ReplaySubject<string> = new ReplaySubject(1);
-
   public readonly text$: Observable<SafeHtml> = combineLatest([
-    this.textSubject,
     this.renamingStateService.varState.targetVariable$.pipe(
       startWith(null),
       distinctUntilChanged(),
@@ -64,21 +57,38 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
     this.renamingStateService.currentStepState$.pipe(
       startWith(null),
     ),
+    this.algorithmStepService.currentStep$.pipe(
+      startWith(0),
+    ),
+    this.renamingStateService.renameReplacements$.pipe(
+      startWith(null)
+    ),
+    this.renamingStateService.compilationInstance.cfg$,
     this.algorithmStepService.phase$.pipe(
       distinctUntilChanged(),
     ),
     this.replaceNodeContentsHook.rerender$.pipe(
-      startWith(null)
+      startWith(null),
     ),
   ]).pipe(
-    map(([text, variable, currentStep]) => {
+    map(([variable, currentStep, currentStepIdx, renameReplacements, cfg]) => {
+      let text: string;
+
+      if (!this.instr) {
+        text = `BB${this.nodeId}:`;
+      } else if (this.instr instanceof PhiInstruction || !variable || !renameReplacements) {
+        text = this.instr.toString();
+      } else {
+        text = getRenameText(this.instr, getNodeById(cfg, this.nodeId), this.i, variable, currentStepIdx, renameReplacements);
+      }
+
       if (!variable) {
         return text;
       }
 
-      const [replaced, containsVariable] = replaceVarInText(variable, text);
+      const [replaced] = replaceVarInText(variable, text);
 
-      const defReplaced = containsVariable && this.resultIdentityId === variable.identityId
+      const defReplaced = this.resultIdentityId === variable.identityId
         ? `<span class="variable-definition">${replaced}</span>`
         : replaced;
 
@@ -99,7 +109,7 @@ export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
         : defReplaced;
     }),
     distinctUntilChanged(),
-    map(html => this.sanitizer.bypassSecurityTrustHtml(html))
+    map(html => this.sanitizer.bypassSecurityTrustHtml(html)),
   );
 
   constructor(

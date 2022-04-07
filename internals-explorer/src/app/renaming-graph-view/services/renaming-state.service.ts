@@ -8,6 +8,7 @@ import { RenamingStepState } from '../models/renaming-step.model';
 import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import generateRenameSteps = slak.ckompiler.analysis.external.generateRenameSteps;
+import RenameReplacements = slak.ckompiler.analysis.external.RenameReplacements;
 
 @Injectable()
 export class RenamingStateService {
@@ -19,11 +20,15 @@ export class RenamingStateService {
 
   public readonly varState: TargetVariableState = new TargetVariableState(this.compilationInstance);
 
-  private readonly allInsertionSteps$: Observable<RenamingStepState[]> = combineLatest([
+  public readonly renameReplacements$: Observable<RenameReplacements> = combineLatest([
     this.compilationInstance.cfg$,
     this.varState.targetVariable$,
   ]).pipe(
-    map(([cfg, variable]) => JSON.parse(generateRenameSteps(cfg, variable)) as RenamingStepState[]),
+    map(([cfg, variable]) => generateRenameSteps(cfg, variable)),
+  );
+
+  private readonly allInsertionSteps$: Observable<RenamingStepState[]> = this.renameReplacements$.pipe(
+    map(renameReplacements => JSON.parse(renameReplacements.serializedRenameSteps) as RenamingStepState[]),
   );
 
   public readonly stepCount$: Observable<number> = this.allInsertionSteps$.pipe(

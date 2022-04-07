@@ -9,7 +9,7 @@ export const FRAGMENT_COMPONENT: InjectionToken<Type<FragmentComponent>> = new I
 
 export interface FragmentComponent {
   color: string;
-  text: string;
+  text?: string;
   nodeId?: number;
   i?: number;
   instr?: FragmentSource;
