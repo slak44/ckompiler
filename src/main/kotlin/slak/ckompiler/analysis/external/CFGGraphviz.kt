@@ -56,8 +56,18 @@ fun BasicBlock.irToString(): String {
     is CondJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
     is SelectJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
     is ImpossibleJump -> {
-      if (term.returned == null) "return;"
-      else "return ${term.returned.joinToString("<br/>") { it.toString().unescape() }};"
+      if (term.returned == null) {
+        "return;"
+      } else {
+        val last = "return ${term.returned.last().toString().unescape()};"
+        val notLast = term.returned.dropLast(1).joinToString("<br/>") { it.toString().unescape() }
+
+        if (notLast.isEmpty()) {
+          last
+        } else {
+          "$notLast<br/>$last"
+        }
+      }
     }
     else -> ""
   }
