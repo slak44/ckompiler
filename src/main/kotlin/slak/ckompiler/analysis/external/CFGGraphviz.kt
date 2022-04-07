@@ -30,42 +30,44 @@ enum class CodePrintingMethods {
   SOURCE_SUBSTRING, EXPR_TO_STRING, IR_TO_STRING, MI_TO_STRING, ASM_TO_STRING
 }
 
-fun blockHeader(id: AtomicId): String = "<span class=\"header\">BB$id:</span>".unescape() + "<br align=\"left\"/>"
+private const val brLeft = "<br align=\"left\"/>"
+
+fun blockHeader(id: AtomicId): String = "<span class=\"header\">BB$id:</span>".unescape() + brLeft
 
 fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
-  fun List<Expression>.sourceSubstr() = joinToString("<br/>") { it.exprToStr() }
+  fun List<Expression>.sourceSubstr() = joinToString(brLeft) { it.exprToStr() }
   val blockCode = src.filter { it !is Terminal }.sourceSubstr()
   val termCode = when (val term = terminator) {
-    is CondJump -> term.src.exprToStr() + " ?"
-    is SelectJump -> term.src.exprToStr() + " ?"
+    is CondJump -> term.src.exprToStr() + " ?$brLeft"
+    is SelectJump -> term.src.exprToStr() + " ?$brLeft"
     is ImpossibleJump -> {
-      if (term.returned == null) "return;"
-      else "return ${term.src!!.exprToStr()};"
+      if (term.returned == null) "return;$brLeft"
+      else "return ${term.src!!.exprToStr()};$brLeft"
     }
     else -> ""
   }
-  val separator = if (blockCode.isNotBlank() && termCode.isNotBlank()) "<br/>" else ""
+  val separator = if (blockCode.isNotBlank() && termCode.isNotBlank()) brLeft else ""
   return blockCode + separator + termCode
 }
 
 fun BasicBlock.irToString(): String {
-  val phi = phi.joinToString("<br/>") { it.toString().unescape() }
-      .let { if (it.isBlank()) "" else "$it<br/>" }
-  val blockCode = ir.joinToString("<br/>").let { if (it.isBlank()) "" else "$it<br/>" }
+  val phi = phi.joinToString(brLeft) { it.toString().unescape() }
+      .let { if (it.isBlank()) "" else "$it$brLeft" }
+  val blockCode = ir.joinToString(brLeft).let { if (it.isBlank()) "" else "$it$brLeft" }
   val termCode = when (val term = terminator) {
-    is CondJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
-    is SelectJump -> term.cond.joinToString("<br/>") { it.toString().unescape() } + " ?"
+    is CondJump -> term.cond.joinToString(brLeft, postfix = " ?$brLeft") { it.toString().unescape() }
+    is SelectJump -> term.cond.joinToString(brLeft, postfix = " ?$brLeft") { it.toString().unescape() }
     is ImpossibleJump -> {
       if (term.returned == null) {
-        "return;"
+        "return;$brLeft"
       } else {
         val last = "return ${term.returned.last().toString().unescape()};"
-        val notLast = term.returned.dropLast(1).joinToString("<br/>") { it.toString().unescape() }
+        val notLast = term.returned.dropLast(1).joinToString(brLeft) { it.toString().unescape() }
 
         if (notLast.isEmpty()) {
-          last
+          last + brLeft
         } else {
-          "$notLast<br/>$last"
+          "$notLast$brLeft$last$brLeft"
         }
       }
     }
@@ -81,7 +83,7 @@ private fun CFG.mapBlocksToString(
     targetOpts: X64TargetOpts,
 ): Map<BasicBlock, String> {
   val target = X64Target(targetOpts)
-  val sep = "<br align=\"left\"/>"
+  val sep = brLeft
   if (print == CodePrintingMethods.MI_TO_STRING) {
     val gen = X64Generator(this, target)
     val graph = try {
