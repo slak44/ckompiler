@@ -7,6 +7,7 @@ import slak.ckompiler.DiagnosticId
 import slak.ckompiler.length
 import slak.ckompiler.lexer.ErrorToken
 import slak.ckompiler.parser.Declaration
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -202,5 +203,15 @@ class DiagnosticTests {
     """.trimIndent(), source)
     p.assertDiags(DiagnosticId.EXPECTED_SEMI_AFTER)
     p.diags.assertDiagCaret(diagNr = 0, line = 3, col = 7, colCount = 1)
+  }
+
+  @Test
+  fun `Error Reports Macro Expansion`() {
+    val l = prepareCode("""
+      #define TEST 123 + ;
+      int a = TEST
+    """.trimIndent(), source)
+    l.assertDiags(DiagnosticId.EXPECTED_PRIMARY)
+    assertContains(l.diags[0].printable, DiagnosticId.EXPANDED_FROM.name)
   }
 }
