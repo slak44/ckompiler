@@ -192,14 +192,14 @@ fun createGraphviz(graph: CFG, sourceCode: String, options: GraphvizOptions): St
   }
 
   val fontName = "fontname=\"${options.fontName}\""
-  val maybeFont = if (options.fontName == null) "" else fontName
+  val maybeFont = if (options.fontName == null) "" else "$fontName,"
   val graphAttrs = listOf(
       maybeFont,
       "bgcolor=$BG",
       "fontsize=${options.fontSize}"
   ).filter { it.isNotBlank() }
   val graphAttr = "graph[${graphAttrs.joinToString(",")}];"
-  val nodeAttr = "node[$maybeFont,fontsize=${options.fontSize}]"
+  val nodeAttr = "node[${maybeFont}fontsize=${options.fontSize}]"
 
   return "digraph CFG {$sep$graphAttr$sep$nodeAttr$sep$content\n}"
 }
