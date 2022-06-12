@@ -117,6 +117,17 @@ class SpillTests {
   }
 
   @Test
+  fun `Overconstrained Function Call`() {
+    val cfg = prepareCFG(resource("spilling/overconstrainedFunCall.c"), source, "main")
+    val target = X64Target()
+    val gen = X64Generator(cfg, target)
+    val spillResult = gen.runSpiller()
+    gen.insertSpillReloadCode(spillResult)
+    assert(spillResult.isNotEmpty()) { "Nothing was spilled" }
+    assertNotNull(spillResult[gen.graph.startId])
+  }
+
+  @Test
   fun `Spill Creates Phi With Memory Operands`() {
     val cfg = prepareCFG(resource("spilling/phiWithMemory.c"), source)
     val target = X64Target()
