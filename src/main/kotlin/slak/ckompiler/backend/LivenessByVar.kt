@@ -32,13 +32,16 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
     if (liveIn.getOrPut(B, ::mutableSetOf).lastOrNull() == v) return
     liveIn[B]!! += v
     // defined in φ or spilled in this block, might still be live-in, so check that before returning
-    if (v in this[B].phiDefs || spillBlocks[v] == B) return
+    if (v in this[B].phiDefs || spillBlocks[v]?.contains(B) == true) return
     val list = if (!fromPhi) {
       predecessors(B)
     } else {
       this[B].phi.predsByVar(v)!!.map { this[it] }
     }
     for (P in list) {
+      if (spillBlocks[v]?.contains(P.id) == true) {
+        return
+      }
       if (liveOut.getOrPut(P.id, ::mutableSetOf).lastOrNull() != v) {
         liveOut[P.id]!! += v
       }

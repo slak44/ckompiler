@@ -345,8 +345,8 @@ fun TargetFunGenerator.runSpiller(): SpillResult {
 
 /** Maps a spilled value to a pointer to the stack where it was spilled. */
 typealias SpillMap = Map<AllocatableValue, StackValue>
-/** Maps a spilled value to the [InstrBlock] where it was spilled. */
-typealias SpillBlocks = Map<AllocatableValue, AtomicId>
+/** Maps a spilled value to the [InstrBlock]s where it was spilled. */
+typealias SpillBlocks = Map<AllocatableValue, List<AtomicId>>
 
 /**
  * Inserts the spill and reload code at the locations found by [runSpiller].
@@ -355,7 +355,7 @@ typealias SpillBlocks = Map<AllocatableValue, AtomicId>
  */
 fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap, SpillBlocks> {
   val spilled = mutableMapOf<AllocatableValue, StackValue>()
-  val spillBlocks = mutableMapOf<AllocatableValue, AtomicId>()
+  val spillBlocks = mutableMapOf<AllocatableValue, MutableList<AtomicId>>()
 
   for ((blockId, minResult) in result.entries) {
     // All the labels in minResult contain indices from before inserting spill/reload instructions
@@ -375,7 +375,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap
 
       if (isSpill) {
         spilled[variable] = insertSpill(variable, offsetLabel, spilled[variable])
-        spillBlocks[variable] = blockId
+        spillBlocks.getOrPut(variable, ::mutableListOf) += blockId
       } else {
         val toReload = spilled[variable] ?: continue
         insertReload(variable, toReload, offsetLabel)
