@@ -385,6 +385,8 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap
     }
   }
 
+  graph.spillBlocks = spillBlocks
+
   graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<VersionedValue>().toSet())
 
   return spilled to spillBlocks

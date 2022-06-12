@@ -511,8 +511,7 @@ fun TargetFunGenerator.regAlloc(
     debugNoCheckAlloc: Boolean = false,
 ): AllocationResult {
   val spillResult = runSpiller()
-  val (spillMap, spillBlocks) = insertSpillReloadCode(spillResult)
-  graph.spillBlocks = spillBlocks
+  val (spillMap) = insertSpillReloadCode(spillResult)
   prepareForColoring()
   // FIXME: coalescing
   val ctx = RegisterAllocationContext(this)
