@@ -127,8 +127,6 @@ kotlin {
         useJUnitPlatform()
         // Must be present at startup-ish time
         systemProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager")
-        // Don't put this in junit-properties, because debugging tests in intellij triggers the timeout
-        systemProperty("junit.jupiter.execution.timeout.default", "5s")
       }
     }
   }
