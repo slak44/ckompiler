@@ -3,6 +3,7 @@ package slak.ckompiler.backend
 import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.DEFINED_IN_PHI
+import slak.ckompiler.analysis.DerefStackValue
 import slak.ckompiler.analysis.Variable
 import slak.ckompiler.analysis.VersionedValue
 import slak.ckompiler.throwICE
@@ -194,10 +195,13 @@ private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, V
       // FIXME: is this correct?
       continue
     }
-    val versions = this[blockId].phi.getValue(variable).map { (it.value as? VersionedValue)?.version }
+    val versions = this[blockId].phi.getValue(variable).values
     // All versions are identical, φ is useless for this variable
-    if (versions.distinct().size == 1 && versions[0] != null) {
-      val rewritten = variable.copy(version = versions[0]!!)
+    if (versions.distinct().size == 1) {
+      val rewritten = when (val commonValue = versions.first()) {
+        is DerefStackValue -> commonValue
+        is Variable -> variable.copy(version = commonValue.version)
+      }
       // If rewritten itself is marked for rewrite, go directly to the re-rewritten version
       val realRewritten = if (rewritten in variableRewrites) variableRewrites.getValue(rewritten) else rewritten
       // Mark it for rewrite
