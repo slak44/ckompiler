@@ -87,7 +87,11 @@ val fixDefinitionsFile: Task by tasks.creating {
     val tsDefinitions = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin", "ckompiler.d.ts")
     val regex = Regex("any/\\*.*\\*/", RegexOption.UNIX_LINES)
     val returnRegex = Regex("\\): any/\\*.*\\*/;", RegexOption.UNIX_LINES)
-    val newContents = "// @ts-nocheck\n\n" + tsDefinitions.readText().replace(returnRegex, "): any;").replace(regex, "any")
+    val abstractRegex = Regex("abstract\\s+(?!class)", RegexOption.UNIX_LINES)
+    val newContents = "// @ts-nocheck\n\n" + tsDefinitions.readText()
+        .replace(returnRegex, "): any;")
+        .replace(regex, "any")
+        .replace(abstractRegex, "")
     tsDefinitions.writeText(newContents)
   }
 }
