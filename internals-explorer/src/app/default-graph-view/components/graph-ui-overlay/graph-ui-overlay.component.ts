@@ -23,15 +23,25 @@ export class GraphUiOverlayComponent extends SubscriptionDestroy implements Afte
 
   public readonly printingType$: Observable<CodePrintingMethods> = this.printingTypeSubject;
 
+  private readonly isSpillOnlySubject: ReplaySubject<boolean> = new ReplaySubject(1);
+
+  public readonly isSpillOnly$: Observable<boolean> = this.isSpillOnlySubject;
+
   constructor() {
     super();
   }
 
   public ngAfterViewInit(): void {
     this.graphOptions.printingValue$.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(value => {
       this.printingTypeSubject.next(value);
+    });
+
+    this.graphOptions.isSpillOnly$.pipe(
+      takeUntil(this.destroy$),
+    ).subscribe(value => {
+      this.isSpillOnlySubject.next(value);
     });
   }
 }

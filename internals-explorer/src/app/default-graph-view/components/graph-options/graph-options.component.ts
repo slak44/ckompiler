@@ -32,6 +32,12 @@ export class GraphOptionsComponent {
     shareReplay({ refCount: false, bufferSize: 1 }),
   );
 
+  public readonly spillOnlyControl: FormControl = new FormControl(false);
+
+  public readonly isSpillOnly$: Observable<boolean> = controlValueStream<boolean>(this.spillOnlyControl).pipe(
+    shareReplay({ refCount: false, bufferSize: 1 }),
+  );
+
   constructor() {
   }
 

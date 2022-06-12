@@ -1,3 +1,6 @@
-<cki-graph-view [hooks]="hooks" [printingType$]="overlay.printingType$" [instance]="instance">
+<cki-graph-view [hooks]="hooks"
+                [printingType$]="overlay.printingType$"
+                [noAllocOnlySpill$]="overlay.isSpillOnly$"
+                [instance]="instance">
   <cki-graph-ui-overlay #overlay [instance]="instance"></cki-graph-ui-overlay>
 </cki-graph-view>

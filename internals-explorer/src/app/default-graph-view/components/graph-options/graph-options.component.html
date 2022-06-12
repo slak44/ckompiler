@@ -2,6 +2,10 @@
   Hide UI
 </mat-checkbox>
 
+<mat-checkbox [formControl]="spillOnlyControl" *ngIf="isUIVisible$ | async">
+  Don't allocate; spill only
+</mat-checkbox>
+
 <cki-select-function *ngIf="isUIVisible$ | async" [instance]="instance"></cki-select-function>
 
 <mat-form-field *ngIf="isUIVisible$ | async" appearance="standard" color="accent">

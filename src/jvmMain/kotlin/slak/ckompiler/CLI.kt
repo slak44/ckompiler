@@ -227,6 +227,8 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       "Force displaying the entire control flow graph")
   private val forceUnreachable by cli.flagArgument("--force-unreachable",
       "Force displaying of unreachable basic blocks and impossible edges")
+  private val noAllocOnlySpill by cli.flagArgument("--cfg-only-spill",
+      "Run the spiller, then show the CFG without running register allocation")
 
   init {
     cli.helpGroup("CFG debug options (require --cfg-mode)")
@@ -463,7 +465,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         return null
       }
 
-      val options = GraphvizOptions(print = printingMethod, reachableOnly = !forceUnreachable)
+      val options = GraphvizOptions(print = printingMethod, reachableOnly = !forceUnreachable, noAllocOnlySpill = noAllocOnlySpill)
       val graphviz = createGraphviz(cfg, text, options)
 
       when {

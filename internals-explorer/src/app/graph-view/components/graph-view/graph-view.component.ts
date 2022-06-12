@@ -10,7 +10,18 @@ import {
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
-import { combineLatest, distinctUntilChanged, first, map, Observable, Subject, switchMap, takeUntil, tap } from 'rxjs';
+import {
+  combineLatest,
+  distinctUntilChanged,
+  first,
+  map,
+  Observable,
+  of,
+  Subject,
+  switchMap,
+  takeUntil,
+  tap,
+} from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import * as d3 from 'd3';
 import { BaseType } from 'd3';
@@ -48,6 +59,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   @Input()
   public printingType$!: Observable<CodePrintingMethods>;
+
+  @Input()
+  public noAllocOnlySpill$: Observable<boolean> = of(false);
 
   @Input()
   public instance!: CompilationInstance;
@@ -203,8 +217,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     return combineLatest([
       this.instance.cfg$,
       this.printingType$,
+      this.noAllocOnlySpill$,
     ]).pipe(
-      map(([cfg, printingType]: [CFG, CodePrintingMethods]): void => {
+      map(([cfg, printingType, noAllocOnlySpill]: [CFG, CodePrintingMethods, boolean]): void => {
         const text = runWithVariableVersions(this.disableVariableVersions, () => {
           const options = new slak.ckompiler.analysis.external.GraphvizOptions(
             16.5,
@@ -212,7 +227,8 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
             true,
             printingType,
             true,
-            X64TargetOpts.Companion.defaults
+            X64TargetOpts.Companion.defaults,
+            noAllocOnlySpill,
           );
           return createGraphviz(cfg, cfg.f.sourceText as string, options);
         });

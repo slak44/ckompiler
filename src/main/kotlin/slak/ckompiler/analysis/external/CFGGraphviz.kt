@@ -4,7 +4,9 @@ import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.analysis.external.GraphvizColors.*
+import slak.ckompiler.backend.insertSpillReloadCode
 import slak.ckompiler.backend.regAlloc
+import slak.ckompiler.backend.runSpiller
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
@@ -77,18 +79,19 @@ fun BasicBlock.irToString(): String {
   return phi + blockCode + termCode
 }
 
-private fun CFG.mapBlocksToString(
-    print: CodePrintingMethods,
-    includeBlockHeader: Boolean,
-    sourceCode: String,
-    targetOpts: X64TargetOpts,
-): Map<BasicBlock, String> {
-  val target = X64Target(targetOpts)
+private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions): Map<BasicBlock, String> {
+  val target = X64Target(options.targetOpts)
   val sep = brLeft
-  if (print == CodePrintingMethods.MI_TO_STRING) {
+  if (options.print == CodePrintingMethods.MI_TO_STRING) {
     val gen = X64Generator(this, target)
     val graph = try {
-      gen.regAlloc().graph
+      if (options.noAllocOnlySpill) {
+        val spillResult = gen.runSpiller()
+        gen.insertSpillReloadCode(spillResult)
+        gen.graph
+      } else {
+        gen.regAlloc().graph
+      }
     } catch (e: Exception) {
       logger.error("Reg alloc failed, fall back to initial graph", e)
       gen.graph
@@ -96,10 +99,10 @@ private fun CFG.mapBlocksToString(
     val nodes = graph.domTreePreorder.asSequence().toList()
     val instrGraphMap = nodes.associateWith {
       val phiStr = graph[it].phi.entries.joinToString(separator = sep) { (variable, uses) ->
-        val options = uses.entries.joinToString(", ") { (predId, variable) ->
+        val phiOptions = uses.entries.joinToString(", ") { (predId, variable) ->
           "BB$predId ${variable.versionString()}"
         }
-        "$variable = φ($options)"
+        "$variable = φ($phiOptions)"
       }
 
       val miStr = graph[it].joinToString(separator = sep, postfix = sep) { mi ->
@@ -112,7 +115,7 @@ private fun CFG.mapBlocksToString(
       return@associateWith ".block$it:$brLeft$content"
     }
     return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
-  } else if (print == CodePrintingMethods.ASM_TO_STRING) {
+  } else if (options.print == CodePrintingMethods.ASM_TO_STRING) {
     val gen = X64Generator(this, target)
     val alloc = gen.regAlloc()
     return gen.applyAllocation(alloc).mapValues {
@@ -120,9 +123,10 @@ private fun CFG.mapBlocksToString(
     }.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   }
   return allNodes.associateWith {
-    val maybeHeader = if (includeBlockHeader && print != CodePrintingMethods.SOURCE_SUBSTRING) blockHeader(it.nodeId) else ""
+    val maybeHeader =
+        if (options.includeBlockHeader && options.print != CodePrintingMethods.SOURCE_SUBSTRING) blockHeader(it.nodeId) else ""
 
-    val content = when (print) {
+    val content = when (options.print) {
       CodePrintingMethods.SOURCE_SUBSTRING -> it.srcToString {
         (sourceText ?: sourceCode).substring(range).trim().unescape()
       }
@@ -151,6 +155,7 @@ data class GraphvizOptions(
     val print: CodePrintingMethods = CodePrintingMethods.IR_TO_STRING,
     val includeBlockHeader: Boolean = false,
     val targetOpts: X64TargetOpts = X64TargetOpts.defaults,
+    val noAllocOnlySpill: Boolean = false
 )
 
 /**
@@ -165,7 +170,7 @@ data class GraphvizOptions(
 fun createGraphviz(graph: CFG, sourceCode: String, options: GraphvizOptions): String {
   val edges = graph.graphEdges()
   val sep = "\n  "
-  val blockMap = graph.mapBlocksToString(options.print, options.includeBlockHeader, sourceCode, options.targetOpts)
+  val blockMap = graph.mapBlocksToString(sourceCode, options)
   val content = (if (options.reachableOnly) graph.nodes else graph.allNodes).joinToString(sep) {
     val style = when {
       it.isRoot -> "style=solid,penwidth=3,color=$BLOCK_START,fontcolor=$BLOCK_DEFAULT"
