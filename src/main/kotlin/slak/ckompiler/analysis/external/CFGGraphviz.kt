@@ -194,7 +194,7 @@ fun createGraphviz(graph: CFG, sourceCode: String, options: GraphvizOptions): St
   val fontName = "fontname=\"${options.fontName}\""
   val maybeFont = if (options.fontName == null) "" else "$fontName,"
   val graphAttrs = listOf(
-      maybeFont,
+      maybeFont.dropLastWhile { it == ',' },
       "bgcolor=$BG",
       "fontsize=${options.fontSize}"
   ).filter { it.isNotBlank() }
