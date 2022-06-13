@@ -517,4 +517,9 @@ class E2ETests {
   fun `Register Allocation With Postfix Copies In Large CFG`() {
     compileAndRun(resource("e2e/largeCFGWithPostfixInLoop.c")).justExitCode(0)
   }
+
+  @Test
+  fun `Register Allocation Fails For Highly Nested Calls`() {
+    compileAndRun(resource("e2e/highlyNestedPrintfs.c")).expect(stdout = "1 2 3 4 5 1")
+  }
 }
