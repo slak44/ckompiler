@@ -511,7 +511,12 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       X64Generator(cfg, target)
     }
 
-    val nasm = NasmEmitter(declNames, functionsEmit, mainEmit).emitAsm()
+    val nasm = try {
+      NasmEmitter(declNames, functionsEmit, mainEmit).emitAsm()
+    } catch (e: Exception) {
+      logger.error("Internal compiler error when compiling file: $relPath")
+      throw e
+    }
 
     if (isCompileOnly) {
       val asmFile = fileFrom(output ?: "$baseName.s")
