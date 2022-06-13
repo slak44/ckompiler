@@ -512,4 +512,9 @@ class E2ETests {
   fun `Register Transfer Graph Solve With No Free Registers`() {
     compileAndRun(resource("e2e/transferGraphFull.c")).justExitCode(13)
   }
+
+  @Test
+  fun `Register Allocation With Postfix Copies In Large CFG`() {
+    compileAndRun(resource("e2e/largeCFGWithPostfixInLoop.c")).justExitCode(0)
+  }
 }
