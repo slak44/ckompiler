@@ -522,4 +522,9 @@ class E2ETests {
   fun `Register Allocation Fails For Highly Nested Calls`() {
     compileAndRun(resource("e2e/highlyNestedPrintfs.c")).expect(stdout = "1 2 3 4 5 1")
   }
+
+  @Test
+  fun `Dead Phi Instructions`() {
+    compileAndRun(resource("e2e/deadPhis.c")).justExitCode(0)
+  }
 }
