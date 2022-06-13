@@ -52,6 +52,17 @@ private fun MachineTarget.selectRegisterBlacklist(
  * @see InstructionGraph.ssaReconstruction
  */
 fun MachineInstruction.rewriteBy(rewriteMap: Map<AllocatableValue, AllocatableValue>): MachineInstruction {
+  if (template is ParallelCopyTemplate) {
+    val rewrittenValues = template.values.mapKeys {
+      if (it.key in rewriteMap.keys) {
+        rewriteMap.getValue(it.key)
+      } else {
+        it.key
+      }
+    }
+    val newOperands = rewrittenValues.keys.toList() + rewrittenValues.values
+    return copy(template = template.copy(values = rewrittenValues), operands = newOperands)
+  }
   val newOperands = operands.zip(template.operandUse).map {
     // Explicitly not care about DEF_USE
     if (it.first in rewriteMap.keys && it.second == VariableUse.USE && it.first is AllocatableValue) {

@@ -229,8 +229,8 @@ data class MachineInstruction(
  * Internally used by the register allocator, should probably not make it out of it.
  */
 data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableValue>) : InstructionTemplate {
-  override val name = toString()
-  override val operandUse = List(values.size) { VariableUse.USE } + List(values.size) { VariableUse.DEF }
+  override val name get() = toString()
+  override val operandUse get() = List(values.size) { VariableUse.USE } + List(values.size) { VariableUse.DEF }
 
   override fun toString(): String {
     val old = values.keys.map { it.toString() }
