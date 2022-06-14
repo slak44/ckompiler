@@ -527,4 +527,9 @@ class E2ETests {
   fun `Dead Phi Instructions`() {
     compileAndRun(resource("e2e/deadPhis.c")).expect(stdout = "100 1")
   }
+
+  @Test
+  fun `More Phis In A Block Than Total Registers`() {
+    compileAndRun(resource("e2e/tooManyPhisInBlock.c")).justExitCode(0)
+  }
 }
