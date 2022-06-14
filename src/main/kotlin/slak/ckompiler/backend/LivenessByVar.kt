@@ -53,7 +53,7 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
   for (v in defUseChains.keys.filterIsInstance<Variable>().filter { !it.isUndefined }) {
     val uses = defUseChains.getValue(v)
     for ((B, index) in uses) {
-      if (successors(B).any { succ -> B in succ.phi.predsByVar(v) ?: emptyList() }) {
+      if (successors(B).any { succ -> B in (succ.phi.predsByVar(v) ?: emptyList()) }) {
         liveOut.getOrPut(B, ::mutableSetOf) += v
       }
       upAndMarkStack(B, v, index == DEFINED_IN_PHI)
