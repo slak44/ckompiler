@@ -101,7 +101,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<VersionedValue>, target:
       if (u in f) {
         val variableClass = target.registerClassOf(variable.type)
         val maxClassPressure = target.maxPressure.getValue(variableClass)
-        val phiDefsClass = this[blockId].phiDefs.filter { target.registerClassOf(it.type) == variableClass }
+        val phiDefsClass = uBlock.phiDefs.filter { target.registerClassOf(it.type) == variableClass }
 
         // Insert new φ for variable, in memory if needed
         val yPrime = if (phiDefsClass.size >= maxClassPressure) {
