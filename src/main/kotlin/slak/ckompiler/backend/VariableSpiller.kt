@@ -216,6 +216,8 @@ private fun TargetFunGenerator.initUsual(
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>,
 ): WBlockMap {
+  val liveIns = graph.liveInsOf(blockId)
+
   val freq = mutableMapOf<MachineRegisterClass, MutableMap<AllocatableValue, Int>>()
   val take = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
   val cand = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
@@ -247,7 +249,13 @@ private fun TargetFunGenerator.initUsual(
       // No need to sort, none in cand will be taken
       continue
     }
-    toTake += classCand.asSequence().sortedByDescending { nextUse(InstrLabel(blockId, 0), it) }.take(k - toTake.size)
+    // The candidates are part of a predecessor's wExit
+    // But it is possible that value is used on another edge of the predecessor, not the one to blockId
+    // So check if the value is liveIn in our block before taking it "in a register"
+    toTake += classCand
+        .filter { it in liveIns }
+        .sortedByDescending { nextUse(InstrLabel(blockId, 0), it) }
+        .take(k - toTake.size)
   }
 
   for (valueClass in target.registerClasses) {

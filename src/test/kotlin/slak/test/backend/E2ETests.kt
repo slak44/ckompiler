@@ -532,4 +532,9 @@ class E2ETests {
   fun `More Phi Definitions In A Block Than Total Registers`() {
     compileAndRun(resource("e2e/tooManyPhiDefsInBlock.c")).justExitCode(0)
   }
+
+  @Test
+  fun `Spiller wBlockEntry Should Only Use Live-Ins Of The Block`() {
+    compileAndRun(resource("e2e/wExitPropagation.c")).expect(stdout = "1 2")
+  }
 }
