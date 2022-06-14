@@ -351,12 +351,20 @@ class InstructionGraph private constructor(
     }
   }
 
-  private fun findDefUseChains(): DefUseChains {
+  /**
+   * For the φ pruning, see Algorithm 3.7 in the SSA book.
+   */
+  private fun findDefUseChainsAndPruneDeadPhis(cfgDefinitions: Definitions) {
+    val uselessPhiDefs = mutableSetOf<Variable>()
+    val usefulnessStack = mutableListOf<Variable>()
+
     val allUses = mutableMapOf<AllocatableValue, MutableSet<InstrLabel>>()
 
+    // Iteration through each MI, to find def-use chains and the initial marking phase for pruning
     for (blockId in domTreePreorder) {
       val block = this[blockId]
       for (phi in block.phi) {
+        uselessPhiDefs += phi.key as Variable // This cast should never fail at this point
         for (variable in phi.value.values) {
           allUses.getOrPut(variable, ::mutableSetOf) += InstrLabel(blockId, DEFINED_IN_PHI)
         }
@@ -365,11 +373,44 @@ class InstructionGraph private constructor(
         val uses = mi.filterOperands(listOf(VariableUse.USE), takeIndirectUses = true).filterIsInstance<AllocatableValue>()
         for (variable in uses + mi.constrainedArgs.map { it.value }) {
           allUses.getOrPut(variable, ::mutableSetOf) += InstrLabel(blockId, index)
+          if (!variable.isUndefined && variable is Variable && cfgDefinitions.getValue(variable).second == DEFINED_IN_PHI) {
+            uselessPhiDefs -= variable
+            usefulnessStack += variable
+          }
         }
       }
     }
 
-    return allUses
+    // Usefulness propagation for pruning
+    while (usefulnessStack.isNotEmpty()) {
+      val a = usefulnessStack.removeLast()
+      val definitionPhiIncoming = this[variableDefs.getValue(a)].phi.getValue(a)
+      for (phiUse in definitionPhiIncoming.values) {
+        phiUse as Variable // Should never fail at this point
+        if (phiUse in uselessPhiDefs) {
+          uselessPhiDefs -= phiUse
+          usefulnessStack += phiUse
+        }
+      }
+    }
+
+    // Final pruning
+    // Remember to clear out all references to the pruned variable, but also to the pruned φ-uses
+    for (uselessDef in uselessPhiDefs) {
+      val uselessDefBlock = this[variableDefs.getValue(uselessDef)]
+      val uselessIncoming = uselessDefBlock.phi.getValue(uselessDef)
+      uselessDefBlock.phi -= uselessDef
+      variableDefs -= uselessDef
+      allUses -= uselessDef
+
+      // Remove delete φ-uses
+      for ((_, incValue) in uselessIncoming) {
+        if (incValue !in allUses) continue
+        allUses.getValue(incValue) -= (uselessDefBlock.id to DEFINED_IN_PHI)
+      }
+    }
+
+    defUseChains = allUses
   }
 
   /**
@@ -416,7 +457,7 @@ class InstructionGraph private constructor(
     }
     dominanceFrontiers += cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
     variableDefs += cfg.definitions.mapValues { it.value.first.nodeId }
-    defUseChains = findDefUseChains()
+    findDefUseChainsAndPruneDeadPhis(cfg.definitions)
     liveSets = computeLiveSetsByVar()
     findVirtualRanges()
   }

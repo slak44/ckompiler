@@ -525,6 +525,6 @@ class E2ETests {
 
   @Test
   fun `Dead Phi Instructions`() {
-    compileAndRun(resource("e2e/deadPhis.c")).justExitCode(0)
+    compileAndRun(resource("e2e/deadPhis.c")).expect(stdout = "100 1")
   }
 }

@@ -17,8 +17,8 @@ int main() {
   int res11 = 11;
   if (115 >= 0) {
     if (21 >= 0) {
-      for (i = 0; i < 7; i = i + 1) {
-        printf("%d %d", 144, res1);
+      for (i = 0; i < 1; i = i + 1) {
+        printf("%d %d", 100, res1);
         res2 = res1 * 119;
         res3 = 36 == res1;
       }
