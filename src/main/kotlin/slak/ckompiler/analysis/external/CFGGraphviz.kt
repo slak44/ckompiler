@@ -87,7 +87,7 @@ private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions):
     val graph = try {
       if (options.noAllocOnlySpill) {
         val spillResult = gen.runSpiller()
-        gen.insertSpillReloadCode(spillResult)
+        gen.insertSpillReloadCode(spillResult, mutableMapOf())
         gen.graph
       } else {
         gen.regAlloc().graph

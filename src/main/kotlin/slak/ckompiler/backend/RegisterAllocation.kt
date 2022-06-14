@@ -181,7 +181,7 @@ private fun splitLiveRanges(
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.6.1, 4.6.3
  */
-private fun TargetFunGenerator.prepareForColoring() {
+private fun RegisterAllocationContext.prepareForColoring() {
   for (blockId in graph.domTreePreorder) {
     val block = graph[blockId]
     // Track which variables are alive at any point in this block
@@ -208,7 +208,7 @@ private fun TargetFunGenerator.prepareForColoring() {
       }
 
       splitLiveRanges(graph, alive, index, block)
-      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
+      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
       // The parallel copy needs to have updateAlive run on it, before skipping it
       updateAlive(index)
       index++
@@ -221,11 +221,11 @@ private fun TargetFunGenerator.prepareForColoring() {
           graph.livesThrough(value, InstrLabel(blockId, index)) &&
           target in startMi.constrainedRes.map { it.target }
         ) {
-          insertSingleCopy(block, index, value, startMi)
+          generator.insertSingleCopy(block, index, value, startMi)
           index++
         }
       }
-      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet())
+      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
       for (copyIdx in startIndex until index) {
         // Process the inserted copies
         updateAlive(copyIdx)
@@ -253,11 +253,17 @@ private class RegisterAllocationContext(val generator: TargetFunGenerator) {
   /** Store the copy sequences to replace each label with a parallel copy. */
   val parallelCopies = mutableMapOf<InstrLabel, List<MachineInstruction>>()
 
+  /** Mapping of spilled values to their associated stack value. */
+  val spilled = mutableMapOf<AllocatableValue, StackValue>()
+
   val target get() = generator.target
   val graph get() = generator.graph
 
   /** Begin a DFS from the starting block. */
   fun doAllocation() {
+    for ((_, stackValue) in spilled) {
+      coloring[stackValue] = SpillSlot(stackValue, generator.stackSlotIds(), target.machineTargetData)
+    }
     for (blockId in graph.domTreePreorder) {
       allocBlock(graph[blockId])
     }
@@ -529,14 +535,11 @@ fun TargetFunGenerator.regAlloc(
     debugNoPostColoring: Boolean = false,
     debugNoCheckAlloc: Boolean = false,
 ): AllocationResult {
-  val spillResult = runSpiller()
-  val (spillMap) = insertSpillReloadCode(spillResult)
-  prepareForColoring()
-  // FIXME: coalescing
   val ctx = RegisterAllocationContext(this)
-  for ((_, stackValue) in spillMap) {
-    ctx.coloring[stackValue] = SpillSlot(stackValue, stackSlotIds(), target.machineTargetData)
-  }
+  val spillResult = runSpiller()
+  insertSpillReloadCode(spillResult, ctx.spilled)
+  ctx.prepareForColoring()
+  // FIXME: coalescing?
   ctx.doAllocation()
   val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
   val result = AllocationResult(graph, allocations, ctx.registerUseMap)

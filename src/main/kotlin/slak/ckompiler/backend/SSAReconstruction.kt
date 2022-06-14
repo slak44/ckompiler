@@ -2,10 +2,7 @@ package slak.ckompiler.backend
 
 import mu.KotlinLogging
 import slak.ckompiler.AtomicId
-import slak.ckompiler.analysis.DEFINED_IN_PHI
-import slak.ckompiler.analysis.DerefStackValue
-import slak.ckompiler.analysis.Variable
-import slak.ckompiler.analysis.VersionedValue
+import slak.ckompiler.analysis.*
 import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger {}
@@ -15,7 +12,7 @@ private val logger = KotlinLogging.logger {}
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.2.1.2, Algorithm 4.1
  */
-fun InstructionGraph.ssaReconstruction(reconstruct: Set<VersionedValue>) {
+fun InstructionGraph.ssaReconstruction(reconstruct: Set<VersionedValue>, target: MachineTarget, spilled: SpillMap) {
   // vars is the set D in the algorithm
   val vars = reconstruct.toMutableSet()
   val ids = vars.mapTo(mutableSetOf()) { it.identityId }
@@ -102,10 +99,20 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<VersionedValue>) {
         return maybeDefinedPhi.key
       }
       if (u in f) {
-        // Insert new φ for variable
-        val yPrime = createCopyOf(variable, uBlock) as VersionedValue
+        val variableClass = target.registerClassOf(variable.type)
+        val maxClassPressure = target.maxPressure.getValue(variableClass)
+        val phiDefsClass = this[blockId].phiDefs.filter { target.registerClassOf(it.type) == variableClass }
+
+        // Insert new φ for variable, in memory if needed
+        val yPrime = if (phiDefsClass.size >= maxClassPressure) {
+          val stackValue = spilled.getOrPut(variable) { StackValue(variable) }
+          DerefStackValue(stackValue)
+        } else {
+          createCopyOf(variable, uBlock) as VersionedValue
+        }
         uBlock.phi[yPrime] = mutableMapOf()
         vars += yPrime
+
         val incoming = predecessors(uBlock).map { it.id }
             .associateWithTo(mutableMapOf()) { findDef(InstrLabel(u, DEFINED_IN_PHI), it, variable) }
         uBlock.phi[yPrime] = incoming

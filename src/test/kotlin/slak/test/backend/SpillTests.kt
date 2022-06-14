@@ -110,7 +110,7 @@ class SpillTests {
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
-    gen.insertSpillReloadCode(spillResult)
+    gen.insertSpillReloadCode(spillResult, mutableMapOf())
     assert(spillResult.isNotEmpty()) { "Nothing was spilled" }
     val (spills, _) = assertNotNull(spillResult[gen.graph.startId])
     assert(spills.size >= 4)
@@ -122,7 +122,7 @@ class SpillTests {
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
-    gen.insertSpillReloadCode(spillResult)
+    gen.insertSpillReloadCode(spillResult, mutableMapOf())
     assert(spillResult.isNotEmpty()) { "Nothing was spilled" }
     assertNotNull(spillResult[gen.graph.startId])
   }
@@ -133,7 +133,7 @@ class SpillTests {
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
-    gen.insertSpillReloadCode(spillResult)
+    gen.insertSpillReloadCode(spillResult, mutableMapOf())
     val (ifTrue, ifFalse) = gen.graph.successors(gen.graph.startId).toList()
     val (spills, _) = assertNotNull(spillResult[ifFalse.id])
     assert(spills.any { it.first.name == "r13" } && spills.any { it.first.name == "r14" }) {
@@ -153,7 +153,7 @@ class SpillTests {
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
-    gen.insertSpillReloadCode(spillResult)
+    gen.insertSpillReloadCode(spillResult, mutableMapOf())
     val (ifTrue, ifFalse) = gen.graph.successors(gen.graph.startId).toList()
     val (spills, _) = assertNotNull(spillResult[ifFalse.id])
     assert(spills.any { it.first.name == "r13" } && spills.any { it.first.name == "r14" }) {

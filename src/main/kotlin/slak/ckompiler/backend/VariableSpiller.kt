@@ -390,17 +390,15 @@ fun TargetFunGenerator.runSpiller(): SpillResult {
 }
 
 /** Maps a spilled value to a pointer to the stack where it was spilled. */
-typealias SpillMap = Map<AllocatableValue, StackValue>
+typealias SpillMap = MutableMap<AllocatableValue, StackValue>
+
 /** Maps a spilled value to the [InstrBlock]s where it was spilled. */
 typealias SpillBlocks = Map<AllocatableValue, List<AtomicId>>
 
 /**
  * Inserts the spill and reload code at the locations found by [runSpiller].
- *
- * @return the stack values used for each spilled value
  */
-fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap, SpillBlocks> {
-  val spilled = mutableMapOf<AllocatableValue, StackValue>()
+fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult, spilled: SpillMap) {
   val spillBlocks = mutableMapOf<AllocatableValue, MutableList<AtomicId>>()
 
   for ((blockId, minResult) in result.entries) {
@@ -438,9 +436,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap
 
   graph.spillBlocks = spillBlocks
 
-  graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<VersionedValue>().toSet())
-
-  return spilled to spillBlocks
+  graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<VersionedValue>().toSet(), target, spilled)
 }
 
 /**
