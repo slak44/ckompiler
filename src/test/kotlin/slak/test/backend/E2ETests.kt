@@ -529,7 +529,7 @@ class E2ETests {
   }
 
   @Test
-  fun `More Phis In A Block Than Total Registers`() {
-    compileAndRun(resource("e2e/tooManyPhisInBlock.c")).justExitCode(0)
+  fun `More Phi Definitions In A Block Than Total Registers`() {
+    compileAndRun(resource("e2e/tooManyPhiDefsInBlock.c")).justExitCode(0)
   }
 }

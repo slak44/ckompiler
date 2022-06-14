@@ -6,9 +6,21 @@ import slak.ckompiler.analysis.*
 typealias Location = Pair<AllocatableValue, InstrLabel>
 typealias BlockLocations = List<Location>
 
-data class MinResult(val spills: BlockLocations, val reloads: BlockLocations)
+data class MinResult(val spills: BlockLocations, val reloads: BlockLocations, val phiDefSpills: List<Variable>)
 
 typealias WBlockMap = Map<MachineRegisterClass, MutableSet<AllocatableValue>>
+
+private fun TargetFunGenerator.insertPhiSpill(
+    phiDef: Variable,
+    blockId: AtomicId,
+    stackValue: StackValue?,
+): StackValue {
+  val targetStackValue = stackValue ?: StackValue(phiDef)
+  val incoming = graph[blockId].phi.getValue(phiDef)
+  graph[blockId].phi -= phiDef
+  graph[blockId].phi[DerefStackValue(targetStackValue)] = incoming
+  return targetStackValue
+}
 
 private fun TargetFunGenerator.insertSpill(
     value: AllocatableValue,
@@ -46,7 +58,7 @@ private fun TargetFunGenerator.nextUse(location: InstrLabel, v: AllocatableValue
 
 /**
  * Apply the MIN algorithm on a block. While this implementation is based on the reference below, it does differ by
- * working on multiple register classes at the same time (ie int and float regs), and by the handling of constraints.
+ * working on multiple register classes at the same time (ie int and float regs), and by the handling of constraints and φs.
  * It is also significantly less sophisticated (it doesn't consider loops separately).
  *
  * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack
@@ -63,7 +75,9 @@ private class BlockSpiller(
   private val reloads = mutableListOf<Location>()
   private val spills = mutableListOf<Location>()
 
-  val minResult get() = MinResult(spills, reloads)
+  private val phiDefSpills = mutableListOf<Variable>()
+
+  val minResult get() = MinResult(spills, reloads, phiDefSpills)
 
   /**
    * The set of values that are in a register. Initially set to the values in a register at the start of the block.
@@ -106,11 +120,34 @@ private class BlockSpiller(
   private fun TargetFunGenerator.minAlgorithm(maxPressure: Map<MachineRegisterClass, Int>) {
     val phiDefs = graph[blockId].phiDefs.groupBy { target.registerClassOf(it.type) }
     val phiUses = graph[blockId].phiUses.groupBy { target.registerClassOf(it.type) }
+
     for ((valueClass, k) in maxPressure) {
       val wClass = w.getValue(valueClass)
-      limit(valueClass, 0, k - (phiDefs[valueClass]?.size ?: 0))
-      wClass += phiDefs[valueClass] ?: emptyList()
-      wClass -= phiUses[valueClass] ?: emptyList()
+      val phiDefsClass = phiDefs[valueClass] ?: emptyList()
+
+      if (phiDefsClass.size >= k) {
+        // wBlockEntry is already limited to k entries, so we are guaranteed to have at most k φ-uses in registers
+        // This leaves us to deal with the excess φ-defs
+        val phiDefsInMemory = phiDefsClass.size - k
+
+        val sortedDefs = phiDefsClass.sortedByDescending { nextUse(InstrLabel(blockId, 0), it) }
+
+        val memoryDefs = sortedDefs.take(phiDefsInMemory)
+        val registerDefs = sortedDefs.drop(phiDefsInMemory)
+
+        // At this point, there should be no φ-defs spilled to memory, so all of them must be Variables
+        @Suppress("UNCHECKED_CAST")
+        phiDefSpills += memoryDefs.onEach { require(it is Variable) } as List<Variable>
+
+        wClass += registerDefs
+      } else {
+        // On a single edge, there are as many φ-defs as φ-uses, since only that predecessor's set of uses is live
+        // As long as there are less φ-defs than k, the φ will fit in k registers, as the k uses will be replaced by k defs
+        // So in this case we don't need to do anything in the spiller, simply update wClass with all the φ-defs which are in memory
+        wClass += phiDefsClass
+      }
+
+      wClass -= (phiUses[valueClass] ?: emptyList()).toSet()
     }
 
     val it = graph[blockId].listIterator()
@@ -281,7 +318,8 @@ private fun TargetFunGenerator.findEdgeSpillsReloads(
 
   val syntheticResult = MinResult(
       toSpill.map { it to InstrLabel(splitBlock.id, 0) },
-      edgeReloads.map { it to InstrLabel(splitBlock.id, 0) }
+      edgeReloads.map { it to InstrLabel(splitBlock.id, 0) },
+      emptyList()
   )
 
   return mapOf(splitBlock.id to syntheticResult)
@@ -358,6 +396,11 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult): Pair<SpillMap
   val spillBlocks = mutableMapOf<AllocatableValue, MutableList<AtomicId>>()
 
   for ((blockId, minResult) in result.entries) {
+    // Before dealing with normal spills and reloads, handle the spilled φ-defs
+    for (phiDef in minResult.phiDefSpills) {
+      spilled[phiDef] = insertPhiSpill(phiDef, blockId, spilled[phiDef])
+    }
+
     // All the labels in minResult contain indices from before inserting spill/reload instructions
     // We keep track of how many new instructions we inserted, so the original indices can be offset correctly
     var insnInserted = 0

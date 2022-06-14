@@ -433,10 +433,18 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
     assigned -= color
   }
   // Allocate φ-definitions
-  for ((variable, _) in block.phi) {
-    val color = target.selectRegisterBlacklist(assigned, variable)
-    coloring[variable] = color
-    assigned += color
+  for ((phiDef, _) in block.phi) {
+    when (phiDef) {
+      is DerefStackValue -> {
+        // DerefStackValue can only be allocated to the spill slot that it was assigned to
+        coloring[phiDef] = coloring.getValue(phiDef.stackValue)
+      }
+      is Variable -> {
+        val color = target.selectRegisterBlacklist(assigned, phiDef)
+        coloring[phiDef] = color
+        assigned += color
+      }
+    }
   }
   val colored = mutableSetOf<IRValue>()
   for ((index, mi) in block.withIndex()) {
