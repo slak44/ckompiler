@@ -230,7 +230,14 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
             X64TargetOpts.Companion.defaults,
             noAllocOnlySpill,
           );
-          return createGraphviz(cfg, cfg.f.sourceText as string, options);
+
+          // FIXME: i have no idea why it doesn't crash the second time ????
+          try {
+            return createGraphviz(cfg, cfg.f.sourceText as string, options);
+          } catch (e) {
+            console.error("ignored error", e);
+            return createGraphviz(cfg, cfg.f.sourceText as string, options);
+          }
         });
 
         if (!(this.graphviz && text)) {
