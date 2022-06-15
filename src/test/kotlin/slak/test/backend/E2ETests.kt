@@ -537,4 +537,27 @@ class E2ETests {
   fun `Spiller wBlockEntry Should Only Use Live-Ins Of The Block`() {
     compileAndRun(resource("e2e/wExitPropagation.c")).expect(stdout = "1 2")
   }
+
+  @ParameterizedTest
+  @ValueSource(ints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  fun `Recursive Fibonacci`(n: Int) {
+    fun fib(n: Int): Int {
+      if (n < 2) return n
+      return fib(n - 1) + fib(n - 2)
+    }
+
+    compileAndRun("""
+      #include <stdio.h>
+
+      int fib(int n) {
+        if (n < 2) return n;
+        return fib(n - 1) + fib(n - 2);
+      }
+
+      int main() {
+        int result = fib($n);
+        printf("%d", result);
+      }
+    """.trimIndent()).expect(stdout = fib(n).toString())
+  }
 }
