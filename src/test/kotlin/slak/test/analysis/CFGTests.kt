@@ -31,6 +31,17 @@ class CFGTests {
     createGraphviz(cfg, text, options)
   }
 
+
+  @Test
+  fun `Reusing CFG For Graphviz Doesn't Fail`() {
+    val text = resource("cfg/cfgTest.c").readText()
+    val cfg = prepareCFG(text, source)
+    assert(cfg.startBlock.src.isNotEmpty())
+    assert(cfg.startBlock.isTerminated())
+    createGraphviz(cfg, text, GraphvizOptions(reachableOnly = true, print = CodePrintingMethods.IR_TO_STRING))
+    createGraphviz(cfg, text, GraphvizOptions(reachableOnly = true, print = CodePrintingMethods.ASM_TO_STRING))
+  }
+
   @Test
   fun `Break And Continue`() {
     val cfg = prepareCFG(resource("loops/controlKeywordsTest.c"), source)
