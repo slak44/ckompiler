@@ -5,7 +5,7 @@ import kotlin.random.nextInt
 val targetDir = File("./generated-c")
 targetDir.mkdirs()
 
-val seed = 123
+val seed = 433
 val rng = Random(seed)
 
 val operators = listOf("+", "-", "*", "<", "==")
@@ -49,7 +49,7 @@ fun generateBlock(depth: Int): String {
 }
 
 fun generateNestedControl(depth: Int): String {
-  return if (depth < 100 && rng.nextInt(1..8) > 1) generateControlFlow(depth + 1) else generateBlock(depth + 1)
+  return if (depth < 100 && rng.nextInt(1..5) > 1) generateControlFlow(depth + 1) else generateBlock(depth + 1)
 }
 
 fun generateControlFlow(depth: Int = 0): String = when (rng.nextInt(0..3)) {
