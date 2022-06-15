@@ -94,6 +94,17 @@ fun InstructionGraph.dyingAt(label: InstrLabel, mi: MachineInstruction): List<Al
 }
 
 /**
+ * For non-vregs, the SSA reconstruction will update uses, but for the vregs it must be done separately.
+ */
+private fun rewriteVregBlockUses(block: InstrBlock, rewriteFromIdx: Int, rewriteMap: Map<AllocatableValue, AllocatableValue>) {
+  val vregRewriteMap = rewriteMap.filterKeys { it is VirtualRegister }
+
+  for (index in rewriteFromIdx until block.size) {
+    block[index] = block[index].rewriteBy(vregRewriteMap)
+  }
+}
+
+/**
  * Insert a copy.
  *
  * [value] is a constrained argument of [constrainedInstr].
@@ -110,17 +121,20 @@ private fun TargetFunGenerator.insertSingleCopy(
   val copyInstr = createIRCopy(copiedValue, value)
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
   block.add(index, copyInstr)
+
+  rewriteVregBlockUses(block, index + 1, mapOf(value to copiedValue))
+
   // This is the case where the value is an undefined dummy
   // We want to keep the original and correct last use, instead of destroying it here
   if (value === copiedValue) return
   return when (value) {
-    is Variable -> {
+    is Variable, is DerefStackValue -> {
       // The value is a constrained argument: it is still used at the constrained MI, after the copy
       // We know that is the last use, because all the ones afterwards were just rewritten
       // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
       graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
     }
-    is VirtualRegister, is DerefStackValue -> graph.virtualDeaths[value] = InstrLabel(block.id, index)
+    is VirtualRegister -> graph.virtualDeaths[value] = InstrLabel(block.id, index)
   }
 }
 
@@ -149,13 +163,15 @@ private fun splitLiveRanges(
   // Also rewrite the constrained instr too
   block[atIndex + 1] = block[atIndex + 1].rewriteBy(rewriteMap)
 
+  rewriteVregBlockUses(block, atIndex + 2, rewriteMap)
+
   for ((value, rewritten) in rewriteMap) {
     when (value) {
-      is VirtualRegister, is DerefStackValue -> {
+      is VirtualRegister -> {
         // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
         graph.virtualDeaths[value] = InstrLabel(block.id, atIndex)
       }
-      is Variable -> {
+      is Variable, is DerefStackValue -> {
         // The use got pushed by adding the copy, remove that
         graph.defUseChains.getOrPut(value, ::mutableSetOf) -= InstrLabel(block.id, atIndex + 1)
         // Add back the variable use from atIndex: the parallel copy itself does indeed use the variable
@@ -208,7 +224,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
       }
 
       splitLiveRanges(graph, alive, index, block)
-      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
+      graph.ssaReconstruction(alive.filterIsInstance<VersionedValue>().toSet(), target, spilled)
       // The parallel copy needs to have updateAlive run on it, before skipping it
       updateAlive(index)
       index++
@@ -225,7 +241,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
           index++
         }
       }
-      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
+      graph.ssaReconstruction(alive.filterIsInstance<VersionedValue>().toSet(), target, spilled)
       for (copyIdx in startIndex until index) {
         // Process the inserted copies
         updateAlive(copyIdx)
