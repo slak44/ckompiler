@@ -59,7 +59,12 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
       this.initialText$.subscribe(text => this.sourceControl.setValue(text));
     }
 
-    monacoLoaded$.pipe(first()).subscribe((monaco) => this.setMarkersFromDiagnostics(monaco));
+    monacoLoaded$.pipe(first()).subscribe((monaco) => {
+      this.setMarkersFromDiagnostics(monaco);
+
+      // Fix renderWhitespace with custom font
+      monaco.editor.remeasureFonts();
+    });
   }
 
   private setMarkersFromDiagnostics(monaco: typeof Monaco): void {
