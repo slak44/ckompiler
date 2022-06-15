@@ -38,11 +38,6 @@
                 "glob": "*(graphvizlib.wasm|index.min.js)",
                 "input": "node_modules/@hpcc-js/wasm/dist/",
                 "output": "/assets/graphviz-wasm"
-              },
-              {
-                "glob": "*.woff2",
-                "input": "node_modules/firacode/distr/woff2/",
-                "output": "/assets/fonts/firacode"
               }
             ],
             "styles": [

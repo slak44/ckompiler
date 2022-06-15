@@ -1,7 +1,7 @@
 @use '@angular/material' as mat;
 @use 'highlight.js/scss/base16/darcula' as *;
 @use 'colors';
-@use "fonts";
+@use 'fonts';
 
 @include mat.core();
 
