@@ -464,7 +464,7 @@ class InstructionGraph private constructor(
 
   companion object {
     fun partiallyInitialize(cfg: CFG): InstructionGraph {
-      val graph = InstructionGraph(cfg.f, cfg.startBlock.nodeId, cfg.registerIds, cfg.latestVersions)
+      val graph = InstructionGraph(cfg.f, cfg.startBlock.nodeId, cfg.registerIds, cfg.latestVersions.toMutableMap())
       graph.idom += MutableList(cfg.nodes.size) { 0 }
       return graph
     }
