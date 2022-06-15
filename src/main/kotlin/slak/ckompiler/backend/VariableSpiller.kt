@@ -162,7 +162,7 @@ private class BlockSpiller(
           .filterIsInstance<AllocatableValue>()
           .filter { !it.isUndefined }
           .groupBy { target.registerClassOf(it.type) }
-      val constraintsMap = (insn.constrainedArgs + insn.constrainedRes)
+      val constraintDummyCount = (insn.constrainedArgs + insn.constrainedRes)
           .filter { it.value is VirtualRegister && it.value.kind == VRegType.CONSTRAINED }
           .distinctBy { it.target }
           .groupBy { it.target.valueClass }
@@ -181,7 +181,7 @@ private class BlockSpiller(
           }
       for ((valueClass, k) in maxPressure) {
         val wClass = w.getValue(valueClass)
-        val actualK = k - (constraintsMap[valueClass] ?: 0) - (duplicateCount[valueClass] ?: 0)
+        val actualK = k - (constraintDummyCount[valueClass] ?: 0) - (duplicateCount[valueClass] ?: 0)
         // R is the set of reloaded variables at insn
         // Since they are reloads to registers, they are obviously in w
         val r = (insnUses[valueClass] ?: emptyList()) - wClass
