@@ -90,7 +90,7 @@ private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions):
         gen.insertSpillReloadCode(spillResult, mutableMapOf())
         gen.graph
       } else {
-        gen.regAlloc().graph
+        gen.regAlloc(debugNoPostColoring = true).graph
       }
     } catch (e: Exception) {
       logger.error("Reg alloc failed, fall back to initial graph", e)
