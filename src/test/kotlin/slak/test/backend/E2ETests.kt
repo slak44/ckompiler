@@ -560,4 +560,43 @@ class E2ETests {
       }
     """.trimIndent()).expect(stdout = fib(n).toString())
   }
+
+  @ParameterizedTest
+  @ValueSource(ints = [0, 1, 2, 3, 4, 5, 10, 100, 1000])
+  fun `Iterative Fibonacci`(n: Int) {
+    fun fib(n: Int): Long {
+      var a = 0L
+      var b = 1L
+
+      for (i in 0 until n) {
+        val tmp = b
+        b += a
+        a = tmp
+      }
+
+      return a
+    }
+
+    compileAndRun("""
+      #include <stdio.h>
+
+      long fib(int n) {
+        long a = 0;
+        long b = 1;
+        
+        for (int i = 0; i < n; i++) {
+          long tmp = b;
+          b += a;
+          a = tmp;
+        }
+        
+        return a;
+      }
+
+      int main() {
+        int result = fib($n);
+        printf("%ld", result);
+      }
+    """.trimIndent()).expect(stdout = fib(n).toString())
+  }
 }
