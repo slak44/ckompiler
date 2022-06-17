@@ -175,7 +175,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (this is NamedDisplacement && ref is NamedConstant) return true
   if (this is JumpTarget && ref is JumpTargetConstant) return true
   val refSize = MachineTargetData.x64.sizeOf(ref.type.unqualify().normalize())
-  if (ref !is PhysicalRegister && refSize != size) {
+  if (ref !is PhysicalRegister && ref !is IntConstant && refSize != size) {
     return false
   }
   return when (ref) {
@@ -192,7 +192,15 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
       val isCorrectSize = size == ref.reg.sizeBytes || size in ref.reg.aliases.map { it.second }
       isCorrectKind && isCorrectSize
     }
-    is IntConstant -> this is Imm
+    is IntConstant -> when {
+      this !is Imm -> false
+      size == refSize -> true
+      else -> {
+        val highestBitSet = Long.SIZE_BITS - ref.value.countLeadingZeroBits()
+        val immSizeBits = size * 8
+        highestBitSet < immSizeBits
+      }
+    }
     is NamedConstant, is JumpTargetConstant -> false // was checked above
     is ParameterReference -> logger.throwICE("Parameter references were removed")
   }
