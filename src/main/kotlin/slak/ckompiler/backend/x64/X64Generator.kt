@@ -56,6 +56,7 @@ class X64Generator private constructor(
     }
   }
 
+  // FIXME: we need to propagate size hints for these registers to here, because we really need the size
   override fun createRegisterCopy(dest: MachineRegister, src: MachineRegister): MachineInstruction {
     val sizeHint = when {
       dest.valueClass == Memory -> dest.sizeBytes
