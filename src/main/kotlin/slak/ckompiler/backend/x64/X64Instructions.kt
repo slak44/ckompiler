@@ -37,6 +37,7 @@ enum class ModRM(val type: OperandType, override val size: Int) : Operand {
   M16(OperandType.MEMORY, 2),
   M32(OperandType.MEMORY, 4),
   M64(OperandType.MEMORY, 8),
+  M(OperandType.MEMORY, 0), // Any memory
 
   XMM_SS(OperandType.REGISTER, 4),
   XMM_SD(OperandType.REGISTER, 8)
@@ -174,17 +175,16 @@ private fun dummyInstructionClass(
 private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
   if (this is NamedDisplacement && ref is NamedConstant) return true
   if (this is JumpTarget && ref is JumpTargetConstant) return true
+
   val refSize = MachineTargetData.x64.sizeOf(ref.type.unqualify().normalize())
-  if (ref !is PhysicalRegister && ref !is IntConstant && refSize != size) {
-    return false
-  }
+  val sizeMatches = refSize == size
+
   return when (ref) {
     is MemoryLocation, is DerefStackValue, is StrConstant, is FltConstant -> {
-      this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
+      (sizeMatches || this == M) && this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
     }
     is VirtualRegister, is Variable, is StackVariable, is StackValue -> {
-      this is Register ||
-          (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
+      sizeMatches && (this is Register || (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER)))
     }
     is PhysicalRegister -> {
       val isCorrectKind = (this is Register && register == ref.reg) ||
@@ -194,7 +194,7 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
     }
     is IntConstant -> when {
       this !is Imm -> false
-      size == refSize -> true
+      sizeMatches -> true
       else -> {
         val highestBitSet = Long.SIZE_BITS - ref.value.countLeadingZeroBits()
         val immSizeBits = size * 8
@@ -401,12 +401,9 @@ val neg = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
 val not = instructionClass("not", listOf(VariableUse.DEF_USE), unaryRM)
 
 val lea = instructionClass("lea", listOf(VariableUse.DEF, VariableUse.USE)) {
-  instr(R16, M32)
-  instr(R16, M64)
-  instr(R32, M32)
-  instr(R32, M64)
-  instr(R64, M32)
-  instr(R64, M64)
+  instr(R16, M)
+  instr(R32, M)
+  instr(R64, M)
 }
 
 val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
