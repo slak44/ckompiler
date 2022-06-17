@@ -346,12 +346,18 @@ class X64Generator private constructor(
       destSize == srcSize -> matchTypedMov(cast.result, cast.operand)
       destSize > srcSize -> {
         // FIXME: edge cases for unsigned destination?
-        val movType = when {
-          src is SignedIntegralType && destSize == 8 && srcSize == 4 -> movsxd
-          src is SignedIntegralType -> movsx
-          else -> movzx
+        when {
+          src is SignedIntegralType && destSize == 8 && srcSize == 4 -> movsxd.match(cast.result, cast.operand)
+          src is SignedIntegralType -> movsx.match(cast.result, cast.operand)
+          src is UnsignedIntegralType && destSize == 8 && srcSize == 4 -> {
+            // mov zero-extends for free on x64 if we change the dest size to the same as src
+//            mov.match(target.machineTargetData.copyWithType(cast.result, src), cast.operand)
+            // FIXME: it currently doesn't work, because the asm emitter emits `mov rcx, eax` which doesn't work, instead of `mov ecx, eax`
+            //   this is a temporary hack which does technically work
+            movsxd.match(cast.result, cast.operand)
+          }
+          else -> movzx.match(cast.result, cast.operand)
         }
-        movType.match(cast.result, cast.operand)
       }
       destSize < srcSize -> {
         if (dest is SignedIntegralType) {
