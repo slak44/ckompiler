@@ -42,7 +42,7 @@ class X64Generator private constructor(
           X64RegisterClass.SSE -> when (reg.sizeBytes) {
             4 -> FloatType
             8 -> DoubleType
-            else -> TODO("type?")
+            else -> DoubleType // TODO: this is sort of a hack? doesn't work for regs as vectors, but unsure if they will ever get here
           }
           X64RegisterClass.X87 -> LongDoubleType
         }

@@ -175,13 +175,13 @@ class X64CallGenerator(val target: X64Target, val registerIds: IdCounter) : Func
       TODO("deal with this")
     } else {
       require(retType is X64RegisterClass)
-      if (retType == X64RegisterClass.INTEGER) {
-        val rax = PhysicalRegister(target.registerByName("rax"),
-            retVal.type.unqualify().normalize())
-        selected += mov.match(rax, retVal)
-      } else {
-        TODO("deal with this")
+      val returnRegister = when (retType) {
+        X64RegisterClass.INTEGER -> target.registerByName("rax")
+        X64RegisterClass.SSE -> target.registerByName("xmm0")
+        X64RegisterClass.X87 -> TODO("deal with this")
       }
+      val physReg = PhysicalRegister(returnRegister, retVal.type.unqualify().normalize())
+      selected += matchTypedMov(physReg, retVal)
     }
     return selected
   }
