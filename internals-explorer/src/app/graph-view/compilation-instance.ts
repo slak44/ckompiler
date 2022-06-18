@@ -50,7 +50,7 @@ export class CompilationInstance {
   public readonly cfgs$: Observable<CFG[]> = this.compileResult$.pipe(
     distinctUntilChanged(),
     map(compileResult => compileResult.cfgs),
-    filter((cfgs): cfgs is CFG[] => !!cfgs),
+    filter((cfgs): cfgs is CFG[] => !!cfgs && cfgs.length > 0),
     tap(cfgs => this.updateSelected(cfgs.find(cfg => cfg.f.name === defaultFunctionName.snapshot) ?? cfgs[0])),
     shareReplay({ bufferSize: 1, refCount: false }),
   );
