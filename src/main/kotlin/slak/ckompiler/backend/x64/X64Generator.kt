@@ -10,7 +10,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.sign
 
 class X64Generator private constructor(
-    private val cfg: CFG,
+    cfg: CFG,
     override val target: X64Target,
     private val funAsm: X64FunAssembler,
 ) : TargetFunGenerator,
