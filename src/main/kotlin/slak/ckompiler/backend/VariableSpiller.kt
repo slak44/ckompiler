@@ -29,9 +29,12 @@ private fun TargetFunGenerator.insertSpill(
 ): StackValue {
   val (blockId, idx) = location
   val targetStackValue = stackValue ?: StackValue(value)
-  val copy = createIRCopy(DerefStackValue(targetStackValue), value)
+  val versionedValue = DerefStackValue(targetStackValue)
+  val copy = createIRCopy(versionedValue, value)
   graph[blockId].add(idx, copy)
-  graph.defUseChains.getOrPut(value, ::mutableSetOf) += location
+  if (value is VersionedValue) {
+    graph.defUseChains.getOrPut(value, ::mutableSetOf) += location
+  }
   return targetStackValue
 }
 
@@ -42,7 +45,9 @@ private fun TargetFunGenerator.insertReload(
 ): AllocatableValue {
   val (blockId, idx) = location
   val copyTarget = graph.createCopyOf(original, graph[blockId])
-  val copy = createIRCopy(copyTarget, DerefStackValue(toReload))
+  val derefValue = DerefStackValue(toReload)
+  val copy = createIRCopy(copyTarget, derefValue)
+  graph.defUseChains.getOrPut(derefValue, ::mutableSetOf) += location
   graph[blockId].add(idx, copy)
   return copyTarget
 }
@@ -436,7 +441,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult, spilled: Spill
 
   graph.spillBlocks = spillBlocks
 
-  graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<VersionedValue>().toSet(), target, spilled)
+  graph.ssaReconstruction(spilled.map { it.key }.filterIsInstance<Variable>().toSet(), target, spilled)
 }
 
 /**

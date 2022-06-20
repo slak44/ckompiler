@@ -12,9 +12,9 @@ private val logger = KotlinLogging.logger {}
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: 4.2.1.2, Algorithm 4.1
  */
-fun InstructionGraph.ssaReconstruction(reconstruct: Set<VersionedValue>, target: MachineTarget, spilled: SpillMap) {
+fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: MachineTarget, spilled: SpillMap) {
   // vars is the set D in the algorithm
-  val vars = reconstruct.toMutableSet()
+  val vars = reconstruct.toMutableSet<VersionedValue>()
   val ids = vars.mapTo(mutableSetOf()) { it.identityId }
   val blocks = vars.flatMap { variableDefs.filterKeys { defVar -> defVar.identityId == it.identityId }.values }.toMutableSet() +
       parallelCopies.filterValues { it.any { variable -> variable.identityId in ids } }.map { it.key }

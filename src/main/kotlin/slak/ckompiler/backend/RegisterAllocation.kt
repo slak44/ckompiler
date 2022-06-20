@@ -116,7 +116,7 @@ private fun TargetFunGenerator.insertSingleCopy(
     constrainedInstr: MachineInstruction,
 ) {
   // No point in inserting a copy for something that's never used
-  if (!graph.isUsed(value)) return
+  if (!graph.isUsed(value) || value is DerefStackValue) return
   val copiedValue = graph.createCopyOf(value, block)
   val copyInstr = createIRCopy(copiedValue, value)
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
@@ -128,7 +128,7 @@ private fun TargetFunGenerator.insertSingleCopy(
   // We want to keep the original and correct last use, instead of destroying it here
   if (value === copiedValue) return
   return when (value) {
-    is Variable, is DerefStackValue -> {
+    is VersionedValue -> {
       // The value is a constrained argument: it is still used at the constrained MI, after the copy
       // We know that is the last use, because all the ones afterwards were just rewritten
       // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
@@ -149,8 +149,8 @@ private fun splitLiveRanges(
     atIndex: Int,
     block: InstrBlock,
 ) {
-  // No point in making a copy for something that's never used
-  val actualValues = splitFor.filter(graph::isUsed)
+  // No point in making a copy for something that's never used, or for spilled values
+  val actualValues = splitFor.filter { graph.isUsed(it) && it !is DerefStackValue }
   val rewriteMap = actualValues.associateWith { graph.createCopyOf(it, block) }
   val phi = ParallelCopyTemplate.createCopy(rewriteMap)
   phi.irLabelIndex = atIndex
@@ -171,13 +171,13 @@ private fun splitLiveRanges(
         // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
         graph.virtualDeaths[value] = InstrLabel(block.id, atIndex)
       }
-      is Variable, is DerefStackValue -> {
+      is VersionedValue -> {
         // The use got pushed by adding the copy, remove that
         graph.defUseChains.getOrPut(value, ::mutableSetOf) -= InstrLabel(block.id, atIndex + 1)
         // Add back the variable use from atIndex: the parallel copy itself does indeed use the variable
         graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, atIndex)
         // We also need to setup the copy's use at the rewritten instruction:
-        graph.defUseChains.getOrPut(rewritten, ::mutableSetOf) += InstrLabel(block.id, atIndex + 1)
+        graph.defUseChains.getOrPut(rewritten as VersionedValue, ::mutableSetOf) += InstrLabel(block.id, atIndex + 1)
       }
     }.exhaustive
   }
@@ -224,7 +224,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
       }
 
       splitLiveRanges(graph, alive, index, block)
-      graph.ssaReconstruction(alive.filterIsInstance<VersionedValue>().toSet(), target, spilled)
+      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
       // The parallel copy needs to have updateAlive run on it, before skipping it
       updateAlive(index)
       index++
@@ -241,7 +241,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
           index++
         }
       }
-      graph.ssaReconstruction(alive.filterIsInstance<VersionedValue>().toSet(), target, spilled)
+      graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
       for (copyIdx in startIndex until index) {
         // Process the inserted copies
         updateAlive(copyIdx)
@@ -308,6 +308,7 @@ private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi:
   val cD = mutableSetOf<MachineRegister>()
 
   for ((value, target) in mi.constrainedArgs) {
+    require(value !is DerefStackValue) { "Cannot constrain DerefStackValue to register $target" }
     cA += target
     a -= value
     val oldColor = coloring[value]

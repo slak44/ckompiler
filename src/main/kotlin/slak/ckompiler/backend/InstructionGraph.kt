@@ -9,7 +9,7 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger {}
 
-typealias DefUseChains = MutableMap<AllocatableValue, MutableSet<InstrLabel>>
+typealias DefUseChains = MutableMap<VersionedValue, MutableSet<InstrLabel>>
 typealias InstrLabel = Pair<AtomicId, Int>
 
 class InstructionGraph private constructor(
@@ -51,8 +51,8 @@ class InstructionGraph private constructor(
    */
   val parallelCopies = mutableMapOf<AtomicId, MutableList<Variable>>()
 
-  /** Should really be [VirtualRegister] | [DerefStackValue]. */
-  val virtualDeaths = mutableMapOf<AllocatableValue, InstrLabel>()
+  /** Store the index where each [VirtualRegister] dies. */
+  val virtualDeaths = mutableMapOf<VirtualRegister, InstrLabel>()
 
   /** @see computeLiveSetsByVar */
   lateinit var liveSets: LiveSets
@@ -238,32 +238,34 @@ class InstructionGraph private constructor(
 
   fun isDeadAfter(value: AllocatableValue, label: InstrLabel): Boolean {
     return when (value) {
-      is VirtualRegister, is DerefStackValue -> {
+      is VirtualRegister -> {
         // FIXME
         val last = virtualDeaths[value] ?: return true
         last == label
       }
+      is DerefStackValue -> false
       is Variable -> isDeadAt(value, label.first to label.second + 1)
     }
   }
 
   fun livesThrough(value: AllocatableValue, label: InstrLabel): Boolean {
     return when (value) {
-      is VirtualRegister, is DerefStackValue -> {
+      is VirtualRegister -> {
         // FIXME
         val (lastBlock, lastIndex) = virtualDeaths[value] ?: return false
         val (queryBlock, queriedIndex) = label
         check(lastBlock == queryBlock)
         lastIndex > queriedIndex
       }
+      is DerefStackValue -> false
       // FIXME: fairy inefficient
       is Variable -> !isDeadAt(value, label) && !isDeadAfter(value, label)
     }
   }
 
   fun isUsed(value: AllocatableValue): Boolean = when (value) {
-    is VirtualRegister, is DerefStackValue -> value in virtualDeaths
-    is Variable -> value in defUseChains && defUseChains.getValue(value).isNotEmpty()
+    is VirtualRegister -> value in virtualDeaths
+    is VersionedValue -> value in defUseChains && defUseChains.getValue(value).isNotEmpty()
   }
 
   fun liveInsOf(blockId: AtomicId): Set<Variable> = liveSets.liveIn[blockId] ?: emptySet()
@@ -358,7 +360,7 @@ class InstructionGraph private constructor(
     val uselessPhiDefs = mutableSetOf<Variable>()
     val usefulnessStack = mutableListOf<Variable>()
 
-    val allUses = mutableMapOf<AllocatableValue, MutableSet<InstrLabel>>()
+    val allUses = mutableMapOf<VersionedValue, MutableSet<InstrLabel>>()
 
     // Iteration through each MI, to find def-use chains and the initial marking phase for pruning
     for (blockId in domTreePreorder) {
@@ -372,7 +374,9 @@ class InstructionGraph private constructor(
       for ((index, mi) in block.withIndex()) {
         val uses = mi.filterOperands(listOf(VariableUse.USE), takeIndirectUses = true).filterIsInstance<AllocatableValue>()
         for (variable in uses + mi.constrainedArgs.map { it.value }) {
-          allUses.getOrPut(variable, ::mutableSetOf) += InstrLabel(blockId, index)
+          if (variable is VersionedValue) {
+            allUses.getOrPut(variable, ::mutableSetOf) += InstrLabel(blockId, index)
+          }
           if (!variable.isUndefined && variable is Variable && cfgDefinitions.getValue(variable).second == DEFINED_IN_PHI) {
             uselessPhiDefs -= variable
             usefulnessStack += variable
