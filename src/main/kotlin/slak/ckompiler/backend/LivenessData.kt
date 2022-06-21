@@ -18,6 +18,9 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
    */
   val variableDefs = mutableMapOf<Variable, AtomicId>()
 
+  /**
+   * List of uses for each version of each variable.
+   */
   private lateinit var defUseChains: MutableMap<VersionedValue, MutableSet<InstrLabel>>
 
   /** Store the index where each [VirtualRegister] dies. */
