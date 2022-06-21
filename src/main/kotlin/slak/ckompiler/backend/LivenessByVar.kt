@@ -28,7 +28,7 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
 
   fun upAndMarkStack(B: AtomicId, v: Variable, fromPhi: Boolean = false) {
     // def(v) ∈ B (φ excluded)
-    if (variableDefs.getValue(v) == B && v !in this[B].phiDefs) return
+    if (liveness.variableDefs.getValue(v) == B && v !in this[B].phiDefs) return
     if (liveIn.getOrPut(B, ::mutableSetOf).lastOrNull() == v) return
     liveIn[B]!! += v
     // defined in φ or spilled in this block, might still be live-in, so check that before returning
@@ -50,8 +50,8 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
   }
 
   // FIXME: allow partial update for just some vars
-  for (v in defUseChains.keys.filterIsInstance<Variable>().filter { !it.isUndefined }) {
-    val uses = defUseChains.getValue(v)
+  for (v in liveness.defUseChains.keys.filterIsInstance<Variable>().filter { !it.isUndefined }) {
+    val uses = liveness.defUseChains.getValue(v)
     for ((B, index) in uses) {
       if (successors(B).any { succ -> B in (succ.phi.predsByVar(v) ?: emptyList()) }) {
         liveOut.getOrPut(B, ::mutableSetOf) += v

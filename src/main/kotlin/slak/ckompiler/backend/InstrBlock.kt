@@ -22,11 +22,9 @@ class InstrBlock(
   val phiUses get() = phi.values.flatMap { it.values }
 
   /**
-   * Bypass the [InstructionGraph.updateIndices] calls in this object's [MutableList] implementation to get the
-   * underlying object.
+   * Bypass the [LivenessData.updateIndices] calls in this object's [MutableList] implementation to get the underlying object.
    *
-   * This is useful for post-allocation phases, where liveness data is no longer useful, and the index updates are a
-   * waste.
+   * This is useful for post-allocation phases, where liveness data is no longer useful, and the index updates are a waste.
    *
    * Still, callers beware.
    */
@@ -42,18 +40,18 @@ class InstrBlock(
 
   override fun removeAt(index: Int): MachineInstruction {
     return instructions.removeAt(index).also {
-      graph.updateIndices(id, index, -1)
+      graph.liveness.updateIndices(id, index, -1)
     }
   }
 
   override fun add(index: Int, element: MachineInstruction) {
     instructions.add(index, element)
-    graph.updateIndices(id, index, 1)
+    graph.liveness.updateIndices(id, index, 1)
   }
 
   override fun addAll(index: Int, elements: Collection<MachineInstruction>): Boolean {
     return instructions.addAll(index, elements).also {
-      graph.updateIndices(id, index, elements.size)
+      graph.liveness.updateIndices(id, index, elements.size)
     }
   }
 
@@ -62,12 +60,12 @@ class InstrBlock(
     return object : MutableListIterator<MachineInstruction> by it {
       override fun remove() {
         it.remove()
-        graph.updateIndices(id, it.nextIndex(), -1)
+        graph.liveness.updateIndices(id, it.nextIndex(), -1)
       }
 
       override fun add(element: MachineInstruction) {
         it.add(element)
-        graph.updateIndices(id, it.previousIndex(), 1)
+        graph.liveness.updateIndices(id, it.previousIndex(), 1)
       }
     }
   }

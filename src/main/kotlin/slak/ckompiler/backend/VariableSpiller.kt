@@ -33,7 +33,7 @@ private fun TargetFunGenerator.insertSpill(
   val copy = createIRCopy(versionedValue, value)
   graph[blockId].add(idx, copy)
   if (value is VersionedValue) {
-    graph.defUseChains.getOrPut(value, ::mutableSetOf) += location
+    graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) += location
   }
   return targetStackValue
 }
@@ -44,10 +44,10 @@ private fun TargetFunGenerator.insertReload(
     location: InstrLabel,
 ): AllocatableValue {
   val (blockId, idx) = location
-  val copyTarget = graph.createCopyOf(original, graph[blockId])
+  val copyTarget = graph.liveness.createCopyOf(original, graph[blockId])
   val derefValue = DerefStackValue(toReload)
   val copy = createIRCopy(copyTarget, derefValue)
-  graph.defUseChains.getOrPut(derefValue, ::mutableSetOf) += location
+  graph.liveness.defUseChains.getOrPut(derefValue, ::mutableSetOf) += location
   graph[blockId].add(idx, copy)
   return copyTarget
 }
@@ -93,7 +93,7 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
 
   val labelsToRewrite = rewriteMap.keys
       .filterIsInstance<VersionedValue>()
-      .flatMapTo(mutableSetOf()) { graph.defUseChains.getValue(it) }
+      .flatMapTo(mutableSetOf()) { graph.liveness.defUseChains.getValue(it) }
   for ((useBlock, useIndex) in labelsToRewrite + extraCopyLabelsToRewrite) {
     if (useIndex != DEFINED_IN_PHI) {
       graph[useBlock][useIndex] = graph[useBlock][useIndex].rewriteBy(rewriteMap)
@@ -114,16 +114,16 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
     //    defUse general refactor
     when (toPurge) {
       is VersionedValue -> {
-        graph.defUseChains.getOrPut(replacement as VersionedValue, ::mutableSetOf) += graph.defUseChains.getValue(toPurge)
-        graph.defUseChains -= toPurge
+        graph.liveness.defUseChains.getOrPut(replacement as VersionedValue, ::mutableSetOf) += graph.liveness.defUseChains.getValue(toPurge)
+        graph.liveness.defUseChains -= toPurge
         if (toPurge is Variable) {
-          graph.variableDefs[replacement as Variable] = graph.variableDefs.getValue(toPurge)
-          graph.variableDefs -= toPurge
+          graph.liveness.variableDefs[replacement as Variable] = graph.liveness.variableDefs.getValue(toPurge)
+          graph.liveness.variableDefs -= toPurge
         }
       }
       is VirtualRegister -> {
-        graph.virtualDeaths[rewriteMap.getValue(toPurge) as VirtualRegister] = graph.virtualDeaths.getValue(toPurge)
-        graph.virtualDeaths -= toPurge
+        graph.liveness.virtualDeaths[rewriteMap.getValue(toPurge) as VirtualRegister] = graph.liveness.virtualDeaths.getValue(toPurge)
+        graph.liveness.virtualDeaths -= toPurge
       }
     }
   }
@@ -200,7 +200,7 @@ private class BlockSpiller(
     val label = InstrLabel(blockId, insnIndex)
     val wClass = w.getValue(valueClass).sortedBy { nextUse(label, it) }
     for (v in wClass.drop(actualM)) {
-      if (v !in s && !graph.isDeadAfter(v, label)) {
+      if (v !in s && !graph.liveness.isDeadAfter(v, label)) {
         spills += Location(v, label)
       }
       s -= v
@@ -274,7 +274,7 @@ private class BlockSpiller(
         // Make room for insn's uses
         limit(valueClass, insnIndex, actualK)
         // Stuff that dies at this index should not count as "in a register"
-        val dyingHere = insnUses[valueClass]?.filter { graph.isDeadAfter(it, InstrLabel(blockId, insnIndex)) }
+        val dyingHere = insnUses[valueClass]?.filter { graph.liveness.isDeadAfter(it, InstrLabel(blockId, insnIndex)) }
         wClass -= dyingHere ?: emptyList()
         // Make room for insn's defs
         limit(valueClass, insnIndex, actualK - (insnDefs[valueClass]?.size ?: 0))
@@ -300,7 +300,7 @@ private fun TargetFunGenerator.initUsual(
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>,
 ): WBlockMap {
-  val liveIns = graph.liveInsOf(blockId)
+  val liveIns = graph.liveness.liveInsOf(blockId)
 
   val freq = mutableMapOf<MachineRegisterClass, MutableMap<AllocatableValue, Int>>()
   val take = mutableMapOf<MachineRegisterClass, MutableSet<AllocatableValue>>()
@@ -397,7 +397,7 @@ private fun TargetFunGenerator.findEdgeSpillsReloads(
     forClass -= wExit
     forClass -= otherPathVersions
     // Only consider things that are actually used by our block
-    val aliveAndNotInW = forClass.intersect(graph.liveInsOf(blockId))
+    val aliveAndNotInW = forClass.intersect(graph.liveness.liveInsOf(blockId))
     if (aliveAndNotInW.isNotEmpty()) {
       if (splitBlock == null) {
         splitBlock = graph.splitEdge(graph[predId], graph[blockId], this::createJump)
@@ -531,14 +531,14 @@ fun TargetFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<Ins
   val current = target.registerClasses.associateWithTo(mutableMapOf()) { 0 }
   for (blockId in graph.domTreePreorder) {
     val block = graph[blockId]
-    for (liveIn in (graph.liveInsOf(blockId) - block.phiUses)) {
+    for (liveIn in (graph.liveness.liveInsOf(blockId) - block.phiUses)) {
       val classOf = target.registerClassOf(liveIn.type)
       current[classOf] = current.getValue(classOf) + 1
     }
     for ((index, mi) in block.withIndex()) {
       val dyingHere = mi.uses
           .filterIsInstance<AllocatableValue>()
-          .filter { graph.isDeadAfter(it, InstrLabel(blockId, index)) }
+          .filter { graph.liveness.isDeadAfter(it, InstrLabel(blockId, index)) }
       // Reduce pressure for values that die at this label
       for (value in dyingHere) {
         val classOf = target.registerClassOf(value.type)
@@ -547,7 +547,7 @@ fun TargetFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<Ins
       val defined = mi.defs.filterIsInstance<AllocatableValue>()
       // Increase pressure for values defined at this label
       // If never used, then it shouldn't increase pressure, nor should undefined
-      for (definition in defined.filter { graph.isUsed(it) && !it.isUndefined }) {
+      for (definition in defined.filter { graph.liveness.isUsed(it) && !it.isUndefined }) {
         val classOf = target.registerClassOf(definition.type)
         current[classOf] = current.getValue(classOf) + 1
       }

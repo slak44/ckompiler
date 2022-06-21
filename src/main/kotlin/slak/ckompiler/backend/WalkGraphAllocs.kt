@@ -30,12 +30,12 @@ inline fun AllocationResult.walkGraphAllocs(
   val allocated = allocations.keys.filterIsInstance<AllocatableValue>()
   for (blockId in graph.blocks) {
     val alive = mutableListOf<MachineRegister>()
-    alive += graph.liveInsOf(blockId).map { allocations.getValue(it) }
+    alive += graph.liveness.liveInsOf(blockId).map { allocations.getValue(it) }
     val usedByPhi = graph[blockId].phiUses.filter { !it.isUndefined }
     alive -= usedByPhi.map { allocations.getValue(it) }
     for ((index, mi) in graph[blockId].withIndex()) {
       val regsDefinedHere = mi.defs.intersect(allocated)
-          .filter { graph.isUsed(it as AllocatableValue) && !it.isUndefined }
+          .filter { graph.liveness.isUsed(it as AllocatableValue) && !it.isUndefined }
           .map { allocations.getValue(it) } +
           mi.defs.filterIsInstance<PhysicalRegister>().map { it.reg }
       val regsDyingHere = graph.dyingAt(InstrLabel(blockId, index), mi)

@@ -89,7 +89,7 @@ fun InstructionGraph.dyingAt(label: InstrLabel, mi: MachineInstruction): List<Al
   return if (mi.template is ParallelCopyTemplate) {
     uses
   } else {
-    uses.filter { isDeadAfter(it, label) }
+    uses.filter { liveness.isDeadAfter(it, label) }
   }
 }
 
@@ -116,14 +116,14 @@ private fun TargetFunGenerator.insertSingleCopy(
     constrainedInstr: MachineInstruction,
 ) {
   // No point in inserting a copy for something that's never used
-  if (!graph.isUsed(value) || value is DerefStackValue) return
-  val copiedValue = graph.createCopyOf(value, block)
+  if (!graph.liveness.isUsed(value) || value is DerefStackValue) return
+  val copiedValue = graph.liveness.createCopyOf(value, block)
   val copyInstr = createIRCopy(copiedValue, value)
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
   block.add(index, copyInstr)
 
   if (copiedValue is VersionedValue) {
-    graph.defUseChains.getOrPut(copiedValue, ::mutableSetOf) += InstrLabel(block.id, index)
+    graph.liveness.defUseChains.getOrPut(copiedValue, ::mutableSetOf) += InstrLabel(block.id, index)
   }
 
   rewriteVregBlockUses(block, index + 1, mapOf(value to copiedValue))
@@ -137,9 +137,9 @@ private fun TargetFunGenerator.insertSingleCopy(
       // We know that is the last use, because all the ones afterwards were just rewritten
       // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
       // This is corrected in prepareForColoring
-      graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
+      graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
     }
-    is VirtualRegister -> graph.virtualDeaths[value] = InstrLabel(block.id, index)
+    is VirtualRegister -> graph.liveness.virtualDeaths[value] = InstrLabel(block.id, index)
   }
 }
 
@@ -155,8 +155,8 @@ private fun splitLiveRanges(
     block: InstrBlock,
 ) {
   // No point in making a copy for something that's never used, or for spilled values
-  val actualValues = splitFor.filter { graph.isUsed(it) && it !is DerefStackValue }
-  val rewriteMap = actualValues.associateWith { graph.createCopyOf(it, block) }
+  val actualValues = splitFor.filter { graph.liveness.isUsed(it) && it !is DerefStackValue }
+  val rewriteMap = actualValues.associateWith { graph.liveness.createCopyOf(it, block) }
   val phi = ParallelCopyTemplate.createCopy(rewriteMap)
   phi.irLabelIndex = atIndex
   for (copiedValue in rewriteMap.values.filterIsInstance<Variable>()) {
@@ -174,15 +174,15 @@ private fun splitLiveRanges(
     when (value) {
       is VirtualRegister -> {
         // The constrained instr was rewritten, and the value cannot have been used there, so it dies when it is copied
-        graph.virtualDeaths[value] = InstrLabel(block.id, atIndex)
+        graph.liveness.virtualDeaths[value] = InstrLabel(block.id, atIndex)
       }
       is VersionedValue -> {
         // The use got pushed by adding the copy, remove that
-        graph.defUseChains.getOrPut(value, ::mutableSetOf) -= InstrLabel(block.id, atIndex + 1)
+        graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) -= InstrLabel(block.id, atIndex + 1)
         // Add back the variable use from atIndex: the parallel copy itself does indeed use the variable
-        graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, atIndex)
+        graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, atIndex)
         // We also need to setup the copy's use at the rewritten instruction:
-        graph.defUseChains.getOrPut(rewritten as VersionedValue, ::mutableSetOf) += InstrLabel(block.id, atIndex + 1)
+        graph.liveness.defUseChains.getOrPut(rewritten as VersionedValue, ::mutableSetOf) += InstrLabel(block.id, atIndex + 1)
       }
     }.exhaustive
   }
@@ -207,7 +207,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
     val block = graph[blockId]
     // Track which variables are alive at any point in this block
     // Initialize with the block live-ins, and with φ vars
-    val alive: MutableSet<AllocatableValue> = graph.liveInsOf(blockId).toMutableSet()
+    val alive: MutableSet<AllocatableValue> = graph.liveness.liveInsOf(blockId).toMutableSet()
     // The φ-uses are not alive at index 0; they die at the φ itself
     alive -= block.phiUses
 
@@ -216,7 +216,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
     fun updateAlive(index: Int) {
       val mi = block[index]
       val dyingHere = graph.dyingAt(InstrLabel(blockId, index), mi)
-      alive += mi.defs.filterIsInstance<AllocatableValue>().filter { graph.isUsed(it) }
+      alive += mi.defs.filterIsInstance<AllocatableValue>().filter { graph.liveness.isUsed(it) }
       alive -= dyingHere
     }
 
@@ -240,7 +240,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
       for ((value, target) in startMi.constrainedArgs) {
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (
-          graph.livesThrough(value, InstrLabel(blockId, index)) &&
+          graph.liveness.livesThrough(value, InstrLabel(blockId, index)) &&
           target in startMi.constrainedRes.map { it.target }
         ) {
           generator.insertSingleCopy(block, index, value, startMi)
@@ -253,8 +253,8 @@ private fun RegisterAllocationContext.prepareForColoring() {
       graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
       for ((storedIndex, value) in usesToRewrite) {
         // Correct the index of the last use, as mentioned in insertSingleCopy
-        graph.defUseChains.getValue(value) -= InstrLabel(blockId, storedIndex)
-        graph.defUseChains.getValue(value) += InstrLabel(blockId, index)
+        graph.liveness.defUseChains.getValue(value) -= InstrLabel(blockId, storedIndex)
+        graph.liveness.defUseChains.getValue(value) += InstrLabel(blockId, index)
       }
       for (copyIdx in startIndex until index) {
         // Process the inserted copies
@@ -321,7 +321,7 @@ private class RegisterAllocationContext(val generator: TargetFunGenerator) {
  */
 private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi: MachineInstruction) {
   val arg = mi.uses.filterIsInstance<AllocatableValue>()
-  val t = arg.filter { graph.livesThrough(it, label) }.toMutableSet()
+  val t = arg.filter { graph.liveness.livesThrough(it, label) }.toMutableSet()
   val a = (arg - t).toMutableSet()
   val d = mi.defs.filterIsInstance<AllocatableValue>().toMutableSet()
   val cA = mutableSetOf<MachineRegister>()
@@ -539,7 +539,7 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
   val assignedForParallel = assigned + colorsAtL + copyMap.keys.map { coloring.getValue(it) }
   parallelCopies[InstrLabel(block, parallelCopyIdx)] = generator.replaceParallel(copyMap, coloring, assignedForParallel)
 
-  for (def in definedAtL.filter { graph.isUsed(it) && !it.isUndefined }) {
+  for (def in definedAtL.filter { graph.liveness.isUsed(it) && !it.isUndefined }) {
     val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
     assigned += color
   }
@@ -549,7 +549,7 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
  * Register allocation for one [block]. Recursive DFS case.
  */
 private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
-  for (x in graph.liveInsOf(block.id) - block.phiDefs - block.phiUses) {
+  for (x in graph.liveness.liveInsOf(block.id) - block.phiDefs - block.phiUses) {
     // If the live-in wasn't colored, and is null, that's a bug
     // Live-ins in the block's φ are not considered
     assigned += requireNotNull(coloring[x]) { "Live-in not colored: $x in $block" }
@@ -617,7 +617,7 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
       coloring[definition] = color
       colored += definition
       // Don't mark the register as assigned unless this value is actually used
-      if (graph.isUsed(definition)) assigned += color
+      if (graph.liveness.isUsed(definition)) assigned += color
     }
   }
   registerUseMap[block] = assigned.toList()
