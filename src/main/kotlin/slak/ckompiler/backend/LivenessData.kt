@@ -157,21 +157,6 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
     }
   }
 
-  /**
-   * Populate [virtualDeaths].
-   */
-  fun findVirtualRanges() {
-    for (blockId in graph.domTreePreorder) {
-      for ((index, mi) in graph[blockId].withIndex()) {
-        // Keep updating the map
-        // Obviously, the last use will be the last update in the map
-        for (it in mi.uses.filterIsInstance<VirtualRegister>()) {
-          virtualDeaths[it] = InstrLabel(blockId, index)
-        }
-      }
-    }
-  }
-
   fun initializeVariableDefs(cfgDefinitions: Definitions) {
     variableDefs += cfgDefinitions.mapValues { it.value.first.nodeId }
   }
@@ -195,6 +180,12 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
         }
       }
       for ((index, mi) in block.withIndex()) {
+        // Keep updating the map for virtuals
+        // Obviously, the last use will be the last update in the map
+        for (it in mi.uses.filterIsInstance<VirtualRegister>()) {
+          virtualDeaths[it] = InstrLabel(blockId, index)
+        }
+
         val uses = mi.filterOperands(listOf(VariableUse.USE), takeIndirectUses = true).filterIsInstance<AllocatableValue>()
         for (variable in uses + mi.constrainedArgs.map { it.value }) {
           if (variable is VersionedValue) {

@@ -239,7 +239,6 @@ class InstructionGraph private constructor(
     liveness.initializeVariableDefs(cfg.definitions)
     liveness.findDefUseChainsAndPruneDeadPhis(cfg.definitions)
     liveness.liveSets = computeLiveSetsByVar()
-    liveness.findVirtualRanges()
   }
 
   companion object {
