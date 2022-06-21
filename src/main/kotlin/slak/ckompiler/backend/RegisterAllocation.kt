@@ -122,6 +122,10 @@ private fun TargetFunGenerator.insertSingleCopy(
   copyInstr.irLabelIndex = constrainedInstr.irLabelIndex
   block.add(index, copyInstr)
 
+  if (copiedValue is VersionedValue) {
+    graph.defUseChains.getOrPut(copiedValue, ::mutableSetOf) += InstrLabel(block.id, index)
+  }
+
   rewriteVregBlockUses(block, index + 1, mapOf(value to copiedValue))
 
   // This is the case where the value is an undefined dummy
@@ -132,6 +136,7 @@ private fun TargetFunGenerator.insertSingleCopy(
       // The value is a constrained argument: it is still used at the constrained MI, after the copy
       // We know that is the last use, because all the ones afterwards were just rewritten
       // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
+      // This is corrected in prepareForColoring
       graph.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
     }
     is VirtualRegister -> graph.virtualDeaths[value] = InstrLabel(block.id, index)
@@ -231,6 +236,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
 
       val startMi = block[index]
       val startIndex = index
+      val usesToRewrite = mutableListOf<Pair<Int, VersionedValue>>()
       for ((value, target) in startMi.constrainedArgs) {
         // Result constrained to same register as live-though constrained variable: copy must be made
         if (
@@ -238,10 +244,18 @@ private fun RegisterAllocationContext.prepareForColoring() {
           target in startMi.constrainedRes.map { it.target }
         ) {
           generator.insertSingleCopy(block, index, value, startMi)
+          if (value is VersionedValue) {
+            usesToRewrite += index to value
+          }
           index++
         }
       }
       graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
+      for ((storedIndex, value) in usesToRewrite) {
+        // Correct the index of the last use, as mentioned in insertSingleCopy
+        graph.defUseChains.getValue(value) -= InstrLabel(blockId, storedIndex)
+        graph.defUseChains.getValue(value) += InstrLabel(blockId, index)
+      }
       for (copyIdx in startIndex until index) {
         // Process the inserted copies
         updateAlive(copyIdx)
@@ -276,13 +290,19 @@ private class RegisterAllocationContext(val generator: TargetFunGenerator) {
   val graph get() = generator.graph
 
   /** Begin a DFS from the starting block. */
-  fun doAllocation() {
+  fun performColoringAllocation() {
     for ((_, stackValue) in spilled) {
       coloring[stackValue] = SpillSlot(stackValue, generator.stackSlotIds(), target.machineTargetData)
     }
     for (blockId in graph.domTreePreorder) {
       allocBlock(graph[blockId])
     }
+  }
+
+  fun getAllocationResult(): AllocationResult {
+    val allocations = coloring.filterKeys { it !is ConstantValue }
+
+    return AllocationResult(graph, allocations, registerUseMap)
   }
 }
 
@@ -308,7 +328,7 @@ private fun RegisterAllocationContext.constrainedColoring(label: InstrLabel, mi:
   val cD = mutableSetOf<MachineRegister>()
 
   for ((value, target) in mi.constrainedArgs) {
-    require(value !is DerefStackValue) { "Cannot constrain DerefStackValue to register $target" }
+    require(value !is DerefStackValue) { "Cannot constrain DerefStackValue to register $target at label $label" }
     cA += target
     a -= value
     val oldColor = coloring[value]
@@ -389,36 +409,123 @@ private fun RegisterAllocationContext.unassignDyingAt(label: InstrLabel, mi: Mac
 private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: MachineInstruction) {
   require(mi.isConstrained)
 
-  val (block, index) = label
-  require(index > 0) { "No parallel copy found for constrained instruction" }
+  val (block, constrainedIndex) = label
+  require(constrainedIndex > 0) { "No parallel copy found for constrained instruction" }
 
-  val phiIdx = graph[block].take(index).indexOfLast { it.template is ParallelCopyTemplate }
-  require(phiIdx >= 0) { "No parallel copy preceding constrained" }
-  val phi = graph[block][phiIdx]
+  val parallelCopyIdx = graph[block].take(constrainedIndex).indexOfLast { it.template is ParallelCopyTemplate }
+  require(parallelCopyIdx >= 0) { "No parallel copy preceding constrained" }
+  val parallelCopy = graph[block][parallelCopyIdx]
 
-  val phiMap = (phi.template as ParallelCopyTemplate).values
+  val copyTemplate = parallelCopy.template as ParallelCopyTemplate
+  val copyMap = copyTemplate.values
 
-  // There should be exclusively copies defined in this interval
-  val extraCopies = graph[block].subList(phiIdx + 1, index).flatMap { it.defs }.filterIsInstance<AllocatableValue>()
+  val spills = mutableSetOf<AllocatableValue>()
+  val extraCopies = mutableMapOf<AllocatableValue, Pair<Int, AllocatableValue>>()
+  val toErase = mutableSetOf<Variable>()
+
+  // There should be exclusively copies defined in this interval, along with spills to memory
+  for (intervalIndex in parallelCopyIdx + 1 until constrainedIndex) {
+    val intervalMi = graph[block][intervalIndex]
+
+    // FIXME: first? should be something custom for the copies maybe
+    val use = intervalMi.uses.filterIsInstance<AllocatableValue>().first()
+    val def = intervalMi.defs.filterIsInstance<AllocatableValue>().first()
+
+    // FIXME: better spill detection
+    if (def !is DerefStackValue) {
+      extraCopies += def to (intervalIndex to use)
+      continue
+    }
+
+    val copyData = extraCopies[use]
+
+    if (copyData != null) {
+      // Convert a sequence like:
+      //   a v3 ← a v2
+      //   ... unrelated copies ...
+      //   spill a v3
+      // into:
+      //   spill a v2
+      //   ... unrelated copies ...
+      //   empty placeholder
+      // The reason why this is fine, is because the reloads for "a" are already in place, since the spill already existed. And since this
+      // is a copy for a constraint, we know there are no other uses except those after the constrained instruction.
+      val (copyIndex, copiedValue) = copyData
+
+      val updatedSpill = intervalMi.rewriteBy(mapOf(use to copiedValue))
+      graph[block][copyIndex] = updatedSpill
+      graph[block][intervalIndex] = PlaceholderTemplate.createMI()
+
+      if (use is Variable) {
+        toErase += use
+      }
+
+      extraCopies -= use
+      spills += copiedValue
+    } else {
+      spills += use
+    }
+  }
+
+  // This will remove the dangling uses of the erased variables, and fix the dominance property of SSA
+  graph.ssaReconstruction(toErase, target, spilled)
 
   constrainedColoring(label, mi)
   unassignDyingAt(label, mi)
+
   // Correctly color copies inserted by the live range split (and the other copies from 4.6.1)
   // See last paragraph of section 4.6.4 for why we have to do this
-  val copies = phiMap.values + extraCopies
-  val usedAtL = mi.uses.filterIsInstance<AllocatableValue>()
+
+  val usedAtL = mi.uses.filterIsInstance<AllocatableValue>().toSet()
   val definedAtL = mi.defs.filterIsInstance<AllocatableValue>()
-  val colorsAtL = (definedAtL + usedAtL).mapTo(mutableSetOf()) { coloring.getValue(it) }
-  val toRecolor = copies - usedAtL
+  val operandsAtL = usedAtL + definedAtL
+
+  val colorsAtL = operandsAtL.mapTo(mutableSetOf()) { coloring.getValue(it) }
+
+  val nonDummyArgColorsAtL = usedAtL
+      .filterNot { it.isUndefined }
+      .mapTo(mutableSetOf()) { coloring.getValue(it) }
+
+  val toRecolorFromParallel = copyMap.values - usedAtL
+
   // First, un-assign all the old colors
-  assigned -= toRecolor.map { checkNotNull(coloring[it]) }
+  assigned -= toRecolorFromParallel.mapTo(mutableSetOf()) { checkNotNull(coloring[it]) }
+  assigned -= (extraCopies.keys - usedAtL).mapTo(mutableSetOf()) { checkNotNull(coloring[it]) }
   // And only then allocate them again
-  // If an old assignment would have been in rax, and the recoloring puts a value in rax before the old assignment is
+  // If an old assignment had been in rax, and the recoloring puts a value in rax before the old assignment is
   // processed, rax would have gotten removed from assigned, even though the recoloring assigned something to there
-  for (copy in toRecolor) {
-    val color = target.selectRegisterBlacklist(assigned + colorsAtL, copy)
+  for (copy in toRecolorFromParallel) {
+    // Section 4.6.4 says we should recolor with colors not used by arguments or results of the constrained instruction. However, the spills
+    // set contains values that are spilled after the live range split, but before the constrained instruction. This means we can use colors
+    // from the constrained argument dummies and constrained results for the spills, since the colors will be freed by the time of the
+    // constrained instruction. In fact, we are required to do this, since there would not be enough registers for the live range split in
+    // several situations with high pressure.
+    val blacklist = if (copy in spills) assigned + nonDummyArgColorsAtL else assigned + colorsAtL
+
+    val color = target.selectRegisterBlacklist(blacklist, copy)
     coloring[copy] = color
     assigned += color
+  }
+  for (intervalMi in graph[block].subList(parallelCopyIdx + 1, constrainedIndex)) {
+    val defs = intervalMi.defs.filterIsInstance<AllocatableValue>()
+    val uses = intervalMi.uses.filterIsInstance<AllocatableValue>()
+    // FIXME: better spill detection
+    if (defs.any { it is DerefStackValue }) {
+      // Spilled values must be unassigned
+      assigned -= uses.mapTo(mutableSetOf()) { coloring.getValue(it) }
+    } else if (uses.any { it is DerefStackValue }) {
+      // FIXME: better reload detection ↑
+      // Intentionally do nothing
+      // A reload here means the reloaded value is used in the constrained instruction, so we're not supposed to recolor it (uses of L are
+      // already colored by constrainedColoring)
+    } else {
+      // If it's neither a spill nor a reload, then it's a copy from 4.6.1, which we need to recolor
+      for (copy in defs) {
+        val color = target.selectRegisterBlacklist(assigned + colorsAtL, copy)
+        coloring[copy] = color
+        assigned += color
+      }
+    }
   }
   // assigned is a set because each reg can only be assigned to one value at a time, making it safe to add/remove the
   // entry in assigned when the value is gen'd/killed
@@ -429,7 +536,8 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
   }
 
   // Create the copy sequence to replace the parallel copy
-  parallelCopies[InstrLabel(block, phiIdx)] = generator.replaceParallel(phi, coloring, assigned + colorsAtL)
+  val assignedForParallel = assigned + colorsAtL + copyMap.keys.map { coloring.getValue(it) }
+  parallelCopies[InstrLabel(block, parallelCopyIdx)] = generator.replaceParallel(copyMap, coloring, assignedForParallel)
 
   for (def in definedAtL.filter { graph.isUsed(it) && !it.isUndefined }) {
     val color = checkNotNull(coloring[def]) { "Value defined at constrained label not colored: $def" }
@@ -516,6 +624,15 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
   assigned.clear()
 }
 
+private fun validateAllocation(result: AllocationResult) {
+  val failedCheck = result.walkGraphAllocs { register, (blockId, index), type ->
+    if (type == ViolationType.SOFT) return@walkGraphAllocs false
+    logger.error("Hard violation of allocation for $register at (block: $blockId, index $index)")
+    return@walkGraphAllocs true
+  }
+  check(!failedCheck) { "Hard violation. See above errors." }
+}
+
 /**
  * Modify the [InstructionGraph] to have all [ParallelCopyTemplate] MIs removed.
  */
@@ -540,36 +657,42 @@ private fun RegisterAllocationContext.replaceParallelInstructions() {
  * Performs target-independent spilling and register allocation.
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Algorithm 4.2
+ *
  * @param debugNoPostColoring only for debugging: if true, post-coloring transforms will not be applied
  * @param debugNoCheckAlloc only for debugging: if true, do not run [walkGraphAllocs]
+ * @param debugReturnAfterSpill only for debugging: if true, only run the spiller, do not run the coloring algorithm
+ * @see prepareForColoring
  * @see runSpiller
  * @see insertSpillReloadCode
- * @see prepareForColoring
+ * @see allocBlock
  * @see replaceParallelInstructions
  * @see removePhi
  */
 fun TargetFunGenerator.regAlloc(
     debugNoPostColoring: Boolean = false,
     debugNoCheckAlloc: Boolean = false,
+    debugReturnAfterSpill: Boolean = false
 ): AllocationResult {
   val ctx = RegisterAllocationContext(this)
+  ctx.prepareForColoring()
   val spillResult = runSpiller()
   insertSpillReloadCode(spillResult, ctx.spilled)
-  ctx.prepareForColoring()
+
+  if (debugReturnAfterSpill) {
+    return ctx.getAllocationResult()
+  }
+
   // FIXME: coalescing?
-  ctx.doAllocation()
-  val allocations = ctx.coloring.filterKeys { it !is ConstantValue }
-  val result = AllocationResult(graph, allocations, ctx.registerUseMap)
+  ctx.performColoringAllocation()
+  val result = ctx.getAllocationResult()
 
   if (!debugNoCheckAlloc) {
-    val failedCheck = result.walkGraphAllocs { register, (blockId, index), type ->
-      if (type == ViolationType.SOFT) return@walkGraphAllocs false
-      logger.error("Hard violation of allocation for $register at (block: $blockId, index $index)")
-      return@walkGraphAllocs true
-    }
-    check(!failedCheck) { "Hard violation. See above errors." }
+    validateAllocation(result)
   }
-  if (debugNoPostColoring) return result
+
+  if (debugNoPostColoring) {
+    return result
+  }
 
   ctx.replaceParallelInstructions()
   return removePhi(result)
@@ -666,19 +789,18 @@ private fun TargetFunGenerator.removeOnePhi(
  * @see removeOnePhi
  */
 private fun TargetFunGenerator.replaceParallel(
-    parallelCopy: MachineInstruction,
+    parallelCopyValues: Map<AllocatableValue, AllocatableValue>,
     coloring: AllocationMap,
     assigned: Set<MachineRegister>,
 ): List<MachineInstruction> {
-  val phiMap = (parallelCopy.template as ParallelCopyTemplate).values
   // Step 1: the set of undefined registers U is excluded from the graph
-  val vals = (phiMap.keys + phiMap.values).filterNot { it.isUndefined }
+  val vals = (parallelCopyValues.keys + parallelCopyValues.values).filterNot { it.isUndefined }
   // regs is the set R of registers in the register transfer graph T(R, T_E)
   val regs = vals.map { coloring.getValue(it) }
   // Adjacency lists for T
   val adjacency = mutableMapOf<MachineRegister, MutableSet<MachineRegister>>()
   for (it in regs) adjacency[it] = mutableSetOf()
-  for ((old, new) in phiMap) {
+  for ((old, new) in parallelCopyValues) {
     val rhoBetaY = coloring.getValue(old)
     val rhoY = coloring.getValue(new)
     adjacency.getValue(rhoBetaY) += rhoY

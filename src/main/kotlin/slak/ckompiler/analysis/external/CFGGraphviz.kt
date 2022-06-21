@@ -4,9 +4,7 @@ import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.analysis.external.GraphvizColors.*
-import slak.ckompiler.backend.insertSpillReloadCode
 import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.runSpiller
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.backend.x64.X64TargetOpts
@@ -85,13 +83,7 @@ private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions):
   if (options.print == CodePrintingMethods.MI_TO_STRING) {
     val gen = X64Generator(this, target)
     val graph = try {
-      if (options.noAllocOnlySpill) {
-        val spillResult = gen.runSpiller()
-        gen.insertSpillReloadCode(spillResult, mutableMapOf())
-        gen.graph
-      } else {
-        gen.regAlloc(debugNoPostColoring = true).graph
-      }
+      gen.regAlloc(debugNoPostColoring = true, debugReturnAfterSpill = options.noAllocOnlySpill).graph
     } catch (e: Exception) {
       logger.error("Reg alloc failed, fall back to initial graph", e)
       gen.graph

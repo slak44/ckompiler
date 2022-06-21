@@ -10,7 +10,7 @@ int main() {
     rax - rbx;
   } else {
     spilled = 2;
-    // r13/r14 is spilled here, and this causes a redefinition here
+    // spilled/r14 are spilled, and this causes a redefinition here
     // So a φ is needed in the block below for them, each has a vreg and this memory version as its operands
     rax / r12;
   }

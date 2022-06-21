@@ -62,6 +62,79 @@ private fun TargetFunGenerator.nextUse(location: InstrLabel, v: AllocatableValue
 }
 
 /**
+ * Replaces [spilledValues] from a parallel copy, because there is no reason to split their live range if they are spilled.
+ * The function then replaces those variables from where they are used with the pre-parallel version, and removes this value from the
+ * parallel copy. Also, update related liveness data.
+ *
+ * When the uses will be reached by the spiller, reloads will be inserted as appropriate.
+ *
+ * The rest of the spiller relies on the code being in SSA form, and accurate liveness data. Since this operation just reverts a live range
+ * split, it maintains the SSA property.
+ */
+private fun TargetFunGenerator.removeSpillsFromParallel(
+    parallelLocation: InstrLabel,
+    parallel: MachineInstruction,
+    spilledValues: Set<AllocatableValue>,
+): MachineInstruction {
+  require(parallel.template is ParallelCopyTemplate)
+
+  val rewriteMap = spilledValues.associateBy { parallel.template.values.getValue(it) }
+
+  // The extra copies between the parallel and the constrained instruction are not recorded in the def use chains, so search them manually
+  val extraCopyLabelsToRewrite = mutableListOf<InstrLabel>()
+  val (blockId, parallelIndex) = parallelLocation
+  val constrainedOffset = graph[blockId].subList(parallelIndex + 1, graph[blockId].size).indexOfFirst { it.isConstrained }
+  check(constrainedOffset != -1) { "Parallel copy must have attached constrained instruction" }
+  for (extraCopiesIndex in parallelIndex + 1 until parallelIndex + 1 + constrainedOffset) {
+    val mi = graph[blockId][extraCopiesIndex]
+    val extraUseOfSpilled = mi.uses.intersect(rewriteMap.keys)
+    extraCopyLabelsToRewrite += extraUseOfSpilled.map { blockId to extraCopiesIndex }
+  }
+
+  val labelsToRewrite = rewriteMap.keys
+      .filterIsInstance<VersionedValue>()
+      .flatMapTo(mutableSetOf()) { graph.defUseChains.getValue(it) }
+  for ((useBlock, useIndex) in labelsToRewrite + extraCopyLabelsToRewrite) {
+    if (useIndex != DEFINED_IN_PHI) {
+      graph[useBlock][useIndex] = graph[useBlock][useIndex].rewriteBy(rewriteMap)
+    } else {
+      for ((_, incoming) in graph[useBlock].phi) {
+        for ((pred, versionFromPred) in incoming) {
+          val rewritten = rewriteMap[versionFromPred]
+          if (rewritten != null) {
+            incoming[pred] = rewritten as VersionedValue
+          }
+        }
+      }
+    }
+  }
+
+  for ((toPurge, replacement) in rewriteMap) {
+    // FIXME: rewrite to be prettier, get rid of the casts?
+    //    defUse general refactor
+    when (toPurge) {
+      is VersionedValue -> {
+        graph.defUseChains.getOrPut(replacement as VersionedValue, ::mutableSetOf) += graph.defUseChains.getValue(toPurge)
+        graph.defUseChains -= toPurge
+        if (toPurge is Variable) {
+          graph.variableDefs[replacement as Variable] = graph.variableDefs.getValue(toPurge)
+          graph.variableDefs -= toPurge
+        }
+      }
+      is VirtualRegister -> {
+        graph.virtualDeaths[rewriteMap.getValue(toPurge) as VirtualRegister] = graph.virtualDeaths.getValue(toPurge)
+        graph.virtualDeaths -= toPurge
+      }
+    }
+  }
+
+  val newCopyMap = parallel.template.values - spilledValues
+  val newParallelCopyOperands = newCopyMap.keys.toList() + newCopyMap.values
+
+  return parallel.copy(template = parallel.template.copy(values = newCopyMap), operands = newParallelCopyOperands)
+}
+
+/**
  * Apply the MIN algorithm on a block. While this implementation is based on the reference below, it does differ by
  * working on multiple register classes at the same time (ie int and float regs), and by the handling of constraints and φs.
  * It is also significantly less sophisticated (it doesn't consider loops separately).
@@ -99,22 +172,40 @@ private class BlockSpiller(
   val sExit: Set<AllocatableValue> get() = s
 
   /**
+   * Advance the MI iterator, updating [ParallelCopyTemplate]s if necessary.
+   */
+  private fun TargetFunGenerator.processNext(it: MutableListIterator<MachineInstruction>): MachineInstruction {
+    val nextIndex = it.nextIndex()
+    val next = it.next()
+
+    if (next.template !is ParallelCopyTemplate) {
+      return next
+    }
+
+    val toRemoveFromCopy = next.template.values.keys.intersect(spills.map { it.first }.toSet())
+    if (toRemoveFromCopy.isEmpty()) {
+      return next
+    }
+
+    val newParallel = removeSpillsFromParallel(blockId to nextIndex, next, toRemoveFromCopy)
+    it.set(newParallel)
+    return newParallel
+  }
+
+  /**
    * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
    */
-  private fun TargetFunGenerator.limit(
-      valueClass: MachineRegisterClass,
-      insnIndex: Int,
-      m: Int,
-      spillTargetIndex: Int = insnIndex,
-  ) {
-    val wClass = w.getValue(valueClass).sortedBy { nextUse(InstrLabel(blockId, spillTargetIndex), it) }
-    for (v in wClass.drop(m.coerceAtLeast(0))) {
-      if (v !in s && !graph.isDeadAfter(v, InstrLabel(blockId, insnIndex))) {
-        spills += Location(v, InstrLabel(blockId, spillTargetIndex))
+  private fun TargetFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
+    val actualM = m.coerceAtLeast(0)
+    val label = InstrLabel(blockId, insnIndex)
+    val wClass = w.getValue(valueClass).sortedBy { nextUse(label, it) }
+    for (v in wClass.drop(actualM)) {
+      if (v !in s && !graph.isDeadAfter(v, label)) {
+        spills += Location(v, label)
       }
       s -= v
     }
-    val firstM = wClass.take(m.coerceAtLeast(0))
+    val firstM = wClass.take(actualM)
     w.getValue(valueClass).clear()
     w.getValue(valueClass) += firstM
   }
@@ -158,7 +249,7 @@ private class BlockSpiller(
     val it = graph[blockId].listIterator()
     while (it.hasNext()) {
       val insnIndex = it.nextIndex()
-      val insn = it.next()
+      val insn = processNext(it)
       val insnUses = insn.uses
           .filterIsInstance<AllocatableValue>()
           .filter { !it.isUndefined }
@@ -172,21 +263,9 @@ private class BlockSpiller(
           .distinctBy { it.target }
           .groupBy { it.target.valueClass }
           .mapValues { it.value.size }
-      // Result constrained to same register as live-though constrained variable: copy will be made
-      // The two versions are certainly both alive at the constrained MI, but one of them also dies there
-      // We don't really care about which, only that one does, so we accurately model register pressure
-      // See TargetFunGenerator#prepareForColoring
-      val duplicateCount = insn.constrainedArgs
-          .groupBy { it.target.valueClass }
-          .mapValues {
-            it.value.count { (value, target) ->
-              graph.livesThrough(value, InstrLabel(blockId, insnIndex)) &&
-                  target in insn.constrainedRes.map(Constraint::target)
-            }
-          }
       for ((valueClass, k) in maxPressure) {
         val wClass = w.getValue(valueClass)
-        val actualK = k - (constraintDummyCount[valueClass] ?: 0) - (duplicateCount[valueClass] ?: 0)
+        val actualK = k - (constraintDummyCount[valueClass] ?: 0)
         // R is the set of reloaded variables at insn
         // Since they are reloads to registers, they are obviously in w
         val r = (insnUses[valueClass] ?: emptyList()) - wClass
@@ -198,7 +277,7 @@ private class BlockSpiller(
         val dyingHere = insnUses[valueClass]?.filter { graph.isDeadAfter(it, InstrLabel(blockId, insnIndex)) }
         wClass -= dyingHere ?: emptyList()
         // Make room for insn's defs
-        limit(valueClass, it.nextIndex(), actualK - (insnDefs[valueClass]?.size ?: 0), insnIndex)
+        limit(valueClass, insnIndex, actualK - (insnDefs[valueClass]?.size ?: 0))
         // Since we made space for the defs, they are now in w
         wClass += insnDefs[valueClass] ?: emptyList()
         for (value in r) {
@@ -480,29 +559,11 @@ fun TargetFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<Ins
       for ((classOf, count) in constraintsMap) {
         current[classOf] = current.getValue(classOf) + count
       }
-      // Result constrained to same register as live-though constrained variable: copy will be made
-      // The two versions are certainly both alive at the constrained MI, but one of them also dies there
-      // We don't really care about which, only that one does, so we accurately model register pressure
-      // See TargetFunGenerator#prepareForColoring
-      val duplicateCount = mi.constrainedArgs
-          .groupBy { it.target.valueClass }
-          .mapValues {
-            it.value.count { (value, target) ->
-              graph.livesThrough(value, InstrLabel(blockId, index)) &&
-                  target in mi.constrainedRes.map(Constraint::target)
-            }
-          }
-      for ((classOf, count) in duplicateCount) {
-        current[classOf] = current.getValue(classOf) + count
-      }
 
       for (mrc in target.registerClasses) {
         pressure.getValue(mrc)[InstrLabel(blockId, index)] = current.getValue(mrc)
       }
       for ((classOf, count) in constraintsMap) {
-        current[classOf] = current.getValue(classOf) - count
-      }
-      for ((classOf, count) in duplicateCount) {
         current[classOf] = current.getValue(classOf) - count
       }
     }
