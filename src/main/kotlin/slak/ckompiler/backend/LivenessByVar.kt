@@ -50,9 +50,8 @@ fun InstructionGraph.computeLiveSetsByVar(): LiveSets {
   }
 
   // FIXME: allow partial update for just some vars
-  for (v in liveness.defUseChains.keys.filterIsInstance<Variable>().filter { !it.isUndefined }) {
-    val uses = liveness.defUseChains.getValue(v)
-    for ((B, index) in uses) {
+  for (v in liveness.getAllUsedVariables()) {
+    for ((B, index) in liveness.usesOf(v)) {
       if (successors(B).any { succ -> B in (succ.phi.predsByVar(v) ?: emptyList()) }) {
         liveOut.getOrPut(B, ::mutableSetOf) += v
       }

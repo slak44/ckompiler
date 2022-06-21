@@ -5,8 +5,6 @@ import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.throwICE
 
-typealias DefUseChains = MutableMap<VersionedValue, MutableSet<InstrLabel>>
-
 private val logger = KotlinLogging.logger {}
 
 /**
@@ -20,7 +18,7 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
    */
   val variableDefs = mutableMapOf<Variable, AtomicId>()
 
-  lateinit var defUseChains: DefUseChains
+  private lateinit var defUseChains: MutableMap<VersionedValue, MutableSet<InstrLabel>>
 
   /** Store the index where each [VirtualRegister] dies. */
   val virtualDeaths = mutableMapOf<VirtualRegister, InstrLabel>()
@@ -66,12 +64,12 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
       val updated = mutableListOf<InstrLabel>()
       for (oldLabel in oldLabels) {
         val nextIdx = if (oldLabel.second == Int.MAX_VALUE) Int.MAX_VALUE else oldLabel.second + inserted
-        defUseChains[modifiedValue]!! -= oldLabel
+        defUseChains.getValue(modifiedValue) -= oldLabel
         updated += InstrLabel(block, nextIdx)
       }
-      defUseChains[modifiedValue]!! += updated
+      defUseChains.getValue(modifiedValue) += updated
     }
-    liveSets = graph.computeLiveSetsByVar()
+    recomputeLiveSets()
   }
 
   fun isUsed(value: AllocatableValue): Boolean = when (value) {
@@ -233,5 +231,34 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
 
   fun recomputeLiveSets() {
     liveSets = graph.computeLiveSetsByVar()
+  }
+
+  fun addUse(value: VersionedValue, label: InstrLabel) {
+    defUseChains.getOrPut(value, ::mutableSetOf) += label
+  }
+
+  fun addUse(value: VersionedValue, blockId: AtomicId, index: Int) {
+    addUse(value, InstrLabel(blockId, index))
+  }
+
+  fun removeUse(value: VersionedValue, label: InstrLabel) {
+    defUseChains.getOrPut(value, ::mutableSetOf) -= label
+  }
+
+  fun removeUse(value: VersionedValue, blockId: AtomicId, index: Int) {
+    removeUse(value, InstrLabel(blockId, index))
+  }
+
+  fun transferUsesToCopy(original: VersionedValue, copy: VersionedValue) {
+    defUseChains.getOrPut(copy, ::mutableSetOf) += defUseChains.getValue(original)
+    defUseChains -= original
+  }
+
+  fun usesOf(value: VersionedValue): Set<InstrLabel> {
+    return defUseChains.getValue(value)
+  }
+
+  fun getAllUsedVariables(): List<Variable> {
+    return defUseChains.keys.filterIsInstance<Variable>().filter { !it.isUndefined }
   }
 }

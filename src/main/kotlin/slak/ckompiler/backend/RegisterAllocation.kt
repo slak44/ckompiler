@@ -123,7 +123,7 @@ private fun TargetFunGenerator.insertSingleCopy(
   block.add(index, copyInstr)
 
   if (copiedValue is VersionedValue) {
-    graph.liveness.defUseChains.getOrPut(copiedValue, ::mutableSetOf) += InstrLabel(block.id, index)
+    graph.liveness.addUse(copiedValue, block.id, index)
   }
 
   rewriteVregBlockUses(block, index + 1, mapOf(value to copiedValue))
@@ -137,7 +137,7 @@ private fun TargetFunGenerator.insertSingleCopy(
       // We know that is the last use, because all the ones afterwards were just rewritten
       // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
       // This is corrected in prepareForColoring
-      graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, index)
+      graph.liveness.addUse(value, block.id, index)
     }
     is VirtualRegister -> graph.liveness.virtualDeaths[value] = InstrLabel(block.id, index)
   }
@@ -178,11 +178,11 @@ private fun splitLiveRanges(
       }
       is VersionedValue -> {
         // The use got pushed by adding the copy, remove that
-        graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) -= InstrLabel(block.id, atIndex + 1)
+        graph.liveness.removeUse(value, block.id, atIndex + 1)
         // Add back the variable use from atIndex: the parallel copy itself does indeed use the variable
-        graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) += InstrLabel(block.id, atIndex)
+        graph.liveness.addUse(value, block.id, atIndex)
         // We also need to setup the copy's use at the rewritten instruction:
-        graph.liveness.defUseChains.getOrPut(rewritten as VersionedValue, ::mutableSetOf) += InstrLabel(block.id, atIndex + 1)
+        graph.liveness.addUse(rewritten as VersionedValue, block.id, atIndex + 1)
       }
     }.exhaustive
   }
@@ -253,8 +253,8 @@ private fun RegisterAllocationContext.prepareForColoring() {
       graph.ssaReconstruction(alive.filterIsInstance<Variable>().toSet(), target, spilled)
       for ((storedIndex, value) in usesToRewrite) {
         // Correct the index of the last use, as mentioned in insertSingleCopy
-        graph.liveness.defUseChains.getValue(value) -= InstrLabel(blockId, storedIndex)
-        graph.liveness.defUseChains.getValue(value) += InstrLabel(blockId, index)
+        graph.liveness.removeUse(value, blockId, storedIndex)
+        graph.liveness.addUse(value, blockId, index)
       }
       for (copyIdx in startIndex until index) {
         // Process the inserted copies

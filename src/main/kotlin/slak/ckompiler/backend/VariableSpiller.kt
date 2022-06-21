@@ -33,7 +33,7 @@ private fun TargetFunGenerator.insertSpill(
   val copy = createIRCopy(versionedValue, value)
   graph[blockId].add(idx, copy)
   if (value is VersionedValue) {
-    graph.liveness.defUseChains.getOrPut(value, ::mutableSetOf) += location
+    graph.liveness.addUse(value, location)
   }
   return targetStackValue
 }
@@ -47,7 +47,7 @@ private fun TargetFunGenerator.insertReload(
   val copyTarget = graph.liveness.createCopyOf(original, graph[blockId])
   val derefValue = DerefStackValue(toReload)
   val copy = createIRCopy(copyTarget, derefValue)
-  graph.liveness.defUseChains.getOrPut(derefValue, ::mutableSetOf) += location
+  graph.liveness.addUse(derefValue, location)
   graph[blockId].add(idx, copy)
   return copyTarget
 }
@@ -93,7 +93,7 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
 
   val labelsToRewrite = rewriteMap.keys
       .filterIsInstance<VersionedValue>()
-      .flatMapTo(mutableSetOf()) { graph.liveness.defUseChains.getValue(it) }
+      .flatMapTo(mutableSetOf()) { graph.liveness.usesOf(it) }
   for ((useBlock, useIndex) in labelsToRewrite + extraCopyLabelsToRewrite) {
     if (useIndex != DEFINED_IN_PHI) {
       graph[useBlock][useIndex] = graph[useBlock][useIndex].rewriteBy(rewriteMap)
@@ -110,19 +110,16 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
   }
 
   for ((toPurge, replacement) in rewriteMap) {
-    // FIXME: rewrite to be prettier, get rid of the casts?
-    //    defUse general refactor
     when (toPurge) {
       is VersionedValue -> {
-        graph.liveness.defUseChains.getOrPut(replacement as VersionedValue, ::mutableSetOf) += graph.liveness.defUseChains.getValue(toPurge)
-        graph.liveness.defUseChains -= toPurge
+        graph.liveness.transferUsesToCopy(toPurge, replacement as VersionedValue)
         if (toPurge is Variable) {
           graph.liveness.variableDefs[replacement as Variable] = graph.liveness.variableDefs.getValue(toPurge)
           graph.liveness.variableDefs -= toPurge
         }
       }
       is VirtualRegister -> {
-        graph.liveness.virtualDeaths[rewriteMap.getValue(toPurge) as VirtualRegister] = graph.liveness.virtualDeaths.getValue(toPurge)
+        graph.liveness.virtualDeaths[replacement as VirtualRegister] = graph.liveness.virtualDeaths.getValue(toPurge)
         graph.liveness.virtualDeaths -= toPurge
       }
     }

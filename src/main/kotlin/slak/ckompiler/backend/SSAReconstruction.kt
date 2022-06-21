@@ -119,7 +119,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
         hasAlteredPhi += uBlock.id to yPrime
         // Update def-use chains for the vars used in the φ
         for ((_, incVar) in incoming) {
-          liveness.defUseChains.getOrPut(incVar, ::mutableSetOf) += InstrLabel(uBlock.id, DEFINED_IN_PHI)
+          liveness.addUse(incVar, uBlock.id, DEFINED_IN_PHI)
         }
         return yPrime
       }
@@ -130,7 +130,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
   // Take all affected variables
   for (x in reconstruct) {
     // Make a copy, avoid concurrent modifications
-    val uses = liveness.defUseChains.getValue(x).toMutableList()
+    val uses = liveness.usesOf(x).toList()
     // And rewrite all of their uses
     for (label in uses) {
       val (blockId, index) = label
@@ -154,15 +154,15 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
           incoming[targetPred] = newVersion
           if (x != newVersion) {
             // Remove old use, add new use
-            liveness.defUseChains.getOrPut(x, ::mutableSetOf) -= label
-            liveness.defUseChains.getOrPut(newVersion, ::mutableSetOf) += label
+            liveness.removeUse(x, label)
+            liveness.addUse(newVersion, label)
           }
         }
         // If one predecessor version is updated, but another is not, the uses must be fixed
         // Consider the case where n1 v2 is not updated, but n3 v2 is updated to another version
         // For n3, the use set of v2 is updated to remove this label, but it is still used by the n1
         for (varUsed in stillUsed) {
-          liveness.defUseChains.getOrPut(varUsed, ::mutableSetOf) += label
+          liveness.addUse(varUsed, label)
         }
       } else {
         // Otherwise just go up the dominator tree looking for definitions
@@ -173,8 +173,8 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
         block[index] = block[index].rewriteBy(mapOf(x to newVersion))
         if (x != newVersion) {
           // Remove old use, add new use
-          liveness.defUseChains.getOrPut(x, ::mutableSetOf) -= label
-          liveness.defUseChains.getOrPut(newVersion, ::mutableSetOf) += label
+          liveness.removeUse(x, label)
+          liveness.addUse(newVersion, label)
         }
       }
     }
@@ -215,14 +215,14 @@ private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, V
       variableRewrites += variable to realRewritten
       // And get rid of the φ
       this[blockId].phi -= variable
-      liveness.defUseChains.getOrPut(rewritten, ::mutableSetOf) -= InstrLabel(blockId, DEFINED_IN_PHI)
+      liveness.removeUse(rewritten, blockId, DEFINED_IN_PHI)
       liveness.variableDefs -= variable
     }
   }
   val recursiveAlterations = mutableSetOf<Pair<AtomicId, VersionedValue>>()
   for ((originalVariable, rewritten) in variableRewrites) {
     // Rewrite all uses of the original variable
-    for ((blockId, index) in liveness.defUseChains.getValue(originalVariable)) {
+    for ((blockId, index) in liveness.usesOf(originalVariable)) {
       if (index == DEFINED_IN_PHI) {
         val phiEntry = this[blockId].phi.entries.first { it.key.identityId == originalVariable.identityId }
         val incoming = phiEntry.value
@@ -234,8 +234,7 @@ private fun InstructionGraph.eliminateDeadPhis(alteredPhis: Set<Pair<AtomicId, V
       }
     }
     // Move all the uses over to the rewritten var
-    liveness.defUseChains.getOrPut(rewritten, ::mutableSetOf) += liveness.defUseChains.getValue(originalVariable)
-    liveness.defUseChains.getValue(originalVariable).clear()
+    liveness.transferUsesToCopy(originalVariable, rewritten)
   }
   eliminateDeadPhis(recursiveAlterations)
 }
