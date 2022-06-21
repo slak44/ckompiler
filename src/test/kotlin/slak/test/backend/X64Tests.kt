@@ -174,7 +174,7 @@ class X64Tests {
     val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
-    val (liveIn, liveOut) = gen.graph.liveness.liveSets
+    val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
 
     with(gen.graph) {
       liveOut.getValue(startId).hasVars("x1", "y1")
@@ -194,7 +194,7 @@ class X64Tests {
     val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
-    val (liveIn, liveOut) = gen.graph.liveness.liveSets
+    val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
 
     with(gen.graph) {
       liveOut.getValue(startId).hasVars("x1")
@@ -216,7 +216,7 @@ class X64Tests {
     val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
-    val (liveIn, liveOut) = gen.graph.liveness.liveSets
+    val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
 
     with(gen.graph) {
       liveOut.getValue(startId).hasVars("x1")
@@ -241,7 +241,7 @@ class X64Tests {
     val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
-    val (liveIn, liveOut) = gen.graph.liveness.liveSets
+    val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
 
     with(gen.graph) {
       liveOut.getValue(startId).hasVars("x1")
@@ -258,7 +258,7 @@ class X64Tests {
     val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
-    val (liveIn, liveOut) = gen.graph.liveness.liveSets
+    val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
 
     with(gen.graph) {
       liveOut.getValue(startId).hasVars("i1", "x1", "y1")

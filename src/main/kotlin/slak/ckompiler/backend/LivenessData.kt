@@ -26,7 +26,7 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
   val virtualDeaths = mutableMapOf<VirtualRegister, InstrLabel>()
 
   /** @see computeLiveSetsByVar */
-  lateinit var liveSets: LiveSets
+  private lateinit var liveSets: LiveSets
 
   /**
    * Creates a new virtual register, or a new version of a variable.
@@ -85,8 +85,8 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
     if (value.isUndefined || !isUsed(value)) return true
 
     val (block, index) = label
-    val isLiveIn = value in (liveSets.liveIn[block] ?: emptyList())
-    val isLiveOut = value in (liveSets.liveOut[block] ?: emptyList())
+    val isLiveIn = value in (liveSets.liveIn[block] ?: emptySet())
+    val isLiveOut = value in (liveSets.liveOut[block] ?: emptySet())
 
     // Live-through
     if (isLiveIn && isLiveOut) return false
@@ -229,5 +229,9 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
     }
 
     defUseChains = allUses
+  }
+
+  fun recomputeLiveSets() {
+    liveSets = graph.computeLiveSetsByVar()
   }
 }

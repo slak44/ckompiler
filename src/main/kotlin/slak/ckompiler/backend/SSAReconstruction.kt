@@ -180,7 +180,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
     }
   }
   eliminateDeadPhis(hasAlteredPhi)
-  liveness.liveSets = computeLiveSetsByVar()
+  liveness.recomputeLiveSets()
 }
 
 /**

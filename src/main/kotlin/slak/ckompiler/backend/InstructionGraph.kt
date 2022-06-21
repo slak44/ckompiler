@@ -238,7 +238,7 @@ class InstructionGraph private constructor(
     dominanceFrontiers += cfg.nodes.associate { it.nodeId to it.dominanceFrontier.map(BasicBlock::nodeId).toSet() }
     liveness.initializeVariableDefs(cfg.definitions)
     liveness.findDefUseChainsAndPruneDeadPhis(cfg.definitions)
-    liveness.liveSets = computeLiveSetsByVar()
+    liveness.recomputeLiveSets()
   }
 
   companion object {
