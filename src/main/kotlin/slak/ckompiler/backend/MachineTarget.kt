@@ -272,6 +272,20 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
   }
 }
 
+/**
+ * A dummy no operation instruction.
+ * Useful as a placeholder when removing instructions, so existing indices do not need to change.
+ * These must be filtered before emission by [FunctionAssembler.applyAllocation].
+ */
+object PlaceholderTemplate : InstructionTemplate {
+  override val name = "[empty placeholder]"
+  override val operandUse = emptyList<VariableUse>()
+
+  fun createMI(): MachineInstruction {
+    return MachineInstruction(PlaceholderTemplate, emptyList())
+  }
+}
+
 interface AsmInstruction {
   val template: InstructionTemplate
 }

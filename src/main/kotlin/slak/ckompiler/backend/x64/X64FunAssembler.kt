@@ -174,7 +174,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
   ): List<X64Instruction> {
     val result = mutableListOf<X64Instruction>()
     for (mi in alloc.graph[blockId]) {
-      if (mi.template in dummyUse) continue
+      if (mi.template in dummyUse || mi.template == PlaceholderTemplate) continue
 
       // Add linked before (eg cdq before div)
       for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.BEFORE }) {
