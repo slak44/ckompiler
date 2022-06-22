@@ -113,6 +113,7 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
     when (toPurge) {
       is VersionedValue -> {
         graph.liveness.transferUsesToCopy(toPurge, replacement as VersionedValue)
+        graph.liveness.removeUse(replacement, parallelLocation)
         if (toPurge is Variable) {
           graph.liveness.variableDefs[replacement as Variable] = graph.liveness.variableDefs.getValue(toPurge)
           graph.liveness.variableDefs -= toPurge
