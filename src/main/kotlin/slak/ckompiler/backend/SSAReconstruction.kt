@@ -81,22 +81,23 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
    * know the incoming from the other blocks. This is exactly why this complicated SSA reconstruction is required
    * rather than some simple copy-and-paste of the new version at the uses.
    */
-  fun findDef(label: InstrLabel, p: AtomicId?, variable: VersionedValue): VersionedValue {
+  fun findDef(label: InstrLabel, p: AtomicId?, variable: VersionedValue): Pair<VersionedValue, InstrLabel> {
     // p indicates the "path" to take at a phi
     val (blockId, index) = if (label.second == DEFINED_IN_PHI) InstrLabel(p!!, Int.MAX_VALUE) else label
 
     for (u in traverseDominatorTree(blockId)) {
       val uBlock = this[u]
       // Ignore things after our given label (including the label)
-      for (mi in uBlock.take(if (u == blockId) index else Int.MAX_VALUE).asReversed()) {
+
+      for ((currentIndex, mi) in uBlock.take(if (u == blockId) index else Int.MAX_VALUE).withIndex().reversed()) {
         val maybeDefined = mi.defs.filterIsInstance<VersionedValue>().firstOrNull { it.identityId == variable.identityId }
         if (maybeDefined != null) {
-          return maybeDefined
+          return maybeDefined to InstrLabel(u, currentIndex)
         }
       }
       val maybeDefinedPhi = uBlock.phi.entries.firstOrNull { it.key.identityId == variable.identityId }
       if (maybeDefinedPhi != null) {
-        return maybeDefinedPhi.key
+        return maybeDefinedPhi.key to InstrLabel(u, DEFINED_IN_PHI)
       }
       if (u in f) {
         val variableClass = target.registerClassOf(variable.type)
@@ -114,14 +115,14 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
         vars += yPrime
 
         val incoming = predecessors(uBlock).map { it.id }
-            .associateWithTo(mutableMapOf()) { findDef(InstrLabel(u, DEFINED_IN_PHI), it, variable) }
+            .associateWithTo(mutableMapOf()) { findDef(InstrLabel(u, DEFINED_IN_PHI), it, variable).first }
         uBlock.phi[yPrime] = incoming
         hasAlteredPhi += uBlock.id to yPrime
         // Update def-use chains for the vars used in the φ
         for ((_, incVar) in incoming) {
           liveness.addUse(incVar, uBlock.id, DEFINED_IN_PHI)
         }
-        return yPrime
+        return yPrime to InstrLabel(u, DEFINED_IN_PHI)
       }
     }
     logger.throwICE("Unreachable: no definition for $variable was found up the tree from $label")
@@ -144,7 +145,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
         // Our version of x might come from multiple preds, each must be replaced separately
         // For example: φ(n0 v1, n1 v2, n3 v2)
         for ((targetPred, _) in incoming.entries.filter { it.value == x }) {
-          val newVersion = findDef(label, targetPred, x)
+          val newVersion = findDef(label, targetPred, x).first
           // If already wired correctly, don't bother updating anything
           if (x == newVersion) {
             stillUsed += x
@@ -166,15 +167,25 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
         }
       } else {
         // Otherwise just go up the dominator tree looking for definitions
-        val newVersion = findDef(label, null, x)
+        val (newVersion, location) = findDef(label, null, x)
+        // If it's a constrained argument, and the new version we found is a spill, we need to look at the previous definition
+        val actualNewVersion = if (block[index].constrainedArgs.any { it.value == x } && newVersion is DerefStackValue) {
+          if (location.second == DEFINED_IN_PHI) {
+            newVersion
+          } else {
+            findDef(location, null, x).first
+          }
+        } else {
+          newVersion
+        }
         // If already wired correctly, don't bother rewriting anything
-        if (x == newVersion) continue
+        if (x == actualNewVersion) continue
         // Rewrite use
-        block[index] = block[index].rewriteBy(mapOf(x to newVersion))
-        if (x != newVersion) {
+        block[index] = block[index].rewriteBy(mapOf(x to actualNewVersion))
+        if (x != actualNewVersion) {
           // Remove old use, add new use
           liveness.removeUse(x, label)
-          liveness.addUse(newVersion, label)
+          liveness.addUse(actualNewVersion, label)
         }
       }
     }
