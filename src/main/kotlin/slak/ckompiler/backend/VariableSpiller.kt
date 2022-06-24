@@ -115,7 +115,6 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
         graph.liveness.transferUsesToCopy(toPurge, replacement as VersionedValue)
         graph.liveness.removeUse(replacement, parallelLocation)
         if (toPurge is Variable) {
-          graph.liveness.variableDefs[replacement as Variable] = graph.liveness.variableDefs.getValue(toPurge)
           graph.liveness.variableDefs -= toPurge
         }
       }
@@ -140,6 +139,7 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
  * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack
  *
  * @param maxPressure max register pressure for each register class
+ * @param allSpilled shared function-level set of spilled values, from all blocks
  */
 private class BlockSpiller(
     val targetFunGenerator: TargetFunGenerator,
@@ -147,6 +147,7 @@ private class BlockSpiller(
     val maxPressure: Map<MachineRegisterClass, Int>,
     wBlockEntry: WBlockMap,
     sBlockEntry: Set<AllocatableValue>,
+    val allSpilled: MutableSet<AllocatableValue>,
 ) {
   private val reloads = mutableListOf<Location>()
   private val spills = mutableListOf<Location>()
@@ -180,7 +181,7 @@ private class BlockSpiller(
       return next
     }
 
-    val toRemoveFromCopy = next.template.values.keys.intersect(spills.map { it.first }.toSet())
+    val toRemoveFromCopy = next.template.values.keys.intersect(allSpilled)
     if (toRemoveFromCopy.isEmpty()) {
       return next
     }
@@ -200,6 +201,7 @@ private class BlockSpiller(
     for (v in wClass.drop(actualM)) {
       if (v !in s && !graph.liveness.isDeadAfter(v, label)) {
         spills += Location(v, label)
+        allSpilled += v
       }
       s -= v
     }
@@ -222,17 +224,23 @@ private class BlockSpiller(
       if (phiDefsClass.size >= k) {
         // wBlockEntry is already limited to k entries, so we are guaranteed to have at most k φ-uses in registers
         // This leaves us to deal with the excess φ-defs
-        val phiDefsInMemory = phiDefsClass.size - k
 
-        val sortedDefs = phiDefsClass.sortedByDescending { nextUse(InstrLabel(blockId, 0), it) }
+        val existingPhiDefSpills = phiDefsClass
+            .filterIsInstance<DerefStackValue>()
+            .map { it.stackValue.referenceTo }
+            .filterIsInstance<Variable>()
+        allSpilled += existingPhiDefSpills
 
-        val memoryDefs = sortedDefs.take(phiDefsInMemory)
-        val registerDefs = sortedDefs.drop(phiDefsInMemory)
+        val nonMemoryPhiDefs = phiDefsClass.filterIsInstance<Variable>()
+        val defsToMoveToMemory = nonMemoryPhiDefs.size - k
 
-        // At this point, there should be no φ-defs spilled to memory, so all of them must be Variables
-        @Suppress("UNCHECKED_CAST")
-        phiDefSpills += memoryDefs.onEach { require(it is Variable) } as List<Variable>
+        val sortedDefs = nonMemoryPhiDefs.sortedByDescending { nextUse(InstrLabel(blockId, 0), it) }
 
+        val memoryDefs = sortedDefs.take(defsToMoveToMemory)
+        val registerDefs = sortedDefs.drop(defsToMoveToMemory)
+
+        phiDefSpills += memoryDefs
+        allSpilled += memoryDefs
         wClass += registerDefs
       } else {
         // On a single edge, there are as many φ-defs as φ-uses, since only that predecessor's set of uses is live
@@ -425,6 +433,8 @@ typealias SpillResult = Map<AtomicId, MinResult>
 fun TargetFunGenerator.runSpiller(): SpillResult {
   val maxPressure = target.maxPressure
 
+  val allSpilled = mutableSetOf<AllocatableValue>()
+
   val spillers = mutableMapOf<AtomicId, BlockSpiller>()
 
   val splitEdgeResults = mutableMapOf<AtomicId, MinResult>()
@@ -455,7 +465,7 @@ fun TargetFunGenerator.runSpiller(): SpillResult {
           findEdgeSpillsReloads(blockId, initialW, initialS, pred.id, predSpiller.wExit, predSpiller.sExit)
     }
 
-    val spiller = BlockSpiller(this, blockId, maxPressure, initialW, initialS)
+    val spiller = BlockSpiller(this, blockId, maxPressure, initialW, initialS, allSpilled)
     spillers[blockId] = spiller
     spiller.runSpill()
   }

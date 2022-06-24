@@ -599,4 +599,9 @@ class E2ETests {
       }
     """.trimIndent()).expect(stdout = fib(n).toString())
   }
+
+  @Test
+  fun `Phi-def Spilled Before Spiller`() {
+    compileAndRun(resource("e2e/phiDefBeforeSpill.c")).justExitCode(23)
+  }
 }
