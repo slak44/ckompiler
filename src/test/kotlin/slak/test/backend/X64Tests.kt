@@ -7,10 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
-import slak.ckompiler.backend.x64.X64Generator
-import slak.ckompiler.backend.x64.X64Target
-import slak.ckompiler.backend.x64.X64TargetOpts
-import slak.ckompiler.backend.x64.setcc
+import slak.ckompiler.backend.x64.*
 import slak.ckompiler.parser.SignedIntType
 import slak.ckompiler.parser.TypedIdentifier
 import slak.test.prepareCFG
@@ -163,6 +160,14 @@ class X64Tests {
     val result = regAlloc("codegen/interBlockInterference.c")
     assert(result.stackSlots.isEmpty())
     assertEquals(2, result.allocations.values.distinct().size)
+  }
+
+  @Test
+  fun `SSE Compare With Immediate Value Creates Copy`() {
+    val (graph, _) = regAlloc("codegen/sseCmpWithImmediate.c")
+    val compare = graph[graph.startId].first { it.template in comiss }
+    assertEquals(2, compare.operands.size)
+    assert(compare.operands[1] !is ConstantValue)
   }
 
   private fun Set<Variable>.hasVars(vararg varNames: String) =

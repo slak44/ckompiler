@@ -139,13 +139,11 @@ class X64Generator private constructor(
       selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
     }
     val actualJump = when (val l = condJump.cond.last()) {
-      is IntCmp -> listOf(
-          matchTypedCmp(l.lhs, l.rhs),
+      is IntCmp -> matchTypedCmp(l.lhs, l.rhs) + listOf(
           selectJmp(l, l.cmp, JumpTargetConstant(condJump.target)),
           jmp.match(JumpTargetConstant(condJump.other))
       )
-      is FltCmp -> listOf(
-          matchTypedCmp(l.lhs, l.rhs),
+      is FltCmp -> matchTypedCmp(l.lhs, l.rhs) + listOf(
           selectJmp(l, l.cmp, JumpTargetConstant(condJump.target)),
           jmp.match(JumpTargetConstant(condJump.other))
       )
@@ -492,23 +490,48 @@ class X64Generator private constructor(
     }
     val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
     val setccTarget = VirtualRegister(graph.registerIds(), SignedCharType)
-    return listOf(
-        matchTypedCmp(nonImm, maybeImm),
+    return matchTypedCmp(nonImm, maybeImm) + listOf(
         setcc.getValue(setValue).match(setccTarget),
         movzx.match(i.result, setccTarget)
     )
+  }
+
+  private fun matchFloatCmp(lhs: IRValue, rhs: IRValue): List<MachineInstruction> {
+    val compare = when (target.machineTargetData.sizeOf(rhs.type)) {
+      4 -> comiss
+      8 -> comisd
+      else -> logger.throwICE("Float size not 4 or 8 bytes")
+    }
+
+    val i = mutableListOf<MachineInstruction>()
+
+    val newLhs = if (lhs is ConstantValue) {
+      val regCopy = VirtualRegister(graph.registerIds(), lhs.type)
+      i += matchTypedMov(regCopy, lhs)
+      regCopy
+    } else {
+      lhs
+    }
+
+    val newRhs = if (rhs is ConstantValue) {
+      val regCopy = VirtualRegister(graph.registerIds(), rhs.type)
+      i += matchTypedMov(regCopy, rhs)
+      regCopy
+    } else {
+      rhs
+    }
+
+    i += compare.match(newLhs, newRhs)
+
+    return i
   }
 
   /**
    * Create a generic compare instruction that sets flags. Picks from `cmp`, `comiss`, `comisd`.
    */
   private fun matchTypedCmp(lhs: IRValue, rhs: IRValue) = when (validateClasses(lhs, rhs)) {
-    X64RegisterClass.INTEGER -> cmp.match(lhs, rhs)
-    X64RegisterClass.SSE -> when (target.machineTargetData.sizeOf(rhs.type)) {
-      4 -> comiss.match(lhs, rhs)
-      8 -> comisd.match(lhs, rhs)
-      else -> logger.throwICE("Float size not 4 or 8 bytes")
-    }
+    X64RegisterClass.INTEGER -> listOf(cmp.match(lhs, rhs))
+    X64RegisterClass.SSE -> matchFloatCmp(lhs, rhs)
     X64RegisterClass.X87 -> TODO("x87 cmps")
   }
 
