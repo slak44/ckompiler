@@ -6,13 +6,22 @@ import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
+enum class X64SupportedFeatures {
+  SSE2,
+  SSE3,
+  SSE4,
+  AVX,
+  AVX2,
+  AVX512
+}
+
 class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : MachineTarget {
   private val logger = KotlinLogging.logger {}
 
   override val machineTargetData = MachineTargetData.x64
   override val targetName = "x64"
   override val registerClasses = X64RegisterClass.values().toList()
-  override val registers = x64Registers
+  override val registers = getX64Registers(options.featureSet)
 
   // FIXME: make rbp conditional on -fomit-frame-pointer
   override val forbidden = listOf(registerByName("rsp"), registerByName("rbp"))

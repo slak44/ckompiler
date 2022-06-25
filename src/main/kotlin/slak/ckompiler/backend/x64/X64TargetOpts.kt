@@ -14,6 +14,9 @@ class X64TargetOpts(
 ) : TargetOptions by generic, IDebugHandler by debugHandler {
   val useRedZone: Boolean
 
+  // FIXME: make this configurable in options
+  val featureSet: X64SupportedFeatures = X64SupportedFeatures.SSE2
+
   init {
     val optsLeft = targetOptions.toMutableSet()
     if ("no-red-zone" in targetOptions) {

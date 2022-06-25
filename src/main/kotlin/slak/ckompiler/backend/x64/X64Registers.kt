@@ -2,6 +2,7 @@ package slak.ckompiler.backend.x64
 
 import slak.ckompiler.IdCounter
 import slak.ckompiler.backend.*
+import slak.ckompiler.exhaustive
 
 enum class X64RegisterClass : MachineRegisterClass {
   INTEGER, SSE, X87;
@@ -35,7 +36,7 @@ private fun RegisterBuilder<X64Register>.register(
   regs += X64Register(name, sizeBytes, valueClass, aliases.toList())
 }
 
-val x64Registers: List<X64Register> = registers {
+fun getX64Registers(featureSet: X64SupportedFeatures): List<X64Register> = registers {
   ofClass(X64RegisterClass.INTEGER) {
     for (c in arrayOf('a', 'b', 'c', 'd')) {
       register("r${c}x", 8,
@@ -61,15 +62,31 @@ val x64Registers: List<X64Register> = registers {
     }
   }
   ofClass(X64RegisterClass.SSE) {
-    for (n in 0..31) {
-      // FIXME: some of these are for AVX-512 only
-      register("zmm$n", 64,
-          alias("ymm$n", 32),
-          alias("xmm$n", 16),
-          // XMM can be used for single doubles and floats too:
+    val sseRegisterCount = if (featureSet == X64SupportedFeatures.AVX512) 32 else 16
+    for (n in 0 until sseRegisterCount) {
+      val globalAliases = arrayOf(
+          // XMM can be used for single doubles and floats too
           alias("xmm$n", 8),
           alias("xmm$n", 4)
       )
+      when (featureSet) {
+        X64SupportedFeatures.SSE2, X64SupportedFeatures.SSE3, X64SupportedFeatures.SSE4 -> {
+          register("xmm$n", 16, *globalAliases)
+        }
+        X64SupportedFeatures.AVX, X64SupportedFeatures.AVX2 -> {
+          register("ymm$n", 32,
+              alias("xmm$n", 16),
+              *globalAliases
+          )
+        }
+        X64SupportedFeatures.AVX512 -> {
+          register("zmm$n", 64,
+              alias("ymm$n", 32),
+              alias("xmm$n", 16),
+              *globalAliases
+          )
+        }
+      }.exhaustive
     }
   }
   // FIXME: x86_64 registers are ridiculous, add the remaining ones
