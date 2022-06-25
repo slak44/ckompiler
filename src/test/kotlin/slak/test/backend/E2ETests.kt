@@ -604,4 +604,9 @@ class E2ETests {
   fun `Phi-def Spilled Before Spiller`() {
     compileAndRun(resource("e2e/phiDefBeforeSpill.c")).justExitCode(23)
   }
+
+  @Test
+  fun `Max SSE Pressure With Local Push For Float`() {
+    compileAndRun(resource("e2e/maxSSEPressure.c")).expect(stdout = "value: 16.0 16.0")
+  }
 }

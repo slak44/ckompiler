@@ -22,6 +22,8 @@ class X64Generator private constructor(
 
   override val graph: InstructionGraph = InstructionGraph.partiallyInitialize(cfg)
 
+  private val rsp = target.registerByName("rsp")
+
   init {
     graph.copyStructureFrom(cfg, this::selectBlockInstrs)
   }
@@ -71,12 +73,18 @@ class X64Generator private constructor(
     return matchTypedMov(destValue, srcValue)
   }
 
+  // FIXME: see above
   override fun createLocalPush(src: MachineRegister): MachineInstruction {
     val valueClass = src.valueClass
     require(valueClass is X64RegisterClass) { "Must be an x64 register" }
+    val physicalRegister = transformMachineReg(src, src.sizeBytes)
     return when (valueClass) {
-      X64RegisterClass.INTEGER -> push.match(PhysicalRegister(src, PointerType(UnsignedLongType, emptyList())))
-      X64RegisterClass.SSE -> TODO()
+      X64RegisterClass.INTEGER -> push.match(physicalRegister)
+      X64RegisterClass.SSE -> {
+        val rspValue = PhysicalRegister(rsp, PointerType(physicalRegister.type, emptyList()))
+        val topOfStack = MemoryLocation(rspValue)
+        matchTypedMov(topOfStack, physicalRegister)
+      }
       X64RegisterClass.X87 -> TODO()
     }
   }
@@ -84,9 +92,14 @@ class X64Generator private constructor(
   override fun createLocalPop(dest: MachineRegister): MachineInstruction {
     val valueClass = dest.valueClass
     require(valueClass is X64RegisterClass) { "Must be an x64 register" }
+    val physicalRegister = transformMachineReg(dest, dest.sizeBytes)
     return when (valueClass) {
-      X64RegisterClass.INTEGER -> pop.match(PhysicalRegister(dest, PointerType(UnsignedLongType, emptyList())))
-      X64RegisterClass.SSE -> TODO()
+      X64RegisterClass.INTEGER -> pop.match(physicalRegister)
+      X64RegisterClass.SSE -> {
+        val rspValue = PhysicalRegister(rsp, PointerType(physicalRegister.type, emptyList()))
+        val topOfStack = MemoryLocation(rspValue)
+        matchTypedMov(physicalRegister, topOfStack)
+      }
       X64RegisterClass.X87 -> TODO()
     }
   }
