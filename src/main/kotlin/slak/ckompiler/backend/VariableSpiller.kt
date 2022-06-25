@@ -188,6 +188,10 @@ private class BlockSpiller(
 
     val newParallel = removeSpillsFromParallel(blockId to nextIndex, next, toRemoveFromCopy)
     it.set(newParallel)
+
+    // We need to do this here because we use the live sets in the spiller, and they need to be accurate
+    graph.liveness.recomputeLiveSets()
+
     return newParallel
   }
 

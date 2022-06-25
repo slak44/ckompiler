@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.analysis.DerefStackValue
-import slak.ckompiler.backend.Location
-import slak.ckompiler.backend.SpillResult
-import slak.ckompiler.backend.insertSpillReloadCode
-import slak.ckompiler.backend.runSpiller
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64RegisterClass
 import slak.ckompiler.backend.x64.X64Target
@@ -165,5 +162,13 @@ class SpillTests {
     }) {
       "Variable \"spilled\" must have a stack value on all φ branches"
     }
+  }
+
+  @Test
+  fun `Removing Spilled Value From Parallel Copy Works`() {
+    val cfg = prepareCFG(resource("spilling/removeSpillParallel.c"), source)
+    val target = X64Target()
+    val gen = X64Generator(cfg, target)
+    gen.regAlloc(debugReturnAfterSpill = true)
   }
 }
