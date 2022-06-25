@@ -1,6 +1,7 @@
 package slak.ckompiler.analysis
 
 import mu.KotlinLogging
+import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.lexer.Punctuators
@@ -15,9 +16,9 @@ private val logger = KotlinLogging.logger {}
 private class IRBuilderContext(
     val machineTargetData: MachineTargetData,
     private val registerIds: IdCounter,
+    val stackVariableIds: MutableSet<AtomicId>
 ) {
   val instructions = mutableListOf<IRInstruction>()
-  val stackVariables = mutableListOf<StackVariable>()
 
   fun newRegister(type: TypeName) = VirtualRegister(registerIds(), type)
 }
@@ -164,7 +165,8 @@ private fun IRBuilderContext.buildFunctionCall(expr: FunctionCall): IRInstructio
 private fun IRBuilderContext.buildLValuePtr(lvalue: Expression): IRValue = when (lvalue) {
   is TypedIdentifier -> {
     val sv = StackVariable(lvalue)
-    stackVariables += sv
+    stackVariableIds += sv.id
+    instructions += StoreMemory(MemoryLocation(sv), Variable(lvalue))
     sv
   }
   is ArraySubscript -> buildPtrOffset(
@@ -180,7 +182,7 @@ private fun IRBuilderContext.buildAssignment(lhs: Expression, rhs: IRValue): IRI
   require(lhs.valueType != ValueType.RVALUE)
   return when (lhs) {
     is TypedIdentifier -> {
-      MoveInstr(Variable(lhs), rhs)
+      MoveInstr(valueFromTid(lhs), rhs)
     }
     is UnaryExpression -> {
       require(lhs.op == UnaryOperators.DEREF)
@@ -323,11 +325,21 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
   is ArraySubscript -> {
     buildOffset(buildOperand(expr.subscripted), buildOperand(expr.subscript), expr.type)
   }
-  is TypedIdentifier -> Variable(expr)
+  is TypedIdentifier -> valueFromTid(expr)
   is IntegerConstantNode -> IntConstant(expr)
   is CharacterConstantNode -> IntConstant(expr)
   is FloatingConstantNode -> FltConstant(expr)
   is StringLiteralNode -> StrConstant(expr)
+}
+
+private fun IRBuilderContext.valueFromTid(tid: TypedIdentifier): AllocatableValue {
+  return if (tid.id in stackVariableIds) {
+    val register = newRegister(tid.type)
+    instructions += LoadMemory(register, MemoryLocation(StackVariable(tid)))
+    register
+  } else {
+    Variable(tid)
+  }
 }
 
 /**
@@ -337,8 +349,9 @@ fun createInstructions(
     exprs: List<Expression>,
     targetData: MachineTargetData,
     registerIds: IdCounter,
-): Pair<List<IRInstruction>, List<StackVariable>> {
-  val builder = IRBuilderContext(targetData, registerIds)
+    stackVariableIds: MutableSet<AtomicId>,
+): List<IRInstruction> {
+  val builder = IRBuilderContext(targetData, registerIds, stackVariableIds)
   for (expr in exprs) {
     val folded = targetData.doConstantFolding(expr)
     val lastValue = builder.buildOperand(folded)
@@ -346,5 +359,5 @@ fun createInstructions(
       builder.instructions += MoveInstr(builder.newRegister(lastValue.type), lastValue)
     }
   }
-  return builder.instructions to builder.stackVariables
+  return builder.instructions
 }

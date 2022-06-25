@@ -59,8 +59,7 @@ fun jsCompile(source: String, skipSSARename: Boolean): JSCompileResult {
 
 @JsExport
 fun phiEligibleVariables(cfg: CFG): Array<Variable> {
-  val stackVarIds = cfg.stackVariables.map { it.id }
-  return cfg.exprDefinitions.filter { it.key.identityId !in stackVarIds }.map { it.key }.toTypedArray()
+  return cfg.exprDefinitions.filter { it.key.identityId !in cfg.stackVariableIds }.map { it.key }.toTypedArray()
 }
 
 @JsExport

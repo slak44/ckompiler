@@ -128,9 +128,7 @@ private fun graphExprRegular(
     expr: Expression,
 ): BasicBlock {
   val (nextBlock, exprs) = processExpression(root, current, expr)
-  val (instrs, stackVars) =
-      createInstructions(exprs.filterNot { it is Terminal }, root.targetData, root.registerIds)
-  root.stackVariables += stackVars
+  val instrs = createInstructions(exprs.filterNot { it is Terminal }, root.targetData, root.registerIds, root.stackVariableIds)
   nextBlock.ir += instrs
   nextBlock.src += exprs
   return nextBlock
@@ -143,8 +141,7 @@ private fun graphExprTerm(
     compareWithZero: Boolean = true,
 ): Pair<BasicBlock, List<IRInstruction>> {
   val (nextBlock, exprs) = processExpression(root, current, cond)
-  val (instrs, stackVars) = createInstructions(exprs, root.targetData, root.registerIds)
-  root.stackVariables += stackVars
+  val instrs = createInstructions(exprs, root.targetData, root.registerIds, root.stackVariableIds)
   val l = instrs.last()
   return if (compareWithZero && l !is IntCmp && l !is FltCmp) {
     val res = VirtualRegister(root.registerIds(), SignedIntType)

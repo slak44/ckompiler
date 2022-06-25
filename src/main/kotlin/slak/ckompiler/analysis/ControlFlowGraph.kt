@@ -72,7 +72,7 @@ class CFG(
    */
   val exprDefinitions = mutableMapOf<Variable, MutableSet<BasicBlock>>()
 
-  val stackVariables = mutableSetOf<StackVariable>()
+  val stackVariableIds = mutableSetOf<AtomicId>()
 
   private val renamer = VariableRenamer(this)
 
@@ -105,11 +105,9 @@ class CFG(
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
 
-      val stackVarIds = stackVariables.map { it.id }
-      insertPhiFunctions(exprDefinitions.filter { it.key.identityId !in stackVarIds })
+      insertPhiFunctions(exprDefinitions.filter { it.key.identityId !in stackVariableIds })
 
       if (!cfgOptions.skipSSARename) {
-        insertSpillCode(stackVarIds)
         renamer.variableRenaming()
       }
     } else {

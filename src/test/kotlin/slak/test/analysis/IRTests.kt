@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
 
 class IRTests {
   private fun createIR(vararg exprs: Expression): List<IRInstruction> {
-    val (instrs, _) = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter())
+    val instrs = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter(), mutableSetOf())
     val registerIds = instrs
         .filter { it !is StoreMemory }
         .mapNotNull { (it.result as? VirtualRegister)?.registerId }
@@ -105,7 +105,7 @@ class IRTests {
     val structSpec = struct("vec2", int declare "x", int declare "y").toSpec()
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", structType) dot intVar("y"))
-    val ptrAdd = ir[0] as IntBinary
+    val ptrAdd = ir[1] as IntBinary
     assert(ptrAdd.lhs is StackVariable)
     assertIsPtrAdd(ptrAdd, structType, MachineTargetData.x64.intSizeBytes)
     val load = ir.last() as LoadMemory
@@ -118,7 +118,7 @@ class IRTests {
     val structType = typeNameOf(structSpec, AbstractDeclarator.blank())
     val member = nameRef("u", structType) dot intVar("y")
     val ir = createIR(member assign 42)
-    val ptrAdd = ir[0] as IntBinary
+    val ptrAdd = ir[1] as IntBinary
     assert(ptrAdd.lhs is StackVariable)
     assertIsPtrAdd(ptrAdd, structType, MachineTargetData.x64.intSizeBytes)
     val store = ir.last() as StoreMemory
@@ -131,7 +131,7 @@ class IRTests {
     val unionSpec = union("name", int declare "x", double declare "y").toSpec()
     val unionType = typeNameOf(unionSpec, AbstractDeclarator.blank())
     val ir = createIR(nameRef("u", unionType) dot nameRef("y", DoubleType))
-    val castToTargetType = ir[0] as ReinterpretCast
+    val castToTargetType = ir[1] as ReinterpretCast
     assert(castToTargetType.operand is StackVariable)
     assertEquals(ptr(unionType), castToTargetType.operand.type)
     assertEquals(ptr(DoubleType), castToTargetType.result.type)
@@ -143,7 +143,7 @@ class IRTests {
     val unionType = typeNameOf(unionSpec, AbstractDeclarator.blank())
     val member = nameRef("u", unionType) dot intVar("y")
     val ir = createIR(member assign 42)
-    assert(ir[0] is ReinterpretCast)
+    assert(ir[1] is ReinterpretCast)
     val store = ir.last() as StoreMemory
     val const = requireNotNull(store.value as? IntConstant).value
     assertEquals(42L, const)
