@@ -15,6 +15,8 @@ import slak.test.resource
 import slak.test.source
 import kotlin.test.assertEquals
 
+private val calleeSavedTestTarget = X64Target()
+
 class X64Tests {
   private fun InstructionGraph.assertIsSSA() {
     val defined = mutableMapOf<IRValue, Int>()
@@ -72,11 +74,11 @@ class X64Tests {
 
   @Suppress("unused")
   enum class RegisterCalleeSavedTestCase(val reg: MachineRegister, val isCalleeSaved: Boolean) {
-    RAX(X64Target().registerByName("rax"), false),
-    RBX(X64Target().registerByName("rbx"), true),
-    RSP(X64Target().registerByName("rsp"), true),
-    R10(X64Target().registerByName("r10"), false),
-    XMM5(X64Target().registerByName("xmm5"), false),
+    RAX(calleeSavedTestTarget.registerByName("rax"), false),
+    RBX(calleeSavedTestTarget.registerByName("rbx"), true),
+    RSP(calleeSavedTestTarget.registerByName("rsp"), true),
+    R10(calleeSavedTestTarget.registerByName("r10"), false),
+    XMM5(calleeSavedTestTarget.registerByName("xmm5"), false),
     STACK_SLOT(FullVariableSlot(
         StackVariable(TypedIdentifier("fake", SignedIntType)),
         123,
@@ -87,7 +89,7 @@ class X64Tests {
   @ParameterizedTest
   @EnumSource(RegisterCalleeSavedTestCase::class)
   fun `Correctly Detect Callee Saved Registers`(test: RegisterCalleeSavedTestCase) {
-    val reported = X64Target().isPreservedAcrossCalls(test.reg)
+    val reported = calleeSavedTestTarget.isPreservedAcrossCalls(test.reg)
     assertEquals(test.isCalleeSaved, reported)
   }
 
