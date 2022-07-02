@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { distinctUntilChanged, map, Observable, ReplaySubject } from 'rxjs';
+import { distinctUntilChanged, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { slak } from '@ckompiler/ckompiler';
 import { compileCode } from '@cki-graph-view/compilation-instance';
@@ -18,6 +18,7 @@ export class CompileService {
   public readonly sourceText$: Observable<string> = this.sourceTextSubject.pipe(
     debounceAfterFirst(500),
     distinctUntilChanged(),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
 
   public readonly defaultCompileResult$: Observable<JSCompileResult> = this.sourceText$.pipe(

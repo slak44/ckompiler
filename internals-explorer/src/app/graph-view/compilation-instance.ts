@@ -7,7 +7,7 @@ import {
   pipe,
   ReplaySubject,
   shareReplay,
-  tap,
+  tap, throttleTime,
 } from 'rxjs';
 import { Nullable, slak } from '@ckompiler/ckompiler';
 import { defaultFunctionName } from '@cki-settings';
@@ -28,6 +28,8 @@ function logCompileError(e: unknown): void {
 
 export function compileCode(skipSSARename: boolean = false): OperatorFunction<string, JSCompileResult> {
   return pipe(
+    // Forcefully throttle compilations, so death loops are avoided
+    throttleTime(500),
     map(code => {
       try {
         clearAllAtomicCounters();
