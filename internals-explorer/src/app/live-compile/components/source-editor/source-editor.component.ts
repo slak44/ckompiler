@@ -32,6 +32,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     fontSize: 14, // This is the default font size, reset font size comes back to this value
     useShadowDOM: true,
     renderWhitespace: 'trailing',
+    tabSize: 2,
   };
 
   public readonly sourceControl: FormControl = new FormControl('');
