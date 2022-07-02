@@ -62,8 +62,12 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     monacoLoaded$.pipe(first()).subscribe((monaco) => {
       this.setMarkersFromDiagnostics(monaco);
 
-      // Fix renderWhitespace with custom font
-      monaco.editor.remeasureFonts();
+      document.fonts.load(`${this.monacoOptions.fontSize}px ${this.monacoOptions.fontFamily}`).then(() => {
+        // Fix renderWhitespace with custom font
+        monaco.editor.remeasureFonts();
+      }).catch((err) => {
+        console.error('Font loading error: ', err);
+      });
     });
   }
 
