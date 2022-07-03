@@ -96,7 +96,7 @@ fun InstructionGraph.dyingAt(label: InstrLabel, mi: MachineInstruction): List<Al
 /**
  * For non-vregs, the SSA reconstruction will update uses, but for the vregs it must be done separately.
  */
-private fun rewriteVregBlockUses(block: InstrBlock, rewriteFromIdx: Int, rewriteMap: Map<AllocatableValue, AllocatableValue>) {
+fun rewriteVregBlockUses(block: InstrBlock, rewriteFromIdx: Int, rewriteMap: Map<AllocatableValue, AllocatableValue>) {
   val vregRewriteMap = rewriteMap.filterKeys { it is VirtualRegister }
 
   for (index in rewriteFromIdx until block.size) {
@@ -519,7 +519,8 @@ private fun RegisterAllocationContext.allocConstrainedMI(label: InstrLabel, mi: 
       // already colored by constrainedColoring)
     } else {
       // If it's neither a spill nor a reload, then it's a copy from 4.6.1, which we need to recolor
-      for (copy in defs) {
+      // Unless, it's a new copy we inserted in the spiller, in which case it is constrained + used at L => we can skip it
+      for (copy in defs - usedAtL) {
         val color = target.selectRegisterBlacklist(assigned + colorsAtL, copy)
         coloring[copy] = color
         assigned += color

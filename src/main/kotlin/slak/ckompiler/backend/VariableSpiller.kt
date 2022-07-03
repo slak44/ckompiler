@@ -196,6 +196,56 @@ private class BlockSpiller(
   }
 
   /**
+   * If between the parallel copy and the constrained instruction, a constrained arg has both an extra copy, and a reload, we need to
+   * insert yet another copy, because SSA reconstruction will overwrite the correct use at the constrained instruction with the result of
+   * the extra copy, which defeats the point of the extra copy. This essentially tricks reconstruction and relies on coalescing to get
+   * rid of the new copy.
+   *
+   * FIXME: insertSingleCopy duplication
+   */
+  private fun TargetFunGenerator.insertReloadCopies(
+      it: MutableListIterator<MachineInstruction>,
+      insn: MachineInstruction,
+      insnIndex: Int,
+      reloadedForExtraCopies: Set<AllocatableValue>,
+  ): Boolean {
+    require(insn.isConstrained)
+
+    val block = graph[blockId]
+
+    val constrainedArgsToCopy = insn.constrainedArgs.filter {
+      !it.value.isUndefined && reloadedForExtraCopies.any { reload -> it.value.identityId == reload.identityId }
+    }
+
+    for ((arg, _) in constrainedArgsToCopy) {
+      val copiedValue = graph.liveness.createCopyOf(arg, block)
+      val copyInstr = createIRCopy(copiedValue, arg)
+      copyInstr.irLabelIndex = block[insnIndex].irLabelIndex
+
+      it.previous()
+      it.add(copyInstr)
+
+      // Rewrite constrained instruction
+      block[insnIndex + 1] = block[insnIndex + 1].rewriteBy(mapOf(arg to copiedValue))
+      // And vreg uses, if needed
+      rewriteVregBlockUses(block, insnIndex + 2, mapOf(arg to copiedValue))
+
+      when (arg) {
+        is VersionedValue -> {
+          // The value is a constrained argument: it is still used at the constrained MI, after the copy
+          // We know that is the last use, because all the ones afterwards were just rewritten
+          // The death is put at the current index, so the SSA reconstruction doesn't pick it up as alive
+          // FIXME: do we need to correct this like in insertSingleCopy (probably yes)
+          graph.liveness.addUse(arg, block.id, insnIndex)
+        }
+        is VirtualRegister -> graph.liveness.virtualDeaths[arg] = InstrLabel(block.id, insnIndex)
+      }
+    }
+
+    return constrainedArgsToCopy.isNotEmpty()
+  }
+
+  /**
    * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
    */
   private fun TargetFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
@@ -218,8 +268,10 @@ private class BlockSpiller(
    * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
    */
   private fun TargetFunGenerator.minAlgorithm(maxPressure: Map<MachineRegisterClass, Int>) {
-    val phiDefs = graph[blockId].phiDefs.groupBy { target.registerClassOf(it.type) }
-    val phiUses = graph[blockId].phiUses.groupBy { target.registerClassOf(it.type) }
+    val block = graph[blockId]
+
+    val phiDefs = block.phiDefs.groupBy { target.registerClassOf(it.type) }
+    val phiUses = block.phiUses.groupBy { target.registerClassOf(it.type) }
 
     for ((valueClass, k) in maxPressure) {
       val wClass = w.getValue(valueClass)
@@ -256,10 +308,28 @@ private class BlockSpiller(
       wClass -= (phiUses[valueClass] ?: emptyList()).toSet()
     }
 
-    val it = graph[blockId].listIterator()
+    val it = block.listIterator()
+
+    // FIXME: this looks insanely hacky. this should probably happen in processNext? or still at the constrained label?
+    //    we should know all this data about extra copies beforehand
+    //    this isInConstrainedArea should just be part of each MI, along with better api of extracting src/dest from extra copies
+    var isInConstrainedArea = false
+    val reloadedForExtraCopies = mutableSetOf<AllocatableValue>()
+
     while (it.hasNext()) {
       val insnIndex = it.nextIndex()
       val insn = processNext(it)
+
+      if (insn.isConstrained) {
+        val copiesInserted = insertReloadCopies(it, insn, insnIndex, reloadedForExtraCopies)
+
+        reloadedForExtraCopies.clear()
+        isInConstrainedArea = false
+        if (copiesInserted) {
+          continue
+        }
+      }
+
       val insnUses = insn.uses
           .filterIsInstance<AllocatableValue>()
           .filter { !it.isUndefined }
@@ -291,8 +361,15 @@ private class BlockSpiller(
         // Since we made space for the defs, they are now in w
         wClass += insnDefs[valueClass] ?: emptyList()
         for (value in r) {
+          if (isInConstrainedArea) {
+            reloadedForExtraCopies += value
+          }
           reloads += Location(value, InstrLabel(blockId, it.previousIndex()))
         }
+      }
+      if (insn.template is ParallelCopyTemplate) {
+        reloadedForExtraCopies.clear()
+        isInConstrainedArea = true
       }
     }
   }
