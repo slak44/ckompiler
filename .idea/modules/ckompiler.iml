@@ -5,4 +5,10 @@
       <configuration sdkName="Python 3.10 (ckompiler)" />
     </facet>
   </component>
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$/../..">
+      <excludeFolder url="file://$MODULE_DIR$/../../internals-explorer/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/../../internals-explorer/tmp" />
+    </content>
+  </component>
 </module>
