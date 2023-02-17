@@ -5,6 +5,7 @@ import slak.ckompiler.IDebugHandler
 import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.mips32.MIPS32Target
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
@@ -459,7 +460,7 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
 fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOptions, targetSpecific: List<String>): MachineTarget {
   return when (isaType) {
     ISAType.X64 -> X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
-    ISAType.MIPS32 -> TODO("MIPS")
+    ISAType.MIPS32 -> MIPS32Target(baseTargetOpts)
   }
 }
 

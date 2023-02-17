@@ -18,7 +18,7 @@ enum class X64SupportedFeatures {
 class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : MachineTarget {
   private val logger = KotlinLogging.logger {}
 
-  override val isaType: ISAType = ISAType.X64
+  override val isaType = ISAType.X64
   override val machineTargetData = MachineTargetData.x64
   override val targetName = "x64"
   override val registerClasses = X64RegisterClass.values().toList()
