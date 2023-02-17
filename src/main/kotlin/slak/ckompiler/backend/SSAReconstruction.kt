@@ -171,6 +171,7 @@ fun InstructionGraph.ssaReconstruction(reconstruct: Set<Variable>, target: Machi
         // If it's a constrained argument, and the new version we found is a spill, we need to look at the previous definition
         val actualNewVersion = if (block[index].constrainedArgs.any { it.value == x } && newVersion is DerefStackValue) {
           if (location.second == DEFINED_IN_PHI) {
+            // TODO: this needs more logic here, this is certainly wrong
             newVersion
           } else {
             findDef(location, null, x).first
