@@ -8,8 +8,6 @@ import slak.ckompiler.analysis.external.GraphvizOptions
 import slak.ckompiler.analysis.external.createGraphviz
 import slak.ckompiler.analysis.external.exportCFG
 import slak.ckompiler.backend.*
-import slak.ckompiler.backend.x64.NasmEmitter
-import slak.ckompiler.backend.x64.X64Target
 import slak.ckompiler.lexer.CLIDefines
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
@@ -301,7 +299,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private fun assemble(objFile: File, asmFile: File): Unit = when (isaType) {
     ISAType.X64 -> invokeNasm(objFile, asmFile)
-    ISAType.MIPS -> TODO("MIPS")
+    ISAType.MIPS32 -> TODO("MIPS")
   }
 
   private fun invokeNasm(objFile: File, asmFile: File) {

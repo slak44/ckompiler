@@ -405,7 +405,7 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
 fun createTargetFunGenerator(cfg: CFG, target: MachineTarget): TargetFunGenerator {
   return when (target.isaType) {
     ISAType.X64 -> X64Generator(cfg, target as X64Target)
-    ISAType.MIPS -> TODO()
+    ISAType.MIPS32 -> TODO()
   }
 }
 
@@ -459,7 +459,7 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
 fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOptions, targetSpecific: List<String>): MachineTarget {
   return when (isaType) {
     ISAType.X64 -> X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
-    ISAType.MIPS -> TODO("MIPS")
+    ISAType.MIPS32 -> TODO("MIPS")
   }
 }
 
@@ -483,6 +483,6 @@ fun createAsmEmitter(
 ): AsmEmitter {
   return when (isaType) {
     ISAType.X64 -> NasmEmitter(externals, functions, mainCfg)
-    ISAType.MIPS -> TODO("MIPS")
+    ISAType.MIPS32 -> TODO("MIPS")
   }
 }

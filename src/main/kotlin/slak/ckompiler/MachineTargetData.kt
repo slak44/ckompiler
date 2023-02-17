@@ -128,5 +128,19 @@ data class MachineTargetData(
         sizeType = UnsignedIntType,
         ptrDiffType = SignedLongType
     )
+
+    val mips32 = MachineTargetData(
+        ptrSizeBytes = 4,
+        shortSizeBytes = 2,
+        intSizeBytes = 4,
+        longSizeBytes = 4,
+        longLongSizeBytes = 4,
+        boolSizeBytes = 4,
+        floatSizeBytes = 4,
+        doubleSizeBytes = 8,
+        longDoubleSizeBytes = 8,
+        sizeType = UnsignedIntType,
+        ptrDiffType = SignedIntType
+    )
   }
 }
