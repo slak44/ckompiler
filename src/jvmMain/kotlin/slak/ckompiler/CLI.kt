@@ -7,11 +7,9 @@ import slak.ckompiler.analysis.external.CodePrintingMethods
 import slak.ckompiler.analysis.external.GraphvizOptions
 import slak.ckompiler.analysis.external.createGraphviz
 import slak.ckompiler.analysis.external.exportCFG
-import slak.ckompiler.backend.TargetOptions
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.NasmEmitter
-import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Target
-import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.lexer.CLIDefines
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
@@ -194,8 +192,11 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   init {
-    cli.helpGroup("Target specific options")
+    cli.helpGroup("Compilation target options")
   }
+
+  private val isaType by cli.flagValueArgument("--target", "TARGET",
+      "Select the desired compilation target", ISAType.X64, ISAType::fromOptionsString)
 
   private val targetSpecific: List<String> by cli.flagOrPositionalArgumentList(
       flags = listOf("-m"),
@@ -298,6 +299,11 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
   }
 
+  private fun assemble(objFile: File, asmFile: File): Unit = when (isaType) {
+    ISAType.X64 -> invokeNasm(objFile, asmFile)
+    ISAType.MIPS -> TODO("MIPS")
+  }
+
   private fun invokeNasm(objFile: File, asmFile: File) {
     val args = mutableListOf("nasm")
     args += listOf("-f", pickOsOption("obj-format"))
@@ -384,7 +390,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         cliDefines = defines,
         includePaths = includePaths,
         ignoreTrigraphs = !useTrigraphs,
-        targetData = MachineTargetData.x64
+        targetData = isaType.machineTargetData
     )
 
     pp.diags.forEach { it.print() }
@@ -399,7 +405,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
-    val p = Parser(pp.tokens, relPath, text, MachineTargetData.x64)
+    val p = Parser(pp.tokens, relPath, text, isaType.machineTargetData)
 
     p.diags.forEach { it.print() }
 
@@ -410,7 +416,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
     val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
-    val target = X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
+    val target = createMachineTarget(isaType, baseTargetOpts, targetSpecific)
 
     if (isMIDebugOnly) {
       val function = allFuncs.findNamedFunction(miDebugFuncName) ?: return null
@@ -426,7 +432,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
         val cfg = CFG(
             f = function,
-            targetData = MachineTargetData.x64,
+            targetData = target.machineTargetData,
             srcFileName = relPath,
             srcText = text,
             cfgOptions = options,
@@ -448,7 +454,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       val cfgOptions = CFGOptions(forceAllNodes = forceAllNodes, forceReturnZero = function.name == "main")
       val cfg = CFG(
           f = function,
-          targetData = MachineTargetData.x64,
+          targetData = target.machineTargetData,
           srcFileName = relPath,
           srcText = text,
           cfgOptions = cfgOptions,
@@ -490,29 +496,29 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val functionsEmit = (allFuncs - main).map {
       val cfg = CFG(
           f = it!!,
-          targetData = MachineTargetData.x64,
+          targetData = target.machineTargetData,
           srcFileName = relPath,
           srcText = text,
       )
-      cfg.diags.forEach { it.print() }
+      cfg.diags.forEach(Diagnostic::print)
 
-      X64Generator(cfg, target)
+      createTargetFunGenerator(cfg, target)
     }
     val mainEmit = main?.let {
       val cfg = CFG(
           f = it,
-          targetData = MachineTargetData.x64,
+          targetData = target.machineTargetData,
           srcFileName = relPath,
           srcText = text,
           cfgOptions = CFGOptions(forceReturnZero = true),
       )
-      cfg.diags.forEach { it.print() }
+      cfg.diags.forEach(Diagnostic::print)
 
-      X64Generator(cfg, target)
+      createTargetFunGenerator(cfg, target)
     }
 
-    val nasm = try {
-      NasmEmitter(declNames, functionsEmit, mainEmit).emitAsm()
+    val asm = try {
+      createAsmEmitter(isaType, declNames, functionsEmit, mainEmit).emitAsm()
     } catch (e: Exception) {
       logger.error("Internal compiler error when compiling file: $relPath")
       throw e
@@ -520,22 +526,22 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
     if (isCompileOnly) {
       val asmFile = fileFrom(output ?: "$baseName.s")
-      asmFile.writeText(nasm)
+      asmFile.writeText(asm)
       return null
     }
 
     val asmFile = createTemp("asm_temp", ".s")
     asmFile.deleteOnExit()
-    asmFile.writeText(nasm)
+    asmFile.writeText(asm)
 
     if (isAssembleOnly) {
       val objFile = fileFrom(output ?: "$baseName.o")
-      invokeNasm(objFile, asmFile)
+      assemble(objFile, asmFile)
       return null
     }
 
     val objFile = File(parentDir, "$baseName.o")
-    invokeNasm(objFile, asmFile)
+    assemble(objFile, asmFile)
     asmFile.delete()
     return objFile
   }

@@ -7,13 +7,11 @@ import slak.ckompiler.analysis.DerefStackValue
 import slak.ckompiler.analysis.IRValue
 import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.backend.*
-import slak.ckompiler.backend.x64.X64Generator
 import slak.ckompiler.backend.x64.X64Instruction
 import slak.ckompiler.backend.x64.X64PeepholeOpt
-import slak.ckompiler.backend.x64.X64Target
 
 fun generateMIDebug(
-    target: X64Target,
+    target: MachineTarget,
     srcFileName: String,
     srcText: String,
     showDummies: Boolean,
@@ -25,7 +23,7 @@ fun generateMIDebug(
 }
 
 private class MIDebugMode(
-    val target: X64Target,
+    val target: MachineTarget,
     val srcFileName: String,
     val srcText: String,
     val showDummies: Boolean,
@@ -281,7 +279,7 @@ private class MIDebugMode(
 private fun MIDebugMode.generateMIDebugInternal() {
   val cfgInit = createCFG()
   printTitle("Allocation for function ${cfgInit.f.funcIdent}")
-  val genInitial = X64Generator(cfgInit, target)
+  val genInitial = createTargetFunGenerator(cfgInit, target)
 
   if (spillOutput) {
     printHeader("Initial MachineInstructions (no alloc)")
@@ -316,7 +314,7 @@ private fun MIDebugMode.generateMIDebugInternal() {
   printGraph(graph)
 
   printHeader("Register allocation")
-  val gen = X64Generator(createCFG(), target)
+  val gen = createTargetFunGenerator(createCFG(), target)
   val realAllocation = gen.regAlloc(debugNoCheckAlloc = true)
   val finalGraph = realAllocation.graph
   val allocs = realAllocation.allocations.filter { (value) ->
@@ -338,14 +336,16 @@ private fun MIDebugMode.generateMIDebugInternal() {
     println(finalGraph[blockId])
     printNasm(list.joinToString(separator = "\n", postfix = "\n"))
   }
-  printHeader("Optimized MachineInstructions")
-  for ((blockId, list) in final) {
-    @Suppress("UNCHECKED_CAST")
-    val withOpts = X64PeepholeOpt().optimize(gen, list as List<X64Instruction>)
-    println(finalGraph[blockId])
-    printNasm(withOpts.joinToString(separator = "\n", postfix = "\n"))
-    println("(initial: ${list.size} | optimized: ${withOpts.size})")
-    println()
+  if (target.isaType == ISAType.X64) {
+    printHeader("Optimized MachineInstructions")
+    for ((blockId, list) in final) {
+      @Suppress("UNCHECKED_CAST")
+      val withOpts = X64PeepholeOpt().optimize(gen, list as List<X64Instruction>)
+      println(finalGraph[blockId])
+      printNasm(withOpts.joinToString(separator = "\n", postfix = "\n"))
+      println("(initial: ${list.size} | optimized: ${withOpts.size})")
+      println()
+    }
   }
   if (generateHtml) {
     printHeader("Original source")

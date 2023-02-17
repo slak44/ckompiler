@@ -1,9 +1,14 @@
 package slak.ckompiler.backend
 
 import slak.ckompiler.AtomicId
+import slak.ckompiler.IDebugHandler
 import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.x64.NasmEmitter
+import slak.ckompiler.backend.x64.X64Generator
+import slak.ckompiler.backend.x64.X64Target
+import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.parser.TypeName
 
 interface MachineRegisterClass {
@@ -397,6 +402,13 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
   fun insertPhiCopies(block: InstrBlock, copies: List<MachineInstruction>)
 }
 
+fun createTargetFunGenerator(cfg: CFG, target: MachineTarget): TargetFunGenerator {
+  return when (target.isaType) {
+    ISAType.X64 -> X64Generator(cfg, target as X64Target)
+    ISAType.MIPS -> TODO()
+  }
+}
+
 /**
  * Base options for a compilation target. Each target also has extra options beyond these.
  */
@@ -411,6 +423,7 @@ interface TargetOptions {
 }
 
 interface MachineTarget {
+  val isaType: ISAType
   val machineTargetData: MachineTargetData
   val targetName: String
   val registerClasses: List<MachineRegisterClass>
@@ -443,6 +456,13 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
   }
 }
 
+fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOptions, targetSpecific: List<String>): MachineTarget {
+  return when (isaType) {
+    ISAType.X64 -> X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
+    ISAType.MIPS -> TODO("MIPS")
+  }
+}
+
 interface PeepholeOptimizer<T : AsmInstruction> {
   fun optimize(targetFun: TargetFunGenerator, asm: List<T>): List<T>
 }
@@ -453,4 +473,16 @@ interface AsmEmitter {
   val mainCfg: TargetFunGenerator?
 
   fun emitAsm(): String
+}
+
+fun createAsmEmitter(
+    isaType: ISAType,
+    externals: List<String>,
+    functions: List<TargetFunGenerator>,
+    mainCfg: TargetFunGenerator?,
+): AsmEmitter {
+  return when (isaType) {
+    ISAType.X64 -> NasmEmitter(externals, functions, mainCfg)
+    ISAType.MIPS -> TODO("MIPS")
+  }
 }
