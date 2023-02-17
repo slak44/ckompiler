@@ -3,8 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/ckompiler.iml" filepath="$PROJECT_DIR$/.idea/modules/ckompiler.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ckompiler.main.iml" filepath="$PROJECT_DIR$/.idea/modules/ckompiler.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ckompiler.test.iml" filepath="$PROJECT_DIR$/.idea/modules/ckompiler.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/documentation/documentation.iml" filepath="$PROJECT_DIR$/documentation/documentation.iml" />
     </modules>
   </component>
