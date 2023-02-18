@@ -6,6 +6,7 @@ import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.Imm.*
 import slak.ckompiler.backend.x64.ModRM.*
+import slak.ckompiler.parser.Bool
 import slak.ckompiler.throwICE
 import kotlin.jvm.JvmName
 import kotlin.math.absoluteValue
@@ -138,32 +139,33 @@ data class X64Instruction(
   override fun toString() = "${template.name} ${operands.joinToString(", ")}"
 }
 
-private infix fun X64Operand.compatibleWith(ref: IRValue): Boolean {
-  if (this is NamedDisplacement && ref is NamedConstant) return true
-  if (this is JumpTarget && ref is JumpTargetConstant) return true
+private fun compatibleWith(operand: X64Operand, ref: IRValue): Boolean {
+  if (operand is NamedDisplacement && ref is NamedConstant) return true
+  if (operand is JumpTarget && ref is JumpTargetConstant) return true
 
   val refSize = MachineTargetData.x64.sizeOf(ref.type.unqualify().normalize())
-  val sizeMatches = refSize == size
+  val sizeMatches = refSize == operand.size
 
   return when (ref) {
     is MemoryLocation, is DerefStackValue, is StrConstant, is FltConstant -> {
-      (sizeMatches || this == M) && this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.MEMORY)
+      (sizeMatches || operand == M) && operand is ModRM && (operand.type == OperandType.REG_OR_MEM || operand.type == OperandType.MEMORY)
     }
     is VirtualRegister, is Variable, is StackVariable, is StackValue -> {
-      sizeMatches && (this is Register || (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER)))
+      sizeMatches &&
+          (operand is Register || (operand is ModRM && (operand.type == OperandType.REG_OR_MEM || operand.type == OperandType.REGISTER)))
     }
     is PhysicalRegister -> {
-      val isCorrectKind = (this is Register && register == ref.reg) ||
-          (this is ModRM && (type == OperandType.REG_OR_MEM || type == OperandType.REGISTER))
-      val isCorrectSize = size == ref.reg.sizeBytes || size in ref.reg.aliases.map { it.second }
+      val isCorrectKind = (operand is Register && operand.register == ref.reg) ||
+          (operand is ModRM && (operand.type == OperandType.REG_OR_MEM || operand.type == OperandType.REGISTER))
+      val isCorrectSize = operand.size == ref.reg.sizeBytes || operand.size in ref.reg.aliases.map { it.second }
       isCorrectKind && isCorrectSize
     }
     is IntConstant -> when {
-      this !is Imm -> false
+      operand !is Imm -> false
       sizeMatches -> true
       else -> {
         val highestBitSet = Long.SIZE_BITS - ref.value.countLeadingZeroBits()
-        val immSizeBits = size * 8
+        val immSizeBits = operand.size * 8
         highestBitSet < immSizeBits
       }
     }
@@ -172,24 +174,34 @@ private infix fun X64Operand.compatibleWith(ref: IRValue): Boolean {
   }
 }
 
-fun List<X64InstrTemplate>.tryMatch(vararg operands: IRValue): MachineInstruction? {
+fun <O : Operand, T : InstructionTemplate<O>> List<T>.tryMatch(
+    compatibleWith: (operand: O, ref: IRValue) -> Boolean,
+    vararg operands: IRValue
+): MachineInstruction? {
   val instr = firstOrNull {
     it.operandType.size == operands.size &&
-        operands.zip(it.operandType).all { (ref, targetOperand) -> targetOperand compatibleWith ref }
+        operands.zip(it.operandType).all { (ref, targetOperand) -> compatibleWith(targetOperand, ref) }
   } ?: return null
   return MachineInstruction(instr, operands.toList())
 }
 
-fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
-  val res = tryMatch(*operands)
+fun <O : Operand, T : InstructionTemplate<O>> List<T>.match(
+    compatibleWith: (operand: O, ref: IRValue) -> Boolean,
+    vararg operands: IRValue,
+): MachineInstruction {
+  val res = tryMatch(compatibleWith, *operands)
   return checkNotNull(res) {
     val likely = filter { it.operandType.size == operands.size }.sortedByDescending {
-      operands.zip(it.operandType).count { (ref, targetOperand) -> targetOperand compatibleWith ref }
+      operands.zip(it.operandType).count { (ref, targetOperand) -> compatibleWith(targetOperand, ref) }
     }
     "Instruction selection failure: match ${operands.toList()} in $this\n" +
         "Likely candidate: ${likely.firstOrNull()}"
   }
 }
+
+fun List<X64InstrTemplate>.tryMatch(vararg operands: IRValue) = tryMatch(::compatibleWith, *operands)
+
+fun List<X64InstrTemplate>.match(vararg operands: IRValue) = match(::compatibleWith, *operands)
 
 fun List<X64InstrTemplate>.tryMatchAsm(vararg operands: X64Value): X64Instruction? {
   val instr = firstOrNull {
