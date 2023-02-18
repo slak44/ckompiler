@@ -16,14 +16,11 @@ enum class OperandType {
   REGISTER, MEMORY, REG_OR_MEM
 }
 
-/**
- * A generic operand to an instruction (register reference, memory location, immediate, label).
- */
-interface Operand {
+interface X64Operand : Operand {
   val size: Int
 }
 
-enum class ModRM(val type: OperandType, override val size: Int) : Operand {
+enum class ModRM(val type: OperandType, override val size: Int) : X64Operand {
   RM8(OperandType.REG_OR_MEM, 1),
   RM16(OperandType.REG_OR_MEM, 2),
   RM32(OperandType.REG_OR_MEM, 4),
@@ -43,27 +40,27 @@ enum class ModRM(val type: OperandType, override val size: Int) : Operand {
   XMM_SD(OperandType.REGISTER, 8)
 }
 
-enum class Imm(override val size: Int) : Operand {
+enum class Imm(override val size: Int) : X64Operand {
   IMM8(1), IMM16(2), IMM32(4), IMM64(8)
 }
 
-data class Register(val register: MachineRegister) : Operand {
+data class Register(val register: MachineRegister) : X64Operand {
   override val size = register.sizeBytes
 }
 
-object JumpTarget : Operand {
+object JumpTarget : X64Operand {
   override val size = 0
 }
 
-object NamedDisplacement : Operand {
+object NamedDisplacement : X64Operand {
   override val size = 0
 }
 
 data class X64InstrTemplate(
     override val name: String,
-    val operands: List<Operand>,
+    override val operandType: List<X64Operand>,
     override val operandUse: List<VariableUse>,
-) : InstructionTemplate
+) : InstructionTemplate<X64Operand>()
 
 sealed class X64Value
 
@@ -141,38 +138,7 @@ data class X64Instruction(
   override fun toString() = "${template.name} ${operands.joinToString(", ")}"
 }
 
-private class ICBuilder(
-    val instructions: MutableList<X64InstrTemplate>,
-    val name: String,
-    val defaultUse: List<VariableUse>? = null,
-) {
-  fun instr(vararg operands: Operand) = instr(defaultUse!!, *operands)
-
-  fun instr(operandUse: List<VariableUse>, vararg operands: Operand) {
-    instructions += X64InstrTemplate(name, operands.toList(), operandUse)
-  }
-
-  @JvmName("l_instr")
-  fun List<VariableUse>.instr(vararg operands: Operand): Unit = instr(this, *operands)
-}
-
-private fun instructionClass(
-    name: String,
-    defaultUse: List<VariableUse>? = null,
-    block: ICBuilder.() -> Unit,
-): List<X64InstrTemplate> {
-  val builder = ICBuilder(mutableListOf(), name, defaultUse)
-  builder.block()
-  return builder.instructions
-}
-
-private fun dummyInstructionClass(
-    name: String,
-    defaultUse: List<VariableUse>? = null,
-    block: ICBuilder.() -> Unit,
-): List<X64InstrTemplate> = instructionClass("DUMMY $name DO NOT EMIT", defaultUse, block)
-
-private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
+private infix fun X64Operand.compatibleWith(ref: IRValue): Boolean {
   if (this is NamedDisplacement && ref is NamedConstant) return true
   if (this is JumpTarget && ref is JumpTargetConstant) return true
 
@@ -208,8 +174,8 @@ private infix fun Operand.compatibleWith(ref: IRValue): Boolean {
 
 fun List<X64InstrTemplate>.tryMatch(vararg operands: IRValue): MachineInstruction? {
   val instr = firstOrNull {
-    it.operands.size == operands.size &&
-        operands.zip(it.operands).all { (ref, targetOperand) -> targetOperand compatibleWith ref }
+    it.operandType.size == operands.size &&
+        operands.zip(it.operandType).all { (ref, targetOperand) -> targetOperand compatibleWith ref }
   } ?: return null
   return MachineInstruction(instr, operands.toList())
 }
@@ -217,8 +183,8 @@ fun List<X64InstrTemplate>.tryMatch(vararg operands: IRValue): MachineInstructio
 fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
   val res = tryMatch(*operands)
   return checkNotNull(res) {
-    val likely = filter { it.operands.size == operands.size }.sortedByDescending {
-      operands.zip(it.operands).count { (ref, targetOperand) -> targetOperand compatibleWith ref }
+    val likely = filter { it.operandType.size == operands.size }.sortedByDescending {
+      operands.zip(it.operandType).count { (ref, targetOperand) -> targetOperand compatibleWith ref }
     }
     "Instruction selection failure: match ${operands.toList()} in $this\n" +
         "Likely candidate: ${likely.firstOrNull()}"
@@ -227,7 +193,7 @@ fun List<X64InstrTemplate>.match(vararg operands: IRValue): MachineInstruction {
 
 fun List<X64InstrTemplate>.tryMatchAsm(vararg operands: X64Value): X64Instruction? {
   val instr = firstOrNull {
-    it.operands.size == operands.size && operands.zip(it.operands).all { (value, targetOperand) ->
+    it.operandType.size == operands.size && operands.zip(it.operandType).all { (value, targetOperand) ->
       when (targetOperand) {
         is Register -> value is RegisterValue && value.register == targetOperand.register
         is Imm -> value is ImmediateValue && MachineTargetData.x64.sizeOf(value.value.type) == targetOperand.size
@@ -318,16 +284,24 @@ fun validateClasses(destRegClass: MachineRegisterClass, srcRegClass: MachineRegi
   return nonMemoryClass
 }
 
-private val nullary: ICBuilder.() -> Unit = { instr() }
+fun x64InstructionClass(
+    name: String,
+    defaultUse: List<VariableUse>? = null,
+    block: ICBuilder<X64Operand, X64InstrTemplate>.() -> Unit,
+)= instructionClass(name, ::X64InstrTemplate, defaultUse, block)
 
-val dummyUse = dummyInstructionClass("USE", listOf(VariableUse.USE)) {
+typealias X64ICBuilderBlock = ICBuilder<X64Operand, X64InstrTemplate>.() -> Unit
+
+private val nullary: X64ICBuilderBlock = { instr() }
+
+val dummyUse = dummyInstructionClass("USE", ::X64InstrTemplate, listOf(VariableUse.USE)) {
   instr(R8)
   instr(R16)
   instr(R32)
   instr(R64)
 }
 
-val imul = instructionClass("imul", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+val imul = x64InstructionClass("imul", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
   // 3 operand RMI form
   instr(R16, RM16, IMM8)
   instr(R32, RM32, IMM8)
@@ -348,21 +322,21 @@ val imul = instructionClass("imul", listOf(VariableUse.DEF, VariableUse.USE, Var
   oneOp.instr(RM64)
 }
 
-private val division: ICBuilder.() -> Unit = {
+private val division: X64ICBuilderBlock = {
   instr(RM8)
   instr(RM16)
   instr(RM32)
   instr(RM64)
 }
 
-val div = instructionClass("div", listOf(VariableUse.USE), division)
-val idiv = instructionClass("idiv", listOf(VariableUse.USE), division)
+val div = x64InstructionClass("div", listOf(VariableUse.USE), division)
+val idiv = x64InstructionClass("idiv", listOf(VariableUse.USE), division)
 
-val cwd = instructionClass("cwd", emptyList(), nullary)
-val cdq = instructionClass("cdq", emptyList(), nullary)
-val cqo = instructionClass("cqo", emptyList(), nullary)
+val cwd = x64InstructionClass("cwd", emptyList(), nullary)
+val cdq = x64InstructionClass("cdq", emptyList(), nullary)
+val cqo = x64InstructionClass("cqo", emptyList(), nullary)
 
-private val arithmetic: ICBuilder.() -> Unit = {
+private val arithmetic: X64ICBuilderBlock = {
   instr(RM8, IMM8)
   instr(RM16, IMM16)
   instr(RM32, IMM32)
@@ -383,30 +357,30 @@ private val arithmetic: ICBuilder.() -> Unit = {
   instr(R64, RM64)
 }
 
-val add = instructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
-val sub = instructionClass("sub", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
-val cmp = instructionClass("cmp", listOf(VariableUse.USE, VariableUse.USE), arithmetic)
-val and = instructionClass("and", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
-val or = instructionClass("or", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
-val xor = instructionClass("xor", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val add = x64InstructionClass("add", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val sub = x64InstructionClass("sub", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val cmp = x64InstructionClass("cmp", listOf(VariableUse.USE, VariableUse.USE), arithmetic)
+val and = x64InstructionClass("and", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val or = x64InstructionClass("or", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
+val xor = x64InstructionClass("xor", listOf(VariableUse.DEF_USE, VariableUse.USE), arithmetic)
 
-private val unaryRM: ICBuilder.() -> Unit = {
+private val unaryRM: X64ICBuilderBlock = {
   instr(RM8)
   instr(RM16)
   instr(RM32)
   instr(RM64)
 }
 
-val neg = instructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
-val not = instructionClass("not", listOf(VariableUse.DEF_USE), unaryRM)
+val neg = x64InstructionClass("neg", listOf(VariableUse.DEF_USE), unaryRM)
+val not = x64InstructionClass("not", listOf(VariableUse.DEF_USE), unaryRM)
 
-val lea = instructionClass("lea", listOf(VariableUse.DEF, VariableUse.USE)) {
+val lea = x64InstructionClass("lea", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(R16, M)
   instr(R32, M)
   instr(R64, M)
 }
 
-val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
+val mov = x64InstructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM8, R8)
   instr(RM16, R16)
   instr(RM32, R32)
@@ -428,7 +402,7 @@ val mov = instructionClass("mov", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RM64, IMM32)
 }
 
-private val movAndExtend: ICBuilder.() -> Unit = {
+private val movAndExtend: X64ICBuilderBlock = {
   instr(R16, RM8)
   instr(R32, RM8)
   instr(R64, RM8)
@@ -437,11 +411,11 @@ private val movAndExtend: ICBuilder.() -> Unit = {
   instr(R64, RM16)
 }
 
-val movzx = instructionClass("movzx", listOf(VariableUse.DEF, VariableUse.USE), movAndExtend)
-val movsx = instructionClass("movsx", listOf(VariableUse.DEF, VariableUse.USE), movAndExtend)
-val movsxd = instructionClass("movsxd", listOf(VariableUse.DEF, VariableUse.USE)) { instr(R64, RM32) }
+val movzx = x64InstructionClass("movzx", listOf(VariableUse.DEF, VariableUse.USE), movAndExtend)
+val movsx = x64InstructionClass("movsx", listOf(VariableUse.DEF, VariableUse.USE), movAndExtend)
+val movsxd = x64InstructionClass("movsxd", listOf(VariableUse.DEF, VariableUse.USE)) { instr(R64, RM32) }
 
-val movq = instructionClass("movq", listOf(VariableUse.DEF, VariableUse.USE)) {
+val movq = x64InstructionClass("movq", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(XMM_SS, XMM_SS)
   instr(XMM_SD, XMM_SD)
   instr(XMM_SS, M64)
@@ -456,7 +430,7 @@ val setcc = listOf(
     "setle", "setna", "setnae", "setnb", "setnbe", "setnc", "setne", "setng", "setnge", "setnl",
     "setnle", "setno", "setnp", "setns", "setnz", "seto", "setp", "setpe", "setpo", "sets", "setz"
 ).associateWith {
-  instructionClass(it, listOf(VariableUse.DEF)) { instr(RM8) }
+  x64InstructionClass(it, listOf(VariableUse.DEF)) { instr(RM8) }
 }
 
 val jcc = listOf(
@@ -464,22 +438,22 @@ val jcc = listOf(
     "jnae", "jnb", "jnbe", "jnc", "jne", "jng", "jnge", "jnl", "jnle", "jno", "jnp", "jns", "jnz",
     "jo", "jp", "jpe", "jpo", "js", "jz"
 ).associateWith {
-  instructionClass(it, listOf(VariableUse.USE)) { instr(JumpTarget) }
+  x64InstructionClass(it, listOf(VariableUse.USE)) { instr(JumpTarget) }
 }
 
-val jmp = instructionClass("jmp", listOf(VariableUse.USE)) { instr(JumpTarget) }
+val jmp = x64InstructionClass("jmp", listOf(VariableUse.USE)) { instr(JumpTarget) }
 
-val call = instructionClass("call", listOf(VariableUse.USE)) {
+val call = x64InstructionClass("call", listOf(VariableUse.USE)) {
   instr(NamedDisplacement)
   instr(RM16)
   instr(RM32)
   instr(RM64)
 }
 
-val leave = instructionClass("leave", emptyList(), nullary)
-val ret = instructionClass("ret", emptyList(), nullary)
+val leave = x64InstructionClass("leave", emptyList(), nullary)
+val ret = x64InstructionClass("ret", emptyList(), nullary)
 
-val push = instructionClass("push", listOf(VariableUse.USE)) {
+val push = x64InstructionClass("push", listOf(VariableUse.USE)) {
   instr(RM16)
   instr(RM32)
   instr(RM64)
@@ -493,7 +467,7 @@ val push = instructionClass("push", listOf(VariableUse.USE)) {
   instr(IMM32)
 }
 
-val pop = instructionClass("pop", listOf(VariableUse.DEF)) {
+val pop = x64InstructionClass("pop", listOf(VariableUse.DEF)) {
   instr(RM16)
   instr(RM32)
   instr(RM64)
@@ -503,72 +477,72 @@ val pop = instructionClass("pop", listOf(VariableUse.DEF)) {
   instr(R64)
 }
 
-val movss = instructionClass("movss", listOf(VariableUse.DEF, VariableUse.USE)) {
+val movss = x64InstructionClass("movss", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(M32, XMM_SS)
   instr(XMM_SS, XMM_SS)
   instr(XMM_SS, M32)
 }
 
-val movsd = instructionClass("movsd", listOf(VariableUse.DEF, VariableUse.USE)) {
+val movsd = x64InstructionClass("movsd", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(M64, XMM_SD)
   instr(XMM_SD, XMM_SD)
   instr(XMM_SD, M64)
 }
 
-val cvtsi2ss = instructionClass("cvtsi2ss", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvtsi2ss = x64InstructionClass("cvtsi2ss", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(XMM_SS, RM32)
   instr(XMM_SS, RM64)
 }
 
-val cvtsi2sd = instructionClass("cvtsi2sd", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvtsi2sd = x64InstructionClass("cvtsi2sd", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(XMM_SD, RM32)
   instr(XMM_SD, RM64)
 }
 
-val cvtss2sd = instructionClass("cvtss2sd", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvtss2sd = x64InstructionClass("cvtss2sd", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(XMM_SD, XMM_SS)
   instr(XMM_SD, M32)
 }
 
-val cvtsd2ss = instructionClass("cvtsd2ss", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvtsd2ss = x64InstructionClass("cvtsd2ss", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(XMM_SS, XMM_SD)
   instr(XMM_SS, M64)
 }
 
-val cvttss2si = instructionClass("cvttss2si", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvttss2si = x64InstructionClass("cvttss2si", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(R32, XMM_SS)
   instr(R32, M32)
   instr(R64, XMM_SS)
   instr(R64, M32)
 }
 
-val cvttsd2si = instructionClass("cvttsd2si", listOf(VariableUse.DEF, VariableUse.USE)) {
+val cvttsd2si = x64InstructionClass("cvttsd2si", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(R32, XMM_SD)
   instr(R32, M64)
   instr(R64, XMM_SD)
   instr(R64, M64)
 }
 
-private val ssArithmetic: ICBuilder.() -> Unit = {
+private val ssArithmetic: X64ICBuilderBlock = {
   instr(XMM_SS, XMM_SS)
   instr(XMM_SS, M32)
 }
 
-val addss = instructionClass("addss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
-val subss = instructionClass("subss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
-val mulss = instructionClass("mulss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
-val divss = instructionClass("divss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
-val xorps = instructionClass("xorps", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
-val comiss = instructionClass("comiss", listOf(VariableUse.USE, VariableUse.USE), ssArithmetic)
+val addss = x64InstructionClass("addss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val subss = x64InstructionClass("subss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val mulss = x64InstructionClass("mulss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val divss = x64InstructionClass("divss", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val xorps = x64InstructionClass("xorps", listOf(VariableUse.DEF_USE, VariableUse.USE), ssArithmetic)
+val comiss = x64InstructionClass("comiss", listOf(VariableUse.USE, VariableUse.USE), ssArithmetic)
 
-private val sdArithmetic: ICBuilder.() -> Unit = {
+private val sdArithmetic: X64ICBuilderBlock = {
   instr(XMM_SD, XMM_SD)
   instr(XMM_SD, M64)
 }
 
-val addsd = instructionClass("addsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
-val subsd = instructionClass("subsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
-val mulsd = instructionClass("mulsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
-val divsd = instructionClass("divsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
-val xorpd = instructionClass("xorpd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
-val comisd = instructionClass("comisd", listOf(VariableUse.USE, VariableUse.USE), sdArithmetic)
+val addsd = x64InstructionClass("addsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val subsd = x64InstructionClass("subsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val mulsd = x64InstructionClass("mulsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val divsd = x64InstructionClass("divsd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val xorpd = x64InstructionClass("xorpd", listOf(VariableUse.DEF_USE, VariableUse.USE), sdArithmetic)
+val comisd = x64InstructionClass("comisd", listOf(VariableUse.USE, VariableUse.USE), sdArithmetic)

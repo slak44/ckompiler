@@ -6,10 +6,7 @@ import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.mips32.MIPS32Target
-import slak.ckompiler.backend.x64.NasmEmitter
-import slak.ckompiler.backend.x64.X64Generator
-import slak.ckompiler.backend.x64.X64Target
-import slak.ckompiler.backend.x64.X64TargetOpts
+import slak.ckompiler.backend.x64.*
 import slak.ckompiler.parser.TypeName
 
 interface MachineRegisterClass {
@@ -106,20 +103,30 @@ enum class VariableUse {
 }
 
 /**
+ * A generic operand to an instruction (register reference, memory location, immediate, label).
+ */
+interface Operand
+
+/**
  * A "template" for an instruction. Describes what is allowed as operands, and how they are used.
  */
-interface InstructionTemplate {
+abstract class InstructionTemplate<out T : Operand> {
   /**
    * Instruction name. "mov", "add", etc.
    */
-  val name: String
+  abstract val name: String
+
+  /**
+   * What kind of values this instruction accepts, and in what order.
+   */
+  abstract val operandType: List<T>
 
   /**
    * What each operand represents: a definition, a use, or both.
    *
    * @see MachineInstruction.operands
    */
-  val operandUse: List<VariableUse>
+  abstract val operandUse: List<VariableUse>
 }
 
 /**
@@ -136,7 +143,7 @@ enum class LinkPosition { BEFORE, AFTER }
 data class LinkedInstruction(val mi: MachineInstruction, val pos: LinkPosition)
 
 data class MachineInstruction(
-    val template: InstructionTemplate,
+    val template: InstructionTemplate<Operand>,
     val operands: List<IRValue>,
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX,
     val constrainedArgs: List<Constraint> = emptyList(),
@@ -234,9 +241,11 @@ data class MachineInstruction(
  *
  * Internally used by the register allocator, should probably not make it out of it.
  */
-data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableValue>) : InstructionTemplate {
+data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableValue>) : InstructionTemplate<Operand>() {
   override val name get() = toString()
   override val operandUse get() = List(values.size) { VariableUse.USE } + List(values.size) { VariableUse.DEF }
+  // Shouldn't be used
+  override val operandType: List<Operand> = emptyList()
 
   override fun toString(): String {
     val old = values.keys.map { it.toString() }
@@ -283,9 +292,10 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
  * Useful as a placeholder when removing instructions, so existing indices do not need to change.
  * These must be filtered before emission by [FunctionAssembler.applyAllocation].
  */
-object PlaceholderTemplate : InstructionTemplate {
+object PlaceholderTemplate : InstructionTemplate<Operand>() {
   override val name = "[empty placeholder]"
   override val operandUse = emptyList<VariableUse>()
+  override val operandType = emptyList<Operand>()
 
   fun createMI(): MachineInstruction {
     return MachineInstruction(PlaceholderTemplate, emptyList())
@@ -293,7 +303,7 @@ object PlaceholderTemplate : InstructionTemplate {
 }
 
 interface AsmInstruction {
-  val template: InstructionTemplate
+  val template: InstructionTemplate<Operand>
 }
 
 /**
