@@ -5,13 +5,13 @@ import slak.ckompiler.backend.VariableUse
 import slak.ckompiler.backend.dummyInstructionClass
 import slak.ckompiler.backend.instructionClass
 
-fun x64InstructionClass(
+private fun x64InstructionClass(
     name: String,
     defaultUse: List<VariableUse>? = null,
     block: ICBuilder<X64Operand, X64InstrTemplate>.() -> Unit,
 )= instructionClass(name, ::X64InstrTemplate, defaultUse, block)
 
-typealias X64ICBuilderBlock = ICBuilder<X64Operand, X64InstrTemplate>.() -> Unit
+private typealias X64ICBuilderBlock = ICBuilder<X64Operand, X64InstrTemplate>.() -> Unit
 
 private val nullary: X64ICBuilderBlock = { instr() }
 
