@@ -6,9 +6,7 @@ import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.mips32.MIPS32Generator
-import slak.ckompiler.backend.mips32.MIPS32Instruction
 import slak.ckompiler.backend.mips32.MIPS32Target
-import slak.ckompiler.backend.mips32.SPIMGenerator
 import slak.ckompiler.backend.x64.*
 import slak.ckompiler.parser.TypeName
 
@@ -528,34 +526,5 @@ fun createPeepholeOptimizer(isaType: ISAType): PeepholeOptimizer<AsmInstruction>
   return when (isaType) {
     ISAType.X64 -> X64PeepholeOpt() as PeepholeOptimizer<AsmInstruction>
     ISAType.MIPS32 -> TODO("MIPS32")
-  }
-}
-
-interface AsmEmitter<T : AsmInstruction> {
-  val externals: List<String>
-  val functions: List<TargetFunGenerator<T>>
-  val mainCfg: TargetFunGenerator<T>?
-
-  fun emitAsm(): String
-}
-
-fun createAsmEmitter(
-    isaType: ISAType,
-    externals: List<String>,
-    functions: List<AnyFunGenerator>,
-    mainCfg: AnyFunGenerator?,
-): AsmEmitter<out AsmInstruction> {
-  @Suppress("UNCHECKED_CAST")
-  return when (isaType) {
-    ISAType.X64 -> NasmEmitter(
-        externals,
-        functions as List<TargetFunGenerator<X64Instruction>>,
-        mainCfg as TargetFunGenerator<X64Instruction>?
-    )
-    ISAType.MIPS32 -> SPIMGenerator(
-        externals,
-        functions as List<TargetFunGenerator<MIPS32Instruction>>,
-        mainCfg as TargetFunGenerator<MIPS32Instruction>?
-    )
   }
 }
