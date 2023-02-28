@@ -23,6 +23,10 @@ tasks.installDist {
   if (installPath.isNotBlank()) destinationDir = File(installPath)
 }
 
+tasks.withType<Jar> {
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 fun buildPath(file: File, vararg segments: String): File {
   return File(file, segments.joinToString(System.getProperty("file.separator")))
 }
