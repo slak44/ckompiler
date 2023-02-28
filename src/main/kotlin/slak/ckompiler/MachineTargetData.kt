@@ -26,7 +26,7 @@ data class MachineTargetData(
 ) {
   private fun Int.toBits(): Int = this * 8
 
-  private val ints = mapOf(
+  private val ints = listOf(
       1 to "char",
       boolSizeBytes to "_Bool",
       shortSizeBytes to "short",
@@ -54,25 +54,25 @@ data class MachineTargetData(
     val map = mutableMapOf<String, String>()
     for (size in listOf(1, 2, 4, 8)) {
       // C standard: 7.20.1.1, 7.20.1.3
-      ints[size]?.also { map["__INT${size.toBits()}_T_TYPE"] = it }
+      ints.firstOrNull { it.first == size }?.also { map["__INT${size.toBits()}_T_TYPE"] = it.second }
       // C standard: 7.20.1.2
-      ints.entries.firstOrNull { it.key >= size }?.also {
-        map["__INT_LEAST${size.toBits()}_T_TYPE"] = it.value
-        map["__INT_LEAST${size.toBits()}_T_SIZE"] = it.key.toBits().toString()
+      ints.firstOrNull { it.first >= size }?.also {
+        map["__INT_LEAST${size.toBits()}_T_TYPE"] = it.second
+        map["__INT_LEAST${size.toBits()}_T_SIZE"] = it.first.toBits().toString()
       }
     }
     // C standard: 7.20.1.4
-    ints[ptrSizeBytes]?.also {
-      map["__INTPTR_T_TYPE"] = it
+    ints.firstOrNull { it.first == ptrSizeBytes }?.also {
+      map["__INTPTR_T_TYPE"] = it.second
       map["__INTPTR_T_SIZE"] = ptrSizeBytes.toBits().toString()
     }
     // C standard: 7.20.1.5
-    ints.maxByOrNull { it.key }!!.also {
-      map["__INTMAX_T_TYPE"] = it.value
-      map["__INTMAX_T_SIZE"] = it.key.toBits().toString()
+    ints.maxByOrNull { it.first }!!.also {
+      map["__INTMAX_T_TYPE"] = it.second
+      map["__INTMAX_T_SIZE"] = it.first.toBits().toString()
     }
     // C standard: 7.20.3
-    map["__WCHAR_T_SIZE"] = ints.entries.first { it.value == "int" }.key.toBits().toString()
+    map["__WCHAR_T_SIZE"] = ints.first { it.second == "int" }.first.toBits().toString()
     // FIXME: 7.20.4 needs function-like macros
     map
   }
@@ -134,7 +134,7 @@ data class MachineTargetData(
         shortSizeBytes = 2,
         intSizeBytes = 4,
         longSizeBytes = 4,
-        longLongSizeBytes = 4,
+        longLongSizeBytes = 8,
         boolSizeBytes = 4,
         floatSizeBytes = 4,
         doubleSizeBytes = 8,
