@@ -6,7 +6,9 @@ import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.mips32.MIPS32Generator
+import slak.ckompiler.backend.mips32.MIPS32Instruction
 import slak.ckompiler.backend.mips32.MIPS32Target
+import slak.ckompiler.backend.mips32.SPIMGenerator
 import slak.ckompiler.backend.x64.*
 import slak.ckompiler.parser.TypeName
 
@@ -550,6 +552,10 @@ fun createAsmEmitter(
         functions as List<TargetFunGenerator<X64Instruction>>,
         mainCfg as TargetFunGenerator<X64Instruction>?
     )
-    ISAType.MIPS32 -> TODO("MIPS")
+    ISAType.MIPS32 -> SPIMGenerator(
+        externals,
+        functions as List<TargetFunGenerator<MIPS32Instruction>>,
+        mainCfg as TargetFunGenerator<MIPS32Instruction>?
+    )
   }
 }
