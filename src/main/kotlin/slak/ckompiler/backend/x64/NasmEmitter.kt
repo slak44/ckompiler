@@ -6,23 +6,14 @@ import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 
 class NasmEmitter(
-    override val externals: List<String>,
-    override val functions: List<TargetFunGenerator<X64Instruction>>,
-    override val mainCfg: TargetFunGenerator<X64Instruction>?,
-) : AsmEmitter<X64Instruction> {
+    externals: List<String>,
+    functions: List<TargetFunGenerator<X64Instruction>>,
+    mainCfg: TargetFunGenerator<X64Instruction>?,
+) : AsmEmitter<X64Instruction>(externals, functions, mainCfg) {
   private val peepholeOptimizer = X64PeepholeOpt()
 
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
-  private val data = mutableListOf<String>()
-
-  /**
-   * This maps literals to a label in .data with their value. It also enables deduplication, because
-   * it is undefined behaviour to modify string literals.
-   *
-   * C standard: 6.4.5.0.7
-   */
-  private val stringRefs = mutableMapOf<StrConstant, String>()
 
   /**
    * Maps a float to a label with the value.
@@ -83,9 +74,8 @@ class NasmEmitter(
     }
   }
 
-  private fun genAsm(blockAsm: List<AsmInstruction>) = instrGen {
+  private fun genAsm(blockAsm: List<X64Instruction>) = instrGen {
     for (i in blockAsm) {
-      require(i is X64Instruction)
       // lea is special
       val isLea = i.template in lea
       emit("${i.template.name} ${
@@ -152,9 +142,7 @@ class NasmEmitter(
   }
 
   private fun createStringConstant(const: StrConstant) {
-    val stringPeek = const.value.filter(Char::isLetterOrDigit).take(5)
-    stringRefs[const] = "s_${stringPeek}_${stringRefs.size}"
-    val bytes = const.value.encodeToByteArray().joinToString(", ")
+    val bytes = createStringConstantText(const)
     data += "; ${const.value}"
     data += "${stringRefs[const]}: db $bytes, 0"
   }

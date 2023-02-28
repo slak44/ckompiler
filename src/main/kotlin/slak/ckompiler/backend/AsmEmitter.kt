@@ -1,16 +1,36 @@
 package slak.ckompiler.backend
 
+import slak.ckompiler.analysis.StrConstant
 import slak.ckompiler.backend.mips32.MIPS32Instruction
 import slak.ckompiler.backend.mips32.SPIMGenerator
 import slak.ckompiler.backend.x64.NasmEmitter
 import slak.ckompiler.backend.x64.X64Instruction
 
-interface AsmEmitter<T : AsmInstruction> {
-  val externals: List<String>
-  val functions: List<TargetFunGenerator<T>>
-  val mainCfg: TargetFunGenerator<T>?
+abstract class AsmEmitter<T : AsmInstruction>(
+    val externals: List<String>,
+    val functions: List<TargetFunGenerator<T>>,
+    val mainCfg: TargetFunGenerator<T>?,
+) {
+  /**
+   * The data section of the assembly. Where string data goes, for instance.
+   */
+  protected val data = mutableListOf<String>()
 
-  fun emitAsm(): String
+  /**
+   * This maps literals to a label in .data with their value. It also enables deduplication, because
+   * it is undefined behaviour to modify string literals.
+   *
+   * C standard: 6.4.5.0.7
+   */
+  protected val stringRefs = mutableMapOf<StrConstant, String>()
+
+  abstract fun emitAsm(): String
+
+  fun createStringConstantText(const: StrConstant): String {
+    val stringPeek = const.value.filter(Char::isLetterOrDigit).take(5)
+    stringRefs[const] = "s_${stringPeek}_${stringRefs.size}"
+    return const.value.encodeToByteArray().joinToString(", ")
+  }
 }
 
 fun createAsmEmitter(
@@ -26,6 +46,7 @@ fun createAsmEmitter(
         functions as List<TargetFunGenerator<X64Instruction>>,
         mainCfg as TargetFunGenerator<X64Instruction>?
     )
+
     ISAType.MIPS32 -> SPIMGenerator(
         externals,
         functions as List<TargetFunGenerator<MIPS32Instruction>>,
