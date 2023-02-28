@@ -2,6 +2,7 @@ package slak.ckompiler.backend.mips32
 
 import mu.KotlinLogging
 import slak.ckompiler.MachineTargetData
+import slak.ckompiler.analysis.PhysicalRegister
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
@@ -14,11 +15,12 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
   override val targetName: String = "mips32"
   override val registerClasses: List<MachineRegisterClass> = MIPS32RegisterClass.values().toList()
   override val registers: List<MachineRegister> = getMIPS32Registers()
-  override val forbidden: List<MachineRegister> = listOf(
+  override val forbidden: Set<MachineRegister> = listOf(
       "\$zero", "\$at", "\$k1", "\$k0", "\$gp", "\$sp", "\$fp", "\$ra"
-  ).map(::registerByName)
+  ).mapTo(mutableSetOf(), ::registerByName)
 
-  val calleeSaved = listOf("\$s0", "\$s1", "\$s2", "\$s3", "\$s4", "\$s5", "\$s6", "\$s7").map(::registerByName)
+  val calleeSaved = listOf("\$s0", "\$s1", "\$s2", "\$s3", "\$s4", "\$s5", "\$s6", "\$s7")
+      .mapTo(mutableSetOf(), ::registerByName)
 
   override fun isPreservedAcrossCalls(register: MachineRegister): Boolean {
     return register in calleeSaved
@@ -35,5 +37,9 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
     is UnionType -> Memory
     is IntegralType -> MIPS32RegisterClass.INTEGER
     is FloatingType -> MIPS32RegisterClass.FLOAT
+  }
+
+  fun ptrRegisterByName(name: String): PhysicalRegister {
+    return PhysicalRegister(registerByName(name), PointerType(machineTargetData.ptrDiffType, emptyList()))
   }
 }

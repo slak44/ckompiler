@@ -25,7 +25,7 @@ class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : 
   override val registers = getX64Registers(options.featureSet)
 
   // FIXME: make rbp conditional on -fomit-frame-pointer
-  override val forbidden = listOf(registerByName("rsp"), registerByName("rbp"))
+  override val forbidden = setOf(registerByName("rsp"), registerByName("rbp"))
 
   /**
    * System V ABI: figure 3.4, page 23

@@ -10,11 +10,11 @@ enum class OperandType {
   REGISTER, MEMORY, REG_OR_MEM
 }
 
-interface X64Operand : Operand {
+interface X64OperandTemplate : OperandTemplate {
   val size: Int
 }
 
-enum class ModRM(val type: OperandType, override val size: Int) : X64Operand {
+enum class ModRM(val type: OperandType, override val size: Int) : X64OperandTemplate {
   RM8(OperandType.REG_OR_MEM, 1),
   RM16(OperandType.REG_OR_MEM, 2),
   RM32(OperandType.REG_OR_MEM, 4),
@@ -34,27 +34,28 @@ enum class ModRM(val type: OperandType, override val size: Int) : X64Operand {
   XMM_SD(OperandType.REGISTER, 8)
 }
 
-enum class Imm(override val size: Int) : X64Operand {
+enum class Imm(override val size: Int) : X64OperandTemplate {
   IMM8(1), IMM16(2), IMM32(4), IMM64(8)
 }
 
-data class Register(val register: MachineRegister) : X64Operand {
+data class Register(val register: MachineRegister) : X64OperandTemplate {
   override val size = register.sizeBytes
 }
 
-object JumpTarget : X64Operand {
+object JumpTarget : X64OperandTemplate {
   override val size = 0
 }
 
-object NamedDisplacement : X64Operand {
+object NamedDisplacement : X64OperandTemplate {
   override val size = 0
 }
 
 data class X64InstrTemplate(
     override val name: String,
-    override val operandType: List<X64Operand>,
+    override val operandType: List<X64OperandTemplate>,
     override val operandUse: List<VariableUse>,
-) : InstructionTemplate<X64Operand>()
+    override val isDummy: Boolean
+) : InstructionTemplate<X64OperandTemplate>()
 
 sealed class X64Value
 

@@ -33,9 +33,9 @@ private inline fun instrGen(block: InstructionBuilder.() -> Unit): Instructions 
 
 class NasmEmitter(
     override val externals: List<String>,
-    override val functions: List<TargetFunGenerator>,
-    override val mainCfg: TargetFunGenerator?,
-) : AsmEmitter {
+    override val functions: List<TargetFunGenerator<X64Instruction>>,
+    override val mainCfg: TargetFunGenerator<X64Instruction>?,
+) : AsmEmitter<X64Instruction> {
   private val peepholeOptimizer = X64PeepholeOpt()
 
   private val prelude = mutableListOf<String>()
@@ -93,7 +93,7 @@ class NasmEmitter(
   val InstrBlock.label get() = id.label
   val AtomicId.label get() = ".block_$this"
 
-  private fun generateFunction(function: TargetFunGenerator) {
+  private fun generateFunction(function: TargetFunGenerator<X64Instruction>) {
     prelude += "global ${function.graph.f.name}"
     val allocationResult = function.regAlloc()
     text += instrGen {
@@ -102,8 +102,7 @@ class NasmEmitter(
       val asmMap = function.applyAllocation(allocationResult)
       for (block in function.graph.blocks - function.graph.returnBlock.id) {
         label(block.label)
-        @Suppress("UNCHECKED_CAST")
-        emit(genAsm(peepholeOptimizer.optimize(function, asmMap.getValue(block) as List<X64Instruction>)))
+        emit(genAsm(peepholeOptimizer.optimize(function, asmMap.getValue(block))))
       }
       label(function.graph.returnBlock.label)
       emit(genAsm(function.genFunctionEpilogue(allocationResult)))

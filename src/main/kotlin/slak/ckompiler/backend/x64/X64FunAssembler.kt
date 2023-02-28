@@ -16,7 +16,7 @@ import slak.ckompiler.parser.SignedIntType
 import slak.ckompiler.parser.UnsignedLongType
 import kotlin.properties.Delegates
 
-class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlotIds: IdCounter) : FunctionAssembler {
+class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlotIds: IdCounter) : FunctionAssembler<X64Instruction> {
   /**
    * If this is set to true, it means this function does not make any calls (ie is a leaf function).
    * This is useful for knowing whether to use the red zone or not.
@@ -161,33 +161,12 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
     }
     val asm = mutableMapOf<AtomicId, List<X64Instruction>>()
     for (blockId in alloc.graph.blocks) {
-      val result = blockToX64Instr(blockId, alloc, stackOffsets)
+      val result = convertBlockInstructions(blockId, alloc) { mi ->
+        miToX64Instr(mi, alloc, stackOffsets)
+      }
       asm += blockId to result
     }
     return asm
-  }
-
-  private fun blockToX64Instr(
-      blockId: AtomicId,
-      alloc: AllocationResult,
-      stackOffsets: Map<StackSlot, Int>,
-  ): List<X64Instruction> {
-    val result = mutableListOf<X64Instruction>()
-    for (mi in alloc.graph[blockId]) {
-      if (mi.template in dummyUse || mi.template == PlaceholderTemplate) continue
-
-      // Add linked before (eg cdq before div)
-      for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.BEFORE }) {
-        result += miToX64Instr(linkedMi, alloc, stackOffsets)
-      }
-      // Add current instruction
-      result += miToX64Instr(mi, alloc, stackOffsets)
-      // Add linked after
-      for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.AFTER }) {
-        result += miToX64Instr(linkedMi, alloc, stackOffsets)
-      }
-    }
-    return result
   }
 
   private fun miToX64Instr(
@@ -211,11 +190,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
       return RegisterValue(value.reg, typeSize)
     }
     if (value is LoadableValue && value.isUndefined) {
-      // Undefined behaviour, can do whatever; we pick the first register of the correct class
-      // This is useful, because all undefined things will be "in" the same register, which will create a bunch of
-      // "mov rax, rax"-type instructions that are easy to remove
-      val reg = (target.registers - target.forbidden)
-          .first { reg -> reg.valueClass == target.registerClassOf(value.type) }
+      val reg = target.getUndefinedRegisterFor(value)
       return RegisterValue(reg, typeSize)
     }
     val unwrapped = when (value) {

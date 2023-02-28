@@ -14,7 +14,7 @@ class MIPS32Register(
     override val regName: String,
     val regNumber: Int,
     override val sizeBytes: Int,
-    override val valueClass: MachineRegisterClass,
+    override val valueClass: MIPS32RegisterClass,
     override val aliases: List<RegisterAlias>,
 ) : MachineRegister {
   override val id = ids()
@@ -29,7 +29,7 @@ class MIPS32Register(
 }
 
 private fun RegisterBuilder<MIPS32Register>.register(name: String, regNumber: Int) {
-  regs += MIPS32Register("\$$name", regNumber, 4, valueClass, emptyList())
+  regs += MIPS32Register("\$$name", regNumber, 4, valueClass as MIPS32RegisterClass, emptyList())
 }
 
 fun getMIPS32Registers(): List<MIPS32Register> = registers {

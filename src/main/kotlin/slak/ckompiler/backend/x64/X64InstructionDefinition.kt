@@ -8,10 +8,10 @@ import slak.ckompiler.backend.instructionClass
 private fun x64InstructionClass(
     name: String,
     defaultUse: List<VariableUse>? = null,
-    block: ICBuilder<X64Operand, X64InstrTemplate>.() -> Unit,
-)= instructionClass(name, ::X64InstrTemplate, defaultUse, block)
+    block: ICBuilder<X64OperandTemplate, X64InstrTemplate>.() -> Unit,
+) = instructionClass(name, ::X64InstrTemplate, defaultUse, block)
 
-private typealias X64ICBuilderBlock = ICBuilder<X64Operand, X64InstrTemplate>.() -> Unit
+private typealias X64ICBuilderBlock = ICBuilder<X64OperandTemplate, X64InstrTemplate>.() -> Unit
 
 private val nullary: X64ICBuilderBlock = { instr() }
 

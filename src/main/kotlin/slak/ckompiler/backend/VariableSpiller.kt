@@ -10,7 +10,7 @@ data class MinResult(val spills: BlockLocations, val reloads: BlockLocations, va
 
 typealias WBlockMap = Map<MachineRegisterClass, MutableSet<AllocatableValue>>
 
-private fun TargetFunGenerator.insertPhiSpill(
+private fun AnyFunGenerator.insertPhiSpill(
     phiDef: Variable,
     blockId: AtomicId,
     stackValue: StackValue?,
@@ -22,7 +22,7 @@ private fun TargetFunGenerator.insertPhiSpill(
   return targetStackValue
 }
 
-private fun TargetFunGenerator.insertSpill(
+private fun AnyFunGenerator.insertSpill(
     value: AllocatableValue,
     location: InstrLabel,
     stackValue: StackValue?,
@@ -38,7 +38,7 @@ private fun TargetFunGenerator.insertSpill(
   return targetStackValue
 }
 
-private fun TargetFunGenerator.insertReload(
+private fun AnyFunGenerator.insertReload(
     original: AllocatableValue,
     toReload: StackValue,
     location: InstrLabel,
@@ -52,7 +52,7 @@ private fun TargetFunGenerator.insertReload(
   return copyTarget
 }
 
-private fun TargetFunGenerator.nextUse(location: InstrLabel, v: AllocatableValue): Int {
+private fun AnyFunGenerator.nextUse(location: InstrLabel, v: AllocatableValue): Int {
   val (blockId, index) = location
   val nextUseIdx = graph[blockId].drop(index).indexOfFirst { mi -> v in mi.uses }
   if (nextUseIdx < 0) {
@@ -71,7 +71,7 @@ private fun TargetFunGenerator.nextUse(location: InstrLabel, v: AllocatableValue
  * The rest of the spiller relies on the code being in SSA form, and accurate liveness data. Since this operation just reverts a live range
  * split, it maintains the SSA property.
  */
-private fun TargetFunGenerator.removeSpillsFromParallel(
+private fun AnyFunGenerator.removeSpillsFromParallel(
     parallelLocation: InstrLabel,
     parallel: MachineInstruction,
     spilledValues: Set<AllocatableValue>,
@@ -142,7 +142,7 @@ private fun TargetFunGenerator.removeSpillsFromParallel(
  * @param allSpilled shared function-level set of spilled values, from all blocks
  */
 private class BlockSpiller(
-    val targetFunGenerator: TargetFunGenerator,
+    val targetFunGenerator: AnyFunGenerator,
     val blockId: AtomicId,
     val maxPressure: Map<MachineRegisterClass, Int>,
     wBlockEntry: WBlockMap,
@@ -173,7 +173,7 @@ private class BlockSpiller(
   /**
    * Advance the MI iterator, updating [ParallelCopyTemplate]s if necessary.
    */
-  private fun TargetFunGenerator.processNext(it: MutableListIterator<MachineInstruction>): MachineInstruction {
+  private fun AnyFunGenerator.processNext(it: MutableListIterator<MachineInstruction>): MachineInstruction {
     val nextIndex = it.nextIndex()
     val next = it.next()
 
@@ -203,7 +203,7 @@ private class BlockSpiller(
    *
    * FIXME: insertSingleCopy duplication
    */
-  private fun TargetFunGenerator.insertReloadCopies(
+  private fun AnyFunGenerator.insertReloadCopies(
       it: MutableListIterator<MachineInstruction>,
       insn: MachineInstruction,
       insnIndex: Int,
@@ -248,7 +248,7 @@ private class BlockSpiller(
   /**
    * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
    */
-  private fun TargetFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
+  private fun AnyFunGenerator.limit(valueClass: MachineRegisterClass, insnIndex: Int, m: Int) {
     val actualM = m.coerceAtLeast(0)
     val label = InstrLabel(blockId, insnIndex)
     val wClass = w.getValue(valueClass).sortedBy { nextUse(label, it) }
@@ -267,7 +267,7 @@ private class BlockSpiller(
   /**
    * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 2, Algorithm 1
    */
-  private fun TargetFunGenerator.minAlgorithm(maxPressure: Map<MachineRegisterClass, Int>) {
+  private fun AnyFunGenerator.minAlgorithm(maxPressure: Map<MachineRegisterClass, Int>) {
     val block = graph[blockId]
 
     val phiDefs = block.phiDefs.groupBy { target.registerClassOf(it.type) }
@@ -382,7 +382,7 @@ private class BlockSpiller(
 /**
  * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 4.2, Algorithm 2
  */
-private fun TargetFunGenerator.initUsual(
+private fun AnyFunGenerator.initUsual(
     maxPressure: Map<MachineRegisterClass, Int>,
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>,
@@ -436,7 +436,7 @@ private fun TargetFunGenerator.initUsual(
   return take
 }
 
-private fun TargetFunGenerator.initSpilled(
+private fun AnyFunGenerator.initSpilled(
     blockId: AtomicId,
     spillers: Map<AtomicId, BlockSpiller>,
     wBlockEntry: WBlockMap,
@@ -454,7 +454,7 @@ private fun TargetFunGenerator.initSpilled(
  *
  * Register Spilling and Live-Range Splitting for SSA-Form Programs, Braun & Hack: Section 4.3
  */
-private fun TargetFunGenerator.findEdgeSpillsReloads(
+private fun AnyFunGenerator.findEdgeSpillsReloads(
     blockId: AtomicId,
     wEntryB: WBlockMap,
     sEntryB: Set<AllocatableValue>,
@@ -511,7 +511,7 @@ typealias SpillResult = Map<AtomicId, MinResult>
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 3.1.5.2
  */
-fun TargetFunGenerator.runSpiller(): SpillResult {
+fun AnyFunGenerator.runSpiller(): SpillResult {
   val maxPressure = target.maxPressure
 
   val allSpilled = mutableSetOf<AllocatableValue>()
@@ -571,7 +571,7 @@ typealias SpillBlocks = Map<AllocatableValue, List<AtomicId>>
 /**
  * Inserts the spill and reload code at the locations found by [runSpiller].
  */
-fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult, spilled: SpillMap) {
+fun AnyFunGenerator.insertSpillReloadCode(result: SpillResult, spilled: SpillMap) {
   val spillBlocks = mutableMapOf<AllocatableValue, MutableList<AtomicId>>()
 
   for ((blockId, minResult) in result.entries) {
@@ -615,7 +615,7 @@ fun TargetFunGenerator.insertSpillReloadCode(result: SpillResult, spilled: Spill
 /**
  * Find the register pressure for all the labels in the program, and for all register classes.
  */
-fun TargetFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<InstrLabel, Int>> {
+fun AnyFunGenerator.findRegisterPressure(): Map<MachineRegisterClass, Map<InstrLabel, Int>> {
   val pressure = target.registerClasses.associateWith { mutableMapOf<InstrLabel, Int>() }
   val current = target.registerClasses.associateWithTo(mutableMapOf()) { 0 }
   for (blockId in graph.domTreePreorder) {

@@ -5,6 +5,7 @@ import slak.ckompiler.IDebugHandler
 import slak.ckompiler.IdCounter
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
+import slak.ckompiler.backend.mips32.MIPS32Generator
 import slak.ckompiler.backend.mips32.MIPS32Target
 import slak.ckompiler.backend.x64.*
 import slak.ckompiler.parser.TypeName
@@ -103,14 +104,14 @@ enum class VariableUse {
 }
 
 /**
- * A generic operand to an instruction (register reference, memory location, immediate, label).
+ * A generic operand template to an instruction (register reference, memory location, immediate, label).
  */
-interface Operand
+interface OperandTemplate
 
 /**
  * A "template" for an instruction. Describes what is allowed as operands, and how they are used.
  */
-abstract class InstructionTemplate<out T : Operand> {
+abstract class InstructionTemplate<out T : OperandTemplate> {
   /**
    * Instruction name. "mov", "add", etc.
    */
@@ -127,6 +128,11 @@ abstract class InstructionTemplate<out T : Operand> {
    * @see MachineInstruction.operands
    */
   abstract val operandUse: List<VariableUse>
+
+  /**
+   * True if this instruction should be skipped from assembly emission.
+   */
+  abstract val isDummy: Boolean
 }
 
 /**
@@ -143,7 +149,7 @@ enum class LinkPosition { BEFORE, AFTER }
 data class LinkedInstruction(val mi: MachineInstruction, val pos: LinkPosition)
 
 data class MachineInstruction(
-    val template: InstructionTemplate<Operand>,
+    val template: InstructionTemplate<OperandTemplate>,
     val operands: List<IRValue>,
     var irLabelIndex: LabelIndex = ILLEGAL_INDEX,
     val constrainedArgs: List<Constraint> = emptyList(),
@@ -241,18 +247,22 @@ data class MachineInstruction(
  *
  * Internally used by the register allocator, should probably not make it out of it.
  */
-data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableValue>) : InstructionTemplate<Operand>() {
+data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableValue>) : InstructionTemplate<OperandTemplate>() {
   override val name get() = toString()
   override val operandUse get() = List(values.size) { VariableUse.USE } + List(values.size) { VariableUse.DEF }
+
   // Shouldn't be used
-  override val operandType: List<Operand> = emptyList()
+  override val operandType: List<OperandTemplate> = emptyList()
+
+  // Should never reach emission anyway
+  override val isDummy: Boolean = true
 
   override fun toString(): String {
     val old = values.keys.map { it.toString() }
-    val oldLength = old.map { it.length }.maxOrNull() ?: 0
+    val oldLength = old.maxOfOrNull { it.length } ?: 0
 
     val new = values.values.map { it.toString() }
-    val newLength = new.map { it.length }.maxOrNull() ?: 0
+    val newLength = new.maxOfOrNull { it.length } ?: 0
 
     if (old.isEmpty()) {
       return "parallel copy [empty]"
@@ -292,10 +302,11 @@ data class ParallelCopyTemplate(val values: Map<AllocatableValue, AllocatableVal
  * Useful as a placeholder when removing instructions, so existing indices do not need to change.
  * These must be filtered before emission by [FunctionAssembler.applyAllocation].
  */
-object PlaceholderTemplate : InstructionTemplate<Operand>() {
+object PlaceholderTemplate : InstructionTemplate<OperandTemplate>() {
   override val name = "[empty placeholder]"
   override val operandUse = emptyList<VariableUse>()
-  override val operandType = emptyList<Operand>()
+  override val operandType = emptyList<OperandTemplate>()
+  override val isDummy: Boolean = true
 
   fun createMI(): MachineInstruction {
     return MachineInstruction(PlaceholderTemplate, emptyList())
@@ -303,7 +314,7 @@ object PlaceholderTemplate : InstructionTemplate<Operand>() {
 }
 
 interface AsmInstruction {
-  val template: InstructionTemplate<Operand>
+  val template: InstructionTemplate<OperandTemplate>
 }
 
 /**
@@ -311,11 +322,7 @@ interface AsmInstruction {
  * why this separate interface exists.
  */
 interface FunctionCallGenerator {
-  fun createCall(
-      result: LoadableValue,
-      callable: IRValue,
-      args: List<IRValue>,
-  ): List<MachineInstruction>
+  fun createCall(result: LoadableValue, callable: IRValue, args: List<IRValue>): List<MachineInstruction>
 
   fun createReturn(retVal: LoadableValue): List<MachineInstruction>
 }
@@ -324,7 +331,7 @@ interface FunctionCallGenerator {
  * Provides function-related facilities: setting up/tearing down the stack frame, handling incoming function
  * parameters, assembling the function instructions into a list.
  */
-interface FunctionAssembler {
+interface FunctionAssembler<T : AsmInstruction> {
   /**
    * Constraints for current function parameters. The given [IRValue]s are marked as live-in for the start block.
    */
@@ -333,20 +340,43 @@ interface FunctionAssembler {
   /**
    * Generates the asm for the "bulk" of the function, the stuff between the prologue and the epilogue.
    */
-  fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<AsmInstruction>>
+  fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<T>>
 
-  fun genFunctionPrologue(alloc: AllocationResult): List<AsmInstruction>
+  fun genFunctionPrologue(alloc: AllocationResult): List<T>
 
   /**
    * This function must always be called after [genFunctionPrologue], because it can depend on some results from it.
    */
-  fun genFunctionEpilogue(alloc: AllocationResult): List<AsmInstruction>
+  fun genFunctionEpilogue(alloc: AllocationResult): List<T>
+
+  fun convertBlockInstructions(
+      blockId: AtomicId,
+      alloc: AllocationResult,
+      convertMI: (mi: MachineInstruction) -> T,
+  ): List<T> {
+    val result = mutableListOf<T>()
+    for (mi in alloc.graph[blockId]) {
+      if (mi.template.isDummy) continue
+
+      // Add linked before (eg cdq before div)
+      for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.BEFORE }) {
+        result += convertMI(linkedMi)
+      }
+      // Add current instruction
+      result += convertMI(mi)
+      // Add linked after
+      for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.AFTER }) {
+        result += convertMI(linkedMi)
+      }
+    }
+    return result
+  }
 }
 
 /**
  * Generates [AsmInstruction]s for a single function.
  */
-interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
+interface TargetFunGenerator<T : AsmInstruction> : FunctionAssembler<T>, FunctionCallGenerator {
   /**
    * Reference to source [MachineTarget].
    */
@@ -389,14 +419,14 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
    *
    * @see createLocalPop
    */
-  fun createLocalPush(src: MachineRegister): MachineInstruction
+  fun createLocalPush(src: MachineRegister): List<MachineInstruction>
 
   /**
    * Create an instruction to pop the contents from the top of the stack into [dest].
    *
    * @see createLocalPush
    */
-  fun createLocalPop(dest: MachineRegister): MachineInstruction
+  fun createLocalPop(dest: MachineRegister): List<MachineInstruction>
 
   /**
    * Create an (unconditional) jump instruction.
@@ -406,17 +436,19 @@ interface TargetFunGenerator : FunctionAssembler, FunctionCallGenerator {
   /**
    * Handle copy insertion while implementing φs.
    *
-   * The copies must be placed before the jumps at the end of the block, but before the
+   * The copies must be placed before the jumps at the end of the block, but after the
    * compare that might make use of the pre-copy values. This is a target-dependent issue, which is
    * why this function is here.
    */
   fun insertPhiCopies(block: InstrBlock, copies: List<MachineInstruction>)
 }
 
-fun createTargetFunGenerator(cfg: CFG, target: MachineTarget): TargetFunGenerator {
+typealias AnyFunGenerator = TargetFunGenerator<out AsmInstruction>
+
+fun createTargetFunGenerator(cfg: CFG, target: MachineTarget): AnyFunGenerator {
   return when (target.isaType) {
     ISAType.X64 -> X64Generator(cfg, target as X64Target)
-    ISAType.MIPS32 -> TODO()
+    ISAType.MIPS32 -> MIPS32Generator(cfg, target as MIPS32Target)
   }
 }
 
@@ -448,7 +480,7 @@ interface MachineTarget {
   /**
    * Do not consider these when allocating function locals.
    */
-  val forbidden: List<MachineRegister>
+  val forbidden: Set<MachineRegister>
 
   fun isPreservedAcrossCalls(register: MachineRegister): Boolean
 
@@ -467,6 +499,17 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
   }
 }
 
+/**
+ * Undefined behaviour, can do whatever; we pick the first register of the correct class.
+ * This is useful, because all undefined things will be "in" the same register, which will create a bunch of
+ * "mov rax, rax"-type instructions that are easy to remove.
+ */
+fun MachineTarget.getUndefinedRegisterFor(undefinedValue: LoadableValue): MachineRegister {
+  check(undefinedValue.isUndefined)
+  return (registers - forbidden)
+      .first { reg -> reg.valueClass == registerClassOf(undefinedValue.type) }
+}
+
 fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOptions, targetSpecific: List<String>): MachineTarget {
   return when (isaType) {
     ISAType.X64 -> X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
@@ -475,13 +518,21 @@ fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOp
 }
 
 interface PeepholeOptimizer<T : AsmInstruction> {
-  fun optimize(targetFun: TargetFunGenerator, asm: List<T>): List<T>
+  fun optimize(targetFun: TargetFunGenerator<out T>, asm: List<T>): List<T>
 }
 
-interface AsmEmitter {
+fun createPeepholeOptimizer(isaType: ISAType): PeepholeOptimizer<AsmInstruction> {
+  @Suppress("UNCHECKED_CAST")
+  return when (isaType) {
+    ISAType.X64 -> X64PeepholeOpt() as PeepholeOptimizer<AsmInstruction>
+    ISAType.MIPS32 -> TODO("MIPS32")
+  }
+}
+
+interface AsmEmitter<T : AsmInstruction> {
   val externals: List<String>
-  val functions: List<TargetFunGenerator>
-  val mainCfg: TargetFunGenerator?
+  val functions: List<TargetFunGenerator<T>>
+  val mainCfg: TargetFunGenerator<T>?
 
   fun emitAsm(): String
 }
@@ -489,11 +540,16 @@ interface AsmEmitter {
 fun createAsmEmitter(
     isaType: ISAType,
     externals: List<String>,
-    functions: List<TargetFunGenerator>,
-    mainCfg: TargetFunGenerator?,
-): AsmEmitter {
+    functions: List<AnyFunGenerator>,
+    mainCfg: AnyFunGenerator?,
+): AsmEmitter<out AsmInstruction> {
+  @Suppress("UNCHECKED_CAST")
   return when (isaType) {
-    ISAType.X64 -> NasmEmitter(externals, functions, mainCfg)
+    ISAType.X64 -> NasmEmitter(
+        externals,
+        functions as List<TargetFunGenerator<X64Instruction>>,
+        mainCfg as TargetFunGenerator<X64Instruction>?
+    )
     ISAType.MIPS32 -> TODO("MIPS")
   }
 }

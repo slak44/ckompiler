@@ -309,6 +309,10 @@ data class IntConstant(val value: Long, override val type: TypeName) : ConstantV
 
   override val name = value.toString()
   override fun toString() = name
+
+  operator fun unaryMinus(): IntConstant {
+    return IntConstant(-value, type)
+  }
 }
 
 @Serializable
@@ -319,6 +323,10 @@ data class FltConstant(val value: Double, override val type: TypeName) : Constan
 
   override val name = value.toString()
   override fun toString() = name
+
+  operator fun unaryMinus(): FltConstant {
+    return FltConstant(-value, type)
+  }
 }
 
 @Serializable

@@ -13,8 +13,8 @@ class X64Generator private constructor(
     cfg: CFG,
     override val target: X64Target,
     private val funAsm: X64FunAssembler,
-) : TargetFunGenerator,
-    FunctionAssembler by funAsm,
+) : TargetFunGenerator<X64Instruction>,
+    FunctionAssembler<X64Instruction> by funAsm,
     FunctionCallGenerator by X64CallGenerator(target, cfg.registerIds) {
   constructor(cfg: CFG, target: X64Target) : this(cfg, target, X64FunAssembler(target, cfg, IdCounter()))
 
@@ -74,11 +74,11 @@ class X64Generator private constructor(
   }
 
   // FIXME: see above
-  override fun createLocalPush(src: MachineRegister): MachineInstruction {
+  override fun createLocalPush(src: MachineRegister): List<MachineInstruction> {
     val valueClass = src.valueClass
     require(valueClass is X64RegisterClass) { "Must be an x64 register" }
     val physicalRegister = transformMachineReg(src, src.sizeBytes)
-    return when (valueClass) {
+    val push = when (valueClass) {
       X64RegisterClass.INTEGER -> push.match(physicalRegister)
       X64RegisterClass.SSE -> {
         val rspValue = PhysicalRegister(rsp, PointerType(physicalRegister.type, emptyList()))
@@ -87,13 +87,15 @@ class X64Generator private constructor(
       }
       X64RegisterClass.X87 -> TODO()
     }
+
+    return listOf(push)
   }
 
-  override fun createLocalPop(dest: MachineRegister): MachineInstruction {
+  override fun createLocalPop(dest: MachineRegister): List<MachineInstruction> {
     val valueClass = dest.valueClass
     require(valueClass is X64RegisterClass) { "Must be an x64 register" }
     val physicalRegister = transformMachineReg(dest, dest.sizeBytes)
-    return when (valueClass) {
+    val pop = when (valueClass) {
       X64RegisterClass.INTEGER -> pop.match(physicalRegister)
       X64RegisterClass.SSE -> {
         val rspValue = PhysicalRegister(rsp, PointerType(physicalRegister.type, emptyList()))
@@ -102,6 +104,8 @@ class X64Generator private constructor(
       }
       X64RegisterClass.X87 -> TODO()
     }
+
+    return listOf(pop)
   }
 
   override fun createJump(target: InstrBlock): MachineInstruction {
@@ -546,14 +550,6 @@ class X64Generator private constructor(
     X64RegisterClass.INTEGER -> listOf(cmp.match(lhs, rhs))
     X64RegisterClass.SSE -> matchFloatCmp(lhs, rhs)
     X64RegisterClass.X87 -> TODO("x87 cmps")
-  }
-
-  private fun findImmInBinary(lhs: IRValue, rhs: IRValue): Pair<IRValue, IRValue> {
-    // Can't have result = imm OP imm
-    require(lhs !is ConstantValue || rhs !is ConstantValue)
-    val nonImm = if (lhs is ConstantValue) rhs else lhs
-    val maybeImm = if (lhs === nonImm) rhs else lhs
-    return nonImm to maybeImm
   }
 
   private fun convertIfImm(irValue: IRValue): Pair<IRValue, List<MachineInstruction>> {

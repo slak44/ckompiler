@@ -109,7 +109,7 @@ fun rewriteVregBlockUses(block: InstrBlock, rewriteFromIdx: Int, rewriteMap: Map
  *
  * [value] is a constrained argument of [constrainedInstr].
  */
-private fun TargetFunGenerator.insertSingleCopy(
+private fun AnyFunGenerator.insertSingleCopy(
     block: InstrBlock,
     index: Int,
     value: AllocatableValue,
@@ -269,7 +269,7 @@ private fun RegisterAllocationContext.prepareForColoring() {
   }
 }
 
-private class RegisterAllocationContext(val generator: TargetFunGenerator) {
+private class RegisterAllocationContext(val generator: AnyFunGenerator) {
   /** The allocation itself. */
   val coloring = mutableMapOf<IRValue, MachineRegister>()
 
@@ -668,7 +668,7 @@ private fun RegisterAllocationContext.replaceParallelInstructions() {
  * @see replaceParallelInstructions
  * @see removePhi
  */
-fun TargetFunGenerator.regAlloc(
+fun TargetFunGenerator<out AsmInstruction>.regAlloc(
     debugNoPostColoring: Boolean = false,
     debugNoCheckAlloc: Boolean = false,
     debugReturnAfterSpill: Boolean = false
@@ -705,7 +705,7 @@ fun TargetFunGenerator.regAlloc(
  * @return modified [AllocationResult]
  * @see removeOnePhi
  */
-private fun TargetFunGenerator.removePhi(allocationResult: AllocationResult): AllocationResult {
+private fun AnyFunGenerator.removePhi(allocationResult: AllocationResult): AllocationResult {
   val (graph, _, regUseMap) = allocationResult
   val newRegUseMap = regUseMap.toMutableMap()
   // Force eager evaluation of the dom tree traversal, because we will change the graph, which will change the traversal
@@ -733,7 +733,7 @@ private fun TargetFunGenerator.removePhi(allocationResult: AllocationResult): Al
  *
  * Register Allocation for Programs in SSA Form, Sebastian Hack: Section 2.2.3
  */
-private fun TargetFunGenerator.splitCriticalForCopies(src: InstrBlock, dest: InstrBlock): InstrBlock {
+private fun AnyFunGenerator.splitCriticalForCopies(src: InstrBlock, dest: InstrBlock): InstrBlock {
   // If the edge isn't critical, don't split it
   if (graph.successors(src).size <= 1 || graph.predecessors(dest).size <= 1) {
     return src
@@ -750,7 +750,7 @@ private fun TargetFunGenerator.splitCriticalForCopies(src: InstrBlock, dest: Ins
  * @param pred the l' in the paper
  * @return the copy instruction sequence
  */
-private fun TargetFunGenerator.removeOnePhi(
+private fun AnyFunGenerator.removeOnePhi(
     allocationResult: AllocationResult,
     block: InstrBlock,
     pred: InstrBlock,
@@ -788,7 +788,7 @@ private fun TargetFunGenerator.removeOnePhi(
  * @return the copy instruction sequence
  * @see removeOnePhi
  */
-private fun TargetFunGenerator.replaceParallel(
+private fun AnyFunGenerator.replaceParallel(
     parallelCopyValues: Map<AllocatableValue, AllocatableValue>,
     coloring: AllocationMap,
     assigned: Set<MachineRegister>,
@@ -816,7 +816,7 @@ private fun TargetFunGenerator.replaceParallel(
  * @param adjacency this represents the value transfer. That means that the keys are copy sources.
  * @see replaceParallel
  */
-private fun TargetFunGenerator.solveTransferGraph(
+private fun AnyFunGenerator.solveTransferGraph(
     adjacency: MutableMap<MachineRegister, MutableSet<MachineRegister>>,
     free: MutableList<MachineRegister>,
 ): List<MachineInstruction> {
@@ -899,7 +899,7 @@ private fun TargetFunGenerator.solveTransferGraph(
  *
  * @see solveTransferGraph
  */
-private fun TargetFunGenerator.solveTransferGraphCycle(
+private fun AnyFunGenerator.solveTransferGraphCycle(
     adjacency: MutableMap<MachineRegister, MutableSet<MachineRegister>>,
     firstInCycle: MachineRegister,
     freeTemp: MachineRegister,

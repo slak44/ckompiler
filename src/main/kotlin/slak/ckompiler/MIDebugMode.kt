@@ -336,16 +336,13 @@ private fun MIDebugMode.generateMIDebugInternal() {
     println(finalGraph[blockId])
     printNasm(list.joinToString(separator = "\n", postfix = "\n"))
   }
-  if (target.isaType == ISAType.X64) {
-    printHeader("Optimized MachineInstructions")
-    for ((blockId, list) in final) {
-      @Suppress("UNCHECKED_CAST")
-      val withOpts = X64PeepholeOpt().optimize(gen, list as List<X64Instruction>)
-      println(finalGraph[blockId])
-      printNasm(withOpts.joinToString(separator = "\n", postfix = "\n"))
-      println("(initial: ${list.size} | optimized: ${withOpts.size})")
-      println()
-    }
+  printHeader("Optimized MachineInstructions")
+  for ((blockId, list) in final) {
+    val withOpts = createPeepholeOptimizer(target.isaType).optimize(gen, list)
+    println(finalGraph[blockId])
+    printNasm(withOpts.joinToString(separator = "\n", postfix = "\n"))
+    println("(initial: ${list.size} | optimized: ${withOpts.size})")
+    println()
   }
   if (generateHtml) {
     printHeader("Original source")

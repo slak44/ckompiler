@@ -1,8 +1,9 @@
 package slak.ckompiler.backend
 
+import slak.ckompiler.analysis.ConstantValue
 import slak.ckompiler.analysis.IRValue
 
-fun <O : Operand, T : InstructionTemplate<O>> List<T>.tryMatch(
+fun <O : OperandTemplate, T : InstructionTemplate<O>> List<T>.tryMatch(
     compatibleWith: (operand: O, ref: IRValue) -> Boolean,
     vararg operands: IRValue
 ): MachineInstruction? {
@@ -13,7 +14,7 @@ fun <O : Operand, T : InstructionTemplate<O>> List<T>.tryMatch(
   return MachineInstruction(instr, operands.toList())
 }
 
-fun <O : Operand, T : InstructionTemplate<O>> List<T>.match(
+fun <O : OperandTemplate, T : InstructionTemplate<O>> List<T>.match(
     compatibleWith: (operand: O, ref: IRValue) -> Boolean,
     vararg operands: IRValue,
 ): MachineInstruction {
@@ -25,4 +26,16 @@ fun <O : Operand, T : InstructionTemplate<O>> List<T>.match(
     "Instruction selection failure: match ${operands.toList()} in $this\n" +
         "Likely candidate: ${likely.firstOrNull()}"
   }
+}
+
+/**
+ * Finds the constant, if any, in a binary operation.
+ * Useful for ISAs which can't do operations with two immediates (which should be most of them).
+ */
+fun findImmInBinary(lhs: IRValue, rhs: IRValue): Pair<IRValue, IRValue> {
+  // Can't have result = imm OP imm
+  require(lhs !is ConstantValue || rhs !is ConstantValue)
+  val nonImm = if (lhs is ConstantValue) rhs else lhs
+  val maybeImm = if (lhs === nonImm) rhs else lhs
+  return nonImm to maybeImm
 }

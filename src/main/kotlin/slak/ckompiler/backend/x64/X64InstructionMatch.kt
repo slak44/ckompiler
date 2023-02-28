@@ -8,7 +8,7 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger {}
 
-private fun compatibleWith(operand: X64Operand, ref: IRValue): Boolean {
+private fun compatibleWith(operand: X64OperandTemplate, ref: IRValue): Boolean {
   if (operand is NamedDisplacement && ref is NamedConstant) return true
   if (operand is JumpTarget && ref is JumpTargetConstant) return true
 
