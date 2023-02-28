@@ -4,9 +4,7 @@ import mu.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.analysis.external.GraphvizColors.*
-import slak.ckompiler.backend.regAlloc
-import slak.ckompiler.backend.x64.X64Generator
-import slak.ckompiler.backend.x64.X64Target
+import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64TargetOpts
 import slak.ckompiler.error
 import slak.ckompiler.parser.Expression
@@ -78,10 +76,10 @@ fun BasicBlock.irToString(): String {
 }
 
 private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions): Map<BasicBlock, String> {
-  val target = X64Target(options.targetOpts)
+  val target = createMachineTarget(options.isaType, options.targetOpts, emptyList())
   val sep = brLeft
   if (options.print == CodePrintingMethods.MI_TO_STRING) {
-    val gen = X64Generator(this, target)
+    val gen = createTargetFunGenerator(this, target)
     val graph = try {
       gen.regAlloc(debugNoPostColoring = true, debugReturnAfterSpill = options.noAllocOnlySpill).graph
     } catch (e: Exception) {
@@ -108,7 +106,7 @@ private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions):
     }
     return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
   } else if (options.print == CodePrintingMethods.ASM_TO_STRING) {
-    val gen = X64Generator(this, target)
+    val gen = createTargetFunGenerator(this, target)
     val alloc = gen.regAlloc()
     return gen.applyAllocation(alloc).mapValues {
       ".block${it.key}:$brLeft" + it.value.joinToString(separator = sep, postfix = sep)
@@ -146,7 +144,8 @@ data class GraphvizOptions(
     val reachableOnly: Boolean,
     val print: CodePrintingMethods = CodePrintingMethods.IR_TO_STRING,
     val includeBlockHeader: Boolean = false,
-    val targetOpts: X64TargetOpts = X64TargetOpts.defaults,
+    val isaType: ISAType = ISAType.X64,
+    val targetOpts: TargetOptions = X64TargetOpts.defaults,
     val noAllocOnlySpill: Boolean = false
 )
 

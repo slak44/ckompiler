@@ -92,10 +92,12 @@ val fixDefinitionsFile: Task by tasks.creating {
     val regex = Regex("any/\\*.*\\*/", RegexOption.UNIX_LINES)
     val returnRegex = Regex("\\): any/\\*.*\\*/;", RegexOption.UNIX_LINES)
     val abstractRegex = Regex("abstract\\s+(?!class)", RegexOption.UNIX_LINES)
+    val interfaceCompanion = Regex("interface(.*?)\\{(.*?)static get Companion\\(\\): \\{.*?\\};(.*?)\\}", RegexOption.DOT_MATCHES_ALL)
     val newContents = "// @ts-nocheck\n\n" + tsDefinitions.readText()
         .replace(returnRegex, "): any;")
         .replace(regex, "any")
         .replace(abstractRegex, "")
+        .replace(interfaceCompanion, "interface$1{$2 $3}")
     tsDefinitions.writeText(newContents)
   }
 }

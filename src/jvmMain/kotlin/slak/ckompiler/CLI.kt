@@ -469,7 +469,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         return null
       }
 
-      val options = GraphvizOptions(print = printingMethod, reachableOnly = !forceUnreachable, noAllocOnlySpill = noAllocOnlySpill)
+      val options = GraphvizOptions(
+          print = printingMethod,
+          reachableOnly = !forceUnreachable,
+          noAllocOnlySpill = noAllocOnlySpill,
+          isaType = isaType,
+          targetOpts = target.options
+      )
       val graphviz = createGraphviz(cfg, text, options)
 
       when {

@@ -9,6 +9,7 @@ import slak.ckompiler.backend.mips32.MIPS32Generator
 import slak.ckompiler.backend.mips32.MIPS32Target
 import slak.ckompiler.backend.x64.*
 import slak.ckompiler.parser.TypeName
+import kotlin.js.JsExport
 
 interface MachineRegisterClass {
   val id: AtomicId
@@ -455,9 +456,11 @@ fun createTargetFunGenerator(cfg: CFG, target: MachineTarget): AnyFunGenerator {
 /**
  * Base options for a compilation target. Each target also has extra options beyond these.
  */
+@JsExport
 interface TargetOptions {
   val omitFramePointer: Boolean
 
+  @Suppress("WRONG_EXPORTED_DECLARATION")
   companion object {
     val defaults = object : TargetOptions {
       override val omitFramePointer = true

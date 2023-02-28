@@ -37,6 +37,7 @@ import CFG = slak.ckompiler.analysis.CFG;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 import X64TargetOpts = slak.ckompiler.backend.x64.X64TargetOpts;
+import ISAType = slak.ckompiler.backend.ISAType;
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -227,6 +228,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
             true,
             printingType,
             true,
+            ISAType.X64,
             X64TargetOpts.Companion.defaults,
             noAllocOnlySpill,
           );
