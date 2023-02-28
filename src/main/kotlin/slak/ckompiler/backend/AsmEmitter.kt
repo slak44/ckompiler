@@ -33,3 +33,29 @@ fun createAsmEmitter(
     )
   }
 }
+
+typealias Instructions = List<String>
+
+class InstructionBuilder {
+  private val instr = mutableListOf<String>()
+
+  fun label(s: String) {
+    instr += "$s:"
+  }
+
+  fun emit(s: String) {
+    instr += "  $s"
+  }
+
+  fun emit(s: Instructions) {
+    for (i in s) instr += i
+  }
+
+  fun toInstructions(): Instructions = instr
+}
+
+inline fun instrGen(block: InstructionBuilder.() -> Unit): Instructions {
+  val builder = InstructionBuilder()
+  builder.block()
+  return builder.toInstructions()
+}
