@@ -15,7 +15,7 @@ class MIPS32Generator(
     override val target: MIPS32Target,
 ) : TargetFunGenerator<MIPS32Instruction>,
     FunctionAssembler<MIPS32Instruction> by MIPS32FunAssembler(target),
-    FunctionCallGenerator by MIPS32CallGenerator() {
+    FunctionCallGenerator by MIPS32CallGenerator(target) {
   override val graph: InstructionGraph = InstructionGraph.partiallyInitialize(cfg)
 
   override val stackSlotIds: IdCounter
