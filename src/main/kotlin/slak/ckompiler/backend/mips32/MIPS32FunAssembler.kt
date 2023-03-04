@@ -44,6 +44,7 @@ class MIPS32FunAssembler(cfg: CFG, val target: MIPS32Target, val stackSlotIds: I
     val prologue = mutableListOf<MachineInstruction>()
     prologue += addiu.match(sp, sp, -MIPS32Generator.wordSizeConstant)
     prologue += sw.match(fp, MemoryLocation(sp))
+    prologue += target.matchTypedCopy(fp, sp)
 
     return prologue.map { mi -> miToMIPS32Instruction(mi, alloc) }
   }
