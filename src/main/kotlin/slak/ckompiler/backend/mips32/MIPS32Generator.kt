@@ -16,7 +16,7 @@ class MIPS32Generator private constructor(
     funAsm: MIPS32FunAssembler
 ) : TargetFunGenerator<MIPS32Instruction>,
     FunctionAssembler<MIPS32Instruction> by funAsm,
-    FunctionCallGenerator by MIPS32CallGenerator(target) {
+    FunctionCallGenerator by MIPS32CallGenerator(target, cfg.registerIds) {
   constructor(cfg: CFG, target: MIPS32Target) : this(cfg, target, MIPS32FunAssembler(cfg, target, IdCounter()))
 
   override val graph: InstructionGraph = InstructionGraph.partiallyInitialize(cfg)
@@ -69,7 +69,7 @@ class MIPS32Generator private constructor(
         val srcPhysReg = PhysicalRegister(src, target.machineTargetData.ptrDiffType)
 
         listOf(
-            addiu.match(sp, sp, -wordSizeConstant),
+            addi.match(sp, sp, -wordSizeConstant),
             sw.match(srcPhysReg, topOfStack),
         )
       }

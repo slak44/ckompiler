@@ -22,6 +22,8 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
   val calleeSaved = listOf("\$s0", "\$s1", "\$s2", "\$s3", "\$s4", "\$s5", "\$s6", "\$s7")
       .mapTo(mutableSetOf(), ::registerByName)
 
+  val callerSaved = registers - forbidden - calleeSaved
+
   val intArgRegs = listOf("\$a0", "\$a1", "\$a2", "\$a3").map(::registerByName)
 
   override fun isPreservedAcrossCalls(register: MachineRegister): Boolean {
@@ -47,5 +49,6 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
 
   companion object {
     const val WORD = 4
+    const val ALIGNMENT_BYTES = 8
   }
 }
