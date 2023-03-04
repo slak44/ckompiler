@@ -8,7 +8,6 @@ import slak.ckompiler.backend.x64.X64Target.Companion.ALIGNMENT_BYTES
 import slak.ckompiler.backend.x64.X64Target.Companion.EIGHTBYTE
 import slak.ckompiler.backend.x64.X64Target.Companion.INITIAL_MEM_ARG_OFFSET
 import slak.ckompiler.backend.x64.X64Target.Companion.RED_ZONE_BYTES
-import slak.ckompiler.backend.x64.X64Target.Companion.alignTo
 import slak.ckompiler.backend.x64.X64Target.Companion.intArgRegNames
 import slak.ckompiler.backend.x64.X64Target.Companion.sseArgRegNames
 import slak.ckompiler.parser.PointerType

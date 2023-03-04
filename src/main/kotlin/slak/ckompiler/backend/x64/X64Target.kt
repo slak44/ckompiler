@@ -68,10 +68,6 @@ class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : 
     const val ALIGNMENT_BYTES = 16
     const val RED_ZONE_BYTES = 128
 
-    infix fun Int.alignTo(alignment: Int): Int {
-      return if (this % alignment != 0) this + alignment - this % alignment else this
-    }
-
     /**
      * System V ABI: 3.2.3, page 20
      */

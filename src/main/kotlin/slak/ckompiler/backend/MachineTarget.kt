@@ -513,6 +513,10 @@ fun MachineTarget.getUndefinedRegisterFor(undefinedValue: LoadableValue): Machin
       .first { reg -> reg.valueClass == registerClassOf(undefinedValue.type) }
 }
 
+infix fun Int.alignTo(alignment: Int): Int {
+  return if (this % alignment != 0) this + alignment - this % alignment else this
+}
+
 fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOptions, targetSpecific: List<String>): MachineTarget {
   return when (isaType) {
     ISAType.X64 -> X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))

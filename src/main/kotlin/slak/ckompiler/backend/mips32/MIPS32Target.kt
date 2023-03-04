@@ -22,6 +22,8 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
   val calleeSaved = listOf("\$s0", "\$s1", "\$s2", "\$s3", "\$s4", "\$s5", "\$s6", "\$s7")
       .mapTo(mutableSetOf(), ::registerByName)
 
+  val intArgRegs = listOf("\$a0", "\$a1", "\$a2", "\$a3").map(::registerByName)
+
   override fun isPreservedAcrossCalls(register: MachineRegister): Boolean {
     return register in calleeSaved
   }
@@ -41,5 +43,9 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
 
   fun ptrRegisterByName(name: String): PhysicalRegister {
     return PhysicalRegister(registerByName(name), PointerType(machineTargetData.ptrDiffType, emptyList()))
+  }
+
+  companion object {
+    const val WORD = 4
   }
 }

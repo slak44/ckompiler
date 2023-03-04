@@ -10,16 +10,18 @@ import slak.ckompiler.parser.SignedIntegralType
 import slak.ckompiler.parser.UnsignedIntType
 import slak.ckompiler.throwICE
 
-class MIPS32Generator(
+class MIPS32Generator private constructor(
     cfg: CFG,
     override val target: MIPS32Target,
+    funAsm: MIPS32FunAssembler
 ) : TargetFunGenerator<MIPS32Instruction>,
-    FunctionAssembler<MIPS32Instruction> by MIPS32FunAssembler(target),
+    FunctionAssembler<MIPS32Instruction> by funAsm,
     FunctionCallGenerator by MIPS32CallGenerator(target) {
+  constructor(cfg: CFG, target: MIPS32Target) : this(cfg, target, MIPS32FunAssembler(cfg, target, IdCounter()))
+
   override val graph: InstructionGraph = InstructionGraph.partiallyInitialize(cfg)
 
-  override val stackSlotIds: IdCounter
-    get() = TODO("not implemented")
+  override val stackSlotIds = funAsm.stackSlotIds
 
   init {
     graph.copyStructureFrom(cfg, this::selectBlockInstrs)
@@ -309,9 +311,7 @@ class MIPS32Generator(
   }
 
   companion object {
-    const val WORD = 4
-
-    val wordSizeConstant = IntConstant(WORD, UnsignedIntType)
+    val wordSizeConstant = IntConstant(MIPS32Target.WORD, UnsignedIntType)
 
     private val logger = KotlinLogging.logger {}
   }
