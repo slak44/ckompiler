@@ -53,7 +53,7 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
 
     val callInstr = when (callable) {
       is NamedConstant -> jal.match(callable)
-      is AllocatableValue, is PhysicalRegister -> jr.match(callable)
+      is AllocatableValue, is PhysicalRegister -> jalr.match(callable)
       else -> TODO("is this value even callable?")
     }
 

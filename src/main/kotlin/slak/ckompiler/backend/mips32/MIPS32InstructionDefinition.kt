@@ -42,6 +42,10 @@ val jr = mips32InstructionClass("jr", listOf(VariableUse.USE)) {
   instr(RegisterOperand)
 }
 
+val jalr = mips32InstructionClass("jalr", listOf(VariableUse.USE)) {
+  instr(RegisterOperand)
+}
+
 val sub = mips32InstructionClass("sub", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand, RegisterOperand)
 }
