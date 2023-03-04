@@ -609,4 +609,10 @@ class E2ETests {
   fun `Max SSE Pressure With Local Push For Float`() {
     compileAndRun(resource("e2e/maxSSEPressure.c")).expect(stdout = "value: 16.0 16.0")
   }
+
+  @Test
+  @Disabled("TODO")
+  fun `Crashes due to the TODO in SSA reconstruction`() {
+    compileAndRun(resource("e2e/test58.c")).expect(stdout = "1 2")
+  }
 }
