@@ -95,12 +95,12 @@ class MIPS32Generator private constructor(
   }
 
   override fun createJump(target: InstrBlock): MachineInstruction {
-    return bc.match(JumpTargetConstant(target.id))
+    return b.match(JumpTargetConstant(target.id))
   }
 
   override fun insertPhiCopies(block: InstrBlock, copies: List<MachineInstruction>) {
     val jmpInstrs = block.indexOfLast {
-      it.irLabelIndex != block.last().irLabelIndex || it.template !in bc
+      it.irLabelIndex != block.last().irLabelIndex || it.template !in b
     }
     // +1 because we want to insert _after_ the index of the non-jump
     val indexToInsert = (jmpInstrs + 1).coerceAtLeast(0)
@@ -121,12 +121,12 @@ class MIPS32Generator private constructor(
       }
       is SelectJump -> TODO("deal with switches later")
       is UncondJump -> {
-        selected += bc.match(JumpTargetConstant(term.target)).also {
+        selected += b.match(JumpTargetConstant(term.target)).also {
           it.irLabelIndex = block.ir.size + 1
         }
       }
       is ConstantJump -> {
-        selected += bc.match(JumpTargetConstant(term.target)).also {
+        selected += b.match(JumpTargetConstant(term.target)).also {
           it.irLabelIndex = block.ir.size + 1
         }
       }
@@ -157,7 +157,7 @@ class MIPS32Generator private constructor(
       val retVal = ret.returned.last().result
       selected += createReturn(retVal).onEach { it.irLabelIndex = endIdx }
     }
-    selected += bc.match(JumpTargetConstant(graph.returnBlock.id)).also { it.irLabelIndex = endIdx }
+    selected += b.match(JumpTargetConstant(graph.returnBlock.id)).also { it.irLabelIndex = endIdx }
     return selected
   }
 

@@ -30,7 +30,7 @@ val move = mips32InstructionClass("move", listOf(VariableUse.DEF, VariableUse.US
   instr(RegisterOperand, RegisterOperand)
 }
 
-val bc = mips32InstructionClass("bc", listOf(VariableUse.USE)) {
+val b = mips32InstructionClass("b", listOf(VariableUse.USE)) {
   instr(Label)
 }
 
