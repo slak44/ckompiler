@@ -6,7 +6,16 @@
 
   <span>CKompiler Internals Explorer</span>
 
-  <button mat-icon-button class="settings-btn" matTooltip="Settings" (click)="openSettings()">
+  <mat-form-field class="isa-type-selector" appearance="standard" color="accent">
+    <mat-label>Target ISA</mat-label>
+    <mat-select [formControl]="isaTypeControl">
+      <mat-option *ngFor="let isaType of isaTypeValues" [value]="isaType">
+        {{ isaType.optionsString }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <button mat-icon-button matTooltip="Settings" (click)="openSettings()">
     <mat-icon>settings</mat-icon>
   </button>
 </mat-toolbar>
@@ -40,7 +49,7 @@
       CFG View
     </div>
 
-    <cki-default-graph-view></cki-default-graph-view>
+    <cki-default-graph-view [isaType$]="isaType$"></cki-default-graph-view>
   </mat-tab>
 
   <mat-tab [ckiRoutedTab]="PHI_PATH" [disabled]="hasErrors$ | async">

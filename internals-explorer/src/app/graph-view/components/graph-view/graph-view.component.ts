@@ -62,6 +62,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public printingType$!: Observable<CodePrintingMethods>;
 
   @Input()
+  public isaType$: Observable<ISAType> = of(ISAType.X64);
+
+  @Input()
   public noAllocOnlySpill$: Observable<boolean> = of(false);
 
   @Input()
@@ -218,9 +221,10 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     return combineLatest([
       this.instance.cfg$,
       this.printingType$,
+      this.isaType$,
       this.noAllocOnlySpill$,
     ]).pipe(
-      map(([cfg, printingType, noAllocOnlySpill]: [CFG, CodePrintingMethods, boolean]): void => {
+      map(([cfg, printingType, isaType, noAllocOnlySpill]: [CFG, CodePrintingMethods, ISAType, boolean]): void => {
         const text = runWithVariableVersions(this.disableVariableVersions, () => {
           const options = new slak.ckompiler.analysis.external.GraphvizOptions(
             16.5,
@@ -228,7 +232,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
             true,
             printingType,
             true,
-            ISAType.X64,
+            isaType,
             X64TargetOpts.Companion.defaults,
             noAllocOnlySpill,
           );

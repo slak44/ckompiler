@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { GraphViewFragmentComponent } from '../graph-view-fragment/graph-view-fragment.component';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
@@ -7,6 +7,9 @@ import { nodeClickDominance } from '@cki-graph-view/graph-view-hooks/node-click-
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { Observable, of } from 'rxjs';
+import { slak } from '@ckompiler/ckompiler';
+import ISAType = slak.ckompiler.backend.ISAType;
 
 @Component({
   selector: 'cki-default-graph-view',
@@ -16,6 +19,9 @@ import { CompilationInstance } from '@cki-graph-view/compilation-instance';
   providers: [GraphViewFragmentComponent.provider, ReplaceNodeContentsHook],
 })
 export class DefaultGraphViewComponent {
+  @Input()
+  public isaType$: Observable<ISAType> = of(ISAType.X64);
+
   public readonly hooks: GraphViewHook[] = [
     removeHoverTitles,
     nodeClickDominance,

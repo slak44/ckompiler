@@ -6,7 +6,10 @@ import { slak } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SettingsDialogComponent } from '../../../settings/components/settings-dialog/settings-dialog.component';
+import { FormControl } from '@angular/forms';
+import { controlValueStream } from '@cki-utils/form-control-observable';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
+import ISAType = slak.ckompiler.backend.ISAType;
 
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
@@ -26,6 +29,12 @@ export class LiveCompileComponent {
   public readonly CFG_PATH = CFG_PATH;
   public readonly PHI_PATH = PHI_PATH;
   public readonly RENAME_PATH = RENAME_PATH;
+
+  public readonly isaTypeValues = ISAType.values();
+
+  public readonly isaTypeControl: FormControl = new FormControl(ISAType.X64);
+
+  public readonly isaType$: Observable<ISAType> = controlValueStream<ISAType>(this.isaTypeControl);
 
   public readonly initialSource$: Observable<string> =
     this.httpClient.get(this.location.prepareExternalUrl('/assets/samples/default.c'), { responseType: 'text' });
