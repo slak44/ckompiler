@@ -299,7 +299,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private fun assemble(objFile: File, asmFile: File): Unit = when (isaType) {
     ISAType.X64 -> invokeNasm(objFile, asmFile)
-    ISAType.MIPS32 -> TODO("MIPS")
+    ISAType.MIPS32 -> TODO("MIPS assembler not yet supported. Please use the -S option and invoke a MIPS simulator.")
   }
 
   private fun invokeNasm(objFile: File, asmFile: File) {
