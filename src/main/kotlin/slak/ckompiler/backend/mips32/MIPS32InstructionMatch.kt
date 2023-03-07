@@ -12,9 +12,9 @@ private val logger = KotlinLogging.logger {}
 
 private fun compatibleWith(operand: MIPS32OperandTemplate, ref: IRValue): Boolean {
   return when (ref) {
-    is NamedConstant, is JumpTargetConstant -> operand is Label
-    is IntConstant, is FltConstant -> operand is Immediate
-    is DerefStackValue, is MemoryLocation, is StrConstant -> operand is MemoryOperand
+    is NamedConstant, is JumpTargetConstant, is StrConstant, is FltConstant -> operand is Label
+    is IntConstant -> operand is Immediate
+    is DerefStackValue, is MemoryLocation -> operand is MemoryOperand
     is Variable, is VirtualRegister, is StackValue, is StackVariable -> operand is RegisterOperand
     is PhysicalRegister -> operand is RegisterOperand
     is ParameterReference -> logger.throwICE("Parameter references were removed")
@@ -43,7 +43,11 @@ fun MIPS32Target.matchTypedCopy(dest: IRValue, src: IRValue): MachineInstruction
     TODO()
   }
 
-  if (src is ConstantValue) {
+  if (src is StrConstant || src is FltConstant) {
+    return la.match(dest, src)
+  }
+
+  if (src is IntConstant) {
     return li.match(dest, src)
   }
 
