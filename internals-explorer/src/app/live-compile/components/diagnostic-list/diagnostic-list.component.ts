@@ -15,6 +15,7 @@ import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 export class DiagnosticListComponent {
   public readonly allDiagnostics$: Observable<Diagnostic[]> = this.compileService.allDiagnostics$;
   public readonly diagnosticStats$: Observable<DiagnosticsStats> = this.compileService.diagnosticStats$;
+  public readonly latestCrash$: Observable<Error | null> = this.compileService.latestCrash$;
 
   constructor(
     private readonly compileService: CompileService,
@@ -25,5 +26,9 @@ export class DiagnosticListComponent {
   public sanitizeDiagnostic(diagnostic: Diagnostic): SafeHtml {
     // FIXME
     return this.sanitizer.bypassSecurityTrustHtml(diagnostic.printable);
+  }
+
+  public refresh(): void {
+    window.location.reload();
   }
 }

@@ -38,6 +38,7 @@ import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 import X64TargetOpts = slak.ckompiler.backend.x64.X64TargetOpts;
 import ISAType = slak.ckompiler.backend.ISAType;
+import { CompileService } from '@cki-graph-view/services/compile.service';
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -89,7 +90,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private readonly groupToNodeId: Map<SVGGElement, number> = new Map();
   private readonly nodeIdToGroup: Map<number, SVGGElement> = new Map();
 
-  constructor() {
+  constructor(private readonly compileService: CompileService) {
     super();
   }
 
@@ -242,7 +243,12 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
             return createGraphviz(cfg, cfg.f.sourceText as string, options);
           } catch (e) {
             console.error("ignored error", e);
-            return createGraphviz(cfg, cfg.f.sourceText as string, options);
+            try {
+              return createGraphviz(cfg, cfg.f.sourceText as string, options);
+            } catch (eAgain) {
+              this.compileService.setLatestCrash(eAgain as Error);
+              throw eAgain;
+            }
           }
         });
 
@@ -250,6 +256,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
           return;
         }
 
+        this.compileService.setLatestCrash(null);
         this.rerenderSubject.next();
         this.revertAlterations();
 

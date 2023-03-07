@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { distinctUntilChanged, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { slak } from '@ckompiler/ckompiler';
 import { compileCode } from '@cki-graph-view/compilation-instance';
@@ -13,6 +13,7 @@ import getDiagnosticsStats = slak.ckompiler.getDiagnosticsStats;
   providedIn: 'root',
 })
 export class CompileService {
+  private readonly latestCrashSubject: BehaviorSubject<Error | null> = new BehaviorSubject<Error | null>(null);
   private readonly sourceTextSubject: ReplaySubject<string> = new ReplaySubject(1);
 
   public readonly sourceText$: Observable<string> = this.sourceTextSubject.pipe(
@@ -40,10 +41,16 @@ export class CompileService {
     map(diagnostics => getDiagnosticsStats(diagnostics))
   );
 
+  public readonly latestCrash$: Observable<Error | null> = this.latestCrashSubject;
+
   constructor() {
   }
 
   public changeSourceText(sourceText: string): void {
     this.sourceTextSubject.next(sourceText);
+  }
+
+  public setLatestCrash(error: Error | null): void {
+    this.latestCrashSubject.next(error);
   }
 }

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { map, Observable, tap } from 'rxjs';
+import { combineLatest, map, Observable, tap } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { MatDialog } from '@angular/material/dialog';
@@ -41,8 +41,11 @@ export class LiveCompileComponent {
 
   public readonly diagnosticStats$: Observable<DiagnosticsStats> = this.compileService.diagnosticStats$;
 
-  public readonly hasErrors$: Observable<boolean> = this.compileService.diagnosticStats$.pipe(
-    map(stats => stats.errors > 0),
+  public readonly hasErrors$: Observable<boolean> = combineLatest([
+    this.compileService.diagnosticStats$.pipe(map(stats => stats.errors > 0)),
+    this.compileService.latestCrash$,
+  ]).pipe(
+    map(([hasErrors, latestCrash]) => hasErrors || !!latestCrash),
     tap(hasErrors => {
       if (hasErrors && this.selectedTabIndex > 1) {
         this.selectedTabIndex = 1;
