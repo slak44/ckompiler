@@ -20,8 +20,20 @@ class SPIMGenerator(
       generateFunction(function)
     }
 
+    text += generateExitFunction()
+
     val code = prelude + ".data" + data + ".text" + text
     return code.joinToString("\n") + '\n'
+  }
+
+  /**
+   * exit2, with return value.
+   * https://www.doc.ic.ac.uk/lab/secondyear/spim/node8.html
+   */
+  private fun generateExitFunction() = instrGen {
+    label("exit")
+    emit("li \$v0, 17")
+    emit("syscall")
   }
 
   private fun genStartRoutine() = instrGen {
