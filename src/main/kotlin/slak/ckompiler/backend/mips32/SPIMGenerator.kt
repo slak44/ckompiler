@@ -17,7 +17,7 @@ class SPIMGenerator(
     for (function in functions) generateFunction(function)
     mainCfg?.let { function ->
       text += genStartRoutine()
-      generateFunction(function)
+      generateFunction(function, "_main")
     }
 
     text += generateExitFunction()
@@ -37,16 +37,19 @@ class SPIMGenerator(
   }
 
   private fun genStartRoutine() = instrGen {
-    // TODO: make our own start routine sometime
+    label("main")
+    emit("jal _main")
+    emit("move \$a0, \$v0")
+    emit("jal exit")
   }
 
   val InstrBlock.label get() = id.label
   val AtomicId.label get() = ".block_$this"
 
-  private fun generateFunction(function: TargetFunGenerator<MIPS32Instruction>) {
+  private fun generateFunction(function: TargetFunGenerator<MIPS32Instruction>, overrideName: String? = null) {
     val allocationResult = function.regAlloc()
     text += instrGen {
-      label(function.graph.f.name)
+      label(overrideName ?: function.graph.f.name)
       emit(genAsm(function.genFunctionPrologue(allocationResult)))
       val asmMap = function.applyAllocation(allocationResult)
       for (block in function.graph.blocks - function.graph.returnBlock.id) {
