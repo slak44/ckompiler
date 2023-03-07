@@ -179,7 +179,10 @@ class MIPS32Generator private constructor(
     is IntCmp -> matchCmp(i)
     is IntInvert -> listOf(nor.match(i.result, i.operand, i.operand))
     is IntNeg -> listOf(subu.match(i.result, zero, i.operand))
-    is StructuralCast -> TODO()
+    is StructuralCast -> {
+      // FIXME: this does nothing
+      listOf(target.matchTypedCopy(i.result, i.operand))
+    }
     is FltBinary -> TODO()
     is FltCmp -> TODO()
     is FltNeg -> listOf(neg.match(i.result, i.operand))
