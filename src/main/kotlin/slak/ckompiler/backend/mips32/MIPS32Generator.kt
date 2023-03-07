@@ -23,12 +23,12 @@ class MIPS32Generator private constructor(
 
   override val stackSlotIds = funAsm.stackSlotIds
 
+  private val sp = target.ptrRegisterByName("\$sp")
+  private val zero = target.ptrRegisterByName("\$zero")
+
   init {
     graph.copyStructureFrom(cfg, this::selectBlockInstrs)
   }
-
-  private val sp = target.ptrRegisterByName("\$sp")
-  private val zero = target.ptrRegisterByName("\$zero")
 
   override fun createIRCopy(dest: IRValue, src: IRValue): MachineInstruction {
     return target.matchTypedCopy(dest, src)
