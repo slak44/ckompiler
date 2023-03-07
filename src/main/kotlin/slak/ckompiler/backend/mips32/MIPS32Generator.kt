@@ -290,7 +290,7 @@ class MIPS32Generator private constructor(
       )
       Comparisons.EQUAL -> listOf(
           xor.match(i.result, lhs, rhs),
-          sltu.match(i.result, i.result, IntConstant(1, i.result.type)),
+          sltiu.match(i.result, i.result, IntConstant(1, i.result.type)),
       )
       Comparisons.NOT_EQUAL -> listOf(
           xor.match(i.result, lhs, rhs),
