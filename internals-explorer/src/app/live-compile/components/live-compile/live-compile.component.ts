@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { combineLatest, map, Observable, tap } from 'rxjs';
+import { combineLatest, map, Observable, shareReplay, tap } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { MatDialog } from '@angular/material/dialog';
@@ -34,7 +34,9 @@ export class LiveCompileComponent {
 
   public readonly isaTypeControl: FormControl = new FormControl(ISAType.X64);
 
-  public readonly isaType$: Observable<ISAType> = controlValueStream<ISAType>(this.isaTypeControl);
+  public readonly isaType$: Observable<ISAType> = controlValueStream<ISAType>(this.isaTypeControl).pipe(
+    shareReplay({ refCount: false, bufferSize: 1 }),
+  );
 
   public readonly initialSource$: Observable<string> =
     this.httpClient.get(this.location.prepareExternalUrl('/assets/samples/default.c'), { responseType: 'text' });
