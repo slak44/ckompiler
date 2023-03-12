@@ -446,6 +446,19 @@ class E2ETests {
   }
 
   @Test
+  fun `Int Compare With Immediate LHS For Branch`() {
+    compileAndRun("""
+      int main() {
+        int a = 1;
+        if (0 < a) {
+          return 2;
+        }
+        return 10;
+      }
+    """.trimIndent()).justExitCode(2)
+  }
+
+  @Test
   fun `Enum Value Usage As Return`() {
     compileAndRun("""
       enum color {RED, GREEN, BLUE};

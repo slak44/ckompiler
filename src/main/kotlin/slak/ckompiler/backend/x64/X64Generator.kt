@@ -155,12 +155,23 @@ class X64Generator private constructor(
     for ((index, irInstr) in condJump.cond.dropLast(1).withIndex()) {
       selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
     }
-    val actualJump = when (val l = condJump.cond.last()) {
-      is IntCmp -> matchTypedCmp(l.lhs, l.rhs) + listOf(
+
+    val l = condJump.cond.last()
+    require(l is BinaryInstruction)
+
+    val (lhs, ops) = if (l.lhs is IntConstant) {
+      val regCopy = VirtualRegister(graph.registerIds(), l.lhs.type)
+      regCopy to listOf(matchTypedMov(regCopy, l.lhs))
+    } else {
+      l.lhs to emptyList()
+    }
+
+    val actualJump = when (l) {
+      is IntCmp -> ops + matchTypedCmp(lhs, l.rhs) + listOf(
           selectJmp(l, l.cmp, JumpTargetConstant(condJump.target)),
           jmp.match(JumpTargetConstant(condJump.other))
       )
-      is FltCmp -> matchTypedCmp(l.lhs, l.rhs) + listOf(
+      is FltCmp -> ops + matchTypedCmp(lhs, l.rhs) + listOf(
           selectJmp(l, l.cmp, JumpTargetConstant(condJump.target)),
           jmp.match(JumpTargetConstant(condJump.other))
       )
