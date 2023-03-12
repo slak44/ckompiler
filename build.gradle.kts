@@ -1,7 +1,7 @@
 plugins {
   application
-  kotlin("multiplatform") version "1.7.0"
-  kotlin("plugin.serialization") version "1.7.0"
+  kotlin("multiplatform") version "1.8.10"
+  kotlin("plugin.serialization") version "1.8.10"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
 }
