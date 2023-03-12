@@ -73,6 +73,20 @@ sealed class LexicalToken(val consumedChars: Int) : SourcedRange {
   }
 }
 
+inline fun <reified T : LexicalToken> T.cloneToken(): T = when (this) {
+  is ErrorToken -> ErrorToken(consumedChars)
+  is Keyword -> Keyword(value)
+  is Punctuator -> Punctuator(pct)
+  is Identifier -> Identifier(name)
+  is IntegralConstant -> IntegralConstant(n, suffix, radix)
+  is FloatingConstant -> FloatingConstant(f, suffix, radix, exponent)
+  is StringLiteral -> StringLiteral(data, encoding, realLength)
+  is CharLiteral -> CharLiteral(data, encoding, realLength)
+  is HeaderName -> HeaderName(data, kind)
+  is NewLine -> NewLine
+  else -> throw IllegalStateException("Missing LexicalToken subclass in when")
+} as T
+
 class ErrorToken(consumedChars: Int) : LexicalToken(consumedChars)
 
 sealed class StaticToken(consumedChars: Int) : LexicalToken(consumedChars) {

@@ -407,11 +407,12 @@ class PPParser(
     for (tok in toks) {
       if (tok is Identifier) {
         res += doMacroReplacement(tok)?.map {
-          val src = it.cloneSource()
-          it.copyDebugFrom(tok)
-          it.expandedName = tok.name
-          it.expandedFrom = src
-          it
+          val expandedFrom = it.cloneSource()
+          val replacedToken = it.cloneToken()
+          replacedToken.copyDebugFrom(tok)
+          replacedToken.expandedName = tok.name
+          replacedToken.expandedFrom = expandedFrom
+          replacedToken
         } ?: listOf(tok)
       } else {
         res += tok

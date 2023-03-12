@@ -239,7 +239,8 @@ class DeclarationTests {
     """.trimIndent(), source)
     p.assertNoDiagnostics();
     assert(p.root.decls[0].fn.block.items.filterIsInstance<DeclarationItem>().all {
-      it.declaration.declSpecs.typeQualifiers.single().value == Keywords.INT
+      val typeSpec = it.declaration.declSpecs.typeSpec
+      typeSpec is BasicTypeSpecifier && typeSpec.first.value == Keywords.INT
     })
   }
 }
