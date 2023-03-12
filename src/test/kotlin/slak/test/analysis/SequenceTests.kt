@@ -12,6 +12,7 @@ import slak.ckompiler.analysis.sequentialize
 import slak.ckompiler.parser.*
 import slak.test.*
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotSame
 
 class SequenceTests {
@@ -251,5 +252,19 @@ class SequenceTests {
     debugHandler.assertNoDiagnostics()
     assertEquals(SignedLongLongType.cast(x), remaining)
     assertEquals(listOf(x assign (x add 1)), sequencedBefore)
+  }
+
+  @Test
+  fun `Increment Is Hoisted From Unary Dereference`() {
+    /* *(x++) */
+    val x = nameRef("x", ptr(SignedCharType))
+    val expr = UnaryOperators.DEREF[postfixInc(x)]
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assertIs<UnaryExpression>(remaining)
+    assertEquals(UnaryOperators.DEREF, remaining.op)
+    remaining.operand.assertIsSynthetic()
+    assertEquals(2, sequencedBefore.size)
+    assertEquals(x assign (x add 1), sequencedBefore[1])
   }
 }

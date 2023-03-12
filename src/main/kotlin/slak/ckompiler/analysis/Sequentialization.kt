@@ -111,19 +111,19 @@ private fun SequentializationContext.seqLogicalOr(e: BinaryExpression): Expressi
  *
  * C standard: 6.5.3.2.0.3
  */
-private fun foldUnary(e: UnaryExpression): Expression = when {
+private fun SequentializationContext.foldUnary(e: UnaryExpression): Expression = when {
   // Other unary ops are not "interesting"
-  e.op != UnaryOperators.REF -> e
+  e.op != UnaryOperators.REF -> e.copy(operand = seqImpl(e.operand)).withRange(e)
   // Fold &*a into just a
-  e.operand is UnaryExpression && e.operand.op == UnaryOperators.DEREF -> e.operand.operand
+  e.operand is UnaryExpression && e.operand.op == UnaryOperators.DEREF -> seqImpl(e.operand.operand)
   // Fold &v[20] into v + 20
   e.operand is ArraySubscript -> BinaryExpression(
       BinaryOperators.ADD,
-      e.operand.subscripted,
-      e.operand.subscript,
+      seqImpl(e.operand.subscripted),
+      seqImpl(e.operand.subscript),
       e.operand.subscripted.type.normalize()
   ).withRange(e)
-  else -> e
+  else -> e.copy(operand = seqImpl(e.operand)).withRange(e)
 }
 
 /** Recursive case of [sequentialize]. */
