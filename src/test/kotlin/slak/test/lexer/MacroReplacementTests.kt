@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.lexer.Identifier
+import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.Punctuators
 import slak.test.*
@@ -156,5 +157,19 @@ class MacroReplacementTests {
     val test1 = preparePP(resource("headers/system/test.h").readText(), source)
     test1.assertNoDiagnostics()
     assertEquals(l.tokens, test1.tokens)
+  }
+
+  @Test
+  fun `Macro Replace Twice Works`() {
+    val l = preparePP("""
+      #define thing int
+      int main() {
+        thing a = 1;
+        thing b = 2;
+        return a + b;
+      }
+    """.trimIndent(), source)
+    l.assertDefine("thing", Identifier("int"))
+    assertEquals(3, l.tokens.filter { it is Keyword && it.value == Keywords.INT }.size)
   }
 }

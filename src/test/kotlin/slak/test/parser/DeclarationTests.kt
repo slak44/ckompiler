@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
+import slak.ckompiler.lexer.Identifier
+import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -223,5 +225,21 @@ class DeclarationTests {
   fun `Unsupported VLA`(str: String) {
     val p = prepareCode(str, source)
     p.assertDiags(DiagnosticId.UNSUPPORTED_VLA)
+  }
+
+  @Test
+  fun `Macro Replaced Declaration Specifier Works`() {
+    val p = prepareCode("""
+      #define thing int
+      int main() {
+        thing a = 1;
+        thing b = 2;
+        return a + b;
+      }
+    """.trimIndent(), source)
+    p.assertNoDiagnostics();
+    assert(p.root.decls[0].fn.block.items.filterIsInstance<DeclarationItem>().all {
+      it.declaration.declSpecs.typeQualifiers.single().value == Keywords.INT
+    })
   }
 }
