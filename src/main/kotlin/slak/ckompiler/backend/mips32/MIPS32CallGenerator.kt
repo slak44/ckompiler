@@ -4,6 +4,7 @@ import mu.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
+import slak.ckompiler.parser.PointerType
 import slak.ckompiler.parser.UnsignedIntType
 import slak.ckompiler.parser.VoidType
 import slak.ckompiler.throwICE
@@ -13,6 +14,9 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
 
   private val sp = target.ptrRegisterByName("\$sp")
 
+  /**
+   * MIPS System V ABI: 3-11
+   */
   override fun createCall(result: LoadableValue, callable: IRValue, args: List<IRValue>): List<MachineInstruction> {
     val before = mutableListOf<MachineInstruction>()
     val beforeLinked = mutableListOf<MachineInstruction>()
@@ -27,28 +31,36 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
       val argType = arg.type.unqualify().normalize()
       when (arg) {
         is AllocatableValue -> argConstraints += arg constrainedTo reg
-        is ConstantValue -> beforeLinked += target.matchTypedCopy(PhysicalRegister(reg, argType), arg)
+        is ConstantValue -> beforeLinked += matchTypedCopy(PhysicalRegister(reg, argType), arg)
         is LoadableValue -> {
           val copyTarget = VirtualRegister(registerIds(), argType)
-          before += target.matchTypedCopy(copyTarget, arg)
+          before += matchTypedCopy(copyTarget, arg)
           argConstraints += copyTarget constrainedTo reg
         }
         is ParameterReference -> logger.throwICE("Unreachable; these have to be removed")
       }
     }
+
+    // For MIPS, the ABI says that if the function is variadic, all arguments are pushed on the stack, including register arguments
+    val isVariadic = callable is NamedConstant && callable.type.asCallable()?.variadic == true
+
     // Push stack arguments in order, aligned
-    val intStackArgs = intArgs.drop(target.intArgRegs.size)
+    val intStackArgs = if (isVariadic) intArgs else intArgs.drop(target.intArgRegs.size)
     val stackArgs = intStackArgs.sortedBy { it.index }
     val stackArgsSize = stackArgs.sumOf {
       target.machineTargetData.sizeOf(it.value.type).coerceAtLeast(MIPS32Target.WORD)
     }
     if (stackArgsSize % MIPS32Target.ALIGNMENT_BYTES != 0) {
-      before += subu.match(sp, sp, MIPS32Generator.wordSizeConstant)
+      before += addiu.match(sp, sp, -MIPS32Generator.wordSizeConstant)
     }
     for (stackArg in stackArgs.map { it.value }.asReversed()) {
-      before += subu.match(sp, sp, MIPS32Generator.wordSizeConstant)
-      // TODO
-//      before += pushOnStack(stackArg)
+      before += pushOnStack(stackArg)
+    }
+
+    // If variadic, space was allocated and values were pushed above
+    // If not variadic, we just need to allocate the space on the stack
+    if (!isVariadic) {
+      before += addiu.match(sp, sp, -MIPS32Generator.wordSizeConstant * intRegArgs.size)
     }
 
     val callInstr = when (callable) {
@@ -69,7 +81,7 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
       null
     } else {
       val copyTarget = VirtualRegister(registerIds(), result.type)
-      after += target.matchTypedCopy(result, copyTarget)
+      after += matchTypedCopy(result, copyTarget)
       copyTarget constrainedTo resultRegister
     }
 
@@ -88,6 +100,45 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
     )
 
     return before + finalCall + after
+  }
+
+  private fun pushOnStack(value: IRValue): List<MachineInstruction> {
+    val selected = mutableListOf<MachineInstruction>()
+    // If the thing is in memory, move it to a register, to avoid an illegal mem to mem operation
+    // Since this function is used before the bulk of the functions, there will always be a free register
+    val actualValue = if (value is MemoryLocation) {
+      val resultType = (value.ptr.type as PointerType).referencedType
+      val result = VirtualRegister(registerIds(), resultType)
+      selected += matchTypedCopy(result, value)
+      result
+    } else {
+      value
+    }
+    val registerClass = target.registerClassOf(actualValue.type)
+    if (registerClass is Memory) {
+      TODO("move memory argument to stack")
+    }
+    require(registerClass is MIPS32RegisterClass)
+    selected += when (registerClass) {
+      MIPS32RegisterClass.INTEGER -> pushIntOnStack(value)
+      MIPS32RegisterClass.FLOAT -> TODO()
+    }
+    return selected
+  }
+
+  private fun pushIntOnStack(value: IRValue): List<MachineInstruction> {
+    val push = mutableListOf<MachineInstruction>()
+    push += addiu.match(sp, sp, -MIPS32Generator.wordSizeConstant)
+    val toStore = when (value) {
+      is StrConstant, is FltConstant, is IntConstant -> {
+        val registerConstant = VirtualRegister(registerIds(), sp.type)
+        push += matchTypedCopy(registerConstant, value)
+        registerConstant
+      }
+      else -> value
+    }
+    push += matchTypedCopy(MemoryLocation(sp), toStore)
+    return push
   }
 
   private fun callResultConstraint(result: LoadableValue): MachineRegister? {
@@ -118,7 +169,7 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
         MIPS32RegisterClass.FLOAT -> TODO()
       }
       val physReg = PhysicalRegister(returnRegister, retVal.type.unqualify().normalize())
-      selected += target.matchTypedCopy(physReg, retVal)
+      selected += matchTypedCopy(physReg, retVal)
     }
     return selected
   }

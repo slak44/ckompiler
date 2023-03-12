@@ -3,7 +3,6 @@ package slak.ckompiler.backend.mips32
 import mu.KotlinLogging
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.MachineInstruction
-import slak.ckompiler.backend.Memory
 import slak.ckompiler.backend.match
 import slak.ckompiler.backend.tryMatch
 import slak.ckompiler.throwICE
@@ -25,22 +24,17 @@ fun List<MIPS32InstructionTemplate>.tryMatch(vararg operands: IRValue) = tryMatc
 
 fun List<MIPS32InstructionTemplate>.match(vararg operands: IRValue) = match(::compatibleWith, *operands)
 
-fun MIPS32Target.matchTypedCopy(dest: IRValue, src: IRValue): MachineInstruction {
-  val destType = registerClassOf(dest.type)
-  val srcType = registerClassOf(src.type)
+private fun isMemoryForCopy(value: IRValue): Boolean = value is MemoryLocation || value is DerefStackValue
 
-  if (destType is Memory) {
-    require(srcType !is Memory)
+fun matchTypedCopy(dest: IRValue, src: IRValue): MachineInstruction {
+  if (isMemoryForCopy(dest)) {
+    require(!isMemoryForCopy(src))
     return sw.match(src, dest)
   }
 
-  if (srcType is Memory) {
-    require(destType !is Memory)
+  if (isMemoryForCopy(src)) {
+    require(!isMemoryForCopy(dest))
     return lw.match(dest, src)
-  }
-
-  if (destType != srcType) {
-    TODO()
   }
 
   if (src is StrConstant || src is FltConstant) {

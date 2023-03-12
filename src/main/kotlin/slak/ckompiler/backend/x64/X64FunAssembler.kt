@@ -152,12 +152,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
   }
 
   override fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<X64Instruction>> {
-    var currentStackOffset = stackBeginOffset
-    val stackOffsets = alloc.allocations.values.filterIsInstance<StackSlot>().associateWith {
-      val offset = currentStackOffset
-      currentStackOffset += it.sizeBytes
-      offset
-    }
+    val stackOffsets = alloc.generateStackSlotOffsets(stackBeginOffset)
     val asm = mutableMapOf<AtomicId, List<X64Instruction>>()
     for (blockId in alloc.graph.blocks) {
       val result = convertBlockInstructions(blockId, alloc) { mi ->

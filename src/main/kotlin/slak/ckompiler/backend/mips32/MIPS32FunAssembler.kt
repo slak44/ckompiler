@@ -5,7 +5,7 @@ import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 
-class MIPS32FunAssembler(cfg: CFG, val target: MIPS32Target, val stackSlotIds: IdCounter) : FunctionAssembler<MIPS32Instruction> {
+class MIPS32FunAssembler(val cfg: CFG, val target: MIPS32Target, val stackSlotIds: IdCounter) : FunctionAssembler<MIPS32Instruction> {
   override val parameterMap = mutableMapOf<ParameterReference, IRValue>()
 
   private val sp = target.ptrRegisterByName("\$sp")
@@ -44,9 +44,9 @@ class MIPS32FunAssembler(cfg: CFG, val target: MIPS32Target, val stackSlotIds: I
     val prologue = mutableListOf<MachineInstruction>()
     prologue += addiu.match(sp, sp, -MIPS32Generator.wordSizeConstant)
     prologue += sw.match(fp, MemoryLocation(sp))
-    prologue += target.matchTypedCopy(fp, sp)
+    prologue += matchTypedCopy(fp, sp)
 
-    return prologue.map { mi -> miToMIPS32Instruction(mi, alloc) }
+    return prologue.map { mi -> miToMIPS32Instruction(mi, alloc, emptyMap()) }
   }
 
   override fun genFunctionEpilogue(alloc: AllocationResult): List<MIPS32Instruction> {
@@ -55,27 +55,30 @@ class MIPS32FunAssembler(cfg: CFG, val target: MIPS32Target, val stackSlotIds: I
     epilogue += addiu.match(sp, sp, MIPS32Generator.wordSizeConstant)
     epilogue += jr.match(ra)
 
-    return epilogue.map { mi -> miToMIPS32Instruction(mi, alloc) }
+    return epilogue.map { mi -> miToMIPS32Instruction(mi, alloc, emptyMap()) }
   }
 
   override fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<MIPS32Instruction>> {
     val asm = mutableMapOf<AtomicId, List<MIPS32Instruction>>()
+
+    val stackOffsets = alloc.generateStackSlotOffsets(0)
+
     for (blockId in alloc.graph.blocks) {
       val result = convertBlockInstructions(blockId, alloc) { mi ->
-        miToMIPS32Instruction(mi, alloc)
+        miToMIPS32Instruction(mi, alloc, stackOffsets)
       }
       asm += blockId to result
     }
     return asm
   }
 
-  private fun miToMIPS32Instruction(mi: MachineInstruction, alloc: AllocationResult): MIPS32Instruction {
+  private fun miToMIPS32Instruction(mi: MachineInstruction, alloc: AllocationResult, stackOffsets: Map<StackSlot, Int>): MIPS32Instruction {
     require(mi.template is MIPS32InstructionTemplate)
-    val ops = mi.operands.map { operandToMIPS32(it, alloc) }
+    val ops = mi.operands.map { operandToMIPS32(it, alloc, stackOffsets) }
     return MIPS32Instruction(mi.template, ops)
   }
 
-  private fun operandToMIPS32(value: IRValue, alloc: AllocationResult): MIPS32Value {
+  private fun operandToMIPS32(value: IRValue, alloc: AllocationResult, stackOffsets: Map<StackSlot, Int>): MIPS32Value {
     if (value is ConstantValue) return MIPS32ImmediateValue(value)
     val typeSize = target.machineTargetData.sizeOf(value.type)
     if (value is PhysicalRegister) {
@@ -100,7 +103,11 @@ class MIPS32FunAssembler(cfg: CFG, val target: MIPS32Target, val stackSlotIds: I
     if (machineRegister !is StackSlot) {
       return MIPS32RegisterValue(machineRegister, typeSize)
     }
-    TODO("function parameters")
+    return if (machineRegister is FullVariableSlot && machineRegister.value.id in stackParamOffsets) {
+      stackParamOffsets.getValue(machineRegister.value.id)
+    } else {
+      MIPS32MemoryValue.inFrame(MIPS32RegisterValue(fp), machineRegister, stackOffsets.getValue(machineRegister))
+    }
   }
 
   companion object {

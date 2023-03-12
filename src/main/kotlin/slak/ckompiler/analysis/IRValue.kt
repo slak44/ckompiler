@@ -313,6 +313,10 @@ data class IntConstant(val value: Long, override val type: TypeName) : ConstantV
   operator fun unaryMinus(): IntConstant {
     return IntConstant(-value, type)
   }
+
+  operator fun times(rhs: Int): IntConstant {
+    return IntConstant(value * rhs, type)
+  }
 }
 
 @Serializable

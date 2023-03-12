@@ -24,6 +24,15 @@ data class AllocationResult(
     val registerUseMap: RegisterUseMap,
 ) {
   val stackSlots get() = allocations.values.filterIsInstance<StackSlot>()
+
+  fun generateStackSlotOffsets(initialOffset: Int): Map<StackSlot, Int> {
+    var currentStackOffset = initialOffset
+    return stackSlots.associateWith {
+      val offset = currentStackOffset
+      currentStackOffset += it.sizeBytes
+      offset
+    }
+  }
 }
 
 private fun MachineTarget.selectRegisterWhitelist(

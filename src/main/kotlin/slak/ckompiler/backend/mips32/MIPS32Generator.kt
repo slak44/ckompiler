@@ -28,7 +28,7 @@ class MIPS32Generator private constructor(
   }
 
   override fun createIRCopy(dest: IRValue, src: IRValue): MachineInstruction {
-    return target.matchTypedCopy(dest, src)
+    return matchTypedCopy(dest, src)
   }
 
   private fun transformMachineReg(reg: MachineRegister): IRValue {
@@ -54,7 +54,7 @@ class MIPS32Generator private constructor(
     if (dest.valueClass is MIPS32RegisterClass && src.valueClass is MIPS32RegisterClass && dest.valueClass != src.valueClass) {
       logger.throwICE("Register value classes do not match")
     }
-    return target.matchTypedCopy(destValue, srcValue)
+    return matchTypedCopy(destValue, srcValue)
   }
 
   override fun createLocalPush(src: MachineRegister): List<MachineInstruction> {
@@ -191,11 +191,19 @@ class MIPS32Generator private constructor(
     return selected
   }
 
+  private fun removeParamsFromValue(value: IRValue): IRValue {
+    return if (value is ParameterReference) {
+      parameterMap[value] ?: logger.throwICE("Function parameter not mapped to register/memory")
+    } else {
+      value
+    }
+  }
+
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
-    is MoveInstr -> listOf(target.matchTypedCopy(i.result, i.value))
-    is LoadMemory -> listOf(target.matchTypedCopy(i.result, i.loadFrom))
-    is StoreMemory -> listOf(target.matchTypedCopy(i.storeTo, i.value))
-    is ReinterpretCast -> if (i.operand == i.result) emptyList() else listOf(target.matchTypedCopy(i.result, i.operand))
+    is MoveInstr -> listOf(matchTypedCopy(i.result, removeParamsFromValue(i.value)))
+    is LoadMemory -> listOf(matchTypedCopy(i.result, i.loadFrom))
+    is StoreMemory -> listOf(matchTypedCopy(i.storeTo, removeParamsFromValue(i.value)))
+    is ReinterpretCast -> if (i.operand == i.result) emptyList() else listOf(matchTypedCopy(i.result, i.operand))
     is IntBinary -> when (i.op) {
       IntegralBinaryOps.ADD -> matchAdd(i)
       IntegralBinaryOps.SUB -> matchSub(i)
@@ -211,7 +219,7 @@ class MIPS32Generator private constructor(
     is IntNeg -> listOf(subu.match(i.result, zero, i.operand))
     is StructuralCast -> {
       // FIXME: this does nothing
-      listOf(target.matchTypedCopy(i.result, i.operand))
+      listOf(matchTypedCopy(i.result, i.operand))
     }
     is FltBinary -> TODO()
     is FltCmp -> TODO()
@@ -344,7 +352,7 @@ class MIPS32Generator private constructor(
 
   private fun convertImmForOp(imm: ConstantValue): Pair<IRValue, List<MachineInstruction>> {
     val regCopy = VirtualRegister(graph.registerIds(), imm.type)
-    return regCopy to listOf(target.matchTypedCopy(regCopy, imm))
+    return regCopy to listOf(matchTypedCopy(regCopy, imm))
   }
 
   companion object {
