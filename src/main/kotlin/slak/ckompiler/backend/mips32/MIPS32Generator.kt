@@ -4,10 +4,7 @@ import mu.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
-import slak.ckompiler.parser.PointerType
-import slak.ckompiler.parser.SignedIntType
-import slak.ckompiler.parser.SignedIntegralType
-import slak.ckompiler.parser.UnsignedIntType
+import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
 class MIPS32Generator private constructor(
@@ -143,7 +140,40 @@ class MIPS32Generator private constructor(
     for ((index, irInstr) in condJump.cond.dropLast(1).withIndex()) {
       selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
     }
-    TODO()
+
+    val actualJump = when (val l = condJump.cond.last()) {
+      is IntCmp -> matchIntCompareAndBranch(l, JumpTargetConstant(condJump.target)) + listOf(
+          b.match(JumpTargetConstant(condJump.other))
+      )
+      is FltCmp -> TODO("mips float compare")
+      else -> TODO("no idea what happens here")
+    }
+    selected += actualJump.onEach { it.irLabelIndex = idxOffset + condJump.cond.size - 1 }
+    return selected
+  }
+
+  private fun matchIntCompareAndBranch(i: IntCmp, jumpIfTrue: JumpTargetConstant): List<MachineInstruction> {
+    if (i.cmp == Comparisons.EQUAL || i.cmp == Comparisons.NOT_EQUAL) {
+      val (lhs, lhsOps) = convertIfImm(i.lhs)
+      val (rhs, rhsOps) = convertIfImm(i.rhs)
+
+      val compareAndBranch = if (i.cmp == Comparisons.EQUAL) beq else bne
+
+      return lhsOps + rhsOps + listOf(compareAndBranch.match(lhs, rhs, jumpIfTrue))
+    }
+
+    val compareResult = VirtualRegister(graph.registerIds(), i.lhs.type)
+    val subCompare = matchSub(compareResult, i.lhs, i.rhs)
+
+    val branch = when (i.cmp) {
+      Comparisons.LESS_THAN -> bltz.match(compareResult, jumpIfTrue)
+      Comparisons.GREATER_THAN -> bgtz.match(compareResult, jumpIfTrue)
+      Comparisons.LESS_EQUAL -> blez.match(compareResult, jumpIfTrue)
+      Comparisons.GREATER_EQUAL -> bgez.match(compareResult, jumpIfTrue)
+      Comparisons.NOT_EQUAL, Comparisons.EQUAL -> logger.throwICE("Unreachable, checked above")
+    }
+
+    return subCompare + branch
   }
 
   private fun selectImpossible(ret: ImpossibleJump, idxOffset: Int): List<MachineInstruction> {
@@ -205,19 +235,23 @@ class MIPS32Generator private constructor(
   }
 
   private fun matchSub(i: BinaryInstruction): List<MachineInstruction> {
-    val (lhs, ops) = convertIfImm(i.lhs)
-    if (i.rhs is ConstantValue) {
-      val rhs = when (val iRhs = i.rhs) {
-        is IntConstant -> -iRhs
-        is FltConstant -> -iRhs
+    return matchSub(i.result, i.lhs, i.rhs)
+  }
+
+  private fun matchSub(result: IRValue, subLhs: IRValue, subRhs: IRValue): List<MachineInstruction> {
+    val (lhs, ops) = convertIfImm(subLhs)
+    if (subRhs is ConstantValue) {
+      val rhs = when (subRhs) {
+        is IntConstant -> -subRhs
+        is FltConstant -> -subRhs
         else -> logger.throwICE("Subtracting non int/float constant")
       }
-      return ops + matchAdd(i.result, lhs, rhs)
+      return ops + matchAdd(result, lhs, rhs)
     }
 
-    val isUnsigned = i.result.type.unqualify() !is SignedIntegralType
+    val isUnsigned = result.type.unqualify() !is SignedIntegralType
     val sub = if (isUnsigned) subu else sub
-    return listOf(sub.match(i.result, lhs, i.rhs))
+    return listOf(sub.match(result, lhs, subRhs))
   }
 
   private fun matchMul(i: BinaryInstruction): List<MachineInstruction> {

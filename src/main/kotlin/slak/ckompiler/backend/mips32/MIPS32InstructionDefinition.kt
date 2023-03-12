@@ -34,6 +34,30 @@ val b = mips32InstructionClass("b", listOf(VariableUse.USE)) {
   instr(Label)
 }
 
+val beq = mips32InstructionClass("beq", listOf(VariableUse.USE, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, Label)
+}
+
+val bne = mips32InstructionClass("bne", listOf(VariableUse.USE, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, Label)
+}
+
+val bltz = mips32InstructionClass("bltz", listOf(VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, Label)
+}
+
+val blez = mips32InstructionClass("blez", listOf(VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, Label)
+}
+
+val bgtz = mips32InstructionClass("bgtz", listOf(VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, Label)
+}
+
+val bgez = mips32InstructionClass("bgez", listOf(VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, Label)
+}
+
 val jal = mips32InstructionClass("jal", listOf(VariableUse.USE)) {
   instr(Label)
 }
