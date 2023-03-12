@@ -228,6 +228,22 @@ class SequenceTests {
   }
 
   @Test
+  fun `Increment Is Hoisted From Array Subscript In Assignment`() {
+    val arrayType = ArrayType(SignedIntType, ConstantSize(int(20)))
+    val v = nameRef("v", arrayType)
+    val x = intVar("x")
+    val result = intVar("result")
+    val expr = result.assign(v[prefixInc(x)])
+    val (sequencedBefore, remaining) = debugHandler.sequentialize(expr)
+    debugHandler.assertNoDiagnostics()
+    assertEquals(result, remaining)
+    assertEquals(listOf(
+        x assign (x add 1),
+        result assign v[x]
+    ), sequencedBefore)
+  }
+
+  @Test
   fun `Prefix Increment Is Hoisted From Cast Expression`() {
     val x = intVar("x")
     val expr = SignedLongLongType.cast(prefixInc(x))

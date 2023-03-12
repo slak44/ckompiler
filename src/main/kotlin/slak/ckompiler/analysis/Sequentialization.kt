@@ -78,8 +78,11 @@ private fun dismantleCompound(
 private fun SequentializationContext.handleAssignments(e: BinaryExpression): Expression {
   val assignTarget = makeAssignmentTarget(e.lhs, e)
   // Move assignments before the expression
-  sequencedBefore +=
-      if (e.op != BinaryOperators.ASSIGN) dismantleCompound(e.op, assignTarget, e.rhs, e) else e
+  sequencedBefore += if (e.op != BinaryOperators.ASSIGN) {
+    dismantleCompound(e.op, assignTarget, seqImpl(e.rhs), e)
+  } else {
+    BinaryExpression(e.op, seqImpl(e.lhs), seqImpl(e.rhs), e.type).withRange(e)
+  }
   return assignTarget
 }
 
