@@ -177,4 +177,12 @@ class IRTests {
     val ir = createIR(SignedIntType.cast(nameRef("foo", const + SignedIntType)))
     assert(ir.none { it is StructuralCast || it is ReinterpretCast })
   }
+
+  @Test
+  fun `IR Pointer Arithmetic Add`() {
+    val ptr = nameRef("ptr", ptr(SignedIntType))
+    val ir = createIR(ptr add 1)
+    assertEquals(1, ir.size)
+    assertIsPtrAdd(ir[0], SignedIntType, 1)
+  }
 }

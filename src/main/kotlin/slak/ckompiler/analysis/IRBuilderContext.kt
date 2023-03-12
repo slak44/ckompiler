@@ -63,8 +63,11 @@ private fun IRBuilderContext.buildUnary(expr: UnaryExpression): IRInstruction = 
 private fun IRBuilderContext.buildBinaryOperands(
     expr: BinaryExpression,
 ): Triple<VirtualRegister, IRValue, IRValue> {
-  require(expr.lhs.type.unqualify() is ArithmeticType && expr.rhs.type == expr.lhs.type)
-  return Triple(newRegister(expr.type), buildOperand(expr.lhs), buildOperand(expr.rhs))
+  val result = expr.op.applyTo(expr.lhs.type, expr.rhs.type)
+  require(result.exprType !is ErrorType) {
+    "Binary operands have invalid types for IR generation"
+  }
+  return Triple(newRegister(result.exprType), buildOperand(expr.lhs), buildOperand(expr.rhs))
 }
 
 /**
@@ -73,7 +76,7 @@ private fun IRBuilderContext.buildBinaryOperands(
 private fun IRBuilderContext.buildCommonBinary(expr: BinaryExpression): IRInstruction {
   val (reg, lhs, rhs) = buildBinaryOperands(expr)
   return when (expr.lhs.type) {
-    is IntegralType -> {
+    is IntegralType, is PointerType -> {
       val op = when (expr.op) {
         BinaryOperators.ADD -> IntegralBinaryOps.ADD
         BinaryOperators.SUB -> IntegralBinaryOps.SUB
