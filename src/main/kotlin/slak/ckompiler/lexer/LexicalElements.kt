@@ -178,7 +178,8 @@ private val simpleEscapeSequences = mapOf(
     'n' to 0xA.toChar(),
     'r' to 0xD.toChar(),
     't' to 0x9.toChar(),
-    'v' to 0xB.toChar()
+    'v' to 0xB.toChar(),
+    '0' to 0x0.toChar()
 )
 
 /**
