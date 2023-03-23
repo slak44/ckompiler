@@ -445,8 +445,13 @@ class ExpressionParser(
     } else {
       expr
     }
-    val unary = UnaryExpression(op, convertToCommon(resType, exprChecked), resType)
-        .withRange(c..expr)
+    // Do not convert to result type for * and &, since these operations change the type themselves
+    val operand = if (op == UnaryOperators.DEREF || op == UnaryOperators.REF) {
+      exprChecked
+    } else {
+      convertToCommon(resType, exprChecked)
+    }
+    val unary = UnaryExpression(op, operand, resType).withRange(c..expr)
     if (op == UnaryOperators.REF) validateAddressOf(unary)
     return unary
   }
