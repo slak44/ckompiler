@@ -21,8 +21,8 @@ data class MachineTargetData(
     val floatSizeBytes: Int,
     val doubleSizeBytes: Int,
     val longDoubleSizeBytes: Int,
-    val sizeType: UnqualifiedTypeName,
-    val ptrDiffType: UnqualifiedTypeName,
+    val sizeType: IntegralType,
+    val ptrDiffType: IntegralType,
 ) {
   private fun Int.toBits(): Int = this * 8
 
