@@ -201,7 +201,7 @@ class MIPS32Generator private constructor(
 
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is MoveInstr -> listOf(matchTypedCopy(i.result, removeParamsFromValue(i.value)))
-    is LoadMemory -> listOf(matchTypedCopy(i.result, i.loadFrom))
+    is LoadMemory -> listOf(matchTypedCopy(i.result, MemoryLocation(i.loadFrom)))
     is StoreMemory -> listOf(matchTypedCopy(i.storeTo, removeParamsFromValue(i.value)))
     is ReinterpretCast -> if (i.operand == i.result) emptyList() else listOf(matchTypedCopy(i.result, i.operand))
     is IntBinary -> when (i.op) {
