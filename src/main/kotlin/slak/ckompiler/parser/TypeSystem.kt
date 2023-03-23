@@ -941,17 +941,21 @@ fun resultOfTernary(success: Expression, failure: Expression): TypeName {
  * the unchanged [operand] parameter.
  */
 fun convertToCommon(commonType: TypeName, operand: Expression): Expression {
-  val opType = operand.type
-  if (commonType == opType) return operand
-  if (commonType == ErrorType || opType == ErrorType) return operand
+  val opType = operand.type.normalize()
+  val targetCommon = commonType.normalize()
+  if (targetCommon == opType) return operand
+  if (targetCommon == ErrorType || opType == ErrorType) return operand
   // FIXME: this does not seem terribly correct, but 6.5.4.0.3 does say pointers need explicit casts
-  if (opType is PointerType || commonType is PointerType) return operand
+  if (opType is PointerType && targetCommon is PointerType) return operand
+  // Pointer + integral should not have a cast
+  if (opType is IntegralType && targetCommon is PointerType) return operand
   // FIXME: this also does not seem terribly correct, but why would we cast int to const int?
-  if (commonType.unqualify() == opType.unqualify()) return operand
-  if (commonType is ArrayType && opType is ArrayType && opType.size is ConstantArraySize) {
+  if (targetCommon.unqualify() == opType.unqualify()) return operand
+  // Converting array with size to array without size is always fine without a cast
+  if (targetCommon is ArrayType && opType is ArrayType && opType.size is ConstantArraySize) {
     return operand
   }
-  return CastExpression(operand, commonType).withRange(operand)
+  return CastExpression(operand, targetCommon).withRange(operand)
 }
 
 /**
