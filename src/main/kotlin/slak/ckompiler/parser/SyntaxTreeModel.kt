@@ -469,11 +469,19 @@ data class StringLiteralNode(
     val string: String,
     val encoding: StringEncoding,
 ) : ExprConstantNode() {
-  override val type = ArrayType(when (encoding) {
-    StringEncoding.CHAR, StringEncoding.UTF8 -> SignedCharType
-    else -> UnsignedLongLongType
-  }, ConstantSize(IntegerConstantNode(string.length.toLong())))
-
+  /**
+   * C standard: 6.4.5.0.6
+   */
+  override val type: ArrayType get() {
+    val size = ConstantSize(IntegerConstantNode(string.length.toLong()))
+    val elementType = when (encoding) {
+      StringEncoding.CHAR, StringEncoding.UTF8 -> SignedCharType
+      else -> UnsignedLongLongType
+    }
+    // The type of the array elements is surprisingly not "const char", but simply "char", as per the standard
+    // It's just undefined behaviour to modify one
+    return ArrayType(elementType, size)
+  }
   override fun toString() = "${encoding.prefix}\"$string\""
 }
 
