@@ -663,6 +663,8 @@ private fun intOp(lhs: TypeName, rhs: TypeName): UnqualifiedTypeName {
 
 /**
  * Returns [BinaryResult.operandCommonType] for simple assignments.
+ *
+ * C standard: 6.5.16.1
  */
 private fun applyAssign(lhs: TypeName, rhs: TypeName): TypeName {
   val target = lhs.unqualify()
@@ -676,12 +678,18 @@ private fun applyAssign(lhs: TypeName, rhs: TypeName): TypeName {
     // FIXME: actually check things (6.5.16.1)
     return if (target != rhs.unqualify()) ErrorType else target
   }
-  if (lhs is PointerType) {
-    // FIXME: actually check things (6.5.16.1)
-    return if (rhs !is PointerType) ErrorType else lhs
-  }
-  // An example for this case is char x[] = "hello";
-  if (lhs is ArrayType && rhs is ArrayType && lhs.elementType.isCompatibleWith(rhs.elementType) && rhs.size is ConstantArraySize) {
+  val lhsNorm = lhs.normalize()
+  val rhsNorm = rhs.normalize()
+  if (lhsNorm is PointerType) {
+    if (rhsNorm !is PointerType) {
+      return ErrorType
+    }
+    val lhsQuals = lhsNorm.referencedType.typeQuals.map { it.value }
+    val rhsQuals = rhsNorm.referencedType.typeQuals.map { it.value }
+    if (!lhsQuals.containsAll(rhsQuals)) {
+      return ErrorType
+    }
+    // FIXME: actually check everything from 6.5.16.1
     return lhs
   }
   return ErrorType
