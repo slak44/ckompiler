@@ -122,6 +122,30 @@ class E2ETests {
   }
 
   @Test
+  fun `Pointer Arithmetic Add`() {
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        char* x = "abcd";
+        int a = 1;
+        printf(x + a);
+      }
+    """.trimIndent()).expect(stdout = "bcd")
+  }
+
+  @Test
+  fun `Pointer Arithmetic Add Char`() {
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        char* x = "abcd";
+        char a = 1;
+        printf(x + a);
+      }
+    """.trimIndent()).expect(stdout = "bcd")
+  }
+
+  @Test
   fun `Identical String Literals Compare Equal Because Deduplication Or Folding`() {
     compileAndRun("""
       int main() {

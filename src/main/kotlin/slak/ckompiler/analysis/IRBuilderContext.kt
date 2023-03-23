@@ -304,8 +304,8 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
   }
   is CastExpression -> {
     // Casts don't give lvalues, thus casting to the unqualified version is perfect
-    val castTo = expr.type.unqualify()
-    if (expr.target.type.unqualify().isCompatibleWith(castTo)) {
+    val castTo = expr.type.unqualify().normalize()
+    if (expr.target.type.unqualify().normalize().isCompatibleWith(castTo)) {
       // If this cast doesn't actually change the underlying type, don't even do it at all
       buildOperand(expr.target)
     } else {

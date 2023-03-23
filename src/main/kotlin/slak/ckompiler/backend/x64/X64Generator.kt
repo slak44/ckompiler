@@ -263,7 +263,7 @@ class X64Generator private constructor(
       createCall(i.result, i.callable, i.args)
     }
     is IntBinary -> when (i.op) {
-      IntegralBinaryOps.ADD -> matchCommutative(i, add)
+      IntegralBinaryOps.ADD -> matchCommutativePtr(i, add)
       IntegralBinaryOps.SUB -> matchNonCommutative(i, sub)
       IntegralBinaryOps.MUL -> {
         if (i.lhs.type.unqualify() is SignedIntegralType) matchIMul(i) else TODO("mul")
@@ -502,6 +502,39 @@ class X64Generator private constructor(
       val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
       val (maybeConvImm, ops) = convertIfImm(maybeImm)
       listOf(matchTypedMov(i.result, nonImm)) + ops + op.match(i.result, maybeConvImm)
+    }
+  }
+
+  private fun matchCommutativePtr(i: BinaryInstruction, op: List<X64InstrTemplate>): List<MachineInstruction> {
+    val lhsType = i.lhs.type.normalize()
+    val rhsType = i.rhs.type.normalize()
+    if (lhsType !is PointerType && rhsType !is PointerType) {
+      // No pointer arithmetic
+      return matchCommutative(i, op)
+    }
+
+    if (lhsType !is IntegralType && rhsType !is IntegralType) {
+      TODO("adding pointer to non-integral, maybe pointer plus pointer? is this valid?")
+    }
+
+    val (lhs, lhsOps) = convertToPtrDiff(lhsType, i.lhs)
+    val (rhs, rhsOps) = convertToPtrDiff(rhsType, i.rhs)
+
+    val binaryInstruction = object : BinaryInstruction {
+      override val result = i.result
+      override val lhs = lhs
+      override val rhs = rhs
+    }
+    return lhsOps + rhsOps + matchCommutative(binaryInstruction, op)
+  }
+
+  private fun convertToPtrDiff(valueType: TypeName, value: IRValue): Pair<IRValue, List<MachineInstruction>> {
+    return if (valueType is IntegralType) {
+      val regCopy = VirtualRegister(graph.registerIds(), target.machineTargetData.ptrDiffType)
+      val cast = StructuralCast(regCopy, value)
+      regCopy to listOf(matchIntegralCast(valueType, target.machineTargetData.ptrDiffType, cast))
+    } else {
+      value to emptyList()
     }
   }
 
