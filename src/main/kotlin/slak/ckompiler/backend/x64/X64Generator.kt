@@ -530,9 +530,11 @@ class X64Generator private constructor(
 
   private fun convertToPtrDiff(valueType: TypeName, value: IRValue): Pair<IRValue, List<MachineInstruction>> {
     return if (valueType is IntegralType) {
+      val (maybeConvImm, ops) = if (value is ConstantValue) convertImmForOp(value, size8Bypass = false) else value to emptyList()
+
       val regCopy = VirtualRegister(graph.registerIds(), target.machineTargetData.ptrDiffType)
-      val cast = StructuralCast(regCopy, value)
-      regCopy to listOf(matchIntegralCast(valueType, target.machineTargetData.ptrDiffType, cast))
+      val cast = StructuralCast(regCopy, maybeConvImm)
+      regCopy to ops + matchIntegralCast(valueType, target.machineTargetData.ptrDiffType, cast)
     } else {
       value to emptyList()
     }
@@ -600,8 +602,9 @@ class X64Generator private constructor(
     return if (irValue is ConstantValue) convertImmForOp(irValue) else irValue to emptyList()
   }
 
-  private fun convertImmForOp(imm: ConstantValue): Pair<IRValue, List<MachineInstruction>> {
-    if (imm !is IntConstant || target.machineTargetData.sizeOf(imm.type) < 8) return imm to emptyList()
+  // FIXME: what even is with this <8 thing?
+  private fun convertImmForOp(imm: ConstantValue, size8Bypass: Boolean = true): Pair<IRValue, List<MachineInstruction>> {
+    if (imm !is IntConstant || (size8Bypass && target.machineTargetData.sizeOf(imm.type) < 8)) return imm to emptyList()
     val regCopy = VirtualRegister(graph.registerIds(), imm.type)
     return regCopy to listOf(matchTypedMov(regCopy, imm))
   }

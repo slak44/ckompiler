@@ -146,6 +146,20 @@ class E2ETests {
   }
 
   @Test
+  fun `Iterate String`() {
+    compileAndRun("""
+      #include <stdio.h>
+      int main() {
+        char c;
+        char* str = "abcd";
+        while ((c = *(str++)) != '\0') {
+          printf("%c", c);
+        }
+      }
+    """.trimIndent()).expect(stdout = "abcd")
+  }
+
+  @Test
   fun `Identical String Literals Compare Equal Because Deduplication Or Folding`() {
     compileAndRun("""
       int main() {
