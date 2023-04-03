@@ -29,7 +29,8 @@ class MIPS32Register(
 }
 
 private fun RegisterBuilder<MIPS32Register>.register(name: String, regNumber: Int) {
-  regs += MIPS32Register("\$$name", regNumber, 4, valueClass as MIPS32RegisterClass, emptyList())
+  val regName = "\$$name"
+  regs += MIPS32Register(regName, regNumber, 4, valueClass as MIPS32RegisterClass, listOf(regName to 1))
 }
 
 fun getMIPS32Registers(): List<MIPS32Register> = registers {
