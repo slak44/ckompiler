@@ -532,6 +532,11 @@ fun createPeepholeOptimizer(isaType: ISAType): PeepholeOptimizer<AsmInstruction>
   @Suppress("UNCHECKED_CAST")
   return when (isaType) {
     ISAType.X64 -> X64PeepholeOpt() as PeepholeOptimizer<AsmInstruction>
-    ISAType.MIPS32 -> TODO("MIPS32")
+    ISAType.MIPS32 -> object : PeepholeOptimizer<AsmInstruction> {
+      override fun optimize(targetFun: TargetFunGenerator<out AsmInstruction>, asm: List<AsmInstruction>): List<AsmInstruction> {
+        // FIXME: not implemented
+        return asm
+      }
+    }
   }
 }
