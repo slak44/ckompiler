@@ -17,7 +17,7 @@ import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 export class PhiInsertionStateService extends SubscriptionDestroy {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
     tap(() => this.algorithmStepService.reset()),
-    compileCode(true),
+    compileCode(this.compileService.isaType$, true),
   );
 
   public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);

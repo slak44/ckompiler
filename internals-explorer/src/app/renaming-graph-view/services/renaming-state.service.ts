@@ -13,7 +13,7 @@ import RenameReplacements = slak.ckompiler.analysis.external.RenameReplacements;
 @Injectable()
 export class RenamingStateService {
   public readonly compileResult$: Observable<JSCompileResult> = this.compileService.sourceText$.pipe(
-    compileCode(),
+    compileCode(this.compileService.isaType$),
   );
 
   public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);

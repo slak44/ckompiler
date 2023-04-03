@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { combineLatest, map, Observable, shareReplay, tap } from 'rxjs';
+import { combineLatest, map, Observable, shareReplay, takeUntil, tap } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { MatDialog } from '@angular/material/dialog';
@@ -10,6 +10,7 @@ import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import ISAType = slak.ckompiler.backend.ISAType;
+import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
@@ -23,7 +24,7 @@ export const RENAME_PATH = 'rename';
   styleUrls: ['./live-compile.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LiveCompileComponent {
+export class LiveCompileComponent extends SubscriptionDestroy {
   public readonly SOURCE_CODE_PATH = SOURCE_CODE_PATH;
   public readonly DIAGNOSTICS_PATH = DIAGNOSTICS_PATH;
   public readonly CFG_PATH = CFG_PATH;
@@ -63,6 +64,11 @@ export class LiveCompileComponent {
     private readonly location: Location,
     private readonly dialog: MatDialog
   ) {
+    super();
+
+    controlValueStream<ISAType>(this.isaTypeControl).pipe(takeUntil(this.destroy$)).subscribe(isaType => {
+      this.compileService.setISAType(isaType);
+    });
   }
 
   public openSettings(): void {

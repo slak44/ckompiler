@@ -8,13 +8,17 @@ import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import getDiagnosticsStats = slak.ckompiler.getDiagnosticsStats;
+import ISAType = slak.ckompiler.backend.ISAType;
 
 @Injectable({
   providedIn: 'root',
 })
 export class CompileService {
+  private readonly isaTypeSubject: ReplaySubject<ISAType> = new ReplaySubject(1);
   private readonly latestCrashSubject: BehaviorSubject<Error | null> = new BehaviorSubject<Error | null>(null);
   private readonly sourceTextSubject: ReplaySubject<string> = new ReplaySubject(1);
+
+  public readonly isaType$: Observable<ISAType> = this.isaTypeSubject;
 
   public readonly sourceText$: Observable<string> = this.sourceTextSubject.pipe(
     debounceAfterFirst(500),
@@ -23,7 +27,7 @@ export class CompileService {
   );
 
   public readonly defaultCompileResult$: Observable<JSCompileResult> = this.sourceText$.pipe(
-    compileCode(),
+    compileCode(this.isaTypeSubject),
   );
 
   public readonly allDiagnostics$: Observable<Diagnostic[]> = this.defaultCompileResult$.pipe(
@@ -52,5 +56,9 @@ export class CompileService {
 
   public setLatestCrash(error: Error | null): void {
     this.latestCrashSubject.next(error);
+  }
+
+  public setISAType(isaType: ISAType): void {
+    this.isaTypeSubject.next(isaType);
   }
 }

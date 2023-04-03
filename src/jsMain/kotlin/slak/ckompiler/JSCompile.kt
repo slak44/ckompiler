@@ -6,6 +6,7 @@ import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CFGOptions
 import slak.ckompiler.analysis.Variable
 import slak.ckompiler.analysis.external.json
+import slak.ckompiler.backend.ISAType
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
@@ -16,7 +17,7 @@ import slak.ckompiler.parser.Parser
 data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diagnostic>)
 
 @JsExport
-fun jsCompile(source: String, skipSSARename: Boolean): JSCompileResult {
+fun jsCompile(source: String, skipSSARename: Boolean, isaType: ISAType): JSCompileResult {
   val includePaths = IncludePaths(emptyList(), listOf(FSPath(stdlibDir)), emptyList())
   val sourceFileName = "editor.c"
   val pp = Preprocessor(
@@ -26,14 +27,14 @@ fun jsCompile(source: String, skipSSARename: Boolean): JSCompileResult {
       cliDefines = emptyMap(),
       includePaths = includePaths,
       ignoreTrigraphs = true,
-      targetData = MachineTargetData.x64
+      targetData = isaType.machineTargetData
   )
 
   if (pp.diags.errors().isNotEmpty()) {
     return JSCompileResult(null, pp.diags.toTypedArray())
   }
 
-  val p = Parser(pp.tokens, "-", source, MachineTargetData.x64)
+  val p = Parser(pp.tokens, "-", source, isaType.machineTargetData)
   val beforeCFGDiags = pp.diags + p.diags
 
   if (p.diags.errors().isNotEmpty()) {
@@ -47,7 +48,7 @@ fun jsCompile(source: String, skipSSARename: Boolean): JSCompileResult {
 
     CFG(
         f = it,
-        targetData = MachineTargetData.x64,
+        targetData = isaType.machineTargetData,
         srcFileName = sourceFileName,
         srcText = source,
         cfgOptions = options
