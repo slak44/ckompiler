@@ -14,10 +14,16 @@ class SPIMGenerator(
 
   override fun emitAsm(): String {
     for (external in externals) prelude += ".globl $external"
-    for (function in functions) generateFunction(function)
+
     mainCfg?.let { function ->
       text += genStartRoutine()
       generateFunction(function, "_main")
+    }
+
+    for (function in functions) generateFunction(function)
+
+    if ("printf" in externals) {
+      text += generatePrintfSupport()
     }
 
     text += generateExitFunction()
@@ -41,6 +47,38 @@ class SPIMGenerator(
     emit("jal _main")
     emit("move \$a0, \$v0")
     emit("jal exit")
+  }
+
+  private fun generatePrintfSupport() = instrGen {
+    label("__builtin_print_char")
+    emit("li \$v0, 11")
+    emit("syscall")
+    emit("jr \$ra")
+
+    label("__builtin_print_int")
+    emit("li \$v0, 1")
+    emit("syscall")
+    emit("jr \$ra")
+
+    label("__builtin_print_string")
+    emit("li \$v0, 4")
+    emit("syscall")
+    emit("jr \$ra")
+
+    label("__builtin_print_float")
+    emit("li \$v0, 3")
+    emit("syscall")
+    emit("jr \$ra")
+
+    label("printf")
+    emit("move \$a1, \$sp")
+    emit("addiu \$sp, \$sp, -4")
+    emit("sw \$ra, (\$sp)")
+    emit("addiu \$a1, \$a1, 4")
+    emit("jal __builtin_printf_no_va")
+    emit("lw \$ra, (\$sp)")
+    emit("addiu \$sp, \$sp, 4")
+    emit("jr \$ra")
   }
 
   val InstrBlock.label get() = id.label
