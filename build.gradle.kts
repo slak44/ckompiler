@@ -105,10 +105,6 @@ val fixDefinitionsFile: Task by tasks.creating {
 kotlin {
   jvm {
     val main by compilations.getting {
-      kotlinOptions {
-        jvmTarget = "11"
-      }
-
       tasks.getByName("jvmProcessResources") {
         dependsOn(tasks.getByName("processResources"))
         dependsOn(tasks.getByName("processTestResources"))
@@ -117,10 +113,6 @@ kotlin {
     }
 
     val test by compilations.getting {
-      kotlinOptions {
-        jvmTarget = "11"
-      }
-
       tasks.getByName("jvmTestProcessResources") {
         dependsOn(tasks.getByName("processResources"))
         dependsOn(tasks.getByName("processTestResources"))
@@ -161,7 +153,7 @@ kotlin {
 
       dependencies {
         implementation(kotlin("stdlib-common"))
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
         implementation("org.jetbrains.kotlinx:kotlinx-html:0.7.2")
         implementation("io.github.microutils:kotlin-logging:2.0.2")
       }
