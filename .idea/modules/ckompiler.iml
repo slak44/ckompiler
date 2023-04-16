@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module version="4">
+  <component name="AdditionalModuleElements">
+    <content url="file://$MODULE_DIR$/../.." dumb="true">
+      <excludeFolder url="file://$MODULE_DIR$/../../internals-explorer/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/../../internals-explorer/tmp" />
+    </content>
+  </component>
   <component name="FacetManager">
     <facet type="Python" name="Python">
       <configuration sdkName="Python 3.10 (ckompiler)" />
