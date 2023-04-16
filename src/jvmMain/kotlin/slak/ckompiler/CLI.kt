@@ -372,12 +372,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private var executionFailed = false
 
-  private fun compile(
-      text: String,
-      relPath: String,
-      baseName: String,
-      parentDir: File,
-  ): File? {
+  private fun getParserFor(text: String, relPath: String, parentDir: File): Parser? {
     val includePaths = IncludePaths.defaultPaths +
         IncludePaths(generalIncludes.map(::FSPath), (systemIncludes + systemIncludesAfter).map(::FSPath), userIncludes.map(::FSPath))
     includePaths.includeBarrier = includeBarrier
@@ -412,6 +407,15 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       return null
     }
 
+    return p
+  }
+
+  private fun compile(text: String, relPath: String, baseName: String, parentDir: File): File? {
+    val p = getParserFor(text, relPath, parentDir) ?: return null
+    return compile(p, text, relPath, baseName, parentDir)
+  }
+
+  private fun compile(p: Parser, text: String, relPath: String, baseName: String, parentDir: File): File? {
     val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
     val target = createMachineTarget(isaType, baseTargetOpts, targetSpecific)
@@ -521,8 +525,21 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       createTargetFunGenerator(cfg, target)
     }
 
+    val getCFGFrom: GetTranslationUnitCFG = getCFGFrom@ { tuText, tuRelPath ->
+      val parser = getParserFor(tuText, tuRelPath, File("/")) ?: return@getCFGFrom emptyList()
+
+      parser.root.decls.mapNotNull { it as? FunctionDefinition }.map {
+        CFG(f = it, targetData = target.machineTargetData, srcFileName = tuRelPath, srcText = tuText)
+            .also { cfg -> cfg.diags.forEach(Diagnostic::print) }
+      }
+    }
+
+    val runtimeProvider = createTargetRuntimeProvider(isaType)
+    val runtimeFunctions = runtimeProvider.provideRuntimeFunctions(declNames, target, getCFGFrom)
+    val finalFunctionsEmit = functionsEmit + runtimeFunctions
+
     val asm = try {
-      createAsmEmitter(isaType, declNames, functionsEmit, mainEmit).emitAsm()
+      createAsmEmitter(isaType, declNames, finalFunctionsEmit, mainEmit).emitAsm()
     } catch (e: Exception) {
       logger.error("Internal compiler error when compiling file: $relPath")
       throw e
