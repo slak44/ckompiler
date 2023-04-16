@@ -353,11 +353,12 @@ interface FunctionAssembler<T : AsmInstruction> {
   fun convertBlockInstructions(
       blockId: AtomicId,
       alloc: AllocationResult,
+      isDummyToSkip: (template: InstructionTemplate<OperandTemplate>) -> Boolean = { it.isDummy },
       convertMI: (mi: MachineInstruction) -> T,
   ): List<T> {
     val result = mutableListOf<T>()
     for (mi in alloc.graph[blockId]) {
-      if (mi.template.isDummy) continue
+      if (isDummyToSkip(mi.template)) continue
 
       // Add linked before (eg cdq before div)
       for ((linkedMi) in mi.links.filter { it.pos == LinkPosition.BEFORE }) {

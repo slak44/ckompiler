@@ -4,7 +4,10 @@ import mu.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
-import slak.ckompiler.parser.*
+import slak.ckompiler.parser.PointerType
+import slak.ckompiler.parser.SignedIntType
+import slak.ckompiler.parser.SignedIntegralType
+import slak.ckompiler.parser.UnsignedIntType
 import slak.ckompiler.throwICE
 
 class MIPS32Generator private constructor(
@@ -201,8 +204,22 @@ class MIPS32Generator private constructor(
 
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
     is MoveInstr -> listOf(matchTypedCopy(i.result, removeParamsFromValue(i.value)))
-    is LoadMemory -> listOf(matchTypedCopy(i.result, MemoryLocation(i.loadFrom)))
-    is StoreMemory -> listOf(matchTypedCopy(i.storeTo, removeParamsFromValue(i.value)))
+    is LoadMemory -> {
+      val loadable = if (i.loadFrom is MemoryLocation) i.loadFrom else MemoryLocation(i.loadFrom)
+      listOf(matchTypedCopy(i.result, loadable))
+    }
+    is StoreMemory -> {
+      val valueNoParam = removeParamsFromValue(i.value)
+      val (value, ops) = convertIfImm(valueNoParam)
+      val storable =
+          if (i.storeTo is StackVariable || i.storeTo is MemoryLocation) i.storeTo
+          else MemoryLocation(i.storeTo)
+      if (value.type is PointerType && MemoryLocation(value) == storable) {
+        emptyList()
+      } else {
+        ops + matchTypedCopy(storable, value)
+      }
+    }
     is ReinterpretCast -> if (i.operand == i.result) emptyList() else listOf(matchTypedCopy(i.result, i.operand))
     is IntBinary -> when (i.op) {
       IntegralBinaryOps.ADD -> matchAdd(i)

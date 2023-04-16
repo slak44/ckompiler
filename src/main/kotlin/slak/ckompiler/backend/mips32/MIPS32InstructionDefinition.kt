@@ -1,7 +1,12 @@
 package slak.ckompiler.backend.mips32
 
+import slak.ckompiler.analysis.CFG
+import slak.ckompiler.analysis.LoadMemory
+import slak.ckompiler.analysis.StackVariable
+import slak.ckompiler.analysis.insertSpillCode
 import slak.ckompiler.backend.ICBuilder
 import slak.ckompiler.backend.VariableUse
+import slak.ckompiler.backend.dummyInstructionClass
 import slak.ckompiler.backend.instructionClass
 
 private fun mips32InstructionClass(
@@ -22,11 +27,31 @@ val lw = mips32InstructionClass("lw", listOf(VariableUse.DEF, VariableUse.USE)) 
   instr(RegisterOperand, MemoryOperand)
 }
 
+val lb = mips32InstructionClass("lb", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, MemoryOperand)
+}
+
 val sw = mips32InstructionClass("sw", listOf(VariableUse.USE, VariableUse.DEF)) {
   instr(RegisterOperand, MemoryOperand)
 }
 
+val sb = mips32InstructionClass("sb", listOf(VariableUse.USE, VariableUse.DEF)) {
+  instr(RegisterOperand, MemoryOperand)
+}
+
 val move = mips32InstructionClass("move", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+/**
+ * [StackVariable]s are pointers to somewhere in the stack. They have displacements of the form -4($fp).
+ * When used directly to load a value (so as [LoadMemory.loadFrom]), it's fine to leave them as is.
+ * In every other context they are used as values, as pointers, and MIPS doesn't have either x64 lea, or complex addressing like mov.
+ * So the address needs to be computed with arithmetic.
+ *
+ * Related to [CFG.insertSpillCode] and the insanity there.
+ */
+val stackAddrMove = dummyInstructionClass("move (stack special)", ::MIPS32InstructionTemplate, listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand)
 }
 
