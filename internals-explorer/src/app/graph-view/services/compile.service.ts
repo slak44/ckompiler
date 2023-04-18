@@ -3,12 +3,14 @@ import { BehaviorSubject, distinctUntilChanged, map, Observable, ReplaySubject, 
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { slak } from '@ckompiler/ckompiler';
 import { compileCode } from '@cki-graph-view/compilation-instance';
+import { currentPrintingType } from '@cki-settings';
 import Diagnostic = slak.ckompiler.Diagnostic;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import getDiagnosticsStats = slak.ckompiler.getDiagnosticsStats;
 import ISAType = slak.ckompiler.backend.ISAType;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Injectable({
   providedIn: 'root',
@@ -57,6 +59,9 @@ export class CompileService {
   }
 
   public setLatestCrash(error: Error | null): void {
+    if (error) {
+      currentPrintingType.update(CodePrintingMethods.IR_TO_STRING);
+    }
     this.latestCrashSubject.next(error);
   }
 
