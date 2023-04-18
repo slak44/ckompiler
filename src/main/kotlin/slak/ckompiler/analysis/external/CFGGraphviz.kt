@@ -34,14 +34,14 @@ private const val brLeft = "<br align=\"left\"/>"
 fun blockHeader(id: AtomicId): String = "<span class=\"header\">BB$id:</span>".unescape() + brLeft
 
 fun BasicBlock.srcToString(exprToStr: Expression.() -> String): String {
-  fun List<Expression>.sourceSubstr() = joinToString(brLeft) { it.exprToStr() }
+  fun List<Expression>.sourceSubstr() = joinToString(brLeft) { it.exprToStr().unescape() }
   val blockCode = src.filter { it !is Terminal }.sourceSubstr()
   val termCode = when (val term = terminator) {
-    is CondJump -> term.src.exprToStr() + " ?$brLeft"
-    is SelectJump -> term.src.exprToStr() + " ?$brLeft"
+    is CondJump -> term.src.exprToStr().unescape() + " ?$brLeft"
+    is SelectJump -> term.src.exprToStr().unescape() + " ?$brLeft"
     is ImpossibleJump -> {
       if (term.returned == null) "return;$brLeft"
-      else "return ${term.src!!.exprToStr()};$brLeft"
+      else "return ${term.src!!.exprToStr().unescape()};$brLeft"
     }
     else -> ""
   }
@@ -120,7 +120,7 @@ private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions):
       CodePrintingMethods.SOURCE_SUBSTRING -> it.srcToString {
         (sourceText ?: sourceCode).substring(range).trim().unescape()
       }
-      CodePrintingMethods.EXPR_TO_STRING -> it.srcToString { toString().unescape() }
+      CodePrintingMethods.EXPR_TO_STRING -> it.srcToString { toString() }
       CodePrintingMethods.IR_TO_STRING -> it.irToString()
       else -> throw IllegalStateException("Unreachable")
     }
@@ -133,9 +133,13 @@ private fun String.unescape(): String =
     replace("\\b", "\\\\b")
         .replace("\\t", "\\\\t")
         .replace("\\n", "\\\\n")
+        .replace("\\0", "\\\\0")
+        .replace("\u0000", "\\\\0")
         .replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
+        .replace("[", "&#91;")
+        .replace("]", "&#93;")
 
 @JsExport
 data class GraphvizOptions(
