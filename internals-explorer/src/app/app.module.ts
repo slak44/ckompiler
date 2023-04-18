@@ -4,9 +4,12 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HIGHLIGHT_OPTIONS } from 'ngx-highlightjs';
-import { HttpClientModule } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { MonacoEditorModule } from 'ng-monaco-editor';
 import { monacoLoader } from '@cki-utils/monaco-loader';
+import { AuthHttpInterceptor, AuthModule } from '@auth0/auth0-angular';
+import { environment } from '../environments/environment';
+import { AUTHENTICATED_ROUTE } from '@cki-utils/routes';
 
 @NgModule({
   declarations: [
@@ -20,8 +23,27 @@ import { monacoLoader } from '@cki-utils/monaco-loader';
     MonacoEditorModule.forRoot({
       dynamicImport: () => import('monaco-editor').then(monacoLoader),
     }),
+    AuthModule.forRoot({
+      domain: environment.oauth.domain,
+      clientId: environment.oauth.clientId,
+      authorizationParams: {
+        audience: environment.oauth.audience,
+        scope: 'openid profile email offline_access',
+        redirect_uri: `${window.location.origin}/${AUTHENTICATED_ROUTE}`,
+      },
+      useRefreshTokens: true,
+      cacheLocation: 'localstorage',
+      httpInterceptor: {
+        allowedList: [
+          {
+            uri: `${environment.baseUrl}/*`,
+          },
+        ],
+      },
+    }),
   ],
   providers: [
+    { provide: HTTP_INTERCEPTORS, useClass: AuthHttpInterceptor, multi: true },
     {
       provide: HIGHLIGHT_OPTIONS,
       useValue: {

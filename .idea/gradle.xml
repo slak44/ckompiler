@@ -7,7 +7,6 @@
         <option name="testRunner" value="PLATFORM" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleHome" value="/usr/share/java/gradle" />
-        <option name="gradleJvm" value="19" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
@@ -16,6 +15,7 @@
       </GradleProjectSettings>
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$/internals-explorer-backend" />
+        <option name="gradleHome" value="/usr/share/java/gradle" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$/internals-explorer-backend" />

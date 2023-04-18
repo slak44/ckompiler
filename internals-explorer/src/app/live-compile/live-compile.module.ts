@@ -20,6 +20,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { SettingsModule } from '../settings/settings.module';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSidenavModule } from '@angular/material/sidenav';
 
 @NgModule({
   declarations: [
@@ -46,6 +47,7 @@ import { MatSelectModule } from '@angular/material/select';
     MatSlideToggleModule,
     SettingsModule,
     MatSelectModule,
+    MatSidenavModule,
   ],
 })
 export class LiveCompileModule {

@@ -1,6 +1,5 @@
 <mat-toolbar color="primary">
-  <!-- FIXME: -->
-  <button mat-icon-button [hidden]="true">
+  <button mat-icon-button (click)="sidenav.toggle()">
     <mat-icon>menu</mat-icon>
   </button>
 
@@ -20,53 +19,65 @@
   </button>
 </mat-toolbar>
 
-<mat-tab-group ckiRoutedTabGroup class="fill-height" [(selectedIndex)]="selectedTabIndex">
-  <mat-tab [ckiRoutedTab]="SOURCE_CODE_PATH">
-    <div *matTabLabel class="tab-label">
-      <mat-icon>code</mat-icon>
-      Source code
+<mat-sidenav-container>
+  <mat-sidenav #sidenav mode="over" fixedInViewport fixedTopGap="64">
+    <div class="sidenav-wrapper">
+      <button mat-raised-button color="accent" (click)="login()">
+        LOGIN
+      </button>
     </div>
+  </mat-sidenav>
 
-    <cki-source-editor [initialText$]="initialSource$"></cki-source-editor>
-  </mat-tab>
+  <mat-sidenav-content>
+    <mat-tab-group ckiRoutedTabGroup class="fill-height" [(selectedIndex)]="selectedTabIndex">
+      <mat-tab [ckiRoutedTab]="SOURCE_CODE_PATH">
+        <div *matTabLabel class="tab-label">
+          <mat-icon>code</mat-icon>
+          Source code
+        </div>
 
-  <mat-tab [ckiRoutedTab]="DIAGNOSTICS_PATH">
-    <div *matTabLabel class="tab-label">
-      <mat-icon>error</mat-icon>
-      Diagnostics
-      <mat-chip-list *ngIf="diagnosticStats$ | async as stats" [selectable]="false">
-        <mat-chip *ngIf="stats.errors" class="errors">{{ stats.errors }}</mat-chip>
-        <mat-chip *ngIf="stats.warnings" class="warnings">{{ stats.warnings }}</mat-chip>
-      </mat-chip-list>
-    </div>
+        <cki-source-editor [initialText$]="initialSource$"></cki-source-editor>
+      </mat-tab>
 
-    <cki-diagnostic-list></cki-diagnostic-list>
-  </mat-tab>
+      <mat-tab [ckiRoutedTab]="DIAGNOSTICS_PATH">
+        <div *matTabLabel class="tab-label">
+          <mat-icon>error</mat-icon>
+          Diagnostics
+          <mat-chip-list *ngIf="diagnosticStats$ | async as stats" [selectable]="false">
+            <mat-chip *ngIf="stats.errors" class="errors">{{ stats.errors }}</mat-chip>
+            <mat-chip *ngIf="stats.warnings" class="warnings">{{ stats.warnings }}</mat-chip>
+          </mat-chip-list>
+        </div>
 
-  <mat-tab [ckiRoutedTab]="CFG_PATH" [disabled]="hasErrors$ | async">
-    <div *matTabLabel class="tab-label">
-      <mat-icon>account_tree</mat-icon>
-      CFG View
-    </div>
+        <cki-diagnostic-list></cki-diagnostic-list>
+      </mat-tab>
 
-    <cki-default-graph-view [isaType$]="isaType$"></cki-default-graph-view>
-  </mat-tab>
+      <mat-tab [ckiRoutedTab]="CFG_PATH" [disabled]="hasErrors$ | async">
+        <div *matTabLabel class="tab-label">
+          <mat-icon>account_tree</mat-icon>
+          CFG View
+        </div>
 
-  <mat-tab [ckiRoutedTab]="PHI_PATH" [disabled]="hasErrors$ | async">
-    <div *matTabLabel class="tab-label">
-      <mat-icon>route</mat-icon>
-      φ Insertion
-    </div>
+        <cki-default-graph-view [isaType$]="isaType$"></cki-default-graph-view>
+      </mat-tab>
 
-    <cki-phi-insertion-view></cki-phi-insertion-view>
-  </mat-tab>
+      <mat-tab [ckiRoutedTab]="PHI_PATH" [disabled]="hasErrors$ | async">
+        <div *matTabLabel class="tab-label">
+          <mat-icon>route</mat-icon>
+          φ Insertion
+        </div>
 
-  <mat-tab [ckiRoutedTab]="RENAME_PATH" [disabled]="hasErrors$ | async">
-    <div *matTabLabel class="tab-label">
-      <mat-icon>edit</mat-icon>
-      Variable Renaming
-    </div>
+        <cki-phi-insertion-view></cki-phi-insertion-view>
+      </mat-tab>
 
-    <cki-var-rename-view></cki-var-rename-view>
-  </mat-tab>
-</mat-tab-group>
+      <mat-tab [ckiRoutedTab]="RENAME_PATH" [disabled]="hasErrors$ | async">
+        <div *matTabLabel class="tab-label">
+          <mat-icon>edit</mat-icon>
+          Variable Renaming
+        </div>
+
+        <cki-var-rename-view></cki-var-rename-view>
+      </mat-tab>
+    </mat-tab-group>
+  </mat-sidenav-content>
+</mat-sidenav-container>

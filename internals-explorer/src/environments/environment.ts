@@ -5,7 +5,13 @@ import { EnvironmentType } from './environment-type';
 // The list of file replacements can be found in `angular.json`.
 
 export const environment: EnvironmentType = {
-  production: false
+  production: false,
+  baseUrl: 'http://localhost:8080',
+  oauth: {
+    domain: 'ckompiler-internals-explorer.eu.auth0.com',
+    clientId: 'VX6YGntpyUipXIFXHff4clmJe2geq8rb',
+    audience: 'https://slak44.github.io/ckompiler/',
+  },
 };
 
 /*

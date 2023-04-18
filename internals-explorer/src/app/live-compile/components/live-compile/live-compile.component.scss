@@ -20,6 +20,22 @@
   flex-shrink: 0;
 }
 
+.mat-sidenav-container {
+  flex-grow: 1;
+  background-color: $graph-background;
+}
+
+.sidenav-wrapper {
+  min-width: 250px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  button {
+    margin: 16px;
+  }
+}
+
 .mat-tab-group {
   height: 100%;
 }

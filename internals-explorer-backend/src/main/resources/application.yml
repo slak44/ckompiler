@@ -14,3 +14,19 @@ spring:
     init:
       mode: always
       platform: postgres
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://ckompiler-internals-explorer.eu.auth0.com/
+          audiences:
+            - https://slak44.github.io/ckompiler/
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: development
+ckompiler:
+  allowed-origin: http://localhost:4200
