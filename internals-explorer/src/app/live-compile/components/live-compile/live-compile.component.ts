@@ -1,16 +1,17 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { combineLatest, map, Observable, shareReplay, takeUntil, tap } from 'rxjs';
+import { combineLatest, map, Observable, takeUntil, tap } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SettingsDialogComponent } from '../../../settings/components/settings-dialog/settings-dialog.component';
 import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
+import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { isaType } from '@cki-settings';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import ISAType = slak.ckompiler.backend.ISAType;
-import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
@@ -33,11 +34,9 @@ export class LiveCompileComponent extends SubscriptionDestroy {
 
   public readonly isaTypeValues = ISAType.values();
 
-  public readonly isaTypeControl: FormControl = new FormControl(ISAType.X64);
+  public readonly isaTypeControl: FormControl = isaType.formControl;
 
-  public readonly isaType$: Observable<ISAType> = controlValueStream<ISAType>(this.isaTypeControl).pipe(
-    shareReplay({ refCount: false, bufferSize: 1 }),
-  );
+  public readonly isaType$: Observable<ISAType> = isaType.value$;
 
   public readonly initialSource$: Observable<string> =
     this.httpClient.get(this.location.prepareExternalUrl('/assets/samples/default.c'), { responseType: 'text' });

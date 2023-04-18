@@ -1,16 +1,12 @@
 <h2 mat-dialog-title>Settings</h2>
 
 <mat-dialog-content>
-  <mat-slide-toggle color="accent" [checked]="initialTransparency" (change)="onTransparencyChange($event)">
+  <mat-slide-toggle color="accent" [formControl]="transparencyControl">
     Enable algorithm transparency
   </mat-slide-toggle>
 
   <mat-form-field color="accent" appearance="standard">
     <mat-label>Default function name</mat-label>
-    <input #input
-           matInput
-           type="text"
-           [value]="initialDefaultFunctionName"
-           (input)="onDefaultFunctionNameChange(input.value)"/>
+    <input matInput type="text" [formControl]="defaultFunctionNameControl"/>
   </mat-form-field>
 </mat-dialog-content>

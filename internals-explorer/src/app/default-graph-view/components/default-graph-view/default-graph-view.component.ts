@@ -9,9 +9,9 @@ import { CompileService } from '@cki-graph-view/services/compile.service';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { Observable, of } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
+import { currentPrintingType, isSpillOnly } from '@cki-settings';
 import ISAType = slak.ckompiler.backend.ISAType;
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
-import { currentPrintingType } from '@cki-settings';
 
 @Component({
   selector: 'cki-default-graph-view',
@@ -25,6 +25,8 @@ export class DefaultGraphViewComponent {
   public isaType$: Observable<ISAType> = of(ISAType.X64);
 
   public readonly printingType$: Observable<CodePrintingMethods> = currentPrintingType.value$;
+
+  public readonly isSpillOnly$: Observable<boolean> = isSpillOnly.value$;
 
   public readonly hooks: GraphViewHook[] = [
     removeHoverTitles,

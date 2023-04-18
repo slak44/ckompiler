@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { defaultFunctionName, hasTransparency } from '@cki-settings';
+import { FormControl } from '@angular/forms';
 
 @Component({
   selector: 'cki-settings-dialog',
@@ -9,18 +9,9 @@ import { defaultFunctionName, hasTransparency } from '@cki-settings';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsDialogComponent {
-  public readonly initialTransparency: boolean = hasTransparency.snapshot;
-
-  public readonly initialDefaultFunctionName = defaultFunctionName.snapshot;
+  public readonly transparencyControl: FormControl = hasTransparency.formControl;
+  public readonly defaultFunctionNameControl: FormControl = defaultFunctionName.formControl;
 
   constructor() {
-  }
-
-  public onTransparencyChange(change: MatSlideToggleChange): void {
-    hasTransparency.update(change.checked);
-  }
-
-  public onDefaultFunctionNameChange(value: string): void {
-    defaultFunctionName.update(value);
   }
 }

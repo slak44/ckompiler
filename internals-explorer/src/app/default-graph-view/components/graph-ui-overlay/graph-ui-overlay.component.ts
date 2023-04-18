@@ -1,8 +1,7 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, Input, ViewChild } from '@angular/core';
-import { Observable, ReplaySubject, takeUntil } from 'rxjs';
-import { GraphOptionsComponent } from '../graph-options/graph-options.component';
-import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { Observable } from 'rxjs';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { hideGraphUI } from '@cki-settings';
 
 @Component({
   selector: 'cki-graph-ui-overlay',
@@ -10,26 +9,12 @@ import { CompilationInstance } from '@cki-graph-view/compilation-instance';
   styleUrls: ['./graph-ui-overlay.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GraphUiOverlayComponent extends SubscriptionDestroy implements AfterViewInit {
+export class GraphUiOverlayComponent {
   @Input()
   public instance!: CompilationInstance;
 
-  @ViewChild(GraphOptionsComponent)
-  private readonly graphOptions!: GraphOptionsComponent;
-
-  private readonly isSpillOnlySubject: ReplaySubject<boolean> = new ReplaySubject(1);
-
-  public readonly isSpillOnly$: Observable<boolean> = this.isSpillOnlySubject;
+  public readonly isUIHidden$: Observable<boolean> = hideGraphUI.value$;
 
   constructor() {
-    super();
-  }
-
-  public ngAfterViewInit(): void {
-    this.graphOptions.isSpillOnly$.pipe(
-      takeUntil(this.destroy$),
-    ).subscribe(value => {
-      this.isSpillOnlySubject.next(value);
-    });
   }
 }
