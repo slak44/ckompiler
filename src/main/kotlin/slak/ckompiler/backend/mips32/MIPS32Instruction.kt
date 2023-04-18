@@ -43,6 +43,10 @@ data class MIPS32RegisterValue(val register: MachineRegister, val size: Int) : M
 }
 
 data class MIPS32MemoryValue(val sizeInMem: Int, val base: MIPS32RegisterValue, val displacement: Int) : MIPS32Value() {
+  override fun toString(): String {
+    return "$displacement($base)"
+  }
+
   companion object {
     fun inFrame(fp: MIPS32RegisterValue, stackSlot: StackSlot, frameOffset: Int): MIPS32MemoryValue {
       return MIPS32MemoryValue(stackSlot.sizeBytes, base = fp, displacement = -(frameOffset + stackSlot.sizeBytes))
