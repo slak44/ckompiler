@@ -40,25 +40,27 @@ export const hasTransparency: Setting<boolean> = new Setting(
 export const defaultFunctionName: Setting<string> = new Setting<string>(
   Settings.DEFAULT_FUNCTION_NAME,
   value => value ?? 'main',
-  identity
+  identity,
 );
 
 export const monacoViewState: Setting<editor.ICodeEditorViewState | null> = new Setting(
   Settings.MONACO_VIEW_STATE,
   value => JSON.parse(value!) as editor.ICodeEditorViewState | null,
-  value => JSON.stringify(value)
+  value => JSON.stringify(value),
 );
 
 export const monacoFontSize: Setting<number> = new Setting(
   Settings.MONACO_FONT_SIZE,
   value => parseFloat(value ?? '14'),
-  value => `${value}`
+  value => `${value}`,
 );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const settings: Setting<any>[] = [
   hasTransparency,
   defaultFunctionName,
+  monacoViewState,
+  monacoFontSize,
 ];
 
 function generateKey(setting: Settings): string {
@@ -69,7 +71,7 @@ function getItem(setting: Settings): string | null {
   return localStorage.getItem(generateKey(setting));
 }
 
-function setItem(setting: Settings, value: string) {
+function setItem(setting: Settings, value: string): void {
   localStorage.setItem(generateKey(setting), value);
 }
 
