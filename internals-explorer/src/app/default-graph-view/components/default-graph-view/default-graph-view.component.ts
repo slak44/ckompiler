@@ -10,6 +10,8 @@ import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { Observable, of } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
 import ISAType = slak.ckompiler.backend.ISAType;
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
+import { currentPrintingType } from '@cki-settings';
 
 @Component({
   selector: 'cki-default-graph-view',
@@ -21,6 +23,8 @@ import ISAType = slak.ckompiler.backend.ISAType;
 export class DefaultGraphViewComponent {
   @Input()
   public isaType$: Observable<ISAType> = of(ISAType.X64);
+
+  public readonly printingType$: Observable<CodePrintingMethods> = currentPrintingType.value$;
 
   public readonly hooks: GraphViewHook[] = [
     removeHoverTitles,

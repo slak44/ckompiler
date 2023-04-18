@@ -4,6 +4,7 @@ import { FormControl } from '@angular/forms';
 import { map, Observable, shareReplay } from 'rxjs';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { currentPrintingType } from '@cki-settings';
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
@@ -18,12 +19,7 @@ export class GraphOptionsComponent {
 
   public readonly codePrintingMethods: CodePrintingMethods[] = CodePrintingMethods.values();
 
-  public readonly printingControl: FormControl = new FormControl(CodePrintingMethods.IR_TO_STRING);
-
-  public readonly printingValue$: Observable<CodePrintingMethods> =
-    controlValueStream<CodePrintingMethods>(this.printingControl).pipe(
-      shareReplay({ refCount: false, bufferSize: 1 }),
-    );
+  public readonly printingType$: Observable<CodePrintingMethods> = currentPrintingType.value$;
 
   public readonly uiHiddenControl: FormControl = new FormControl(false);
 
@@ -39,6 +35,10 @@ export class GraphOptionsComponent {
   );
 
   constructor() {
+  }
+
+  public printingTypeValueChange(value: CodePrintingMethods): void {
+    currentPrintingType.update(value);
   }
 
   public getCodePrintingMethodName(value: CodePrintingMethods): string {

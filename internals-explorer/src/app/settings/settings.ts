@@ -1,11 +1,14 @@
 import { BehaviorSubject, fromEvent, Observable } from 'rxjs';
 import { identity } from 'lodash-es';
 import { editor } from 'monaco-editor';
+import { slak } from '@ckompiler/ckompiler';
+import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 export enum Settings {
   TRANSPARENCY = 'TRANSPARENCY',
   DEFAULT_FUNCTION_NAME = 'DEFAULT_FUNCTION_NAME',
   CURRENT_TARGET_FUNCTION = 'CURRENT_TARGET_FUNCTION',
+  CURRENT_PRINTING_TYPE = 'CURRENT_PRINTING_TYPE',
   MONACO_VIEW_STATE = 'MONACO_VIEW_STATE',
   MONACO_FONT_SIZE = 'MONACO_FONT_SIZE',
 }
@@ -50,6 +53,12 @@ export const currentTargetFunction: Setting<string> = new Setting<string>(
   identity,
 );
 
+export const currentPrintingType: Setting<CodePrintingMethods> = new Setting<CodePrintingMethods>(
+  Settings.CURRENT_PRINTING_TYPE,
+  value => value ? CodePrintingMethods.valueOf(value) : CodePrintingMethods.IR_TO_STRING,
+  value => value.name,
+);
+
 export const monacoViewState: Setting<editor.ICodeEditorViewState | null> = new Setting(
   Settings.MONACO_VIEW_STATE,
   value => JSON.parse(value!) as editor.ICodeEditorViewState | null,
@@ -66,6 +75,8 @@ export const monacoFontSize: Setting<number> = new Setting(
 const settings: Setting<any>[] = [
   hasTransparency,
   defaultFunctionName,
+  currentTargetFunction,
+  currentPrintingType,
   monacoViewState,
   monacoFontSize,
 ];
