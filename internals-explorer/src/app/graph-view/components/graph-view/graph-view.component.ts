@@ -41,6 +41,8 @@ import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethod
 import X64TargetOpts = slak.ckompiler.backend.x64.X64TargetOpts;
 import ISAType = slak.ckompiler.backend.ISAType;
 import restoreAllAtomicCounters = slak.ckompiler.restoreAllAtomicCounters;
+import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
+import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -220,6 +222,28 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.groupToNodeId.clear();
   }
 
+  private runCreateGraphviz(
+    cfg: CFG,
+    compileResult: JSCompileResult,
+    options: slak.ckompiler.analysis.external.GraphvizOptions,
+  ): string {
+    return runWithVariableVersions(this.disableVariableVersions, () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        restoreAllAtomicCounters(compileResult.atomicCounters);
+
+        const result = createGraphviz(cfg, cfg.f.sourceText as string, options);
+
+        clearAllAtomicCounters();
+
+        return result;
+      } catch (eAgain) {
+        this.compileService.setLatestCrash(eAgain as Error);
+        throw eAgain;
+      }
+    });
+  }
+
   public rerenderGraph(): Observable<void> {
     return combineLatest([
       this.printingType$,
@@ -236,25 +260,12 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
           isaType,
           X64TargetOpts.Companion.defaults,
           noAllocOnlySpill,
-        )),
-      combineLatestWith(this.instance.compileResult$),
-      map(([options, compileResult]) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        restoreAllAtomicCounters(compileResult.atomicCounters);
-
-        return options;
-      }),
-      combineLatestWith(this.instance.cfg$, this.printingType$),
+        ),
+      ),
+      combineLatestWith(this.instance.compileResult$, this.instance.cfg$, this.printingType$),
       debounceAfterFirst(50),
-      map(([options, cfg, printingType]): void => {
-        const text = runWithVariableVersions(this.disableVariableVersions, () => {
-          try {
-            return createGraphviz(cfg, cfg.f.sourceText as string, options);
-          } catch (eAgain) {
-            this.compileService.setLatestCrash(eAgain as Error);
-            throw eAgain;
-          }
-        });
+      map(([options, compileResult, cfg, printingType]): void => {
+        const text = this.runCreateGraphviz(cfg, compileResult, options);
 
         if (!(this.graphviz && text)) {
           return;

@@ -17,6 +17,14 @@ actual class AtomicInteger {
 
 typealias SavedAtomics = Map<AtomicInteger, Int>
 
+fun saveAndClearAllAtomicCounters(): SavedAtomics {
+  val saved = AtomicInteger.allAtomicIdCounters.associateWith { it.integer }
+
+  clearAllAtomicCounters()
+
+  return saved
+}
+
 /**
  * This functions resets all instances of [AtomicInteger] to 0.
  *
@@ -24,14 +32,14 @@ typealias SavedAtomics = Map<AtomicInteger, Int>
  *
  * It's also a memory leak, since these counters are never cleared, but it's small enough that we can just ignore it.
  */
-fun saveAndClearAllAtomicCounters(): SavedAtomics {
-  val saved = AtomicInteger.allAtomicIdCounters.associateWith { it.integer }
-
+@JsExport
+fun clearAllAtomicCounters() {
   AtomicInteger.allAtomicIdCounters.forEach { it.integer = 0 }
-
-  return saved
 }
 
+/**
+ * Restore cleared counters to an associated saved value.
+ */
 @Suppress("NON_EXPORTABLE_TYPE")
 @JsExport
 fun restoreAllAtomicCounters(saved: SavedAtomics) {
