@@ -5,6 +5,7 @@ import { editor } from 'monaco-editor';
 export enum Settings {
   TRANSPARENCY = 'TRANSPARENCY',
   DEFAULT_FUNCTION_NAME = 'DEFAULT_FUNCTION_NAME',
+  CURRENT_TARGET_FUNCTION = 'CURRENT_TARGET_FUNCTION',
   MONACO_VIEW_STATE = 'MONACO_VIEW_STATE',
   MONACO_FONT_SIZE = 'MONACO_FONT_SIZE',
 }
@@ -40,6 +41,12 @@ export const hasTransparency: Setting<boolean> = new Setting(
 export const defaultFunctionName: Setting<string> = new Setting<string>(
   Settings.DEFAULT_FUNCTION_NAME,
   value => value ?? 'main',
+  identity,
+);
+
+export const currentTargetFunction: Setting<string> = new Setting<string>(
+  Settings.CURRENT_TARGET_FUNCTION,
+  identity,
   identity,
 );
 

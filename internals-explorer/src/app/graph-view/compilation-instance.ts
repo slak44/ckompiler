@@ -12,7 +12,7 @@ import {
   throttleTime,
 } from 'rxjs';
 import { Nullable, slak } from '@ckompiler/ckompiler';
-import { defaultFunctionName } from '@cki-settings';
+import { currentTargetFunction, defaultFunctionName } from '@cki-settings';
 import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import Variable = slak.ckompiler.analysis.Variable;
@@ -58,7 +58,13 @@ export class CompilationInstance {
     distinctUntilChanged(),
     map(compileResult => compileResult.cfgs),
     filter((cfgs): cfgs is CFG[] => !!cfgs && cfgs.length > 0),
-    tap(cfgs => this.updateSelected(cfgs.find(cfg => cfg.f.name === defaultFunctionName.snapshot) ?? cfgs[0])),
+    tap(cfgs => {
+      const cfgByLastFunction = currentTargetFunction.snapshot
+        ? cfgs.find(cfg => cfg.f.funcIdent.toString() === currentTargetFunction.snapshot)
+        : undefined;
+      const cfg = cfgByLastFunction ?? cfgs.find(cfg => cfg.f.name === defaultFunctionName.snapshot) ?? cfgs[0];
+      this.updateSelected(cfg);
+    }),
     shareReplay({ bufferSize: 1, refCount: false }),
   );
 
@@ -72,6 +78,7 @@ export class CompilationInstance {
   }
 
   public updateSelected(cfg: CFG): void {
+    currentTargetFunction.update(cfg.f.funcIdent.toString());
     this.selectedCFGSubject.next(cfg);
   }
 }
