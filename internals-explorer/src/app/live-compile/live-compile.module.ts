@@ -21,12 +21,14 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { SettingsModule } from '../settings/settings.module';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { SidenavContentComponent } from './components/sidenav-content/sidenav-content.component';
 
 @NgModule({
   declarations: [
     LiveCompileComponent,
     SourceEditorComponent,
     DiagnosticListComponent,
+    SidenavContentComponent,
   ],
   imports: [
     CommonModule,
