@@ -12,9 +12,9 @@ import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
 
-@Suppress("ArrayInDataClass")
+@Suppress("ArrayInDataClass", "NON_EXPORTABLE_TYPE")
 @JsExport
-data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diagnostic>)
+data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diagnostic>, var atomicCounters: SavedAtomics)
 
 @JsExport
 fun jsCompile(source: String, skipSSARename: Boolean, isaType: ISAType): JSCompileResult {
@@ -31,14 +31,14 @@ fun jsCompile(source: String, skipSSARename: Boolean, isaType: ISAType): JSCompi
   )
 
   if (pp.diags.errors().isNotEmpty()) {
-    return JSCompileResult(null, pp.diags.toTypedArray())
+    return JSCompileResult(null, pp.diags.toTypedArray(), saveAndClearAllAtomicCounters())
   }
 
   val p = Parser(pp.tokens, "-", source, isaType.machineTargetData)
   val beforeCFGDiags = pp.diags + p.diags
 
   if (p.diags.errors().isNotEmpty()) {
-    return JSCompileResult(null, beforeCFGDiags.toTypedArray())
+    return JSCompileResult(null, beforeCFGDiags.toTypedArray(), saveAndClearAllAtomicCounters())
   }
 
   val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
@@ -55,7 +55,7 @@ fun jsCompile(source: String, skipSSARename: Boolean, isaType: ISAType): JSCompi
     )
   }
 
-  return JSCompileResult(cfgs.toTypedArray(), beforeCFGDiags.toTypedArray())
+  return JSCompileResult(cfgs.toTypedArray(), beforeCFGDiags.toTypedArray(), saveAndClearAllAtomicCounters())
 }
 
 @JsExport

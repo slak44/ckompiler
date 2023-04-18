@@ -12,6 +12,7 @@ import * as d3Graphviz from 'd3-graphviz';
 import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import {
   combineLatest,
+  combineLatestWith,
   distinctUntilChanged,
   first,
   map,
@@ -32,13 +33,14 @@ import { ZoomView } from 'd3-interpolate';
 import { GraphViewHook } from '../../models/graph-view-hook.model';
 import { getNodeById, getPolyDatumNodeId, runWithVariableVersions, setClassIf } from '../../utils';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { CompileService } from '@cki-graph-view/services/compile.service';
 import createGraphviz = slak.ckompiler.analysis.external.createGraphviz;
 import CFG = slak.ckompiler.analysis.CFG;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 import X64TargetOpts = slak.ckompiler.backend.x64.X64TargetOpts;
 import ISAType = slak.ckompiler.backend.ISAType;
-import { CompileService } from '@cki-graph-view/services/compile.service';
+import restoreAllAtomicCounters = slak.ckompiler.restoreAllAtomicCounters;
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -220,35 +222,37 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   public rerenderGraph(): Observable<void> {
     return combineLatest([
-      this.instance.cfg$,
       this.printingType$,
       this.isaType$,
       this.noAllocOnlySpill$,
     ]).pipe(
-      map(([cfg, printingType, isaType, noAllocOnlySpill]: [CFG, CodePrintingMethods, ISAType, boolean]): void => {
-        const text = runWithVariableVersions(this.disableVariableVersions, () => {
-          const options = new slak.ckompiler.analysis.external.GraphvizOptions(
-            16.5,
-            'Courier New',
-            true,
-            printingType,
-            true,
-            isaType,
-            X64TargetOpts.Companion.defaults,
-            noAllocOnlySpill,
-          );
+      map(([printingType, isaType, noAllocOnlySpill]: [CodePrintingMethods, ISAType, boolean]) =>
+        new slak.ckompiler.analysis.external.GraphvizOptions(
+          16.5,
+          'Courier New',
+          true,
+          printingType,
+          true,
+          isaType,
+          X64TargetOpts.Companion.defaults,
+          noAllocOnlySpill,
+        )),
+      combineLatestWith(this.instance.compileResult$),
+      map(([options, compileResult]) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        restoreAllAtomicCounters(compileResult.atomicCounters);
 
-          // FIXME: i have no idea why it doesn't crash the second time ????
+        return options;
+      }),
+      combineLatestWith(this.instance.cfg$, this.printingType$),
+      debounceAfterFirst(50),
+      map(([options, cfg, printingType]): void => {
+        const text = runWithVariableVersions(this.disableVariableVersions, () => {
           try {
             return createGraphviz(cfg, cfg.f.sourceText as string, options);
-          } catch (e) {
-            console.error("ignored error", e);
-            try {
-              return createGraphviz(cfg, cfg.f.sourceText as string, options);
-            } catch (eAgain) {
-              this.compileService.setLatestCrash(eAgain as Error);
-              throw eAgain;
-            }
+          } catch (eAgain) {
+            this.compileService.setLatestCrash(eAgain as Error);
+            throw eAgain;
           }
         });
 

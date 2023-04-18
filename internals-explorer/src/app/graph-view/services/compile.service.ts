@@ -18,7 +18,9 @@ export class CompileService {
   private readonly latestCrashSubject: BehaviorSubject<Error | null> = new BehaviorSubject<Error | null>(null);
   private readonly sourceTextSubject: ReplaySubject<string> = new ReplaySubject(1);
 
-  public readonly isaType$: Observable<ISAType> = this.isaTypeSubject;
+  public readonly isaType$: Observable<ISAType> = this.isaTypeSubject.pipe(
+    distinctUntilChanged(),
+  );
 
   public readonly sourceText$: Observable<string> = this.sourceTextSubject.pipe(
     debounceAfterFirst(500),
@@ -27,7 +29,7 @@ export class CompileService {
   );
 
   public readonly defaultCompileResult$: Observable<JSCompileResult> = this.sourceText$.pipe(
-    compileCode(this.isaTypeSubject),
+    compileCode(this.isaType$),
   );
 
   public readonly allDiagnostics$: Observable<Diagnostic[]> = this.defaultCompileResult$.pipe(
@@ -42,7 +44,7 @@ export class CompileService {
   );
 
   public readonly diagnosticStats$: Observable<DiagnosticsStats> = this.allDiagnostics$.pipe(
-    map(diagnostics => getDiagnosticsStats(diagnostics))
+    map(diagnostics => getDiagnosticsStats(diagnostics)),
   );
 
   public readonly latestCrash$: Observable<Error | null> = this.latestCrashSubject;

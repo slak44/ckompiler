@@ -1,4 +1,5 @@
 import {
+  combineLatestWith,
   distinctUntilChanged,
   filter,
   map,
@@ -7,7 +8,8 @@ import {
   pipe,
   ReplaySubject,
   shareReplay,
-  tap, throttleTime,
+  tap,
+  throttleTime,
 } from 'rxjs';
 import { Nullable, slak } from '@ckompiler/ckompiler';
 import { defaultFunctionName } from '@cki-settings';
@@ -15,10 +17,8 @@ import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import Variable = slak.ckompiler.analysis.Variable;
 import CFG = slak.ckompiler.analysis.CFG;
-import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
 import jsCompile = slak.ckompiler.jsCompile;
 import ISAType = slak.ckompiler.backend.ISAType;
-import { combineLatest } from 'rxjs/internal/operators/combineLatest';
 
 function logCompileError(e: unknown): void {
   const err = e as Error & { originalStack?: string };
@@ -28,14 +28,16 @@ function logCompileError(e: unknown): void {
   console.error(err);
 }
 
-export function compileCode(isaType$: Observable<ISAType>, skipSSARename: boolean = false): OperatorFunction<string, JSCompileResult> {
+export function compileCode(
+  isaType$: Observable<ISAType>,
+  skipSSARename: boolean = false,
+): OperatorFunction<string, JSCompileResult> {
   return pipe(
     // Forcefully throttle compilations, so death loops are avoided
     throttleTime(500),
-    combineLatest(isaType$),
+    combineLatestWith(isaType$),
     map(([code, isaType]) => {
       try {
-        clearAllAtomicCounters();
         return jsCompile(code, skipSSARename, isaType);
       } catch (e) {
         logCompileError(e);
