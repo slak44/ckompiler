@@ -8,10 +8,16 @@ import { AuthService } from '@auth0/auth0-angular';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidenavContentComponent {
+  public readonly user$ = this.authService.user$;
+
   constructor(private readonly authService: AuthService) {
   }
 
   public login(): void {
     this.authService.loginWithRedirect();
+  }
+
+  public logout(): void {
+    this.authService.logout();
   }
 }

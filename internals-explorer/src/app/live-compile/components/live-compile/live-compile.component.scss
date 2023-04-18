@@ -16,6 +16,12 @@
   font-weight: 400;
 }
 
+.title-container {
+  display: flex;
+  flex-direction: column;
+  margin-left: 16px;
+}
+
 .mat-toolbar {
   flex-shrink: 0;
 }

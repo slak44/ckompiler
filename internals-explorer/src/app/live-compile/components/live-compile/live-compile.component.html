@@ -3,7 +3,12 @@
     <mat-icon>menu</mat-icon>
   </button>
 
-  <span>CKompiler Internals Explorer</span>
+  <div class="title-container">
+    <span>CKompiler Internals Explorer</span>
+    <span *ngIf="user$ | async as user" class="mat-caption">
+      Logged in: {{ user.email || user.sub }}
+    </span>
+  </div>
 
   <mat-form-field class="isa-type-selector" appearance="standard" color="accent">
     <mat-label>Target ISA</mat-label>
