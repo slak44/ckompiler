@@ -6,7 +6,7 @@ import { EnvironmentType } from './environment-type';
 
 export const environment: EnvironmentType = {
   production: false,
-  baseUrl: 'http://localhost:8080',
+  baseUrl: 'http://localhost:8080/api',
   oauth: {
     domain: 'ckompiler-internals-explorer.eu.auth0.com',
     clientId: 'VX6YGntpyUipXIFXHff4clmJe2geq8rb',

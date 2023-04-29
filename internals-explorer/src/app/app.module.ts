@@ -10,6 +10,7 @@ import { monacoLoader } from '@cki-utils/monaco-loader';
 import { AuthHttpInterceptor, AuthModule } from '@auth0/auth0-angular';
 import { environment } from '../environments/environment';
 import { AUTHENTICATED_ROUTE } from '@cki-utils/routes';
+import { ApiInterceptor } from './auth/api.interceptor';
 
 @NgModule({
   declarations: [
@@ -43,6 +44,7 @@ import { AUTHENTICATED_ROUTE } from '@cki-utils/routes';
     }),
   ],
   providers: [
+    { provide: HTTP_INTERCEPTORS, useClass: ApiInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: AuthHttpInterceptor, multi: true },
     {
       provide: HIGHLIGHT_OPTIONS,
