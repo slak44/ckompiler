@@ -1,0 +1,60 @@
+<ng-container *ngIf="{ viewStateListings: viewStates$ | async } as data">
+  <div class="viewstate-item"
+       mat-ripple
+       role="button"
+       (click)="saveCurrentState()">
+    <mat-icon>add</mat-icon>
+    Save current view state
+  </div>
+
+  <h3 *ngIf="(data.viewStateListings?.length ?? 0) > 0">
+    Restore saved state:
+  </h3>
+
+  <div *ngFor="let viewState of data.viewStateListings; let i = index"
+       class="viewstate-item"
+       mat-ripple
+       role="button"
+       (click)="restoreState(viewState)">
+    <span>{{ (i + 1) + '. ' + viewState.name }}</span>
+    <mat-icon class="close-button"
+              role="button"
+              mat-ripple
+              matTooltip="Delete saved state"
+              (click)="$event.stopPropagation(); deleteState(viewState.id!)">close</mat-icon>
+  </div>
+</ng-container>
+
+<ng-template #newStateConfirm>
+  <h2 mat-dialog-title>Choose a name for this view</h2>
+
+  <mat-dialog-content>
+    <mat-form-field appearance="standard" color="accent">
+      <mat-label>Name</mat-label>
+      <input #input type="text" matInput />
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions>
+    <button type="button"
+            mat-raised-button
+            color="accent"
+            [disabled]="input.value === ''"
+            [mat-dialog-close]="input.value">
+      SAVE
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<ng-template #deleteConfirm>
+  <h2 mat-dialog-title>Are you sure you want to delete this saved state?</h2>
+
+  <mat-dialog-actions>
+    <button type="button" mat-flat-button [mat-dialog-close]="false">
+      CANCEL
+    </button>
+    <button type="button" mat-raised-button color="warn" [mat-dialog-close]="true">
+      DELETE
+    </button>
+  </mat-dialog-actions>
+</ng-template>

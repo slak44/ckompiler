@@ -19,6 +19,8 @@ $internals-explorer-theme: mat.define-dark-theme((
 
 $primary-default: map-get($internals-explorer-primary, "default");
 $accent-default: map-get($internals-explorer-accent, "default");
+$accent-lighter: map-get($internals-explorer-accent, "lighter");
+$accent-text: map-get($internals-explorer-accent, "lighter-contrast");
 
 $hover-alpha: 0.2;
 
@@ -31,3 +33,4 @@ $frontier-line: rgba(greenyellow, 0.4);
 $variable-highlight: #FB8C00;
 $disabled-graph-text: rgba($graph-text, 0.4);
 
+$loading-backdrop: rgba(black, 0.4);

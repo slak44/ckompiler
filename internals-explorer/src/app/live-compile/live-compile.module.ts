@@ -22,6 +22,11 @@ import { SettingsModule } from '../settings/settings.module';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { SidenavContentComponent } from './components/sidenav-content/sidenav-content.component';
+import { ViewstateListComponent } from './components/viewstate-list/viewstate-list.component';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatRippleModule } from '@angular/material/core';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 @NgModule({
   declarations: [
@@ -29,6 +34,7 @@ import { SidenavContentComponent } from './components/sidenav-content/sidenav-co
     SourceEditorComponent,
     DiagnosticListComponent,
     SidenavContentComponent,
+    ViewstateListComponent,
   ],
   imports: [
     CommonModule,
@@ -50,6 +56,10 @@ import { SidenavContentComponent } from './components/sidenav-content/sidenav-co
     SettingsModule,
     MatSelectModule,
     MatSidenavModule,
+    MatDividerModule,
+    MatRippleModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
   ],
 })
 export class LiveCompileModule {

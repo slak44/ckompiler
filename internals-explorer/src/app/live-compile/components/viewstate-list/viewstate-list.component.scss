@@ -1,0 +1,36 @@
+@use 'colors';
+
+:host {
+  display: block;
+}
+
+.mat-divider {
+  margin-bottom: 16px;
+}
+
+.viewstate-item {
+  padding: 0 16px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  mat-icon {
+    margin-right: 16px;
+
+    &.close-button {
+      margin-right: -16px;
+      margin-left: auto;
+      width: 48px;
+      height: 48px;
+      line-height: 48px;
+      text-align: center;
+    }
+  }
+}
+
+h3 {
+  padding: 0 16px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}

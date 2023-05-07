@@ -11,6 +11,7 @@ import { AuthHttpInterceptor, AuthModule } from '@auth0/auth0-angular';
 import { environment } from '../environments/environment';
 import { AUTHENTICATED_ROUTE } from '@cki-utils/routes';
 import { ApiInterceptor } from './auth/api.interceptor';
+import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarConfig, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @NgModule({
   declarations: [
@@ -42,6 +43,7 @@ import { ApiInterceptor } from './auth/api.interceptor';
         ],
       },
     }),
+    MatSnackBarModule,
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: ApiInterceptor, multi: true },
@@ -55,6 +57,13 @@ import { ApiInterceptor } from './auth/api.interceptor';
           x86asm: () => import('highlight.js/lib/languages/x86asm'),
         },
       },
+    },
+    {
+      provide: MAT_SNACK_BAR_DEFAULT_OPTIONS,
+      useValue: {
+        verticalPosition: 'top',
+        duration: 10_000,
+      } as MatSnackBarConfig,
     },
   ],
   bootstrap: [AppComponent],

@@ -7,4 +7,6 @@ build/
 .idea/markdown-navigator*
 .idea/markdown-exported-files.xml
 .idea/dataSources.local.xml
+.idea/dataSources.xml
+.idea/dataSources
 publish-token

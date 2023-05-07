@@ -13,6 +13,7 @@ import { isaType } from '@cki-settings';
 import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
 import ISAType = slak.ckompiler.backend.ISAType;
 import { AuthService } from '@auth0/auth0-angular';
+import { ViewStateService } from '../../../settings/services/view-state.service';
 
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
@@ -60,12 +61,15 @@ export class LiveCompileComponent extends SubscriptionDestroy {
 
   public readonly user$ = this.authService.user$;
 
+  public readonly stateLock$: Observable<boolean> = this.viewStateService.stateLock$;
+
   constructor(
     private readonly httpClient: HttpClient,
     private readonly compileService: CompileService,
     private readonly location: Location,
     private readonly dialog: MatDialog,
     private readonly authService: AuthService,
+    private readonly viewStateService: ViewStateService,
   ) {
     super();
 

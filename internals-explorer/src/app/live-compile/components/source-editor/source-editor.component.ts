@@ -7,13 +7,11 @@ import { editor, MarkerSeverity } from 'monaco-editor';
 import { slak } from '@ckompiler/ckompiler';
 import { monacoLoaded$ } from '@cki-utils/monaco-loader';
 import { CompileService } from '@cki-graph-view/services/compile.service';
-import { monacoFontSize, monacoViewState } from '@cki-settings';
+import { monacoFontSize, monacoViewState, sourceCode } from '@cki-settings';
 import IMarkerData = editor.IMarkerData;
 import closedRangeLength = slak.ckompiler.closedRangeLength;
 import EditorOption = editor.EditorOption;
 import DiagnosticKind = slak.ckompiler.DiagnosticKind;
-
-const STORAGE_KEY_SOURCE_CODE = 'source-code';
 
 @Component({
   selector: 'cki-source-editor',
@@ -35,7 +33,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     tabSize: 2,
   };
 
-  public readonly sourceControl: FormControl = new FormControl('');
+  public readonly sourceControl: FormControl = sourceCode.formControl;
 
   private lastUnloadListener: (() => void) | undefined = undefined;
 
@@ -46,18 +44,8 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
   }
 
   public ngOnInit(): void {
-    this.sourceControl.valueChanges.pipe(
-      takeUntil(this.destroy$),
-    ).subscribe((text: string) => {
-      localStorage.setItem(STORAGE_KEY_SOURCE_CODE, text);
-      this.compileService.changeSourceText(text);
-    });
-
-    const lastText = localStorage.getItem(STORAGE_KEY_SOURCE_CODE);
-    if (lastText) {
-      this.sourceControl.setValue(lastText);
-    } else if (this.initialText$) {
-      this.initialText$.subscribe(text => this.sourceControl.setValue(text));
+    if (sourceCode.snapshot === '' && this.initialText$) {
+      this.initialText$.pipe(takeUntil(this.destroy$)).subscribe(text => sourceCode.update(text));
     }
 
     monacoLoaded$.pipe(first()).subscribe((monaco) => {

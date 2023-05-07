@@ -8,6 +8,12 @@ spring:
     open-in-view: false
     properties:
       jakarta.persistence.sharedCache.mode: UNSPECIFIED
+      hibernate:
+        default_schema: public
+    hibernate:
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
   datasource:

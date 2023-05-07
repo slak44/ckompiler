@@ -1,0 +1,106 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="slak (generated)" id="1682848702621-1">
+        <createTable tableName="viewstate">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="viewstatePK"/>
+            </column>
+            <column name="active_tab_index" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="graph_view_state_is_spill_only" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="graph_view_state_isuihidden" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="graph_view_state_printing_type" type="VARCHAR(255)"/>
+            <column name="graph_view_state_selected_node_id" type="INTEGER"/>
+            <column name="graph_view_state_target_function" type="VARCHAR(255)"/>
+            <column name="graph_view_state_translatex" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="graph_view_state_translatey" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="graph_view_state_zoom" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="isa_type" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="source_code" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="slak (generated)" id="1682926463256-1">
+        <addColumn tableName="viewstate">
+            <column name="owner" type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="slak (generated)" id="1682940563786-1">
+        <addColumn tableName="viewstate">
+            <column name="graph_view_state_transform" type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1682940563786-2">
+        <dropColumn columnName="graph_view_state_translatex" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1682940563786-3">
+        <dropColumn columnName="graph_view_state_translatey" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1682940563786-4">
+        <dropColumn columnName="graph_view_state_zoom" tableName="viewstate"/>
+    </changeSet>
+
+    <changeSet author="slak (generated)" id="1682940986434-1">
+        <addColumn tableName="viewstate">
+            <column name="active_route" type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1682940986434-2">
+        <dropColumn columnName="active_tab_index" tableName="viewstate"/>
+    </changeSet>
+
+    <changeSet author="slak (generated)" id="1683134277548-1">
+        <addColumn tableName="viewstate">
+            <column name="graph_view_state_transform_k" type="float(53)">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683134277548-2">
+        <addColumn tableName="viewstate">
+            <column name="graph_view_state_transform_x" type="float(53)">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683134277548-3">
+        <addColumn tableName="viewstate">
+            <column name="graph_view_state_transform_y" type="float(53)">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683134277548-4">
+        <dropColumn columnName="graph_view_state_transform" tableName="viewstate"/>
+    </changeSet>
+
+    <changeSet author="slak (generated)" id="1683381510447-1">
+        <addColumn tableName="viewstate">
+            <column name="created_at" type="timestamp(6)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="slak (generated)" id="1683382131079-1">
+        <addColumn tableName="viewstate">
+            <column name="graph_view_state_is_ui_hidden" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683382131079-2">
+        <dropColumn columnName="graph_view_state_isuihidden" tableName="viewstate"/>
+    </changeSet>
+</databaseChangeLog>

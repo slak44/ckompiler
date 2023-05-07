@@ -4,10 +4,14 @@ import { editor } from 'monaco-editor';
 import { slak } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
+import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
+import { ZoomTransform } from 'd3-zoom';
+import { ZoomTransformDto } from './models/view-state.model';
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 import ISAType = slak.ckompiler.backend.ISAType;
 
 export enum Settings {
+  SOURCE_CODE = 'SOURCE_CODE',
   TRANSPARENCY = 'TRANSPARENCY',
   HIDE_GRAPH_UI = 'HIDE_GRAPH_UI',
   IS_SPILL_ONLY = 'IS_SPILL_ONLY',
@@ -17,6 +21,8 @@ export enum Settings {
   ISA_TYPE = 'ISA_TYPE',
   MONACO_VIEW_STATE = 'MONACO_VIEW_STATE',
   MONACO_FONT_SIZE = 'MONACO_FONT_SIZE',
+  GRAPH_VIEW_TRANSFORM = 'GRAPH_VIEW_TRANSFORM',
+  GRAPH_VIEW_SELECTED_ID = 'GRAPH_VIEW_SELECTED_ID',
 }
 
 export class Setting<T> {
@@ -32,13 +38,20 @@ export class Setting<T> {
     private readonly parse: (value: string | null) => T,
     private readonly stringify: (value: T) => string,
   ) {
-    this.formControl.valueChanges.subscribe((value: T) => {
+    this.formControl.valueChanges.pipe(
+      debounceAfterFirst(500),
+    ).subscribe((value: T) => {
       setItem(this.setting, this.stringify(value));
     });
   }
 
   public get snapshot(): T {
-    return this.parse(getItem(this.setting));
+    try {
+      return this.parse(getItem(this.setting));
+    } catch (e) {
+      console.error(e);
+      return this.parse(null);
+    }
   }
 
   public update(value: T): void {
@@ -52,7 +65,32 @@ export class Setting<T> {
       value => `${value}`,
     );
   }
+
+  public static ofZoomTransform(settingType: Settings): Setting<ZoomTransform | null> {
+    return new Setting<ZoomTransform | null>(
+      settingType,
+      value => {
+        if (!value) {
+          return null;
+        }
+        const data = JSON.parse(value) as ZoomTransformDto;
+        return new ZoomTransform(data.k, data.x, data.y);
+      },
+      value => {
+        if (!value) {
+          return '';
+        }
+        return JSON.stringify({ k: value.k, x: value.x, y: value.y });
+      },
+    );
+  }
 }
+
+export const sourceCode: Setting<string> = new Setting<string>(
+  Settings.SOURCE_CODE,
+  value => value ?? '',
+  identity,
+);
 
 export const hasTransparency: Setting<boolean> = Setting.ofBoolean(Settings.TRANSPARENCY);
 
@@ -96,8 +134,23 @@ export const monacoFontSize: Setting<number> = new Setting(
   value => `${value}`,
 );
 
+export const graphViewTransform: Setting<ZoomTransform | null> = Setting.ofZoomTransform(Settings.GRAPH_VIEW_TRANSFORM);
+
+export const graphViewSelectedId: Setting<number | null> = new Setting(
+  Settings.GRAPH_VIEW_SELECTED_ID,
+  value => {
+    const int = parseInt(value ?? '', 10);
+    if (isNaN(int)) {
+      return null;
+    }
+    return int;
+  },
+  value => `${value}`,
+);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const settings: Setting<any>[] = [
+  sourceCode,
   hasTransparency,
   hideGraphUI,
   isSpillOnly,
@@ -107,6 +160,8 @@ const settings: Setting<any>[] = [
   isaType,
   monacoViewState,
   monacoFontSize,
+  graphViewTransform,
+  graphViewSelectedId,
 ];
 
 function generateKey(setting: Settings): string {

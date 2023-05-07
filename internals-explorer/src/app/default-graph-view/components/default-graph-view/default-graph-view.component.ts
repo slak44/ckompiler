@@ -7,9 +7,18 @@ import { nodeClickDominance } from '@cki-graph-view/graph-view-hooks/node-click-
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
-import { Observable, of } from 'rxjs';
+import { Observable, of, skip, takeUntil } from 'rxjs';
 import { slak } from '@ckompiler/ckompiler';
-import { currentPrintingType, isSpillOnly } from '@cki-settings';
+import {
+  currentPrintingType,
+  graphViewSelectedId,
+  graphViewTransform,
+  isSpillOnly,
+  Setting,
+  sourceCode,
+} from '@cki-settings';
+import { ZoomTransform } from 'd3-zoom';
+import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import ISAType = slak.ckompiler.backend.ISAType;
 import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
@@ -20,9 +29,12 @@ import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethod
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [GraphViewFragmentComponent.provider, ReplaceNodeContentsHook],
 })
-export class DefaultGraphViewComponent {
+export class DefaultGraphViewComponent extends SubscriptionDestroy {
   @Input()
   public isaType$: Observable<ISAType> = of(ISAType.X64);
+
+  public readonly graphViewTransform: Setting<ZoomTransform | null> = graphViewTransform;
+  public readonly graphViewSelectedId: Setting<number | null> = graphViewSelectedId;
 
   public readonly printingType$: Observable<CodePrintingMethods> = currentPrintingType.value$;
 
@@ -41,5 +53,14 @@ export class DefaultGraphViewComponent {
     private readonly replaceNodeContents: ReplaceNodeContentsHook,
     private readonly compileService: CompileService,
   ) {
+    super();
+
+    sourceCode.value$.pipe(
+      skip(1),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      graphViewTransform.update(null);
+      graphViewSelectedId.update(null);
+    });
   }
 }

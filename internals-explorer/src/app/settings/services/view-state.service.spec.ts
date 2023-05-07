@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { ViewstateService } from './viewstate.service';
+import { ViewStateService } from './view-state.service';
 
-describe('ViewstateService', () => {
-  let service: ViewstateService;
+describe('ViewStateService', () => {
+  let service: ViewStateService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(ViewstateService);
+    service = TestBed.inject(ViewStateService);
   });
 
   it('should be created', () => {

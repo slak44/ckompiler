@@ -3,7 +3,7 @@ import { BehaviorSubject, distinctUntilChanged, map, Observable, ReplaySubject, 
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { slak } from '@ckompiler/ckompiler';
 import { compileCode } from '@cki-graph-view/compilation-instance';
-import { currentPrintingType } from '@cki-settings';
+import { currentPrintingType, sourceCode } from '@cki-settings';
 import Diagnostic = slak.ckompiler.Diagnostic;
 import JSCompileResult = slak.ckompiler.JSCompileResult;
 import arrayOf = slak.ckompiler.arrayOf;
@@ -18,13 +18,12 @@ import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethod
 export class CompileService {
   private readonly isaTypeSubject: ReplaySubject<ISAType> = new ReplaySubject(1);
   private readonly latestCrashSubject: BehaviorSubject<Error | null> = new BehaviorSubject<Error | null>(null);
-  private readonly sourceTextSubject: ReplaySubject<string> = new ReplaySubject(1);
 
   public readonly isaType$: Observable<ISAType> = this.isaTypeSubject.pipe(
     distinctUntilChanged(),
   );
 
-  public readonly sourceText$: Observable<string> = this.sourceTextSubject.pipe(
+  public readonly sourceText$: Observable<string> = sourceCode.value$.pipe(
     debounceAfterFirst(500),
     distinctUntilChanged(),
     shareReplay({ bufferSize: 1, refCount: false }),
@@ -52,10 +51,6 @@ export class CompileService {
   public readonly latestCrash$: Observable<Error | null> = this.latestCrashSubject;
 
   constructor() {
-  }
-
-  public changeSourceText(sourceText: string): void {
-    this.sourceTextSubject.next(sourceText);
   }
 
   public setLatestCrash(error: Error | null): void {

@@ -6,9 +6,13 @@
     LOGIN
   </button>
   <button *ngIf="data.user"
-          mat-raised-button
-          color="accent"
+          tabindex="-1"
+          mat-stroked-button
           (click)="logout()">
     LOGOUT
   </button>
+
+  <mat-divider></mat-divider>
+
+  <cki-viewstate-list *ngIf="data.user"></cki-viewstate-list>
 </ng-container>

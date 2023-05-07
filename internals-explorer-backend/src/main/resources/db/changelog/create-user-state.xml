@@ -1,0 +1,28 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="slak (generated)" id="1682928423046-1">
+        <createTable tableName="userstate">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="userstatePK"/>
+            </column>
+            <column name="active_view_state_id" type="UUID"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1682928423046-2">
+        <addForeignKeyConstraint baseColumnNames="active_view_state_id" baseTableName="userstate" constraintName="FK2fqco2uyy0h6b4ygoo0hne6hc" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683376882669-1">
+        <addColumn tableName="userstate">
+            <column name="autosave_view_state_id" type="uuid"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683376882669-2">
+        <addForeignKeyConstraint baseColumnNames="autosave_view_state_id" baseTableName="userstate" constraintName="FKil8dvwir6f15xsp1ck9v10hrc" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683376882669-3">
+        <dropForeignKeyConstraint baseTableName="userstate" constraintName="FK2fqco2uyy0h6b4ygoo0hne6hc"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1683376882669-4">
+        <dropColumn columnName="active_view_state_id" tableName="userstate"/>
+    </changeSet>
+</databaseChangeLog>

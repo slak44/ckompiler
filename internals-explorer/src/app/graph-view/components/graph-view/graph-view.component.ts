@@ -13,7 +13,9 @@ import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import {
   combineLatest,
   combineLatestWith,
+  debounceTime,
   distinctUntilChanged,
+  filter,
   first,
   map,
   Observable,
@@ -34,6 +36,7 @@ import { GraphViewHook } from '../../models/graph-view-hook.model';
 import { getNodeById, getPolyDatumNodeId, runWithVariableVersions, setClassIf } from '../../utils';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { CompileService } from '@cki-graph-view/services/compile.service';
+import { Setting } from '@cki-settings';
 import createGraphviz = slak.ckompiler.analysis.external.createGraphviz;
 import CFG = slak.ckompiler.analysis.CFG;
 import BasicBlock = slak.ckompiler.analysis.BasicBlock;
@@ -73,10 +76,22 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public noAllocOnlySpill$: Observable<boolean> = of(false);
 
   @Input()
+  public transformSetting: Setting<ZoomTransform | null> | undefined;
+
+  @Input()
+  public selectedIdSetting: Setting<number | null> | undefined;
+
+  @Input()
   public instance!: CompilationInstance;
 
   @ViewChild('graph')
   private readonly graphRef!: ElementRef<HTMLDivElement>;
+
+  private readonly currentZoomTransformSubject: Subject<ZoomTransform> = new Subject<ZoomTransform>();
+
+  private readonly graphTransformObserver: MutationObserver = new MutationObserver(
+    this.handleTransformChanged.bind(this),
+  );
 
   private graphviz?: Graphviz<BaseType, GraphvizDatum, BaseType, unknown>;
 
@@ -195,6 +210,77 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     });
   }
 
+  private handleTransformChanged(mutations: MutationRecord[]): void {
+    if (mutations.length !== 1) {
+      console.error('MutationObserver sent more than 1 mutations. Some old graph is probably still being observed.');
+    }
+    const mutation = mutations[0];
+    const svgRef = mutation.target.parentNode as SVGElement;
+    if (this.transformSetting) {
+      const zoomTransform = d3.zoomTransform(svgRef);
+      this.currentZoomTransformSubject.next(zoomTransform);
+    }
+  }
+
+  private setupZoomTransformEvents(graph: Element): void {
+    if (!this.transformSetting) {
+      return;
+    }
+
+    const svgRef = this.graphRef.nativeElement.querySelector('svg')!;
+    this.currentZoomTransformSubject.pipe(
+      distinctUntilChanged(),
+      debounceTime(1000),
+      takeUntil(this.rerender$),
+    ).subscribe(zoomTransform => {
+      this.transformSetting!.update(zoomTransform);
+    });
+
+    this.transformSetting.value$.pipe(
+      filter((zoomTransform): zoomTransform is ZoomTransform => !!zoomTransform),
+      takeUntil(this.rerender$),
+    ).subscribe(zoomTransform => {
+      this.currentZoomTransformSubject.next(zoomTransform);
+      graph.setAttribute('transform', zoomTransform.toString());
+      setZoomOnElement(svgRef, zoomTransform);
+    });
+
+    // The MutationObserver does not fire an initial value
+    const zoomTransform = d3.zoomTransform(svgRef);
+    this.currentZoomTransformSubject.next(zoomTransform);
+
+    this.graphTransformObserver.observe(graph, { attributes: true, attributeFilter: ['transform'] });
+  }
+
+  private setupSelectedNodeIdEvents(cfg: CFG): void {
+    if (!this.selectedIdSetting) {
+      return;
+    }
+
+    this.clickedNodeSubject.pipe(
+      distinctUntilChanged(),
+      debounceAfterFirst(100),
+      takeUntil(this.rerenderSubject),
+    ).subscribe((clickedNode) => {
+      this.selectedIdSetting?.update(clickedNode.nodeId);
+    });
+
+    this.selectedIdSetting.value$.pipe(
+      takeUntil(this.rerenderSubject),
+    ).subscribe(selectedNodeId => {
+      if (selectedNodeId) {
+        const node = getNodeById(cfg, selectedNodeId);
+        if (node) {
+          this.clickedNodeSubject.next(node);
+        } else {
+          console.error(`Cannot find node to click: ${selectedNodeId}`);
+        }
+      } else {
+        this.clearClickedSubject.next();
+      }
+    });
+  }
+
   private alterGraph(printingType: CodePrintingMethods, cfg: CFG): void {
     const graph = this.graphRef.nativeElement.querySelector('g.graph')!;
 
@@ -207,14 +293,20 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       this.configureNode(node, getPolyDatumNodeId(graphNodesData[idx]), cfg);
     });
 
+    this.setupZoomTransformEvents(graph);
     this.handleClearClicked(graph);
 
     for (const hook of this.hooks) {
       hook.alterGraph(this, cfg, printingType, graph, graphNodesSelection);
     }
+
+    // Do it after hook setup, so the initial node clicked event reaches hooks
+    this.setupSelectedNodeIdEvents(cfg);
   }
 
   private revertAlterations(): void {
+    this.graphTransformObserver.disconnect();
+
     for (const hook of this.hooks.reverse()) {
       hook.revertAlteration?.();
     }
@@ -310,6 +402,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public override ngOnDestroy(): void {
     super.ngOnDestroy();
     (this.graphviz as unknown as { destroy(): void }).destroy();
+    this.graphTransformObserver.disconnect();
   }
 
   public onResize(events: ResizeObserverEntry[]): void {

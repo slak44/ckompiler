@@ -1,3 +1,7 @@
+<div *ngIf="stateLock$ | async" class="loading-overlay">
+  <mat-spinner mode="indeterminate" color="accent" [diameter]="64"></mat-spinner>
+</div>
+
 <mat-toolbar color="primary">
   <button mat-icon-button (click)="sidenav.toggle()">
     <mat-icon>menu</mat-icon>
