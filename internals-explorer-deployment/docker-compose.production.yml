@@ -29,9 +29,9 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - volume/certs:/etc/nginx/certs
-      - volume/vhost:/etc/nginx/vhost.d
-      - volume/html:/usr/share/nginx/html
+      - ./volume/certs:/etc/nginx/certs
+      - ./volume/vhost:/etc/nginx/vhost.d
+      - ./volume/html:/usr/share/nginx/html
     networks:
       - application
       - gateway
@@ -40,9 +40,10 @@ services:
     container_name: ckompiler-acme-companion
     restart: unless-stopped
     image: nginxproxy/acme-companion:2.2.8
-    volumes_from:
-      - gateway
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - volume/acme:/etc/acme.sh
+      - ./volume/certs:/etc/nginx/certs
+      - ./volume/vhost:/etc/nginx/vhost.d
+      - ./volume/html:/usr/share/nginx/html
+      - ./volume/acme:/etc/acme.sh
     env_file: .env
