@@ -104,6 +104,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: internals-explorer-backend-jar
+          path: internals-explorer-backend
       - name: Build and push docker image
         run: |
           docker buildx build \
