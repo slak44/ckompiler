@@ -14,6 +14,7 @@ services:
     environment:
       spring.profiles.active: production
       VIRTUAL_PORT: 8080
+      POSTGRES_HOST: database
     expose:
       - "8080"
     networks:

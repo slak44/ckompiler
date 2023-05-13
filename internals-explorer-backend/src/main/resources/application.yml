@@ -18,7 +18,7 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:127.0.0.1}:${POSTGRES_PORT:5432}/${POSTGRES_DB:ckompiler}
-    username: ${POSTGRES_USERNAME:ckompiler}
+    username: ${POSTGRES_USER:ckompiler}
     password: ${POSTGRES_PASSWORD:ckompiler}
   sql:
     init:
