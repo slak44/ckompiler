@@ -103,7 +103,7 @@ jobs:
         run: touch .nojekyll
         working-directory: internals-explorer
       - name: Deploy to Github pages
-        uses: JamesIves/github-pages-deploy-action@4.4.1
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           single-commit: true
           branch: gh-pages
