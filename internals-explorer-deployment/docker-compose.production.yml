@@ -47,3 +47,5 @@ services:
       - ./volume/html:/usr/share/nginx/html
       - ./volume/acme:/etc/acme.sh
     env_file: .env
+    environment:
+      NGINX_PROXY_CONTAINER: ckompiler-gateway
