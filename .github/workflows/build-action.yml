@@ -1,4 +1,4 @@
-name: Build Kotlin/JS, Angular and deploy site
+name: Build Kotlin/JS, Angular, Spring and deploy site
 on:
   push:
     branches:
@@ -78,7 +78,7 @@ jobs:
         uses: burrunan/gradle-cache-action@v1
         with:
           build-root-directory: internals-explorer-backend
-          arguments: bootBuildImage --imageName ghcr.io/slak44/ckompiler:latest --publishImage
+          arguments: bootBuildImage --imageName ghcr.io/slak44/ckompiler-backend:latest --publishImage
           properties: |
             docker.publishRegistry.username=${{ github.actor }}
             docker.publishRegistry.password=${{ secrets.GITHUB_TOKEN }}
