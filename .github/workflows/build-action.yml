@@ -83,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: internals-explorer-backend-jar
-          path: ./build/libs/internals-explorer-backend.jar
+          path: internals-explorer-backend/build/libs/internals-explorer-backend.jar
   Docker-Internals-Explorer-Spring:
     runs-on: ubuntu-latest
     needs: Build-Internals-Explorer-Spring
