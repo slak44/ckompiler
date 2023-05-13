@@ -8,17 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v2
-      - name: Setup Java 11
-        uses: actions/setup-java@v1
+        uses: actions/checkout@v3
+      - name: Setup Java 17
+        uses: actions/setup-java@v2
         with:
-          java-version: 11
+          distribution: temurin
+          java-version: 17
       - name: Build with Gradle and cache
         uses: burrunan/gradle-cache-action@v1
         with:
           arguments: jsBrowserDistribution
       - name: Archive JS artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ckompiler-js-dist
           path: |
@@ -31,18 +32,18 @@ jobs:
     needs: Build-ckompiler-JS-Distribution
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: 18
       - name: Cache node_modules
         uses: actions/cache@v2
         with:
           path: internals-explorer/node_modules
           key: ${{ runner.os }}-${{ hashFiles('internals-explorer/package-lock.json') }}
       - name: Download ckompiler JS artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: ckompiler-js-dist
       - name: Move artifacts
@@ -59,7 +60,7 @@ jobs:
         run: npx ng build --base-href /ckompiler/
         working-directory: internals-explorer
       - name: Archive Angular artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ckompiler-angular-dist
           path: internals-explorer/dist/
@@ -67,12 +68,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - uses: ammaraskar/sphinx-action@0.4
         with:
           docs-folder: 'documentation/'
       - name: Archive Sphinx documentation artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ckompiler-sphinx-docs
           path: documentation/build/html
@@ -83,15 +84,15 @@ jobs:
       - Build-Sphinx-Docs
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Get Angular artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: ckompiler-angular-dist
       - run: mkdir documentation
         working-directory: internals-explorer
       - name: Get Sphinx artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: ckompiler-sphinx-docs
           path: internals-explorer/documentation
@@ -102,7 +103,7 @@ jobs:
         run: touch .nojekyll
         working-directory: internals-explorer
       - name: Deploy to Github pages
-        uses: JamesIves/github-pages-deploy-action@4.1.7
+        uses: JamesIves/github-pages-deploy-action@4.4.1
         with:
           single-commit: true
           branch: gh-pages
