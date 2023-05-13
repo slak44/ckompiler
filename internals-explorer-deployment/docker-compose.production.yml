@@ -1,0 +1,47 @@
+version: '3.5'
+
+networks:
+  gateway:
+
+services:
+  internals-explorer-backend:
+    depends_on:
+      - database
+    container_name: ckompiler-internals-explorer-backend
+    restart: unless-stopped
+    image: ghcr.io/slak44/ckompiler-backend:latest
+    env_file: .env
+    environment:
+      spring.profiles.active: production
+      VIRTUAL_PORT: 8080
+    expose:
+      - "8080"
+    networks:
+      - application
+
+  gateway:
+    container_name: ckompiler-gateway
+    restart: unless-stopped
+    image: nginxproxy/nginx-proxy:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - volume/certs:/etc/nginx/certs
+      - volume/vhost:/etc/nginx/vhost.d
+      - volume/html:/usr/share/nginx/html
+    networks:
+      - application
+      - gateway
+
+  acme-companion:
+    container_name: ckompiler-acme-companion
+    restart: unless-stopped
+    image: nginxproxy/acme-companion:2.2.8
+    volumes_from:
+      - gateway
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - volume/acme:/etc/acme.sh
+    env_file: .env

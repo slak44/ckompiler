@@ -39,4 +39,13 @@ spring:
     activate:
       on-profile: development
 ckompiler:
-  allowed-origin: http://localhost:4200
+  allowed-origins: http://localhost:4200
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: production
+ckompiler:
+  allowed-origins: https://slak44.github.io/ckompiler/

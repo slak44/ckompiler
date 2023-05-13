@@ -18,9 +18,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableMethodSecurity
 class SecurityConfiguration {
   @Bean
-  fun corsConfigurationSource(@Value("\${ckompiler.allowed-origin:}") allowedOrigin: String): CorsConfigurationSource {
+  fun corsConfigurationSource(@Value("\${ckompiler.allowed-origins:}") allowedOriginList: List<String>): CorsConfigurationSource {
     val configuration = CorsConfiguration().apply {
-      allowedOrigins = listOf(allowedOrigin).filter { it.isNotEmpty() }
+      allowedOrigins = allowedOriginList.filter { it.isNotEmpty() }
       allowedMethods = listOf("GET", "POST", "PATCH", "DELETE", "HEAD", "OPTIONS")
       allowedHeaders = listOf("Authorization", "Content-Type")
     }
