@@ -11,6 +11,7 @@ export const environment: EnvironmentType = {
     domain: 'ckompiler-internals-explorer.eu.auth0.com',
     clientId: 'VX6YGntpyUipXIFXHff4clmJe2geq8rb',
     audience: 'https://slak44.github.io/ckompiler/',
+    redirectBaseUri: 'http://localhost:4200',
   },
 };
 

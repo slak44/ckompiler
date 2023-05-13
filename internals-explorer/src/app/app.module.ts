@@ -31,7 +31,7 @@ import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarConfig, MatSnackBarModule } f
       authorizationParams: {
         audience: environment.oauth.audience,
         scope: 'openid profile email offline_access',
-        redirect_uri: `${window.location.origin}/${AUTHENTICATED_ROUTE}`,
+        redirect_uri: `${environment.oauth.redirectBaseUri}/${AUTHENTICATED_ROUTE}`,
       },
       useRefreshTokens: true,
       cacheLocation: 'localstorage',

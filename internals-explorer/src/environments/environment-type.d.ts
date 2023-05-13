@@ -5,5 +5,6 @@ export interface EnvironmentType {
     domain: string;
     clientId: string;
     audience: string;
+    redirectBaseUri: string;
   };
 }
