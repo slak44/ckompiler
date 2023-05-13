@@ -110,7 +110,7 @@ jobs:
           docker buildx build \
             --build-arg "JAR_FILE=./internals-explorer-backend.jar" \
             --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/slak44/ckompiler:latest \
+            -t ghcr.io/slak44/ckompiler-backend:latest \
             --push \
             internals-explorer-backend
   Build-Sphinx-Docs:
