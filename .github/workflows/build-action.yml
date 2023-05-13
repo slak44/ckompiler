@@ -98,12 +98,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check out repository code
+        uses: actions/checkout@v3
       - name: Get spring boot jar
         uses: actions/download-artifact@v3
         with:
           name: internals-explorer-backend-jar
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - name: debug
+        run: ls . internals-explorer-backend
       - name: Build and push docker image
         run: |
           docker buildx build \
