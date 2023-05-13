@@ -74,14 +74,44 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - name: Build app and docker image with Gradle and cache
+      - name: Build app with Gradle and cache
         uses: burrunan/gradle-cache-action@v1
         with:
           build-root-directory: internals-explorer-backend
-          arguments: bootBuildImage --imageName ghcr.io/slak44/ckompiler-backend:latest --publishImage
-          properties: |
-            docker.publishRegistry.username=${{ github.actor }}
-            docker.publishRegistry.password=${{ secrets.GITHUB_TOKEN }}
+          arguments: bootJar
+      - name: Archive spring boot jar
+        uses: actions/upload-artifact@v3
+        with:
+          name: internals-explorer-backend-jar
+          path: ./build/libs/internals-explorer-backend.jar
+  Docker-Internals-Explorer-Spring:
+    runs-on: ubuntu-latest
+    needs: Build-Internals-Explorer-Spring
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get spring boot jar
+        uses: actions/download-artifact@v3
+        with:
+          name: internals-explorer-backend-jar
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Build and push docker image
+        run: docker buildx build \
+          --arg ../internals-explorer-backend.jar \
+          --platform linux/amd64,linux/arm64 \
+          -t ghcr.io/slak44/ckompiler:latest \
+          --push \
+          .
+        working-directory: internals-explorer-backend
   Build-Sphinx-Docs:
     runs-on: ubuntu-latest
     steps:

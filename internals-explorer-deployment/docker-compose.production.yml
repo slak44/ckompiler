@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
     image: nginxproxy/acme-companion:2.2.8
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./volume/certs:/etc/nginx/certs
       - ./volume/vhost:/etc/nginx/vhost.d
       - ./volume/html:/usr/share/nginx/html
