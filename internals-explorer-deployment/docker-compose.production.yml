@@ -27,6 +27,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      ENABLE_IPV6: true
+      TRUST_DOWNSTREAM_PROXY: false
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ./volume/certs:/etc/nginx/certs
