@@ -48,4 +48,4 @@ spring:
     activate:
       on-profile: production
 ckompiler:
-  allowed-origins: https://slak44.github.io/ckompiler/
+  allowed-origins: https://slak44.github.io
