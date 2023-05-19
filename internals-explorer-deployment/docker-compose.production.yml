@@ -19,6 +19,7 @@ services:
       - "8080"
     networks:
       - application
+      - gateway
 
   gateway:
     container_name: ckompiler-gateway
