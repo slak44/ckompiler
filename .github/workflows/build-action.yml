@@ -157,6 +157,30 @@ jobs:
           single-commit: true
           branch: gh-pages
           folder: internals-explorer
+  Deploy-VM-Docker-Compose:
+    runs-on: ubuntu-latest
+    needs:
+      - Docker-Internals-Explorer-Spring
+      - Deploy-GH-Pages
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id.key
+          chmod 600 ~/.ssh/id.key
+          cat >>~/.ssh/config <<END
+          Host machine
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id.key
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+      - name: Run compose script
+        run: ssh machine './run-compose.sh'
 
 concurrency:
   group: env-${{ github.head_ref }}
