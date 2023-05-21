@@ -17,11 +17,12 @@ data class ZoomTransform(
 )
 
 @Embeddable
-@Suppress("JpaAttributeMemberSignatureInspection")
 data class GraphViewState(
     val isUiHidden: Boolean,
     val isSpillOnly: Boolean,
+    @Column(columnDefinition = "text not null", nullable = false)
     val targetFunction: String,
+    @Column(columnDefinition = "text not null", nullable = false)
     val printingType: String,
     val transform: ZoomTransform,
     val selectedNodeId: Int?,
@@ -39,14 +40,21 @@ data class GraphViewState(
 @Table(name = "viewstate")
 @Entity
 data class ViewState(
-    @Id @GeneratedValue(strategy = GenerationType.UUID) var id: UUID? = null,
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    var id: UUID? = null,
     val createdAt: Instant,
+    @Column(columnDefinition = "text not null", nullable = false)
     val owner: String,
+    @Column(columnDefinition = "text not null", nullable = false)
     val name: String,
+    @Column(columnDefinition = "text not null", nullable = false)
     val sourceCode: String,
+    @Column(columnDefinition = "text not null", nullable = false)
     val isaType: String,
+    @Column(columnDefinition = "text not null", nullable = false)
     val activeRoute: String,
-    @Embedded val graphViewState: GraphViewState,
+    @Embedded
+    val graphViewState: GraphViewState,
 ) {
   constructor(dto: ViewStateDto) : this(
       dto.id?.let(UUID::fromString),

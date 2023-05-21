@@ -14,9 +14,9 @@
             <column name="graph_view_state_isuihidden" type="BOOLEAN">
                 <constraints nullable="false"/>
             </column>
-            <column name="graph_view_state_printing_type" type="VARCHAR(255)"/>
+            <column name="graph_view_state_printing_type" type="text"/>
             <column name="graph_view_state_selected_node_id" type="INTEGER"/>
-            <column name="graph_view_state_target_function" type="VARCHAR(255)"/>
+            <column name="graph_view_state_target_function" type="text"/>
             <column name="graph_view_state_translatex" type="INTEGER">
                 <constraints nullable="false"/>
             </column>
@@ -26,21 +26,21 @@
             <column name="graph_view_state_zoom" type="INTEGER">
                 <constraints nullable="false"/>
             </column>
-            <column name="isa_type" type="VARCHAR(255)"/>
-            <column name="name" type="VARCHAR(255)"/>
-            <column name="source_code" type="VARCHAR(255)"/>
+            <column name="isa_type" type="text"/>
+            <column name="name" type="text"/>
+            <column name="source_code" type="text"/>
         </createTable>
     </changeSet>
 
     <changeSet author="slak (generated)" id="1682926463256-1">
         <addColumn tableName="viewstate">
-            <column name="owner" type="varchar(255)"/>
+            <column name="owner" type="text"/>
         </addColumn>
     </changeSet>
 
     <changeSet author="slak (generated)" id="1682940563786-1">
         <addColumn tableName="viewstate">
-            <column name="graph_view_state_transform" type="varchar(255)"/>
+            <column name="graph_view_state_transform" type="text"/>
         </addColumn>
     </changeSet>
     <changeSet author="slak (generated)" id="1682940563786-2">
@@ -55,7 +55,7 @@
 
     <changeSet author="slak (generated)" id="1682940986434-1">
         <addColumn tableName="viewstate">
-            <column name="active_route" type="varchar(255)"/>
+            <column name="active_route" type="text"/>
         </addColumn>
     </changeSet>
     <changeSet author="slak (generated)" id="1682940986434-2">
@@ -102,5 +102,26 @@
     </changeSet>
     <changeSet author="slak (generated)" id="1683382131079-2">
         <dropColumn columnName="graph_view_state_isuihidden" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1684657389497-1">
+        <addNotNullConstraint columnDataType="clob not null" columnName="active_route" tableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1684657389497-2">
+        <addNotNullConstraint columnDataType="clob not null" columnName="graph_view_state_printing_type" tableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1684657389497-3">
+        <addNotNullConstraint columnDataType="clob not null" columnName="graph_view_state_target_function" tableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1684657389497-4">
+        <addNotNullConstraint columnDataType="clob not null" columnName="isa_type" tableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1684657389497-5">
+        <addNotNullConstraint columnDataType="clob not null" columnName="name" tableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1684657389497-6">
+        <addNotNullConstraint columnDataType="clob not null" columnName="owner" tableName="viewstate" validate="true"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1684657389497-7">
+        <addNotNullConstraint columnDataType="clob not null" columnName="source_code" tableName="viewstate" validate="true"/>
     </changeSet>
 </databaseChangeLog>
