@@ -7,11 +7,9 @@ import slak.ckompiler.analysis.DerefStackValue
 import slak.ckompiler.analysis.IRValue
 import slak.ckompiler.analysis.LoadableValue
 import slak.ckompiler.backend.*
-import slak.ckompiler.backend.x64.X64Instruction
-import slak.ckompiler.backend.x64.X64PeepholeOpt
 
 fun generateMIDebug(
-    target: MachineTarget,
+    target: MachineTarget<*>,
     srcFileName: String,
     srcText: String,
     showDummies: Boolean,
@@ -23,7 +21,7 @@ fun generateMIDebug(
 }
 
 private class MIDebugMode(
-    val target: MachineTarget,
+    val target: MachineTarget<*>,
     val srcFileName: String,
     val srcText: String,
     val showDummies: Boolean,

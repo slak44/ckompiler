@@ -35,7 +35,7 @@ data class AllocationResult(
   }
 }
 
-private fun MachineTarget.selectRegisterWhitelist(
+private fun MachineTarget<*>.selectRegisterWhitelist(
     whitelist: Set<MachineRegister>,
     value: IRValue,
 ): MachineRegister? {
@@ -47,7 +47,7 @@ private fun MachineTarget.selectRegisterWhitelist(
   }
 }
 
-private fun MachineTarget.selectRegisterBlacklist(
+private fun MachineTarget<*>.selectRegisterBlacklist(
     blacklist: Set<MachineRegister>,
     value: IRValue,
 ) = requireNotNull(selectRegisterWhitelist(registers.toSet() - forbidden - blacklist, value)) {

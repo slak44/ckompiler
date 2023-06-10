@@ -15,7 +15,7 @@ enum class X64SupportedFeatures {
   AVX512
 }
 
-class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : MachineTarget {
+class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : MachineTarget<X64Register> {
   private val logger = KotlinLogging.logger {}
 
   override val isaType = ISAType.X64
@@ -32,7 +32,7 @@ class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : 
    */
   val calleeSaved = listOf(
       "rbx", "rsp", "rbp", "r12", "r13", "r14", "r15"
-  ).mapTo(mutableSetOf(), this::registerByName)
+  ).mapTo(mutableSetOf(), ::registerByName)
 
   /**
    * System V ABI: figure 3.4, page 23

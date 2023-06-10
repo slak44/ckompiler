@@ -382,7 +382,7 @@ interface TargetFunGenerator<T : AsmInstruction> : FunctionAssembler<T>, Functio
   /**
    * Reference to source [MachineTarget].
    */
-  val target: MachineTarget
+  val target: MachineTarget<*>
 
   /**
    * Resulting graph to generate code for. The output of this generator.
@@ -447,7 +447,7 @@ interface TargetFunGenerator<T : AsmInstruction> : FunctionAssembler<T>, Functio
 
 typealias AnyFunGenerator = TargetFunGenerator<out AsmInstruction>
 
-fun createTargetFunGenerator(cfg: CFG, target: MachineTarget): AnyFunGenerator {
+fun createTargetFunGenerator(cfg: CFG, target: MachineTarget<*>): AnyFunGenerator {
   return when (target.isaType) {
     ISAType.X64 -> X64Generator(cfg, target as X64Target)
     ISAType.MIPS32 -> MIPS32Generator(cfg, target as MIPS32Target)
@@ -469,7 +469,7 @@ interface TargetOptions {
   }
 }
 
-interface MachineTarget {
+interface MachineTarget<T : MachineRegister> {
   val isaType: ISAType
   val machineTargetData: MachineTargetData
   val targetName: String
@@ -479,13 +479,16 @@ interface MachineTarget {
   /**
    * Complete list of registers for this target.
    */
-  val registers: List<MachineRegister>
+  val registers: List<T>
 
   /**
    * Do not consider these when allocating function locals.
    */
-  val forbidden: Set<MachineRegister>
+  val forbidden: Set<T>
 
+  /**
+   * Check if a register is callee-saved. This function accepts memory as well, which will always return false.
+   */
   fun isPreservedAcrossCalls(register: MachineRegister): Boolean
 
   fun registerClassOf(type: TypeName): MachineRegisterClass
@@ -495,11 +498,11 @@ interface MachineTarget {
    */
   val maxPressure: Map<MachineRegisterClass, Int>
     get() = (registers - forbidden).groupBy { it.valueClass }.mapValues { it.value.size }
-}
 
-fun MachineTarget.registerByName(name: String): MachineRegister {
-  return registers.first { reg ->
-    reg.regName == name || name in reg.aliases.map { it.first }
+  fun registerByName(name: String): T {
+    return registers.first { reg ->
+      reg.regName == name || name in reg.aliases.map { it.first }
+    }
   }
 }
 
@@ -508,7 +511,7 @@ fun MachineTarget.registerByName(name: String): MachineRegister {
  * This is useful, because all undefined things will be "in" the same register, which will create a bunch of
  * "mov rax, rax"-type instructions that are easy to remove.
  */
-fun MachineTarget.getUndefinedRegisterFor(undefinedValue: LoadableValue): MachineRegister {
+fun MachineTarget<*>.getUndefinedRegisterFor(undefinedValue: LoadableValue): MachineRegister {
   check(undefinedValue.isUndefined)
   return (registers - forbidden)
       .first { reg -> reg.valueClass == registerClassOf(undefinedValue.type) }
@@ -518,7 +521,7 @@ infix fun Int.alignTo(alignment: Int): Int {
   return if (this % alignment != 0) this + alignment - this % alignment else this
 }
 
-fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOptions, targetSpecific: List<String>): MachineTarget {
+fun IDebugHandler.createMachineTarget(isaType: ISAType, baseTargetOpts: TargetOptions, targetSpecific: List<String>): MachineTarget<*> {
   return when (isaType) {
     ISAType.X64 -> X64Target(X64TargetOpts(baseTargetOpts, targetSpecific, this))
     ISAType.MIPS32 -> MIPS32Target(baseTargetOpts)

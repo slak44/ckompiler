@@ -6,7 +6,7 @@ import slak.ckompiler.readResource
 class SPIMRuntimeProvider : TargetRuntimeProvider {
   override fun provideRuntimeFunctions(
       externals: List<String>,
-      target: MachineTarget,
+      target: MachineTarget<*>,
       getCFGs: GetTranslationUnitCFG,
   ): List<AnyFunGenerator> = buildList {
     if ("printf" in externals) {

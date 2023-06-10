@@ -7,15 +7,15 @@ import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
-class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults) : MachineTarget {
+class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults) : MachineTarget<MIPS32Register> {
   private val logger = KotlinLogging.logger {}
 
   override val isaType = ISAType.MIPS32
   override val machineTargetData = MachineTargetData.mips32
   override val targetName: String = "mips32"
   override val registerClasses: List<MachineRegisterClass> = MIPS32RegisterClass.values().toList()
-  override val registers: List<MachineRegister> = getMIPS32Registers()
-  override val forbidden: Set<MachineRegister> = listOf(
+  override val registers = getMIPS32Registers()
+  override val forbidden = listOf(
       "\$zero", "\$at", "\$k1", "\$k0", "\$gp", "\$sp", "\$fp", "\$ra"
   ).mapTo(mutableSetOf(), ::registerByName)
 

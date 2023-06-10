@@ -8,7 +8,7 @@ typealias GetTranslationUnitCFG = (text: String, relPath: String) -> List<CFG>
 interface TargetRuntimeProvider {
   fun provideRuntimeFunctions(
       externals: List<String>,
-      target: MachineTarget,
+      target: MachineTarget<*>,
       getCFGs: GetTranslationUnitCFG,
   ): List<AnyFunGenerator>
 }
@@ -16,7 +16,7 @@ interface TargetRuntimeProvider {
 object NoRuntimeProvider : TargetRuntimeProvider {
   override fun provideRuntimeFunctions(
       externals: List<String>,
-      target: MachineTarget,
+      target: MachineTarget<*>,
       getCFGs: GetTranslationUnitCFG,
   ): List<AnyFunGenerator> {
     return emptyList()
