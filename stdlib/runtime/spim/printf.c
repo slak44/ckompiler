@@ -28,11 +28,11 @@ int __builtin_printf_no_va(const char* format, void** args) {
       __builtin_print_char(c);
     } else {
       if (c == 'd') {
-        int* i = args[current_arg++];
-        __builtin_print_int(*i);
+        void* i = args[current_arg++];
+        __builtin_print_int((int) i);
       } else if (c == 'c') {
-        int* i = args[current_arg++];
-        __builtin_print_char(*i);
+        void* i = args[current_arg++];
+        __builtin_print_char((int) i);
       } else if (c == 's') {
         const char* str = args[current_arg++];
         __builtin_print_string(str);
