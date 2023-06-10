@@ -127,20 +127,36 @@ val mulu = mips32InstructionClass("mulu", listOf(VariableUse.DEF, VariableUse.US
   instr(RegisterOperand, RegisterOperand, RegisterOperand)
 }
 
-val div = mips32InstructionClass("div", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
-  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+val div = mips32InstructionClass("div", listOf(VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+
+  // FIXME: exclusive to MIPS32 Release 6, but would have been nice
+  instr(listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE), RegisterOperand, RegisterOperand, RegisterOperand)
 }
 
-val divu = mips32InstructionClass("divu", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
-  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+val divu = mips32InstructionClass("divu", listOf(VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+
+  // FIXME: exclusive to MIPS32 Release 6, but would have been nice
+  instr(listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE), RegisterOperand, RegisterOperand, RegisterOperand)
 }
 
+// FIXME: exclusive to MIPS32 Release 6, but would have been nice
 val mod = mips32InstructionClass("mod", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand, RegisterOperand)
 }
 
+// FIXME: exclusive to MIPS32 Release 6, but would have been nice
 val modu = mips32InstructionClass("modu", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val mfhi = mips32InstructionClass("mfhi", listOf(VariableUse.DEF)) {
+  instr(RegisterOperand)
+}
+
+val mflo = mips32InstructionClass("mflo", listOf(VariableUse.DEF)) {
+  instr(RegisterOperand)
 }
 
 val and = mips32InstructionClass("and", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {

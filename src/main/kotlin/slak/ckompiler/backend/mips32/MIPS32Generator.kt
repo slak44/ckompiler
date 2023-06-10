@@ -291,11 +291,12 @@ class MIPS32Generator private constructor(
     val (nonImm, maybeImm) = findImmInBinary(i.lhs, i.rhs)
     val (convertedImm, ops) = convertIfImm(maybeImm)
     val isUnsigned = i.result.type.unqualify() !is SignedIntegralType
-    val div = when (isRem) {
-      true -> if (isUnsigned) modu else mod
-      false -> if (isUnsigned) divu else div
-    }
-    return ops + listOf(div.match(i.result, nonImm, convertedImm))
+    val div = if (isUnsigned) divu else div
+    val resultCopy = if (isRem) mfhi else mflo
+    return ops + listOf(
+        div.match(nonImm, convertedImm),
+        resultCopy.match(i.result)
+    )
   }
 
   private fun matchLogical(i: BinaryInstruction, intOp: IntegralBinaryOps): List<MachineInstruction> {
