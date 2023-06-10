@@ -50,6 +50,19 @@ class CFGTests {
   }
 
   @Test
+  fun `Continue Statement Branches To Loop Condition`() {
+    val cfg = prepareCFG(resource("loops/basicContinueTest.c"), source)
+    cfg.assertNoDiagnostics()
+    val loopHeader = cfg.startBlock.successors[0]
+    assert(loopHeader.terminator is CondJump)
+    val loopBlock = (loopHeader.terminator as CondJump).target
+    val loopBlockTerm = requireNotNull(loopBlock.terminator as? CondJump)
+    // The true branch goes to the continue, which means the loop header
+    // The false branch goes to the end of the loop block, which also means the loop header
+    assertEquals(loopBlockTerm.other, loopBlockTerm.target)
+  }
+
+  @Test
   fun `While Loop`() {
     val cfg = prepareCFG(resource("loops/whileLoopTest.c"), source)
     assert(cfg.startBlock.src.isNotEmpty())

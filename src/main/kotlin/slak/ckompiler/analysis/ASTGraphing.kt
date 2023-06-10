@@ -25,13 +25,13 @@ fun graph(cfg: CFG) {
  * The current context in which the [CFG] is being built. Tracks relevant jumpable blocks, and
  * possible labels to jump to using goto.
  *
- * [currentLoopBlock] is the target of "continue", and is used by loops.
+ * [loopHeader] is the target of "continue", and is used by loops.
  * [afterBlock] is the target of "break", and is used by both loops and switches.
  * [cases] and [currentDefaultBlock] are used by the current switch.
  */
 private data class GraphingContext(
     val root: CFG,
-    val currentLoopBlock: BasicBlock? = null,
+    val loopHeader: BasicBlock? = null,
     val afterBlock: BasicBlock? = null,
     val cases: MutableMap<ExprConstantNode, BasicBlock> = mutableMapOf(),
     var currentDefaultBlock: BasicBlock? = null,
@@ -238,7 +238,7 @@ private fun GraphingContext.graphStatement(
     val loopHeader = root.newBlock()
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
-    val loopContext = copy(currentLoopBlock = loopBlock, afterBlock = afterLoopBlock)
+    val loopContext = copy(loopHeader = loopHeader, afterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     val (loopHeaderNext, condIr) = graphExprTerm(root, loopHeader, s.cond)
     loopHeaderNext.terminator = CondJump(condIr, s.cond, loopBlock, afterLoopBlock)
@@ -249,7 +249,7 @@ private fun GraphingContext.graphStatement(
   is DoWhileStatement -> {
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
-    val loopContext = copy(currentLoopBlock = loopBlock, afterBlock = afterLoopBlock)
+    val loopContext = copy(loopHeader = loopHeader, afterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(scope, loopBlock, s.loopable)
     current.terminator = UncondJump(loopBlock)
     val (loopNextNext, condIr) = graphExprTerm(root, loopNext, s.cond)
@@ -266,7 +266,7 @@ private fun GraphingContext.graphStatement(
     val loopHeader = root.newBlock()
     val loopBlock = root.newBlock()
     val afterLoopBlock = root.newBlock()
-    val loopContext = copy(currentLoopBlock = loopBlock, afterBlock = afterLoopBlock)
+    val loopContext = copy(loopHeader = loopHeader, afterBlock = afterLoopBlock)
     val loopNext = loopContext.graphStatement(s.scope, loopBlock, s.loopable)
     s.loopEnd?.let { graphStatement(s.scope, loopNext, it) }
     actualCurrent.terminator = UncondJump(loopHeader)
@@ -282,7 +282,7 @@ private fun GraphingContext.graphStatement(
   }
   is ContinueStatement -> {
     val afterContinue = root.newBlock()
-    current.terminator = ConstantJump(currentLoopBlock!!, afterContinue)
+    current.terminator = ConstantJump(loopHeader!!, afterContinue)
     afterContinue
   }
   is BreakStatement -> {
