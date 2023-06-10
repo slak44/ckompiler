@@ -50,8 +50,12 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
     val stackArgsSize = stackArgs.sumOf {
       target.machineTargetData.sizeOf(it.value.type).coerceAtLeast(MIPS32Target.WORD)
     }
+    val cleanStackSize: Int
     if (stackArgsSize % MIPS32Target.ALIGNMENT_BYTES != 0) {
       before += addiu.match(sp, sp, -MIPS32Generator.wordSizeConstant)
+      cleanStackSize = stackArgsSize + MIPS32Target.WORD
+    } else {
+      cleanStackSize = stackArgsSize
     }
     for (stackArg in stackArgs.map { it.value }.asReversed()) {
       before += pushOnStack(stackArg)
@@ -72,7 +76,6 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
     val afterLinked = mutableListOf<MachineInstruction>()
     val after = mutableListOf<MachineInstruction>()
     // Clean up pushed arguments
-    val cleanStackSize = stackArgsSize + stackArgsSize / MIPS32Target.ALIGNMENT_BYTES
     afterLinked += addi.match(sp, sp, IntConstant(cleanStackSize, UnsignedIntType))
 
     // Add result value constraint
