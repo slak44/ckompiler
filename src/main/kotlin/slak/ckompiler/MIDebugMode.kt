@@ -46,6 +46,7 @@ private class MIDebugMode(
         script(src = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.0/build/highlight.min.js") {}
         script(src = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.0/build/languages/c.min.js") {}
         script(src = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.0/build/languages/x86asm.min.js") {}
+        script(src = "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.0/build/languages/mipsasm.min.js") {}
         script {
           unsafe { +"hljs.initHighlightingOnLoad();" }
         }
@@ -132,7 +133,11 @@ private class MIDebugMode(
   fun FlowContent.nasm(block: CODE.() -> Unit) {
     apply {
       pre {
-        code(classes = "language-x86asm", block)
+        val highlight = when (target.isaType) {
+          ISAType.X64 -> "x86asm"
+          ISAType.MIPS32 -> "mipsasm"
+        }
+        code(classes = "language-$highlight", block)
       }
     }
   }

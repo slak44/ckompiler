@@ -2,5 +2,9 @@
   <span *ngSwitchCase="CodePrintingMethods.IR_TO_STRING" [innerHTML]="text"></span>
   <span *ngSwitchCase="CodePrintingMethods.EXPR_TO_STRING" [innerHTML]="text"></span>
   <span *ngSwitchCase="CodePrintingMethods.SOURCE_SUBSTRING">{{ text }}</span>
-  <span *ngSwitchDefault [highlight]="text" [languages]="['x86asm']"></span>
+  <ng-container *ngSwitchDefault>
+    <span *ngIf="language$ | async as language"
+          [highlight]="text"
+          [languages]="[language]"></span>
+  </ng-container>
 </ng-container>
