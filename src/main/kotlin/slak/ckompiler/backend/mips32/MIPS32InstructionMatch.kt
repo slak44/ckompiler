@@ -48,7 +48,8 @@ private fun isMemoryForCopy(value: IRValue): Boolean = value is MemoryLocation |
 
 fun matchTypedCopy(dest: IRValue, src: IRValue): MachineInstruction {
   if (isMemoryForCopy(dest)) {
-    require(!isMemoryForCopy(src))
+    require(!isMemoryForCopy(src)) { "Failed to copy to memory. src: $src, dest: $dest" }
+    require(src !is StackVariable) { "Moving a StackVariable to a memory location requires 2 instructions (addi+sw). See stackAddrMove" }
 
     val destSize = MachineTargetData.mips32.sizeOf(dest.type)
     if (destSize == 1) {
@@ -58,7 +59,7 @@ fun matchTypedCopy(dest: IRValue, src: IRValue): MachineInstruction {
   }
 
   if (isMemoryForCopy(src)) {
-    require(!isMemoryForCopy(dest))
+    require(!isMemoryForCopy(dest)) { "Failed to copy from memory. src: $src, dest: $dest" }
 
     val srcSize = MachineTargetData.mips32.sizeOf(src.type)
     if (srcSize == 1) {

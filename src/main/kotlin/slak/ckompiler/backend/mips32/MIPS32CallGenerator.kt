@@ -120,7 +120,7 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
     }
     require(registerClass is MIPS32RegisterClass)
     selected += when (registerClass) {
-      MIPS32RegisterClass.INTEGER -> pushIntOnStack(value)
+      MIPS32RegisterClass.INTEGER -> pushIntOnStack(actualValue)
       MIPS32RegisterClass.FLOAT -> TODO()
     }
     return selected
@@ -134,6 +134,11 @@ class MIPS32CallGenerator(val target: MIPS32Target, val registerIds: IdCounter) 
         val registerConstant = VirtualRegister(registerIds(), sp.type)
         push += matchTypedCopy(registerConstant, value)
         registerConstant
+      }
+      is StackVariable -> {
+        val computedAddress = VirtualRegister(registerIds(), sp.type)
+        push += matchTypedCopy(computedAddress, value)
+        computedAddress
       }
       else -> value
     }
