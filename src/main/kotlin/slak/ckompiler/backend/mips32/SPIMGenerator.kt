@@ -26,6 +26,10 @@ class SPIMGenerator(
       text += generatePrintfSupport()
     }
 
+    if ("scanf" in externals) {
+      text += generateScanfSupport()
+    }
+
     text += generateExitFunction()
 
     val code = prelude + ".data" + data + ".text" + text
@@ -78,6 +82,12 @@ class SPIMGenerator(
     emit("jal __builtin_printf_no_va")
     emit("lw \$ra, (\$sp)")
     emit("addiu \$sp, \$sp, 4")
+    emit("jr \$ra")
+  }
+
+  private fun generateScanfSupport() = instrGen {
+    label("scanf")
+    // TODO: implement basic scanf
     emit("jr \$ra")
   }
 
