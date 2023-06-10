@@ -20,6 +20,12 @@ class MIPS32FunAssembler(val cfg: CFG, val target: MIPS32Target, val stackSlotId
    */
   private val stackParamOffsets = mutableMapOf<AtomicId, MIPS32MemoryValue>()
 
+  /** The starting offset for the stack; the prologue can put things on the stack before the [StackSlot]s. */
+  private var stackBeginOffset = 0
+
+  /** Set of registers saved, that will need to be restored. */
+  private lateinit var calleeSaved: Set<MIPS32Register>
+
   init {
     val vars = cfg.f.parameters.map(::Variable).withIndex()
     val integral = vars.filter { target.registerClassOf(it.value.type) == MIPS32RegisterClass.INTEGER }
@@ -42,18 +48,35 @@ class MIPS32FunAssembler(val cfg: CFG, val target: MIPS32Target, val stackSlotId
   }
 
   override fun genFunctionPrologue(alloc: AllocationResult): List<MIPS32Instruction> {
-    val prologue = mutableListOf<MIPS32Instruction>()
+    val frameSetup = mutableListOf<MIPS32Instruction>()
 
-    prologue += addi.matchAsm(sp, sp, MIPS32ImmediateValue(-stackTwoWordsSize))
-    prologue += sw.matchAsm(fp, MIPS32MemoryValue(sp.size, sp, 0))
-    prologue += sw.matchAsm(ra, MIPS32MemoryValue(sp.size, sp, MIPS32Target.WORD))
-    prologue += move.matchAsm(fp, sp)
+    frameSetup += addi.matchAsm(sp, sp, MIPS32ImmediateValue(-stackTwoWordsSize))
+    frameSetup += sw.matchAsm(fp, MIPS32MemoryValue(sp.size, sp, 0))
+    frameSetup += sw.matchAsm(ra, MIPS32MemoryValue(sp.size, sp, MIPS32Target.WORD))
+    frameSetup += move.matchAsm(fp, sp)
 
-    return prologue
+    calleeSaved = alloc.allocations.values
+        .filterIsInstanceTo(mutableSetOf<MIPS32Register>())
+        .intersect(target.calleeSaved)
+    stackBeginOffset = calleeSaved.sumOf { it.sizeBytes }
+
+    for ((idx, reg) in calleeSaved.withIndex()) {
+      val toSave = MIPS32RegisterValue(reg, MIPS32Target.WORD)
+      val stackLoc = MIPS32MemoryValue(MIPS32Target.WORD, fp, -(idx + 1) * MIPS32Target.WORD)
+      frameSetup += sw.matchAsm(toSave, stackLoc)
+    }
+
+    return frameSetup
   }
 
   override fun genFunctionEpilogue(alloc: AllocationResult): List<MIPS32Instruction> {
     val epilogue = mutableListOf<MIPS32Instruction>()
+
+    var savedOffset = stackBeginOffset
+    for (reg in calleeSaved.reversed()) {
+      epilogue += restoreRegister(reg, savedOffset)
+      savedOffset -= MIPS32Target.WORD
+    }
 
     epilogue += move.matchAsm(sp, fp)
     epilogue += lw.matchAsm(fp, MIPS32MemoryValue(sp.size, sp, 0))
@@ -62,6 +85,13 @@ class MIPS32FunAssembler(val cfg: CFG, val target: MIPS32Target, val stackSlotId
     epilogue += jr.matchAsm(ra)
 
     return epilogue
+  }
+
+  private fun restoreRegister(reg: MIPS32Register, offset: Int): MIPS32Instruction = when (reg.valueClass) {
+    MIPS32RegisterClass.INTEGER -> {
+      lw.matchAsm(MIPS32RegisterValue(reg, MIPS32Target.WORD), MIPS32MemoryValue(fp.size, fp, -offset))
+    }
+    MIPS32RegisterClass.FLOAT -> TODO()
   }
 
   override fun applyAllocation(alloc: AllocationResult): Map<AtomicId, List<MIPS32Instruction>> {
