@@ -111,7 +111,7 @@ class MIPS32Generator private constructor(
   private fun selectBlockInstrs(block: BasicBlock): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
     for ((index, irInstr) in block.ir.withIndex()) {
-      selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = index }
+      selected += expandMacroWithLoads(irInstr).onEach { it.irLabelIndex = index }
     }
 
     when (val term = block.terminator) {
@@ -141,7 +141,7 @@ class MIPS32Generator private constructor(
   private fun selectCondJump(condJump: CondJump, idxOffset: Int): List<MachineInstruction> {
     val selected = mutableListOf<MachineInstruction>()
     for ((index, irInstr) in condJump.cond.dropLast(1).withIndex()) {
-      selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
+      selected += expandMacroWithLoads(irInstr).onEach { it.irLabelIndex = idxOffset + index }
     }
 
     val actualJump = when (val l = condJump.cond.last()) {
@@ -185,7 +185,7 @@ class MIPS32Generator private constructor(
     if (ret.returned != null) {
       require(ret.returned.isNotEmpty())
       for ((index, irInstr) in ret.returned.withIndex()) {
-        selected += expandMacroFor(irInstr).onEach { it.irLabelIndex = idxOffset + index }
+        selected += expandMacroWithLoads(irInstr).onEach { it.irLabelIndex = idxOffset + index }
       }
       val retVal = ret.returned.last().result
       selected += createReturn(retVal).onEach { it.irLabelIndex = endIdx }
@@ -200,6 +200,34 @@ class MIPS32Generator private constructor(
     } else {
       value
     }
+  }
+
+  private fun MutableList<MachineInstruction>.convertToLoadMemory(value: IRValue): IRValue {
+    if (value !is MemoryLocation) {
+      return value
+    }
+
+    val target = VirtualRegister(graph.registerIds(), value.type)
+    this += matchTypedCopy(target, value)
+    return target
+  }
+
+  private fun expandMacroWithLoads(i: IRInstruction): List<MachineInstruction> = buildList {
+    val iWithLoads = when (i) {
+      is StoreMemory, is LoadMemory, is MoveInstr -> i
+      is FltBinary -> i.copy(lhs = convertToLoadMemory(i.lhs), rhs = convertToLoadMemory(i.rhs))
+      is FltCmp -> i.copy(lhs = convertToLoadMemory(i.lhs), rhs = convertToLoadMemory(i.rhs))
+      is FltNeg -> i.copy(operand = convertToLoadMemory(i.operand))
+      is IndirectCall -> i.copy(args = i.args.map { convertToLoadMemory(it) })
+      is NamedCall -> i.copy(args = i.args.map { convertToLoadMemory(it) })
+      is IntBinary -> i.copy(lhs = convertToLoadMemory(i.lhs), rhs = convertToLoadMemory(i.rhs))
+      is IntCmp -> i.copy(lhs = convertToLoadMemory(i.lhs), rhs = convertToLoadMemory(i.rhs))
+      is IntInvert -> i.copy(operand = convertToLoadMemory(i.operand))
+      is IntNeg -> i.copy(operand = convertToLoadMemory(i.operand))
+      is ReinterpretCast -> i.copy(operand = convertToLoadMemory(i.operand))
+      is StructuralCast -> i.copy(operand = convertToLoadMemory(i.operand))
+    }
+    this += expandMacroFor(iWithLoads)
   }
 
   private fun expandMacroFor(i: IRInstruction): List<MachineInstruction> = when (i) {
