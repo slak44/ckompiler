@@ -1,17 +1,18 @@
-import { combineLatest, filter, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
+import { combineLatest, filter, map, Observable, shareReplay } from 'rxjs';
 import { phiEligibleVariables, Variable } from '@ckompiler/ckompiler';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
+import { Setting } from '@cki-settings';
 
 export class TargetVariableState {
-  private readonly targetVariableIdSubject: ReplaySubject<number> = new ReplaySubject<number>(1);
-
   public readonly targetVariable$: Observable<Variable>;
 
   public readonly variableName$: Observable<string>;
 
-  constructor(instance: CompilationInstance) {
+  constructor(instance: CompilationInstance, targetVariableIdSetting: Setting<number | null>) {
     this.targetVariable$ = combineLatest([
-      this.targetVariableIdSubject,
+      targetVariableIdSetting.value$.pipe(
+        filter((identityId): identityId is number => typeof identityId === 'number'),
+      ),
       instance.cfg$,
     ]).pipe(
       map(([identityId, cfg]) => phiEligibleVariables(cfg).find(variable => variable.identityId === identityId)),
@@ -22,9 +23,5 @@ export class TargetVariableState {
     this.variableName$ = this.targetVariable$.pipe(
       map(variable => variable.name),
     );
-  }
-
-  public selectedVariableChanged(variableIdentityId: number): void {
-    this.targetVariableIdSubject.next(variableIdentityId);
   }
 }

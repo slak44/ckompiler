@@ -13,7 +13,17 @@ import { StartNodeRect } from '@cki-graph-view/graph-view-hooks/start-node-rect'
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
-import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
+import {
+  AlgorithmPhase,
+  AlgorithmStepService,
+  STEP_IDX_SETTING,
+} from '../../../algorithm-stepper/services/algorithm-step.service';
+import {
+  phiInsertionSelectedId,
+  phiInsertionStepIdx,
+  phiInsertionTransform,
+  phiInsertionVariableId,
+} from '@cki-settings';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -22,6 +32,7 @@ import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     PhiIrFragmentComponent.provider,
+    { provide: STEP_IDX_SETTING, useValue: phiInsertionStepIdx },
     AlgorithmStepService,
     PhiInsertionStateService,
     ReplaceNodeContentsHook,
@@ -30,6 +41,10 @@ import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper
 export class PhiInsertionViewComponent extends SubscriptionDestroy implements AfterViewInit {
   @ViewChild('anchorStartBlock')
   private readonly anchorStartBlock!: ElementRef<HTMLDivElement>;
+
+  public readonly phiInsertionTransform = phiInsertionTransform;
+  public readonly phiInsertionSelectedId = phiInsertionSelectedId;
+  public readonly phiInsertionVariableId = phiInsertionVariableId;
 
   private readonly startNodeRect: StartNodeRect = new StartNodeRect();
 
@@ -128,10 +143,6 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
 
   public reset(): void {
     this.algorithmStepService.reset();
-  }
-
-  public selectedVariableChanged(identityId: number): void {
-    this.phiInsertionStateService.varState.selectedVariableChanged(identityId);
   }
 
   @HostListener('document:keydown.arrowright')

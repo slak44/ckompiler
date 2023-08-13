@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.dto
 
 import slak.ckompiler.backend.entities.GraphViewState
+import slak.ckompiler.backend.entities.SteppableGraphViewState
 import slak.ckompiler.backend.entities.ViewState
 import slak.ckompiler.backend.entities.ZoomTransform
 import java.time.Instant
@@ -23,6 +24,20 @@ data class GraphViewStateDto(
   )
 }
 
+data class SteppableGraphViewStateDto(
+    val targetVariable: Int?,
+    val transform: ZoomTransform,
+    val selectedNodeId: Int?,
+    val currentStep: Int,
+) {
+  constructor(graphViewState: SteppableGraphViewState) : this(
+      graphViewState.targetVariable,
+      graphViewState.transform,
+      graphViewState.selectedNodeId,
+      graphViewState.currentStep
+  )
+}
+
 data class ViewStateDto(
     val id: String?,
     val createdAt: Instant?,
@@ -32,6 +47,8 @@ data class ViewStateDto(
     val isaType: String,
     val activeRoute: String,
     val graphViewState: GraphViewStateDto,
+    val phiInsertionViewState: SteppableGraphViewStateDto,
+    val variableRenameViewState: SteppableGraphViewStateDto,
 ) {
   constructor(viewState: ViewState) : this(
       viewState.id.toString(),
@@ -42,5 +59,7 @@ data class ViewStateDto(
       viewState.isaType,
       viewState.activeRoute,
       GraphViewStateDto(viewState.graphViewState),
+      SteppableGraphViewStateDto(viewState.phiInsertionViewState),
+      SteppableGraphViewStateDto(viewState.variableRenameViewState),
   )
 }

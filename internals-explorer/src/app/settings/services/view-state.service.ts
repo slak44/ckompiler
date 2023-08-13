@@ -24,7 +24,13 @@ import {
   hideGraphUI,
   isaType,
   isSpillOnly,
+  phiInsertionSelectedId, phiInsertionStepIdx,
+  phiInsertionTransform,
+  phiInsertionVariableId,
   sourceCode,
+  variableRenameSelectedId, variableRenameStepIdx,
+  variableRenameTransform,
+  variableRenameVariableId,
 } from '@cki-settings';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { UserStateService } from './user-state.service';
@@ -73,6 +79,22 @@ export class ViewStateService extends SubscriptionDestroy {
       filter((zoomTransform): zoomTransform is ZoomTransform => !!zoomTransform),
     ),
     graphViewSelectedId.value$,
+    phiInsertionTransform.value$.pipe(
+      filter((zoomTransform): zoomTransform is ZoomTransform => !!zoomTransform),
+    ),
+    phiInsertionSelectedId.value$,
+    phiInsertionVariableId.value$,
+    phiInsertionStepIdx.value$.pipe(
+      map(step => step ?? 0)
+    ),
+    variableRenameTransform.value$.pipe(
+      filter((zoomTransform): zoomTransform is ZoomTransform => !!zoomTransform),
+    ),
+    variableRenameSelectedId.value$,
+    variableRenameVariableId.value$,
+    variableRenameStepIdx.value$.pipe(
+      map(step => step ?? 0)
+    ),
     this.navigationUrl$,
   ]).pipe(
     map(([
@@ -84,6 +106,14 @@ export class ViewStateService extends SubscriptionDestroy {
       printingType,
       graphViewTransform,
       graphViewSelectedId,
+      phiInsertionTransform,
+      phiInsertionSelectedId,
+      phiInsertionVariableId,
+      phiInsertionStepIdx,
+      variableRenameTransform,
+      variableRenameSelectedId,
+      variableRenameVariableId,
+      variableRenameStepIdx,
       navigationEndUrl,
     ]) => {
       return {
@@ -99,6 +129,26 @@ export class ViewStateService extends SubscriptionDestroy {
             y: graphViewTransform.y,
           },
           selectedNodeId: graphViewSelectedId,
+        },
+        phiInsertionViewState: {
+          targetVariable: phiInsertionVariableId,
+          currentStep: phiInsertionStepIdx,
+          transform: {
+            k: phiInsertionTransform.k,
+            x: phiInsertionTransform.x,
+            y: phiInsertionTransform.y,
+          },
+          selectedNodeId: phiInsertionSelectedId,
+        },
+        variableRenameViewState: {
+          targetVariable: variableRenameVariableId,
+          currentStep: variableRenameStepIdx,
+          transform: {
+            k: variableRenameTransform.k,
+            x: variableRenameTransform.x,
+            y: variableRenameTransform.y,
+          },
+          selectedNodeId: variableRenameSelectedId,
         },
         isaType: isaType.name,
         owner: null,
@@ -255,9 +305,27 @@ export class ViewStateService extends SubscriptionDestroy {
       return;
     }
 
-    const { k, x, y } = viewState.graphViewState.transform;
-    graphViewTransform.update(new ZoomTransform(k, x, y));
-    graphViewSelectedId.update(viewState.graphViewState.selectedNodeId);
+    {
+      const { k, x, y } = viewState.graphViewState.transform;
+      graphViewTransform.update(new ZoomTransform(k, x, y));
+      graphViewSelectedId.update(viewState.graphViewState.selectedNodeId);
+    }
+
+    {
+      const { k, x, y } = viewState.phiInsertionViewState.transform;
+      phiInsertionTransform.update(new ZoomTransform(k, x, y));
+      phiInsertionSelectedId.update(viewState.phiInsertionViewState.selectedNodeId);
+      phiInsertionVariableId.update(viewState.phiInsertionViewState.targetVariable);
+      phiInsertionStepIdx.update(viewState.phiInsertionViewState.currentStep);
+    }
+
+    {
+      const { k, x, y } = viewState.variableRenameViewState.transform;
+      variableRenameTransform.update(new ZoomTransform(k, x, y));
+      variableRenameSelectedId.update(viewState.variableRenameViewState.selectedNodeId);
+      variableRenameVariableId.update(viewState.variableRenameViewState.targetVariable);
+      variableRenameVariableId.update(viewState.variableRenameViewState.currentStep);
+    }
 
     isSpillOnly.update(viewState.graphViewState.isSpillOnly);
     hideGraphUI.update(viewState.graphViewState.isUiHidden);

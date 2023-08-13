@@ -4,14 +4,16 @@
                 [instance]="instance"
                 [disableVariableVersions]="true"
                 [hooks]="hooks"
-                [ngSwitch]="phase$ | async">
+                [ngSwitch]="phase$ | async"
+                [transformSetting]="phiInsertionTransform"
+                [selectedIdSetting]="phiInsertionSelectedId">
   <div class="anchor center" tourAnchor="anchor-center"></div>
 
   <div *ngSwitchCase="algorithmPhase.PREPARING" class="start-overlay">
     <cki-select-function [instance]="instance"></cki-select-function>
 
     <cki-select-variable [variables$]="instance.variables$"
-                         (identityIdChange)="selectedVariableChanged($event)"
+                         [variableIdSetting]="phiInsertionVariableId"
                          (startClick)="start()"></cki-select-variable>
   </div>
 

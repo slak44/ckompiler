@@ -4,12 +4,12 @@ import jakarta.persistence.*
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 import slak.ckompiler.backend.dto.GraphViewStateDto
+import slak.ckompiler.backend.dto.SteppableGraphViewStateDto
 import slak.ckompiler.backend.dto.ViewStateDto
 import java.time.Instant
 import java.util.*
 
 @Embeddable
-@Suppress("JpaAttributeMemberSignatureInspection")
 data class ZoomTransform(
     val k: Double,
     val x: Double,
@@ -37,6 +37,21 @@ data class GraphViewState(
   )
 }
 
+@Embeddable
+data class SteppableGraphViewState(
+    val targetVariable: Int?,
+    val transform: ZoomTransform,
+    val selectedNodeId: Int?,
+    val currentStep: Int,
+) {
+  constructor(dto: SteppableGraphViewStateDto) : this(
+      dto.targetVariable,
+      dto.transform,
+      dto.selectedNodeId,
+      dto.currentStep
+  )
+}
+
 @Table(name = "viewstate")
 @Entity
 data class ViewState(
@@ -55,6 +70,10 @@ data class ViewState(
     val activeRoute: String,
     @Embedded
     val graphViewState: GraphViewState,
+    @Embedded
+    val phiInsertionViewState: SteppableGraphViewState,
+    @Embedded
+    val variableRenameViewState: SteppableGraphViewState,
 ) {
   constructor(dto: ViewStateDto) : this(
       dto.id?.let(UUID::fromString),
@@ -65,6 +84,8 @@ data class ViewState(
       dto.isaType,
       dto.activeRoute,
       GraphViewState(dto.graphViewState),
+      SteppableGraphViewState(dto.phiInsertionViewState),
+      SteppableGraphViewState(dto.variableRenameViewState),
   )
 }
 

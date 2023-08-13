@@ -9,6 +9,7 @@ import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
 import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-instance';
 import { TargetVariableState } from '@cki-graph-view/target-variable-state';
 import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
+import { phiInsertionVariableId } from '@cki-settings';
 
 @Injectable()
 export class PhiInsertionStateService extends SubscriptionDestroy {
@@ -19,7 +20,8 @@ export class PhiInsertionStateService extends SubscriptionDestroy {
 
   public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);
 
-  public readonly varState: TargetVariableState = new TargetVariableState(this.compilationInstance);
+  public readonly varState: TargetVariableState =
+    new TargetVariableState(this.compilationInstance, phiInsertionVariableId);
 
   private readonly reLayoutSubject: Subject<number> = new Subject<number>();
 

@@ -21,6 +21,14 @@ export enum Settings {
   MONACO_FONT_SIZE = 'MONACO_FONT_SIZE',
   GRAPH_VIEW_TRANSFORM = 'GRAPH_VIEW_TRANSFORM',
   GRAPH_VIEW_SELECTED_ID = 'GRAPH_VIEW_SELECTED_ID',
+  PHI_INSERTION_TRANSFORM = 'PHI_INSERTION_TRANSFORM',
+  PHI_INSERTION_SELECTED_ID = 'PHI_INSERTION_SELECTED_ID',
+  PHI_INSERTION_VARIABLE_ID = 'PHI_INSERTION_VARIABLE_ID',
+  PHI_INSERTION_STEP_IDX = 'PHI_INSERTION_STEP_IDX',
+  VARIABLE_RENAME_TRANSFORM = 'VARIABLE_RENAME_TRANSFORM',
+  VARIABLE_RENAME_SELECTED_ID = 'VARIABLE_RENAME_SELECTED_ID',
+  VARIABLE_RENAME_VARIABLE_ID = 'VARIABLE_RENAME_VARIABLE_ID',
+  VARIABLE_RENAME_STEP_IDX = 'VARIABLE_RENAME_STEP_IDX',
 }
 
 export class Setting<T> {
@@ -60,6 +68,20 @@ export class Setting<T> {
     return new Setting(
       settingType,
       value => value === 'true',
+      value => `${value}`,
+    );
+  }
+
+  public static ofInteger(settingType: Settings): Setting<number | null> {
+    return new Setting(
+      settingType,
+      value => {
+        const int = parseInt(value ?? '', 10);
+        if (isNaN(int)) {
+          return null;
+        }
+        return int;
+      },
       value => `${value}`,
     );
   }
@@ -134,17 +156,25 @@ export const monacoFontSize: Setting<number> = new Setting(
 
 export const graphViewTransform: Setting<ZoomTransform | null> = Setting.ofZoomTransform(Settings.GRAPH_VIEW_TRANSFORM);
 
-export const graphViewSelectedId: Setting<number | null> = new Setting(
-  Settings.GRAPH_VIEW_SELECTED_ID,
-  value => {
-    const int = parseInt(value ?? '', 10);
-    if (isNaN(int)) {
-      return null;
-    }
-    return int;
-  },
-  value => `${value}`,
-);
+export const graphViewSelectedId: Setting<number | null> = Setting.ofInteger(Settings.GRAPH_VIEW_SELECTED_ID);
+
+export const phiInsertionTransform: Setting<ZoomTransform | null> =
+  Setting.ofZoomTransform(Settings.PHI_INSERTION_TRANSFORM);
+
+export const phiInsertionSelectedId: Setting<number | null> = Setting.ofInteger(Settings.PHI_INSERTION_SELECTED_ID);
+
+export const phiInsertionVariableId: Setting<number | null> = Setting.ofInteger(Settings.PHI_INSERTION_VARIABLE_ID);
+
+export const phiInsertionStepIdx: Setting<number | null> = Setting.ofInteger(Settings.PHI_INSERTION_STEP_IDX);
+
+export const variableRenameTransform: Setting<ZoomTransform | null> =
+  Setting.ofZoomTransform(Settings.VARIABLE_RENAME_TRANSFORM);
+
+export const variableRenameSelectedId: Setting<number | null> = Setting.ofInteger(Settings.VARIABLE_RENAME_SELECTED_ID);
+
+export const variableRenameVariableId: Setting<number | null> = Setting.ofInteger(Settings.VARIABLE_RENAME_VARIABLE_ID);
+
+export const variableRenameStepIdx: Setting<number | null> = Setting.ofInteger(Settings.VARIABLE_RENAME_STEP_IDX);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const settings: Setting<any>[] = [
@@ -160,6 +190,14 @@ const settings: Setting<any>[] = [
   monacoFontSize,
   graphViewTransform,
   graphViewSelectedId,
+  phiInsertionTransform,
+  phiInsertionSelectedId,
+  phiInsertionVariableId,
+  phiInsertionStepIdx,
+  variableRenameTransform,
+  variableRenameSelectedId,
+  variableRenameVariableId,
+  variableRenameStepIdx,
 ];
 
 function generateKey(setting: Settings): string {

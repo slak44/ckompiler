@@ -1,15 +1,9 @@
-import { Injectable } from '@angular/core';
-import {
-  BehaviorSubject,
-  combineLatestWith,
-  distinctUntilChanged,
-  map,
-  Observable,
-  OperatorFunction,
-  pipe,
-  shareReplay,
-} from 'rxjs';
+import { Inject, Injectable, InjectionToken } from '@angular/core';
+import { BehaviorSubject, combineLatestWith, map, Observable, OperatorFunction, pipe, shareReplay } from 'rxjs';
 import { clamp } from 'lodash-es';
+import { Setting } from '@cki-settings';
+
+export const STEP_IDX_SETTING: InjectionToken<Setting<number | null>> = new InjectionToken('current-step-idx-setting');
 
 export enum AlgorithmPhase {
   PREPARING,
@@ -23,18 +17,29 @@ export class AlgorithmStepService {
 
   public readonly phase$: Observable<AlgorithmPhase> = this.phaseSubject;
 
-  private readonly currentStepSubject: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+  public readonly currentStep$: Observable<number> = this.stepIdxSetting.value$.pipe(
+    map((value, emissionIndex) => {
+      const stepIdx = value ?? 0;
 
-  public readonly currentStep$: Observable<number> = this.currentStepSubject.pipe(
-    distinctUntilChanged(),
+      if (emissionIndex === 0 && stepIdx !== 0) {
+        setTimeout(() => this.phaseSubject.next(AlgorithmPhase.RUNNING));
+      }
+
+      return stepIdx;
+    }),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
 
-  constructor() {
+  constructor(@Inject(STEP_IDX_SETTING) private readonly stepIdxSetting: Setting<number | null>) {
+  }
+
+  private getCurrentStepValue(): number {
+    return this.stepIdxSetting.formControl.value as number | null ?? 0;
   }
 
   public start(): void {
     this.phaseSubject.next(AlgorithmPhase.RUNNING);
-    this.currentStepSubject.next(0);
+    this.stepIdxSetting.update(0);
   }
 
   public reset(): void {
@@ -45,21 +50,21 @@ export class AlgorithmStepService {
     if (this.phaseSubject.value !== AlgorithmPhase.RUNNING) {
       return;
     }
-    this.currentStepSubject.next(this.currentStepSubject.value + 1);
+    this.stepIdxSetting.update(this.getCurrentStepValue() + 1);
   }
 
   public prevStep(): void {
     if (this.phaseSubject.value !== AlgorithmPhase.RUNNING) {
       return;
     }
-    this.currentStepSubject.next(this.currentStepSubject.value - 1);
+    this.stepIdxSetting.update(this.getCurrentStepValue() - 1);
   }
 
   public setStep(value: number): void {
     if (this.phaseSubject.value !== AlgorithmPhase.RUNNING) {
       return;
     }
-    this.currentStepSubject.next(value);
+    this.stepIdxSetting.update(value);
   }
 
   public mapToCurrentStep<T>(): OperatorFunction<T[], T> {
@@ -68,7 +73,7 @@ export class AlgorithmStepService {
       map(([steps, index]) => {
         const clamped = clamp(index, 0, steps.length - 1);
         if (clamped !== index) {
-          this.currentStepSubject.next(clamped);
+          this.stepIdxSetting.update(clamped);
         }
 
         return steps[clamped];

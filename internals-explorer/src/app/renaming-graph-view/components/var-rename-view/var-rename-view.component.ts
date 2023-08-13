@@ -7,11 +7,21 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { DisableDblClick } from '@cki-graph-view/graph-view-hooks/disable-dblclick';
 import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover-titles';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
-import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
+import {
+  AlgorithmPhase,
+  AlgorithmStepService,
+  STEP_IDX_SETTING,
+} from '../../../algorithm-stepper/services/algorithm-step.service';
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 import { RenamingStep, RenamingStepState } from '../../models/renaming-step.model';
 import { getNodeById } from '@cki-graph-view/utils';
 import { arrayOfCollection, BasicBlock, CodePrintingMethods } from '@ckompiler/ckompiler';
+import {
+  variableRenameSelectedId,
+  variableRenameStepIdx,
+  variableRenameTransform,
+  variableRenameVariableId,
+} from '@cki-settings';
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -20,12 +30,17 @@ import { arrayOfCollection, BasicBlock, CodePrintingMethods } from '@ckompiler/c
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     RenamingIrFragmentComponent.provider,
+    { provide: STEP_IDX_SETTING, useValue: variableRenameStepIdx },
     AlgorithmStepService,
     ReplaceNodeContentsHook,
     RenamingStateService,
   ],
 })
 export class VarRenameViewComponent {
+  public readonly variableRenameTransform = variableRenameTransform;
+  public readonly variableRenameSelectedId = variableRenameSelectedId;
+  public readonly variableRenameVariableId = variableRenameVariableId;
+
   public readonly printingType$: Observable<CodePrintingMethods> = of(CodePrintingMethods.IR_TO_STRING);
 
   public readonly instance: CompilationInstance = this.renamingStateService.compilationInstance;
@@ -96,10 +111,6 @@ export class VarRenameViewComponent {
     private readonly replaceNodeContentsHook: ReplaceNodeContentsHook,
     private readonly renamingStateService: RenamingStateService,
   ) {
-  }
-
-  public selectedVariableChanged(identityId: number): void {
-    this.renamingStateService.varState.selectedVariableChanged(identityId);
   }
 
   public start(): void {

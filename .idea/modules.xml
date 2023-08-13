@@ -6,6 +6,7 @@
       <module fileurl="file://$PROJECT_DIR$/documentation/documentation.iml" filepath="$PROJECT_DIR$/documentation/documentation.iml" />
       <module fileurl="file://$PROJECT_DIR$/internals-explorer/internals-explorer.iml" filepath="$PROJECT_DIR$/internals-explorer/internals-explorer.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/internals-explorer-backend.main.iml" filepath="$PROJECT_DIR$/.idea/modules/internals-explorer-backend.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/slak.internals-explorer-backend.main.iml" filepath="$PROJECT_DIR$/.idea/modules/slak.internals-explorer-backend.main.iml" />
     </modules>
   </component>
 </project>

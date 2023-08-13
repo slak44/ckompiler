@@ -6,6 +6,7 @@ import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-in
 import { TargetVariableState } from '@cki-graph-view/target-variable-state';
 import { RenamingStepState } from '../models/renaming-step.model';
 import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
+import { variableRenameVariableId } from '@cki-settings';
 
 @Injectable()
 export class RenamingStateService {
@@ -15,7 +16,8 @@ export class RenamingStateService {
 
   public readonly compilationInstance: CompilationInstance = new CompilationInstance(this.compileResult$);
 
-  public readonly varState: TargetVariableState = new TargetVariableState(this.compilationInstance);
+  public readonly varState: TargetVariableState =
+    new TargetVariableState(this.compilationInstance, variableRenameVariableId);
 
   public readonly renameReplacements$: Observable<RenameReplacements> = combineLatest([
     this.compilationInstance.cfg$,

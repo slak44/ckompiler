@@ -1,12 +1,14 @@
 <cki-graph-view [instance]="instance"
                 [hooks]="hooks"
                 [printingType$]="printingType$"
-                [ngSwitch]="phase$ | async">
+                [ngSwitch]="phase$ | async"
+                [transformSetting]="variableRenameTransform"
+                [selectedIdSetting]="variableRenameSelectedId">
   <div *ngSwitchCase="algorithmPhase.PREPARING" class="start-overlay">
     <cki-select-function [instance]="instance"></cki-select-function>
 
     <cki-select-variable [variables$]="instance.variables$"
-                         (identityIdChange)="selectedVariableChanged($event)"
+                         [variableIdSetting]="variableRenameVariableId"
                          (startClick)="start()"></cki-select-variable>
   </div>
 
