@@ -4,11 +4,11 @@ import {
   clearAllAtomicCounters,
   CodePrintingMethods,
   createGraphviz,
+  GraphvizOptions as CKompilerGraphvizOptions,
   ISAType,
   JSCompileResult,
   restoreAllAtomicCounters,
   X64TargetOpts,
-  GraphvizOptions as CKompilerGraphvizOptions
 } from '@ckompiler/ckompiler';
 import {
   AfterViewInit,
@@ -31,6 +31,7 @@ import {
   map,
   Observable,
   of,
+  skip,
   Subject,
   switchMap,
   takeUntil,
@@ -47,7 +48,7 @@ import { GraphViewHook } from '../../models/graph-view-hook.model';
 import { getNodeById, getPolyDatumNodeId, runWithVariableVersions, setClassIf } from '../../utils';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { CompileService } from '@cki-graph-view/services/compile.service';
-import { Setting } from '@cki-settings';
+import { currentTargetFunction, Setting } from '@cki-settings';
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -228,6 +229,13 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     if (!this.transformSetting) {
       return;
     }
+
+    currentTargetFunction.value$.pipe(
+      skip(1),
+      takeUntil(this.rerender$)
+    ).subscribe(() => {
+      this.transformSetting!.update(null);
+    });
 
     const svgRef = this.graphRef.nativeElement.querySelector('svg')!;
     this.currentZoomTransformSubject.pipe(
