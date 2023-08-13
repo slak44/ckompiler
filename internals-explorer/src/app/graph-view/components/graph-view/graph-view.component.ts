@@ -1,4 +1,15 @@
-import { slak } from '@ckompiler/ckompiler';
+import {
+  BasicBlock,
+  CFG,
+  clearAllAtomicCounters,
+  CodePrintingMethods,
+  createGraphviz,
+  ISAType,
+  JSCompileResult,
+  restoreAllAtomicCounters,
+  X64TargetOpts,
+  GraphvizOptions as CKompilerGraphvizOptions
+} from '@ckompiler/ckompiler';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -37,15 +48,6 @@ import { getNodeById, getPolyDatumNodeId, runWithVariableVersions, setClassIf } 
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { Setting } from '@cki-settings';
-import createGraphviz = slak.ckompiler.analysis.external.createGraphviz;
-import CFG = slak.ckompiler.analysis.CFG;
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
-import X64TargetOpts = slak.ckompiler.backend.x64.X64TargetOpts;
-import ISAType = slak.ckompiler.backend.ISAType;
-import restoreAllAtomicCounters = slak.ckompiler.restoreAllAtomicCounters;
-import clearAllAtomicCounters = slak.ckompiler.clearAllAtomicCounters;
-import JSCompileResult = slak.ckompiler.JSCompileResult;
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -314,11 +316,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.groupToNodeId.clear();
   }
 
-  private runCreateGraphviz(
-    cfg: CFG,
-    compileResult: JSCompileResult,
-    options: slak.ckompiler.analysis.external.GraphvizOptions,
-  ): string {
+  private runCreateGraphviz(cfg: CFG, compileResult: JSCompileResult, options: CKompilerGraphvizOptions): string {
     return runWithVariableVersions(this.disableVariableVersions, () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -343,7 +341,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       this.noAllocOnlySpill$,
     ]).pipe(
       map(([printingType, isaType, noAllocOnlySpill]: [CodePrintingMethods, ISAType, boolean]) =>
-        new slak.ckompiler.analysis.external.GraphvizOptions(
+        new CKompilerGraphvizOptions(
           16.5,
           'Courier New',
           true,

@@ -28,15 +28,13 @@ import {
 } from '@cki-settings';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { UserStateService } from './user-state.service';
-import { slak } from '@ckompiler/ckompiler';
+import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { NavigationEnd, Router } from '@angular/router';
 import { ZoomTransform } from 'd3-zoom';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@auth0/auth0-angular';
 import { subscribeIfAuthenticated } from '@cki-utils/subscribe-if-authenticated';
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
-import ISAType = slak.ckompiler.backend.ISAType;
 
 @Injectable({
   providedIn: 'root',

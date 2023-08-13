@@ -1,12 +1,14 @@
 import { GraphvizDatum } from './models/graphviz-datum.model';
-import { slak } from '@ckompiler/ckompiler';
-import CFG = slak.ckompiler.analysis.CFG;
-import arrayOf = slak.ckompiler.arrayOf;
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import Variable = slak.ckompiler.analysis.Variable;
-import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
-import IRInstruction = slak.ckompiler.analysis.IRInstruction;
-import arrayOfIterator = slak.ckompiler.arrayOfIterator;
+import {
+  arrayOfCollection,
+  arrayOfIterator,
+  BasicBlock,
+  CFG,
+  IRInstruction,
+  PhiInstruction,
+  printVariableVersions,
+  Variable,
+} from '@ckompiler/ckompiler';
 
 export function getPolyDatumNodeId(datum: GraphvizDatum): number {
   const match = datum.parent.key.match(/^node(\d+)$/);
@@ -15,7 +17,7 @@ export function getPolyDatumNodeId(datum: GraphvizDatum): number {
 }
 
 export function getNodeById(cfg: CFG, nodeId: number): BasicBlock {
-  return arrayOf<BasicBlock>(cfg.nodes).find(node => node.nodeId === nodeId)!;
+  return arrayOfCollection<BasicBlock>(cfg.nodes).find(node => node.nodeId === nodeId)!;
 }
 
 export function setClassIf(e: Element, className: string, cond: boolean): void {
@@ -47,7 +49,7 @@ export function getVariableTextAndIndex(
   variable: Variable,
 ): [string, number] {
   const node = getNodeById(cfg, nodeId);
-  const nodePhi = arrayOf<PhiInstruction>(node.phi);
+  const nodePhi = arrayOfCollection<PhiInstruction>(node.phi);
 
   let index: number;
   let irString: string;
@@ -78,12 +80,12 @@ export function getVariableTextAndIndex(
 }
 
 export function runWithVariableVersions<T>(disableVariableVersions: boolean, block: () => T): T {
-  const saved = slak.ckompiler.printVariableVersions;
-  slak.ckompiler.printVariableVersions = !disableVariableVersions;
+  const saved = printVariableVersions.get();
+  printVariableVersions.set(!disableVariableVersions);
 
   const value = block();
 
-  slak.ckompiler.printVariableVersions = saved;
+  printVariableVersions.set(saved);
 
   return value;
 }

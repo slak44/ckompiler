@@ -1,6 +1,12 @@
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
 import { GraphViewComponent } from '@cki-graph-view/components/graph-view/graph-view.component';
-import { slak } from '@ckompiler/ckompiler';
+import {
+  CFG,
+  CodePrintingMethods,
+  getDefinitionLocations,
+  phiEligibleVariables,
+  Variable,
+} from '@ckompiler/ckompiler';
 import { combineLatest, filter, Observable, takeUntil, tap } from 'rxjs';
 import * as d3 from 'd3';
 import { BaseGraphvizDatum } from '@cki-graph-view/models/graphviz-datum.model';
@@ -8,11 +14,6 @@ import { catmullRomSplines } from '@cki-utils/catmull-rom-splines';
 import { getVariableTextAndIndex, runWithVariableVersions } from '@cki-graph-view/utils';
 import { measureWidth } from '@cki-utils/measure-text';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
-import CFG = slak.ckompiler.analysis.CFG;
-import Variable = slak.ckompiler.analysis.Variable;
-import getDefinitionLocations = slak.ckompiler.getDefinitionLocations;
-import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 // Keep in sync with _algorithm.scss
 const INSERTION_TRANSITION_MS = 150;

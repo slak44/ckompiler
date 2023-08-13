@@ -1,14 +1,12 @@
 import { distinctUntilChanged, fromEvent, Observable, shareReplay } from 'rxjs';
 import { identity } from 'lodash-es';
 import { editor } from 'monaco-editor';
-import { slak } from '@ckompiler/ckompiler';
+import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { ZoomTransform } from 'd3-zoom';
 import { ZoomTransformDto } from './models/view-state.model';
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
-import ISAType = slak.ckompiler.backend.ISAType;
 
 export enum Settings {
   SOURCE_CODE = 'SOURCE_CODE',

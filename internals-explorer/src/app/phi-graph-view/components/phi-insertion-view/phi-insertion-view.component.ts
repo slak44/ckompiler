@@ -1,6 +1,6 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { combineLatest, filter, map, merge, Observable, of, takeUntil } from 'rxjs';
-import { slak } from '@ckompiler/ckompiler';
+import { arrayOfCollection, BasicBlock, CodePrintingMethods } from '@ckompiler/ckompiler';
 import { PhiIrFragmentComponent } from '../phi-ir-fragment/phi-ir-fragment.component';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { GraphViewHook } from '@cki-graph-view/models/graph-view-hook.model';
@@ -14,9 +14,6 @@ import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected'
 import { NodePath } from '@cki-graph-view/graph-view-hooks/node-path';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
-import arrayOf = slak.ckompiler.arrayOf;
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -65,7 +62,7 @@ export class PhiInsertionViewComponent extends SubscriptionDestroy implements Af
       }
 
       const x = getNodeById(cfg, state.blockX);
-      const df = arrayOf<BasicBlock>(x.dominanceFrontier);
+      const df = arrayOfCollection<BasicBlock>(x.dominanceFrontier);
 
       if (df.length === 0) {
         return ' ';

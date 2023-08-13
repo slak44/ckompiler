@@ -14,8 +14,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { replaceVarInText } from '@cki-graph-view/utils';
-import { slak } from '@ckompiler/ckompiler';
-import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
+import { PhiInstruction } from '@ckompiler/ckompiler';
 
 @Component({
   selector: 'cki-phi-ir-fragment',

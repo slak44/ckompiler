@@ -1,8 +1,5 @@
 import { InjectionToken, Type } from '@angular/core';
-import { slak } from '@ckompiler/ckompiler';
-import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
-import IRInstruction = slak.ckompiler.analysis.IRInstruction;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
+import { CodePrintingMethods, IRInstruction, PhiInstruction } from '@ckompiler/ckompiler';
 
 export const GENERIC_FRAGMENT_HOST = 'cki-generic-fragment-component';
 

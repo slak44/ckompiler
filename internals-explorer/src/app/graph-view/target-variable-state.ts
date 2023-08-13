@@ -1,8 +1,6 @@
 import { combineLatest, filter, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
-import { slak } from '@ckompiler/ckompiler';
+import { phiEligibleVariables, Variable } from '@ckompiler/ckompiler';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
-import Variable = slak.ckompiler.analysis.Variable;
-import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 
 export class TargetVariableState {
   private readonly targetVariableIdSubject: ReplaySubject<number> = new ReplaySubject<number>(1);

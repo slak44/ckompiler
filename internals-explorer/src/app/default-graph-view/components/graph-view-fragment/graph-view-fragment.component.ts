@@ -1,9 +1,7 @@
 import { ChangeDetectionStrategy, Component, HostBinding, Input, ValueProvider } from '@angular/core';
 import { FRAGMENT_COMPONENT, FragmentComponent } from '@cki-graph-view/models/fragment-component.model';
-import { slak } from '@ckompiler/ckompiler';
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
+import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import { map, Observable } from 'rxjs';
-import ISAType = slak.ckompiler.backend.ISAType;
 import { isaType } from '@cki-settings';
 
 @Component({
@@ -15,7 +13,7 @@ import { isaType } from '@cki-settings';
 export class GraphViewFragmentComponent implements FragmentComponent {
   public static provider: ValueProvider = {
     provide: FRAGMENT_COMPONENT,
-    useValue: GraphViewFragmentComponent
+    useValue: GraphViewFragmentComponent,
   };
 
   @Input()
@@ -38,9 +36,9 @@ export class GraphViewFragmentComponent implements FragmentComponent {
         case ISAType.MIPS32:
           return 'mipsasm';
         default:
-          throw new Error("Missing enum value");
+          throw new Error('Missing enum value');
       }
-    })
+    }),
   );
 
   constructor() {

@@ -14,13 +14,8 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { RenamingStateService } from '../../services/renaming-state.service';
 import { AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { RenamingStep } from '../../models/renaming-step.model';
-import { slak } from '@ckompiler/ckompiler';
-import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
-import StoreMemory = slak.ckompiler.analysis.StoreMemory;
-import Variable = slak.ckompiler.analysis.Variable;
-import getRenameText = slak.ckompiler.analysis.external.getRenameText;
+import { getPhiRenameText, getRenameText, PhiInstruction, StoreMemory, Variable } from '@ckompiler/ckompiler';
 import { getNodeById, replaceVarInText } from '@cki-graph-view/utils';
-import getPhiRenameText = slak.ckompiler.analysis.external.getPhiRenameText;
 
 @Component({
   selector: 'cki-renaming-ir-fragment',

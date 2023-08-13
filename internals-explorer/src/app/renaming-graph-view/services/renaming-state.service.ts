@@ -1,14 +1,11 @@
 import { Injectable } from '@angular/core';
 import { combineLatest, map, Observable } from 'rxjs';
 import { CompileService } from '@cki-graph-view/services/compile.service';
-import { slak } from '@ckompiler/ckompiler';
+import { generateRenameSteps, JSCompileResult, RenameReplacements } from '@ckompiler/ckompiler';
 import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-instance';
 import { TargetVariableState } from '@cki-graph-view/target-variable-state';
 import { RenamingStepState } from '../models/renaming-step.model';
 import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
-import JSCompileResult = slak.ckompiler.JSCompileResult;
-import generateRenameSteps = slak.ckompiler.analysis.external.generateRenameSteps;
-import RenameReplacements = slak.ckompiler.analysis.external.RenameReplacements;
 
 @Injectable()
 export class RenamingStateService {

@@ -9,7 +9,14 @@ import {
   Type,
 } from '@angular/core';
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
-import { slak } from '@ckompiler/ckompiler';
+import {
+  arrayOfCollection,
+  arrayOfIterator,
+  CFG,
+  CodePrintingMethods,
+  IRInstruction,
+  PhiInstruction,
+} from '@ckompiler/ckompiler';
 import {
   FRAGMENT_COMPONENT,
   FragmentComponent,
@@ -19,12 +26,6 @@ import {
 import { Observable } from 'rxjs';
 import { measureTextAscent } from '@cki-utils/measure-text';
 import { getNodeById } from '@cki-graph-view/utils';
-import CFG = slak.ckompiler.analysis.CFG;
-import arrayOfIterator = slak.ckompiler.arrayOfIterator;
-import IRInstruction = slak.ckompiler.analysis.IRInstruction;
-import arrayOf = slak.ckompiler.arrayOf;
-import PhiInstruction = slak.ckompiler.analysis.PhiInstruction;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 const ORIGINAL_Y = 'originalY';
 
@@ -98,7 +99,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       const basicBlock = getNodeById(cfg, nodeId);
 
       const instructions = arrayOfIterator<IRInstruction>(basicBlock.instructions);
-      const phis = arrayOf<PhiInstruction>(basicBlock.phi);
+      const phis = arrayOfCollection<PhiInstruction>(basicBlock.phi);
 
       const sources: FragmentSource[] = [...phis, ...instructions];
 

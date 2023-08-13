@@ -1,9 +1,7 @@
-import { slak } from '@ckompiler/ckompiler';
+import { CFG, CodePrintingMethods } from '@ckompiler/ckompiler';
 import { Selection } from 'd3';
 import { GraphvizDatum } from './graphviz-datum.model';
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
-import CFG = slak.ckompiler.analysis.CFG;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 export type GraphNodesSelection = Selection<SVGPolygonElement, GraphvizDatum, Element, unknown>;
 

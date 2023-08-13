@@ -1,8 +1,6 @@
 import { AlterGraphHook, GraphViewHook } from '../models/graph-view-hook.model';
 import { takeUntil } from 'rxjs';
-import { slak } from '@ckompiler/ckompiler';
-import arrayOf = slak.ckompiler.arrayOf;
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
+import { arrayOfCollection, BasicBlock } from '@ckompiler/ckompiler';
 import { GraphvizDatum } from '../models/graphviz-datum.model';
 import { getPolyDatumNodeId } from '../utils';
 import { catmullRomSplines } from '@cki-utils/catmull-rom-splines';
@@ -32,7 +30,7 @@ const addFrontierPath: AlterGraphHook = (graphView, cfg, printingType, graph, gr
   graphView.clickedNode$.pipe(
     takeUntil(graphView.rerender$),
   ).subscribe((clickedNode) => {
-    const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(node => node.nodeId);
+    const frontierIds = arrayOfCollection<BasicBlock>(clickedNode.dominanceFrontier).map(node => node.nodeId);
     const frontierPath = generateFrontierPath(frontierIds, graphNodesSelection.data());
 
     activeFrontierPath.setAttribute('d', frontierPath);

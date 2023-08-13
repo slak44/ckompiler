@@ -26,7 +26,7 @@
     ],
     "paths": {
       "@ckompiler/*": [
-        "../build/js/packages/ckompiler/kotlin/*"
+        "../build/dist/js/productionExecutable/*"
       ],
       "@cki-utils/*": [
         "src/app/utils/*"

@@ -1,9 +1,8 @@
-import { Component, OnInit, ChangeDetectionStrategy, Input, Output, EventEmitter } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { filter, Observable, takeUntil } from 'rxjs';
 import { controlValueStream } from '@cki-utils/form-control-observable';
-import { slak } from '@ckompiler/ckompiler';
-import Variable = slak.ckompiler.analysis.Variable;
+import { Variable } from '@ckompiler/ckompiler';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 
 @Component({

@@ -1,7 +1,7 @@
 import { Injectable, NgZone } from '@angular/core';
 import { combineLatest, filter, map, Observable, Subject, takeUntil, tap } from 'rxjs';
 import { CompileService } from '@cki-graph-view/services/compile.service';
-import { slak } from '@ckompiler/ckompiler';
+import { generatePhiSteps, JSCompileResult, phiEligibleVariables } from '@ckompiler/ckompiler';
 import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replace-node-contents';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { groupedDebounceByFrame } from '@cki-utils/async-timeout';
@@ -9,9 +9,6 @@ import { PhiInsertionStepState } from '../models/phi-insertion-steps.model';
 import { CompilationInstance, compileCode } from '@cki-graph-view/compilation-instance';
 import { TargetVariableState } from '@cki-graph-view/target-variable-state';
 import { AlgorithmStepService } from '../../algorithm-stepper/services/algorithm-step.service';
-import JSCompileResult = slak.ckompiler.JSCompileResult;
-import generatePhiSteps = slak.ckompiler.analysis.external.generatePhiSteps;
-import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
 
 @Injectable()
 export class PhiInsertionStateService extends SubscriptionDestroy {

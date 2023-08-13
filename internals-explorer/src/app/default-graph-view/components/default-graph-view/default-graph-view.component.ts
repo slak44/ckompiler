@@ -8,7 +8,7 @@ import { removeHoverTitles } from '@cki-graph-view/graph-view-hooks/remove-hover
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { Observable, of, skip, takeUntil } from 'rxjs';
-import { slak } from '@ckompiler/ckompiler';
+import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import {
   currentPrintingType,
   graphViewSelectedId,
@@ -19,8 +19,6 @@ import {
 } from '@cki-settings';
 import { ZoomTransform } from 'd3-zoom';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
-import ISAType = slak.ckompiler.backend.ISAType;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
   selector: 'cki-default-graph-view',

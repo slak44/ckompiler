@@ -99,7 +99,7 @@ fun closedRangeLength(closedRange: ClosedRange<Int>): Int {
 
 @Suppress("NON_EXPORTABLE_TYPE")
 @JsExport
-fun <T> arrayOf(collection: Collection<T>): Array<T> {
+fun <T> arrayOfCollection(collection: Collection<T>): Array<T> {
   return collection.toTypedArray()
 }
 

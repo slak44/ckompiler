@@ -1,13 +1,16 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
+
 plugins {
   application
-  kotlin("multiplatform") version "1.8.10"
-  kotlin("plugin.serialization") version "1.8.10"
+  kotlin("multiplatform") version "1.9.0"
+  kotlin("plugin.serialization") version "1.9.0"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
 }
 
+val versionString = "SNAPSHOT6"
 group = "ckompiler"
-version = "SNAPSHOT6"
+version = versionString
 
 val jvmIncludePath = "usr/include/ckompiler-$version"
 
@@ -51,7 +54,7 @@ abstract class PropsFileJsTask : DefaultTask() {
   abstract var output: File
 
   @get:Input
-  abstract var version: Int
+  abstract var version: String
 
   @TaskAction
   fun writePropsFile() {
@@ -76,14 +79,15 @@ abstract class PropsFileJsTask : DefaultTask() {
   }
 }
 
+val jsBuildOutputDir = buildPath(buildDir, "dist", "js", "productionExecutable")
+
 val makePropsFileJs = "makePropsFileJs"
 tasks.register<PropsFileJsTask>(makePropsFileJs) {
-  dependsOn("jsProductionExecutableCompileSync")
-  dependsOn("processTestResources")
-  this.version = version
-  val res = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin")
-  includeFolder = File(res, "include")
-  output = File(res, "ckompiler.json")
+  dependsOn("jsBrowserProductionWebpack")
+
+  version = versionString
+  includeFolder = File(jsBuildOutputDir, "include")
+  output = File(jsBuildOutputDir, "ckompiler.json")
 }
 
 val fixDefinitionsFile: Task by tasks.creating {
@@ -98,7 +102,9 @@ val fixDefinitionsFile: Task by tasks.creating {
         .replace(regex, "any")
         .replace(abstractRegex, "")
         .replace(interfaceCompanion, "interface$1{$2 $3}")
-    tsDefinitions.writeText(newContents)
+
+    val destinationDefinitions = File(jsBuildOutputDir, "ckompiler.d.ts")
+    destinationDefinitions.writeText(newContents)
   }
 }
 
@@ -130,12 +136,23 @@ kotlin {
   }
 
   js(IR) {
-    browser {
-      webpackTask {
-        finalizedBy(fixDefinitionsFile)
+    useEsModules()
+
+    tasks.withType<KotlinJsCompile>().configureEach {
+      kotlinOptions {
+        useEsClasses = true
       }
     }
+
     binaries.executable()
+
+    browser {
+      webpackTask(Action {
+        finalizedBy(fixDefinitionsFile)
+      })
+    }
+
+    generateTypeScriptDefinitions()
 
     tasks.getByName("jsProcessResources") {
       dependsOn(tasks.getByName("processResources"))
@@ -153,9 +170,9 @@ kotlin {
 
       dependencies {
         implementation(kotlin("stdlib-common"))
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
-        implementation("org.jetbrains.kotlinx:kotlinx-html:0.7.2")
-        implementation("io.github.microutils:kotlin-logging:2.0.2")
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-html:0.9.1")
+        implementation("io.github.microutils:kotlin-logging:3.0.5")
       }
     }
 
@@ -172,8 +189,8 @@ kotlin {
       dependencies {
         implementation(kotlin("stdlib-jdk8"))
         implementation("com.github.ajalt:mordant:1.2.0")
-        implementation("org.apache.logging.log4j:log4j-core:2.17.2")
-        implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.17.2")
+        implementation("org.apache.logging.log4j:log4j-core:2.20.0")
+        implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.20.0")
       }
     }
 
@@ -185,9 +202,9 @@ kotlin {
       dependsOn(commonTest)
 
       dependencies {
-        implementation("org.junit.jupiter:junit-jupiter:5.5.0")
-        implementation("org.apache.logging.log4j:log4j-jul:2.17.2")
-        implementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.20")
+        implementation("org.junit.jupiter:junit-jupiter:5.10.0")
+        implementation("org.apache.logging.log4j:log4j-jul:2.20.0")
+        implementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.0")
       }
     }
 

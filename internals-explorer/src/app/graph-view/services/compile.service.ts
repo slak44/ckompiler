@@ -1,16 +1,17 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, distinctUntilChanged, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
-import { slak } from '@ckompiler/ckompiler';
+import {
+  arrayOfCollection,
+  CodePrintingMethods,
+  Diagnostic,
+  DiagnosticsStats,
+  getDiagnosticsStats,
+  ISAType,
+  JSCompileResult,
+} from '@ckompiler/ckompiler';
 import { compileCode } from '@cki-graph-view/compilation-instance';
 import { currentPrintingType, sourceCode } from '@cki-settings';
-import Diagnostic = slak.ckompiler.Diagnostic;
-import JSCompileResult = slak.ckompiler.JSCompileResult;
-import arrayOf = slak.ckompiler.arrayOf;
-import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
-import getDiagnosticsStats = slak.ckompiler.getDiagnosticsStats;
-import ISAType = slak.ckompiler.backend.ISAType;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Injectable({
   providedIn: 'root',
@@ -38,7 +39,7 @@ export class CompileService {
       if (!compileResult.cfgs) {
         return compileResult.beforeCFGDiags;
       } else {
-        const allCfgDiags = compileResult.cfgs.flatMap(cfg => arrayOf<Diagnostic>(cfg.diags));
+        const allCfgDiags = compileResult.cfgs.flatMap(cfg => arrayOfCollection<Diagnostic>(cfg.diags));
         return compileResult.beforeCFGDiags.concat(allCfgDiags);
       }
     }),

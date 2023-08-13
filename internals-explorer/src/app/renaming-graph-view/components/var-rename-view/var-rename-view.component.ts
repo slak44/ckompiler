@@ -11,10 +11,7 @@ import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper
 import { PanToSelected } from '@cki-graph-view/graph-view-hooks/pan-to-selected';
 import { RenamingStep, RenamingStepState } from '../../models/renaming-step.model';
 import { getNodeById } from '@cki-graph-view/utils';
-import { slak } from '@ckompiler/ckompiler';
-import arrayOf = slak.ckompiler.arrayOf;
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
+import { arrayOfCollection, BasicBlock, CodePrintingMethods } from '@ckompiler/ckompiler';
 
 @Component({
   selector: 'cki-var-rename-view',
@@ -75,7 +72,7 @@ export class VarRenameViewComponent {
         return undefined;
       }
 
-      return arrayOf<BasicBlock>(getNodeById(cfg, state.bb).successors).map(succ => succ.nodeId);
+      return arrayOfCollection<BasicBlock>(getNodeById(cfg, state.bb).successors).map(succ => succ.nodeId);
     }),
   );
 

@@ -11,14 +11,16 @@ import {
   tap,
   throttleTime,
 } from 'rxjs';
-import { Nullable, slak } from '@ckompiler/ckompiler';
+import {
+  CFG,
+  ISAType,
+  jsCompile,
+  JSCompileResult,
+  Nullable,
+  phiEligibleVariables,
+  Variable,
+} from '@ckompiler/ckompiler';
 import { currentTargetFunction, defaultFunctionName } from '@cki-settings';
-import phiEligibleVariables = slak.ckompiler.phiEligibleVariables;
-import JSCompileResult = slak.ckompiler.JSCompileResult;
-import Variable = slak.ckompiler.analysis.Variable;
-import CFG = slak.ckompiler.analysis.CFG;
-import jsCompile = slak.ckompiler.jsCompile;
-import ISAType = slak.ckompiler.backend.ISAType;
 
 function logCompileError(e: unknown): void {
   const err = e as Error & { originalStack?: string };

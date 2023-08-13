@@ -6,9 +6,4 @@
       <excludeFolder url="file://$MODULE_DIR$/../../internals-explorer/tmp" />
     </content>
   </component>
-  <component name="FacetManager">
-    <facet type="Python" name="Python">
-      <configuration sdkName="Python 3.10 (ckompiler)" />
-    </facet>
-  </component>
 </module>

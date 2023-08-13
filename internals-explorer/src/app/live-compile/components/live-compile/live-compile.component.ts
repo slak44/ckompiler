@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { combineLatest, map, Observable, takeUntil, tap } from 'rxjs';
-import { slak } from '@ckompiler/ckompiler';
+import { DiagnosticsStats, ISAType } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SettingsDialogComponent } from '../../../settings/components/settings-dialog/settings-dialog.component';
@@ -10,8 +10,6 @@ import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { isaType } from '@cki-settings';
-import DiagnosticsStats = slak.ckompiler.DiagnosticsStats;
-import ISAType = slak.ckompiler.backend.ISAType;
 import { AuthService } from '@auth0/auth0-angular';
 import { ViewStateService } from '../../../settings/services/view-state.service';
 

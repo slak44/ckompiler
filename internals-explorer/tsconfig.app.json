@@ -12,6 +12,6 @@
     "src/**/*.d.ts",
     "node_modules/@types/resize-observer-browser",
     "node_modules/monaco-editor/esm/vs/editor/editor.api.d.ts",
-    "../build/js/packages/ckompiler/kotlin/*.d.ts"
+    "../build/dist/js/productionExecutable/*.d.ts"
   ]
 }

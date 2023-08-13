@@ -4,14 +4,12 @@ import { first, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import type * as Monaco from 'monaco-editor';
 import { editor, MarkerSeverity } from 'monaco-editor';
-import { slak } from '@ckompiler/ckompiler';
+import { closedRangeLength, DiagnosticKind } from '@ckompiler/ckompiler';
 import { monacoLoaded$ } from '@cki-utils/monaco-loader';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { monacoFontSize, monacoViewState, sourceCode } from '@cki-settings';
 import IMarkerData = editor.IMarkerData;
-import closedRangeLength = slak.ckompiler.closedRangeLength;
 import EditorOption = editor.EditorOption;
-import DiagnosticKind = slak.ckompiler.DiagnosticKind;
 
 @Component({
   selector: 'cki-source-editor',

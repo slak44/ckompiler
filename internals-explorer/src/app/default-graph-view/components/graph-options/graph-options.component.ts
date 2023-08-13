@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
-import { slak } from '@ckompiler/ckompiler';
+import { CodePrintingMethods } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { map, Observable } from 'rxjs';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { currentPrintingType, hideGraphUI, isSpillOnly } from '@cki-settings';
-import CodePrintingMethods = slak.ckompiler.analysis.external.CodePrintingMethods;
 
 @Component({
   selector: 'cki-graph-options',

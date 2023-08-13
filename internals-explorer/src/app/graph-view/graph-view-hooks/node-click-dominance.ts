@@ -1,11 +1,8 @@
 import { AlterGraphHook, GraphViewHook } from '../models/graph-view-hook.model';
 import { getPolyDatumNodeId, setClassIf } from '../utils';
 import { takeUntil } from 'rxjs';
-import { slak } from '@ckompiler/ckompiler';
+import { arrayOfCollection, BasicBlock, CFG } from '@ckompiler/ckompiler';
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
-import CFG = slak.ckompiler.analysis.CFG;
-import BasicBlock = slak.ckompiler.analysis.BasicBlock;
-import arrayOf = slak.ckompiler.arrayOf;
 
 function configureNode(
   graphView: GraphViewComponent,
@@ -17,7 +14,7 @@ function configureNode(
   graphView.clickedNode$.pipe(
     takeUntil(graphView.rerender$),
   ).subscribe((clickedNode) => {
-    const frontierIds = arrayOf<BasicBlock>(clickedNode.dominanceFrontier).map(block => block.nodeId);
+    const frontierIds = arrayOfCollection<BasicBlock>(clickedNode.dominanceFrontier).map(block => block.nodeId);
     setClassIf(e, 'frontier', frontierIds.includes(nodeId));
     setClassIf(e, 'idom', cfg.doms.get(clickedNode)!.nodeId === nodeId);
   });
