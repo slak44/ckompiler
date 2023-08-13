@@ -55,7 +55,7 @@ import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarConfig, MatSnackBarModule } f
         languages: {
           c: () => import('highlight.js/lib/languages/c'),
           x86asm: () => import('highlight.js/lib/languages/x86asm'),
-          mipsasm: () => import('highlight.js/lib/languages/mipsasm.js'),
+          mipsasm: () => import('highlight.js/lib/languages/mipsasm'),
         },
       },
     },
