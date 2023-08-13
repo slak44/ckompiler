@@ -214,11 +214,16 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private handleTransformChanged(mutations: MutationRecord[]): void {
-    if (mutations.length !== 1) {
-      console.error('MutationObserver sent more than 1 mutations. Some old graph is probably still being observed.');
+    const mutationTargets = new Set(mutations.map(mutation => mutation.target));
+    if (mutationTargets.size === 0) {
+      console.error('MutationObserver sent 0 mutations. Check the observe/disconnect logic.');
+      return;
     }
-    const mutation = mutations[0];
-    const svgRef = mutation.target.parentNode as SVGElement;
+    if (mutationTargets.size !== 1) {
+      console.error('MutationObserver sent more than 1 mutation. Some old graph is probably still being observed.');
+    }
+
+    const svgRef = Array.from(mutationTargets.values())[0].parentNode as SVGElement;
     if (this.transformSetting) {
       const zoomTransform = d3.zoomTransform(svgRef);
       this.currentZoomTransformSubject.next(zoomTransform);
