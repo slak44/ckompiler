@@ -33,6 +33,10 @@ spring:
           audiences:
             - https://slak44.github.io/ckompiler/
 
+logging:
+  level:
+    org.springframework.security: DEBUG
+
 ---
 
 spring:
