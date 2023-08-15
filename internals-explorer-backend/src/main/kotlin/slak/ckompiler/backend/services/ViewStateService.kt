@@ -28,7 +28,7 @@ class ViewStateService(val repository: ViewStateRepository, val userStateService
   }
 
   fun getViewStates(owner: String): List<ViewStateListingDto> {
-    return repository.findAllByOwner(owner).map { ViewStateListingDto(it.id!!.toString(), it.name, it.createdAt) }
+    return repository.findAllByOwner(owner).map { ViewStateListingDto(it.id!!.toString(), it.name, it.createdAt, it.publicShareEnabled) }
   }
 
   fun configurePublicShare(id: String, isEnabled: Boolean) {
