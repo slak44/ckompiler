@@ -11,7 +11,7 @@ data class GraphViewStateDto(
     val isSpillOnly: Boolean,
     val targetFunction: String,
     val printingType: String,
-    val transform: ZoomTransform,
+    val transform: ZoomTransform?,
     val selectedNodeId: Int?,
 ) {
   constructor(graphViewState: GraphViewState) : this(
@@ -26,7 +26,7 @@ data class GraphViewStateDto(
 
 data class SteppableGraphViewStateDto(
     val targetVariable: Int?,
-    val transform: ZoomTransform,
+    val transform: ZoomTransform?,
     val selectedNodeId: Int?,
     val currentStep: Int,
 ) {

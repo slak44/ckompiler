@@ -14,7 +14,7 @@ import {
   takeUntil,
   withLatestFrom,
 } from 'rxjs';
-import { hasEqualViewStates, ViewState, ViewStateListing } from '../models/view-state.model';
+import { hasEqualViewStates, ViewState, ViewStateListing, ZoomTransformDto } from '../models/view-state.model';
 import { ViewStateApiService } from './view-state-api.service';
 import {
   currentPrintingType,
@@ -24,11 +24,14 @@ import {
   hideGraphUI,
   isaType,
   isSpillOnly,
-  phiInsertionSelectedId, phiInsertionStepIdx,
+  phiInsertionSelectedId,
+  phiInsertionStepIdx,
   phiInsertionTransform,
   phiInsertionVariableId,
+  Setting,
   sourceCode,
-  variableRenameSelectedId, variableRenameStepIdx,
+  variableRenameSelectedId,
+  variableRenameStepIdx,
   variableRenameTransform,
   variableRenameVariableId,
 } from '@cki-settings';
@@ -57,7 +60,7 @@ export class ViewStateService extends SubscriptionDestroy {
       } else {
         return 1;
       }
-    }))
+    })),
   );
 
   private readonly navigationUrl$: Observable<string> = this.router.events.pipe(
@@ -75,25 +78,19 @@ export class ViewStateService extends SubscriptionDestroy {
     isSpillOnly.value$,
     currentTargetFunction.value$,
     currentPrintingType.value$,
-    graphViewTransform.value$.pipe(
-      filter((zoomTransform): zoomTransform is ZoomTransform => !!zoomTransform),
-    ),
+    graphViewTransform.value$,
     graphViewSelectedId.value$,
-    phiInsertionTransform.value$.pipe(
-      filter((zoomTransform): zoomTransform is ZoomTransform => !!zoomTransform),
-    ),
+    phiInsertionTransform.value$,
     phiInsertionSelectedId.value$,
     phiInsertionVariableId.value$,
     phiInsertionStepIdx.value$.pipe(
-      map(step => step ?? 0)
+      map(step => step ?? 0),
     ),
-    variableRenameTransform.value$.pipe(
-      filter((zoomTransform): zoomTransform is ZoomTransform => !!zoomTransform),
-    ),
+    variableRenameTransform.value$,
     variableRenameSelectedId.value$,
     variableRenameVariableId.value$,
     variableRenameStepIdx.value$.pipe(
-      map(step => step ?? 0)
+      map(step => step ?? 0),
     ),
     this.navigationUrl$,
   ]).pipe(
@@ -123,31 +120,31 @@ export class ViewStateService extends SubscriptionDestroy {
           isSpillOnly,
           targetFunction: currentTargetFunction,
           printingType: printingType.name,
-          transform: {
+          transform: graphViewTransform ? {
             k: graphViewTransform.k,
             x: graphViewTransform.x,
             y: graphViewTransform.y,
-          },
+          } : null,
           selectedNodeId: graphViewSelectedId,
         },
         phiInsertionViewState: {
           targetVariable: phiInsertionVariableId,
           currentStep: phiInsertionStepIdx,
-          transform: {
+          transform: phiInsertionTransform ? {
             k: phiInsertionTransform.k,
             x: phiInsertionTransform.x,
             y: phiInsertionTransform.y,
-          },
+          } : null,
           selectedNodeId: phiInsertionSelectedId,
         },
         variableRenameViewState: {
           targetVariable: variableRenameVariableId,
           currentStep: variableRenameStepIdx,
-          transform: {
+          transform: variableRenameTransform ? {
             k: variableRenameTransform.k,
             x: variableRenameTransform.x,
             y: variableRenameTransform.y,
-          },
+          } : null,
           selectedNodeId: variableRenameSelectedId,
         },
         isaType: isaType.name,
@@ -300,32 +297,32 @@ export class ViewStateService extends SubscriptionDestroy {
     });
   }
 
+  private restoreTransform(setting: Setting<ZoomTransform | null>, transform: ZoomTransformDto | null): void {
+    if (transform) {
+      const { k, x, y } = transform;
+      setting.update(new ZoomTransform(k, x, y));
+    } else {
+      setting.update(null);
+    }
+  }
+
   private restoreState(viewState: ViewState): void {
     if (this.checkStateLockInvalid()) {
       return;
     }
 
-    {
-      const { k, x, y } = viewState.graphViewState.transform;
-      graphViewTransform.update(new ZoomTransform(k, x, y));
-      graphViewSelectedId.update(viewState.graphViewState.selectedNodeId);
-    }
+    this.restoreTransform(graphViewTransform, viewState.graphViewState.transform);
+    graphViewSelectedId.update(viewState.graphViewState.selectedNodeId);
 
-    {
-      const { k, x, y } = viewState.phiInsertionViewState.transform;
-      phiInsertionTransform.update(new ZoomTransform(k, x, y));
-      phiInsertionSelectedId.update(viewState.phiInsertionViewState.selectedNodeId);
-      phiInsertionVariableId.update(viewState.phiInsertionViewState.targetVariable);
-      phiInsertionStepIdx.update(viewState.phiInsertionViewState.currentStep);
-    }
+    this.restoreTransform(phiInsertionTransform, viewState.phiInsertionViewState.transform);
+    phiInsertionSelectedId.update(viewState.phiInsertionViewState.selectedNodeId);
+    phiInsertionVariableId.update(viewState.phiInsertionViewState.targetVariable);
+    phiInsertionStepIdx.update(viewState.phiInsertionViewState.currentStep);
 
-    {
-      const { k, x, y } = viewState.variableRenameViewState.transform;
-      variableRenameTransform.update(new ZoomTransform(k, x, y));
-      variableRenameSelectedId.update(viewState.variableRenameViewState.selectedNodeId);
-      variableRenameVariableId.update(viewState.variableRenameViewState.targetVariable);
-      variableRenameVariableId.update(viewState.variableRenameViewState.currentStep);
-    }
+    this.restoreTransform(variableRenameTransform, viewState.variableRenameViewState.transform);
+    variableRenameSelectedId.update(viewState.variableRenameViewState.selectedNodeId);
+    variableRenameVariableId.update(viewState.variableRenameViewState.targetVariable);
+    variableRenameVariableId.update(viewState.variableRenameViewState.currentStep);
 
     isSpillOnly.update(viewState.graphViewState.isSpillOnly);
     hideGraphUI.update(viewState.graphViewState.isUiHidden);

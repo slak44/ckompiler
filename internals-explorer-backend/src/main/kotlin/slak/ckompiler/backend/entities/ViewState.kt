@@ -11,9 +11,9 @@ import java.util.*
 
 @Embeddable
 data class ZoomTransform(
-    val k: Double,
-    val x: Double,
-    val y: Double,
+    val k: Double?,
+    val x: Double?,
+    val y: Double?,
 )
 
 @Embeddable
@@ -24,7 +24,7 @@ data class GraphViewState(
     val targetFunction: String,
     @Column(columnDefinition = "text not null", nullable = false)
     val printingType: String,
-    val transform: ZoomTransform,
+    val transform: ZoomTransform?,
     val selectedNodeId: Int?,
 ) {
   constructor(dto: GraphViewStateDto) : this(
@@ -40,7 +40,7 @@ data class GraphViewState(
 @Embeddable
 data class SteppableGraphViewState(
     val targetVariable: Int?,
-    val transform: ZoomTransform,
+    val transform: ZoomTransform?,
     val selectedNodeId: Int?,
     val currentStep: Int,
 ) {

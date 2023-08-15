@@ -226,4 +226,31 @@
             update viewstate set variable_rename_view_state_transform_k = graph_view_state_transform_y;
         </sql>
     </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-1">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_k" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-2">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_x" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-3">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_y" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-4">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_k" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-5">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_x" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-6">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_y" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-7">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_k" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-8">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_x" tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692095007371-9">
+        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_y" tableName="viewstate"/>
+    </changeSet>
 </databaseChangeLog>

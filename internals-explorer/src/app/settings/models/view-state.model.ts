@@ -9,13 +9,13 @@ export interface GraphViewState {
   isSpillOnly: boolean;
   targetFunction: string;
   printingType: string;
-  transform: ZoomTransformDto;
+  transform: ZoomTransformDto | null;
   selectedNodeId: number | null;
 }
 
 export interface SteppableGraphViewState {
   targetVariable: number | null;
-  transform: ZoomTransformDto;
+  transform: ZoomTransformDto | null;
   selectedNodeId: number | null;
   currentStep: number;
 }
@@ -39,6 +39,26 @@ export interface ViewStateListing {
   createdAt: string;
 }
 
+export function hasEqualGraphViewState(a: GraphViewState, b: GraphViewState): boolean {
+  return a.isUiHidden === b.isUiHidden &&
+    a.isSpillOnly === b.isSpillOnly &&
+    a.selectedNodeId === b.selectedNodeId &&
+    a.printingType === b.printingType &&
+    a.targetFunction === b.targetFunction &&
+    a.transform?.k === b.transform?.k &&
+    a.transform?.x === b.transform?.x &&
+    a.transform?.y === b.transform?.y;
+}
+
+export function hasEqualSteppableGraphViewState(a: SteppableGraphViewState, b: SteppableGraphViewState): boolean {
+  return a.transform?.k === b.transform?.k &&
+    a.transform?.x === b.transform?.x &&
+    a.transform?.y === b.transform?.y &&
+    a.targetVariable === b.targetVariable &&
+    a.selectedNodeId === b.selectedNodeId &&
+    a.currentStep === b.currentStep;
+}
+
 export function hasEqualViewStates(a: ViewState, b: ViewState): boolean {
   return a.id === b.id &&
     a.name === b.name &&
@@ -47,24 +67,7 @@ export function hasEqualViewStates(a: ViewState, b: ViewState): boolean {
     a.sourceCode === b.sourceCode &&
     a.isaType === b.isaType &&
     a.activeRoute === b.activeRoute &&
-    a.graphViewState.isUiHidden === b.graphViewState.isUiHidden &&
-    a.graphViewState.isSpillOnly === b.graphViewState.isSpillOnly &&
-    a.graphViewState.selectedNodeId === b.graphViewState.selectedNodeId &&
-    a.graphViewState.printingType === b.graphViewState.printingType &&
-    a.graphViewState.targetFunction === b.graphViewState.targetFunction &&
-    a.graphViewState.transform.k === b.graphViewState.transform.k &&
-    a.graphViewState.transform.x === b.graphViewState.transform.x &&
-    a.graphViewState.transform.y === b.graphViewState.transform.y &&
-    a.phiInsertionViewState.transform.k === b.phiInsertionViewState.transform.k &&
-    a.phiInsertionViewState.transform.x === b.phiInsertionViewState.transform.x &&
-    a.phiInsertionViewState.transform.y === b.phiInsertionViewState.transform.y &&
-    a.phiInsertionViewState.targetVariable === b.phiInsertionViewState.targetVariable &&
-    a.phiInsertionViewState.selectedNodeId === b.phiInsertionViewState.selectedNodeId &&
-    a.phiInsertionViewState.currentStep === b.phiInsertionViewState.currentStep &&
-    a.variableRenameViewState.transform.k === b.variableRenameViewState.transform.k &&
-    a.variableRenameViewState.transform.x === b.variableRenameViewState.transform.x &&
-    a.variableRenameViewState.transform.y === b.variableRenameViewState.transform.y &&
-    a.variableRenameViewState.targetVariable === b.variableRenameViewState.targetVariable &&
-    a.variableRenameViewState.selectedNodeId === b.variableRenameViewState.selectedNodeId &&
-    a.variableRenameViewState.currentStep === b.variableRenameViewState.currentStep;
+    hasEqualGraphViewState(a.graphViewState, b.graphViewState) &&
+    hasEqualSteppableGraphViewState(a.phiInsertionViewState, b.phiInsertionViewState) &&
+    hasEqualSteppableGraphViewState(a.variableRenameViewState, b.variableRenameViewState);
 }
