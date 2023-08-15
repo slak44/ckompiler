@@ -23,10 +23,8 @@ jobs:
         with:
           name: ckompiler-js-dist
           path: |
-            build/js/packages/ckompiler/
-            !build/js/packages/ckompiler/node_modules
-            !build/js/packages/ckompiler/webpack.config.js
-            !build/js/packages/ckompiler/kotlin/test
+            build/dist/js/productionExecutable/
+            !build/dist/js/productionExecutable/test
   Build-Internals-Explorer-Angular:
     runs-on: ubuntu-latest
     needs: Build-ckompiler-JS-Distribution
@@ -46,11 +44,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ckompiler-js-dist
-      - name: Move artifacts
-        shell: bash
-        run: mkdir -p build/js/packages/ckompiler/ && mv kotlin/ build/js/packages/ckompiler/
-      - run: npm install
-        working-directory: build/js/packages/ckompiler/
+          path: build/dist/js/productionExecutable/
       - run: npm install
         working-directory: internals-explorer
       - name: Run eslint

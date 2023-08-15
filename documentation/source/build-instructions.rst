@@ -26,7 +26,7 @@ JS Library
 ----------
 
 Run `./gradlew jsBrowserDistribution`.
-Output will be created in `build/js/packages/ckompiler/kotlin`.
+Output will be created in `build/dist/js/productionExecutable`.
 
 Internals Explorer Angular App
 ------------------------------
