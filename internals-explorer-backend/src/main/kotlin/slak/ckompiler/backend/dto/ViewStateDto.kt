@@ -41,6 +41,7 @@ data class SteppableGraphViewStateDto(
 data class ViewStateDto(
     val id: String?,
     val createdAt: Instant?,
+    val publicShareEnabled: Boolean,
     var owner: String?,
     val name: String,
     val sourceCode: String,
@@ -53,6 +54,7 @@ data class ViewStateDto(
   constructor(viewState: ViewState) : this(
       viewState.id.toString(),
       viewState.createdAt,
+      viewState.publicShareEnabled,
       viewState.owner,
       viewState.name,
       viewState.sourceCode,

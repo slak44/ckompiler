@@ -33,7 +33,7 @@ class ViewStateController(
   }
 
   @GetMapping("/{id}")
-  @PostAuthorize("returnObject.owner == authentication.name")
+  @PostAuthorize("returnObject.owner == authentication.name || returnObject.publicShareEnabled")
   fun getViewState(@PathVariable id: String): ViewStateDto {
     return ViewStateDto(viewStateService.findById(id))
   }
@@ -42,5 +42,11 @@ class ViewStateController(
   @PreAuthorize("@viewStateService.findById(#id).owner == authentication.name")
   fun deleteViewState(@PathVariable id: String) {
     return viewStateService.deleteById(id)
+  }
+
+  @PatchMapping("/{id}/share-config")
+  @PreAuthorize("@viewStateService.findById(#id).owner == authentication.name")
+  fun configurePublicShare(@PathVariable id: String, @RequestBody isEnabled: Boolean) {
+    viewStateService.configurePublicShare(id, isEnabled)
   }
 }

@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.entities
 
 import jakarta.persistence.*
+import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 import slak.ckompiler.backend.dto.GraphViewStateDto
@@ -58,6 +59,7 @@ data class ViewState(
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
     val createdAt: Instant,
+    var publicShareEnabled: Boolean = false,
     @Column(columnDefinition = "text not null", nullable = false)
     val owner: String,
     @Column(columnDefinition = "text not null", nullable = false)
@@ -78,6 +80,7 @@ data class ViewState(
   constructor(dto: ViewStateDto) : this(
       dto.id?.let(UUID::fromString),
       Instant.now(),
+      dto.publicShareEnabled,
       dto.owner!!,
       dto.name,
       dto.sourceCode,
@@ -90,6 +93,6 @@ data class ViewState(
 }
 
 @Repository
-interface ViewStateRepository : CrudRepository<ViewState, UUID> {
+interface ViewStateRepository : JpaRepository<ViewState, UUID>, CrudRepository<ViewState, UUID> {
   fun findAllByOwner(owner: String): List<ViewState>
 }

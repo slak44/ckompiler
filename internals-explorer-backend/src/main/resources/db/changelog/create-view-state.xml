@@ -1,5 +1,7 @@
 <?xml version="1.1" encoding="UTF-8" standalone="no"?>
-<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
     <changeSet author="slak (generated)" id="1682848702621-1">
         <createTable tableName="viewstate">
             <column name="id" type="UUID">
@@ -104,16 +106,20 @@
         <dropColumn columnName="graph_view_state_isuihidden" tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1684657389497-1">
-        <addNotNullConstraint columnDataType="clob not null" columnName="active_route" tableName="viewstate" validate="true"/>
+        <addNotNullConstraint columnDataType="clob not null" columnName="active_route" tableName="viewstate"
+                              validate="true"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1684657389497-2">
-        <addNotNullConstraint columnDataType="clob not null" columnName="graph_view_state_printing_type" tableName="viewstate" validate="true"/>
+        <addNotNullConstraint columnDataType="clob not null" columnName="graph_view_state_printing_type"
+                              tableName="viewstate" validate="true"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1684657389497-3">
-        <addNotNullConstraint columnDataType="clob not null" columnName="graph_view_state_target_function" tableName="viewstate" validate="true"/>
+        <addNotNullConstraint columnDataType="clob not null" columnName="graph_view_state_target_function"
+                              tableName="viewstate" validate="true"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1684657389497-4">
-        <addNotNullConstraint columnDataType="clob not null" columnName="isa_type" tableName="viewstate" validate="true"/>
+        <addNotNullConstraint columnDataType="clob not null" columnName="isa_type" tableName="viewstate"
+                              validate="true"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1684657389497-5">
         <addNotNullConstraint columnDataType="clob not null" columnName="name" tableName="viewstate" validate="true"/>
@@ -122,7 +128,8 @@
         <addNotNullConstraint columnDataType="clob not null" columnName="owner" tableName="viewstate" validate="true"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1684657389497-7">
-        <addNotNullConstraint columnDataType="clob not null" columnName="source_code" tableName="viewstate" validate="true"/>
+        <addNotNullConstraint columnDataType="clob not null" columnName="source_code" tableName="viewstate"
+                              validate="true"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-1">
         <addColumn tableName="viewstate">
@@ -131,7 +138,8 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set phi_insertion_view_state_current_step = 0;
+            update viewstate
+            set phi_insertion_view_state_current_step = 0;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-2">
@@ -152,7 +160,8 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set phi_insertion_view_state_transform_k = graph_view_state_transform_k;
+            update viewstate
+            set phi_insertion_view_state_transform_k = graph_view_state_transform_k;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-5">
@@ -162,7 +171,8 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set phi_insertion_view_state_transform_x = graph_view_state_transform_x;
+            update viewstate
+            set phi_insertion_view_state_transform_x = graph_view_state_transform_x;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-6">
@@ -172,7 +182,8 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set phi_insertion_view_state_transform_y = graph_view_state_transform_y;
+            update viewstate
+            set phi_insertion_view_state_transform_y = graph_view_state_transform_y;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-7">
@@ -182,7 +193,8 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set variable_rename_view_state_current_step = 0;
+            update viewstate
+            set variable_rename_view_state_current_step = 0;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-8">
@@ -203,7 +215,8 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set variable_rename_view_state_transform_k = graph_view_state_transform_k;
+            update viewstate
+            set variable_rename_view_state_transform_k = graph_view_state_transform_k;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-11">
@@ -213,7 +226,8 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set variable_rename_view_state_transform_k = graph_view_state_transform_x;
+            update viewstate
+            set variable_rename_view_state_transform_k = graph_view_state_transform_x;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1691938007865-12">
@@ -223,34 +237,51 @@
             </column>
         </addColumn>
         <sql>
-            update viewstate set variable_rename_view_state_transform_k = graph_view_state_transform_y;
+            update viewstate
+            set variable_rename_view_state_transform_k = graph_view_state_transform_y;
         </sql>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-1">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_k" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_k"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-2">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_x" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_x"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-3">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_y" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="graph_view_state_transform_y"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-4">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_k" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_k"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-5">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_x" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_x"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-6">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_y" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="phi_insertion_view_state_transform_y"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-7">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_k" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_k"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-8">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_x" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_x"
+                               tableName="viewstate"/>
     </changeSet>
     <changeSet author="slak (generated)" id="1692095007371-9">
-        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_y" tableName="viewstate"/>
+        <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_y"
+                               tableName="viewstate"/>
+    </changeSet>
+    <changeSet author="slak (generated)" id="1692100108714-1">
+        <addColumn tableName="viewstate">
+            <column name="public_share_enabled" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
     </changeSet>
 </databaseChangeLog>
