@@ -30,4 +30,8 @@ export class ViewStateApiService {
   public deleteById(id: string): Observable<void> {
     return this.httpClient.delete<void>(`${API}/viewstate/${id}`);
   }
+
+  public configurePublicShare(id: string, isEnabled: boolean): Observable<void> {
+    return this.httpClient.patch<void>(`${API}/viewstate/${id}/share-config`, isEnabled);
+  }
 }

@@ -6,7 +6,7 @@ import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { ZoomTransform } from 'd3-zoom';
-import { ZoomTransformDto } from './models/view-state.model';
+import { ViewStateMetadata, ZoomTransformDto } from './models/view-state.model';
 
 export enum Settings {
   SOURCE_CODE = 'SOURCE_CODE',
@@ -29,6 +29,7 @@ export enum Settings {
   VARIABLE_RENAME_SELECTED_ID = 'VARIABLE_RENAME_SELECTED_ID',
   VARIABLE_RENAME_VARIABLE_ID = 'VARIABLE_RENAME_VARIABLE_ID',
   VARIABLE_RENAME_STEP_IDX = 'VARIABLE_RENAME_STEP_IDX',
+  RECENT_PUBLIC_LINKS = 'RECENT_PUBLIC_LINKS',
 }
 
 export class Setting<T> {
@@ -176,6 +177,12 @@ export const variableRenameVariableId: Setting<number | null> = Setting.ofIntege
 
 export const variableRenameStepIdx: Setting<number | null> = Setting.ofInteger(Settings.VARIABLE_RENAME_STEP_IDX);
 
+export const recentPublicShareLinks: Setting<ViewStateMetadata[]> =  new Setting(
+  Settings.RECENT_PUBLIC_LINKS,
+  value => JSON.parse(value || '[]') as ViewStateMetadata[],
+  value => JSON.stringify(value),
+);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const settings: Setting<any>[] = [
   sourceCode,
@@ -198,6 +205,7 @@ const settings: Setting<any>[] = [
   variableRenameSelectedId,
   variableRenameVariableId,
   variableRenameStepIdx,
+  recentPublicShareLinks,
 ];
 
 function generateKey(setting: Settings): string {

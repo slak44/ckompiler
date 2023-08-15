@@ -31,14 +31,20 @@ import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarConfig, MatSnackBarModule } f
       authorizationParams: {
         audience: environment.oauth.audience,
         scope: 'openid profile email offline_access',
-        redirect_uri: `${environment.oauth.redirectBaseUri}/${AUTHENTICATED_ROUTE}`,
+        redirect_uri: `${environment.rootUrl}/${AUTHENTICATED_ROUTE}`,
       },
       useRefreshTokens: true,
       cacheLocation: 'localstorage',
       httpInterceptor: {
         allowedList: [
           {
-            uri: `${environment.baseUrl}/*`,
+            // For public share links
+            httpMethod: 'GET',
+            uri: `${environment.apiBaseUrl}/viewstate/*`,
+            allowAnonymous: true,
+          },
+          {
+            uri: `${environment.apiBaseUrl}/*`,
           },
         ],
       },

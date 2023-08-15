@@ -23,7 +23,7 @@ export class ApiInterceptor implements HttpInterceptor {
       }
 
       const newRequest = request.clone({
-        url: request.url.replace(API, environment.baseUrl),
+        url: request.url.replace(API, environment.apiBaseUrl),
         headers: newHeaders,
       });
 

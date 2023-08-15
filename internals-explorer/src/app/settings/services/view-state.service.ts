@@ -8,13 +8,22 @@ import {
   first,
   map,
   Observable,
+  of,
   shareReplay,
   startWith,
   switchMap,
   takeUntil,
+  tap,
   withLatestFrom,
 } from 'rxjs';
-import { hasEqualViewStates, ViewState, ViewStateListing, ZoomTransformDto } from '../models/view-state.model';
+import {
+  hasEqualViewStates,
+  ViewState,
+  ViewStateListing,
+  ViewStateNonMetadata,
+  wipeMetadataFromState,
+  ZoomTransformDto,
+} from '../models/view-state.model';
 import { ViewStateApiService } from './view-state-api.service';
 import {
   currentPrintingType,
@@ -71,7 +80,7 @@ export class ViewStateService extends SubscriptionDestroy {
     shareReplay({ bufferSize: 1, refCount: false }),
   );
 
-  private readonly viewStateData$: Observable<Omit<ViewState, 'id' | 'name' | 'createdAt'>> = combineLatest([
+  private readonly viewStateData$: Observable<ViewStateNonMetadata> = combineLatest([
     sourceCode.value$,
     isaType.value$,
     hideGraphUI.value$,
@@ -168,6 +177,7 @@ export class ViewStateService extends SubscriptionDestroy {
         id: state.id,
         name: state.name,
         createdAt: null,
+        publicShareEnabled: state.publicShareEnabled,
       };
     }),
     shareReplay({ bufferSize: 1, refCount: false }),
@@ -197,8 +207,8 @@ export class ViewStateService extends SubscriptionDestroy {
       this.viewStateData$.pipe(first()),
     ]).pipe(
       filter(([autosave, stored]) => {
-        const autosaveCopy = { ...autosave, id: null, name: '', owner: null, createdAt: null };
-        const storedCopy = { ...stored, id: null, name: '', owner: null, createdAt: null };
+        const autosaveCopy = wipeMetadataFromState(autosave);
+        const storedCopy = wipeMetadataFromState(stored);
         return !hasEqualViewStates(autosaveCopy, storedCopy);
       }),
       map(([autosave]) => autosave),
@@ -242,6 +252,7 @@ export class ViewStateService extends SubscriptionDestroy {
         id: null,
         name: 'Autosave',
         createdAt: null,
+        publicShareEnabled: false,
       })),
       switchMap(viewState => this.viewStateApiService.saveAutosave(viewState)),
       takeUntil(this.destroy$),
@@ -254,7 +265,12 @@ export class ViewStateService extends SubscriptionDestroy {
     this.lockState();
 
     const viewStates = [...this.viewStatesSubject.value];
-    const newListing: ViewStateListing = { id: null, name, createdAt: new Date().toISOString() };
+    const newListing: ViewStateListing = {
+      id: null,
+      name,
+      createdAt: new Date().toISOString(),
+      publicShareEnabled: false
+    };
     this.viewStatesSubject.next([...viewStates, newListing]);
 
     this.storeViewState$.pipe(
@@ -276,18 +292,15 @@ export class ViewStateService extends SubscriptionDestroy {
     });
   }
 
-  public fetchAndRestoreState(stateId: string): void {
+  public fetchAndRestoreState(stateId: string): Observable<ViewState> {
     this.lockState();
 
-    this.viewStateApiService.getById(stateId).subscribe({
-      next: viewState => {
-        this.restoreState(viewState);
-      },
-      error: error => {
-        console.error(error);
-        this.unlockState();
-      },
-    });
+    return this.viewStateApiService.getById(stateId).pipe(
+      tap({
+        next: viewState => this.restoreState(viewState),
+        error: () => this.unlockState(),
+      }),
+    );
   }
 
   public deleteState(stateId: string): void {
@@ -295,6 +308,28 @@ export class ViewStateService extends SubscriptionDestroy {
       const newStates = this.viewStatesSubject.value.filter(state => state.id !== stateId);
       this.viewStatesSubject.next(newStates);
     });
+  }
+
+  public configurePublicShare(stateId: string, isEnabled: boolean): Observable<void> {
+    const idx = this.viewStatesSubject.value.findIndex(viewState => viewState.id === stateId);
+    if (idx === -1) {
+      console.error('Cannot find view state with id ' + stateId);
+      this.unlockState();
+
+      return of(void null);
+    }
+
+    return this.viewStateApiService.configurePublicShare(stateId, isEnabled).pipe(
+      tap(() => {
+        const newStates = [...this.viewStatesSubject.value];
+        newStates[idx] = {
+          ...newStates[idx],
+          publicShareEnabled: isEnabled
+        };
+        this.viewStatesSubject.next(newStates);
+        this.unlockState();
+      })
+    );
   }
 
   private restoreTransform(setting: Setting<ZoomTransform | null>, transform: ZoomTransformDto | null): void {

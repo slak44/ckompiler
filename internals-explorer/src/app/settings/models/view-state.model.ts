@@ -23,6 +23,7 @@ export interface SteppableGraphViewState {
 export interface ViewState {
   id: string | null;
   createdAt: string | null;
+  publicShareEnabled: boolean;
   owner: string | null;
   name: string;
   sourceCode: string;
@@ -33,10 +34,27 @@ export interface ViewState {
   variableRenameViewState: SteppableGraphViewState;
 }
 
+export type ViewStateMetadata = Pick<ViewState, 'id' | 'name' | 'createdAt' | 'publicShareEnabled'>;
+export type ViewStateNonMetadata = Omit<ViewState, 'id' | 'name' | 'createdAt' | 'publicShareEnabled'>;
+
 export interface ViewStateListing {
   id: string | null;
   name: string;
   createdAt: string;
+  publicShareEnabled: boolean;
+}
+
+export function wipeMetadataFromState(state: ViewState | ViewStateNonMetadata): ViewState {
+  return { ...state, id: null, name: '', owner: null, createdAt: null, publicShareEnabled: false };
+}
+
+export function extractMetadataFromState(state: ViewState): ViewStateMetadata {
+  return {
+    id: state.id,
+    name: state.name,
+    createdAt: state.createdAt,
+    publicShareEnabled: state.publicShareEnabled,
+  };
 }
 
 export function hasEqualGraphViewState(a: GraphViewState, b: GraphViewState): boolean {

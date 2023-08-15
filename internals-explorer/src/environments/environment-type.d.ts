@@ -1,10 +1,10 @@
 export interface EnvironmentType {
   production: boolean;
-  baseUrl: string;
+  apiBaseUrl: string;
+  rootUrl: string;
   oauth: {
     domain: string;
     clientId: string;
     audience: string;
-    redirectBaseUri: string;
   };
 }

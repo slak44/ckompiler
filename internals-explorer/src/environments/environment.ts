@@ -6,12 +6,12 @@ import { EnvironmentType } from './environment-type';
 
 export const environment: EnvironmentType = {
   production: false,
-  baseUrl: 'http://localhost:8080/api',
+  apiBaseUrl: 'http://localhost:8080/api',
+  rootUrl: 'http://localhost:4200',
   oauth: {
     domain: 'ckompiler-internals-explorer.eu.auth0.com',
     clientId: 'VX6YGntpyUipXIFXHff4clmJe2geq8rb',
     audience: 'https://slak44.github.io/ckompiler/',
-    redirectBaseUri: 'http://localhost:4200',
   },
 };
 

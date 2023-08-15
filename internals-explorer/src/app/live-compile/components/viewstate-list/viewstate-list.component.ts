@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { filter, Observable } from 'rxjs';
-import { ViewStateListing } from '../../../settings/models/view-state.model';
+import { ViewStateListing, ViewStateMetadata } from '../../../settings/models/view-state.model';
 import { ViewStateService } from '../../../settings/services/view-state.service';
 import { MatDialog } from '@angular/material/dialog';
+import { ShareViewstateDialogComponent } from '../share-viewstate-dialog/share-viewstate-dialog.component';
+import { recentPublicShareLinks } from '@cki-settings';
 
 @Component({
   selector: 'cki-viewstate-list',
@@ -15,6 +17,7 @@ export class ViewstateListComponent implements OnInit {
   @ViewChild('deleteConfirm') private readonly deleteConfirm!: TemplateRef<unknown>;
 
   public readonly viewStates$: Observable<ViewStateListing[]> = this.viewStateService.viewStates$;
+  public readonly recentPublicLinks$: Observable<ViewStateMetadata[]> = recentPublicShareLinks.value$;
 
   constructor(
     private readonly viewStateService: ViewStateService,
@@ -37,8 +40,16 @@ export class ViewstateListComponent implements OnInit {
       });
   }
 
-  public restoreState(viewState: ViewStateListing): void {
-    this.viewStateService.fetchAndRestoreState(viewState.id!);
+  public restoreState(stateId: string): void {
+    this.viewStateService.fetchAndRestoreState(stateId).subscribe();
+  }
+
+  public openShareDialog(viewState: ViewStateListing): void {
+    this.dialog.open<ShareViewstateDialogComponent, ViewStateListing>(ShareViewstateDialogComponent, {
+      data: viewState,
+      maxWidth: 'min(100vw, 600px)',
+      minHeight: '200px',
+    });
   }
 
   public deleteState(id: string): void {

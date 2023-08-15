@@ -1,12 +1,18 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthCallbackGuard } from './auth/auth-callback.guard';
-import { AUTHENTICATED_ROUTE } from '@cki-utils/routes';
+import { AUTHENTICATED_ROUTE, PUBLIC_SHARE_ROUTE } from '@cki-utils/routes';
+import { PublicShareRedirectGuard } from './live-compile/guards/public-share-redirect.guard';
 
 const routes: Routes = [
   {
     path: AUTHENTICATED_ROUTE,
     canActivate: [AuthCallbackGuard],
+    children: [],
+  },
+  {
+    path: `${PUBLIC_SHARE_ROUTE}/:stateId`,
+    canActivate: [PublicShareRedirectGuard],
     children: [],
   },
   {

@@ -27,6 +27,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatRippleModule } from '@angular/material/core';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { ShareViewstateDialogComponent } from './components/share-viewstate-dialog/share-viewstate-dialog.component';
 
 @NgModule({
   declarations: [
@@ -35,6 +36,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     DiagnosticListComponent,
     SidenavContentComponent,
     ViewstateListComponent,
+    ShareViewstateDialogComponent,
   ],
   imports: [
     CommonModule,

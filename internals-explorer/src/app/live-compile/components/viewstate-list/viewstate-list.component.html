@@ -1,4 +1,4 @@
-<ng-container *ngIf="{ viewStateListings: viewStates$ | async } as data">
+<ng-container *ngIf="{ viewStateListings: viewStates$ | async, recentPublicLinks: recentPublicLinks$ | async } as data">
   <div class="viewstate-item"
        mat-ripple
        role="button"
@@ -15,13 +15,28 @@
        class="viewstate-item"
        mat-ripple
        role="button"
-       (click)="restoreState(viewState)">
+       (click)="restoreState(viewState.id!)">
     <span>{{ (i + 1) + '. ' + viewState.name }}</span>
-    <mat-icon class="close-button"
-              role="button"
+    <mat-icon role="button"
+              mat-ripple
+              matTooltip="Share a public link of this saved state"
+              (click)="$event.stopPropagation(); openShareDialog(viewState)">share</mat-icon>
+    <mat-icon role="button"
               mat-ripple
               matTooltip="Delete saved state"
               (click)="$event.stopPropagation(); deleteState(viewState.id!)">close</mat-icon>
+  </div>
+
+  <h3 *ngIf="(data.recentPublicLinks?.length ?? 0) > 0">
+    Recently accessed public states:
+  </h3>
+
+  <div *ngFor="let viewState of data.recentPublicLinks; let i = index"
+       class="viewstate-item"
+       mat-ripple
+       role="button"
+       (click)="restoreState(viewState.id!)">
+    <span>{{ (i + 1) + '. ' + viewState.name }}</span>
   </div>
 </ng-container>
 

@@ -1,0 +1,51 @@
+@use 'colors';
+
+:host {
+  display: block;
+}
+
+.mat-dialog-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  mat-icon {
+    width: 48px;
+    height: 48px;
+    line-height: 48px;
+    text-align: center;
+    border-radius: 8px;
+  }
+}
+
+.mat-dialog-content {
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+
+.mat-slide-toggle {
+  margin-bottom: 16px;
+}
+
+a {
+  display: block;
+  width: fit-content;
+
+  padding: 4px 8px;
+  margin-bottom: 16px;
+
+  color: colors.$accent-text;
+  background-color: colors.$accent-lighter;
+  border-radius: 8px;
+}
+
+.copy-button-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.was-copied {
+  color: colors.$success-green;
+}
