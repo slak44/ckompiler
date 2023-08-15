@@ -277,9 +277,9 @@
         <dropNotNullConstraint columnDataType="float(53)" columnName="variable_rename_view_state_transform_y"
                                tableName="viewstate"/>
     </changeSet>
-    <changeSet author="slak (generated)" id="1692100108714-1">
+    <changeSet author="slak (generated)" id="1692101268277-1">
         <addColumn tableName="viewstate">
-            <column name="public_share_enabled" type="boolean">
+            <column defaultValueBoolean="false" name="public_share_enabled" type="boolean not null">
                 <constraints nullable="false"/>
             </column>
         </addColumn>

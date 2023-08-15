@@ -59,6 +59,7 @@ data class ViewState(
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
     val createdAt: Instant,
+    @Column(columnDefinition = "boolean not null default 'false'", nullable = false)
     var publicShareEnabled: Boolean = false,
     @Column(columnDefinition = "text not null", nullable = false)
     val owner: String,
