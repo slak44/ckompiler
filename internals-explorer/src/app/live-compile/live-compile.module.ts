@@ -28,6 +28,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ShareViewstateDialogComponent } from './components/share-viewstate-dialog/share-viewstate-dialog.component';
+import { MatBadgeModule } from '@angular/material/badge';
 
 @NgModule({
   declarations: [
@@ -62,6 +63,7 @@ import { ShareViewstateDialogComponent } from './components/share-viewstate-dial
     MatRippleModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatBadgeModule,
   ],
 })
 export class LiveCompileModule {

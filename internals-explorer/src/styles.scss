@@ -54,3 +54,7 @@ svg {
 .hljs {
   background-color: unset;
 }
+
+.green-badge > .mat-badge-content {
+  background-color: colors.$success-green;
+}

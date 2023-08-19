@@ -19,8 +19,14 @@
     <span>{{ (i + 1) + '. ' + viewState.name }}</span>
     <mat-icon role="button"
               mat-ripple
-              matTooltip="Share a public link of this saved state"
-              (click)="$event.stopPropagation(); openShareDialog(viewState)">share</mat-icon>
+              [matTooltip]="viewState.publicShareEnabled
+              ? 'State shared. Click to configure'
+              : 'Share a public link of this saved state'"
+              (click)="$event.stopPropagation(); openShareDialog(viewState)">
+      <span [matBadge]="viewState.publicShareEnabled ? '✓' : null"
+            class="green-badge"
+            matBadgeSize="small">share</span>
+    </mat-icon>
     <mat-icon role="button"
               mat-ripple
               matTooltip="Delete saved state"
