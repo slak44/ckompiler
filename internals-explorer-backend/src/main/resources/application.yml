@@ -33,6 +33,11 @@ spring:
           audiences:
             - https://slak44.github.io/ckompiler/
 
+logging:
+  level:
+    org.springframework.messaging: debug
+    org.springframework.web.socket: debug
+
 ---
 
 spring:

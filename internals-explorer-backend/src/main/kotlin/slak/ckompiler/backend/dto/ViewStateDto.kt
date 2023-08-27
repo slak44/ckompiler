@@ -38,6 +38,15 @@ data class SteppableGraphViewStateDto(
   )
 }
 
+data class ViewStateNonMetadataDeltaDto(
+    val sourceCode: String?,
+    val isaType: String,
+    val activeRoute: String,
+    val graphViewState: GraphViewStateDto,
+    val phiInsertionViewState: SteppableGraphViewStateDto,
+    val variableRenameViewState: SteppableGraphViewStateDto,
+)
+
 data class ViewStateDto(
     val id: String?,
     val createdAt: Instant?,

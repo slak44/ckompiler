@@ -12,6 +12,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import slak.ckompiler.backend.WebSocketConfiguration.Companion.WEBSOCKET_ENDPOINT
 
 @Configuration
 @EnableWebSecurity
@@ -36,6 +37,7 @@ class SecurityConfiguration {
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/viewstate/list").authenticated()
         .requestMatchers(HttpMethod.GET, "/api/viewstate/**").permitAll()
+        .requestMatchers(HttpMethod.GET, WEBSOCKET_ENDPOINT).permitAll()
         .anyRequest().authenticated().and()
         .csrf().disable()
         .cors().and()
