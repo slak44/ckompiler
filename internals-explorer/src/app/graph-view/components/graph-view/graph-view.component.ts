@@ -182,6 +182,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
         // Clicking already selected node should unselect
         e.classList.remove('clicked');
         this.clearClickedSubject.next();
+        this.selectedIdSetting?.update(null);
       } else {
         this.clickedNodeSubject.next(node);
       }
@@ -271,7 +272,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     }
 
     this.clickedNodeSubject.pipe(
-      distinctUntilChanged(),
       takeUntil(this.rerenderSubject),
     ).subscribe((clickedNode) => {
       this.selectedIdSetting?.update(clickedNode.nodeId);
