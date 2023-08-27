@@ -386,7 +386,7 @@ export class ViewStateService extends SubscriptionDestroy {
     this.restoreTransform(variableRenameTransform, viewState.variableRenameViewState.transform);
     variableRenameSelectedId.update(viewState.variableRenameViewState.selectedNodeId);
     variableRenameVariableId.update(viewState.variableRenameViewState.targetVariable);
-    variableRenameVariableId.update(viewState.variableRenameViewState.currentStep);
+    variableRenameStepIdx.update(viewState.variableRenameViewState.currentStep);
 
     isSpillOnly.update(viewState.graphViewState.isSpillOnly);
     hideGraphUI.update(viewState.graphViewState.isUiHidden);
