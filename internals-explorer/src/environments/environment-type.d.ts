@@ -1,5 +1,6 @@
 export interface EnvironmentType {
   production: boolean;
+  broadcastUrl: string;
   apiBaseUrl: string;
   rootUrl: string;
   oauth: {

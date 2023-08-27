@@ -2,6 +2,7 @@ import { EnvironmentType } from './environment-type';
 
 export const environment: EnvironmentType = {
   production: true,
+  broadcastUrl: 'wss://ckompiler.slak44.dev/api/broadcast/ws',
   apiBaseUrl: 'https://ckompiler.slak44.dev/api',
   rootUrl: 'https://slak44.github.io/ckompiler',
   oauth: {

@@ -34,8 +34,13 @@ export interface ViewState {
   variableRenameViewState: SteppableGraphViewState;
 }
 
-export type ViewStateMetadata = Pick<ViewState, 'id' | 'name' | 'createdAt' | 'publicShareEnabled'>;
-export type ViewStateNonMetadata = Omit<ViewState, 'id' | 'name' | 'createdAt' | 'publicShareEnabled'>;
+export type NullableValues<T> = {  [P in keyof T]: T[P] | null };
+
+export type ViewStateMetadataKeys = 'id' | 'name' | 'owner' | 'createdAt' | 'publicShareEnabled';
+export type ViewStateMetadata = Pick<ViewState, ViewStateMetadataKeys>;
+export type ViewStateNonMetadata = Omit<ViewState, ViewStateMetadataKeys>;
+export type ViewStateNonMetadataDelta =
+  Omit<ViewState, ViewStateMetadataKeys | 'sourceCode'> & NullableValues<Pick<ViewState, 'sourceCode'>>;
 
 export interface ViewStateListing {
   id: string | null;
@@ -52,6 +57,7 @@ export function extractMetadataFromState(state: ViewState): ViewStateMetadata {
   return {
     id: state.id,
     name: state.name,
+    owner: state.owner,
     createdAt: state.createdAt,
     publicShareEnabled: state.publicShareEnabled,
   };

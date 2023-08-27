@@ -6,6 +6,7 @@ import { EnvironmentType } from './environment-type';
 
 export const environment: EnvironmentType = {
   production: false,
+  broadcastUrl: 'ws://localhost:8080/api/broadcast/ws',
   apiBaseUrl: 'http://localhost:8080/api',
   rootUrl: 'http://localhost:4200',
   oauth: {

@@ -24,7 +24,6 @@ import { Graphviz, GraphvizOptions } from 'd3-graphviz';
 import {
   combineLatest,
   combineLatestWith,
-  debounceTime,
   distinctUntilChanged,
   filter,
   first,
@@ -245,7 +244,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     const svgRef = this.graphRef.nativeElement.querySelector('svg')!;
     this.currentZoomTransformSubject.pipe(
       distinctUntilChanged(),
-      debounceTime(1000),
       takeUntil(this.rerender$),
     ).subscribe(zoomTransform => {
       this.transformSetting!.update(zoomTransform);
@@ -274,7 +272,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     this.clickedNodeSubject.pipe(
       distinctUntilChanged(),
-      debounceAfterFirst(100),
       takeUntil(this.rerenderSubject),
     ).subscribe((clickedNode) => {
       this.selectedIdSetting?.update(clickedNode.nodeId);

@@ -4,6 +4,7 @@ import {
   combineLatest,
   debounceTime,
   distinctUntilChanged,
+  EMPTY,
   filter,
   first,
   map,
@@ -20,7 +21,7 @@ import {
   hasEqualViewStates,
   ViewState,
   ViewStateListing,
-  ViewStateNonMetadata,
+  ViewStateNonMetadata, ViewStateNonMetadataDelta,
   wipeMetadataFromState,
   ZoomTransformDto,
 } from '../models/view-state.model';
@@ -58,6 +59,8 @@ import { subscribeIfAuthenticated } from '@cki-utils/subscribe-if-authenticated'
   providedIn: 'root',
 })
 export class ViewStateService extends SubscriptionDestroy {
+  private isAutosaveEnabled: boolean = true;
+
   private readonly stateLockSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   public readonly stateLock$: Observable<boolean> = this.stateLockSubject;
 
@@ -80,7 +83,7 @@ export class ViewStateService extends SubscriptionDestroy {
     shareReplay({ bufferSize: 1, refCount: false }),
   );
 
-  private readonly viewStateData$: Observable<ViewStateNonMetadata> = combineLatest([
+  public readonly viewStateData$: Observable<ViewStateNonMetadata> = combineLatest([
     sourceCode.value$,
     isaType.value$,
     hideGraphUI.value$,
@@ -161,6 +164,7 @@ export class ViewStateService extends SubscriptionDestroy {
         sourceCode,
       };
     }),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
 
   private readonly storeViewState$: Observable<ViewState | null> = this.viewStatesSubject.pipe(
@@ -176,6 +180,7 @@ export class ViewStateService extends SubscriptionDestroy {
         ...viewStateData,
         id: state.id,
         name: state.name,
+        owner: null,
         createdAt: null,
         publicShareEnabled: state.publicShareEnabled,
       };
@@ -218,11 +223,15 @@ export class ViewStateService extends SubscriptionDestroy {
         const message = 'Your local state is different from your autosave. Load remote autosave?';
         const snackbarRef = this.snackBar.open(message, 'LOAD');
         snackbarRef.onAction().pipe(
+          tap(() => this.lockState()),
+          switchMap(() => this.restoreState(autosave)),
           takeUntil(this.destroy$),
-        ).subscribe(() => {
-          this.lockState();
-          this.restoreState(autosave);
-          this.unlockState();
+        ).subscribe({
+          next: () => this.unlockState(),
+          error: error => {
+            console.error(error);
+            this.unlockState();
+          }
         });
       },
       error: error => console.error(error),
@@ -251,14 +260,25 @@ export class ViewStateService extends SubscriptionDestroy {
         ...viewStateData,
         id: null,
         name: 'Autosave',
+        owner: null,
         createdAt: null,
         publicShareEnabled: false,
       })),
-      switchMap(viewState => this.viewStateApiService.saveAutosave(viewState)),
+      switchMap(viewState => {
+        if (!this.isAutosaveEnabled) {
+          return EMPTY;
+        }
+
+        return this.viewStateApiService.saveAutosave(viewState);
+      }),
       takeUntil(this.destroy$),
     ).subscribe({
       error: error => console.error(error),
     });
+  }
+
+  public setAutosaveEnabledState(isEnabled: boolean): void {
+    this.isAutosaveEnabled = isEnabled;
   }
 
   public saveCurrentState(name: string): void {
@@ -269,7 +289,7 @@ export class ViewStateService extends SubscriptionDestroy {
       id: null,
       name,
       createdAt: new Date().toISOString(),
-      publicShareEnabled: false
+      publicShareEnabled: false,
     };
     this.viewStatesSubject.next([...viewStates, newListing]);
 
@@ -296,8 +316,9 @@ export class ViewStateService extends SubscriptionDestroy {
     this.lockState();
 
     return this.viewStateApiService.getById(stateId).pipe(
+      switchMap((viewState) => this.restoreState(viewState).pipe(map(() => viewState))),
       tap({
-        next: viewState => this.restoreState(viewState),
+        next: () => this.unlockState(),
         error: () => this.unlockState(),
       }),
     );
@@ -314,7 +335,6 @@ export class ViewStateService extends SubscriptionDestroy {
     const idx = this.viewStatesSubject.value.findIndex(viewState => viewState.id === stateId);
     if (idx === -1) {
       console.error('Cannot find view state with id ' + stateId);
-      this.unlockState();
 
       return of(void null);
     }
@@ -324,11 +344,10 @@ export class ViewStateService extends SubscriptionDestroy {
         const newStates = [...this.viewStatesSubject.value];
         newStates[idx] = {
           ...newStates[idx],
-          publicShareEnabled: isEnabled
+          publicShareEnabled: isEnabled,
         };
         this.viewStatesSubject.next(newStates);
-        this.unlockState();
-      })
+      }),
     );
   }
 
@@ -341,11 +360,21 @@ export class ViewStateService extends SubscriptionDestroy {
     }
   }
 
-  private restoreState(viewState: ViewState): void {
+  private restoreState(viewState: ViewStateNonMetadata): Observable<void> {
     if (this.checkStateLockInvalid()) {
-      return;
+      return of(void null);
     }
 
+    return this.restoreStateLockless(viewState);
+  }
+
+  public restoreStateStream(viewStateStream$: Observable<ViewStateNonMetadataDelta>): Observable<void> {
+    return viewStateStream$.pipe(
+      switchMap(state => this.restoreStateLockless(state)),
+    );
+  }
+
+  private restoreStateLockless(viewState: ViewStateNonMetadataDelta): Observable<void> {
     this.restoreTransform(graphViewTransform, viewState.graphViewState.transform);
     graphViewSelectedId.update(viewState.graphViewState.selectedNodeId);
 
@@ -364,22 +393,23 @@ export class ViewStateService extends SubscriptionDestroy {
     currentPrintingType.update(CodePrintingMethods.valueOf(viewState.graphViewState.printingType));
     currentTargetFunction.update(viewState.graphViewState.targetFunction);
     isaType.update(ISAType.valueOf(viewState.isaType));
-    sourceCode.update(viewState.sourceCode);
 
-    // Wait for compilation, then wait for change detection, and THEN change the route
-    this.compileService.defaultCompileResult$.pipe(first(), takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        setTimeout(() => {
-          this.router.navigateByUrl(viewState.activeRoute)
-            .then(() => this.unlockState())
-            .catch(() => this.unlockState());
-        }, 0);
-      },
-      error: error => {
-        console.error(error);
-        this.unlockState();
-      },
-    });
+    if (viewState.sourceCode) {
+      sourceCode.update(viewState.sourceCode);
+    }
+
+    if (this.router.url === viewState.activeRoute) {
+      return of(void null);
+    }
+
+    // Wait for compilation, then wait for change detection (which is implicit because switchMap is async),
+    // and THEN change the route
+    return this.compileService.defaultCompileResult$.pipe(
+      first(),
+      switchMap(() => this.router.navigateByUrl(viewState.activeRoute)),
+      map(() => void null),
+      takeUntil(this.destroy$)
+    );
   }
 
   private lockState(): void {
