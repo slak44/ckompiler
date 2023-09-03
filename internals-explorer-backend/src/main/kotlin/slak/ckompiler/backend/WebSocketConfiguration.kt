@@ -15,18 +15,16 @@ import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.MessageBuilder
+import org.springframework.messaging.support.MessageHeaderAccessor
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.authorization.AuthorizationManager
 import org.springframework.security.authorization.SpringAuthorizationEventPublisher
-import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.AuthorityUtils
-import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.messaging.access.intercept.AuthorizationChannelInterceptor
 import org.springframework.security.messaging.access.intercept.MessageMatcherDelegatingAuthorizationManager
 import org.springframework.security.messaging.context.AuthenticationPrincipalArgumentResolver
-import org.springframework.security.messaging.context.SecurityContextChannelInterceptor
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider
@@ -48,6 +46,7 @@ class WebSocketConfiguration(
     val applicationEventPublisher: ApplicationEventPublisher,
     jwtDecoder: JwtDecoder,
     val heartbeatScheduler: ThreadPoolTaskScheduler,
+    val webSocketSecurityContextService: WebSocketSecurityContextService,
 ) : WebSocketMessageBrokerConfigurer {
   private val tokenChannelInterceptor = object : ChannelInterceptor {
     private val jwtAuthProvider = JwtAuthenticationProvider(jwtDecoder)
@@ -58,22 +57,10 @@ class WebSocketConfiguration(
         AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")
     )
 
-    private val sessions = mutableMapOf<String, SecurityContext>()
-
-    private fun getContext(sessionId: String): SecurityContext {
-      val existing = sessions[sessionId]
-      if (existing != null) {
-        return existing
-      }
-      val newContext = SecurityContextHolder.createEmptyContext()
-      sessions[sessionId] = newContext
-      return newContext
-    }
-
     override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
-      val accessor = StompHeaderAccessor.wrap(message)
+      val accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor::class.java) ?: StompHeaderAccessor.wrap(message)
       val sessionId = accessor.sessionId ?: return message
-      val context = getContext(sessionId)
+      val context = webSocketSecurityContextService.getOrCreateContext(sessionId)
       SecurityContextHolder.setContext(context)
 
       when (accessor.command) {
@@ -86,14 +73,16 @@ class WebSocketConfiguration(
           }
         }
         StompCommand.DISCONNECT -> {
-          sessions.remove(sessionId)
+          webSocketSecurityContextService.deleteBySessionId(sessionId)
         }
         else -> {}
       }
 
       accessor.user = context.authentication ?: return message
 
-      accessor.setLeaveMutable(true)
+      if (accessor.isMutable) {
+        accessor.setLeaveMutable(true)
+      }
       return MessageBuilder.createMessage(message.payload, accessor.messageHeaders)
     }
   }
@@ -119,6 +108,7 @@ class WebSocketConfiguration(
     registry.enableSimpleBroker("/subscribe")
         .setTaskScheduler(heartbeatScheduler)
     registry.setApplicationDestinationPrefixes("/publish")
+    registry.setUserDestinationPrefix("/user")
   }
 
   /**
@@ -130,6 +120,7 @@ class WebSocketConfiguration(
     val manager: AuthorizationManager<Message<*>> = MessageMatcherDelegatingAuthorizationManager.builder()
         .nullDestMatcher().authenticated()
         .simpSubscribeDestMatchers("/subscribe/**").authenticated()
+        .simpSubscribeDestMatchers("/user/**").authenticated()
         .simpDestMatchers("/publish/**").authenticated()
         .anyMessage().denyAll()
         .build()
