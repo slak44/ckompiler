@@ -35,8 +35,8 @@ spring:
 
 logging:
   level:
-    org.springframework.messaging: debug
-    org.springframework.web.socket: debug
+    org.springframework.messaging: info
+    org.springframework.web.socket: info
 
 ---
 
