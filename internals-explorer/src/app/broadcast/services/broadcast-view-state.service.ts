@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BroadcastId, BroadcastService } from './broadcast.service';
-import { ViewStateService } from '../settings/services/view-state.service';
+import { ViewStateService } from '../../settings/services/view-state.service';
 import {
   animationFrameScheduler,
   EMPTY,
@@ -15,12 +15,12 @@ import {
   tap,
   throttleTime,
 } from 'rxjs';
-import { ViewStateNonMetadataDelta } from '../settings/models/view-state.model';
+import { ViewStateNonMetadataDelta } from '../../settings/models/view-state.model';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
-import { InitialUserStateService } from '../settings/services/initial-user-state.service';
+import { InitialUserStateService } from '../../settings/services/initial-user-state.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { BroadcastMessageType, ViewStateMessage } from './models/broadcast-message.model';
-import { SnackbarService } from '../material-utils/services/snackbar.service';
+import { BroadcastMessageType, ViewStateMessage } from '../models/broadcast-message.model';
+import { SnackbarService } from '../../material-utils/services/snackbar.service';
 
 @Injectable({
   providedIn: 'root',

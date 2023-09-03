@@ -6,8 +6,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { ShareViewstateDialogComponent } from '../share-viewstate-dialog/share-viewstate-dialog.component';
 import { recentPublicShareLinks } from '@cki-settings';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
-import { BroadcastViewStateService } from '../../../broadcast/broadcast-view-state.service';
-import { BroadcastId, BroadcastService } from '../../../broadcast/broadcast.service';
+import { BroadcastViewStateService } from '../../../broadcast/services/broadcast-view-state.service';
+import { BroadcastId, BroadcastService } from '../../../broadcast/services/broadcast.service';
 
 @Component({
   selector: 'cki-viewstate-list',

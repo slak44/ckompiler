@@ -1,13 +1,13 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { RxStomp, RxStompConfig } from '@stomp/rx-stomp';
 import { BehaviorSubject, EMPTY, first, map, merge, Observable, skip, switchMap, takeUntil, tap } from 'rxjs';
-import { ViewStateNonMetadataDelta } from '../settings/models/view-state.model';
-import { environment } from '../../environments/environment';
+import { ViewStateNonMetadataDelta } from '../../settings/models/view-state.model';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '@auth0/auth0-angular';
 import { HttpClient } from '@angular/common/http';
-import { API } from '../auth/api.interceptor';
+import { API } from '../../auth/api.interceptor';
 import { Brand } from '@cki-utils/brand';
-import { BroadcastMessage } from './models/broadcast-message.model';
+import { BroadcastMessage } from '../models/broadcast-message.model';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 
 export type BroadcastId = Brand<string, 'BroadcastId'>;

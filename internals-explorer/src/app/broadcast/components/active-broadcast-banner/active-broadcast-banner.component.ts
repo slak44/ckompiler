@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
-import { BroadcastService } from '../../broadcast.service';
+import { BroadcastService } from '../../services/broadcast.service';
 import { map, Observable } from 'rxjs';
 import { BROADCAST_ROUTE } from '@cki-utils/routes';
 

@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable } from 'rxjs';
-import { BroadcastViewStateService } from '../broadcast-view-state.service';
-import { BroadcastId } from '../broadcast.service';
+import { BroadcastViewStateService } from '../services/broadcast-view-state.service';
+import { BroadcastId } from '../services/broadcast.service';
 import { GRAPH_VIEW_ROUTE } from '@cki-utils/routes';
 
 export const BROADCAST_ID_PARAM = 'broadcastId';
