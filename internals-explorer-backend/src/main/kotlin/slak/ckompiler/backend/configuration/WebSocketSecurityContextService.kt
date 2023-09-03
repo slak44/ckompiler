@@ -1,4 +1,4 @@
-package slak.ckompiler.backend
+package slak.ckompiler.backend.configuration
 
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder

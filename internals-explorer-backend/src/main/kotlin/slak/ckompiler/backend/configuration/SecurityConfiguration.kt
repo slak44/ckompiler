@@ -1,4 +1,4 @@
-package slak.ckompiler.backend
+package slak.ckompiler.backend.configuration
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -12,7 +12,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import slak.ckompiler.backend.WebSocketConfiguration.Companion.WEBSOCKET_ENDPOINT
+import slak.ckompiler.backend.configuration.WebSocketConfiguration.Companion.WEBSOCKET_ENDPOINT
 
 @Configuration
 @EnableWebSecurity

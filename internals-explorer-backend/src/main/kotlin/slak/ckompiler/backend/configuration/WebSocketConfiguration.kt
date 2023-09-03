@@ -1,4 +1,4 @@
-package slak.ckompiler.backend
+package slak.ckompiler.backend.configuration
 
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
