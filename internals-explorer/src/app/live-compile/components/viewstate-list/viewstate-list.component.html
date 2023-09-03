@@ -1,4 +1,30 @@
-<ng-container *ngIf="{ viewStateListings: viewStates$ | async, recentPublicLinks: recentPublicLinks$ | async } as data">
+<ng-container *ngIf="{
+  viewStateListings: viewStates$ | async,
+  recentPublicLinks: recentPublicLinks$ | async,
+  broadcastPublishId: broadcastPublishId$ | async
+} as data">
+  <div class="viewstate-item"
+       [class.disabled]="data.broadcastPublishId"
+       [matRippleDisabled]="!!data.broadcastPublishId"
+       mat-ripple
+       role="button"
+       (click)="startBroadcast()">
+    <mat-icon>present_to_all</mat-icon>
+    <mat-spinner *ngIf="data.broadcastPublishId" [diameter]="16" color="accent"></mat-spinner>
+    {{ !data.broadcastPublishId ? 'Present current view state' : 'Presenting…' }}
+  </div>
+
+  <div class="viewstate-item"
+       mat-ripple
+       role="button"
+       *ngIf="data.broadcastPublishId"
+       (click)="closeBroadcast(data.broadcastPublishId)">
+    <mat-icon>cancel_presentation</mat-icon>
+    Stop presenting
+  </div>
+
+  <mat-divider></mat-divider>
+
   <div class="viewstate-item"
        mat-ripple
        role="button"
@@ -30,7 +56,9 @@
     <mat-icon role="button"
               mat-ripple
               matTooltip="Delete saved state"
-              (click)="$event.stopPropagation(); deleteState(viewState.id!)">close</mat-icon>
+              (click)="$event.stopPropagation(); deleteState(viewState.id!)">
+      close
+    </mat-icon>
   </div>
 
   <h3 *ngIf="(data.recentPublicLinks?.length ?? 0) > 0">

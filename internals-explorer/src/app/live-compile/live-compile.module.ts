@@ -29,6 +29,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ShareViewstateDialogComponent } from './components/share-viewstate-dialog/share-viewstate-dialog.component';
 import { MatBadgeModule } from '@angular/material/badge';
+import { BroadcastModule } from '../broadcast/broadcast.module';
 
 @NgModule({
   declarations: [
@@ -45,6 +46,7 @@ import { MatBadgeModule } from '@angular/material/badge';
     PhiGraphViewModule,
     DefaultGraphViewModule,
     TabRoutingModule,
+    BroadcastModule,
     MonacoEditorModule,
     ReactiveFormsModule,
     MatIconModule,

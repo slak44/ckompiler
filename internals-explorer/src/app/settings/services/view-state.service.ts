@@ -10,6 +10,8 @@ import {
   map,
   Observable,
   of,
+  OperatorFunction,
+  pipe,
   shareReplay,
   startWith,
   switchMap,
@@ -21,7 +23,8 @@ import {
   hasEqualViewStates,
   ViewState,
   ViewStateListing,
-  ViewStateNonMetadata, ViewStateNonMetadataDelta,
+  ViewStateNonMetadata,
+  ViewStateNonMetadataDelta,
   wipeMetadataFromState,
   ZoomTransformDto,
 } from '../models/view-state.model';
@@ -46,7 +49,6 @@ import {
   variableRenameVariableId,
 } from '@cki-settings';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
-import { UserStateService } from './user-state.service';
 import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { NavigationEnd, Router } from '@angular/router';
@@ -54,6 +56,7 @@ import { ZoomTransform } from 'd3-zoom';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@auth0/auth0-angular';
 import { subscribeIfAuthenticated } from '@cki-utils/subscribe-if-authenticated';
+import { InitialUserStateService } from './initial-user-state.service';
 
 @Injectable({
   providedIn: 'root',
@@ -188,8 +191,7 @@ export class ViewStateService extends SubscriptionDestroy {
     shareReplay({ bufferSize: 1, refCount: false }),
   );
 
-  private readonly latestAutosave$: Observable<ViewState> = subscribeIfAuthenticated(this.authService).pipe(
-    switchMap(() => this.userStateService.getCurrentState()),
+  private readonly latestAutosave$: Observable<ViewState> = this.initialUserStateService.initialUserState$.pipe(
     map(userState => userState.autosaveViewState),
     filter((autosave): autosave is ViewState => !!autosave),
     shareReplay({ bufferSize: 1, refCount: false }),
@@ -197,11 +199,11 @@ export class ViewStateService extends SubscriptionDestroy {
 
   constructor(
     private readonly viewStateApiService: ViewStateApiService,
-    private readonly userStateService: UserStateService,
     private readonly compileService: CompileService,
     private readonly router: Router,
     private readonly authService: AuthService,
     private readonly snackBar: MatSnackBar,
+    private readonly initialUserStateService: InitialUserStateService,
   ) {
     super();
   }
@@ -225,13 +227,14 @@ export class ViewStateService extends SubscriptionDestroy {
         snackbarRef.onAction().pipe(
           tap(() => this.lockState()),
           switchMap(() => this.restoreState(autosave)),
+          this.navigateByRoute(),
           takeUntil(this.destroy$),
         ).subscribe({
           next: () => this.unlockState(),
           error: error => {
             console.error(error);
             this.unlockState();
-          }
+          },
         });
       },
       error: error => console.error(error),
@@ -312,11 +315,14 @@ export class ViewStateService extends SubscriptionDestroy {
     });
   }
 
-  public fetchAndRestoreState(stateId: string): Observable<ViewState> {
+  public fetchAndRestoreState(stateId: string, skipNavigation?: boolean): Observable<ViewState> {
     this.lockState();
 
     return this.viewStateApiService.getById(stateId).pipe(
-      switchMap((viewState) => this.restoreState(viewState).pipe(map(() => viewState))),
+      switchMap((viewState) => this.restoreState(viewState).pipe(
+        skipNavigation ? map(() => void null) : this.navigateByRoute(),
+        map(() => viewState)
+      )),
       tap({
         next: () => this.unlockState(),
         error: () => this.unlockState(),
@@ -360,21 +366,35 @@ export class ViewStateService extends SubscriptionDestroy {
     }
   }
 
-  private restoreState(viewState: ViewStateNonMetadata): Observable<void> {
+  private restoreState(viewState: ViewStateNonMetadata): Observable<string | null> {
     if (this.checkStateLockInvalid()) {
-      return of(void null);
+      return of(null);
     }
 
     return this.restoreStateLockless(viewState);
   }
 
-  public restoreStateStream(viewStateStream$: Observable<ViewStateNonMetadataDelta>): Observable<void> {
-    return viewStateStream$.pipe(
+  private navigateByRoute(): OperatorFunction<string | null, void> {
+    return switchMap(activeRoute => {
+      if (activeRoute) {
+        // Wait for change detection first
+        setTimeout(() => {
+          this.router.navigateByUrl(activeRoute).catch(error => console.error(error));
+        }, 0);
+      }
+
+      return of(void null);
+    });
+  }
+
+  public restoreStateStream(): OperatorFunction<ViewStateNonMetadataDelta, void> {
+    return pipe(
       switchMap(state => this.restoreStateLockless(state)),
+      this.navigateByRoute(),
     );
   }
 
-  private restoreStateLockless(viewState: ViewStateNonMetadataDelta): Observable<void> {
+  private restoreStateLockless(viewState: ViewStateNonMetadataDelta): Observable<string | null> {
     this.restoreTransform(graphViewTransform, viewState.graphViewState.transform);
     graphViewSelectedId.update(viewState.graphViewState.selectedNodeId);
 
@@ -399,16 +419,14 @@ export class ViewStateService extends SubscriptionDestroy {
     }
 
     if (this.router.url === viewState.activeRoute) {
-      return of(void null);
+      return of(null);
     }
 
-    // Wait for compilation, then wait for change detection (which is implicit because switchMap is async),
-    // and THEN change the route
+    // Wait for compilation before returning the route to change
     return this.compileService.defaultCompileResult$.pipe(
       first(),
-      switchMap(() => this.router.navigateByUrl(viewState.activeRoute)),
-      map(() => void null),
-      takeUntil(this.destroy$)
+      map(() => viewState.activeRoute),
+      takeUntil(this.destroy$),
     );
   }
 

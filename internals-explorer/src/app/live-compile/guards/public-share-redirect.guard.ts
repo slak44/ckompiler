@@ -3,10 +3,13 @@ import { ViewStateService } from '../../settings/services/view-state.service';
 import { recentPublicShareLinks } from '@cki-settings';
 import { extractMetadataFromState } from '../../settings/models/view-state.model';
 import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
-import { catchError, map, Observable, of, tap } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { catchError, map, Observable, of } from 'rxjs';
+import { GRAPH_VIEW_ROUTE } from '@cki-utils/routes';
+import { SnackbarService } from '../../material-utils/services/snackbar.service';
 
 const RECENT_SHARED_LINKS_TO_KEEP = 5;
+
+export const STATE_ID_PARAM = 'stateId';
 
 @Injectable({
   providedIn: 'root',
@@ -15,36 +18,31 @@ export class PublicShareRedirectGuard implements CanActivate {
   constructor(
     private readonly viewStateService: ViewStateService,
     private readonly router: Router,
-    private readonly snackBar: MatSnackBar,
+    private readonly snackbarService: SnackbarService,
   ) {
-  }
-
-  private showLongDismissableSnack(message: string): void {
-    const ref = this.snackBar.open(message, 'DISMISS', {
-      duration: 30_000,
-    });
-    ref.onAction().subscribe(() => ref.dismiss());
   }
 
   public canActivate(
     route: ActivatedRouteSnapshot,
     _state: RouterStateSnapshot,
   ): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
-    return this.viewStateService.fetchAndRestoreState(route.params['stateId'] as string).pipe(
-      tap(viewState => {
-        this.showLongDismissableSnack(`Loaded public view state "${viewState.name}"`);
+    return this.viewStateService.fetchAndRestoreState(route.params[STATE_ID_PARAM] as string, true).pipe(
+      map(viewState => {
+        this.snackbarService.showLongSnackWithDismiss(`Loaded public view state "${viewState.name}"`);
         const existing = recentPublicShareLinks.snapshot.filter(state => state.id !== viewState.id);
         const links = [extractMetadataFromState(viewState), ...existing].slice(0, RECENT_SHARED_LINKS_TO_KEEP);
         recentPublicShareLinks.update(links);
+
+        return viewState.activeRoute;
       }),
       catchError(error => {
         console.error(error);
-        this.showLongDismissableSnack('Failed to load public view state. ' +
+        this.snackbarService.showLongSnackWithDismiss('Failed to load public view state. ' +
           'It might have been deleted, or its creator might have stopped sharing it.');
 
-        return of(null);
+        return of(`/${GRAPH_VIEW_ROUTE}`);
       }),
-      map(() => this.router.createUrlTree(['/graph-view'])),
+      map(activeRoute => this.router.createUrlTree([activeRoute])),
     );
   }
 }

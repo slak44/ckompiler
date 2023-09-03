@@ -1,8 +1,9 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthCallbackGuard } from './auth/auth-callback.guard';
-import { AUTHENTICATED_ROUTE, PUBLIC_SHARE_ROUTE } from '@cki-utils/routes';
-import { PublicShareRedirectGuard } from './live-compile/guards/public-share-redirect.guard';
+import { AUTHENTICATED_ROUTE, BROADCAST_ROUTE, GRAPH_VIEW_ROUTE, PUBLIC_SHARE_ROUTE } from '@cki-utils/routes';
+import { PublicShareRedirectGuard, STATE_ID_PARAM } from './live-compile/guards/public-share-redirect.guard';
+import { BROADCAST_ID_PARAM, BroadcastGuard } from './broadcast/guards/broadcast.guard';
 
 const routes: Routes = [
   {
@@ -11,23 +12,28 @@ const routes: Routes = [
     children: [],
   },
   {
-    path: `${PUBLIC_SHARE_ROUTE}/:stateId`,
+    path: `${PUBLIC_SHARE_ROUTE}/:${STATE_ID_PARAM}`,
     canActivate: [PublicShareRedirectGuard],
     children: [],
   },
   {
-    path: 'graph-view',
-    loadChildren: () => import('./live-compile/live-compile.module').then(m => m.LiveCompileModule)
+    path: `${BROADCAST_ROUTE}/:${BROADCAST_ID_PARAM}`,
+    canActivate: [BroadcastGuard],
+    children: [],
   },
   {
-    path: "**",
-    redirectTo: "/graph-view"
-  }
+    path: GRAPH_VIEW_ROUTE,
+    loadChildren: () => import('./live-compile/live-compile.module').then(m => m.LiveCompileModule),
+  },
+  {
+    path: '**',
+    redirectTo: `/${GRAPH_VIEW_ROUTE}`,
+  },
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule]
+  imports: [RouterModule.forRoot(routes, { enableTracing: false })],
+  exports: [RouterModule],
 })
 export class AppRoutingModule {
 }
