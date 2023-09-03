@@ -6,28 +6,17 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.Message
-import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.MessageDeliveryException
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver
 import org.springframework.messaging.simp.config.ChannelRegistration
 import org.springframework.messaging.simp.config.MessageBrokerRegistry
-import org.springframework.messaging.simp.stomp.StompCommand
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor
-import org.springframework.messaging.support.ChannelInterceptor
-import org.springframework.messaging.support.MessageBuilder
-import org.springframework.messaging.support.MessageHeaderAccessor
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
-import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.authorization.AuthorizationManager
 import org.springframework.security.authorization.SpringAuthorizationEventPublisher
-import org.springframework.security.core.authority.AuthorityUtils
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.messaging.access.intercept.AuthorizationChannelInterceptor
 import org.springframework.security.messaging.access.intercept.MessageMatcherDelegatingAuthorizationManager
 import org.springframework.security.messaging.context.AuthenticationPrincipalArgumentResolver
 import org.springframework.security.oauth2.jwt.JwtDecoder
-import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer
@@ -46,46 +35,8 @@ class WebSocketConfiguration(
     val applicationEventPublisher: ApplicationEventPublisher,
     jwtDecoder: JwtDecoder,
     val heartbeatScheduler: ThreadPoolTaskScheduler,
-    val webSocketSecurityContextService: WebSocketSecurityContextService,
 ) : WebSocketMessageBrokerConfigurer {
-  private val tokenChannelInterceptor = object : ChannelInterceptor {
-    private val jwtAuthProvider = JwtAuthenticationProvider(jwtDecoder)
-
-    private val anonymous = AnonymousAuthenticationToken(
-        "key",
-        "anonymous",
-        AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")
-    )
-
-    override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
-      val accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor::class.java) ?: StompHeaderAccessor.wrap(message)
-      val sessionId = accessor.sessionId ?: return message
-      val context = webSocketSecurityContextService.getOrCreateContext(sessionId)
-      SecurityContextHolder.setContext(context)
-
-      when (accessor.command) {
-        StompCommand.CONNECT -> {
-          val token = accessor.getPasscode()
-          if (token != null) {
-            context.authentication = jwtAuthProvider.authenticate(BearerTokenAuthenticationToken(token))
-          } else {
-            context.authentication = anonymous
-          }
-        }
-        StompCommand.DISCONNECT -> {
-          webSocketSecurityContextService.deleteBySessionId(sessionId)
-        }
-        else -> {}
-      }
-
-      accessor.user = context.authentication ?: return message
-
-      if (accessor.isMutable) {
-        accessor.setLeaveMutable(true)
-      }
-      return MessageBuilder.createMessage(message.payload, accessor.messageHeaders)
-    }
-  }
+  private val tokenChannelInterceptor = WebSocketJwtChannelInterceptor(jwtDecoder)
 
   override fun registerStompEndpoints(registry: StompEndpointRegistry) {
     registry.addEndpoint(WEBSOCKET_ENDPOINT)
