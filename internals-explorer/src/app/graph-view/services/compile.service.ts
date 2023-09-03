@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, distinctUntilChanged, map, Observable, ReplaySubject, shareReplay } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import {
   arrayOfCollection,
@@ -17,7 +17,7 @@ import { currentPrintingType, sourceCode } from '@cki-settings';
   providedIn: 'root',
 })
 export class CompileService {
-  private readonly isaTypeSubject: ReplaySubject<ISAType> = new ReplaySubject(1);
+  private readonly isaTypeSubject: BehaviorSubject<ISAType> = new BehaviorSubject<ISAType>(ISAType.X64);
   private readonly latestCrashSubject: BehaviorSubject<Error | null> = new BehaviorSubject<Error | null>(null);
 
   public readonly isaType$: Observable<ISAType> = this.isaTypeSubject.pipe(
