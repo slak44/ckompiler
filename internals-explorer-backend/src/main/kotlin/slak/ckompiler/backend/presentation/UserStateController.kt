@@ -2,7 +2,7 @@ package slak.ckompiler.backend.presentation
 
 import org.springframework.web.bind.annotation.*
 import slak.ckompiler.backend.dto.UserStateDto
-import slak.ckompiler.backend.services.BroadcastService
+import slak.ckompiler.backend.services.broadcast.BroadcastService
 import slak.ckompiler.backend.services.UserStateService
 import java.security.Principal
 

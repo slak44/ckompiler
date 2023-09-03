@@ -1,4 +1,4 @@
-package slak.ckompiler.backend.services
+package slak.ckompiler.backend.services.broadcast
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service

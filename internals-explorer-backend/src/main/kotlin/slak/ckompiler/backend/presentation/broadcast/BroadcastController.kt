@@ -26,8 +26,8 @@ import slak.ckompiler.backend.dto.BroadcastCloseMessage
 import slak.ckompiler.backend.dto.SubscriberChangeMessage
 import slak.ckompiler.backend.dto.ViewStateMessage
 import slak.ckompiler.backend.dto.ViewStateNonMetadataDeltaDto
-import slak.ckompiler.backend.services.BroadcastId
-import slak.ckompiler.backend.services.BroadcastService
+import slak.ckompiler.backend.services.broadcast.BroadcastId
+import slak.ckompiler.backend.services.broadcast.BroadcastService
 import java.security.Principal
 
 // TODO: evaluate performance with real latency and consider a proper binary protocol with actual deltas
