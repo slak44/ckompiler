@@ -222,6 +222,11 @@ export class ViewStateService extends SubscriptionDestroy {
       takeUntil(this.destroy$),
     ).subscribe({
       next: (autosave) => {
+        if (!this.isAutosaveEnabled) {
+          // Don't show this message if autosaving is disabled
+          return;
+        }
+
         const message = 'Your local state is different from your autosave. Load remote autosave?';
         const snackbarRef = this.snackBar.open(message, 'LOAD');
         snackbarRef.onAction().pipe(
