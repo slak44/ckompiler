@@ -4,7 +4,7 @@ import { ViewStateService } from '../../settings/services/view-state.service';
 import {
   animationFrameScheduler,
   EMPTY,
-  filter,
+  filter, finalize,
   map,
   merge,
   Observable,
@@ -107,6 +107,7 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
       filter((message): message is ViewStateMessage => message.type === BroadcastMessageType.VIEW_STATE),
       map(message => message.viewState),
       this.viewStateService.restoreStateStream(),
+      finalize(() => this.viewStateService.setAutosaveEnabledState(true)),
       takeUntil(merge(this.destroy$, this.subscribeExpired$)),
     ).subscribe();
   }
