@@ -16,6 +16,13 @@ export class ActiveBroadcastBannerComponent implements OnInit {
     })
   );
 
+  public readonly subscribeUrl$: Observable<string | undefined> = this.broadcastService.broadcastSubscribeId$.pipe(
+    map(broadcastId => {
+      return !broadcastId ? undefined : `${window.location.origin}/${BROADCAST_ROUTE}/${broadcastId}`;
+    })
+  );
+
+
   constructor(private readonly broadcastService: BroadcastService) {
   }
 

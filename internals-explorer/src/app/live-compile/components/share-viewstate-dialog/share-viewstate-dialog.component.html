@@ -17,7 +17,7 @@
   <ng-container *ngIf="viewStateListing.publicShareEnabled">
     <p>You can share this link:</p>
 
-    <a href="{{ publicLink }}">{{ publicLink }}</a>
+    <a href="{{ publicLink }}" class="highlighted-link">{{ publicLink }}</a>
 
     <div class="copy-button-container">
       <button mat-raised-button color="accent" (click)="copyToClipboard()">

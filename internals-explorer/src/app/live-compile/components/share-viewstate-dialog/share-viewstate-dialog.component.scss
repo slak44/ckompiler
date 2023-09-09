@@ -1,4 +1,5 @@
 @use 'colors';
+@use 'highlighted-link';
 
 :host {
   display: block;
@@ -28,15 +29,7 @@
 }
 
 a {
-  display: block;
-  width: fit-content;
-
-  padding: 4px 8px;
   margin-bottom: 16px;
-
-  color: colors.$accent-text;
-  background-color: colors.$accent-lighter;
-  border-radius: 8px;
 }
 
 .copy-button-container {

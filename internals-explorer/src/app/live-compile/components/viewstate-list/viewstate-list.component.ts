@@ -22,6 +22,8 @@ export class ViewstateListComponent extends SubscriptionDestroy implements OnIni
   public readonly viewStates$: Observable<ViewStateListing[]> = this.viewStateService.viewStates$;
   public readonly recentPublicLinks$: Observable<ViewStateMetadata[]> = recentPublicShareLinks.value$;
   public readonly broadcastPublishId$: Observable<BroadcastId | undefined> = this.broadcastService.broadcastPublishId$;
+  public readonly broadcastSubscribeId$: Observable<BroadcastId | undefined> =
+    this.broadcastService.broadcastSubscribeId$;
 
   constructor(
     private readonly viewStateService: ViewStateService,

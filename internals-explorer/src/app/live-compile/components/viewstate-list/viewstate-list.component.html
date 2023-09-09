@@ -1,9 +1,11 @@
 <ng-container *ngIf="{
   viewStateListings: viewStates$ | async,
   recentPublicLinks: recentPublicLinks$ | async,
-  broadcastPublishId: broadcastPublishId$ | async
+  broadcastPublishId: broadcastPublishId$ | async,
+  broadcastSubscribeId: broadcastSubscribeId$ | async
 } as data">
   <div class="viewstate-item"
+       *ngIf="!data.broadcastSubscribeId"
        [class.disabled]="data.broadcastPublishId"
        [matRippleDisabled]="!!data.broadcastPublishId"
        mat-ripple
@@ -23,7 +25,7 @@
     Stop presenting
   </div>
 
-  <mat-divider></mat-divider>
+  <mat-divider *ngIf="!data.broadcastSubscribeId"></mat-divider>
 
   <div class="viewstate-item"
        mat-ripple

@@ -43,7 +43,6 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
   );
 
   public readonly broadcastSubscribeId$: Observable<BroadcastId | undefined> = this.broadcastStateSubject.pipe(
-    skip(1),
     map(state => state.subscribeId)
   );
 
