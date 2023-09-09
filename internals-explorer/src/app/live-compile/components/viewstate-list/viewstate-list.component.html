@@ -25,7 +25,16 @@
     Stop presenting
   </div>
 
-  <mat-divider *ngIf="!data.broadcastSubscribeId"></mat-divider>
+  <div class="viewstate-item"
+       *ngIf="data.broadcastSubscribeId"
+       mat-ripple
+       role="button"
+       (click)="stopWatching()">
+    <mat-icon>cancel_presentation</mat-icon>
+    Stop watching
+  </div>
+
+  <mat-divider></mat-divider>
 
   <div class="viewstate-item"
        mat-ripple

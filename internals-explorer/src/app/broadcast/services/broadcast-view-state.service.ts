@@ -82,6 +82,10 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
     });
   }
 
+  public stopWatching(): void {
+    this.broadcastService.setBroadcastState({});
+  }
+
   public subscribeToBroadcast(broadcastId: BroadcastId): void {
     this.viewStateService.setAutosaveEnabledState(false);
     this.broadcastService.setBroadcastState({ subscribeId: broadcastId });

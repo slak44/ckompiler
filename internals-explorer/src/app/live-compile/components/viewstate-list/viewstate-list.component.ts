@@ -62,6 +62,10 @@ export class ViewstateListComponent extends SubscriptionDestroy implements OnIni
     this.broadcastViewStateService.stopBroadcasting(broadcastId);
   }
 
+  public stopWatching(): void {
+    this.broadcastViewStateService.stopWatching();
+  }
+
   public openShareDialog(viewState: ViewStateListing): void {
     this.dialog.open<ShareViewstateDialogComponent, ViewStateListing>(ShareViewstateDialogComponent, {
       data: viewState,
