@@ -40,10 +40,11 @@ class BroadcastSubscriptionManager(
     }
 
     // Echo the full current state to the new subscriber, so he's ready to receive deltas
-    logger.debug("Sending full current state to new subscriber (session ID: $sessionId)")
+    logger.info("Sending full current state to new subscriber (session ID: $sessionId)")
     val viewState = ViewStateMessage(broadcastService.getCurrentState(broadcastId))
     simpMessagingTemplate.convertAndSendToUser(userId, target, viewState)
 
+    // FIXME: we probably should send usernames, not just ids, they're unreadable
     // Alert the other subscribers that a new subscriber joined this topic
     val subscriberChangeMessage = SubscriberChangeMessage(broadcastService.getActiveSubscribers(broadcastId))
     simpMessagingTemplate.convertAndSend(target, subscriberChangeMessage)

@@ -4,12 +4,15 @@ import { ViewStateService } from '../../settings/services/view-state.service';
 import {
   animationFrameScheduler,
   EMPTY,
-  filter, finalize,
+  filter,
+  finalize,
   map,
   merge,
   Observable,
   of,
-  pairwise, startWith,
+  pairwise,
+  ReplaySubject,
+  startWith,
   switchMap,
   takeUntil,
   tap,
@@ -33,6 +36,10 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
   private readonly subscribeExpired$: Observable<unknown> = this.broadcastService.broadcastSubscribeId$.pipe(
     filter(subscribeId => !subscribeId),
   );
+
+  private readonly subscribersSubject: ReplaySubject<string[]> = new ReplaySubject<string[]>(1);
+
+  public readonly subscribers$: Observable<string[]> = this.subscribersSubject;
 
   constructor(
     private readonly broadcastService: BroadcastService,
@@ -71,8 +78,13 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
         throttleTime(0, animationFrameScheduler),
         takeUntil(this.publishExpired$),
       )),
+      switchMap(viewState => this.broadcastService.publish(viewState)),
       takeUntil(this.destroy$),
-    ).subscribe(viewState => this.broadcastService.publish(viewState));
+    ).subscribe(message => {
+      if (message.type === BroadcastMessageType.SUBSCRIBER_CHANGE) {
+        this.subscribersSubject.next(message.subscribers);
+      }
+    });
   }
 
   public stopBroadcasting(broadcastId: BroadcastId): void {
@@ -97,8 +109,7 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
             this.snackbarService.showLongSnackWithDismiss('The presenter closed this broadcast.');
             break;
           case BroadcastMessageType.SUBSCRIBER_CHANGE:
-            // TODO: show subscribers in UI
-            console.log(message);
+            this.subscribersSubject.next(message.subscribers);
             break;
           case BroadcastMessageType.VIEW_STATE:
             // Handled below as stream

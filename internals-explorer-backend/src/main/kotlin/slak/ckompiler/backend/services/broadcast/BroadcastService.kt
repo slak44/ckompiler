@@ -65,7 +65,7 @@ class BroadcastService {
 
   fun getActiveSubscribers(broadcastId: BroadcastId): List<String> {
     val broadcast = activeBroadcasts[broadcastId] ?: throw IllegalStateException("Broadcast state $broadcastId doesn't exist")
-    return broadcast.subscribers
+    return broadcast.subscribers - broadcast.presenterUserId
   }
 
   fun markSubscription(broadcastId: BroadcastId, subscriberId: String): Boolean {
