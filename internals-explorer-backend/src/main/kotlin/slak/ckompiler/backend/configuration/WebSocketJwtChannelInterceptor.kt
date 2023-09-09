@@ -42,9 +42,17 @@ class WebSocketJwtChannelInterceptor(jwtDecoder: JwtDecoder) : ChannelIntercepto
     return newContext
   }
 
-  override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
+  override fun preSend(message: Message<*>, channel: MessageChannel): Message<*>? {
     val accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor::class.java) ?: StompHeaderAccessor.wrap(message)
     val sessionId = accessor.sessionId ?: return message
+
+    // If Spring sends multiple DISCONNECTs for the same session (which it does), make sure we skip the duplicates
+    // Otherwise empty session contexts are created
+    if (accessor.command == StompCommand.DISCONNECT && sessionId !in securityContexts) {
+      // Also prevent sending the message, otherwise Spring will look for a session that doesn't exist
+      return null
+    }
+
     val context = getOrCreateContext(sessionId)
     SecurityContextHolder.setContext(context)
 
@@ -57,9 +65,7 @@ class WebSocketJwtChannelInterceptor(jwtDecoder: JwtDecoder) : ChannelIntercepto
           context.authentication = anonymous
         }
       }
-      StompCommand.DISCONNECT -> {
-        securityContexts.remove(sessionId)
-      }
+      StompCommand.DISCONNECT -> securityContexts.remove(sessionId)
       else -> {}
     }
 
