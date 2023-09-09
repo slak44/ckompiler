@@ -15,7 +15,7 @@ export class RoutedTabGroupDirective extends SubscriptionDestroy implements Afte
   private readonly navigationSubject: ReplaySubject<void> = new ReplaySubject<void>(1);
 
   constructor(
-    private matTabGroup: MatTabGroup,
+    private readonly matTabGroup: MatTabGroup,
     private readonly router: Router,
     private readonly activatedRoute: ActivatedRoute,
   ) {
@@ -34,7 +34,8 @@ export class RoutedTabGroupDirective extends SubscriptionDestroy implements Afte
       const tabDirective = this.routedTabsQl.find(tabDirective => tabDirective.matTab === tabChange.tab);
 
       if (tabDirective) {
-        void this.router.navigate([tabDirective.routeName], { relativeTo: this.activatedRoute });
+        this.router.navigate([tabDirective.routeName], { relativeTo: this.activatedRoute })
+          .catch(error => console.error(error));
       }
     });
 

@@ -12,6 +12,7 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { isaType } from '@cki-settings';
 import { AuthService } from '@auth0/auth0-angular';
 import { ViewStateService } from '../../../settings/services/view-state.service';
+import { ActivatedRoute, Router } from '@angular/router';
 
 export const SOURCE_CODE_PATH = 'source-code';
 export const DIAGNOSTICS_PATH = 'diagnostics';
@@ -49,13 +50,13 @@ export class LiveCompileComponent extends SubscriptionDestroy {
   ]).pipe(
     map(([hasErrors, latestCrash]) => hasErrors || !!latestCrash),
     tap(hasErrors => {
-      if (hasErrors && this.selectedTabIndex > 1) {
-        this.selectedTabIndex = 1;
+      const path = this.activatedRoute.snapshot.routeConfig?.path ?? '';
+      if (hasErrors && ![SOURCE_CODE_PATH, DIAGNOSTICS_PATH].includes(path)) {
+        this.router.navigate([DIAGNOSTICS_PATH], { relativeTo: this.activatedRoute })
+          .catch(error => console.error(error));
       }
     }),
   );
-
-  public selectedTabIndex: number = 0;
 
   public readonly user$ = this.authService.user$;
 
@@ -68,6 +69,8 @@ export class LiveCompileComponent extends SubscriptionDestroy {
     private readonly dialog: MatDialog,
     private readonly authService: AuthService,
     private readonly viewStateService: ViewStateService,
+    private readonly router: Router,
+    private readonly activatedRoute: ActivatedRoute,
   ) {
     super();
 

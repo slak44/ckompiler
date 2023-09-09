@@ -377,10 +377,7 @@ export class ViewStateService extends SubscriptionDestroy {
   private navigateByRoute(): OperatorFunction<string | null, void> {
     return switchMap(activeRoute => {
       if (activeRoute) {
-        // Wait for change detection first
-        setTimeout(() => {
-          this.router.navigateByUrl(activeRoute).catch(error => console.error(error));
-        }, 0);
+        this.router.navigateByUrl(activeRoute).catch(error => console.error(error));
       }
 
       return of(void null);
