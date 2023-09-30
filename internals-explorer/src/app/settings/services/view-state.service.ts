@@ -53,7 +53,7 @@ import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { NavigationEnd, Router } from '@angular/router';
 import { ZoomTransform } from 'd3-zoom';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatLegacySnackBar as MatSnackBar } from '@angular/material/legacy-snack-bar';
 import { AuthService } from '@auth0/auth0-angular';
 import { subscribeIfAuthenticated } from '@cki-utils/subscribe-if-authenticated';
 import { InitialUserStateService } from './initial-user-state.service';

@@ -11,7 +11,7 @@ import { AuthHttpInterceptor, AuthModule } from '@auth0/auth0-angular';
 import { environment } from '../environments/environment';
 import { AUTHENTICATED_ROUTE } from '@cki-utils/routes';
 import { ApiInterceptor } from './auth/api.interceptor';
-import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarConfig, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MAT_LEGACY_SNACK_BAR_DEFAULT_OPTIONS as MAT_SNACK_BAR_DEFAULT_OPTIONS, MatLegacySnackBarConfig as MatSnackBarConfig, MatLegacySnackBarModule as MatSnackBarModule } from '@angular/material/legacy-snack-bar';
 
 @NgModule({
   declarations: [

@@ -1,5 +1,5 @@
 import { Directive, Input } from '@angular/core';
-import { MatTab } from '@angular/material/tabs';
+import { MatLegacyTab as MatTab } from '@angular/material/legacy-tabs';
 
 @Directive({
   selector: 'mat-tab[ckiRoutedTab]',

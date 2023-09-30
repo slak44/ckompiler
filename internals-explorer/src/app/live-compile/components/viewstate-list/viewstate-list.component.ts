@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, TemplateRef, ViewChild } fr
 import { filter, Observable, takeUntil } from 'rxjs';
 import { ViewStateListing, ViewStateMetadata } from '../../../settings/models/view-state.model';
 import { ViewStateService } from '../../../settings/services/view-state.service';
-import { MatDialog } from '@angular/material/dialog';
+import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
 import { ShareViewstateDialogComponent } from '../share-viewstate-dialog/share-viewstate-dialog.component';
 import { recentPublicShareLinks } from '@cki-settings';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';

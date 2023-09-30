@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { combineLatest, map, Observable, takeUntil, tap } from 'rxjs';
 import { DiagnosticsStats, ISAType } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
-import { MatDialog } from '@angular/material/dialog';
+import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
 import { SettingsDialogComponent } from '../../../settings/components/settings-dialog/settings-dialog.component';
 import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
