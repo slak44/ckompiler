@@ -1,13 +1,5 @@
 import { GraphViewHook } from '../models/graph-view-hook.model';
-import {
-  ApplicationRef,
-  ComponentFactory,
-  ComponentFactoryResolver,
-  Inject,
-  Injectable,
-  Injector,
-  Type,
-} from '@angular/core';
+import { ApplicationRef, createComponent, Inject, Injectable, Injector, Type, ViewRef } from '@angular/core';
 import { GraphViewComponent } from '../components/graph-view/graph-view.component';
 import {
   arrayOfCollection,
@@ -32,9 +24,7 @@ const ORIGINAL_Y = 'originalY';
 @Injectable()
 export class ReplaceNodeContentsHook implements GraphViewHook {
   private readonly foreignToTextMap: Map<SVGForeignObjectElement, SVGTextElement> = new Map();
-
-  private readonly componentFactory: ComponentFactory<FragmentComponent> =
-    this.componentFactoryResolver.resolveComponentFactory(this.fragmentComponentType);
+  private readonly dynamicComponents: ViewRef[] = [];
 
   private graphView!: GraphViewComponent;
   private maxAscent!: number;
@@ -42,7 +32,6 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
   public rerender$!: Observable<void>;
 
   constructor(
-    private readonly componentFactoryResolver: ComponentFactoryResolver,
     private readonly injector: Injector,
     private readonly applicationRef: ApplicationRef,
     @Inject(FRAGMENT_COMPONENT) private readonly fragmentComponentType: Type<FragmentComponent>,
@@ -119,7 +108,11 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
         const replaceableHost = document.createElement(GENERIC_FRAGMENT_HOST);
         foreign.appendChild(replaceableHost);
 
-        const comp = this.componentFactory.create(this.injector, [], replaceableHost);
+        const comp = createComponent(this.fragmentComponentType, {
+          hostElement: replaceableHost,
+          environmentInjector: this.applicationRef.injector,
+          elementInjector: this.injector
+        });
         comp.instance.nodeId = nodeId;
         comp.instance.i = i - offset;
         comp.instance.instr = source;
@@ -127,6 +120,7 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
         comp.instance.text = text;
         comp.instance.color = textElement.getAttribute('fill')!;
 
+        this.dynamicComponents.push(comp.hostView);
         this.applicationRef.attachView(comp.hostView);
 
         const originalYAttr = textElement.getAttribute('y')!;
@@ -153,5 +147,9 @@ export class ReplaceNodeContentsHook implements GraphViewHook {
       foreign.replaceWith(text);
     }
     this.foreignToTextMap.clear();
+
+    for (const viewRef of this.dynamicComponents) {
+      this.applicationRef.detachView(viewRef);
+    }
   }
 }
