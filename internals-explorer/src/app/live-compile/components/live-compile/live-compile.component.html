@@ -59,7 +59,7 @@
         <cki-diagnostic-list></cki-diagnostic-list>
       </mat-tab>
 
-      <mat-tab [ckiRoutedTab]="CFG_PATH" [disabled]="hasErrors$ | async">
+      <mat-tab [ckiRoutedTab]="CFG_PATH" [disabled]="!!(hasErrors$ | async)">
         <div *matTabLabel class="tab-label">
           <mat-icon>account_tree</mat-icon>
           CFG View
@@ -68,7 +68,7 @@
         <cki-default-graph-view [isaType$]="isaType$"></cki-default-graph-view>
       </mat-tab>
 
-      <mat-tab [ckiRoutedTab]="PHI_PATH" [disabled]="hasErrors$ | async">
+      <mat-tab [ckiRoutedTab]="PHI_PATH" [disabled]="!!(hasErrors$ | async)">
         <div *matTabLabel class="tab-label">
           <mat-icon>route</mat-icon>
           φ Insertion
@@ -77,7 +77,7 @@
         <cki-phi-insertion-view></cki-phi-insertion-view>
       </mat-tab>
 
-      <mat-tab [ckiRoutedTab]="RENAME_PATH" [disabled]="hasErrors$ | async">
+      <mat-tab [ckiRoutedTab]="RENAME_PATH" [disabled]="!!(hasErrors$ | async)">
         <div *matTabLabel class="tab-label">
           <mat-icon>edit</mat-icon>
           Variable Renaming

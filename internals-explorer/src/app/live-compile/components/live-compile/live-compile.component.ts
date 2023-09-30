@@ -50,7 +50,7 @@ export class LiveCompileComponent extends SubscriptionDestroy {
   ]).pipe(
     map(([hasErrors, latestCrash]) => hasErrors || !!latestCrash),
     tap(hasErrors => {
-      const path = this.activatedRoute.snapshot.routeConfig?.path ?? '';
+      const path = this.activatedRoute.snapshot.firstChild?.routeConfig?.path ?? '';
       if (hasErrors && ![SOURCE_CODE_PATH, DIAGNOSTICS_PATH].includes(path)) {
         this.router.navigate([DIAGNOSTICS_PATH], { relativeTo: this.activatedRoute })
           .catch(error => console.error(error));
