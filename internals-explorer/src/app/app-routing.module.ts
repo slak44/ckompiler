@@ -1,24 +1,24 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { AuthCallbackGuard } from './auth/auth-callback.guard';
+import { authCallbackGuard } from './auth/auth-callback.guard';
 import { AUTHENTICATED_ROUTE, BROADCAST_ROUTE, GRAPH_VIEW_ROUTE, PUBLIC_SHARE_ROUTE } from '@cki-utils/routes';
-import { PublicShareRedirectGuard, STATE_ID_PARAM } from './live-compile/guards/public-share-redirect.guard';
-import { BROADCAST_ID_PARAM, BroadcastGuard } from './broadcast/guards/broadcast.guard';
+import { publicShareRedirectGuard, STATE_ID_PARAM } from './live-compile/guards/public-share-redirect.guard';
+import { BROADCAST_ID_PARAM, broadcastGuard } from './broadcast/guards/broadcast.guard';
 
 const routes: Routes = [
   {
     path: AUTHENTICATED_ROUTE,
-    canActivate: [AuthCallbackGuard],
+    canActivate: [authCallbackGuard],
     children: [],
   },
   {
     path: `${PUBLIC_SHARE_ROUTE}/:${STATE_ID_PARAM}`,
-    canActivate: [PublicShareRedirectGuard],
+    canActivate: [publicShareRedirectGuard],
     children: [],
   },
   {
     path: `${BROADCAST_ROUTE}/:${BROADCAST_ID_PARAM}`,
-    canActivate: [BroadcastGuard],
+    canActivate: [broadcastGuard],
     children: [],
   },
   {

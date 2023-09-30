@@ -1,20 +1,9 @@
-import { Injectable } from '@angular/core';
-import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
-import { Observable } from 'rxjs';
+import { inject } from '@angular/core';
+import { Router, UrlTree } from '@angular/router';
 import { AuthService } from '@auth0/auth0-angular';
 
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthCallbackGuard  {
-  constructor(private readonly authService: AuthService, private readonly router: Router) {
-  }
+export function authCallbackGuard(): UrlTree {
+  inject(AuthService).handleRedirectCallback();
 
-  public canActivate(
-    _route: ActivatedRouteSnapshot,
-    _state: RouterStateSnapshot
-  ): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
-    this.authService.handleRedirectCallback();
-    return this.router.createUrlTree(['/']);
-  }
+  return inject(Router).createUrlTree(['/']);
 }
