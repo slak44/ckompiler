@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
-import { UntypedFormControl } from '@angular/forms';
+import { FormControl } from '@angular/forms';
 import { first, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
-import * as Monaco from 'monaco-editor';
-import type { editor, MarkerSeverity } from 'monaco-editor';
+import { editor, MarkerSeverity } from 'monaco-editor';
+import type * as Monaco from 'monaco-editor';
 import { closedRangeLength, DiagnosticKind } from '@ckompiler/ckompiler';
 import { monacoLoaded$, monacoVisible$ } from '@cki-utils/monaco-loader';
 import { CompileService } from '@cki-graph-view/services/compile.service';
@@ -33,7 +33,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
 
   public readonly monacoVisible$: Observable<boolean> = monacoVisible$;
 
-  public readonly sourceControl: UntypedFormControl = sourceCode.formControl;
+  public readonly sourceControl: FormControl<string> = sourceCode.formControl;
 
   private lastUnloadListener: (() => void) | undefined = undefined;
 
