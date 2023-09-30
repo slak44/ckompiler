@@ -19,6 +19,9 @@ import {
 } from '@cki-settings';
 import { ZoomTransform } from 'd3-zoom';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
+import { CommonModule } from '@angular/common';
+import { GraphUiOverlayComponent } from '../graph-ui-overlay/graph-ui-overlay.component';
+import { GraphViewComponent } from '@cki-graph-view/components/graph-view/graph-view.component';
 
 @Component({
   selector: 'cki-default-graph-view',
@@ -26,6 +29,12 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
   styleUrls: ['./default-graph-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [GraphViewFragmentComponent.provider, ReplaceNodeContentsHook],
+  standalone: true,
+  imports: [
+    CommonModule,
+    GraphUiOverlayComponent,
+    GraphViewComponent,
+  ],
 })
 export class DefaultGraphViewComponent extends SubscriptionDestroy {
   @Input()

@@ -4,20 +4,6 @@
   display: contents;
 }
 
-.anchor {
-  height: 1px;
-  width: 1px;
-  background-color: transparent;
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-
-  &.center {
-    top: 0;
-    left: 50%;
-  }
-}
-
 .start-overlay {
   position: absolute;
   right: 16px;

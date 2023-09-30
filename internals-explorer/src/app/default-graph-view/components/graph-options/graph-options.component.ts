@@ -1,15 +1,29 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CodePrintingMethods } from '@ckompiler/ckompiler';
-import { FormControl } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { map, Observable } from 'rxjs';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { currentPrintingType, hideGraphUI, isSpillOnly } from '@cki-settings';
+import { CommonModule } from '@angular/common';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { SelectFunctionComponent } from '@cki-graph-view/components/select-function/select-function.component';
 
 @Component({
   selector: 'cki-graph-options',
   templateUrl: './graph-options.component.html',
   styleUrls: ['./graph-options.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatCheckboxModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    SelectFunctionComponent,
+  ],
 })
 export class GraphOptionsComponent {
   @Input()

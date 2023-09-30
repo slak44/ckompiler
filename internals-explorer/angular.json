@@ -9,10 +9,15 @@
         "@schematics/angular:component": {
           "changeDetection": "OnPush",
           "style": "scss",
-          "displayBlock": true
+          "displayBlock": true,
+          "standalone": true
+        },
+        "@schematics/angular:directive": {
+          "standalone": true
         },
         "@schematics/angular:application": {
-          "strict": true
+          "strict": true,
+          "standalone": true
         }
       },
       "root": "",

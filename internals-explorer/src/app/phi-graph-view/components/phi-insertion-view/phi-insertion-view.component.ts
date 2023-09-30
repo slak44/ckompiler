@@ -24,6 +24,17 @@ import {
   phiInsertionTransform,
   phiInsertionVariableId,
 } from '@cki-settings';
+import { CommonModule } from '@angular/common';
+import { GraphViewComponent } from '@cki-graph-view/components/graph-view/graph-view.component';
+import { SelectFunctionComponent } from '@cki-graph-view/components/select-function/select-function.component';
+import { SelectVariableComponent } from '@cki-graph-view/components/select-variable/select-variable.component';
+import { VarComponent } from '../../../algorithm-stepper/components/var/var.component';
+import {
+  StepperControlsComponent
+} from '../../../algorithm-stepper/components/stepper-controls/stepper-controls.component';
+import { InsertionAlgorithmComponent } from '../insertion-algorithm/insertion-algorithm.component';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'cki-phi-insertion-view',
@@ -36,6 +47,18 @@ import {
     AlgorithmStepService,
     PhiInsertionStateService,
     ReplaceNodeContentsHook,
+  ],
+  standalone: true,
+  imports: [
+    CommonModule,
+    GraphViewComponent,
+    SelectFunctionComponent,
+    SelectVariableComponent,
+    VarComponent,
+    StepperControlsComponent,
+    InsertionAlgorithmComponent,
+    MatButtonModule,
+    MatIconModule,
   ],
 })
 export class PhiInsertionViewComponent extends SubscriptionDestroy implements AfterViewInit {

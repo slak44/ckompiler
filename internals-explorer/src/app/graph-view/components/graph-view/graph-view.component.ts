@@ -48,6 +48,8 @@ import { getNodeById, getPolyDatumNodeId, runWithVariableVersions, setClassIf } 
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { currentTargetFunction, Setting } from '@cki-settings';
+import { CommonModule } from '@angular/common';
+import { ResizeObserverModule } from '@ng-web-apis/resize-observer';
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
@@ -60,6 +62,11 @@ function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   templateUrl: './graph-view.component.html',
   styleUrls: ['./graph-view.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+    ResizeObserverModule,
+  ],
 })
 export class GraphViewComponent extends SubscriptionDestroy implements AfterViewInit, OnDestroy {
   @Input()
@@ -237,7 +244,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
     currentTargetFunction.value$.pipe(
       skip(1),
-      takeUntil(this.rerender$)
+      takeUntil(this.rerender$),
     ).subscribe(() => {
       this.transformSetting!.update(null);
     });

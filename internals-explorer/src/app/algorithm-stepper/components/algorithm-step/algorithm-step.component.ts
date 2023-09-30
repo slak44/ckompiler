@@ -2,12 +2,17 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostBinding, Inp
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { takeUntil } from 'rxjs';
 import { AlgorithmContainerComponent } from '../algorithm-container/algorithm-container.component';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'cki-algorithm-step',
   templateUrl: './algorithm-step.component.html',
   styleUrls: ['./algorithm-step.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+  ],
 })
 export class AlgorithmStepComponent extends SubscriptionDestroy implements OnInit {
   @HostBinding('class.active')

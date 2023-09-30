@@ -3,12 +3,21 @@ import { Observable } from 'rxjs';
 import { Diagnostic, DiagnosticsStats } from '@ckompiler/ckompiler';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CompileService } from '@cki-graph-view/services/compile.service';
+import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'cki-diagnostic-list',
   templateUrl: './diagnostic-list.component.html',
   styleUrls: ['./diagnostic-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatIconModule,
+    MatButtonModule,
+  ],
 })
 export class DiagnosticListComponent {
   public readonly allDiagnostics$: Observable<Diagnostic[]> = this.compileService.allDiagnostics$;

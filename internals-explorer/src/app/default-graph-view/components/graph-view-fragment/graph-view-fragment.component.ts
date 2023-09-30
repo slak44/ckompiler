@@ -3,12 +3,19 @@ import { FRAGMENT_COMPONENT, FragmentComponent } from '@cki-graph-view/models/fr
 import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import { map, Observable } from 'rxjs';
 import { isaType } from '@cki-settings';
+import { CommonModule } from '@angular/common';
+import { HighlightModule } from 'ngx-highlightjs';
 
 @Component({
   selector: 'cki-graph-view-fragment',
   templateUrl: './graph-view-fragment.component.html',
   styleUrls: ['./graph-view-fragment.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+    HighlightModule,
+  ],
 })
 export class GraphViewFragmentComponent implements FragmentComponent {
   public static provider: ValueProvider = {

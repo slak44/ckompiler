@@ -12,6 +12,7 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { range, sumBy } from 'lodash-es';
 import { phaseInOut } from '@cki-utils/phase-in-out';
 import { hasTransparency } from '@cki-settings';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'cki-algorithm-container',
@@ -19,6 +20,10 @@ import { hasTransparency } from '@cki-settings';
   styleUrls: ['./algorithm-container.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [phaseInOut],
+  standalone: true,
+  imports: [
+    CommonModule,
+  ],
 })
 export class AlgorithmContainerComponent extends SubscriptionDestroy implements OnInit, AfterContentChecked {
   @HostBinding('class.disable-transparency')

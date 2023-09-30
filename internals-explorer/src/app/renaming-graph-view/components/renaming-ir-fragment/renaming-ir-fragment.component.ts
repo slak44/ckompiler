@@ -16,6 +16,7 @@ import { AlgorithmStepService } from '../../../algorithm-stepper/services/algori
 import { RenamingStep } from '../../models/renaming-step.model';
 import { getPhiRenameText, getRenameText, PhiInstruction, StoreMemory, Variable } from '@ckompiler/ckompiler';
 import { getNodeById, replaceVarInText } from '@cki-graph-view/utils';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'cki-renaming-ir-fragment',
@@ -23,6 +24,10 @@ import { getNodeById, replaceVarInText } from '@cki-graph-view/utils';
   styleUrls: ['./renaming-ir-fragment.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: true,
+  imports: [
+    CommonModule,
+  ],
 })
 export class RenamingIrFragmentComponent implements FragmentComponent, OnInit {
   public static provider: ValueProvider = {

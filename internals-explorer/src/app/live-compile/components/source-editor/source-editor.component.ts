@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
-import { FormControl } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { first, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { editor, MarkerSeverity } from 'monaco-editor';
@@ -10,12 +10,20 @@ import { CompileService } from '@cki-graph-view/services/compile.service';
 import { monacoFontSize, monacoViewState, sourceCode } from '@cki-settings';
 import IMarkerData = editor.IMarkerData;
 import EditorOption = editor.EditorOption;
+import { CommonModule } from '@angular/common';
+import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 
 @Component({
   selector: 'cki-source-editor',
   templateUrl: './source-editor.component.html',
   styleUrls: ['./source-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+    MonacoEditorModule,
+    ReactiveFormsModule,
+  ],
 })
 export class SourceEditorComponent extends SubscriptionDestroy implements OnInit {
   @Input()

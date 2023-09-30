@@ -7,6 +7,7 @@ import { filter, ReplaySubject, takeUntil } from 'rxjs';
 
 @Directive({
   selector: 'mat-tab-group[ckiRoutedTabGroup]',
+  standalone: true,
 })
 export class RoutedTabGroupDirective extends SubscriptionDestroy implements AfterContentInit {
   @ContentChildren(RoutedTabDirective)
@@ -40,7 +41,7 @@ export class RoutedTabGroupDirective extends SubscriptionDestroy implements Afte
     });
 
     this.navigationSubject.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(() => {
       let child = this.router.routerState.snapshot.root;
       while (child.firstChild !== null) {

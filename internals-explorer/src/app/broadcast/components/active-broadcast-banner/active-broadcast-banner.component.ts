@@ -3,12 +3,17 @@ import { BroadcastService } from '../../services/broadcast.service';
 import { map, Observable } from 'rxjs';
 import { BROADCAST_ROUTE } from '@cki-utils/routes';
 import { BroadcastViewStateService } from '../../services/broadcast-view-state.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'cki-active-broadcast-banner',
   templateUrl: './active-broadcast-banner.component.html',
   styleUrls: ['./active-broadcast-banner.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule
+  ]
 })
 export class ActiveBroadcastBannerComponent {
   public readonly publishUrl$: Observable<string | undefined> = this.broadcastService.broadcastPublishId$.pipe(

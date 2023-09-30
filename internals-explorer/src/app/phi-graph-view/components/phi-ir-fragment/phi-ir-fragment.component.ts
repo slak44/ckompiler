@@ -15,6 +15,7 @@ import { ReplaceNodeContentsHook } from '@cki-graph-view/graph-view-hooks/replac
 import { AlgorithmPhase, AlgorithmStepService } from '../../../algorithm-stepper/services/algorithm-step.service';
 import { replaceVarInText } from '@cki-graph-view/utils';
 import { PhiInstruction } from '@ckompiler/ckompiler';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'cki-phi-ir-fragment',
@@ -22,6 +23,10 @@ import { PhiInstruction } from '@ckompiler/ckompiler';
   styleUrls: ['./phi-ir-fragment.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: true,
+  imports: [
+    CommonModule,
+  ],
 })
 export class PhiIrFragmentComponent implements FragmentComponent, OnInit {
   public static provider: ValueProvider = {

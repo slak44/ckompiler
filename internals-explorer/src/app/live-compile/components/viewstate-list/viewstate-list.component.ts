@@ -2,18 +2,42 @@ import { ChangeDetectionStrategy, Component, OnInit, TemplateRef, ViewChild } fr
 import { filter, Observable, takeUntil } from 'rxjs';
 import { ViewStateListing, ViewStateMetadata } from '../../../settings/models/view-state.model';
 import { ViewStateService } from '../../../settings/services/view-state.service';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ShareViewstateDialogComponent } from '../share-viewstate-dialog/share-viewstate-dialog.component';
 import { recentPublicShareLinks } from '@cki-settings';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { BroadcastViewStateService } from '../../../broadcast/services/broadcast-view-state.service';
 import { BroadcastId, BroadcastService } from '../../../broadcast/services/broadcast.service';
+import { CommonModule } from '@angular/common';
+import { MatRippleModule } from '@angular/material/core';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatBadgeModule } from '@angular/material/badge';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'cki-viewstate-list',
   templateUrl: './viewstate-list.component.html',
   styleUrls: ['./viewstate-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatRippleModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatDividerModule,
+    MatTooltipModule,
+    MatBadgeModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+  ],
 })
 export class ViewstateListComponent extends SubscriptionDestroy implements OnInit {
   @ViewChild('newStateConfirm') private readonly newStateConfirm!: TemplateRef<unknown>;

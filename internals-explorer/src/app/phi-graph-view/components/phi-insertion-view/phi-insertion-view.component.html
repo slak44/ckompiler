@@ -7,8 +7,6 @@
                 [ngSwitch]="phase$ | async"
                 [transformSetting]="phiInsertionTransform"
                 [selectedIdSetting]="phiInsertionSelectedId">
-  <div class="anchor center" tourAnchor="anchor-center"></div>
-
   <div *ngSwitchCase="algorithmPhase.PREPARING" class="start-overlay">
     <cki-select-function [instance]="instance"></cki-select-function>
 
@@ -18,7 +16,7 @@
   </div>
 
   <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
-    <div class="progress-overlay" tourAnchor="anchor-progress-overlay">
+    <div class="progress-overlay">
       <span>Blocks left to process:</span>
       <div class="worklist large-overlay-text">
         W = {{ '{' }}

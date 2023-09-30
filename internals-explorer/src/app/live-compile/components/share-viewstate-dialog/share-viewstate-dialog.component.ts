@@ -1,18 +1,31 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Inject } from '@angular/core';
 import { ViewStateListing } from '../../../settings/models/view-state.model';
-import { MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { ViewStateService } from '../../../settings/services/view-state.service';
-import { MatSlideToggleChange } from '@angular/material/slide-toggle';
+import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { BehaviorSubject, finalize, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { environment } from '../../../../environments/environment';
 import { PUBLIC_SHARE_ROUTE } from '@cki-utils/routes';
+import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { MatRippleModule } from '@angular/material/core';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'cki-share-viewstate-dialog',
   templateUrl: './share-viewstate-dialog.component.html',
   styleUrls: ['./share-viewstate-dialog.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatIconModule,
+    MatRippleModule,
+    MatSlideToggleModule,
+    MatButtonModule,
+  ],
 })
 export class ShareViewstateDialogComponent extends SubscriptionDestroy {
   private readonly loadingSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);

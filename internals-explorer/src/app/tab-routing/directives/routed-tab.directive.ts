@@ -3,6 +3,7 @@ import { MatTab } from '@angular/material/tabs';
 
 @Directive({
   selector: 'mat-tab[ckiRoutedTab]',
+  standalone: true,
 })
 export class RoutedTabDirective {
   // eslint-disable-next-line @angular-eslint/no-input-rename
