@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { ViewStateService } from '../../settings/services/view-state.service';
 import { recentPublicShareLinks } from '@cki-settings';
 import { extractMetadataFromState } from '../../settings/models/view-state.model';
-import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { catchError, map, Observable, of } from 'rxjs';
 import { GRAPH_VIEW_ROUTE } from '@cki-utils/routes';
 import { SnackbarService } from '../../material-utils/services/snackbar.service';
@@ -14,7 +14,7 @@ export const STATE_ID_PARAM = 'stateId';
 @Injectable({
   providedIn: 'root',
 })
-export class PublicShareRedirectGuard implements CanActivate {
+export class PublicShareRedirectGuard  {
   constructor(
     private readonly viewStateService: ViewStateService,
     private readonly router: Router,

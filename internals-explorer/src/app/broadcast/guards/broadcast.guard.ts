@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable } from 'rxjs';
 import { BroadcastViewStateService } from '../services/broadcast-view-state.service';
 import { BroadcastId } from '../services/broadcast.service';
@@ -10,7 +10,7 @@ export const BROADCAST_ID_PARAM = 'broadcastId';
 @Injectable({
   providedIn: 'root',
 })
-export class BroadcastGuard implements CanActivate {
+export class BroadcastGuard  {
   constructor(
     private readonly broadcastViewStateService: BroadcastViewStateService,
     private readonly router: Router,
