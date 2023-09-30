@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { AlgorithmStepService } from '../../services/algorithm-step.service';
-import { MatSliderChange } from '@angular/material/slider';
 import { Observable } from 'rxjs';
 
 @Component({

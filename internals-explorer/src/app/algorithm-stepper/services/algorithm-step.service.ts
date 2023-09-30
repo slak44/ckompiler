@@ -34,7 +34,7 @@ export class AlgorithmStepService {
   }
 
   private getCurrentStepValue(): number {
-    return this.stepIdxSetting.formControl.value as number | null ?? 0;
+    return this.stepIdxSetting.formControl.value ?? 0;
   }
 
   public start(): void {
