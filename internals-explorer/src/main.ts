@@ -9,10 +9,10 @@ import { authHttpInterceptorFn, provideAuth0 } from '@auth0/auth0-angular';
 import { environment } from './environments/environment';
 import { AUTHENTICATED_ROUTE } from '@cki-utils/routes';
 import { importProvidersFrom } from '@angular/core';
-import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { monacoLoader } from '@cki-utils/monaco-loader';
 import { HIGHLIGHT_OPTIONS } from 'ngx-highlightjs';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarConfig, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MonacoEditorModule } from 'ng-monaco-editor';
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -20,7 +20,7 @@ bootstrapApplication(AppComponent, {
     provideAnimations(),
     provideHttpClient(withInterceptors([
       apiInterceptor,
-      authHttpInterceptorFn
+      authHttpInterceptorFn,
     ])),
     provideAuth0({
       domain: environment.oauth.domain,
@@ -47,7 +47,7 @@ bootstrapApplication(AppComponent, {
       },
     }),
     importProvidersFrom(MonacoEditorModule.forRoot({
-      onMonacoLoad: monacoLoader,
+      dynamicImport: () => import('monaco-editor').then(monacoLoader),
     })),
     {
       provide: HIGHLIGHT_OPTIONS,

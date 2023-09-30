@@ -2,13 +2,12 @@ import type * as Monaco from 'monaco-editor';
 import { BehaviorSubject, Observable, ReplaySubject } from 'rxjs';
 
 const monacoLoadSubject: ReplaySubject<typeof Monaco> = new ReplaySubject(1);
-const monacoVisibleSubject: BehaviorSubject<boolean> = new BehaviorSubject(false);
+const monacoThemeLoadedSubject: BehaviorSubject<boolean> = new BehaviorSubject(false);
 
 export const monacoLoaded$: Observable<typeof Monaco> = monacoLoadSubject;
-export const monacoVisible$: Observable<boolean> = monacoVisibleSubject;
+export const monacoThemeLoaded$: Observable<boolean> = monacoThemeLoadedSubject;
 
-export async function monacoLoader(): Promise<void> {
-  const monaco = window.monaco;
+export async function monacoLoader(monaco: typeof Monaco): Promise<typeof Monaco> {
   monacoLoadSubject.next(monaco);
 
   const theme = await import('node_modules/vscode-theme-darcula/themes/darcula.json');
@@ -33,5 +32,7 @@ export async function monacoLoader(): Promise<void> {
 
   monaco.editor.defineTheme('darcula', definedTheme);
   monaco.editor.setTheme('darcula');
-  monacoVisibleSubject.next(true);
+  monacoThemeLoadedSubject.next(true);
+
+  return monaco;
 }

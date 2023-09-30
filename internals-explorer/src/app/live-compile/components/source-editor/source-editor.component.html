@@ -1,4 +1,4 @@
-<ngx-monaco-editor [class.loading]="(monacoVisible$ | async) !== true"
-                   [options]="monacoOptions"
-                   [formControl]="sourceControl"
-                   (onInit)="onEditorChange($event)"></ngx-monaco-editor>
+<ng-monaco-editor [class.loading]="(monacoThemeLoaded$ | async) !== true"
+                  [options]="monacoOptions"
+                  [formControl]="sourceControl"
+                  (editorChange)="onEditorChange($event)"></ng-monaco-editor>

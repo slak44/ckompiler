@@ -5,13 +5,13 @@ import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { editor, MarkerSeverity } from 'monaco-editor';
 import type * as Monaco from 'monaco-editor';
 import { closedRangeLength, DiagnosticKind } from '@ckompiler/ckompiler';
-import { monacoLoaded$, monacoVisible$ } from '@cki-utils/monaco-loader';
+import { monacoLoaded$, monacoThemeLoaded$ } from '@cki-utils/monaco-loader';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { monacoFontSize, monacoViewState, sourceCode } from '@cki-settings';
 import IMarkerData = editor.IMarkerData;
 import EditorOption = editor.EditorOption;
 import { CommonModule } from '@angular/common';
-import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
+import { MonacoEditorModule } from 'ng-monaco-editor';
 
 @Component({
   selector: 'cki-source-editor',
@@ -21,8 +21,8 @@ import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
   standalone: true,
   imports: [
     CommonModule,
-    MonacoEditorModule,
     ReactiveFormsModule,
+    MonacoEditorModule,
   ],
 })
 export class SourceEditorComponent extends SubscriptionDestroy implements OnInit {
@@ -39,7 +39,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     tabSize: 2,
   };
 
-  public readonly monacoVisible$: Observable<boolean> = monacoVisible$;
+  public readonly monacoThemeLoaded$: Observable<boolean> = monacoThemeLoaded$;
 
   public readonly sourceControl: FormControl<string> = sourceCode.formControl;
 
