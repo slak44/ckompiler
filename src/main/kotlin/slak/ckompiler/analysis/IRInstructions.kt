@@ -19,6 +19,8 @@ private val logger = KotlinLogging.logger {}
 @JsExport
 sealed class IRInstruction {
   abstract val result: LoadableValue
+
+  abstract override fun toString(): String
 }
 
 /**
