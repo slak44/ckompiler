@@ -1,1 +1,3 @@
-<ng-monaco-editor [options]="monacoOptions" [formControl]="sourceControl" (editorChange)="onEditorChange($event)"></ng-monaco-editor>
+<ngx-monaco-editor [options]="monacoOptions"
+                   [formControl]="sourceControl"
+                   (onInit)="onEditorChange($event)"></ngx-monaco-editor>

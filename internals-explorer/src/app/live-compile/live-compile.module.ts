@@ -6,7 +6,7 @@ import { SourceEditorComponent } from './components/source-editor/source-editor.
 import { LiveCompileRoutingModule } from './live-compile-routing.module';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MonacoEditorModule } from 'ng-monaco-editor';
+import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TabRoutingModule } from '../tab-routing/tab-routing.module';
 import { MatChipsModule } from '@angular/material/chips';

@@ -38,11 +38,11 @@
                 "glob": "*(graphvizlib.wasm|index.min.js)",
                 "input": "node_modules/@hpcc-js/wasm/dist/",
                 "output": "/assets/graphviz-wasm"
-              }
+              },
+              { "glob": "**/*", "input": "node_modules/monaco-editor", "output": "/assets/monaco/" }
             ],
             "styles": [
-              "src/styles.scss",
-              "node_modules/monaco-editor/min/vs/editor/editor.main.css"
+              "src/styles.scss"
             ],
             "stylePreprocessorOptions": {
               "includePaths": [
@@ -124,7 +124,8 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "src/favicon.ico",
-              "src/assets"
+              "src/assets",
+              { "glob": "**/*", "input": "node_modules/monaco-editor", "output": "/assets/monaco/" }
             ],
             "styles": [
               "src/styles.scss"
@@ -147,6 +148,7 @@
   "cli": {
     "schematicCollections": [
       "@angular-eslint/schematics"
-    ]
+    ],
+    "analytics": "c2e1d9bb-7dbe-4c7d-bbdb-212bbaa8cf6e"
   }
 }

@@ -1,15 +1,29 @@
 /* eslint-disable */
 import { Configuration } from 'webpack';
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+import * as MonacoWebpackPlugin from 'monaco-editor-webpack-plugin';
 
-export default {
+const config: Configuration = {
   module: {
     rules: [
       {
+        test: /node_modules\/.*?\.css$/,
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              url: false,
+            },
+          },
+        ],
+      },
+      {
         test: /\.ttf$/,
-        use: ['file-loader']
-      }
-    ]
+        use: ['file-loader'],
+      },
+    ],
   },
-  plugins: [new MonacoWebpackPlugin()]
-} as Configuration;
+  plugins: [new MonacoWebpackPlugin()],
+};
+
+export default config;
