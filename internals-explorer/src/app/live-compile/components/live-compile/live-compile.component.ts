@@ -6,7 +6,7 @@ import { DiagnosticsStats, ISAType } from '@ckompiler/ckompiler';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SettingsDialogComponent } from '../../../settings/components/settings-dialog/settings-dialog.component';
-import { FormControl } from '@angular/forms';
+import { UntypedFormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { isaType } from '@cki-settings';
@@ -35,7 +35,7 @@ export class LiveCompileComponent extends SubscriptionDestroy {
 
   public readonly isaTypeValues = ISAType.values();
 
-  public readonly isaTypeControl: FormControl = isaType.formControl;
+  public readonly isaTypeControl: UntypedFormControl = isaType.formControl;
 
   public readonly isaType$: Observable<ISAType> = isaType.value$;
 

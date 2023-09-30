@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { defaultFunctionName, hasTransparency } from '@cki-settings';
-import { FormControl } from '@angular/forms';
+import { UntypedFormControl } from '@angular/forms';
 
 @Component({
   selector: 'cki-settings-dialog',
@@ -9,8 +9,8 @@ import { FormControl } from '@angular/forms';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsDialogComponent {
-  public readonly transparencyControl: FormControl = hasTransparency.formControl;
-  public readonly defaultFunctionNameControl: FormControl = defaultFunctionName.formControl;
+  public readonly transparencyControl: UntypedFormControl = hasTransparency.formControl;
+  public readonly defaultFunctionNameControl: UntypedFormControl = defaultFunctionName.formControl;
 
   constructor() {
   }

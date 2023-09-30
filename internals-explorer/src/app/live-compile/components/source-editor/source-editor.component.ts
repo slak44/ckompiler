@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
-import { FormControl } from '@angular/forms';
+import { UntypedFormControl } from '@angular/forms';
 import { first, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import type * as Monaco from 'monaco-editor';
@@ -31,7 +31,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     tabSize: 2,
   };
 
-  public readonly sourceControl: FormControl = sourceCode.formControl;
+  public readonly sourceControl: UntypedFormControl = sourceCode.formControl;
 
   private lastUnloadListener: (() => void) | undefined = undefined;
 

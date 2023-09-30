@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CodePrintingMethods } from '@ckompiler/ckompiler';
-import { FormControl } from '@angular/forms';
+import { UntypedFormControl } from '@angular/forms';
 import { map, Observable } from 'rxjs';
 import { CompilationInstance } from '@cki-graph-view/compilation-instance';
 import { currentPrintingType, hideGraphUI, isSpillOnly } from '@cki-settings';
@@ -17,15 +17,15 @@ export class GraphOptionsComponent {
 
   public readonly codePrintingMethods: CodePrintingMethods[] = CodePrintingMethods.values();
 
-  public readonly printingTypeControl: FormControl = currentPrintingType.formControl;
+  public readonly printingTypeControl: UntypedFormControl = currentPrintingType.formControl;
 
-  public readonly uiHiddenControl: FormControl = hideGraphUI.formControl;
+  public readonly uiHiddenControl: UntypedFormControl = hideGraphUI.formControl;
 
   public readonly isUIVisible$: Observable<boolean> = hideGraphUI.value$.pipe(
     map(isHidden => !isHidden),
   );
 
-  public readonly spillOnlyControl: FormControl = isSpillOnly.formControl;
+  public readonly spillOnlyControl: UntypedFormControl = isSpillOnly.formControl;
 
   constructor() {
   }

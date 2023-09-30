@@ -2,7 +2,7 @@ import { distinctUntilChanged, fromEvent, Observable, shareReplay } from 'rxjs';
 import { identity } from 'lodash-es';
 import { editor } from 'monaco-editor';
 import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
-import { FormControl } from '@angular/forms';
+import { UntypedFormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { ZoomTransform } from 'd3-zoom';
@@ -33,7 +33,7 @@ export enum Settings {
 }
 
 export class Setting<T> {
-  public readonly formControl: FormControl = new FormControl(this.snapshot);
+  public readonly formControl: UntypedFormControl = new UntypedFormControl(this.snapshot);
 
   public readonly value$: Observable<T> = controlValueStream<T>(this.formControl).pipe(
     distinctUntilChanged(),
