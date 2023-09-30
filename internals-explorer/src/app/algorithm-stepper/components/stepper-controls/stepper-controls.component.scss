@@ -1,8 +1,9 @@
 :host {
   display: flex;
   align-items: center;
+  padding-top: 16px;
 
-  .mat-slider {
+  .mat-mdc-slider {
     flex-grow: 1;
   }
 }

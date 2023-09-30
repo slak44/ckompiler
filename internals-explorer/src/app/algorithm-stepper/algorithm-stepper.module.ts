@@ -4,10 +4,10 @@ import { AlgorithmStepComponent } from './components/algorithm-step/algorithm-st
 import { VarComponent } from './components/var/var.component';
 import { AlgorithmContainerComponent } from './components/algorithm-container/algorithm-container.component';
 import { StepperControlsComponent } from './components/stepper-controls/stepper-controls.component';
-import { MatLegacyButtonModule as MatButtonModule } from '@angular/material/legacy-button';
-import { MatLegacyTooltipModule as MatTooltipModule } from '@angular/material/legacy-tooltip';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
-import { MatLegacySliderModule as MatSliderModule } from '@angular/material/legacy-slider';
+import { MatSliderModule } from '@angular/material/slider';
 
 @NgModule({
   declarations: [

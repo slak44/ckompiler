@@ -8,7 +8,7 @@
 </h2>
 
 <mat-dialog-content>
-  <mat-slide-toggle [disabled]="loading$ | async"
+  <mat-slide-toggle [disabled]="!!(loading$ | async)"
                     [checked]="viewStateListing.publicShareEnabled"
                     (change)="configurePublicShare($event)">
     Enable public sharing

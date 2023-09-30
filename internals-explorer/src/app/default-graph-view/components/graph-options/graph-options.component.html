@@ -8,7 +8,7 @@
 
 <cki-select-function [hidden]="(isUIVisible$ | async) === false" [instance]="instance"></cki-select-function>
 
-<mat-form-field *ngIf="isUIVisible$ | async" appearance="standard" color="accent">
+<mat-form-field *ngIf="isUIVisible$ | async" color="accent">
   <mat-label>Block content</mat-label>
   <mat-select [formControl]="printingTypeControl">
     <mat-option *ngFor="let print of codePrintingMethods" [value]="print">

@@ -16,7 +16,7 @@
 
   <cki-active-broadcast-banner></cki-active-broadcast-banner>
 
-  <mat-form-field class="isa-type-selector" appearance="standard" color="accent">
+  <mat-form-field class="isa-type-selector standard-appearance" color="accent" subscriptSizing="dynamic">
     <mat-label>Target ISA</mat-label>
     <mat-select [formControl]="isaTypeControl">
       <mat-option *ngFor="let isaType of isaTypeValues" [value]="isaType">
@@ -36,7 +36,7 @@
   </mat-sidenav>
 
   <mat-sidenav-content>
-    <mat-tab-group ckiRoutedTabGroup class="fill-height">
+    <mat-tab-group ckiRoutedTabGroup preserveContent class="fill-height">
       <mat-tab [ckiRoutedTab]="SOURCE_CODE_PATH">
         <div *matTabLabel class="tab-label">
           <mat-icon>code</mat-icon>
@@ -50,10 +50,10 @@
         <div *matTabLabel class="tab-label">
           <mat-icon>error</mat-icon>
           Diagnostics
-          <mat-chip-list *ngIf="diagnosticStats$ | async as stats" [selectable]="false">
-            <mat-chip *ngIf="stats.errors" class="errors">{{ stats.errors }}</mat-chip>
-            <mat-chip *ngIf="stats.warnings" class="warnings">{{ stats.warnings }}</mat-chip>
-          </mat-chip-list>
+          <mat-chip-set *ngIf="diagnosticStats$ | async as stats">
+            <mat-chip *ngIf="stats.errors" class="error-chip">{{ stats.errors }}</mat-chip>
+            <mat-chip *ngIf="stats.warnings" class="warning-chip">{{ stats.warnings }}</mat-chip>
+          </mat-chip-set>
         </div>
 
         <cki-diagnostic-list></cki-diagnostic-list>

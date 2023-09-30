@@ -7,10 +7,10 @@ import { GraphOptionsComponent } from './components/graph-options/graph-options.
 import { DefaultGraphViewComponent } from './components/default-graph-view/default-graph-view.component';
 import { GraphUiOverlayComponent } from './components/graph-ui-overlay/graph-ui-overlay.component';
 import { HighlightModule } from 'ngx-highlightjs';
-import { MatLegacyCheckboxModule as MatCheckboxModule } from '@angular/material/legacy-checkbox';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ReactiveFormsModule } from '@angular/forms';
-import { MatLegacyFormFieldModule as MatFormFieldModule } from '@angular/material/legacy-form-field';
-import { MatLegacySelectModule as MatSelectModule } from '@angular/material/legacy-select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 
 @NgModule({
   declarations: [

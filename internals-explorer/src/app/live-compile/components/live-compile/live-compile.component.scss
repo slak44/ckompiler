@@ -22,7 +22,6 @@
 }
 
 .isa-type-selector {
-  margin-top: 8px;
   margin-left: auto;
   font-size: 14px;
   line-height: 20px;
@@ -50,33 +49,32 @@ cki-active-broadcast-banner {
   background-color: $graph-background;
 }
 
-.mat-tab-group {
+.mat-mdc-tab-group {
   height: 100%;
 }
 
 .tab-label {
   display: flex;
   align-items: center;
+  color: $light-secondary-text;
 
   .mat-icon {
     margin-right: 8px;
   }
 }
 
-.mat-chip-list {
+.mat-mdc-chip-set {
   margin-left: 8px;
 
-  .mat-chip {
-    pointer-events: none;
-
-    &.errors {
-      color: $dark-primary-text;
-      background-color: color.adjust($error-red, $whiteness: 20%);
+  .mat-mdc-chip {
+    &.error-chip {
+      --mdc-chip-elevated-container-color: #{color.adjust($error-red, $whiteness: 20%)};
+      --mdc-chip-label-text-color: #{$dark-primary-text};
     }
 
-    &.warnings {
-      color: $dark-primary-text;
-      background-color: color.adjust($warning-amber, $whiteness: 20%);
+    &.warning-chip {
+      --mdc-chip-elevated-container-color: #{color.adjust($warning-amber, $whiteness: 20%)};
+      --mdc-chip-label-text-color: #{$dark-primary-text};
     }
   }
 }

@@ -1,4 +1,4 @@
-<mat-form-field appearance="standard" color="accent" class="no-top-padding">
+<mat-form-field color="accent" subscriptSizing="dynamic">
   <mat-label>Target function</mat-label>
   <mat-select (valueChange)="instance.updateSelected($event)" [value]="instance.cfg$ | async">
     <mat-option *ngFor="let cfg of instance.cfgs$ | async" [value]="cfg">

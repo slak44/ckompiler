@@ -3,12 +3,12 @@ import { CommonModule } from '@angular/common';
 import { GraphViewComponent } from './components/graph-view/graph-view.component';
 import { ResizeObserverModule } from '@ng-web-apis/resize-observer';
 import { SelectVariableComponent } from './components/select-variable/select-variable.component';
-import { MatLegacyFormFieldModule as MatFormFieldModule } from '@angular/material/legacy-form-field';
-import { MatLegacySelectModule as MatSelectModule } from '@angular/material/legacy-select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { ReactiveFormsModule } from '@angular/forms';
-import { MatLegacyTooltipModule as MatTooltipModule } from '@angular/material/legacy-tooltip';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
-import { MatLegacyButtonModule as MatButtonModule } from '@angular/material/legacy-button';
+import { MatButtonModule } from '@angular/material/button';
 import { SelectFunctionComponent } from './components/select-function/select-function.component';
 
 @NgModule({

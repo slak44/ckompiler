@@ -3,10 +3,14 @@
   flex-direction: column;
 }
 
+.mat-mdc-form-field {
+  margin-bottom: 8px;
+}
+
 .tooltip-container {
   display: block;
 
-  .mat-raised-button {
+  .mat-mdc-raised-button {
     width: 100%;
 
     mat-icon {

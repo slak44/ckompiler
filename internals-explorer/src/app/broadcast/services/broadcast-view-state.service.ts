@@ -21,7 +21,7 @@ import {
 import { ViewStateNonMetadataDelta } from '../../settings/models/view-state.model';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { InitialUserStateService } from '../../settings/services/initial-user-state.service';
-import { MatLegacySnackBar as MatSnackBar } from '@angular/material/legacy-snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { BroadcastMessageType, ViewStateMessage } from '../models/broadcast-message.model';
 import { SnackbarService } from '../../material-utils/services/snackbar.service';
 

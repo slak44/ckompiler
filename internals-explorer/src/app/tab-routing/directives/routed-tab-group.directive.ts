@@ -1,7 +1,7 @@
 import { AfterContentInit, ContentChildren, Directive, QueryList } from '@angular/core';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import { RoutedTabDirective } from './routed-tab.directive';
-import { MatLegacyTabGroup as MatTabGroup } from '@angular/material/legacy-tabs';
+import { MatTabGroup } from '@angular/material/tabs';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { filter, ReplaySubject, takeUntil } from 'rxjs';
 

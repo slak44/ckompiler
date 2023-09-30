@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { AlgorithmStepService } from '../../services/algorithm-step.service';
-import { MatLegacySliderChange as MatSliderChange } from '@angular/material/legacy-slider';
+import { MatSliderChange } from '@angular/material/slider';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -20,8 +20,8 @@ export class StepperControlsComponent {
   ) {
   }
 
-  public currentStepSliderChange(sliderChange: MatSliderChange): void {
-    this.algorithmStepService.setStep((sliderChange.value ?? 0) - 1);
+  public currentStepSliderChange(value: number | null): void {
+    this.algorithmStepService.setStep((value ?? 0) - 1);
   }
 
   public prevStep(): void {

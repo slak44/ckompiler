@@ -20,6 +20,7 @@ $internals-explorer-theme: mat.define-dark-theme((
 $primary-default: map-get($internals-explorer-primary, "default");
 $accent-default: map-get($internals-explorer-accent, "default");
 $accent-lighter: map-get($internals-explorer-accent, "lighter");
+$text: map-get($internals-explorer-accent, "text");
 $accent-text: map-get($internals-explorer-accent, "lighter-contrast");
 
 $hover-alpha: 0.2;

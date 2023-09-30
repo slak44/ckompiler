@@ -5,26 +5,29 @@
   display: block;
 }
 
-.mat-dialog-title {
+.mat-mdc-dialog-title {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: baseline;
+
+  $icon-size: 48px;
 
   mat-icon {
-    width: 48px;
-    height: 48px;
-    line-height: 48px;
+    width: $icon-size;
+    height: $icon-size;
+    line-height: $icon-size;
     text-align: center;
     border-radius: 8px;
+    margin-left: auto;
   }
 }
 
-.mat-dialog-content {
+.mat-mdc-dialog-content {
   padding-top: 8px;
-  padding-bottom: 4px;
+  padding-bottom: 16px;
 }
 
-.mat-slide-toggle {
+.mat-mdc-slide-toggle {
+  margin-top: 8px;
   margin-bottom: 16px;
 }
 
