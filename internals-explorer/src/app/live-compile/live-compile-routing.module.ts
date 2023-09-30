@@ -14,11 +14,11 @@ const routes: Routes = [
     path: '',
     component: LiveCompileComponent,
     children: [
-      { path: SOURCE_CODE_PATH },
-      { path: DIAGNOSTICS_PATH },
-      { path: CFG_PATH },
-      { path: PHI_PATH },
-      { path: RENAME_PATH },
+      { path: SOURCE_CODE_PATH, children: [] },
+      { path: DIAGNOSTICS_PATH, children: [] },
+      { path: CFG_PATH, children: [] },
+      { path: PHI_PATH, children: [] },
+      { path: RENAME_PATH, children: [] },
     ],
   },
 ];
