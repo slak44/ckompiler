@@ -8,9 +8,6 @@ actual class DiagnosticColors actual constructor(useColors: Boolean) {
 }
 
 @JsModule("printj")
-@JsNonModule
-external object PrintJ {
-  fun vsprintf(format: String, vararg args: dynamic): String
-}
+external fun vsprintf(format: String, vararg args: dynamic): String
 
-actual fun String.format(vararg args: Any): String = PrintJ.vsprintf(this, args)
+actual fun String.format(vararg args: Any): String = vsprintf(this, args)

@@ -79,34 +79,67 @@ abstract class PropsFileJsTask : DefaultTask() {
   }
 }
 
-val jsBuildOutputDir = buildPath(buildDir, "dist", "js", "productionExecutable")
+fun registerPropsTask(name: String, buildOutputDir: File, dependency: String): TaskProvider<PropsFileJsTask> {
+  return tasks.register<PropsFileJsTask>(name) {
+    dependsOn(dependency, "jsProcessResources")
 
-val makePropsFileJs = "makePropsFileJs"
-tasks.register<PropsFileJsTask>(makePropsFileJs) {
-  dependsOn("jsBrowserProductionWebpack")
-
-  version = versionString
-  includeFolder = File(jsBuildOutputDir, "include")
-  output = File(jsBuildOutputDir, "ckompiler.json")
-}
-
-val fixDefinitionsFile: Task by tasks.creating {
-  doLast {
-    val tsDefinitions = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin", "ckompiler.d.ts")
-    val regex = Regex("any/\\*.*\\*/", RegexOption.UNIX_LINES)
-    val returnRegex = Regex("\\): any/\\*.*\\*/;", RegexOption.UNIX_LINES)
-    val abstractRegex = Regex("abstract\\s+(?!class)", RegexOption.UNIX_LINES)
-    val interfaceCompanion = Regex("interface(.*?)\\{(.*?)static get Companion\\(\\): \\{.*?\\};(.*?)\\}", RegexOption.DOT_MATCHES_ALL)
-    val newContents = "// @ts-nocheck\n\n" + tsDefinitions.readText()
-        .replace(returnRegex, "): any;")
-        .replace(regex, "any")
-        .replace(abstractRegex, "")
-        .replace(interfaceCompanion, "interface$1{$2 $3}")
-
-    val destinationDefinitions = File(jsBuildOutputDir, "ckompiler.d.ts")
-    destinationDefinitions.writeText(newContents)
+    version = versionString
+    includeFolder = File(buildOutputDir, "include")
+    output = File(buildOutputDir, "ckompiler.json")
   }
 }
+
+val jsProductionExecBuildDir = buildPath(buildDir, "dist", "js", "productionExecutable")
+val jsProductionLibBuildDir = buildPath(buildDir, "dist", "js", "productionLibrary")
+
+val jsBrowserProductionExecutablePropsFile = registerPropsTask(
+    "jsBrowserProductionExecutablePropsFile",
+    jsProductionExecBuildDir,
+    "jsBrowserProductionWebpack"
+)
+
+val jsBrowserProductionLibraryPropsFile = registerPropsTask(
+    "jsBrowserProductionLibraryPropsFile",
+    jsProductionLibBuildDir,
+    "jsBrowserProductionLibraryDistribution"
+)
+
+val fixESImport: Task by tasks.creating {
+  doLast {
+    val jsModule = File(jsProductionLibBuildDir, "ckompiler.mjs")
+    val fixedImport = jsModule.readText()
+        .replace(Regex("import (\\S+) from 'printj';"), "import { vsprintf as $1 } from 'printj';")
+
+    jsModule.writeText(fixedImport)
+  }
+}
+
+val copyLibraryNodeModules: Task by tasks.creating {
+  doLast {
+    copy {
+      from(buildPath(buildDir, "js"))
+      into(jsProductionLibBuildDir)
+      include("node_modules/**")
+    }
+  }
+}
+
+fun createFixDefinitionsTask(targetDir: File): NamedDomainObjectContainerCreatingDelegateProvider<Task> {
+  return tasks.creating {
+    doLast {
+      val tsDefinitions = buildPath(buildDir, "js", "packages", "ckompiler", "kotlin", "ckompiler.d.ts")
+      val interfaceCompanion = Regex("interface(.*?)\\{(.*?)static get Companion\\(\\): \\{.*?\\};(.*?)\\}", RegexOption.DOT_MATCHES_ALL)
+      val newContents = tsDefinitions.readText()
+          .replace(interfaceCompanion, "interface$1{$2 $3}")
+
+      val destinationDefinitions = File(targetDir, "ckompiler.d.ts")
+      destinationDefinitions.writeText(newContents)
+    }
+  }
+}
+
+val fixLibraryDefinitionsFile: Task by createFixDefinitionsTask(jsProductionLibBuildDir)
+val fixBinaryDefinitionsFile: Task by createFixDefinitionsTask(jsProductionExecBuildDir)
 
 kotlin {
   jvm {
@@ -138,26 +171,39 @@ kotlin {
   js(IR) {
     useEsModules()
 
+    compilations["main"].packageJson {
+      customField("module", "ckompiler.mjs")
+      customField("peerDependencies", dependencies)
+    }
+
     tasks.withType<KotlinJsCompile>().configureEach {
       kotlinOptions {
         useEsClasses = true
       }
     }
 
+    binaries.library()
     binaries.executable()
 
-    browser {
-      webpackTask(Action {
-        finalizedBy(fixDefinitionsFile)
-      })
-    }
+    browser()
 
     generateTypeScriptDefinitions()
 
     tasks.getByName("jsProcessResources") {
       dependsOn(tasks.getByName("processResources"))
       dependsOn(tasks.getByName("processTestResources"))
-      finalizedBy(makePropsFileJs)
+    }
+
+    tasks.getByName("jsProductionLibraryCompileSync") {
+      finalizedBy(jsBrowserProductionLibraryPropsFile)
+      finalizedBy(fixESImport)
+      finalizedBy(copyLibraryNodeModules)
+      finalizedBy(fixLibraryDefinitionsFile)
+    }
+
+    tasks.getByName("jsProductionExecutableCompileSync") {
+      finalizedBy(jsBrowserProductionExecutablePropsFile)
+      finalizedBy(fixBinaryDefinitionsFile)
     }
   }
 
