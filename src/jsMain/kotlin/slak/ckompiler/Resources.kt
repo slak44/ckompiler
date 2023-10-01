@@ -1,8 +1,10 @@
 package slak.ckompiler
 
+external val ckompilerJson: dynamic
+
 actual fun readResource(resourcePath: String): String? {
   if (resourcePath == BuildProperties.propFileName) {
-    return JSON.stringify(js("require(\"./ckompiler.json\")"))
+    return JSON.stringify(ckompilerJson.default)
   } else {
     return null
   }

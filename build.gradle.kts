@@ -107,7 +107,8 @@ val jsBrowserProductionLibraryPropsFile = registerPropsTask(
 val fixESImport: Task by tasks.creating {
   doLast {
     val jsModule = File(jsProductionLibBuildDir, "ckompiler.mjs")
-    val fixedImport = jsModule.readText()
+    val propsFileImport = "import * as ckompilerJson from './ckompiler.json';\n"
+    val fixedImport = propsFileImport + jsModule.readText()
         .replace(Regex("import (\\S+) from 'printj';"), "import { vsprintf as $1 } from 'printj';")
 
     jsModule.writeText(fixedImport)
