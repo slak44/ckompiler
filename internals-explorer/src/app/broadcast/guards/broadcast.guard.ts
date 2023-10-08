@@ -10,5 +10,4 @@ export function broadcastGuard(route: ActivatedRouteSnapshot): UrlTree {
   inject(BroadcastViewStateService).subscribeToBroadcast(route.params[BROADCAST_ID_PARAM] as BroadcastId);
 
   return inject(Router).createUrlTree([`/${GRAPH_VIEW_ROUTE}`]);
-
 }
