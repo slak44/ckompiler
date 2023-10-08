@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { ViewstateListComponent } from '../viewstate-list/viewstate-list.component';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'cki-sidenav-content',
@@ -29,6 +30,10 @@ export class SidenavContentComponent {
   }
 
   public logout(): void {
-    this.authService.logout();
+    this.authService.logout({
+      logoutParams: {
+        returnTo: environment.rootUrl,
+      },
+    });
   }
 }
