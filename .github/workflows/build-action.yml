@@ -17,14 +17,14 @@ jobs:
       - name: Build with Gradle and cache
         uses: burrunan/gradle-cache-action@v1
         with:
-          arguments: jsBrowserDistribution
+          arguments: jsBrowserProductionLibraryDistribution
       - name: Archive JS artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ckompiler-js-dist
           path: |
-            build/dist/js/productionExecutable/
-            !build/dist/js/productionExecutable/test
+            build/dist/js/productionLibrary/
+            !build/dist/js/productionLibrary/test
   Build-Internals-Explorer-Angular:
     runs-on: ubuntu-latest
     needs: Build-ckompiler-JS-Distribution
@@ -44,7 +44,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ckompiler-js-dist
-          path: build/dist/js/productionExecutable/
+          path: build/dist/js/productionLibrary/
       - run: npm install
         working-directory: internals-explorer
       - name: Run eslint

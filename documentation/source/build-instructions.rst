@@ -25,8 +25,8 @@ The JUnit tests can be found in the `slak.test` package, in `src/test/kotlin`.
 JS Library
 ----------
 
-Run `./gradlew jsBrowserDistribution`.
-Output will be created in `build/dist/js/productionExecutable`.
+Run `./gradlew jsBrowserProductionLibraryDistribution`.
+Output will be created in `build/dist/js/productionLibrary`.
 
 Internals Explorer Angular App
 ------------------------------
