@@ -18,10 +18,10 @@ export class AlgorithmStepService {
   public readonly phase$: Observable<AlgorithmPhase> = this.phaseSubject;
 
   public readonly currentStep$: Observable<number> = this.stepIdxSetting.value$.pipe(
-    map((value, emissionIndex) => {
+    map((value) => {
       const stepIdx = value ?? 0;
 
-      if (emissionIndex === 0 && stepIdx !== 0) {
+      if (stepIdx !== 0) {
         setTimeout(() => this.phaseSubject.next(AlgorithmPhase.RUNNING));
       }
 
