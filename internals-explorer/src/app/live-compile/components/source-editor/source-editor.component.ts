@@ -2,16 +2,26 @@ import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { first, Observable, takeUntil } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
-import { editor, MarkerSeverity } from 'monaco-editor';
+import type { editor } from 'monaco-editor';
 import type * as Monaco from 'monaco-editor';
 import { closedRangeLength, DiagnosticKind } from '@ckompiler/ckompiler';
 import { monacoLoaded$, monacoThemeLoaded$ } from '@cki-utils/monaco-loader';
 import { CompileService } from '@cki-graph-view/services/compile.service';
 import { monacoFontSize, monacoViewState, sourceCode } from '@cki-settings';
-import IMarkerData = editor.IMarkerData;
-import EditorOption = editor.EditorOption;
 import { CommonModule } from '@angular/common';
 import { MonacoEditorModule } from 'ng-monaco-editor';
+
+// Duplicated enums from monaco-editor due to 'import type'/lazy loading
+enum MarkerSeverity {
+  Hint = 1,
+  Info = 2,
+  Warning = 4,
+  Error = 8
+}
+
+enum EditorOption {
+  fontSize = 51,
+}
 
 @Component({
   selector: 'cki-source-editor',
@@ -72,7 +82,7 @@ export class SourceEditorComponent extends SubscriptionDestroy implements OnInit
     this.compileService.allDiagnostics$.pipe(
       takeUntil(this.destroy$),
     ).subscribe(diagnostics => {
-      const markers = diagnostics.map((diagnostic): IMarkerData => {
+      const markers = diagnostics.map((diagnostic): editor.IMarkerData => {
         const data = diagnostic.dataFor(diagnostic.caret);
         const length = closedRangeLength(diagnostic.caret);
         const kind = diagnostic.id.kind.name;

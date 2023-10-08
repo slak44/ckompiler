@@ -1,6 +1,6 @@
 import { distinctUntilChanged, fromEvent, Observable, shareReplay } from 'rxjs';
 import { identity } from 'lodash-es';
-import { editor } from 'monaco-editor';
+import type { editor } from 'monaco-editor';
 import { CodePrintingMethods, ISAType } from '@ckompiler/ckompiler';
 import { FormControl } from '@angular/forms';
 import { controlValueStream } from '@cki-utils/form-control-observable';

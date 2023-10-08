@@ -7,19 +7,11 @@ const config: Configuration = {
     rules: [
       {
         test: /node_modules\/.*?\.css$/,
-        use: [
-          'style-loader',
-          {
-            loader: 'css-loader',
-            options: {
-              url: false,
-            },
-          },
-        ],
+        use: ['style-loader', 'css-loader'],
       },
       {
         test: /\.ttf$/,
-        use: ['file-loader'],
+        type: 'asset/resource',
       },
     ],
   },
