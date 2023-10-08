@@ -14,7 +14,7 @@
               [discrete]="true"
               [step]="1"
               [min]="1"
-              [max]="data.stepCount"
+              [max]="data.stepCount - 1"
               (keydown.arrowRight)="$event.stopPropagation()"
               (keydown.arrowLeft)="$event.stopPropagation()">
     <input matSliderThumb
