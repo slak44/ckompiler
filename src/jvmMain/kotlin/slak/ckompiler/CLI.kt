@@ -1,7 +1,7 @@
 package slak.ckompiler
 
 import kotlinx.cli.*
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.analysis.*
 import slak.ckompiler.analysis.external.CodePrintingMethods
 import slak.ckompiler.analysis.external.GraphvizOptions
@@ -291,7 +291,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       osName.startsWith("Windows") -> osOpts.windows
       osName.startsWith("Mac OS") -> osOpts.mac
       else -> {
-        logger.warn("Unrecognized OS, assuming linux")
+        logger.warn { "Unrecognized OS, assuming linux" }
         osOpts.linux
       }
     }
@@ -541,7 +541,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val asm = try {
       createAsmEmitter(isaType, declNames, finalFunctionsEmit, mainEmit).emitAsm()
     } catch (e: Exception) {
-      logger.error("Internal compiler error when compiling file: $relPath")
+      logger.error { "Internal compiler error when compiling file: $relPath" }
       throw e
     }
 

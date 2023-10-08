@@ -1,6 +1,6 @@
 package slak.ckompiler.lexer
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.IDebugHandler
 import slak.ckompiler.throwICE
@@ -84,7 +84,7 @@ enum class Punctuators(val s: String) : StaticTokenEnum {
 }
 
 fun punct(s: String) =
-    Punctuators.values().find { s.startsWith(it.s) }?.let { Punctuator(it) }
+    Punctuators.entries.find { s.startsWith(it.s) }?.let { Punctuator(it) }
 
 enum class IntegralSuffix(val length: Int) {
   UNSIGNED(1), LONG(1), LONG_LONG(2),

@@ -1,7 +1,7 @@
 package slak.ckompiler.parser
 
 import kotlinx.serialization.Serializable
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.analysis.external.TypeNameSerializer
 import slak.ckompiler.lexer.Keywords

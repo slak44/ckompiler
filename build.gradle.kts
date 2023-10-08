@@ -219,7 +219,7 @@ kotlin {
         implementation(kotlin("stdlib-common"))
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
         implementation("org.jetbrains.kotlinx:kotlinx-html:0.9.1")
-        implementation("io.github.microutils:kotlin-logging:3.0.5")
+        implementation("io.github.oshai:kotlin-logging:5.1.0")
       }
     }
 
@@ -238,6 +238,7 @@ kotlin {
         implementation("com.github.ajalt:mordant:1.2.0")
         implementation("org.apache.logging.log4j:log4j-core:2.20.0")
         implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0")
+        implementation("io.github.oshai:kotlin-logging-jvm:5.1.0")
       }
     }
 

@@ -1,6 +1,6 @@
 package slak.ckompiler.backend.x64
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.backend.*
 import slak.ckompiler.parser.*
@@ -21,7 +21,7 @@ class X64Target(override val options: X64TargetOpts = X64TargetOpts.defaults) : 
   override val isaType = ISAType.X64
   override val machineTargetData = MachineTargetData.x64
   override val targetName = "x64"
-  override val registerClasses = X64RegisterClass.values().toList()
+  override val registerClasses = X64RegisterClass.entries
   override val registers = getX64Registers(options.featureSet)
 
   // FIXME: make rbp conditional on -fomit-frame-pointer

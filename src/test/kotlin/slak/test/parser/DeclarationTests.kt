@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import slak.ckompiler.DiagnosticId
-import slak.ckompiler.lexer.Identifier
-import slak.ckompiler.lexer.Keyword
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.parser.*
 import slak.test.*
@@ -237,7 +235,7 @@ class DeclarationTests {
         return a + b;
       }
     """.trimIndent(), source)
-    p.assertNoDiagnostics();
+    p.assertNoDiagnostics()
     assert(p.root.decls[0].fn.block.items.filterIsInstance<DeclarationItem>().all {
       val typeSpec = it.declaration.declSpecs.typeSpec
       typeSpec is BasicTypeSpecifier && typeSpec.first.value == Keywords.INT

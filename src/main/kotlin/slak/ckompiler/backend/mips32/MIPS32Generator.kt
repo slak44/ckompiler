@@ -1,6 +1,6 @@
 package slak.ckompiler.backend.mips32
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*

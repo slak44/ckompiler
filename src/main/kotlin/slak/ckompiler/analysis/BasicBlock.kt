@@ -1,7 +1,7 @@
 package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.external.*
@@ -101,7 +101,7 @@ data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Ju
 /** Indicates an incomplete [BasicBlock]. */
 @Serializable
 @JsExport
-object MissingJump : Jump() {
+data object MissingJump : Jump() {
   override val successors = emptyList<BasicBlock>()
 }
 
@@ -268,7 +268,7 @@ class BasicBlock(val isRoot: Boolean = false) {
 
   /**
    * @see nodeId
-   * @see Object.hashCode
+   * @see Any.hashCode
    */
   override fun hashCode() = nodeId
 

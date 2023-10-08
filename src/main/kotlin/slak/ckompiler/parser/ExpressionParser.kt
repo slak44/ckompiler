@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 
@@ -101,8 +101,8 @@ val compoundAssignOps = mapOf(
     BinaryOperators.OR_ASSIGN to BinaryOperators.BIT_OR
 )
 
-private fun Punctuators.asBinaryOperator() = BinaryOperators.values().find { it.op == this }
-private fun Punctuators.asUnaryOperator() = UnaryOperators.values().find { it.op == this }
+private fun Punctuators.asBinaryOperator() = BinaryOperators.entries.find { it.op == this }
+private fun Punctuators.asUnaryOperator() = UnaryOperators.entries.find { it.op == this }
 
 fun LexicalToken.asBinaryOperator(): BinaryOperators? = asPunct()?.asBinaryOperator()
 fun LexicalToken.asUnaryOperator(): UnaryOperators? = asPunct()?.asUnaryOperator()
@@ -598,7 +598,7 @@ class ExpressionParser(
             // Change the token range from the original declaration's name to this particular occurrence
             return existingIdent.copy().withRange(tok)
           }
-          else -> logger.warn("Unhandled branch: implementor of OrdinaryIdentifier not handled ($existingIdent)")
+          else -> logger.warn { "Unhandled branch: implementor of OrdinaryIdentifier not handled ($existingIdent)" }
         }
         // When this ident not a valid thing to put in an expression, we can report the error(s) but keep going with it
         // anyway. That allows us to report errors more sensibly by not eating more tokens than necessary.

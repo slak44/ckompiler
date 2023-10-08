@@ -1,8 +1,7 @@
 package slak.ckompiler.backend
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.analysis.*
-import slak.ckompiler.error
 import slak.ckompiler.exhaustive
 import slak.ckompiler.throwICE
 
@@ -636,7 +635,7 @@ private fun RegisterAllocationContext.allocBlock(block: InstrBlock) {
 private fun validateAllocation(result: AllocationResult) {
   val failedCheck = result.walkGraphAllocs { register, (blockId, index), type ->
     if (type == ViolationType.SOFT) return@walkGraphAllocs false
-    logger.error("Hard violation of allocation for $register at (block: $blockId, index $index)")
+    logger.error { "Hard violation of allocation for $register at (block: $blockId, index $index)" }
     return@walkGraphAllocs true
   }
   check(!failedCheck) { "Hard violation. See above errors." }

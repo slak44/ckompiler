@@ -1,7 +1,6 @@
 package slak.ckompiler
 
-import mu.KLogger
-import mu.Marker
+import io.github.oshai.kotlinlogging.KLogger
 import slak.ckompiler.DiagnosticKind.*
 import kotlin.js.JsExport
 import kotlin.math.min
@@ -480,20 +479,4 @@ fun KLogger.throwICE(iceMessage: String, cause: Throwable, msg: () -> Any?): Not
 
 fun KLogger.throwICE(iceMessage: String, msg: () -> Any?): Nothing {
   throwICE(InternalCompilerError(iceMessage), msg)
-}
-
-fun KLogger.trace(marker: Marker, message: String) {
-  trace(marker) { message }
-}
-
-fun KLogger.error(message: String, throwable: Throwable) {
-  error(throwable) { message }
-}
-
-fun KLogger.error(message: String) {
-  error { message }
-}
-
-fun KLogger.warn(message: String) {
-  warn { message }
 }

@@ -1,6 +1,6 @@
 package slak.ckompiler.lexer
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.throwICE
@@ -205,4 +205,4 @@ data class CharLiteral(
 data class HeaderName(val data: String, val kind: Char) : LexicalToken(data.length + 2)
 
 /** This exists because newlines are significant for preprocessing. */
-object NewLine : LexicalToken(1)
+data object NewLine : LexicalToken(1)

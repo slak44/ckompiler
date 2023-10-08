@@ -1,7 +1,7 @@
 package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.analysis.external.PhiInstructionSerializer
 import slak.ckompiler.lexer.Punctuators
 import slak.ckompiler.parser.BinaryOperators

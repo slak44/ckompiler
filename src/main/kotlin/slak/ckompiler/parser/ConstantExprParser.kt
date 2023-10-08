@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.analysis.evalBinary
 import slak.ckompiler.analysis.evalCast

@@ -1,6 +1,6 @@
 package slak.ckompiler.lexer
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.*
 import kotlin.js.JsExport
 
@@ -65,7 +65,7 @@ class Preprocessor(
   private fun convert(tok: LexicalToken): LexicalToken? = when (tok) {
     is HeaderName -> logger.throwICE("HeaderName didn't disappear in phase 4") { tok }
     is NewLine -> null
-    is Identifier -> Keywords.values()
+    is Identifier -> Keywords.entries
         .firstOrNull { tok.name == it.keyword }
         ?.let(::Keyword)
         ?.copyDebugFrom(tok)

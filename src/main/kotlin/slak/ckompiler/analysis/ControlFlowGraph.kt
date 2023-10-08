@@ -1,7 +1,7 @@
 package slak.ckompiler.analysis
 
-import mu.KMarkerFactory.getMarker
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KMarkerFactory.getMarker
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.*
 import slak.ckompiler.parser.*
 import kotlin.js.JsExport
@@ -349,8 +349,8 @@ private class VariableRenamer(val cfg: CFG) {
    * See Algorithm 3.3 in [http://ssabook.gforge.inria.fr/latest/book.pdf].
    */
   fun variableRenaming() {
-    logger.trace(varRenamesTrace, "BB| x mention   | x.reachingDef")
-    logger.trace(varRenamesTrace, "-------------------------------")
+    logger.trace(null as Throwable?, varRenamesTrace) { "BB| x mention   | x.reachingDef" }
+    logger.trace(null as Throwable?, varRenamesTrace) { "-------------------------------" }
     variableRenamingImpl()
   }
 
@@ -363,7 +363,7 @@ private class VariableRenamer(val cfg: CFG) {
       v: Variable,
       isInPhi: Boolean = false,
   ) {
-    if (v.name == "x") logger.trace(varRenamesTrace) {
+    if (v.name == "x") logger.trace(null as Throwable?, varRenamesTrace) {
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"
       val newReachingStr =
@@ -386,7 +386,7 @@ private class VariableRenamer(val cfg: CFG) {
       def: Variable,
       vPrime: Variable,
   ) {
-    if (def.name == "x") logger.trace(varRenamesTrace) {
+    if (def.name == "x") logger.trace(null as Throwable?, varRenamesTrace) {
       val oldReachingVar = def.reachingDef?.variable
       val oldReachingStr =
           if (oldReachingVar == null) "⊥" else "${oldReachingVar.name}${oldReachingVar.version}"

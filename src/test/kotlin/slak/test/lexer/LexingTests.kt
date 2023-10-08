@@ -32,16 +32,16 @@ class LexingTests {
 
   @Test
   fun `Keywords All`() {
-    val l = preparePP(Keywords.values().joinToString(" ") { it.keyword }, source)
+    val l = preparePP(Keywords.entries.joinToString(" ") { it.keyword }, source)
     l.assertNoDiagnostics()
-    l.assertTokens(*Keywords.values())
+    l.assertTokens(*Keywords.entries.toTypedArray())
   }
 
   @Test
   fun `Punctuators All`() {
-    val l = preparePP(Punctuators.values().joinToString(" ") { it.s }, source)
+    val l = preparePP(Punctuators.entries.joinToString(" ") { it.s }, source)
     l.assertNoDiagnostics()
-    l.assertTokens(*Punctuators.values())
+    l.assertTokens(*Punctuators.entries.toTypedArray())
   }
 
   @Test

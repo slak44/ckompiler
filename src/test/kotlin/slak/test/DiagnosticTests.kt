@@ -39,7 +39,7 @@ class DiagnosticTests {
       col: Int? = null,
       colCount: Int? = null
   ) {
-    assert(diagNr in 0 until size)
+    assert(diagNr in indices)
     this[diagNr].assertDiagSourceCol(sourceColIdx, line, col, colCount)
   }
 

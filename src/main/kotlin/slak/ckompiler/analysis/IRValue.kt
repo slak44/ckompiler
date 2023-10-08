@@ -2,7 +2,7 @@ package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.external.VariableSerializer

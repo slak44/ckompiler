@@ -38,7 +38,7 @@ enum class Replacements(val value: Int) {
   DEF_USE(0b11);
 
   operator fun plus(other: Replacements): Replacements {
-    return values().first { it.value == (this.value or other.value) }
+    return entries.first { it.value == (this.value or other.value) }
   }
 
   fun hasUse(): Boolean {

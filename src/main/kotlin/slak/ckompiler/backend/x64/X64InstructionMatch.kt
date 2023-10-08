@@ -1,6 +1,6 @@
 package slak.ckompiler.backend.x64
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
@@ -17,7 +17,9 @@ private fun compatibleWith(operand: X64OperandTemplate, ref: IRValue): Boolean {
 
   return when (ref) {
     is MemoryLocation, is DerefStackValue, is StrConstant, is FltConstant -> {
-      (sizeMatches || operand == ModRM.M) && operand is ModRM && (operand.type == OperandType.REG_OR_MEM || operand.type == OperandType.MEMORY)
+      (sizeMatches || operand == ModRM.M)
+          && operand is ModRM
+          && (operand.type == OperandType.REG_OR_MEM || operand.type == OperandType.MEMORY)
     }
     is VirtualRegister, is Variable, is StackVariable, is StackValue -> {
       sizeMatches &&

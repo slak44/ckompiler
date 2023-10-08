@@ -9,7 +9,7 @@ enum class ISAType(val optionsString: String, val machineTargetData: MachineTarg
 
   companion object {
     fun fromOptionsString(optionsString: String): ISAType {
-      return values().first { it.optionsString == optionsString }
+      return entries.first { it.optionsString == optionsString }
     }
   }
 }

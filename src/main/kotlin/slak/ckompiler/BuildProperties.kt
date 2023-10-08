@@ -3,7 +3,7 @@ package slak.ckompiler
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 @Serializable
 private data class Properties(
@@ -20,7 +20,7 @@ object BuildProperties {
   private val properties by lazy {
     val propsText = readResource(propFileName)
     if (propsText == null) {
-      logger.error("Bad configuration; $propFileName missing.")
+      logger.error { "Bad configuration; $propFileName missing." }
       return@lazy Properties("UNKNOWN_VERSION", "/usr/include", null)
     }
 

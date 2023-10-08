@@ -7,13 +7,13 @@ import slak.ckompiler.backend.*
 
 sealed interface MIPS32OperandTemplate : OperandTemplate
 
-object Immediate : MIPS32OperandTemplate
+data object Immediate : MIPS32OperandTemplate
 
-object RegisterOperand : MIPS32OperandTemplate
+data object RegisterOperand : MIPS32OperandTemplate
 
-object MemoryOperand : MIPS32OperandTemplate
+data object MemoryOperand : MIPS32OperandTemplate
 
-object Label : MIPS32OperandTemplate
+data object Label : MIPS32OperandTemplate
 
 data class MIPS32InstructionTemplate(
     override val name: String,

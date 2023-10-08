@@ -1,6 +1,6 @@
 package slak.ckompiler.analysis
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.lexer.FloatingSuffix
 import slak.ckompiler.lexer.IntegralSuffix
 import slak.ckompiler.parser.*

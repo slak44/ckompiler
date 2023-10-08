@@ -1,12 +1,11 @@
 package slak.ckompiler.analysis.external
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.analysis.external.GraphvizColors.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.backend.x64.X64TargetOpts
-import slak.ckompiler.error
 import slak.ckompiler.parser.Expression
 import slak.ckompiler.parser.Terminal
 import kotlin.js.JsExport
@@ -83,7 +82,7 @@ private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions):
     val graph = try {
       gen.regAlloc(debugNoPostColoring = true, debugReturnAfterSpill = options.noAllocOnlySpill).graph
     } catch (e: Exception) {
-      logger.error("Reg alloc failed, fall back to initial graph", e)
+      logger.error(e) { "Reg alloc failed, fall back to initial graph" }
       gen.graph
     }
     val nodes = graph.domTreePreorder.asSequence().toList()

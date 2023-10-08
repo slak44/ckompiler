@@ -1,6 +1,6 @@
 package slak.ckompiler.parser
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.DiagnosticId
 import slak.ckompiler.ITokenHandler
 import slak.ckompiler.lexer.*

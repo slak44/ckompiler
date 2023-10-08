@@ -1,6 +1,6 @@
 package slak.ckompiler
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.lexer.LexicalToken
 
 interface ITokenHandler {

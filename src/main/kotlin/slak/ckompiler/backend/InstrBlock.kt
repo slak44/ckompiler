@@ -1,6 +1,6 @@
 package slak.ckompiler.backend
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.BasicBlock
 import slak.ckompiler.analysis.VersionedValue
