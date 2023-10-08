@@ -4,6 +4,7 @@ import { map, Observable } from 'rxjs';
 import { BROADCAST_ROUTE } from '@cki-utils/routes';
 import { BroadcastViewStateService } from '../../services/broadcast-view-state.service';
 import { CommonModule } from '@angular/common';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'cki-active-broadcast-banner',
@@ -18,13 +19,13 @@ import { CommonModule } from '@angular/common';
 export class ActiveBroadcastBannerComponent {
   public readonly publishUrl$: Observable<string | undefined> = this.broadcastService.broadcastPublishId$.pipe(
     map(broadcastId => {
-      return !broadcastId ? undefined : `${window.location.origin}/${BROADCAST_ROUTE}/${broadcastId}`;
+      return !broadcastId ? undefined : `${environment.rootUrl}/${BROADCAST_ROUTE}/${broadcastId}`;
     }),
   );
 
   public readonly subscribeUrl$: Observable<string | undefined> = this.broadcastService.broadcastSubscribeId$.pipe(
     map(broadcastId => {
-      return !broadcastId ? undefined : `${window.location.origin}/${BROADCAST_ROUTE}/${broadcastId}`;
+      return !broadcastId ? undefined : `${environment.rootUrl}/${BROADCAST_ROUTE}/${broadcastId}`;
     }),
   );
 
