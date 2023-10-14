@@ -1,7 +1,9 @@
 package slak.test
 
 import slak.ckompiler.ExitCodes
+import slak.ckompiler.backend.ISAType
 import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -12,6 +14,7 @@ internal class CompileAndRunBuilder {
   var programArgList = listOf<String>()
   var cliArgList = listOf<String>()
   var stdin: String? = null
+  var targets = listOf(ISAType.X64, ISAType.MIPS32).dropLast(1)
 }
 
 internal data class RunResult(val exitCode: Int, val stdout: String, val stderr: String)
@@ -26,7 +29,7 @@ internal fun RunResult.expect(exitCode: Int = 0, stdout: String = "", stderr: St
 
 // kill -l gets this list
 // Not all of the signals make sense as a return code, but include them for completion
-private val signalMap = mapOf(
+private val unixSignalMap = mapOf(
     1 to "SIGHUP",
     2 to "SIGINT",
     3 to "SIGQUIT",
@@ -75,12 +78,77 @@ internal fun <T : Any> T.compileAndRun(block: CompileAndRunBuilder.() -> Unit): 
     otherInput.writeText(builder.file!!.readText())
     builder.file = otherInput
   }
+
+  return builder.targets.map {
+    when (it) {
+      ISAType.X64 -> compileAndRunX64(builder)
+      ISAType.MIPS32 -> compileAndRunMIPS32(builder)
+    }
+  }.reduce { left, right ->
+    assertEquals(left, right, "Results are different between compilation targets")
+
+    return left
+  }
+}
+
+private fun <T : Any> T.compileAndRunMIPS32(builder: CompileAndRunBuilder): RunResult {
+  val assemblyFile = File.createTempFile("mips_asm", ".s")
+  assemblyFile.deleteOnExit()
+
+  val (_, compilerExitCode) = cli(
+      builder.file!!.absolutePath,
+      "-isystem", resource("include").absolutePath,
+      "-S",
+      "-o", assemblyFile.absolutePath,
+      "--target", "mips32",
+      *builder.cliArgList.toTypedArray()
+  )
+  assertEquals(ExitCodes.NORMAL, compilerExitCode, "CLI reported a failure")
+  assertTrue(assemblyFile.exists(), "Expected assembly file to exist")
+  val inputRedirect =
+      if (builder.stdin != null) ProcessBuilder.Redirect.PIPE else ProcessBuilder.Redirect.INHERIT
+  val process = ProcessBuilder("spim", "-quiet", "-file", assemblyFile.absolutePath, *builder.programArgList.toTypedArray())
+      .redirectInput(inputRedirect)
+      .redirectOutput(ProcessBuilder.Redirect.PIPE)
+      .redirectError(ProcessBuilder.Redirect.PIPE)
+      .start()
+  if (builder.stdin != null) {
+    process.outputStream.bufferedWriter().use {
+      it.write(builder.stdin!!)
+    }
+  }
+  val stdout = process.inputStream.bufferedReader().readText()
+  val stderr = process.errorStream.bufferedReader().readText()
+  val didExit = process.waitFor(1, TimeUnit.SECONDS)
+
+  if (!didExit) {
+    process.destroyForcibly()
+    fail("Process execution timed out after 1 second; process killed")
+  }
+
+  val exitCode = process.exitValue()
+
+  if (
+    "Instruction references undefined symbol" in stderr ||
+    "spim: (parser) syntax error" in stderr ||
+    "[Bad data address]  occurred and ignored" in stderr ||
+    "Address error in inst/data fetch" in stdout
+  ) {
+    fail("$stdout\nstderr: $stderr\nexit code: $exitCode")
+  }
+
+  return RunResult(exitCode = exitCode, stdout = stdout, stderr = stderr)
+}
+
+private fun <T : Any> T.compileAndRunX64(builder: CompileAndRunBuilder): RunResult {
   val executable = File.createTempFile("exe", ".out")
   executable.deleteOnExit()
+
   val (_, compilerExitCode) = cli(
       builder.file!!.absolutePath,
       "-isystem", resource("include").absolutePath,
       "-o", executable.absolutePath,
+      "--target", "x86_64",
       *builder.cliArgList.toTypedArray()
   )
   assertEquals(ExitCodes.NORMAL, compilerExitCode, "CLI reported a failure")
@@ -105,7 +173,7 @@ internal fun <T : Any> T.compileAndRun(block: CompileAndRunBuilder.() -> Unit): 
   val os = System.getProperty("os.name")
   val isUnix = os == "Linux" || os.startsWith("Mac OS")
   if (isUnix && exitCode > 128) {
-    fail("Execution finished with large exit code $exitCode (name: ${signalMap[exitCode - 128]})")
+    fail("Execution finished with large exit code $exitCode (name: ${unixSignalMap[exitCode - 128]})")
   }
 
   return RunResult(exitCode = exitCode, stdout = stdout, stderr = stderr)

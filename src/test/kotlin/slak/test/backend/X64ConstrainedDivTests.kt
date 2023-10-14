@@ -1,16 +1,23 @@
 package slak.test.backend
 
 import org.junit.jupiter.api.Test
+import slak.ckompiler.backend.ISAType
+import slak.test.RunResult
 import slak.test.compileAndRun
 import slak.test.expect
 import slak.test.justExitCode
+
+internal fun <T : Any> T.compileAndRunX64(x64Text: String): RunResult = compileAndRun {
+  text = x64Text
+  targets = listOf(ISAType.X64)
+}
 
 class X64ConstrainedDivTests {
   @Test
   fun `Simple Constrained Div Test`() {
     val a = 231
     val b = 53
-    compileAndRun("""
+    compileAndRunX64("""
       int main() {
         int res = 0;
         int a = $a;
@@ -29,7 +36,7 @@ class X64ConstrainedDivTests {
       "x${it.index}D = ${it.value.key}, x${it.index}d = ${it.value.value}"
     }
     val result = x.entries.sumOf { it.key / it.value }
-    compileAndRun("""
+    compileAndRunX64("""
       int main() {
         int ${defs};
         int res = 0;
@@ -42,7 +49,7 @@ class X64ConstrainedDivTests {
   @Test
   fun `Consecutive Constrained Div Test`() {
     val (x1, x2, x3, x4) = listOf(23, 5, 343, 7)
-    compileAndRun("""
+    compileAndRunX64("""
       int main() {
         int res = 0;
         int x1 = $x1, x2 = $x2;
@@ -59,7 +66,7 @@ class X64ConstrainedDivTests {
   fun `Constrained Div Test With Phi Insertion`() {
     val a = 23
     val b = 5
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int b = $b, a = $a;
@@ -78,7 +85,7 @@ class X64ConstrainedDivTests {
   fun `Constrained Div Test With Reversed Argument Order`() {
     val a = 23
     val b = 5
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int b = $b, a = $a;
@@ -94,7 +101,7 @@ class X64ConstrainedDivTests {
     val a = 23
     val b = 5
     val lt = 7
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int live_through = $lt;
@@ -111,7 +118,7 @@ class X64ConstrainedDivTests {
     val (x1, x2, x3, x4) = listOf(45, 5, 34, -7)
     val (a1, a2, a3, a4) = listOf(-88, 5, -4, 86)
     val res = 6
-    compileAndRun("""
+    compileAndRunX64("""
       int main() {
         int res = $res;
         int a1 = $a1, a2 = $a2, a3 = $a3, a4 = $a4;
@@ -132,7 +139,7 @@ class X64ConstrainedDivTests {
     val a = 23
     val b = 5
     val lt = 7
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int live_through = $lt;
@@ -150,7 +157,7 @@ class X64ConstrainedDivTests {
   fun `Constrained Div Test With Unused Variable`() {
     val a = 23
     val b = 5
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int unused = 1234;
@@ -166,7 +173,7 @@ class X64ConstrainedDivTests {
   fun `Constrained Div Test With Live Through Argument Dividend`() {
     val a = 23
     val b = 5
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int a = $a, b = $b;
@@ -181,7 +188,7 @@ class X64ConstrainedDivTests {
   fun `Constrained Div Test With Live Through Argument Divisor`() {
     val a = 23
     val b = 5
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int a = $a, b = $b;
@@ -196,7 +203,7 @@ class X64ConstrainedDivTests {
   fun `Constrained Div Test With Constant Dividend`() {
     val a = 23
     val b = 5
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int b = $b;
@@ -211,7 +218,7 @@ class X64ConstrainedDivTests {
   fun `Constrained Div Test With Constant Divisor`() {
     val a = 23
     val b = 5
-    compileAndRun("""
+    compileAndRunX64("""
       #include <stdio.h>
       int main() {
         int a = $a;
