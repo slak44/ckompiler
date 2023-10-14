@@ -21,6 +21,15 @@ application {
   applicationDistribution.from(File(rootDir, "stdlib/include")).into(jvmIncludePath)
 }
 
+tasks.named<JavaExec>("run") {
+  dependsOn(tasks.getByName("jvmProcessResources"))
+
+  classpath += objects.fileCollection().from(
+      tasks.named("compileKotlinJvm"),
+      configurations.named("jvmRuntimeClasspath")
+  )
+}
+
 tasks.installDist {
   val installPath = System.getenv("DESTDIR") ?: ""
   if (installPath.isNotBlank()) destinationDir = File(installPath)
@@ -144,6 +153,17 @@ val fixBinaryDefinitionsFile: Task by createFixDefinitionsTask(jsProductionExecB
 
 kotlin {
   jvm {
+    val jvmJar by tasks.getting(Jar::class) {
+      doFirst {
+        manifest {
+          attributes["Main-Class"] = "slak.ckompiler.MainKt"
+          attributes["Class-Path"] = configurations.getByName("jvmRuntimeClasspath").map {
+            if (it.isDirectory || it.name.endsWith(".jar")) it else zipTree(it)
+          }.joinToString(" ")
+        }
+      }
+    }
+
     val main by compilations.getting {
       tasks.getByName("jvmProcessResources") {
         dependsOn(tasks.getByName("processResources"))
@@ -217,7 +237,7 @@ kotlin {
 
       dependencies {
         implementation(kotlin("stdlib-common"))
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
         implementation("org.jetbrains.kotlinx:kotlinx-html:0.9.1")
         implementation("io.github.oshai:kotlin-logging:5.1.0")
       }
