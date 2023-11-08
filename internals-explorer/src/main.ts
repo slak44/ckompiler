@@ -13,6 +13,7 @@ import { monacoLoader } from '@cki-utils/monaco-loader';
 import { HIGHLIGHT_OPTIONS } from 'ngx-highlightjs';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarConfig, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MonacoEditorModule } from 'ng-monaco-editor';
+import { provideServiceWorker } from '@angular/service-worker';
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -68,5 +69,10 @@ bootstrapApplication(AppComponent, {
         duration: 10_000,
       } as MatSnackBarConfig,
     },
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: environment.serviceWorker.enabled,
+      registrationStrategy: 'registerWhenStable:30000',
+      scope: environment.serviceWorker.scope,
+    }),
   ],
 }).catch(console.error);

@@ -59,7 +59,9 @@
               "d3-graphviz",
               "monaco-editor",
               "!../../../../../../../style-loader"
-            ]
+            ],
+            "serviceWorker": true,
+            "ngswConfigPath": "ngsw-config.json"
           },
           "configurations": {
             "production": {

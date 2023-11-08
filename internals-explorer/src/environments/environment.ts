@@ -9,6 +9,9 @@ export const environment: EnvironmentType = {
   broadcastUrl: 'ws://localhost:8080/api/broadcast/ws',
   apiBaseUrl: 'http://localhost:8080/api',
   rootUrl: 'http://localhost:4200',
+  serviceWorker: {
+    enabled: false,
+  },
   oauth: {
     domain: 'ckompiler-internals-explorer.eu.auth0.com',
     clientId: 'VX6YGntpyUipXIFXHff4clmJe2geq8rb',
