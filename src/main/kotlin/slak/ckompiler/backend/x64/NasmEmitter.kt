@@ -59,10 +59,10 @@ class NasmEmitter(
   val AtomicId.label get() = ".block_$this"
 
   private fun generateFunction(function: TargetFunGenerator<X64Instruction>) {
-    prelude += "global ${function.graph.f.name}"
+    prelude += "global ${function.graph.functionName}"
     val allocationResult = function.regAlloc()
     text += instrGen {
-      label(function.graph.f.name)
+      label(function.graph.functionName)
       emit(genAsm(function.genFunctionPrologue(allocationResult)))
       val asmMap = function.applyAllocation(allocationResult)
       for (block in function.graph.blocks - function.graph.returnBlock.id) {

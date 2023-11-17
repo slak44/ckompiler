@@ -9,7 +9,7 @@ import slak.test.source
 class ExportTests {
   @Test
   fun `Generate Renaming States Works`() {
-    val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/phiTest.c"), source).create()
     for (variable in cfg.exprDefinitions.keys) {
       generateRenameSteps(cfg, variable)
     }

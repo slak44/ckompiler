@@ -27,7 +27,7 @@ class MIPS32FunAssembler(val cfg: CFG, val target: MIPS32Target, val stackSlotId
   private lateinit var calleeSaved: Set<MIPS32Register>
 
   init {
-    val vars = cfg.f.parameters.map(::Variable).withIndex()
+    val vars = cfg.functionParameters.map(::Variable).withIndex()
     val integral = vars.filter { target.registerClassOf(it.value.type) == MIPS32RegisterClass.INTEGER }
     for ((intVar, reg) in integral.zip(target.intArgRegs)) {
       val type = intVar.value.type.unqualify().normalize()

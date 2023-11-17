@@ -2,7 +2,7 @@
   <mat-label>Target function</mat-label>
   <mat-select (valueChange)="instance.updateSelected($event)" [value]="instance.cfg$ | async">
     <mat-option *ngFor="let cfg of instance.cfgs$ | async" [value]="cfg">
-      {{ cfg.f.funcIdent.toString() }}
+      {{ cfg.functionIdentifier.toString() }}
     </mat-option>
   </mat-select>
 </mat-form-field>

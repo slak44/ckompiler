@@ -235,13 +235,11 @@ kotlin {
       finalizedBy(fixESImport)
       finalizedBy(copyLibraryNodeModules)
       finalizedBy(fixLibraryDefinitionsFile)
-      finalizedBy("jsBrowserProductionWebpack")
     }
 
     tasks.getByName("jsProductionExecutableCompileSync") {
       finalizedBy(jsBrowserProductionExecutablePropsFile)
       finalizedBy(fixBinaryDefinitionsFile)
-      finalizedBy("jsBrowserProductionLibraryPrepare")
     }
   }
 

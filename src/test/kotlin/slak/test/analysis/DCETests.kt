@@ -8,7 +8,7 @@ import slak.test.*
 class DCETests {
   @Test
   fun `Dead Code After Return`() {
-    val cfg = prepareCFG("""
+    val factory = prepareCFG("""
       int main() {
         int x = 1;
         return x;
@@ -16,12 +16,13 @@ class DCETests {
         y + 1;
       }
     """.trimIndent(), source)
-    cfg.assertDiags(DiagnosticId.UNREACHABLE_CODE, DiagnosticId.UNREACHABLE_CODE)
+    factory.create()
+    factory.assertDiags(DiagnosticId.UNREACHABLE_CODE, DiagnosticId.UNREACHABLE_CODE)
   }
 
   @Test
   fun `Dead Code After Terminal If`() {
-    val cfg = prepareCFG("""
+    val factory = prepareCFG("""
       int main() {
         int x = 1;
         if (x < 1) return 7;
@@ -29,20 +30,23 @@ class DCETests {
         int dead = 265;
       }
     """.trimIndent(), source)
+    val cfg = factory.create()
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.terminator is CondJump)
-    cfg.assertDiags(DiagnosticId.UNREACHABLE_CODE)
+    factory.assertDiags(DiagnosticId.UNREACHABLE_CODE)
   }
 
   @Test
   fun `Dead Code After Goto`() {
-    val cfg = prepareCFG(resource("dce/gotoTest.c"), source)
-    cfg.assertDiags(DiagnosticId.UNREACHABLE_CODE)
+    val factory = prepareCFG(resource("dce/gotoTest.c"), source)
+    factory.create()
+    factory.assertDiags(DiagnosticId.UNREACHABLE_CODE)
   }
 
   @Test
   fun `Live Code After Return`() {
-    val cfg = prepareCFG(resource("dce/liveCodeAfterReturnTest.c"), source)
-    cfg.assertNoDiagnostics()
+    val factory = prepareCFG(resource("dce/liveCodeAfterReturnTest.c"), source)
+    factory.create()
+    factory.assertNoDiagnostics()
   }
 }

@@ -3,12 +3,11 @@ package slak.ckompiler.backend
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
-import slak.ckompiler.parser.FunctionDefinition
 
 typealias InstrLabel = Pair<AtomicId, Int>
 
 class InstructionGraph private constructor(
-    val f: FunctionDefinition,
+    val functionName: String,
     val startId: AtomicId,
     val registerIds: IdCounter,
     latestVersions: MutableMap<AtomicId, Int>,
@@ -243,7 +242,7 @@ class InstructionGraph private constructor(
 
   companion object {
     fun partiallyInitialize(cfg: CFG): InstructionGraph {
-      val graph = InstructionGraph(cfg.f, cfg.startBlock.nodeId, cfg.registerIds, cfg.latestVersions.toMutableMap())
+      val graph = InstructionGraph(cfg.functionIdentifier.name, cfg.startBlock.nodeId, cfg.registerIds, cfg.latestVersions.toMutableMap())
       graph.idom += MutableList(cfg.nodes.size) { 0 }
       return graph
     }

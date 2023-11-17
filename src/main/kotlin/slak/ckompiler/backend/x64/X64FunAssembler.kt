@@ -59,7 +59,7 @@ class X64FunAssembler(private val target: X64Target, val cfg: CFG, val stackSlot
 
   /** @see parameterMap */
   private fun mapFunctionParams() {
-    val vars = cfg.f.parameters.map(::Variable).withIndex()
+    val vars = cfg.functionParameters.map(::Variable).withIndex()
     val integral =
         vars.filter { target.registerClassOf(it.value.type) == X64RegisterClass.INTEGER }
     val sse = vars.filter { target.registerClassOf(it.value.type) == X64RegisterClass.SSE }

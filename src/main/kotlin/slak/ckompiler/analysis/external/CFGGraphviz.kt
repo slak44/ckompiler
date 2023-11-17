@@ -2,6 +2,7 @@ package slak.ckompiler.analysis.external
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.AtomicId
+import slak.ckompiler.DebugHandler
 import slak.ckompiler.analysis.*
 import slak.ckompiler.analysis.external.GraphvizColors.*
 import slak.ckompiler.backend.*
@@ -75,7 +76,8 @@ fun BasicBlock.irToString(): String {
 }
 
 private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions): Map<BasicBlock, String> {
-  val target = createMachineTarget(options.isaType, options.targetOpts, emptyList())
+  val handler = DebugHandler("CFGGraphviz", "?", sourceCode)
+  val target = handler.createMachineTarget(options.isaType, options.targetOpts, emptyList())
   val sep = brLeft
   if (options.print == CodePrintingMethods.MI_TO_STRING) {
     val gen = createTargetFunGenerator(this, target)
@@ -103,13 +105,13 @@ private fun CFG.mapBlocksToString(sourceCode: String, options: GraphvizOptions):
 
       return@associateWith ".block$it:$brLeft$content"
     }
-    return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
+    return instrGraphMap.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: BasicBlock() }
   } else if (options.print == CodePrintingMethods.ASM_TO_STRING) {
     val gen = createTargetFunGenerator(this, target)
     val alloc = gen.regAlloc()
     return gen.applyAllocation(alloc).mapValues {
       ".block${it.key}:$brLeft" + it.value.joinToString(separator = sep, postfix = sep)
-    }.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: newBlock() }
+    }.mapKeys { (blockId) -> allNodes.firstOrNull { it.nodeId == blockId } ?: BasicBlock() }
   }
   return allNodes.associateWith {
     val maybeHeader =

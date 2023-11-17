@@ -28,25 +28,25 @@ class SpillTests {
 
   @Test
   fun `No Register Pressure, Integer`() {
-    val cfg = prepareCFG(resource("spilling/noPressure.c"), source)
+    val cfg = prepareCFG(resource("spilling/noPressure.c"), source).create()
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
 
   @Test
   fun `No Register Pressure, SSE`() {
-    val cfg = prepareCFG(resource("spilling/floatNoPressure.c"), source)
+    val cfg = prepareCFG(resource("spilling/floatNoPressure.c"), source).create()
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
 
   @Test
   fun `No Register Pressure, Full Occupancy`() {
-    val cfg = prepareCFG(resource("spilling/noPressureLimit.c"), source)
+    val cfg = prepareCFG(resource("spilling/noPressureLimit.c"), source).create()
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
 
   @Test
   fun `One Int Pressure`() {
-    val cfg = prepareCFG(resource("spilling/oneIntPressure.c"), source)
+    val cfg = prepareCFG(resource("spilling/oneIntPressure.c"), source).create()
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
@@ -69,6 +69,7 @@ class SpillTests {
         return sum;
       }
     """.trimIndent(), source)
+        .create()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
     assert(spillResult.isNotEmpty()) { "Nothing was spilled" }
@@ -79,31 +80,31 @@ class SpillTests {
 
   @Test
   fun `No Register Pressure With If, Integer`() {
-    val cfg = prepareCFG(resource("spilling/ifNoSpill.c"), source)
+    val cfg = prepareCFG(resource("spilling/ifNoSpill.c"), source).create()
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
 
   @Test
   fun `No Register Pressure With Loop, Integer`() {
-    val cfg = prepareCFG(resource("spilling/noSpillLoop.c"), source)
+    val cfg = prepareCFG(resource("spilling/noSpillLoop.c"), source).create()
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
 
   @Test
   fun `No Register Pressure With Function Call`() {
-    val cfg = prepareCFG(resource("spilling/noSpillCall.c"), source)
+    val cfg = prepareCFG(resource("spilling/noSpillCall.c"), source).create()
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
 
   @Test
   fun `Live-In Value Isn't Reloaded`() {
-    val cfg = prepareCFG(resource("spilling/noReloadLiveIn.c"), source)
+    val cfg = prepareCFG(resource("spilling/noReloadLiveIn.c"), source).create()
     X64Generator(cfg, X64Target()).runSpiller().assertNoSpills()
   }
 
   @Test
   fun `Spill Int With Constrained`() {
-    val cfg = prepareCFG(resource("e2e/spillWithConstrained.c"), source)
+    val cfg = prepareCFG(resource("e2e/spillWithConstrained.c"), source).create()
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
@@ -115,7 +116,7 @@ class SpillTests {
 
   @Test
   fun `Overconstrained Function Call`() {
-    val cfg = prepareCFG(resource("spilling/overconstrainedFunCall.c"), source, "main")
+    val cfg = prepareCFG(resource("spilling/overconstrainedFunCall.c"), source, "main").create()
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
@@ -126,7 +127,7 @@ class SpillTests {
 
   @Test
   fun `Spill Creates Phi With Memory Operands`() {
-    val cfg = prepareCFG(resource("spilling/phiWithMemory.c"), source)
+    val cfg = prepareCFG(resource("spilling/phiWithMemory.c"), source).create()
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
@@ -146,7 +147,7 @@ class SpillTests {
 
   @Test
   fun `Spill Creates Phi With Only Memory Operands`() {
-    val cfg = prepareCFG(resource("spilling/phiWithDoubleMemory.c"), source)
+    val cfg = prepareCFG(resource("spilling/phiWithDoubleMemory.c"), source).create()
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     val spillResult = gen.runSpiller()
@@ -166,7 +167,7 @@ class SpillTests {
 
   @Test
   fun `Removing Spilled Value From Parallel Copy Works`() {
-    val cfg = prepareCFG(resource("spilling/removeSpillParallel.c"), source)
+    val cfg = prepareCFG(resource("spilling/removeSpillParallel.c"), source).create()
     val target = X64Target()
     val gen = X64Generator(cfg, target)
     gen.regAlloc(debugReturnAfterSpill = true)

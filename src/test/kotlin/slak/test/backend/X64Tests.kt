@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
+import slak.ckompiler.DebugHandler
 import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
@@ -33,12 +34,12 @@ class X64Tests {
   }
 
   private fun regAllocCode(code: String): AllocationResult {
-    val cfg = prepareCFG(code, source)
+    val cfg = prepareCFG(code, source).create()
     return regAlloc(cfg)
   }
 
   private fun regAlloc(resourceName: String): AllocationResult {
-    val cfg = prepareCFG(resource(resourceName), source)
+    val cfg = prepareCFG(resource(resourceName), source).create()
     return regAlloc(cfg)
   }
 
@@ -51,7 +52,7 @@ class X64Tests {
       baseTargetOptions: TargetOptions = DefaultX64TestOptions,
       targetOptions: List<String> = emptyList()
   ): AllocationResult {
-    val target = X64Target(X64TargetOpts(baseTargetOptions, targetOptions, cfg))
+    val target = X64Target(X64TargetOpts(baseTargetOptions, targetOptions, DebugHandler("", "", "")))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
     val res = gen.regAlloc()
@@ -95,7 +96,7 @@ class X64Tests {
 
   @Test
   fun `Instruction Selection On CFG`() {
-    val cfg = prepareCFG(resource("codegen/addsAndMovs.c"), source)
+    val cfg = prepareCFG(resource("codegen/addsAndMovs.c"), source).create()
     val gen = X64Generator(cfg, X64Target())
     for (blockId in gen.graph.domTreePreorder) {
       println(gen.graph[blockId].joinToString(separator = "\n", postfix = "\n"))
@@ -177,8 +178,8 @@ class X64Tests {
 
   @Test
   fun `LiveSets Liveness Is Correct 1`() {
-    val cfg = prepareCFG(resource("ssa/liveSetTest1.c"), source)
-    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val cfg = prepareCFG(resource("ssa/liveSetTest1.c"), source).create()
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), DebugHandler("", "", "")))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
     val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
@@ -197,8 +198,8 @@ class X64Tests {
 
   @Test
   fun `LiveSets Liveness Is Correct 2`() {
-    val cfg = prepareCFG(resource("ssa/liveSetTest2.c"), source)
-    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val cfg = prepareCFG(resource("ssa/liveSetTest2.c"), source).create()
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), DebugHandler("", "", "")))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
     val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
@@ -219,8 +220,8 @@ class X64Tests {
 
   @Test
   fun `LiveSets Liveness Is Correct 3`() {
-    val cfg = prepareCFG(resource("ssa/liveSetTest3.c"), source)
-    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val cfg = prepareCFG(resource("ssa/liveSetTest3.c"), source).create()
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), DebugHandler("", "", "")))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
     val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
@@ -244,8 +245,8 @@ class X64Tests {
 
   @Test
   fun `LiveSets Liveness Is Correct 4`() {
-    val cfg = prepareCFG(resource("e2e/calls/ifCall.c"), source)
-    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val cfg = prepareCFG(resource("e2e/calls/ifCall.c"), source).create()
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), DebugHandler("", "", "")))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
     val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()
@@ -261,8 +262,8 @@ class X64Tests {
 
   @Test
   fun `LiveSets Liveness Is Correct 5`() {
-    val cfg = prepareCFG(resource("e2e/calls/callInNestedBlocksSimple.c"), source, "main")
-    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), cfg))
+    val cfg = prepareCFG(resource("e2e/calls/callInNestedBlocksSimple.c"), source, "main").create()
+    val target = X64Target(X64TargetOpts(X64TargetOpts.defaults, emptyList(), DebugHandler("", "", "")))
     val gen = X64Generator(cfg, target)
     gen.graph.assertIsSSA()
     val (liveIn, liveOut) = gen.graph.computeLiveSetsByVar()

@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import {
-  arrayOfCollection,
   CodePrintingMethods,
   Diagnostic,
   DiagnosticsStats,
@@ -35,14 +34,7 @@ export class CompileService {
   );
 
   public readonly allDiagnostics$: Observable<Diagnostic[]> = this.defaultCompileResult$.pipe(
-    map(compileResult => {
-      if (!compileResult.cfgs) {
-        return compileResult.beforeCFGDiags;
-      } else {
-        const allCfgDiags = compileResult.cfgs.flatMap(cfg => arrayOfCollection<Diagnostic>(cfg.diags));
-        return compileResult.beforeCFGDiags.concat(allCfgDiags);
-      }
-    }),
+    map(compileResult => compileResult.diagnostics),
   );
 
   public readonly diagnosticStats$: Observable<DiagnosticsStats> = this.allDiagnostics$.pipe(

@@ -241,8 +241,6 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   private val serializationType by cli.flagValueArgument("--serialization-type", "TYPE",
       "Use a certain serializer type (JSON or BINARY)", initialValue = SerializationType.JSON, SerializationType::valueOf)
 
-  private val exportCFGAsJSON by cli.flagArgument("--export-cfg", "Export CFG contents as JSON")
-
   init {
     cli.helpGroup("MI debug options (require --mi-debug)")
   }
@@ -440,14 +438,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       ) {
         val options = CFGOptions(forceReturnZero = function.name == "main")
 
-        val cfg = CFG(
+        val cfg = CFGFactory(
             f = function,
             targetData = target.machineTargetData,
             srcFileName = relPath,
             srcText = text,
             cfgOptions = options,
-        )
-        cfg.diags.forEach { it.print() }
+        ).create()
 
         return@generateMIDebug cfg
       }
@@ -462,14 +459,17 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     if (isCFGOnly) {
       val function = allFuncs.findNamedFunction(targetFunction) ?: return null
       val cfgOptions = CFGOptions(forceAllNodes = forceAllNodes, forceReturnZero = function.name == "main")
-      val cfg = CFG(
+      val cfg = CFGFactory(
           f = function,
           targetData = target.machineTargetData,
           srcFileName = relPath,
           srcText = text,
           cfgOptions = cfgOptions,
-      )
-      cfg.diags.forEach { it.print() }
+      ).create()
+
+      if (serialize && deserialize != "") {
+        throw CommandLineException("Cannot serialize and deserialize at the same time.")
+      }
 
       if (serialize) {
         when (serializationType) {
@@ -526,25 +526,23 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
     val functionsEmit = (allFuncs - main).map {
-      val cfg = CFG(
+      val cfg = CFGFactory(
           f = it!!,
           targetData = target.machineTargetData,
           srcFileName = relPath,
           srcText = text,
-      )
-      cfg.diags.forEach(Diagnostic::print)
+      ).create()
 
       createTargetFunGenerator(cfg, target)
     }
     val mainEmit = main?.let {
-      val cfg = CFG(
+      val cfg = CFGFactory(
           f = it,
           targetData = target.machineTargetData,
           srcFileName = relPath,
           srcText = text,
           cfgOptions = CFGOptions(forceReturnZero = true),
-      )
-      cfg.diags.forEach(Diagnostic::print)
+      ).create()
 
       createTargetFunGenerator(cfg, target)
     }
@@ -553,8 +551,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       val parser = getParserFor(tuText, tuRelPath, File("/")) ?: return@getCFGFrom emptyList()
 
       parser.root.decls.mapNotNull { it as? FunctionDefinition }.map {
-        CFG(f = it, targetData = target.machineTargetData, srcFileName = tuRelPath, srcText = tuText)
-            .also { cfg -> cfg.diags.forEach(Diagnostic::print) }
+        CFGFactory(f = it, targetData = target.machineTargetData, srcFileName = tuRelPath, srcText = tuText).create()
       }
     }
 

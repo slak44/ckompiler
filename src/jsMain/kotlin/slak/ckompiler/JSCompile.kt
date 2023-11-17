@@ -1,10 +1,7 @@
 package slak.ckompiler
 
 import kotlinx.serialization.encodeToString
-import slak.ckompiler.analysis.BasicBlock
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.CFGOptions
-import slak.ckompiler.analysis.Variable
+import slak.ckompiler.analysis.*
 import slak.ckompiler.analysis.external.json
 import slak.ckompiler.backend.ISAType
 import slak.ckompiler.lexer.IncludePaths
@@ -14,7 +11,12 @@ import slak.ckompiler.parser.Parser
 
 @Suppress("ArrayInDataClass", "NON_EXPORTABLE_TYPE")
 @JsExport
-data class JSCompileResult(val cfgs: Array<CFG>?, val beforeCFGDiags: Array<Diagnostic>, var atomicCounters: SavedAtomics)
+data class JSCompileResult(
+    val cfgs: Array<CFG>?,
+    val sourceCode: String,
+    val diagnostics: Array<Diagnostic>,
+    var atomicCounters: SavedAtomics
+)
 
 @JsExport
 fun jsCompile(source: String, skipSSARename: Boolean, isaType: ISAType): JSCompileResult {
@@ -31,31 +33,37 @@ fun jsCompile(source: String, skipSSARename: Boolean, isaType: ISAType): JSCompi
   )
 
   if (pp.diags.errors().isNotEmpty()) {
-    return JSCompileResult(null, pp.diags.toTypedArray(), saveAndClearAllAtomicCounters())
+    return JSCompileResult(null, source, pp.diags.toTypedArray(), saveAndClearAllAtomicCounters())
   }
 
   val p = Parser(pp.tokens, "-", source, isaType.machineTargetData)
   val beforeCFGDiags = pp.diags + p.diags
 
   if (p.diags.errors().isNotEmpty()) {
-    return JSCompileResult(null, beforeCFGDiags.toTypedArray(), saveAndClearAllAtomicCounters())
+    return JSCompileResult(null, source, beforeCFGDiags.toTypedArray(), saveAndClearAllAtomicCounters())
   }
 
   val allFuncs = p.root.decls.mapNotNull { it as? FunctionDefinition }
 
+  val cfgDiags = mutableListOf<Diagnostic>()
+
   val cfgs = allFuncs.map {
     val options = CFGOptions(forceReturnZero = it.name == "main", skipSSARename = skipSSARename)
 
-    CFG(
+    val factory = CFGFactory(
         f = it,
         targetData = isaType.machineTargetData,
         srcFileName = sourceFileName,
         srcText = source,
         cfgOptions = options
     )
+
+    cfgDiags += factory.diags
+
+    factory.create(skipPrintDiagnostics = true)
   }
 
-  return JSCompileResult(cfgs.toTypedArray(), beforeCFGDiags.toTypedArray(), saveAndClearAllAtomicCounters())
+  return JSCompileResult(cfgs.toTypedArray(), source, (beforeCFGDiags + cfgDiags).toTypedArray(), saveAndClearAllAtomicCounters())
 }
 
 @JsExport

@@ -281,7 +281,7 @@ private class MIDebugMode(
 
 private fun MIDebugMode.generateMIDebugInternal() {
   val cfgInit = createCFG()
-  printTitle("Allocation for function ${cfgInit.f.funcIdent}")
+  printTitle("Allocation for function ${cfgInit.functionIdentifier}")
   val genInitial = createTargetFunGenerator(cfgInit, target)
 
   if (spillOutput) {

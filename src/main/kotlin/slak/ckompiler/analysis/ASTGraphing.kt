@@ -7,7 +7,7 @@ import slak.ckompiler.throwICE
 
 private val logger = KotlinLogging.logger {}
 
-fun graph(cfg: CFG) {
+fun graph(cfg: CFGFactory) {
   for ((idx, p) in cfg.f.parameters.withIndex()) {
     cfg.exprDefinitions[Variable(p)] = mutableSetOf(cfg.startBlock)
     cfg.startBlock.ir += MoveInstr(Variable(p), ParameterReference(idx, p.type))
@@ -22,15 +22,15 @@ fun graph(cfg: CFG) {
 }
 
 /**
- * The current context in which the [CFG] is being built. Tracks relevant jumpable blocks, and
- * possible labels to jump to using goto.
+ * The current context in which the [CFG] is being built, using [CFGFactory].
+ * Tracks relevant jumpable blocks, and possible labels to jump to using goto.
  *
  * [loopHeader] is the target of "continue", and is used by loops.
  * [afterBlock] is the target of "break", and is used by both loops and switches.
  * [cases] and [currentDefaultBlock] are used by the current switch.
  */
 private data class GraphingContext(
-    val root: CFG,
+    val root: CFGFactory,
     val loopHeader: BasicBlock? = null,
     val afterBlock: BasicBlock? = null,
     val cases: MutableMap<ExprConstantNode, BasicBlock> = mutableMapOf(),
@@ -63,7 +63,7 @@ private fun GraphingContext.graphCompound(
   return block
 }
 
-private fun CFG.addDefinition(current: BasicBlock, ident: Variable) {
+private fun CFGFactory.addDefinition(current: BasicBlock, ident: Variable) {
   if (!exprDefinitions.containsKey(ident)) exprDefinitions[ident] = mutableSetOf(current)
   else exprDefinitions[ident]!! += current
 }
@@ -108,7 +108,7 @@ private fun GraphingContext.transformInitializer(
 }
 
 private fun processExpression(
-    root: CFG,
+    root: CFGFactory,
     current: BasicBlock,
     expr: Expression,
 ): Pair<BasicBlock, List<Expression>> {
@@ -123,7 +123,7 @@ private fun processExpression(
 }
 
 private fun graphExprRegular(
-    root: CFG,
+    root: CFGFactory,
     current: BasicBlock,
     expr: Expression,
 ): BasicBlock {
@@ -135,7 +135,7 @@ private fun graphExprRegular(
 }
 
 private fun graphExprTerm(
-    root: CFG,
+    root: CFGFactory,
     current: BasicBlock,
     cond: Expression,
     compareWithZero: Boolean = true,
@@ -153,7 +153,7 @@ private fun graphExprTerm(
 }
 
 private fun graphTernary(
-    root: CFG,
+    root: CFGFactory,
     current: BasicBlock,
     target: TypedIdentifier,
     ternary: TernaryConditional,

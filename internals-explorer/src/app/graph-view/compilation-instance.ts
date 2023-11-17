@@ -62,9 +62,10 @@ export class CompilationInstance {
     filter((cfgs): cfgs is CFG[] => !!cfgs && cfgs.length > 0),
     tap(cfgs => {
       const cfgByLastFunction = currentTargetFunction.snapshot
-        ? cfgs.find(cfg => cfg.f.funcIdent.toString() === currentTargetFunction.snapshot)
+        ? cfgs.find(cfg => cfg.functionIdentifier.toString() === currentTargetFunction.snapshot)
         : undefined;
-      const cfg = cfgByLastFunction ?? cfgs.find(cfg => cfg.f.name === defaultFunctionName.snapshot) ?? cfgs[0];
+      const cfg = cfgByLastFunction ??
+        cfgs.find(cfg => cfg.functionIdentifier.name === defaultFunctionName.snapshot) ?? cfgs[0];
       this.updateSelected(cfg);
     }),
     shareReplay({ bufferSize: 1, refCount: false }),
@@ -80,7 +81,7 @@ export class CompilationInstance {
   }
 
   public updateSelected(cfg: CFG): void {
-    currentTargetFunction.update(cfg.f.funcIdent.toString());
+    currentTargetFunction.update(cfg.functionIdentifier.toString());
     this.selectedCFGSubject.next(cfg);
   }
 }

@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 class CFGTests {
   @Test
   fun `CFG Creation Doesn't Fail`() {
-    val cfg = prepareCFG(resource("cfg/cfgTest.c"), source)
+    val cfg = prepareCFG(resource("cfg/cfgTest.c"), source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
@@ -24,7 +24,7 @@ class CFGTests {
   @Test
   fun `Graphviz CFG Creation Doesn't Fail`() {
     val text = resource("cfg/cfgTest.c").readText()
-    val cfg = prepareCFG(text, source)
+    val cfg = prepareCFG(text, source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
     val options = GraphvizOptions(reachableOnly = false, print = CodePrintingMethods.SOURCE_SUBSTRING)
@@ -35,7 +35,7 @@ class CFGTests {
   @Test
   fun `Reusing CFG For Graphviz Doesn't Fail`() {
     val text = resource("cfg/cfgTest.c").readText()
-    val cfg = prepareCFG(text, source)
+    val cfg = prepareCFG(text, source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
     createGraphviz(cfg, text, GraphvizOptions(reachableOnly = true, print = CodePrintingMethods.IR_TO_STRING))
@@ -44,15 +44,16 @@ class CFGTests {
 
   @Test
   fun `Break And Continue`() {
-    val cfg = prepareCFG(resource("loops/controlKeywordsTest.c"), source)
+    val cfg = prepareCFG(resource("loops/controlKeywordsTest.c"), source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Continue Statement Branches To Loop Condition`() {
-    val cfg = prepareCFG(resource("loops/basicContinueTest.c"), source)
-    cfg.assertNoDiagnostics()
+    val factory = prepareCFG(resource("loops/basicContinueTest.c"), source)
+    val cfg = factory.create()
+    factory.assertNoDiagnostics()
     val loopHeader = cfg.startBlock.successors[0]
     assert(loopHeader.terminator is CondJump)
     val loopBlock = (loopHeader.terminator as CondJump).target
@@ -64,7 +65,7 @@ class CFGTests {
 
   @Test
   fun `While Loop`() {
-    val cfg = prepareCFG(resource("loops/whileLoopTest.c"), source)
+    val cfg = prepareCFG(resource("loops/whileLoopTest.c"), source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     // Start block jumps to loop header
     assert(cfg.startBlock.terminator is UncondJump)
@@ -79,7 +80,7 @@ class CFGTests {
 
   @Test
   fun `Do While Loop`() {
-    val cfg = prepareCFG(resource("loops/doWhileLoopTest.c"), source)
+    val cfg = prepareCFG(resource("loops/doWhileLoopTest.c"), source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     // Start block jumps to loop block
     assert(cfg.startBlock.terminator is UncondJump)
@@ -93,21 +94,21 @@ class CFGTests {
 
   @Test
   fun `For Loop`() {
-    val cfg = prepareCFG(resource("loops/forLoopTest.c"), source)
+    val cfg = prepareCFG(resource("loops/forLoopTest.c"), source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Early Return In Function`() {
-    val cfg = prepareCFG(resource("cfg/earlyReturnTest.c"), source)
+    val cfg = prepareCFG(resource("cfg/earlyReturnTest.c"), source).create()
     assert(cfg.startBlock.src.isNotEmpty())
     assert(cfg.startBlock.isTerminated())
   }
 
   @Test
   fun `Pre-order Traversal Of Dominator Tree Is Correct For Diamond Graph`() {
-    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source).create()
     val sequence = createDomTreePreOrderNodes(cfg.doms, cfg.startBlock, cfg.nodes)
     val correctOrder = listOf(
         cfg.startBlock,
@@ -120,7 +121,7 @@ class CFGTests {
 
   @Test
   fun `Pre-order Traversal Of Dominator Tree Is Correct For Phi Test Graph`() {
-    val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/phiTest.c"), source).create()
     val sequence = createDomTreePreOrderNodes(cfg.doms, cfg.startBlock, cfg.nodes)
     val correctOrder = listOf(
         cfg.startBlock,
@@ -135,7 +136,7 @@ class CFGTests {
 
   @Test
   fun `Pre-order Traversal Of Dominator Tree Is Correct For Switch Graph`() {
-    val cfg = prepareCFG(resource("cfg/switch.c"), source)
+    val cfg = prepareCFG(resource("cfg/switch.c"), source).create()
     val sequence = createDomTreePreOrderNodes(cfg.doms, cfg.startBlock, cfg.nodes)
     val l = sequence.toList()
     assertEquals(cfg.nodes.size, l.size)
@@ -152,20 +153,23 @@ class CFGTests {
   fun `Unterminated Blocks In Function`() {
     val code = "int f() {}"
     val p = prepareCode(code, source)
-    val cfg = CFG(p.root.decls.firstFun(), MachineTargetData.x64, source, code)
-    cfg.assertDiags(DiagnosticId.CONTROL_END_OF_NON_VOID)
+    val factory = CFGFactory(p.root.decls.firstFun(), MachineTargetData.x64, source, code)
+    factory.create()
+    factory.assertDiags(DiagnosticId.CONTROL_END_OF_NON_VOID)
   }
 
   @Test
   fun `Unterminated Block In Main Is OK`() {
-    val cfg = prepareCFG(resource("e2e/emptyMain.c"), source)
-    cfg.assertNoDiagnostics()
+    val factory = prepareCFG(resource("e2e/emptyMain.c"), source)
+    factory.create()
+    factory.assertNoDiagnostics()
   }
 
   @Test
   fun `Switch And SelectJumps`() {
-    val cfg = prepareCFG(resource("cfg/switch.c"), source)
-    cfg.assertNoDiagnostics()
+    val factory = prepareCFG(resource("cfg/switch.c"), source)
+    val cfg = factory.create()
+    factory.assertNoDiagnostics()
     assertEquals(5, cfg.nodes.size)
     val ret = cfg.nodes.first { it.terminator is ImpossibleJump }
     assertTrue(ret !in cfg.startBlock.successors)
@@ -182,14 +186,14 @@ class CFGTests {
 
   @Test
   fun `Postfix In Terminator Conditional Has Correct IR Order`() {
-    val cfg = prepareCFG(resource("cfg/postfixInConditional.c"), source)
+    val cfg = prepareCFG(resource("cfg/postfixInConditional.c"), source).create()
     val cond = checkNotNull(cfg.startBlock.terminator as? CondJump)
     assert(cond.cond.last() is IntCmp)
   }
 
   @Test
   fun `Conditional IR Always Ends In Comparison`() {
-    val cfg = prepareCFG(resource("cfg/ifWithVariableCond.c"), source)
+    val cfg = prepareCFG(resource("cfg/ifWithVariableCond.c"), source).create()
     val term = cfg.startBlock.terminator
     check(term is CondJump)
     val cmp = term.cond.last()

@@ -97,7 +97,7 @@ class SPIMGenerator(
   private fun generateFunction(function: TargetFunGenerator<MIPS32Instruction>, overrideName: String? = null) {
     val allocationResult = function.regAlloc()
     text += instrGen {
-      label(overrideName ?: function.graph.f.name)
+      label(overrideName ?: function.graph.functionName)
       emit(genAsm(function.genFunctionPrologue(allocationResult)))
       val asmMap = function.applyAllocation(allocationResult)
       for (block in function.graph.blocks - function.graph.returnBlock.id) {

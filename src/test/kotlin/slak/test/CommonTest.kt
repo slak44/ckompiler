@@ -4,6 +4,7 @@ import slak.ckompiler.*
 import slak.ckompiler.analysis.CFG
 import slak.ckompiler.lexer.*
 import slak.ckompiler.FSPath
+import slak.ckompiler.analysis.CFGFactory
 import slak.ckompiler.analysis.CFGOptions
 import slak.ckompiler.parser.ExternalDeclaration
 import slak.ckompiler.parser.FunctionDefinition
@@ -46,7 +47,7 @@ internal fun prepareCode(s: String, source: SourceFileName): Parser {
   return p
 }
 
-internal fun prepareCFG(s: String, source: SourceFileName, functionName: String? = null): CFG {
+internal fun prepareCFG(s: String, source: SourceFileName, functionName: String? = null): CFGFactory {
   val p = prepareCode(s, source)
   p.assertNoDiagnostics()
   val func = if (functionName == null) {
@@ -57,13 +58,10 @@ internal fun prepareCFG(s: String, source: SourceFileName, functionName: String?
 
   val options = CFGOptions(forceReturnZero = true)
 
-  val cfg = CFG(func, MachineTargetData.x64, source, s, options)
-  cfg.diags.forEach { it.print() }
-
-  return cfg
+  return CFGFactory(func, MachineTargetData.x64, source, s, options)
 }
 
-internal fun prepareCFG(file: File, source: SourceFileName, functionName: String? = null): CFG {
+internal fun prepareCFG(file: File, source: SourceFileName, functionName: String? = null): CFGFactory {
   return prepareCFG(file.readText(), source, functionName)
 }
 

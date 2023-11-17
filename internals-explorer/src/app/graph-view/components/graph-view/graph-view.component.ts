@@ -339,7 +339,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         restoreAllAtomicCounters(compileResult.atomicCounters);
 
-        const result = createGraphviz(cfg, cfg.f.sourceText as string, options);
+        const result = createGraphviz(cfg, compileResult.sourceCode, options);
 
         clearAllAtomicCounters();
 

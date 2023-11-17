@@ -8,7 +8,7 @@ import kotlin.js.JsExport
 
 private val logger = KotlinLogging.logger {}
 
-typealias Definitions = MutableMap<Variable, Label>
+typealias Definitions = Map<Variable, Label>
 typealias DefUseChains = Map<Variable, List<Label>>
 
 data class CFGOptions(
@@ -18,46 +18,18 @@ data class CFGOptions(
 )
 
 /**
- * An instance of a [FunctionDefinition]'s control flow graph.
- *
- * These are called on construction (`forceAllNodes == false`):
- * 1. [graph]
- * 2. [collapseEmptyBlocks]
- * 3. [filterReachable]
- * 4. [handleUnterminatedBlocks]
- * 5. [postOrderNodes]
- * 6. [findDomFrontiers]
- * 7. [createDomTreePreOrderNodes]
- * 8. [insertPhiFunctions]
- * 9. [VariableRenamer.variableRenaming]
+ * To avoid mutable state in the finished [CFG] object, this class is used to first build all the necessary data.
  */
-@JsExport
-class CFG(
+class CFGFactory(
     val f: FunctionDefinition,
     val targetData: MachineTargetData,
     srcFileName: SourceFileName,
     srcText: String,
-    cfgOptions: CFGOptions = CFGOptions(),
+    private val cfgOptions: CFGOptions = CFGOptions()
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
   val startBlock = BasicBlock(isRoot = true)
 
-  /** Raw set of nodes as obtained from [graph]. */
   val allNodes = mutableSetOf(startBlock)
-
-  /** Filtered set of nodes that only contains reachable, non-empty nodes. */
-  val nodes: Set<BasicBlock>
-
-  /** [nodes], but sorted in post-order. Not a [Sequence] because we will need it in reverse. */
-  private val postOrderNodes: Set<BasicBlock>
-
-  /** @see createDomTreePreOrderNodes */
-  val domTreePreorder: Set<BasicBlock>
-
-  /**
-   * Stores the immediate dominator (IDom) of a particular node.
-   * @see findDomFrontiers
-   */
-  val doms: DominatorList
 
   /**
    * List of [Variable] used in this function, with definition locations.
@@ -74,34 +46,39 @@ class CFG(
 
   val stackVariableIds = mutableSetOf<AtomicId>()
 
-  private val renamer = VariableRenamer(this)
-
-  /** @see VariableRenamer.definitions */
-  val definitions: Definitions get() = renamer.definitions
-
-  /** @see VariableRenamer.defUseChains */
-  val defUseChains: DefUseChains get() = renamer.defUseChains
-
-  /** @see VariableRenamer.latestVersions */
-  val latestVersions: MutableMap<AtomicId, Int> get() = renamer.latestVersions
-
   val registerIds = IdCounter()
 
-  init {
+  private lateinit var doms: DominatorList
+  lateinit var domTreePreorder: Set<BasicBlock>
+
+  /**
+   * 1. [graph]
+   * 2. [collapseEmptyBlocks]
+   * 3. [filterReachable]
+   * 4. [handleUnterminatedBlocks]
+   * 5. [postOrderNodes]
+   * 6. [findDomFrontiers]
+   * 7. [createDomTreePreOrderNodes]
+   * 8. [insertPhiFunctions]
+   * 9. [VariableRenamer.variableRenaming]
+   */
+  fun create(skipPrintDiagnostics: Boolean = false): CFG {
     graph(this)
-    nodes = if (cfgOptions.forceAllNodes) {
+
+    val nodes = if (cfgOptions.forceAllNodes) {
       allNodes
     } else {
       collapseEmptyBlocks(allNodes)
       filterReachable(allNodes)
     }
 
-    handleUnterminatedBlocks(cfgOptions.forceReturnZero)
+    handleUnterminatedBlocks(nodes, cfgOptions.forceReturnZero)
 
-    postOrderNodes = postOrderNodes(startBlock, nodes)
+    val renamer = VariableRenamer(this)
 
     // SSA conversion
     if (!cfgOptions.forceAllNodes) {
+      val postOrderNodes = postOrderNodes(startBlock, nodes)
       doms = findDomFrontiers(startBlock, postOrderNodes)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
 
@@ -114,6 +91,26 @@ class CFG(
       doms = DominatorList(nodes.size)
       domTreePreorder = createDomTreePreOrderNodes(doms, startBlock, nodes)
     }
+
+    if (!skipPrintDiagnostics) {
+      diags.forEach(Diagnostic::print)
+    }
+
+    return CFG(
+        functionIdentifier = f.funcIdent,
+        functionParameters = f.parameters,
+        startBlock = startBlock,
+        allNodes = allNodes,
+        nodes = nodes,
+        domTreePreorder = domTreePreorder,
+        doms = doms,
+        exprDefinitions = exprDefinitions,
+        stackVariableIds = stackVariableIds,
+        definitions = renamer.definitions,
+        defUseChains = renamer.defUseChains,
+        latestVersions = renamer.latestVersions,
+        registerIds = registerIds
+    )
   }
 
   fun newBlock(): BasicBlock {
@@ -123,6 +120,7 @@ class CFG(
   }
 
   private fun handleUnterminatedBlocks(
+      nodes: Set<BasicBlock>,
       forceReturnZero: Boolean,
   ) = nodes.filterNot(BasicBlock::isTerminated).forEach {
     // For some functions (read: for main), it is desirable to return 0 if there are no explicit
@@ -167,6 +165,46 @@ class CFG(
 }
 
 /**
+ * An instance of a [FunctionDefinition]'s control flow graph, including many precomputed data structures.
+ *
+ * @param functionIdentifier see [FunctionDefinition.funcIdent]
+ * @param functionParameters see [FunctionDefinition.parameters]
+ * @param startBlock Root block of the CFG
+ * @param allNodes Raw set of nodes as obtained from [graph]
+ * @param nodes Filtered set of nodes that only contains reachable, non-empty nodes
+ * @param domTreePreorder see [createDomTreePreOrderNodes]
+ * @param doms Stores the immediate dominator (IDom) of a particular node. See [findDomFrontiers]
+ * @param exprDefinitions see [CFGFactory.exprDefinitions]
+ * @param stackVariableIds [Variable.identityId] that will be stored as [StackVariable]s
+ * @param definitions see [VariableRenamer.definitions]
+ * @param defUseChains see [VariableRenamer.defUseChains]
+ * @param latestVersions see [VariableRenamer.latestVersions]
+ * @param registerIds IDs for [VirtualRegister]
+ *
+ * @see CFGFactory
+ */
+@JsExport
+data class CFG(
+    val functionIdentifier: TypedIdentifier,
+    val functionParameters: List<TypedIdentifier>,
+    val startBlock: BasicBlock,
+    val allNodes: Set<BasicBlock>,
+    val nodes: Set<BasicBlock>,
+    val domTreePreorder: Set<BasicBlock>,
+    val doms: DominatorList,
+    val exprDefinitions: Map<Variable, Set<BasicBlock>>,
+    val stackVariableIds: Set<AtomicId>,
+    val definitions: Definitions,
+    val defUseChains: DefUseChains,
+    val latestVersions: Map<AtomicId, Int>,
+    val registerIds: IdCounter,
+) {
+  init {
+    check(startBlock.isRoot) { "Start block is not root" }
+  }
+}
+
+/**
  * φ-functions happen just before the instructions in a [BasicBlock]. This is a pseudo-index that's
  * less than 0.
  */
@@ -176,7 +214,7 @@ const val DEFINED_IN_PHI: LabelIndex = -1
  * Holds state required for SSA phase 2.
  * @see VariableRenamer.variableRenaming
  */
-private class VariableRenamer(val cfg: CFG) {
+private class VariableRenamer(val cfg: CFGFactory) {
   /**
    * Stores what is the last created version of a particular variable (maps id to version).
    * @see variableRenaming
@@ -597,6 +635,8 @@ private fun findDomFrontiers(startNode: BasicBlock, postOrder: Set<BasicBlock>):
  * Compute the post order for a set of nodes, and return it.
  *
  * Also sets [BasicBlock.postOrderId] and [BasicBlock.height] accordingly.
+ *
+ * Doesn't return a [Sequence] because we will need it in reverse.
  */
 private fun postOrderNodes(startNode: BasicBlock, nodes: Set<BasicBlock>): Set<BasicBlock> {
   if (startNode !in nodes) logger.throwICE("startNode not in nodes") { "$startNode/$nodes" }

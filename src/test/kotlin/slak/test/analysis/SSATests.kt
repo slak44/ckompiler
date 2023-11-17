@@ -30,33 +30,33 @@ class SSATests {
 
   @Test
   fun `SSA Conversion Doesn't Fail 1`() {
-    val cfg = prepareCFG(resource("ssa/domsTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/domsTest.c"), source).create()
     cfg.assertIsSSA()
   }
 
   @Test
   fun `SSA Conversion Doesn't Fail 2`() {
-    val cfg = prepareCFG(resource("ssa/domsTest2.c"), source)
+    val cfg = prepareCFG(resource("ssa/domsTest2.c"), source).create()
     cfg.assertIsSSA()
   }
 
   @Test
   fun `SSA Conversion Doesn't Fail 3`() {
-    val cfg = prepareCFG(resource("ssa/domsTest3.c"), source)
+    val cfg = prepareCFG(resource("ssa/domsTest3.c"), source).create()
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
     cfg.assertIsSSA()
   }
 
   @Test
   fun `SSA Conversion Doesn't Fail 4`() {
-    val cfg = prepareCFG(resource("ssa/domsTest4.c"), source)
+    val cfg = prepareCFG(resource("ssa/domsTest4.c"), source).create()
     cfg.nodes.forEach { println(it.toString() + " frontier:\t" + it.dominanceFrontier) }
     cfg.assertIsSSA()
   }
 
   @Test
   fun `Diamond Graph From If-Else Has Correct Dominance Frontier`() {
-    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source).create()
     cfg.assertIsSSA()
     assert(cfg.startBlock.dominanceFrontier.isEmpty())
     val t = cfg.startBlock.terminator as CondJump
@@ -67,7 +67,7 @@ class SSATests {
 
   @Test
   fun `Correct Definition Tracking Test`() {
-    val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/phiTest.c"), source).create()
     cfg.assertIsSSA()
     for ((key, value) in cfg.exprDefinitions) {
       println("$key (${key.identityId}) defined in \n\t${value.joinToString("\n\t")}")
@@ -82,7 +82,7 @@ class SSATests {
 
   @Test
   fun `Phi Insertion`() {
-    val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/phiTest.c"), source).create()
     cfg.assertIsSSA()
     for (node in cfg.nodes) {
       println("$node φ-functions: \n\t${node.phi.joinToString("\n\t")}")
@@ -95,7 +95,7 @@ class SSATests {
 
   @Test
   fun `Variable Renaming`() {
-    val cfg = prepareCFG(resource("ssa/phiTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/phiTest.c"), source).create()
     cfg.assertIsSSA()
 
     fun getStoreValue(list: List<IRInstruction>?, at: Int) =
@@ -155,7 +155,7 @@ class SSATests {
 
   @Test
   fun `Def-Use Chains On Program With One Basic Block`() {
-    val cfg = prepareCFG(resource("ssa/sameDefMultipleUses.c"), source)
+    val cfg = prepareCFG(resource("ssa/sameDefMultipleUses.c"), source).create()
     cfg.assertIsSSA()
     printDefUse(cfg)
     with(cfg) {
@@ -168,7 +168,7 @@ class SSATests {
 
   @Test
   fun `Def-Use Chains With For Loop`() {
-    val cfg = prepareCFG(resource("loops/forLoopTest.c"), source)
+    val cfg = prepareCFG(resource("loops/forLoopTest.c"), source).create()
     cfg.assertIsSSA()
     printDefUse(cfg)
     with(cfg) {
@@ -185,7 +185,7 @@ class SSATests {
   @ParameterizedTest
   @ValueSource(strings = ["ssa/domsTest.c", "ssa/domsTest2.c", "ssa/domsTest3.c"])
   fun `Iterated Dominance Frontier Works`(fileName: String) {
-    val cfg = prepareCFG(resource(fileName), source)
+    val cfg = prepareCFG(resource(fileName), source).create()
     cfg.assertIsSSA()
     val block1 = cfg.startBlock.successors[0]
     val variable = cfg.definitions.keys.first { it.name == "x" && it.version == 2 }
@@ -199,7 +199,7 @@ class SSATests {
 
   @Test
   fun `Pre-order Traversal Of Dominator Tree Is Correct For Diamond Graph`() {
-    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/trivialDiamondGraphTest.c"), source).create()
     cfg.assertIsSSA()
     val gen = X64Generator(cfg, X64Target())
     val sequence = createDomTreePreOrderNodes(cfg.doms, cfg.startBlock, cfg.nodes)
@@ -217,7 +217,7 @@ class SSATests {
 
   @Test
   fun `Pre-order Traversal Of Dominator Tree Is Correct For 3-Node Graph`() {
-    val cfg = prepareCFG(resource("codegen/interBlockInterference.c"), source)
+    val cfg = prepareCFG(resource("codegen/interBlockInterference.c"), source).create()
     cfg.assertIsSSA()
     val gen = X64Generator(cfg, X64Target())
     val sequence = createDomTreePreOrderNodes(cfg.doms, cfg.startBlock, cfg.nodes)
@@ -236,7 +236,7 @@ class SSATests {
 
   @Test
   fun `Reverse Post Order For InstructionGraph Is Correct`() {
-    val cfg = prepareCFG(resource("ssa/domsTest.c"), source)
+    val cfg = prepareCFG(resource("ssa/domsTest.c"), source).create()
     cfg.assertIsSSA()
     val gen = X64Generator(cfg, X64Target())
     val loopedBlocks = gen.graph.blocks.filter {
