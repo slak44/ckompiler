@@ -1,9 +1,10 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   application
-  kotlin("multiplatform") version "1.9.0"
-  kotlin("plugin.serialization") version "1.9.0"
+  kotlin("multiplatform") version "1.9.20"
+  kotlin("plugin.serialization") version "1.9.20"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
 }
@@ -19,6 +20,12 @@ application {
   applicationName = "ckompiler"
   executableDir = "usr/bin"
   applicationDistribution.from(File(rootDir, "stdlib/include")).into(jvmIncludePath)
+}
+
+tasks.withType<KotlinCompile> {
+  kotlinOptions {
+    freeCompilerArgs = listOf("-Xexpect-actual-classes")
+  }
 }
 
 tasks.named<JavaExec>("run") {
@@ -210,6 +217,14 @@ kotlin {
 
     generateTypeScriptDefinitions()
 
+    tasks.getByName("processTestResources") {
+      finalizedBy("metadataCommonMainProcessResources")
+    }
+
+    tasks.getByName("processResources") {
+      finalizedBy("metadataCommonMainProcessResources")
+    }
+
     tasks.getByName("jsProcessResources") {
       dependsOn(tasks.getByName("processResources"))
       dependsOn(tasks.getByName("processTestResources"))
@@ -220,11 +235,13 @@ kotlin {
       finalizedBy(fixESImport)
       finalizedBy(copyLibraryNodeModules)
       finalizedBy(fixLibraryDefinitionsFile)
+      finalizedBy("jsBrowserProductionWebpack")
     }
 
     tasks.getByName("jsProductionExecutableCompileSync") {
       finalizedBy(jsBrowserProductionExecutablePropsFile)
       finalizedBy(fixBinaryDefinitionsFile)
+      finalizedBy("jsBrowserProductionLibraryPrepare")
     }
   }
 
@@ -251,8 +268,6 @@ kotlin {
     }
 
     val jvmMain by getting {
-      dependsOn(commonMain)
-
       dependencies {
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.6.0")
@@ -267,18 +282,14 @@ kotlin {
       kotlin.srcDir("src/test/kotlin")
       resources.srcDir("src/test/resources")
 
-      dependsOn(jvmMain)
-      dependsOn(commonTest)
-
       dependencies {
         implementation("org.junit.jupiter:junit-jupiter:5.10.0")
         implementation("org.apache.logging.log4j:log4j-jul:2.20.0")
-        implementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.0")
+        implementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.20")
       }
     }
 
     val jsMain by getting {
-      dependsOn(commonMain)
       languageSettings.optIn("kotlin.js.ExperimentalJsExport")
 
       dependencies {
