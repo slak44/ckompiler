@@ -10,6 +10,12 @@ actual class AtomicInteger {
   // This is JS, so everything is technically atomic
   actual fun getAndIncrement(): Int = integer++
 
+  actual fun get(): Int = integer
+
+  actual fun set(value: Int) {
+    integer = value
+  }
+
   companion object {
     val allAtomicIdCounters = mutableListOf<AtomicInteger>()
   }
