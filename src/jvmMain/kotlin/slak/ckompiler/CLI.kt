@@ -1,20 +1,23 @@
 package slak.ckompiler
 
-import kotlinx.cli.*
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.cli.*
 import slak.ckompiler.analysis.*
-import slak.ckompiler.analysis.external.CodePrintingMethods
-import slak.ckompiler.analysis.external.GraphvizOptions
-import slak.ckompiler.analysis.external.createGraphviz
-import slak.ckompiler.analysis.external.exportCFG
+import slak.ckompiler.analysis.external.*
 import slak.ckompiler.backend.*
+import slak.ckompiler.irserialize.IREncoder
+import slak.ckompiler.irserialize.SerializationType
 import slak.ckompiler.lexer.CLIDefines
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.File
+import java.io.FileOutputStream
+
 
 enum class ExitCodes(val int: Int) {
   NORMAL(0), ERROR(1), EXECUTION_FAILED(2), BAD_COMMAND(4)
@@ -230,8 +233,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       "Run the spiller, then show the CFG without running register allocation")
 
   init {
-    cli.helpGroup("CFG debug options (require --cfg-mode)")
+    cli.helpGroup("IR Serialization (require --cfg-mode)")
   }
+
+  private val serialize by cli.flagArgument("--serialize", "Write serialized IR to the output")
+
+  private val serializationType by cli.flagValueArgument("--serialization-type", "TYPE",
+      "Use a certain serializer type (JSON or BINARY)", initialValue = SerializationType.JSON, SerializationType::valueOf)
 
   private val exportCFGAsJSON by cli.flagArgument("--export-cfg", "Export CFG contents as JSON")
 
@@ -463,11 +471,27 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       )
       cfg.diags.forEach { it.print() }
 
-      if (exportCFGAsJSON) {
-        val json = exportCFG(cfg)
-        when (output) {
-          null -> println(json)
-          else -> fileFrom(output!!).writeText(json)
+      if (serialize) {
+        when (serializationType) {
+          SerializationType.JSON -> {
+            val json = exportCFG(cfg)
+            when (output) {
+              null -> println(json)
+              else -> fileFrom(output!!).writeText(json)
+            }
+          }
+          SerializationType.BINARY -> {
+            val file = when (output) {
+              null -> {
+                println("Not printing binary output to stdout. Use -o FILE")
+                return null
+              }
+              else -> fileFrom(output!!)
+            }
+            val dos = DataOutputStream(FileOutputStream(file))
+            // FIXME: this could be better
+            IREncoder(dos).encodeSerializableValue(BasicBlock.serializer(), cfg.startBlock)
+          }
         }
 
         return null

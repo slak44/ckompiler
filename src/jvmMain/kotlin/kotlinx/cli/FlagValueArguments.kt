@@ -78,7 +78,7 @@ fun <T> CommandLineBuilder.flagValueArgument(
     flag: String, valueSyntax: String, help: String,
     initialValue: T,
     mapping: (String) -> T
-) =
+): ArgumentValue<T> =
     flagValueArgument(listOf(flag), valueSyntax, help, initialValue, mapping)
 
 

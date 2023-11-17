@@ -36,7 +36,7 @@ Everything is stored in the `CFG`_ class.
 JSON serialization
 ^^^^^^^^^^^^^^^^^^
 
-The CFG (including BasicBlocks, and the IR) are serializable to JSON, using the CLI options `--cfg-mode --export-cfg`.
+The CFG (including BasicBlocks, and the IR) are serializable to JSON, using the CLI options `--cfg-mode --serialize`.
 
 Here's a sample of a JSON BasicBlock:
 
