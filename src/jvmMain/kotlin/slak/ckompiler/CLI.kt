@@ -376,6 +376,91 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     return function
   }
 
+  private fun runMIDebug(allFuncs: List<FunctionDefinition>, target: MachineTarget<*>, text: String, relPath: String) {
+    val function = allFuncs.findNamedFunction(miDebugFuncName) ?: return
+    val miText = generateMIDebug(
+        target,
+        relPath,
+        text,
+        showDummies = showDummies,
+        generateHtml = miHtmlOutput,
+        spillOutput = spillOutput
+    ) {
+      CFGFactory(
+          f = function,
+          targetData = target.machineTargetData,
+          srcFileName = relPath,
+          srcText = text,
+          cfgOptions = CFGOptions(forceReturnZero = function.name == "main"),
+      ).create()
+    }
+
+    if (output != null) {
+      fileFrom(output!!).writeText(miText)
+    } else {
+      println(miText)
+    }
+  }
+
+  private fun runCFGMode(allFuncs: List<FunctionDefinition>, target: MachineTarget<*>, text: String, relPath: String) {
+    val function = allFuncs.findNamedFunction(targetFunction) ?: return
+    val cfgOptions = CFGOptions(forceAllNodes = forceAllNodes, forceReturnZero = function.name == "main")
+    val cfg = CFGFactory(
+        f = function,
+        targetData = target.machineTargetData,
+        srcFileName = relPath,
+        srcText = text,
+        cfgOptions = cfgOptions,
+    ).create()
+
+    if (serialize) {
+      when (serializationType) {
+        SerializationType.JSON -> {
+          val json = exportCFG(cfg)
+          when (output) {
+            null -> println(json)
+            else -> fileFrom(output!!).writeText(json)
+          }
+        }
+        SerializationType.BINARY -> {
+          val file = when (output) {
+            null -> {
+              println("Not printing binary output to stdout. Use -o FILE")
+              return
+            }
+            else -> fileFrom(output!!)
+          }
+          val dos = DataOutputStream(FileOutputStream(file))
+          // FIXME: this could be better
+          IREncoder(dos).encodeSerializableValue(CFGSerializer, cfg)
+        }
+      }
+
+      return
+    }
+
+    val options = GraphvizOptions(
+        print = printingMethod,
+        reachableOnly = !forceUnreachable,
+        noAllocOnlySpill = noAllocOnlySpill,
+        isaType = isaType,
+        targetOpts = target.options
+    )
+    val graphviz = createGraphviz(cfg, text, options)
+
+    when {
+      displayGraph -> {
+        val src = createTemp("dot_temp", ".tmp")
+        src.writeText(graphviz)
+        val dest = createTemp("dot_out", ".png")
+        invokeDot(src, dest)
+        openFileDefault(dest)
+      }
+      output == null -> println(graphviz)
+      else -> fileFrom(output!!).writeText(graphviz)
+    }
+  }
+
   private var executionFailed = false
 
   private fun getParserFor(text: String, relPath: String, parentDir: File): Parser? {
@@ -427,89 +512,12 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     val target = createMachineTarget(isaType, baseTargetOpts, targetSpecific)
 
     if (isMIDebugOnly) {
-      val function = allFuncs.findNamedFunction(miDebugFuncName) ?: return null
-      val miText = generateMIDebug(
-          target,
-          relPath,
-          text,
-          showDummies = showDummies,
-          generateHtml = miHtmlOutput,
-          spillOutput = spillOutput
-      ) {
-        CFGFactory(
-            f = function,
-            targetData = target.machineTargetData,
-            srcFileName = relPath,
-            srcText = text,
-            cfgOptions = CFGOptions(forceReturnZero = function.name == "main"),
-        ).create()
-      }
-      if (output != null) {
-        fileFrom(output!!).writeText(miText)
-      } else {
-        println(miText)
-      }
+      runMIDebug(allFuncs, target, text, relPath)
       return null
     }
 
     if (isCFGOnly) {
-      val function = allFuncs.findNamedFunction(targetFunction) ?: return null
-      val cfgOptions = CFGOptions(forceAllNodes = forceAllNodes, forceReturnZero = function.name == "main")
-      val cfg = CFGFactory(
-          f = function,
-          targetData = target.machineTargetData,
-          srcFileName = relPath,
-          srcText = text,
-          cfgOptions = cfgOptions,
-      ).create()
-
-      if (serialize) {
-        when (serializationType) {
-          SerializationType.JSON -> {
-            val json = exportCFG(cfg)
-            when (output) {
-              null -> println(json)
-              else -> fileFrom(output!!).writeText(json)
-            }
-          }
-          SerializationType.BINARY -> {
-            val file = when (output) {
-              null -> {
-                println("Not printing binary output to stdout. Use -o FILE")
-                return null
-              }
-              else -> fileFrom(output!!)
-            }
-            val dos = DataOutputStream(FileOutputStream(file))
-            // FIXME: this could be better
-            IREncoder(dos).encodeSerializableValue(CFGSerializer, cfg)
-          }
-        }
-
-        return null
-      }
-
-      val options = GraphvizOptions(
-          print = printingMethod,
-          reachableOnly = !forceUnreachable,
-          noAllocOnlySpill = noAllocOnlySpill,
-          isaType = isaType,
-          targetOpts = target.options
-      )
-      val graphviz = createGraphviz(cfg, text, options)
-
-      when {
-        displayGraph -> {
-          val src = createTemp("dot_temp", ".tmp")
-          src.writeText(graphviz)
-          val dest = createTemp("dot_out", ".png")
-          invokeDot(src, dest)
-          openFileDefault(dest)
-        }
-        output == null -> println(graphviz)
-        else -> fileFrom(output!!).writeText(graphviz)
-      }
-
+      runCFGMode(allFuncs, target, text, relPath)
       return null
     }
 
