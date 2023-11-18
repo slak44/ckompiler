@@ -66,12 +66,12 @@ internal fun prepareCFG(file: File, source: SourceFileName, functionName: String
 }
 
 @JvmName("cli_array")
-internal fun cli(args: Array<String>): Pair<CLI, ExitCodes> = cli({ System.`in`.bufferedReader().readText() }, *args)
+internal fun cli(args: Array<String>): Pair<CLI, ExitCodes> = cli({ System.`in`.readAllBytes() }, *args)
 
 @JvmName("cli_vararg")
-internal fun cli(vararg args: String): Pair<CLI, ExitCodes> = cli({ System.`in`.bufferedReader().readText() }, *args)
+internal fun cli(vararg args: String): Pair<CLI, ExitCodes> = cli({ System.`in`.readAllBytes() }, *args)
 
-internal fun cli(readStdin: () -> String, vararg args: String): Pair<CLI, ExitCodes> {
+internal fun cli(readStdin: () -> ByteArray, vararg args: String): Pair<CLI, ExitCodes> {
   val cli = CLI()
   val exitCode = cli.parse(args.toList().toTypedArray(), readStdin)
   cli.diags.forEach(Diagnostic::print)

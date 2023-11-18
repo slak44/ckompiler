@@ -2,18 +2,20 @@ package slak.ckompiler
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.cli.*
+import slak.ckompiler.analysis.CFG
 import slak.ckompiler.analysis.CFGFactory
 import slak.ckompiler.analysis.CFGOptions
 import slak.ckompiler.analysis.external.*
 import slak.ckompiler.backend.*
-import slak.ckompiler.irserialize.IREncoder
-import slak.ckompiler.irserialize.SerializationType
+import slak.ckompiler.irserialize.*
 import slak.ckompiler.lexer.CLIDefines
 import slak.ckompiler.lexer.IncludePaths
 import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
+import java.io.ByteArrayInputStream
+import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -26,6 +28,7 @@ enum class ExitCodes(val int: Int) {
 /**
  * The command line interface for the compiler.
  */
+@OptIn(ExperimentalUnsignedTypes::class)
 class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   private val currentDir = File(System.getProperty("user.dir")!!)
@@ -402,17 +405,22 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
   }
 
-  private fun runCFGMode(allFuncs: List<FunctionDefinition>, target: MachineTarget<*>, text: String, relPath: String) {
+  private fun runCFGMode(allFuncs: List<FunctionDefinition>, target: MachineTarget<*>, srcText: String, relPath: String) {
     val function = allFuncs.findNamedFunction(targetFunction) ?: return
     val cfgOptions = CFGOptions(forceAllNodes = forceAllNodes, forceReturnZero = function.name == "main")
+
     val cfg = CFGFactory(
         f = function,
         targetData = target.machineTargetData,
         srcFileName = relPath,
-        srcText = text,
+        srcText = srcText,
         cfgOptions = cfgOptions,
     ).create()
 
+    runCFGMode(cfg, target, srcText)
+  }
+
+  private fun runCFGMode(cfg: CFG, target: MachineTarget<*>, srcText: String) {
     if (serialize) {
       when (serializationType) {
         SerializationType.JSON -> {
@@ -431,6 +439,9 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
             else -> fileFrom(output!!)
           }
           val dos = DataOutputStream(FileOutputStream(file))
+          for (byte in binarySerializationSignature) {
+            dos.writeByte(byte.toInt())
+          }
           // FIXME: this could be better
           IREncoder(dos).encodeSerializableValue(CFGSerializer, cfg)
         }
@@ -446,7 +457,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
         isaType = isaType,
         targetOpts = target.options
     )
-    val graphviz = createGraphviz(cfg, text, options)
+    val graphviz = createGraphviz(cfg, srcText, options)
 
     when {
       displayGraph -> {
@@ -501,7 +512,19 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     return p
   }
 
-  private fun compile(text: String, relPath: String, baseName: String, parentDir: File): File? {
+  private fun compile(sourceBytes: ByteArray, relPath: String, baseName: String, parentDir: File): File? {
+    if (isCFGOnly && startsWithBinarySignature(sourceBytes)) {
+      val target = createMachineTarget(isaType, baseTargetOpts, targetSpecific)
+      val cfgBytes = sourceBytes.sliceArray(binarySerializationSignature.size..<sourceBytes.size)
+      val dis = DataInputStream(ByteArrayInputStream(cfgBytes))
+      val cfg = IRDecoder(dis).decodeSerializableValue(CFGSerializer)
+
+      runCFGMode(cfg, target, "")
+
+      return null
+    }
+
+    val text = sourceBytes.toString(Charsets.UTF_8)
     val p = getParserFor(text, relPath, parentDir) ?: return null
     return compile(p, text, relPath, baseName, parentDir)
   }
@@ -589,7 +612,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
   }
 
   private fun compileFile(file: File) = compile(
-      file.readText(),
+      file.readBytes(),
       file.path,
       file.nameWithoutExtension,
       file.absoluteFile.parentFile
@@ -597,9 +620,9 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
 
   /**
    * @param args argv for this execution
-   * @param readStdin what text to use for the `-` argument; should read from [System. in] for main
+   * @param readStdin what text to use for the `-` argument; should read from [System.in] for main
    */
-  fun parse(args: Array<String>, readStdin: () -> String): ExitCodes {
+  fun parse(args: Array<String>, readStdin: () -> ByteArray): ExitCodes {
     @Suppress("TooGenericExceptionCaught")
     try {
       cli.parse(args)
