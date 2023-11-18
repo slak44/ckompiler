@@ -6,10 +6,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
 import slak.ckompiler.AtomicId
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.TypeName
@@ -212,16 +210,4 @@ object ConstantJumpSerializer : KSerializer<ConstantJump> {
         ConstantJumpSurrogate(value.target.nodeId, value.impossible.nodeId)
     )
   }
-}
-
-@Serializable
-private data class CFGExportModel(
-    val startBlock: AtomicId,
-    val allNodes: Set<BasicBlock>,
-)
-
-val json = Json { classDiscriminator = "discriminator" }
-
-fun exportCFG(cfg: CFG): String {
-  return json.encodeToString(CFGExportModel(cfg.startBlock.nodeId, cfg.allNodes))
 }
