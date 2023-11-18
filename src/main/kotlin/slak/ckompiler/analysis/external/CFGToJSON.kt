@@ -14,6 +14,7 @@ private data class CFGExportModel(
 )
 
 val json = Json { classDiscriminator = "discriminator" }
+
 fun exportCFG(cfg: CFG): String {
   return json.encodeToString(CFGExportModel(cfg.startBlock.nodeId, cfg.allNodes))
 }

@@ -1,10 +1,15 @@
+@file:Suppress("NON_EXPORTABLE_TYPE")
+
 package slak.ckompiler.analysis
 
 import io.github.oshai.kotlinlogging.KMarkerFactory.getMarker
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.Serializable
 import slak.ckompiler.*
+import slak.ckompiler.analysis.external.CFGSerializer
 import slak.ckompiler.parser.*
 import kotlin.js.JsExport
+import kotlin.js.JsName
 
 private val logger = KotlinLogging.logger {}
 
@@ -183,6 +188,7 @@ class CFGFactory(
  *
  * @see CFGFactory
  */
+@Serializable(with = CFGSerializer::class)
 @JsExport
 data class CFG(
     val functionIdentifier: TypedIdentifier,
@@ -560,10 +566,20 @@ fun createDomTreePreOrderNodes(
 @JsExport
 class DominatorList(size: Int) {
   private val domsImpl = MutableList<BasicBlock?>(size) { null }
+
+  @JsName("DominatorListFromList")
+  constructor(list: List<BasicBlock?>) : this(list.size) {
+    for ((index, block) in list.withIndex()) {
+      domsImpl[index] = block
+    }
+  }
+
   operator fun get(b: BasicBlock) = domsImpl[b.postOrderId]
   operator fun set(b: BasicBlock, new: BasicBlock) {
     domsImpl[b.postOrderId] = new
   }
+
+  fun toList(): List<BasicBlock?> = domsImpl
 }
 
 /**

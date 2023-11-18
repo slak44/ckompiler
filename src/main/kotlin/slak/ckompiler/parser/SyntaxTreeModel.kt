@@ -1,6 +1,8 @@
 package slak.ckompiler.parser
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.ValueType.*
@@ -183,6 +185,7 @@ private fun valueTypeOf(type: TypeName): ValueType {
  * same name (name shadowing). Creating other instances is fine as long as they are not leaked to
  * the rest of the AST.
  */
+@Serializable
 @JsExport
 data class TypedIdentifier(
     override val name: String,
@@ -196,11 +199,13 @@ data class TypedIdentifier(
     withRange(decl.name)
   }
 
+  @Transient
   override val valueType = valueTypeOf(type)
 
   var id: AtomicId = varCounter()
     private set
 
+  @Transient
   override val kindName = "variable"
 
   /**

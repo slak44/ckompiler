@@ -436,17 +436,13 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           generateHtml = miHtmlOutput,
           spillOutput = spillOutput
       ) {
-        val options = CFGOptions(forceReturnZero = function.name == "main")
-
-        val cfg = CFGFactory(
+        CFGFactory(
             f = function,
             targetData = target.machineTargetData,
             srcFileName = relPath,
             srcText = text,
-            cfgOptions = options,
+            cfgOptions = CFGOptions(forceReturnZero = function.name == "main"),
         ).create()
-
-        return@generateMIDebug cfg
       }
       if (output != null) {
         fileFrom(output!!).writeText(miText)
@@ -490,7 +486,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
             }
             val dos = DataOutputStream(FileOutputStream(file))
             // FIXME: this could be better
-            IREncoder(dos).encodeSerializableValue(BasicBlock.serializer(), cfg.startBlock)
+            IREncoder(dos).encodeSerializableValue(CFGSerializer, cfg)
           }
         }
 
@@ -522,7 +518,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
     }
 
     val main = allFuncs.firstOrNull { it.name == "main" }
-    val allDecls = (p.root.decls - allFuncs).map { it as Declaration }
+    val allDecls = (p.root.decls - allFuncs.toSet()).map { it as Declaration }
     // FIXME: only add declarations marked 'extern'
     val declNames = allDecls.flatMap { it.idents(p.root.scope) }.map { it.name }
     val functionsEmit = (allFuncs - main).map {

@@ -3,14 +3,19 @@ package slak.ckompiler.analysis.external
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import slak.ckompiler.AtomicId
+import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.parser.TypeName
+import slak.ckompiler.parser.TypedIdentifier
 
 @Serializable
 @SerialName("slak.ckompiler.analysis.BasicBlock")
@@ -209,5 +214,52 @@ object ConstantJumpSerializer : KSerializer<ConstantJump> {
         ConstantJumpSurrogate.serializer(),
         ConstantJumpSurrogate(value.target.nodeId, value.impossible.nodeId)
     )
+  }
+}
+
+private typealias LabelSurrogate = Pair<AtomicId, LabelIndex>
+
+@Serializable
+@SerialName("slak.ckompiler.analysis.CFG")
+private data class CFGSurrogate(
+    val functionIdentifier: TypedIdentifier,
+    val functionParameters: List<TypedIdentifier>,
+    val allNodes: Set<BasicBlock>,
+    val startBlock: AtomicId,
+    val nodes: List<AtomicId>,
+    val domTreePreorder: List<AtomicId>,
+    val doms: List<AtomicId>,
+    val exprDefinitions: Map<Variable, List<AtomicId>>,
+    val stackVariableIds: Set<AtomicId>,
+    val definitions: Map<Variable, LabelSurrogate>,
+    val defUseChains: Map<Variable, List<LabelSurrogate>>,
+    val latestVersions: Map<AtomicId, Int>,
+    val registerIds: IdCounter,
+)
+
+object CFGSerializer : KSerializer<CFG> {
+  override val descriptor: SerialDescriptor = CFGSurrogate.serializer().descriptor
+
+  override fun deserialize(decoder: Decoder): CFG {
+    TODO("not implemented")
+  }
+
+  override fun serialize(encoder: Encoder, value: CFG) {
+    val surrogate = CFGSurrogate(
+        value.functionIdentifier,
+        value.functionParameters,
+        value.allNodes,
+        value.startBlock.nodeId,
+        value.nodes.map { it.nodeId },
+        value.domTreePreorder.map { it.nodeId },
+        value.doms.toList().map { it?.nodeId ?: Int.MAX_VALUE },
+        value.exprDefinitions.mapValues { (_, value) -> value.map { it.nodeId } },
+        value.stackVariableIds,
+        value.definitions.mapValues { (_, value) -> value.first.nodeId to value.second },
+        value.defUseChains.mapValues { (_, value) -> value.map { (block, index) -> block.nodeId to index } },
+        value.latestVersions,
+        value.registerIds
+    )
+    encoder.encodeSerializableValue(CFGSurrogate.serializer(), surrogate)
   }
 }
