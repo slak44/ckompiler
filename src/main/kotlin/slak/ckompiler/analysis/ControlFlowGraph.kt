@@ -54,7 +54,7 @@ class CFGFactory(
   val registerIds = IdCounter()
 
   private lateinit var doms: DominatorList
-  lateinit var domTreePreorder: Set<BasicBlock>
+  lateinit var domTreePreorder: List<BasicBlock>
 
   /**
    * 1. [graph]
@@ -196,7 +196,7 @@ data class CFG(
     val startBlock: BasicBlock,
     val allNodes: Set<BasicBlock>,
     val nodes: Set<BasicBlock>,
-    val domTreePreorder: Set<BasicBlock>,
+    val domTreePreorder: List<BasicBlock>,
     val doms: DominatorList,
     val exprDefinitions: Map<Variable, Set<BasicBlock>>,
     val stackVariableIds: Set<AtomicId>,
@@ -549,8 +549,8 @@ fun createDomTreePreOrderNodes(
     doms: DominatorList,
     root: BasicBlock,
     nodes: Set<BasicBlock>,
-): Set<BasicBlock> {
-  val visited = mutableSetOf<BasicBlock>()
+): List<BasicBlock> {
+  val visited = mutableListOf<BasicBlock>()
   val stack = mutableListOf<BasicBlock>()
   stack += root
   while (stack.isNotEmpty()) {

@@ -226,7 +226,7 @@ private data class CFGSurrogate(
     val functionParameters: List<TypedIdentifier>,
     val allNodes: Set<BasicBlock>,
     val startBlock: AtomicId,
-    val nodes: List<AtomicId>,
+    val nodes: Set<AtomicId>,
     val domTreePreorder: List<AtomicId>,
     val doms: List<AtomicId>,
     val exprDefinitions: Map<Variable, List<AtomicId>>,
@@ -241,7 +241,25 @@ object CFGSerializer : KSerializer<CFG> {
   override val descriptor: SerialDescriptor = CFGSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): CFG {
-    TODO("not implemented")
+    val surrogate = decoder.decodeSerializableValue(CFGSurrogate.serializer())
+
+    val nodeMap = surrogate.allNodes.associateBy { it.nodeId }
+
+    return CFG(
+        functionIdentifier = surrogate.functionIdentifier,
+        functionParameters = surrogate.functionParameters,
+        startBlock = nodeMap.getValue(surrogate.startBlock),
+        allNodes = surrogate.allNodes,
+        nodes = surrogate.nodes.mapTo(mutableSetOf()) { nodeMap.getValue(it) },
+        domTreePreorder = surrogate.domTreePreorder.map { nodeMap.getValue(it) },
+        doms = DominatorList(surrogate.doms.map { nodeMap.getValue(it) }),
+        exprDefinitions = surrogate.exprDefinitions.mapValues { (_, value) -> value.mapTo(mutableSetOf()) { nodeMap.getValue(it) } },
+        stackVariableIds = surrogate.stackVariableIds,
+        definitions = surrogate.definitions.mapValues { (_, value) -> nodeMap.getValue(value.first) to value.second },
+        defUseChains = surrogate.defUseChains.mapValues { (_, value) -> value.map { nodeMap.getValue(it.first) to it.second } },
+        latestVersions = surrogate.latestVersions,
+        registerIds = surrogate.registerIds,
+    )
   }
 
   override fun serialize(encoder: Encoder, value: CFG) {
@@ -250,7 +268,7 @@ object CFGSerializer : KSerializer<CFG> {
         value.functionParameters,
         value.allNodes,
         value.startBlock.nodeId,
-        value.nodes.map { it.nodeId },
+        value.nodes.mapTo(mutableSetOf()) { it.nodeId },
         value.domTreePreorder.map { it.nodeId },
         value.doms.toList().map { it?.nodeId ?: Int.MAX_VALUE },
         value.exprDefinitions.mapValues { (_, value) -> value.map { it.nodeId } },

@@ -2,7 +2,8 @@ package slak.ckompiler
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.cli.*
-import slak.ckompiler.analysis.*
+import slak.ckompiler.analysis.CFGFactory
+import slak.ckompiler.analysis.CFGOptions
 import slak.ckompiler.analysis.external.*
 import slak.ckompiler.backend.*
 import slak.ckompiler.irserialize.IREncoder
@@ -13,7 +14,6 @@ import slak.ckompiler.lexer.Preprocessor
 import slak.ckompiler.parser.Declaration
 import slak.ckompiler.parser.FunctionDefinition
 import slak.ckompiler.parser.Parser
-import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -462,10 +462,6 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
           srcText = text,
           cfgOptions = cfgOptions,
       ).create()
-
-      if (serialize && deserialize != "") {
-        throw CommandLineException("Cannot serialize and deserialize at the same time.")
-      }
 
       if (serialize) {
         when (serializationType) {

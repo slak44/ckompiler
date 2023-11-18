@@ -30,8 +30,4 @@ class IREncoder(val output: DataOutput) : AbstractEncoder() {
 
   override fun encodeNull() = encodeBoolean(false)
   override fun encodeNotNullMark() = encodeBoolean(true)
-
-  override fun encodeValue(value: Any) {
-    super.encodeValue(value)
-  }
 }
