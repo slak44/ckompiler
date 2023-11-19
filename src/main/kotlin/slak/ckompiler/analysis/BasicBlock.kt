@@ -1,7 +1,10 @@
+@file:Suppress("NON_EXPORTABLE_TYPE")
+
 package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.Transient
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.external.*
@@ -38,6 +41,7 @@ data class CondJump(
     val target: BasicBlock,
     val other: BasicBlock,
 ) : Jump() {
+  @Transient
   override val successors = listOf(target, other)
   override fun toString() = "CondJump<${target.hashCode()}, ${other.hashCode()}>$cond"
 }
@@ -55,6 +59,7 @@ data class SelectJump(
     val options: Map<ExprConstantNode, BasicBlock>,
     val default: BasicBlock,
 ) : Jump() {
+  @Transient
   override val successors = options.values + default
   override fun toString(): String {
     val opts = options.entries.joinToString(" ") { it.value.hashCode().toString() }
@@ -66,6 +71,7 @@ data class SelectJump(
 @Serializable(with = UncondJumpSerializer::class)
 @JsExport
 data class UncondJump(val target: BasicBlock) : Jump() {
+  @Transient
   override val successors = listOf(target)
   override fun toString() = "UncondJump<${target.hashCode()}>"
 }
@@ -83,6 +89,7 @@ data class ImpossibleJump(
     val returned: List<IRInstruction>?,
     val src: Expression?,
 ) : Jump() {
+  @Transient
   override val successors = emptyList<BasicBlock>()
   override fun toString() = "ImpossibleJump($returned)"
 }
@@ -94,6 +101,7 @@ data class ImpossibleJump(
 @Serializable(with = ConstantJumpSerializer::class)
 @JsExport
 data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Jump() {
+  @Transient
   override val successors = listOf(target)
   override fun toString() = "ConstantJump<${target.hashCode()}>$"
 }
@@ -102,6 +110,7 @@ data class ConstantJump(val target: BasicBlock, val impossible: BasicBlock) : Ju
 @Serializable
 @JsExport
 data object MissingJump : Jump() {
+  @Transient
   override val successors = emptyList<BasicBlock>()
 }
 
@@ -111,10 +120,27 @@ data object MissingJump : Jump() {
  * Predecessors and successors do not track impossible edges.
  *
  * FIXME: a lot of things in here should not be mutable
+ *   maybe we just need two separate classes, like CFG and CFGFactory
  */
 @Serializable(with = BasicBlockSerializer::class)
 @JsExport
-class BasicBlock(val isRoot: Boolean = false) {
+class BasicBlock(
+    val isRoot: Boolean = false,
+    /**
+     * Unique for each basic block. No other guarantees are provided about this value; it is opaque.
+     *
+     * Multiple instances of [CFG] being created at the same time can and will update the underlying
+     * counter in a (likely) unpredictable order, so in particular, these ids should not be assumed
+     * consecutive.
+     *
+     * This field is part of the primary constructor mostly for deserialization purposes.
+     * Be careful with duplicate ids.
+     *
+     * @see hashCode
+     * @see equals
+     */
+    val nodeId: AtomicId = nodeCounter(),
+) {
   /**
    * List of SSA φ-functions at the start of this block. Basically a prefix to [ir].
    *
@@ -131,19 +157,8 @@ class BasicBlock(val isRoot: Boolean = false) {
   /**
    * Debug ranges of the original source code. May not map to [ir].
    */
+  @Transient
   val src = mutableListOf<Expression>()
-
-  /**
-   * Unique for each basic block. No other guarantees are provided about this value; it is opaque.
-   *
-   * Multiple instances of [CFG] being created at the same time can and will update the underlying
-   * counter in a (likely) unpredictable order, so in particular, these ids should not be assumed
-   * consecutive.
-   *
-   * @see hashCode
-   * @see equals
-   */
-  val nodeId: AtomicId = nodeCounter()
 
   /**
    * If not -1, this value represents the post order of [BasicBlock]s in their respective [CFG].
@@ -178,11 +193,14 @@ class BasicBlock(val isRoot: Boolean = false) {
           value.target.preds += this
           value.other.preds += this
         }
+
         is SelectJump -> {
           for (target in value.successors) target.preds += this
         }
+
         is ConstantJump -> value.target.preds += this
         is UncondJump -> value.target.preds += this
+
         is ImpossibleJump, MissingJump -> {
           // Intentionally left empty
         }
@@ -234,9 +252,11 @@ class BasicBlock(val isRoot: Boolean = false) {
             emptyBlockPred.terminator = UncondJump(this)
             preds += emptyBlockPred
           }
+
           is ImpossibleJump -> {
             emptyBlockPred.terminator = ImpossibleJump(this, oldTerm.returned, oldTerm.src)
           }
+
           is CondJump -> {
             emptyBlockPred.terminator = CondJump(
                 oldTerm.cond,
@@ -246,6 +266,7 @@ class BasicBlock(val isRoot: Boolean = false) {
             )
             preds += emptyBlockPred
           }
+
           is ConstantJump -> {
             emptyBlockPred.terminator = ConstantJump(
                 if (oldTerm.target == emptyBlock) this else oldTerm.target,
@@ -254,6 +275,7 @@ class BasicBlock(val isRoot: Boolean = false) {
             // Only add this to preds if it was not the impossible jump
             if (oldTerm.target == emptyBlock) preds += emptyBlockPred
           }
+
           else -> continue@emptyBlockLoop
         }
       }

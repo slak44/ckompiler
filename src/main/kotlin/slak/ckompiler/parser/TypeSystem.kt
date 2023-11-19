@@ -1,9 +1,9 @@
 package slak.ckompiler.parser
 
-import kotlinx.serialization.Serializable
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import slak.ckompiler.*
-import slak.ckompiler.analysis.external.TypeNameSerializer
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator
@@ -101,7 +101,7 @@ fun typeNameOf(specQuals: DeclarationSpecifier, decl: Declarator): TypeName {
  *
  * C standard: 6.2.5, 6.2.5.0.26
  */
-@Serializable(with = TypeNameSerializer::class)
+@Serializable
 @JsExport
 sealed class TypeName {
   abstract val typeQuals: TypeQualifierList
@@ -166,6 +166,7 @@ sealed class TypeName {
   }
 }
 
+@Serializable
 data class QualifiedType(
     val unqualified: UnqualifiedTypeName,
     override val typeQuals: TypeQualifierList,
@@ -178,6 +179,7 @@ data class QualifiedType(
   }
 }
 
+@Serializable
 @JsExport
 data class FunctionType(
     val returnType: TypeName,
@@ -187,6 +189,7 @@ data class FunctionType(
   // FIXME: functions have their own qualifiers
   override val typeQuals: TypeQualifierList = emptyList()
 
+  @Transient
   override val isStorageRegister = false
 
   override fun toString(): String {
@@ -202,6 +205,7 @@ data class FunctionType(
  *
  * C standard: 6.2.5
  */
+@Serializable
 data class PointerType(
     val referencedType: TypeName,
     override val typeQuals: TypeQualifierList,
@@ -226,6 +230,7 @@ data class PointerType(
   override fun toString() = "$referencedType *${typeQuals.stringify()}"
 }
 
+@Serializable
 data class ArrayType(
     val elementType: TypeName,
     val size: ArrayTypeSize,
@@ -236,17 +241,21 @@ data class ArrayType(
    *
    * C standard: 6.7.2.4.0.9
    */
+  @Transient
   override val typeQuals: TypeQualifierList = emptyList()
 
   override fun toString() = "${if (isStorageRegister) "register " else ""}$elementType$size"
 }
 
 // FIXME: implement these too
+// FIXME: size is a constant int expression, probably should be evaluated before creating this type
+@Serializable
 data class BitfieldType(
     val elementType: TypeName,
-    val size: Expression,
+    val size: Int,
     override val isStorageRegister: Boolean,
 ) : TypeName() {
+  @Transient
   override val typeQuals: TypeQualifierList = emptyList()
 }
 
@@ -255,9 +264,12 @@ data class BitfieldType(
  *
  * C standard: 6.2.5.0.20
  */
+@Serializable
 sealed class UnqualifiedTypeName : TypeName() {
   // Self-explanatory
+  @Transient
   override val typeQuals: TypeQualifierList = emptyList()
+  @Transient
   override val isStorageRegister = false
 }
 
@@ -265,6 +277,7 @@ sealed class UnqualifiedTypeName : TypeName() {
  * Represents the type of an expression that is invalid, either due to syntax errors, or due to
  * violations of semantic requirements.
  */
+@Serializable
 object ErrorType : UnqualifiedTypeName() {
   override fun toString() = "<error type>"
 }
@@ -273,6 +286,7 @@ object ErrorType : UnqualifiedTypeName() {
  * Tag types only represent structs and unions; enums have some integer type, and are not explicitly
  * represented here.
  */
+@Serializable
 sealed class TagType : UnqualifiedTypeName() {
   abstract val name: IdentifierNode?
   abstract val members: List<Pair<IdentifierNode, TypeName>>?
@@ -286,12 +300,13 @@ sealed class TagType : UnqualifiedTypeName() {
   }
 }
 
+@Serializable
 data class StructureType(
     override val name: IdentifierNode?,
     override val members: List<Pair<IdentifierNode, TypeName>>?,
 ) : TagType() {
-  override val isComplete = members != null
-  override val kind = "struct"
+  override val isComplete get() = members != null
+  override val kind get() = "struct"
   override fun toString() = super.toString()
 
   fun isValidMemberIdx(idx: Int): Boolean {
@@ -299,18 +314,21 @@ data class StructureType(
   }
 }
 
+@Serializable
 data class UnionType(
     override val name: IdentifierNode?,
     override val members: List<Pair<IdentifierNode, TypeName>>?,
 ) : TagType() {
-  override val isComplete = members != null
-  override val kind = "union"
+  override val isComplete get() = members != null
+  override val kind get() = "union"
   override fun toString() = super.toString()
 }
 
+@Serializable
 sealed class BasicType : UnqualifiedTypeName()
 
 /** C standard: 6.2.5.0.18 */
+@Serializable
 sealed class ArithmeticType : BasicType() {
   /**
    * If integer promotions are applied to this type, [promotedType] is the resulting type.
@@ -323,6 +341,7 @@ sealed class ArithmeticType : BasicType() {
   abstract val promotedType: ArithmeticType
 }
 
+@Serializable
 sealed class IntegralType : ArithmeticType(), Comparable<IntegralType> {
   /** C standard: 6.3.1.1.0.1 */
   abstract val conversionRank: Int
@@ -344,106 +363,124 @@ sealed class IntegralType : ArithmeticType(), Comparable<IntegralType> {
  *
  * C standard: 6.2.5.0.4, 6.2.5.0.15
  */
+@Serializable
 sealed class SignedIntegralType : IntegralType()
 
+@Serializable
 object SignedCharType : SignedIntegralType() {
-  override val conversionRank = 0x0000F
-  override val corespondingType = UnsignedCharType
-  override val promotedType = SignedIntType
+  override val conversionRank get() = 0x0000F
+  override val corespondingType get() = UnsignedCharType
+  override val promotedType get() = SignedIntType
   override fun toString() = "signed char"
 }
 
+@Serializable
 object SignedShortType : SignedIntegralType() {
-  override val conversionRank = 0x000F0
-  override val corespondingType = UnsignedShortType
-  override val promotedType = SignedIntType
+  override val conversionRank get() = 0x000F0
+  override val corespondingType get() = UnsignedShortType
+  override val promotedType get() = SignedIntType
   override fun toString() = "signed short"
 }
 
+@Serializable
 object SignedIntType : SignedIntegralType() {
-  override val conversionRank = 0x00F00
-  override val corespondingType = UnsignedIntType
-  override val promotedType = SignedIntType
+  override val conversionRank get() = 0x00F00
+  override val corespondingType get() = UnsignedIntType
+  override val promotedType get() = SignedIntType
   override fun toString() = "signed int"
 }
 
+@Serializable
 object SignedLongType : SignedIntegralType() {
-  override val conversionRank = 0x0F000
-  override val corespondingType = UnsignedLongType
-  override val promotedType = SignedLongType
+  override val conversionRank get() = 0x0F000
+  override val corespondingType get() = UnsignedLongType
+  override val promotedType get() = SignedLongType
   override fun toString() = "signed long"
 }
 
+@Serializable
 object SignedLongLongType : SignedIntegralType() {
-  override val conversionRank = 0xF0000
-  override val corespondingType = UnsignedLongLongType
-  override val promotedType = SignedLongLongType
+  override val conversionRank get() = 0xF0000
+  override val corespondingType get() = UnsignedLongLongType
+  override val promotedType get() = SignedLongLongType
   override fun toString() = "signed long long"
 }
 
 /** C standard: 6.2.5.0.6 */
+@Serializable
 sealed class UnsignedIntegralType : IntegralType()
 
+@Serializable
 object BooleanType : UnsignedIntegralType() {
-  override val conversionRank = 0x00001
+  override val conversionRank get() = 0x00001
   override val corespondingType get() = logger.throwICE("No signed corespondent for _Bool")
-  override val promotedType = SignedIntType
+  override val promotedType get() = SignedIntType
   override fun toString() = "_Bool"
 }
 
+@Serializable
 object UnsignedCharType : UnsignedIntegralType() {
-  override val conversionRank = SignedCharType.conversionRank
-  override val corespondingType = SignedCharType
-  override val promotedType = SignedIntType
+  override val conversionRank get() = SignedCharType.conversionRank
+  override val corespondingType get() = SignedCharType
+  override val promotedType get() = SignedIntType
   override fun toString() = "unsigned char"
 }
 
+@Serializable
 object UnsignedShortType : UnsignedIntegralType() {
-  override val conversionRank = SignedShortType.conversionRank
-  override val corespondingType = SignedShortType
-  override val promotedType = SignedIntType
+  override val conversionRank get() = SignedShortType.conversionRank
+  override val corespondingType get() = SignedShortType
+  override val promotedType get() = SignedIntType
   override fun toString() = "unsigned short"
 }
 
+@Serializable
 object UnsignedIntType : UnsignedIntegralType() {
-  override val conversionRank = SignedIntType.conversionRank
-  override val corespondingType = SignedIntType
-  override val promotedType = UnsignedIntType
+  override val conversionRank get() = SignedIntType.conversionRank
+  override val corespondingType get() = SignedIntType
+  override val promotedType get() = UnsignedIntType
   override fun toString() = "unsigned int"
 }
 
+@Serializable
 object UnsignedLongType : UnsignedIntegralType() {
-  override val conversionRank = SignedLongType.conversionRank
-  override val corespondingType = SignedLongType
-  override val promotedType = UnsignedLongType
+  override val conversionRank get() = SignedLongType.conversionRank
+  override val corespondingType get() = SignedLongType
+  override val promotedType get() = UnsignedLongType
   override fun toString() = "unsigned long"
 }
 
+@Serializable
 object UnsignedLongLongType : UnsignedIntegralType() {
-  override val conversionRank = SignedLongLongType.conversionRank
-  override val corespondingType = SignedLongLongType
-  override val promotedType = UnsignedLongLongType
+  override val conversionRank get() = SignedLongLongType.conversionRank
+  override val corespondingType get() = SignedLongLongType
+  override val promotedType get() = UnsignedLongLongType
   override fun toString() = "unsigned long long"
 }
 
 /** C standard: 6.2.5.0.10 */
+@Serializable
 sealed class FloatingType : ArithmeticType()
 
+@Serializable
 object FloatType : FloatingType() {
-  override val promotedType = FloatType
+  override val promotedType get() = FloatType
   override fun toString() = "float"
 }
 
+@Serializable
 object DoubleType : FloatingType() {
-  override val promotedType = DoubleType
+  override val promotedType get() = DoubleType
   override fun toString() = "double"
 }
 
+@Serializable
 object LongDoubleType : FloatingType() {
-  override val promotedType = LongDoubleType
+  override val promotedType get() = LongDoubleType
   override fun toString() = "long double"
 }
 
+@Serializable
 object VoidType : BasicType() {
   override fun toString() = "void"
 }

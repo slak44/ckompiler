@@ -1,8 +1,16 @@
+@file:Suppress("NON_EXPORTABLE_TYPE")
+
 package slak.ckompiler.parser
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import slak.ckompiler.*
 import slak.ckompiler.lexer.*
 import slak.ckompiler.parser.ValueType.*
@@ -402,22 +410,25 @@ data class CastExpression(val target: Expression, override val type: TypeName) :
   override val valueType = RVALUE
 }
 
+@Serializable
 @JsExport
 sealed class ExprConstantNode : Expression(), Terminal {
-  override val valueType: ValueType = RVALUE
+  override val valueType: ValueType get() = RVALUE
 }
 
+@Serializable
 @JsExport
 class VoidExpression : ExprConstantNode() {
-  override val type = VoidType
+  override val type get() = VoidType
 }
 
+@Serializable
 @JsExport
 data class IntegerConstantNode(
     val value: Long,
     val suffix: IntegralSuffix = IntegralSuffix.NONE,
 ) : ExprConstantNode() {
-  override val type = when (suffix) {
+  override val type: TypeName get() = when (suffix) {
     IntegralSuffix.UNSIGNED -> UnsignedIntType
     IntegralSuffix.UNSIGNED_LONG -> UnsignedLongType
     IntegralSuffix.UNSIGNED_LONG_LONG -> UnsignedLongLongType
@@ -429,12 +440,13 @@ data class IntegerConstantNode(
   override fun toString() = "$value$suffix"
 }
 
+@Serializable
 @JsExport
 data class FloatingConstantNode(
     val value: Double,
     val suffix: FloatingSuffix,
 ) : ExprConstantNode() {
-  override val type = when (suffix) {
+  override val type: TypeName get() = when (suffix) {
     FloatingSuffix.FLOAT -> FloatType
     FloatingSuffix.LONG_DOUBLE -> LongDoubleType
     FloatingSuffix.NONE -> DoubleType
@@ -453,12 +465,13 @@ data class FloatingConstantNode(
  *
  * C standard: 6.4.4.4.0.10
  */
+@Serializable
 @JsExport
 data class CharacterConstantNode(
     val char: Int,
     val encoding: CharEncoding,
 ) : ExprConstantNode() {
-  override val type = UnsignedIntType
+  override val type get() = UnsignedIntType
 
   override fun toString() = "${encoding.prefix}'${char.toChar()}'"
 }
@@ -469,6 +482,7 @@ data class CharacterConstantNode(
  *
  * C standard: 6.4.5
  */
+@Serializable
 @JsExport
 data class StringLiteralNode(
     val string: String,
@@ -562,12 +576,25 @@ data class ParameterDeclaration(
   override fun toString() = "$declSpec $declarator"
 }
 
+@Serializable(with = IdentifierNode.Serializer::class)
 @JsExport
 data class IdentifierNode(val name: String) : ASTNode(), Terminal {
   @JsName("IdentifierNodeLexerIdentifier")
   constructor(lexerIdentifier: Identifier) : this(lexerIdentifier.name)
 
   override fun toString() = name
+
+  object Serializer : KSerializer<IdentifierNode> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("slak.ckompiler.parser.IdentifierNode", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): IdentifierNode {
+      return IdentifierNode(decoder.decodeString())
+    }
+
+    override fun serialize(encoder: Encoder, value: IdentifierNode) {
+      encoder.encodeString(value.name)
+    }
+  }
 
   companion object {
     /**
@@ -820,12 +847,15 @@ data class Enumerator(
  *
  * C standard: 6.7.6.2
  */
+@Serializable
 @JsExport
 sealed class ArrayTypeSize : DeclaratorSuffix()
 
+@Serializable
 @JsExport
 sealed class VariableArraySize : ArrayTypeSize()
 
+@Serializable
 @JsExport
 sealed class ConstantArraySize : ArrayTypeSize() {
   abstract val size: ExprConstantNode
@@ -842,6 +872,7 @@ sealed class ConstantArraySize : ArrayTypeSize() {
  * 3. If on a local declarator, it might be a constant size set by the initializer list
  * 4. Otherwise, an error
  */
+@Serializable
 @JsExport
 object NoSize : ArrayTypeSize() {
   override fun toString() = "[]"
@@ -856,6 +887,7 @@ object NoSize : ArrayTypeSize() {
  * @param typeQuals the `type-qualifier`s before the *: `int v[const *];`
  * @param vlaStar (diagnostic data) the * in the square brackets: `int v[*];`
  */
+@Serializable
 @JsExport
 data class UnconfinedVariableSize(
     val typeQuals: TypeQualifierList,
@@ -874,11 +906,13 @@ data class UnconfinedVariableSize(
  * @param typeQuals the `type-qualifier`s between the square brackets
  * @param isStatic if the keyword "static" appears between the square brackets
  */
+@Serializable
 @JsExport
 data class FunctionParameterSize(
     val typeQuals: TypeQualifierList,
     val isStatic: Boolean,
-    val expr: Expression?,
+    @Transient
+    val expr: Expression? = null,
 ) : VariableArraySize() {
   init {
     if (isStatic && expr == null) logger.throwICE("Array size, static without expr") { this }
@@ -901,6 +935,7 @@ data class FunctionParameterSize(
  * @param typeQuals the `type-qualifier`s between the square brackets
  * @param isStatic if the keyword "static" appears between the square brackets
  */
+@Serializable
 @JsExport
 data class FunctionParameterConstantSize(
     val typeQuals: TypeQualifierList,
@@ -916,8 +951,9 @@ data class FunctionParameterConstantSize(
  * Describes an array type whose size is specified by [expr]. A non-constant [expr] describes a VLA,
  * which this implementation does **not support**.
  */
+@Serializable
 @JsExport
-data class ExpressionSize(val expr: Expression) : VariableArraySize() {
+data class ExpressionSize(@Transient val expr: Expression = ErrorExpression()) : VariableArraySize() {
   override fun toString() = "$expr"
 }
 
@@ -925,6 +961,7 @@ data class ExpressionSize(val expr: Expression) : VariableArraySize() {
  * Describes an array type whose size is exactly [size].
  * @param size result of integer constant expression
  */
+@Serializable
 @JsExport
 data class ConstantSize(override val size: ExprConstantNode) : ConstantArraySize() {
   override fun toString() = "[$size]"

@@ -3,11 +3,6 @@ package slak.ckompiler.analysis.external
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.SetSerializer
-import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -24,9 +19,10 @@ private data class BasicBlockSurrogate(
     val phi: Set<PhiInstruction>,
     val ir: List<IRInstruction>,
     val postOrderId: Int,
+    val height: Int,
     val nodeId: AtomicId,
     val predecessors: List<AtomicId>,
-    val successors: List<AtomicId>,
+    val dominanceFrontier: List<AtomicId>,
     val terminator: Jump,
 )
 
@@ -43,9 +39,10 @@ object BasicBlockSerializer : KSerializer<BasicBlock> {
         value.phi,
         value.ir,
         value.postOrderId,
+        value.height,
         value.nodeId,
         value.preds.map { it.nodeId },
-        value.successors.map { it.nodeId },
+        value.dominanceFrontier.map { it.nodeId },
         value.terminator
     )
     encoder.encodeSerializableValue(BasicBlockSurrogate.serializer(), surrogate)
@@ -91,18 +88,6 @@ object VariableSerializer : KSerializer<Variable> {
   override fun serialize(encoder: Encoder, value: Variable) {
     val surrogate = VariableSurrogate(value.type, value.name, value.identityId, value.version)
     encoder.encodeSerializableValue(VariableSurrogate.serializer(), surrogate)
-  }
-}
-
-object TypeNameSerializer : KSerializer<TypeName> {
-  override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("TypeName", PrimitiveKind.STRING)
-
-  override fun deserialize(decoder: Decoder): TypeName {
-    throw UnsupportedOperationException("We only care about serialization")
-  }
-
-  override fun serialize(encoder: Encoder, value: TypeName) {
-    encoder.encodeString(value.toString())
   }
 }
 

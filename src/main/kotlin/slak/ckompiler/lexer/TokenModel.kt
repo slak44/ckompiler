@@ -1,6 +1,13 @@
 package slak.ckompiler.lexer
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import slak.ckompiler.SourceFileName
 import slak.ckompiler.SourcedRange
 import slak.ckompiler.throwICE
@@ -93,14 +100,40 @@ sealed class StaticToken(consumedChars: Int) : LexicalToken(consumedChars) {
   abstract val enum: StaticTokenEnum
 }
 
+@Serializable(with = Keyword.Serializer::class)
 data class Keyword(val value: Keywords) : StaticToken(value.keyword.length) {
   override val enum: StaticTokenEnum get() = value
+
+  object Serializer : KSerializer<Keyword> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("slak.ckompiler.lexer.Keyword", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): Keyword {
+      return Keyword(Keywords.valueOf(decoder.decodeString()))
+    }
+
+    override fun serialize(encoder: Encoder, value: Keyword) {
+      encoder.encodeString(value.value.realName)
+    }
+  }
 }
 
 fun LexicalToken.asKeyword(): Keywords? = (this as? Keyword)?.value
 
+@Serializable(with = Punctuator.Serializer::class)
 data class Punctuator(val pct: Punctuators) : StaticToken(pct.s.length) {
   override val enum: StaticTokenEnum get() = pct
+
+  object Serializer : KSerializer<Punctuator> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("slak.ckompiler.lexer.Punctuator", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): Punctuator {
+      return Punctuator(Punctuators.valueOf(decoder.decodeString()))
+    }
+
+    override fun serialize(encoder: Encoder, value: Punctuator) {
+      encoder.encodeString(value.pct.realName)
+    }
+  }
 }
 
 fun LexicalToken.asPunct(): Punctuators? = (this as? Punctuator)?.pct
