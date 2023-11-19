@@ -1,11 +1,10 @@
 package slak.ckompiler.analysis
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.AtomicId
 import slak.ckompiler.MachineTargetData
-import slak.ckompiler.analysis.external.VariableSerializer
 import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.parser.*
 import slak.ckompiler.printVariableVersions
@@ -142,7 +141,7 @@ data class ReachingDefinition(
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-@Serializable(with = VariableSerializer::class)
+@Serializable
 @JsExport
 class Variable(val tid: TypedIdentifier) : VersionedValue() {
   override val identityId get() = tid.id

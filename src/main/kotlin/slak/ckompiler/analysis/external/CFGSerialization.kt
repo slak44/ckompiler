@@ -3,14 +3,20 @@ package slak.ckompiler.analysis.external
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import slak.ckompiler.AtomicId
 import slak.ckompiler.IdCounter
+import slak.ckompiler.ThreadLocal
 import slak.ckompiler.analysis.*
-import slak.ckompiler.parser.TypeName
+import slak.ckompiler.parser.ErrorExpression
+import slak.ckompiler.parser.ExprConstantNode
 import slak.ckompiler.parser.TypedIdentifier
+import slak.ckompiler.threadLocalWithInitial
 
 @Serializable
 @SerialName("slak.ckompiler.analysis.BasicBlock")
@@ -26,11 +32,25 @@ private data class BasicBlockSurrogate(
     val terminator: Jump,
 )
 
-object BasicBlockSerializer : KSerializer<BasicBlock> {
+class BasicBlockSerializer : KSerializer<BasicBlock> {
   override val descriptor: SerialDescriptor = BasicBlockSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): BasicBlock {
-    throw UnsupportedOperationException("We only care about serialization")
+    val surrogate = decoder.decodeSerializableValue(BasicBlockSurrogate.serializer())
+
+    val nodeMap = CFGSerializer.allNodesReference.get()
+
+    val node = nodeMap.getValue(surrogate.nodeId)
+    node.terminator = surrogate.terminator
+    node.phi += surrogate.phi
+    node.ir += surrogate.ir
+    node.postOrderId = surrogate.postOrderId
+    node.height = surrogate.height
+    node.preds.clear()
+    node.preds += surrogate.predecessors.map { nodeMap.getValue(it) }
+    node.dominanceFrontier += surrogate.dominanceFrontier.map { nodeMap.getValue(it) }
+
+    return node
   }
 
   override fun serialize(encoder: Encoder, value: BasicBlock) {
@@ -60,34 +80,14 @@ object PhiInstructionSerializer : KSerializer<PhiInstruction> {
   override val descriptor: SerialDescriptor = PhiInstructionSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): PhiInstruction {
-    throw UnsupportedOperationException("We only care about serialization")
+    val surrogate = decoder.decodeSerializableValue(PhiInstructionSurrogate.serializer())
+    val nodeMap = CFGSerializer.allNodesReference.get()
+    return PhiInstruction(surrogate.variable, surrogate.incoming.mapKeys { (key) -> nodeMap.getValue(key) })
   }
 
   override fun serialize(encoder: Encoder, value: PhiInstruction) {
     val surrogate = PhiInstructionSurrogate(value.variable, value.incoming.mapKeys { it.key.nodeId })
     encoder.encodeSerializableValue(PhiInstructionSurrogate.serializer(), surrogate)
-  }
-}
-
-@Serializable
-@SerialName("slak.ckompiler.analysis.Variable")
-private data class VariableSurrogate(
-    val type: TypeName,
-    val name: String,
-    val identityId: AtomicId,
-    val version: Int,
-)
-
-object VariableSerializer : KSerializer<Variable> {
-  override val descriptor: SerialDescriptor = VariableSurrogate.serializer().descriptor
-
-  override fun deserialize(decoder: Decoder): Variable {
-    throw UnsupportedOperationException("We only care about serialization")
-  }
-
-  override fun serialize(encoder: Encoder, value: Variable) {
-    val surrogate = VariableSurrogate(value.type, value.name, value.identityId, value.version)
-    encoder.encodeSerializableValue(VariableSurrogate.serializer(), surrogate)
   }
 }
 
@@ -103,7 +103,9 @@ object CondJumpSerializer : KSerializer<CondJump> {
   override val descriptor: SerialDescriptor = CondJumpSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): CondJump {
-    throw UnsupportedOperationException("We only care about serialization")
+    val surrogate = decoder.decodeSerializableValue(CondJumpSurrogate.serializer())
+    val nodeMap = CFGSerializer.allNodesReference.get()
+    return CondJump(surrogate.cond, ErrorExpression(), nodeMap.getValue(surrogate.target), nodeMap.getValue(surrogate.other))
   }
 
   override fun serialize(encoder: Encoder, value: CondJump) {
@@ -118,7 +120,7 @@ object CondJumpSerializer : KSerializer<CondJump> {
 @SerialName("slak.ckompiler.analysis.SelectJump")
 private data class SelectJumpSurrogate(
     val cond: List<IRInstruction>,
-    val options: List<AtomicId>,
+    val options: Map<ExprConstantNode, AtomicId>,
     val default: AtomicId,
 )
 
@@ -126,13 +128,20 @@ object SelectJumpSerializer : KSerializer<SelectJump> {
   override val descriptor: SerialDescriptor = SelectJumpSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): SelectJump {
-    throw UnsupportedOperationException("We only care about serialization")
+    val surrogate = decoder.decodeSerializableValue(SelectJumpSurrogate.serializer())
+    val nodeMap = CFGSerializer.allNodesReference.get()
+    return SelectJump(
+        surrogate.cond,
+        ErrorExpression(),
+        surrogate.options.mapValues { nodeMap.getValue(it.value) },
+        nodeMap.getValue(surrogate.default)
+    )
   }
 
   override fun serialize(encoder: Encoder, value: SelectJump) {
     encoder.encodeSerializableValue(
         SelectJumpSurrogate.serializer(),
-        SelectJumpSurrogate(value.cond, value.options.values.map { it.nodeId }, value.default.nodeId)
+        SelectJumpSurrogate(value.cond, value.options.mapValues { it.value.nodeId }, value.default.nodeId)
     )
   }
 }
@@ -147,7 +156,9 @@ object UncondJumpSerializer : KSerializer<UncondJump> {
   override val descriptor: SerialDescriptor = UncondJumpSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): UncondJump {
-    throw UnsupportedOperationException("We only care about serialization")
+    val surrogate = decoder.decodeSerializableValue(UncondJumpSurrogate.serializer())
+    val nodeMap = CFGSerializer.allNodesReference.get()
+    return UncondJump(nodeMap.getValue(surrogate.target))
   }
 
   override fun serialize(encoder: Encoder, value: UncondJump) {
@@ -169,7 +180,9 @@ object ImpossibleJumpSerializer : KSerializer<ImpossibleJump> {
   override val descriptor: SerialDescriptor = ImpossibleJumpSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): ImpossibleJump {
-    throw UnsupportedOperationException("We only care about serialization")
+    val surrogate = decoder.decodeSerializableValue(ImpossibleJumpSurrogate.serializer())
+    val nodeMap = CFGSerializer.allNodesReference.get()
+    return ImpossibleJump(nodeMap.getValue(surrogate.target), surrogate.returned, ErrorExpression())
   }
 
   override fun serialize(encoder: Encoder, value: ImpossibleJump) {
@@ -191,7 +204,9 @@ object ConstantJumpSerializer : KSerializer<ConstantJump> {
   override val descriptor: SerialDescriptor = ConstantJumpSurrogate.serializer().descriptor
 
   override fun deserialize(decoder: Decoder): ConstantJump {
-    throw UnsupportedOperationException("We only care about serialization")
+    val surrogate = decoder.decodeSerializableValue(ConstantJumpSurrogate.serializer())
+    val nodeMap = CFGSerializer.allNodesReference.get()
+    return ConstantJump(nodeMap.getValue(surrogate.target), nodeMap.getValue(surrogate.impossible))
   }
 
   override fun serialize(encoder: Encoder, value: ConstantJump) {
@@ -222,13 +237,26 @@ private data class CFGSurrogate(
     val registerIds: IdCounter,
 )
 
-object CFGSerializer : KSerializer<CFG> {
-  override val descriptor: SerialDescriptor = CFGSurrogate.serializer().descriptor
+class CFGSerializer : KSerializer<CFG> {
+  private val idsSerializer = SetSerializer(AtomicId.serializer())
+
+  override val descriptor: SerialDescriptor = buildClassSerialDescriptor("CFGSerializer") {
+    element("startBlockId", Int.serializer().descriptor)
+    element("allNodeIds", idsSerializer.descriptor)
+    element("cfg", CFGSurrogate.serializer().descriptor)
+  }
 
   override fun deserialize(decoder: Decoder): CFG {
-    val surrogate = decoder.decodeSerializableValue(CFGSurrogate.serializer())
+    val startId = decoder.decodeInt()
 
-    val nodeMap = surrogate.allNodes.associateBy { it.nodeId }
+    val allNodeIds = decoder.decodeSerializableValue(idsSerializer)
+    val nodeMap = allNodesReference.get()
+    nodeMap.clear()
+    for (nodeId in allNodeIds) {
+      nodeMap[nodeId] = BasicBlock(isRoot = nodeId == startId, nodeId = nodeId)
+    }
+
+    val surrogate = decoder.decodeSerializableValue(CFGSurrogate.serializer())
 
     return CFG(
         functionIdentifier = surrogate.functionIdentifier,
@@ -248,6 +276,11 @@ object CFGSerializer : KSerializer<CFG> {
   }
 
   override fun serialize(encoder: Encoder, value: CFG) {
+    encoder.encodeInt(value.startBlock.nodeId)
+
+    val allNodeIds = value.allNodes.mapTo(mutableSetOf()) { it.nodeId }
+    encoder.encodeSerializableValue(idsSerializer, allNodeIds)
+
     val surrogate = CFGSurrogate(
         value.functionIdentifier,
         value.functionParameters,
@@ -264,5 +297,16 @@ object CFGSerializer : KSerializer<CFG> {
         value.registerIds
     )
     encoder.encodeSerializableValue(CFGSurrogate.serializer(), surrogate)
+  }
+
+  companion object {
+    /**
+     * Assuming there will only ever be one deserialization per-thread, this stores the deserialized [CFGSurrogate.allNodes].
+     *
+     * Serializers don't store the entire [BasicBlock], only the [BasicBlock.nodeId].
+     * As a result, deserialization of nested objects (eg [PhiInstructionSerializer]) will make use of these to add the correct
+     * [BasicBlock] references.
+     */
+    val allNodesReference: ThreadLocal<MutableMap<AtomicId, BasicBlock>> = threadLocalWithInitial { mutableMapOf() }
   }
 }

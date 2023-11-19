@@ -108,7 +108,8 @@ data class Keyword(val value: Keywords) : StaticToken(value.keyword.length) {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("slak.ckompiler.lexer.Keyword", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Keyword {
-      return Keyword(Keywords.valueOf(decoder.decodeString()))
+      val value = decoder.decodeString()
+      return Keyword(Keywords.entries.first { it.realName == value })
     }
 
     override fun serialize(encoder: Encoder, value: Keyword) {
@@ -127,7 +128,8 @@ data class Punctuator(val pct: Punctuators) : StaticToken(pct.s.length) {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("slak.ckompiler.lexer.Punctuator", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): Punctuator {
-      return Punctuator(Punctuators.valueOf(decoder.decodeString()))
+      val value = decoder.decodeString()
+      return Punctuator(Punctuators.entries.first { it.realName == value })
     }
 
     override fun serialize(encoder: Encoder, value: Punctuator) {

@@ -443,7 +443,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
             dos.writeByte(byte.toInt())
           }
           // FIXME: this could be better
-          IREncoder(dos).encodeSerializableValue(CFGSerializer, cfg)
+          IREncoder(dos).encodeSerializableValue(CFGSerializer(), cfg)
         }
       }
 
@@ -517,7 +517,7 @@ class CLI : IDebugHandler by DebugHandler("CLI", "<command line>", "") {
       val target = createMachineTarget(isaType, baseTargetOpts, targetSpecific)
       val cfgBytes = sourceBytes.sliceArray(binarySerializationSignature.size..<sourceBytes.size)
       val dis = DataInputStream(ByteArrayInputStream(cfgBytes))
-      val cfg = IRDecoder(dis).decodeSerializableValue(CFGSerializer)
+      val cfg = IRDecoder(dis).decodeSerializableValue(CFGSerializer())
 
       runCFGMode(cfg, target, "")
 
