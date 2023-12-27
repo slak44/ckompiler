@@ -1,3 +1,4 @@
+import kotlinx.benchmark.gradle.JvmBenchmarkTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -7,6 +8,7 @@ plugins {
   kotlin("plugin.serialization") version "1.9.20"
   `maven-publish`
   id("org.jetbrains.dokka") version "1.4.30"
+  id("org.jetbrains.kotlinx.benchmark") version "0.4.4"
 }
 
 val versionString = "SNAPSHOT6"
@@ -194,6 +196,10 @@ kotlin {
         systemProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager")
       }
     }
+
+    compilations.create("benchmark") {
+      associateWith(compilations.getByName("main"))
+    }
   }
 
   js(IR) {
@@ -255,6 +261,7 @@ kotlin {
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
         implementation("org.jetbrains.kotlinx:kotlinx-html:0.9.1")
         implementation("io.github.oshai:kotlin-logging:5.1.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-benchmark-runtime:0.4.4")
       }
     }
 
@@ -284,6 +291,16 @@ kotlin {
         implementation("org.junit.jupiter:junit-jupiter:5.10.0")
         implementation("org.apache.logging.log4j:log4j-jul:2.20.0")
         implementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.20")
+      }
+    }
+
+    val jvmBenchmark by getting {
+      kotlin.srcDir("src/jvmBenchmark/kotlin")
+      resources.srcDir("src/jvmBenchmark/resources")
+      dependsOn(jvmTest)
+
+      dependencies {
+        implementation("org.jetbrains.kotlinx:kotlinx-benchmark-runtime-jvm:0.4.4")
       }
     }
 
@@ -326,4 +343,21 @@ publishing {
       }
     }
   }
+}
+
+benchmark {
+  targets {
+    register("jvmBenchmarkCompilation") {
+      this as JvmBenchmarkTarget
+      jmhVersion = "1.21"
+    }
+  }
+
+  configurations {
+    named("main")
+  }
+}
+
+tasks.getByName<Copy>("jvmBenchmarkProcessResources") {
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

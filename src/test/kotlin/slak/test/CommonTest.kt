@@ -61,7 +61,7 @@ internal fun prepareCFG(s: String, source: SourceFileName, functionName: String?
   return CFGFactory(func, MachineTargetData.x64, source, s, options)
 }
 
-internal fun prepareCFG(file: File, source: SourceFileName, functionName: String? = null): CFGFactory {
+fun prepareCFG(file: File, source: SourceFileName, functionName: String? = null): CFGFactory {
   return prepareCFG(file.readText(), source, functionName)
 }
 

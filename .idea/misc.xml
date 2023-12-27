@@ -4,8 +4,13 @@
     <option name="sdkName" value="Python 3.10 (ckompiler)" />
   </component>
   <component name="EntryPointsManager">
-    <list size="1">
+    <list size="6">
       <item index="0" class="java.lang.String" itemvalue="org.junit.AfterClass" />
+      <item index="1" class="java.lang.String" itemvalue="org.openjdk.jmh.annotations.Benchmark" />
+      <item index="2" class="java.lang.String" itemvalue="org.openjdk.jmh.annotations.BenchmarkMode" />
+      <item index="3" class="java.lang.String" itemvalue="org.openjdk.jmh.annotations.Measurement" />
+      <item index="4" class="java.lang.String" itemvalue="org.openjdk.jmh.annotations.Setup" />
+      <item index="5" class="java.lang.String" itemvalue="org.openjdk.jmh.annotations.TearDown" />
     </list>
   </component>
   <component name="ExternalStorageConfigurationManager" enabled="true" />
