@@ -1,9 +1,11 @@
 package slak.ckompiler.parser
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import slak.ckompiler.*
+import slak.ckompiler.analysis.external.*
 import slak.ckompiler.lexer.Keywords
 import slak.ckompiler.lexer.LexicalToken
 import slak.ckompiler.lexer.Punctuator
@@ -167,6 +169,7 @@ sealed class TypeName {
 }
 
 @Serializable
+@SerialName(QUALIFIED_TYPE)
 data class QualifiedType(
     val unqualified: UnqualifiedTypeName,
     override val typeQuals: TypeQualifierList,
@@ -180,6 +183,7 @@ data class QualifiedType(
 }
 
 @Serializable
+@SerialName(FUNCTION_TYPE)
 @JsExport
 data class FunctionType(
     val returnType: TypeName,
@@ -206,6 +210,7 @@ data class FunctionType(
  * C standard: 6.2.5
  */
 @Serializable
+@SerialName(POINTER_TYPE)
 data class PointerType(
     val referencedType: TypeName,
     override val typeQuals: TypeQualifierList,
@@ -231,6 +236,7 @@ data class PointerType(
 }
 
 @Serializable
+@SerialName(ARRAY_TYPE)
 data class ArrayType(
     val elementType: TypeName,
     val size: ArrayTypeSize,
@@ -250,6 +256,7 @@ data class ArrayType(
 // FIXME: implement these too
 // FIXME: size is a constant int expression, probably should be evaluated before creating this type
 @Serializable
+@SerialName(BITFIELD_TYPE)
 data class BitfieldType(
     val elementType: TypeName,
     val size: Int,
@@ -278,6 +285,7 @@ sealed class UnqualifiedTypeName : TypeName() {
  * violations of semantic requirements.
  */
 @Serializable
+@SerialName(ERROR_TYPE)
 object ErrorType : UnqualifiedTypeName() {
   override fun toString() = "<error type>"
 }
@@ -301,6 +309,7 @@ sealed class TagType : UnqualifiedTypeName() {
 }
 
 @Serializable
+@SerialName(STRUCTURE_TYPE)
 data class StructureType(
     override val name: IdentifierNode?,
     override val members: List<Pair<IdentifierNode, TypeName>>?,
@@ -315,6 +324,7 @@ data class StructureType(
 }
 
 @Serializable
+@SerialName(UNION_TYPE)
 data class UnionType(
     override val name: IdentifierNode?,
     override val members: List<Pair<IdentifierNode, TypeName>>?,
@@ -367,6 +377,7 @@ sealed class IntegralType : ArithmeticType(), Comparable<IntegralType> {
 sealed class SignedIntegralType : IntegralType()
 
 @Serializable
+@SerialName(SIGNED_CHAR_TYPE)
 object SignedCharType : SignedIntegralType() {
   override val conversionRank get() = 0x0000F
   override val corespondingType get() = UnsignedCharType
@@ -375,6 +386,7 @@ object SignedCharType : SignedIntegralType() {
 }
 
 @Serializable
+@SerialName(SIGNED_SHORT_TYPE)
 object SignedShortType : SignedIntegralType() {
   override val conversionRank get() = 0x000F0
   override val corespondingType get() = UnsignedShortType
@@ -383,6 +395,7 @@ object SignedShortType : SignedIntegralType() {
 }
 
 @Serializable
+@SerialName(SIGNED_INT_TYPE)
 object SignedIntType : SignedIntegralType() {
   override val conversionRank get() = 0x00F00
   override val corespondingType get() = UnsignedIntType
@@ -391,6 +404,7 @@ object SignedIntType : SignedIntegralType() {
 }
 
 @Serializable
+@SerialName(SIGNED_LONG_TYPE)
 object SignedLongType : SignedIntegralType() {
   override val conversionRank get() = 0x0F000
   override val corespondingType get() = UnsignedLongType
@@ -399,6 +413,7 @@ object SignedLongType : SignedIntegralType() {
 }
 
 @Serializable
+@SerialName(SIGNED_LONGLONG_TYPE)
 object SignedLongLongType : SignedIntegralType() {
   override val conversionRank get() = 0xF0000
   override val corespondingType get() = UnsignedLongLongType
@@ -411,6 +426,7 @@ object SignedLongLongType : SignedIntegralType() {
 sealed class UnsignedIntegralType : IntegralType()
 
 @Serializable
+@SerialName(BOOLEAN_TYPE)
 object BooleanType : UnsignedIntegralType() {
   override val conversionRank get() = 0x00001
   override val corespondingType get() = logger.throwICE("No signed corespondent for _Bool")
@@ -419,6 +435,7 @@ object BooleanType : UnsignedIntegralType() {
 }
 
 @Serializable
+@SerialName(UNSIGNED_CHAR_TYPE)
 object UnsignedCharType : UnsignedIntegralType() {
   override val conversionRank get() = SignedCharType.conversionRank
   override val corespondingType get() = SignedCharType
@@ -427,6 +444,7 @@ object UnsignedCharType : UnsignedIntegralType() {
 }
 
 @Serializable
+@SerialName(UNSIGNED_SHORT_TYPE)
 object UnsignedShortType : UnsignedIntegralType() {
   override val conversionRank get() = SignedShortType.conversionRank
   override val corespondingType get() = SignedShortType
@@ -435,6 +453,7 @@ object UnsignedShortType : UnsignedIntegralType() {
 }
 
 @Serializable
+@SerialName(UNSIGNED_INT_TYPE)
 object UnsignedIntType : UnsignedIntegralType() {
   override val conversionRank get() = SignedIntType.conversionRank
   override val corespondingType get() = SignedIntType
@@ -443,6 +462,7 @@ object UnsignedIntType : UnsignedIntegralType() {
 }
 
 @Serializable
+@SerialName(UNSIGNED_LONG_TYPE)
 object UnsignedLongType : UnsignedIntegralType() {
   override val conversionRank get() = SignedLongType.conversionRank
   override val corespondingType get() = SignedLongType
@@ -451,6 +471,7 @@ object UnsignedLongType : UnsignedIntegralType() {
 }
 
 @Serializable
+@SerialName(UNSIGNED_LONGLONG_TYPE)
 object UnsignedLongLongType : UnsignedIntegralType() {
   override val conversionRank get() = SignedLongLongType.conversionRank
   override val corespondingType get() = SignedLongLongType
@@ -463,24 +484,28 @@ object UnsignedLongLongType : UnsignedIntegralType() {
 sealed class FloatingType : ArithmeticType()
 
 @Serializable
+@SerialName(FLOAT_TYPE)
 object FloatType : FloatingType() {
   override val promotedType get() = FloatType
   override fun toString() = "float"
 }
 
 @Serializable
+@SerialName(DOUBLE_TYPE)
 object DoubleType : FloatingType() {
   override val promotedType get() = DoubleType
   override fun toString() = "double"
 }
 
 @Serializable
+@SerialName(LONGDOUBLE_TYPE)
 object LongDoubleType : FloatingType() {
   override val promotedType get() = LongDoubleType
   override fun toString() = "long double"
 }
 
 @Serializable
+@SerialName(VOID_TYPE)
 object VoidType : BasicType() {
   override fun toString() = "void"
 }

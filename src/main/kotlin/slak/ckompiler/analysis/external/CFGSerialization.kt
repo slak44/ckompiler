@@ -3,6 +3,7 @@ package slak.ckompiler.analysis.external
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -70,7 +71,7 @@ class BasicBlockSerializer : KSerializer<BasicBlock> {
 }
 
 @Serializable
-@SerialName("slak.ckompiler.analysis.PhiInstruction")
+@SerialName("PhiInstruction")
 private data class PhiInstructionSurrogate(
     val variable: Variable,
     val incoming: Map<AtomicId, Variable>,
@@ -217,8 +218,6 @@ object ConstantJumpSerializer : KSerializer<ConstantJump> {
   }
 }
 
-private typealias LabelSurrogate = Pair<AtomicId, LabelIndex>
-
 @Serializable
 @SerialName("slak.ckompiler.analysis.CFG")
 private data class CFGSurrogate(
@@ -231,18 +230,20 @@ private data class CFGSurrogate(
     val doms: List<AtomicId>,
     val exprDefinitions: Map<Variable, List<AtomicId>>,
     val stackVariableIds: Set<AtomicId>,
-    val definitions: Map<Variable, LabelSurrogate>,
-    val defUseChains: Map<Variable, List<LabelSurrogate>>,
+    val definitions: Map<Variable, Label>,
+    val defUseChains: Map<Variable, List<Label>>,
     val latestVersions: Map<AtomicId, Int>,
     val registerIds: IdCounter,
 )
 
 class CFGSerializer : KSerializer<CFG> {
   private val idsSerializer = SetSerializer(AtomicId.serializer())
+  private val typedIdentifiersSerializer = ListSerializer(TypedIdentifier.serializer())
 
   override val descriptor: SerialDescriptor = buildClassSerialDescriptor("CFGSerializer") {
     element("startBlockId", Int.serializer().descriptor)
     element("allNodeIds", idsSerializer.descriptor)
+    element("typedIdentifiers", typedIdentifiersSerializer.descriptor)
     element("cfg", CFGSurrogate.serializer().descriptor)
   }
 
@@ -256,6 +257,12 @@ class CFGSerializer : KSerializer<CFG> {
       nodeMap[nodeId] = BasicBlock(isRoot = nodeId == startId, nodeId = nodeId)
     }
 
+    val valueFactory = IRValueFactory()
+    for (tid in decoder.decodeSerializableValue(typedIdentifiersSerializer)) {
+      valueFactory.createTypedIdentifier(tid)
+    }
+    irValueFactory.set(valueFactory)
+
     val surrogate = decoder.decodeSerializableValue(CFGSurrogate.serializer())
 
     return CFG(
@@ -268,8 +275,8 @@ class CFGSerializer : KSerializer<CFG> {
         doms = DominatorList(surrogate.doms.map { nodeMap.getValue(it) }),
         exprDefinitions = surrogate.exprDefinitions.mapValues { (_, value) -> value.mapTo(mutableSetOf()) { nodeMap.getValue(it) } },
         stackVariableIds = surrogate.stackVariableIds,
-        definitions = surrogate.definitions.mapValues { (_, value) -> nodeMap.getValue(value.first) to value.second },
-        defUseChains = surrogate.defUseChains.mapValues { (_, value) -> value.map { nodeMap.getValue(it.first) to it.second } },
+        definitions = surrogate.definitions,
+        defUseChains = surrogate.defUseChains,
         latestVersions = surrogate.latestVersions,
         registerIds = surrogate.registerIds,
     )
@@ -281,6 +288,9 @@ class CFGSerializer : KSerializer<CFG> {
     val allNodeIds = value.allNodes.mapTo(mutableSetOf()) { it.nodeId }
     encoder.encodeSerializableValue(idsSerializer, allNodeIds)
 
+    val tids = value.exprDefinitions.keys.map { it.tid }.distinctBy { it.id }
+    encoder.encodeSerializableValue(typedIdentifiersSerializer, tids)
+
     val surrogate = CFGSurrogate(
         value.functionIdentifier,
         value.functionParameters,
@@ -291,8 +301,8 @@ class CFGSerializer : KSerializer<CFG> {
         value.doms.toList().map { it?.nodeId ?: Int.MAX_VALUE },
         value.exprDefinitions.mapValues { (_, value) -> value.map { it.nodeId } },
         value.stackVariableIds,
-        value.definitions.mapValues { (_, value) -> value.first.nodeId to value.second },
-        value.defUseChains.mapValues { (_, value) -> value.map { (block, index) -> block.nodeId to index } },
+        value.definitions,
+        value.defUseChains,
         value.latestVersions,
         value.registerIds
     )
@@ -308,5 +318,7 @@ class CFGSerializer : KSerializer<CFG> {
      * [BasicBlock] references.
      */
     val allNodesReference: ThreadLocal<MutableMap<AtomicId, BasicBlock>> = threadLocalWithInitial { mutableMapOf() }
+
+    val irValueFactory: ThreadLocal<IRValueFactory> = threadLocalWithInitial { IRValueFactory() }
   }
 }

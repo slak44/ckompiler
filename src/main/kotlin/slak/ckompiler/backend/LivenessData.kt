@@ -159,7 +159,7 @@ class LivenessData(private val graph: InstructionGraph, private val latestVersio
   }
 
   fun initializeVariableDefs(cfgDefinitions: Definitions) {
-    variableDefs += cfgDefinitions.mapValues { it.value.first.nodeId }
+    variableDefs += cfgDefinitions.mapValues { it.value.first }
   }
 
   /**

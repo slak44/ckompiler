@@ -1,14 +1,21 @@
+@file:Suppress("NON_EXPORTABLE_TYPE")
+
 package slak.ckompiler.analysis
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import slak.ckompiler.AtomicId
-import slak.ckompiler.MachineTargetData
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.descriptors.serialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import slak.ckompiler.*
+import slak.ckompiler.analysis.external.CFGSerializer
 import slak.ckompiler.backend.MachineRegister
 import slak.ckompiler.parser.*
-import slak.ckompiler.printVariableVersions
-import slak.ckompiler.throwICE
 import kotlin.js.JsExport
 import kotlin.js.JsName
 
@@ -36,7 +43,7 @@ sealed class IRValue {
 @Serializable
 @JsExport
 data class ParameterReference(val index: Int, override val type: TypeName) : IRValue() {
-  override val name = "param$index"
+  override val name get() = "param$index"
   override fun toString() = name
 }
 
@@ -101,9 +108,9 @@ class VirtualRegister(
     override val type: TypeName,
     val kind: VRegType = VRegType.REGULAR,
 ) : AllocatableValue() {
-  override val identityId: AtomicId = -1 * registerId
+  override val identityId: AtomicId get() = -1 * registerId
 
-  override val isUndefined: Boolean = kind == VRegType.UNDEFINED || kind == VRegType.CONSTRAINED
+  override val isUndefined: Boolean get() = kind == VRegType.UNDEFINED || kind == VRegType.CONSTRAINED
 
   override val name get() = "${if (isUndefined) "dummy" else type.toString()} vreg$registerId"
   override fun toString() = name
@@ -120,7 +127,7 @@ typealias LabelIndex = Int
 /**
  * Identifies a label inside a block.
  */
-typealias Label = Pair<BasicBlock, LabelIndex>
+typealias Label = Pair<AtomicId, LabelIndex>
 
 /**
  * The [variable] definition that reaches a point in the CFG, along with information about where it
@@ -141,9 +148,14 @@ data class ReachingDefinition(
  * variables are basically equivalent to [VirtualRegister]s.
  * @see ReachingDefinition
  */
-@Serializable
+@Serializable(with = Variable.Serializer::class)
 @JsExport
 class Variable(val tid: TypedIdentifier) : VersionedValue() {
+  @JsName("VariableWithVersion")
+  constructor(tid: TypedIdentifier, knownVersion: Int) : this(tid) {
+    version = knownVersion
+  }
+
   override val identityId get() = tid.id
 
   override val name get() = tid.name
@@ -193,6 +205,24 @@ class Variable(val tid: TypedIdentifier) : VersionedValue() {
     result = 31 * result + version
     return result
   }
+
+  object Serializer : KSerializer<Variable> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Variable") {
+      element("identityId", serialDescriptor<Int>())
+      element("version", serialDescriptor<Int>())
+    }
+
+    override fun deserialize(decoder: Decoder): Variable {
+      val id = decoder.decodeInt()
+      val version = decoder.decodeInt()
+      return CFGSerializer.irValueFactory.get().getVariable(id, version)
+    }
+
+    override fun serialize(encoder: Encoder, value: Variable) {
+      encoder.encodeInt(value.identityId)
+      encoder.encodeInt(value.version)
+    }
+  }
 }
 
 /**
@@ -209,7 +239,7 @@ class Variable(val tid: TypedIdentifier) : VersionedValue() {
 class StackValue(val referenceTo: AllocatableValue) : LoadableValue() {
   @Transient
   override val type: PointerType = PointerType(referenceTo.type.normalize(), emptyList())
-  override val isUndefined: Boolean = false
+  override val isUndefined: Boolean get() = false
 
   override val name get() = "stackval ${referenceTo.identityId}"
   override fun toString() = name
@@ -227,11 +257,11 @@ class StackValue(val referenceTo: AllocatableValue) : LoadableValue() {
 @Serializable
 @JsExport
 class DerefStackValue(val stackValue: StackValue) : VersionedValue() {
-  override val name: String = stackValue.name
-  override val type: TypeName = stackValue.referenceTo.type
-  override val isUndefined: Boolean = stackValue.referenceTo.isUndefined
-  override val version: Int? = (stackValue.referenceTo as? VersionedValue)?.version
-  override val identityId: Int = stackValue.referenceTo.identityId
+  override val name: String get() = stackValue.name
+  override val type: TypeName get() = stackValue.referenceTo.type
+  override val isUndefined: Boolean get() = stackValue.referenceTo.isUndefined
+  override val version: Int? get() = (stackValue.referenceTo as? VersionedValue)?.version
+  override val identityId: Int get() = stackValue.referenceTo.identityId
   override fun toString(): String = "mem[$stackValue]"
 }
 
@@ -246,9 +276,9 @@ data class MemoryLocation(val ptr: IRValue) : LoadableValue() {
     require(ptr !is StackValue) { "You probably meant to use DerefStackValue" }
   }
 
-  override val name = ptr.name
-  override val type = (ptr.type as PointerType).referencedType
-  override val isUndefined = false
+  override val name get() = ptr.name
+  override val type get() = (ptr.type as PointerType).referencedType
+  override val isUndefined get() = false
 
   override fun toString() = "mem[$ptr]"
 }
@@ -264,8 +294,8 @@ data class StackVariable(val tid: TypedIdentifier) : LoadableValue() {
   val id get() = tid.id
 
   override val name get() = tid.name
-  override val type: PointerType = PointerType(tid.type.normalize(), emptyList())
-  override val isUndefined = false
+  override val type get() = PointerType(tid.type.normalize(), emptyList())
+  override val isUndefined get() = false
 
   override fun toString() = "stack $type $name"
 }
@@ -282,8 +312,8 @@ data class PhysicalRegister(
     val reg: MachineRegister,
     override val type: TypeName,
 ) : LoadableValue() {
-  override val name = reg.regName
-  override val isUndefined = false
+  override val name get() = reg.regName
+  override val isUndefined get() = false
   override fun toString() = reg.regName
 
   override fun equals(other: Any?) = (other as? PhysicalRegister)?.reg == reg
@@ -294,19 +324,36 @@ data class PhysicalRegister(
 @JsExport
 sealed class ConstantValue : IRValue()
 
-@Serializable
+object IntConstantSerializer : KSerializer<IntConstant> {
+  private val integralTypeSerializer = IntegralType.serializer()
+
+  override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IntConstant") {
+    element("value", serialDescriptor<Long>())
+    element("type", integralTypeSerializer.descriptor)
+  }
+
+  override fun deserialize(decoder: Decoder): IntConstant {
+    val value = decoder.decodeLong()
+    val type = decoder.decodeSerializableValue(integralTypeSerializer)
+    return CFGSerializer.irValueFactory.get().getIntConstant(value, type)
+  }
+
+  override fun serialize(encoder: Encoder, value: IntConstant) {
+    encoder.encodeLong(value.value)
+    encoder.encodeSerializableValue(integralTypeSerializer, value.type)
+  }
+}
+
+@Serializable(with = IntConstantSerializer::class)
 @JsExport
-data class IntConstant(val value: Long, override val type: TypeName) : ConstantValue() {
+data class IntConstant(val value: Long, override val type: IntegralType) : ConstantValue() {
   @JsName("IntConstantIntTypeName")
-  constructor(int: Int, type: TypeName) : this(int.toLong(), type)
+  constructor(int: Int, type: TypeName) : this(int.toLong(), type.let {
+    check(type is IntegralType)
+    type
+  })
 
-  @JsName("IntConstantIntegerConstantNode")
-  constructor(int: IntegerConstantNode) : this(int.value, int.type)
-
-  @JsName("IntConstantCharacterConstantNode")
-  constructor(char: CharacterConstantNode) : this(char.char.toLong(), char.type)
-
-  override val name = value.toString()
+  override val name get() = value.toString()
   override fun toString() = name
 
   operator fun unaryMinus(): IntConstant {
@@ -324,7 +371,7 @@ data class FltConstant(val value: Double, override val type: TypeName) : Constan
   @JsName("FltConstantFloatingConstantNode")
   constructor(flt: FloatingConstantNode) : this(flt.value, flt.type)
 
-  override val name = value.toString()
+  override val name get() = value.toString()
   override fun toString() = name
 
   operator fun unaryMinus(): FltConstant {
@@ -338,7 +385,7 @@ data class StrConstant(val value: String, override val type: TypeName) : Constan
   @JsName("StrConstantStringLiteralNode")
   constructor(str: StringLiteralNode) : this(str.string, str.type)
 
-  override val name = "\"${value.replace("\n", "\\n")}\""
+  override val name get() = "\"${value.replace("\n", "\\n")}\""
   override fun toString() = name
 }
 
@@ -350,7 +397,9 @@ data class JumpTargetConstant(val target: AtomicId) : ConstantValue() {
 
   @Transient
   override val type = VoidType
-  override val name = ".block_$target"
+
+  override val name get() = ".block_$target"
+
   override fun toString() = name
 }
 
@@ -365,7 +414,7 @@ data class NamedConstant(override val name: String, override val type: TypeName)
  */
 fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = when (value) {
   is VirtualRegister -> VirtualRegister(value.registerId, type, value.kind)
-  is Variable -> Variable(value.tid.copy(type = type))
+  is Variable -> Variable(value.tid.forceTypeCast(type))
   is PhysicalRegister -> {
     val size = sizeOf(type)
     if (size in value.reg.aliases.map { it.second } || size == value.reg.sizeBytes) {
@@ -378,7 +427,11 @@ fun MachineTargetData.copyWithType(value: IRValue, type: TypeName): IRValue = wh
   is MemoryLocation -> TODO()
   is StackVariable -> TODO()
   is StackValue -> TODO()
-  is IntConstant -> value.copy(type = type) // FIXME: check type limits
+  is IntConstant -> {
+    check(type is IntegralType)
+    value.copy(type = type) // FIXME: check type limits
+  }
+
   is FltConstant -> TODO()
   is StrConstant -> TODO()
   is ParameterReference, is JumpTargetConstant, is NamedConstant -> logger.throwICE("Illegal target of IRValue copy")

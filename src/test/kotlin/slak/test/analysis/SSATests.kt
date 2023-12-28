@@ -159,10 +159,10 @@ class SSATests {
     cfg.assertIsSSA()
     printDefUse(cfg)
     with(cfg) {
-      assertEquals(listOf(2, 4, 6).map { startBlock to it }, useChainOf("a", 1))
-      assertEquals(listOf(startBlock to 2), useChainOf("b", 1))
-      assertEquals(listOf(startBlock to 4), useChainOf("b", 2))
-      assertEquals(listOf(startBlock to 6), useChainOf("b", 3))
+      assertEquals(listOf(2, 4, 6).map { startBlock.nodeId to it }, useChainOf("a", 1))
+      assertEquals(listOf(startBlock.nodeId to 2), useChainOf("b", 1))
+      assertEquals(listOf(startBlock.nodeId to 4), useChainOf("b", 2))
+      assertEquals(listOf(startBlock.nodeId to 6), useChainOf("b", 3))
     }
   }
 
@@ -175,10 +175,10 @@ class SSATests {
       val loopHeader = startBlock.successors[0]
       val loopBody = loopHeader.successors[0]
       val returnBlock = loopHeader.successors[1]
-      assertEquals(listOf(loopHeader to DEFINED_IN_PHI), useChainOf("x", 1))
-      assertEquals(listOf(loopHeader to DEFINED_IN_PHI), useChainOf("i", 1))
-      assertEquals(listOf(loopHeader to 0, loopBody to 2, loopBody to 3), useChainOf("i", 2))
-      assertEquals(listOf(loopBody to 0, returnBlock to 0), useChainOf("x", 2))
+      assertEquals(listOf(loopHeader.nodeId to DEFINED_IN_PHI), useChainOf("x", 1))
+      assertEquals(listOf(loopHeader.nodeId to DEFINED_IN_PHI), useChainOf("i", 1))
+      assertEquals(listOf(loopHeader.nodeId to 0, loopBody.nodeId to 2, loopBody.nodeId to 3), useChainOf("i", 2))
+      assertEquals(listOf(loopBody.nodeId to 0, returnBlock.nodeId to 0), useChainOf("x", 2))
     }
   }
 

@@ -9,8 +9,9 @@ import kotlinx.serialization.modules.SerializersModule
 import java.io.DataInput
 
 @OptIn(ExperimentalSerializationApi::class)
-class IRDecoder(private val input: DataInput, private var elementsCount: Int = 0) : AbstractDecoder() {
-  private var elementIndex = 0
+class IRDecoder(private val input: DataInput) : AbstractDecoder() {
+  private val elementCounts = mutableListOf<Int>()
+  private val elementIndices = mutableListOf<Int>()
 
   override val serializersModule: SerializersModule = EmptySerializersModule()
 
@@ -26,15 +27,30 @@ class IRDecoder(private val input: DataInput, private var elementsCount: Int = 0
   override fun decodeEnum(enumDescriptor: SerialDescriptor): Int = input.readInt()
 
   override fun decodeElementIndex(descriptor: SerialDescriptor): Int {
-    if (elementIndex == elementsCount) return CompositeDecoder.DECODE_DONE
-    return elementIndex++
+    val elementIndex = elementIndices.last()
+    if (elementIndex == elementCounts.last()) {
+      return CompositeDecoder.DECODE_DONE
+    }
+    elementIndices[elementIndices.lastIndex] = elementIndex + 1
+    return elementIndex
   }
 
-  override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder = IRDecoder(input, descriptor.elementsCount)
+  override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
+    elementCounts += descriptor.elementsCount
+    elementIndices += 0
+    return this
+  }
+
+  override fun endStructure(descriptor: SerialDescriptor) {
+    elementCounts.removeLast()
+    elementIndices.removeLast()
+  }
 
   override fun decodeSequentially(): Boolean = true
 
-  override fun decodeCollectionSize(descriptor: SerialDescriptor): Int = decodeInt().also { elementsCount = it }
+  override fun decodeCollectionSize(descriptor: SerialDescriptor): Int = decodeInt().also {
+    elementCounts[elementCounts.lastIndex] = it
+  }
 
   override fun decodeNotNullMark(): Boolean = decodeBoolean()
 }

@@ -16,7 +16,8 @@ private val logger = KotlinLogging.logger {}
 private class IRBuilderContext(
     val machineTargetData: MachineTargetData,
     private val registerIds: IdCounter,
-    val stackVariableIds: MutableSet<AtomicId>
+    val stackVariableIds: MutableSet<AtomicId>,
+    val irValueFactory: IRValueFactory
 ) {
   val instructions = mutableListOf<IRInstruction>()
 
@@ -37,7 +38,7 @@ private fun IRBuilderContext.buildUnary(expr: UnaryExpression): IRInstruction = 
     val operand = buildOperand(expr.operand)
     when (expr.operand.type) {
       is IntegralType, is PointerType -> {
-        IntCmp(res, IntConstant(0, expr.operand.type), operand, Comparisons.EQUAL)
+        IntCmp(res, irValueFactory.getIntConstant(0, expr.operand.type), operand, Comparisons.EQUAL)
       }
       is FloatingType -> {
         FltCmp(res, FltConstant(0.0, expr.operand.type), operand, Comparisons.EQUAL)
@@ -258,7 +259,7 @@ private fun IRBuilderContext.buildMemberPtrAccess(expr: MemberAccessExpression):
   return when (tagType) {
     is StructureType -> {
       val offset = machineTargetData.offsetOf(tagType, expr.memberName)
-      val offsetCt = IntConstant(offset, machineTargetData.ptrDiffType)
+      val offsetCt = irValueFactory.getIntConstant(offset, machineTargetData.ptrDiffType)
       buildPtrOffset(basePtr, offsetCt, memberPtrType)
     }
     is UnionType -> {
@@ -329,8 +330,8 @@ private fun IRBuilderContext.buildOperand(expr: Expression): IRValue = when (exp
     buildOffset(buildOperand(expr.subscripted), buildOperand(expr.subscript), expr.type)
   }
   is TypedIdentifier -> valueFromTid(expr)
-  is IntegerConstantNode -> IntConstant(expr)
-  is CharacterConstantNode -> IntConstant(expr)
+  is IntegerConstantNode -> irValueFactory.getIntConstant(expr)
+  is CharacterConstantNode -> irValueFactory.getIntConstant(expr)
   is FloatingConstantNode -> FltConstant(expr)
   is StringLiteralNode -> StrConstant(expr)
 }
@@ -353,8 +354,9 @@ fun createInstructions(
     targetData: MachineTargetData,
     registerIds: IdCounter,
     stackVariableIds: MutableSet<AtomicId>,
+    irValueFactory: IRValueFactory
 ): List<IRInstruction> {
-  val builder = IRBuilderContext(targetData, registerIds, stackVariableIds)
+  val builder = IRBuilderContext(targetData, registerIds, stackVariableIds, irValueFactory)
   for (expr in exprs) {
     val folded = targetData.doConstantFolding(expr)
     val lastValue = builder.buildOperand(folded)

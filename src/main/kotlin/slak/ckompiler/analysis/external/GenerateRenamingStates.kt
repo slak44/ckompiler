@@ -80,8 +80,8 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): RenameReplacements 
   val phiUseStates = mutableMapOf<BasicBlock, MutableList<RenamingStepState>>()
 
   for (bb in cfg.domTreePreorder) {
-    val bbDefs = defs[bb] ?: emptyList()
-    val bbUses = uses[bb] ?: emptyList()
+    val bbDefs = defs[bb.nodeId] ?: emptyList()
+    val bbUses = uses[bb.nodeId] ?: emptyList()
 
     val markedDefs = bbDefs.map { Triple(it.first, it.second, true) }
     val markedUses = bbUses.map { Triple(it.first, it.second, false) }
@@ -113,7 +113,7 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): RenameReplacements 
             bb = matchingPred.nodeId,
             i = phiIndex,
             newVersion = variable.version,
-            reachingDefBlock = reachingDef.first.nodeId,
+            reachingDefBlock = reachingDef.first,
             reachingDefIdx = reachingDef.second,
             succBB = bb.nodeId,
         )
@@ -149,7 +149,7 @@ fun generateRenameSteps(cfg: CFG, targetVariable: Variable): RenameReplacements 
               bb = bb.nodeId,
               i = idx,
               newVersion = variable.version,
-              reachingDefBlock = reachingDef.first.nodeId,
+              reachingDefBlock = reachingDef.first,
               reachingDefIdx = reachingDef.second,
           )
         }

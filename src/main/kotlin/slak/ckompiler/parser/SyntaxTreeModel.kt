@@ -429,7 +429,7 @@ data class IntegerConstantNode(
     val value: Long,
     val suffix: IntegralSuffix = IntegralSuffix.NONE,
 ) : ExprConstantNode() {
-  override val type: TypeName get() = when (suffix) {
+  override val type: IntegralType get() = when (suffix) {
     IntegralSuffix.UNSIGNED -> UnsignedIntType
     IntegralSuffix.UNSIGNED_LONG -> UnsignedLongType
     IntegralSuffix.UNSIGNED_LONG_LONG -> UnsignedLongLongType
@@ -447,7 +447,7 @@ data class FloatingConstantNode(
     val value: Double,
     val suffix: FloatingSuffix,
 ) : ExprConstantNode() {
-  override val type: TypeName get() = when (suffix) {
+  override val type: FloatingType get() = when (suffix) {
     FloatingSuffix.FLOAT -> FloatType
     FloatingSuffix.LONG_DOUBLE -> LongDoubleType
     FloatingSuffix.NONE -> DoubleType

@@ -32,6 +32,8 @@ class CFGFactory(
     srcText: String,
     private val cfgOptions: CFGOptions = CFGOptions()
 ) : IDebugHandler by DebugHandler("CFG", srcFileName, srcText) {
+  val irValueFactory = IRValueFactory()
+
   val startBlock = BasicBlock(isRoot = true)
 
   val allNodes = mutableSetOf(startBlock)
@@ -146,7 +148,7 @@ class CFGFactory(
     })
     val ret = if (forceReturnZero) {
       val fakeRegister = VirtualRegister(registerIds(), SignedIntType)
-      listOf(MoveInstr(fakeRegister, IntConstant(fakeZero)))
+      listOf(MoveInstr(fakeRegister, irValueFactory.getIntConstant(fakeZero)))
     } else {
       null
     }
@@ -326,7 +328,7 @@ private class VariableRenamer(val cfg: CFGFactory) {
     val oldReachingDef = def.reachingDef
     updateReachingDef(def, bb, instrIdx)
     val vPrime = def.newVersion()
-    definitions[vPrime.copy()] = bb to instrIdx
+    definitions[vPrime.copy()] = bb.nodeId to instrIdx
     val reachingToPrime = ReachingDefinition(vPrime, bb, instrIdx)
     def.reachingDef = reachingToPrime
     def.replaceWith(reachingToPrime)
@@ -355,7 +357,7 @@ private class VariableRenamer(val cfg: CFGFactory) {
    */
   private fun updateUsesFor(variable: Variable, bb: BasicBlock, idx: LabelIndex) {
     if (variable.reachingDef != null) {
-      defUseChains.getOrPut(variable.reachingDef!!.variable, ::mutableListOf) += bb to idx
+      defUseChains.getOrPut(variable.reachingDef!!.variable, ::mutableListOf) += bb.nodeId to idx
     }
   }
 

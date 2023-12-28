@@ -6,6 +6,10 @@ actual class ThreadLocal<T> {
   actual fun get(): T {
     return value!!
   }
+
+  actual fun set(value: T) {
+    this.value = value
+  }
 }
 
 actual fun <T> threadLocalWithInitial(supplier: () -> T): ThreadLocal<T> {

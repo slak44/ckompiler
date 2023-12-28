@@ -1,20 +1,24 @@
 import java.io.File
+import java.util.UUID
 import kotlin.random.Random
 import kotlin.random.nextInt
 
 val targetDir = File("./generated-c")
 targetDir.mkdirs()
 
-val seed = 433
+val seed = 134
 val rng = Random(seed)
 
 val operators = listOf("+", "-", "*", "<", "==")
 var nameInt = 0
 
+var nameStr = 0
+val maxStrSize = UUID.randomUUID().toString().length
+
 val arrayName = "array"
 val arraySize = rng.nextInt(100..300)
 
-fun generateExpression(): String = when (rng.nextInt(0..3)) {
+fun generateExpression(): String = when (rng.nextInt(0..4)) {
   0 -> {
     val op = operators.random(rng)
     val name = "res$nameInt"
@@ -22,14 +26,20 @@ fun generateExpression(): String = when (rng.nextInt(0..3)) {
     "$name = ${generateArg()} $op ${generateArg()};"
   }
   1 -> {
-    "printf(\"%d %d\", ${generateArg()}, ${generateArg()});"
+    val name = "str$nameStr"
+    nameStr++
+    val index = rng.nextInt(0..<maxStrSize)
+    "${generateIntName()} = $name[$index];"
   }
   2 -> {
+    "printf(\"%d %d\", ${generateArg()}, ${generateArg()});"
+  }
+  3 -> {
     val idx = rng.nextInt(0..<arraySize)
 
     "$arrayName[$idx] = ${generateArg()};"
   }
-  3 -> {
+  4 -> {
     val idx = rng.nextInt(0..<arraySize)
 
     "${generateIntName()} = $arrayName[$idx];"
@@ -42,6 +52,11 @@ fun generateIntName(): String {
   return "res$resNr"
 }
 
+fun generateStrName(): String {
+  val resNr = rng.nextInt(0 until nameStr.coerceAtLeast(1))
+  return "res$resNr"
+}
+
 fun generateArg(): String {
   return if (rng.nextBoolean()) {
     generateIntName()
@@ -51,7 +66,7 @@ fun generateArg(): String {
 }
 
 fun generateBlock(depth: Int): String {
-  val size = rng.nextInt(2..5)
+  val size = rng.nextInt(5..10)
   var block = ""
 
   for (i in 1..size) {
@@ -101,9 +116,13 @@ fun generateDeclarations(): String {
     "int res$it = $it;"
   }
 
+  val strs = (0 until nameStr.coerceAtLeast(1)).joinToString("\n") {
+    "const char* str$it = \"${UUID.randomUUID()}\";"
+  }
+
   val array = "int $arrayName[$arraySize];"
 
-  return ints + "\n" + array
+  return ints + "\n" + strs + "\n" + array
 }
 
 fun generateProgram(idx: Int): String {
@@ -127,6 +146,7 @@ fun writeProgram(idx: Int, program: String) {
 
 for (i in 1..100) {
   nameInt = 0
+  nameStr = 0
   writeProgram(i, generateProgram(i))
 }
 

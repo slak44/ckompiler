@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
 
 class IRTests {
   private fun createIR(vararg exprs: Expression): List<IRInstruction> {
-    val instrs = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter(), mutableSetOf())
+    val instrs = createInstructions(exprs.toList(), MachineTargetData.x64, IdCounter(), mutableSetOf(), IRValueFactory())
     val registerIds = instrs
         .filter { it !is StoreMemory }
         .mapNotNull { (it.result as? VirtualRegister)?.registerId }
