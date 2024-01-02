@@ -4,7 +4,7 @@
   "theme_color": "#9C27B0",
   "background_color": "#3C3F41",
   "display": "standalone",
-  "scope": "./ckompiler",
+  "scope": "./ckompiler/",
   "start_url": "./",
   "icons": [
     {
