@@ -287,7 +287,7 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     this.selectedIdSetting.value$.pipe(
       takeUntil(this.rerenderSubject),
     ).subscribe(selectedNodeId => {
-      if (selectedNodeId) {
+      if (typeof selectedNodeId === 'number') {
         const node = getNodeById(cfg, selectedNodeId);
         if (node) {
           this.clickedNodeSubject.next(node);
