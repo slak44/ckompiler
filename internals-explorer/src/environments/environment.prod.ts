@@ -6,7 +6,7 @@ export const environment: EnvironmentType = {
   apiBaseUrl: 'https://ckompiler.slak44.dev/api',
   rootUrl: 'https://slak44.github.io/ckompiler',
   serviceWorker: {
-    scope: '/ckompiler',
+    scope: '/ckompiler/',
     enabled: true,
   },
   oauth: {
