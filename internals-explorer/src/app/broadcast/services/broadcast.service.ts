@@ -96,17 +96,27 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
     return this.httpClient.post<void>(`${API}/broadcast/${broadcastId}/close`, {});
   }
 
-  public publish(viewState: ViewStateNonMetadataDelta): Observable<BroadcastMessage> {
+  public publish(viewState: ViewStateNonMetadataDelta): void {
     const publishId = this.broadcastStateSubject.value.publishId;
     if (!publishId) {
       console.error('Cannot publish without a publishId');
-      return EMPTY;
+
+      return;
     }
 
     this.rxStomp.publish({
       destination: `/publish/broadcast/${publishId}`,
       body: JSON.stringify(viewState),
     });
+  }
+
+  public watchPublished(): Observable<BroadcastMessage> {
+    const publishId = this.broadcastStateSubject.value.publishId;
+    if (!publishId) {
+      console.error('Cannot publish without a publishId');
+
+      return EMPTY;
+    }
 
     return this.subscribeToBroadcastTopic(publishId);
   }

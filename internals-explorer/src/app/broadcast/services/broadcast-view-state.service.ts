@@ -10,8 +10,8 @@ import {
   merge,
   Observable,
   of,
-  pairwise,
-  ReplaySubject,
+  pairwise, pipe,
+  ReplaySubject, share,
   startWith,
   switchMap,
   takeUntil,
@@ -56,9 +56,13 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
   }
 
   public startBroadcasting(broadcastId$: Observable<BroadcastId | null> = of(null)): void {
-    broadcastId$.pipe(
+    const broadcastCreate$ = broadcastId$.pipe(
       switchMap(broadcastId => broadcastId ? of(broadcastId) : this.broadcastService.create()),
       tap(broadcastId => this.broadcastService.setBroadcastState({ publishId: broadcastId })),
+      share(),
+    );
+
+    const publishPipe = pipe(
       switchMap(() => this.viewStateService.viewStateData$.pipe(
         startWith(null),
         pairwise(),
@@ -78,13 +82,29 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
         throttleTime(0, animationFrameScheduler),
         takeUntil(this.publishExpired$),
       )),
-      switchMap(viewState => this.broadcastService.publish(viewState)),
+      tap(viewState => this.broadcastService.publish(viewState)),
+    );
+
+    const subscriberDataPipe = pipe(
+      switchMap(() => this.broadcastService.watchPublished().pipe(
+        takeUntil(this.publishExpired$),
+      )),
+      tap(message => {
+        if (message.type === BroadcastMessageType.SUBSCRIBER_CHANGE) {
+          this.subscribersSubject.next(message.subscribers);
+        }
+      }),
+    );
+
+    broadcastCreate$.pipe(
+      publishPipe,
       takeUntil(this.destroy$),
-    ).subscribe(message => {
-      if (message.type === BroadcastMessageType.SUBSCRIBER_CHANGE) {
-        this.subscribersSubject.next(message.subscribers);
-      }
-    });
+    ).subscribe();
+
+    broadcastCreate$.pipe(
+      subscriberDataPipe,
+      takeUntil(this.destroy$),
+    ).subscribe();
   }
 
   public stopBroadcasting(broadcastId: BroadcastId): void {
