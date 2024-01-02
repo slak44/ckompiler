@@ -4,3 +4,15 @@ services:
   database:
     ports:
       - "5432:5432"
+
+  prometheus:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./monitoring/prometheus-local.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    ports:
+      - "3000:3000"

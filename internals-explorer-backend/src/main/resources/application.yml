@@ -38,6 +38,15 @@ logging:
     org.springframework.messaging: info
     org.springframework.web.socket: info
 
+management:
+  metrics:
+    enable:
+      all: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
 ---
 
 spring:

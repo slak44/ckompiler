@@ -15,3 +15,22 @@ services:
       - "5432"
     networks:
       - application
+
+  prometheus:
+    image: prom/prometheus:v2.44.0
+    container_name: prometheus
+    expose:
+      - "9090"
+    networks:
+      - application
+
+  grafana:
+    image: grafana/grafana:9.5.2
+    container_name: grafana
+    expose:
+      - "3000"
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - application

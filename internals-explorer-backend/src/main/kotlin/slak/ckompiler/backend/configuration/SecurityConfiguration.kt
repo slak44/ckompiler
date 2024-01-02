@@ -35,6 +35,7 @@ class SecurityConfiguration {
     http
         .authorizeHttpRequests()
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        .requestMatchers(HttpMethod.GET, "/actuator/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/viewstate/list").authenticated()
         .requestMatchers(HttpMethod.GET, "/api/viewstate/**").permitAll()
         .requestMatchers(HttpMethod.GET, WEBSOCKET_ENDPOINT).permitAll()

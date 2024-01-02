@@ -36,6 +36,7 @@ services:
       - ./volume/certs:/etc/nginx/certs
       - ./volume/vhost:/etc/nginx/vhost.d
       - ./volume/html:/usr/share/nginx/html
+      - ./nginx-vhost.d:/etc/ngnix/vhost.d:ro
     networks:
       - application
       - gateway
@@ -53,3 +54,7 @@ services:
     env_file: .env
     environment:
       NGINX_PROXY_CONTAINER: ckompiler-gateway
+
+  prometheus:
+    volumes:
+      - ./monitoring/prometheus-production.yml:/etc/prometheus/prometheus.yml
