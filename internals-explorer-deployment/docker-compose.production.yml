@@ -58,3 +58,11 @@ services:
   prometheus:
     volumes:
       - ./monitoring/prometheus-production.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    environment:
+      VIRTUAL_PORT: 3000
+      VIRTUAL_HOST: grafana.ckompiler.slak44.dev
+      LETSENCRYPT_HOST: grafana.ckompiler.slak44.dev
+    networks:
+      - gateway

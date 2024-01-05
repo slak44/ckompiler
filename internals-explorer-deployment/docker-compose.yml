@@ -18,7 +18,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.44.0
-    container_name: prometheus
+    container_name: ckompiler-prometheus
     expose:
       - "9090"
     networks:
@@ -26,7 +26,7 @@ services:
 
   grafana:
     image: grafana/grafana:9.5.2
-    container_name: grafana
+    container_name: ckompiler-grafana
     expose:
       - "3000"
     restart: unless-stopped
