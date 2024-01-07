@@ -104,10 +104,12 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
       return;
     }
 
-    this.rxStomp.publish({
-      destination: `/publish/broadcast/${publishId}`,
-      body: JSON.stringify(viewState),
-    });
+    setInterval(() => {
+      this.rxStomp.publish({
+        destination: `/publish/broadcast/${publishId}`,
+        body: JSON.stringify(viewState),
+      });
+    }, 0);
   }
 
   public watchPublished(): Observable<BroadcastMessage> {
