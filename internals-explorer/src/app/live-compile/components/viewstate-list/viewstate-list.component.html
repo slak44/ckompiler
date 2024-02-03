@@ -34,6 +34,15 @@
     Stop watching
   </div>
 
+  <div class="viewstate-item"
+       mat-ripple
+       role="button"
+       *ngIf="data.broadcastPublishId || data.broadcastSubscribeId as activeBroadcastId"
+       (click)="copyBroadcastLink(activeBroadcastId)">
+    <mat-icon>content_copy</mat-icon>
+    Copy link to this presentation
+  </div>
+
   <mat-divider></mat-divider>
 
   <div class="viewstate-item"

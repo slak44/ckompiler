@@ -18,6 +18,8 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { environment } from '../../../../environments/environment';
+import { BROADCAST_ROUTE } from '@cki-utils/routes';
 
 @Component({
   selector: 'cki-viewstate-list',
@@ -88,6 +90,11 @@ export class ViewstateListComponent extends SubscriptionDestroy implements OnIni
 
   public stopWatching(): void {
     this.broadcastViewStateService.stopWatching();
+  }
+
+  public copyBroadcastLink(broadcastId: BroadcastId): void {
+    navigator.clipboard.writeText(`${environment.rootUrl}/${BROADCAST_ROUTE}/${broadcastId}`)
+      .catch(error => console.error(error));
   }
 
   public openShareDialog(viewState: ViewStateListing): void {
