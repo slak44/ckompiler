@@ -19,7 +19,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { environment } from '../../../../environments/environment';
-import { BROADCAST_ROUTE } from '@cki-utils/routes';
+import { BROADCAST_ROUTE, PUBLIC_SHARE_ROUTE } from '@cki-utils/routes';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'cki-viewstate-list',
@@ -55,7 +56,8 @@ export class ViewstateListComponent extends SubscriptionDestroy implements OnIni
     private readonly viewStateService: ViewStateService,
     private readonly dialog: MatDialog,
     private readonly broadcastViewStateService: BroadcastViewStateService,
-    private readonly broadcastService: BroadcastService
+    private readonly broadcastService: BroadcastService,
+    private readonly router: Router,
   ) {
     super();
   }
@@ -77,7 +79,7 @@ export class ViewstateListComponent extends SubscriptionDestroy implements OnIni
   }
 
   public restoreState(stateId: string): void {
-    this.viewStateService.fetchAndRestoreState(stateId).pipe(takeUntil(this.destroy$)).subscribe();
+    this.router.navigate([PUBLIC_SHARE_ROUTE, stateId]).catch(console.error);
   }
 
   public startBroadcast(): void {
