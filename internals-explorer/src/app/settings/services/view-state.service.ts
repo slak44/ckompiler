@@ -57,6 +57,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@auth0/auth0-angular';
 import { subscribeIfAuthenticated } from '@cki-utils/subscribe-if-authenticated';
 import { InitialUserStateService } from './initial-user-state.service';
+import { sortBy } from 'lodash-es';
 
 @Injectable({
   providedIn: 'root',
@@ -69,13 +70,7 @@ export class ViewStateService extends SubscriptionDestroy {
 
   private readonly viewStatesSubject: BehaviorSubject<ViewStateListing[]> = new BehaviorSubject<ViewStateListing[]>([]);
   public readonly viewStates$: Observable<ViewStateListing[]> = this.viewStatesSubject.pipe(
-    map(viewStates => viewStates.sort((a, b) => {
-      if (a.createdAt > b.createdAt) {
-        return -1;
-      } else {
-        return 1;
-      }
-    })),
+    map(viewStates => sortBy(viewStates, 'createdAt').reverse()),
   );
 
   private readonly navigationUrl$: Observable<string> = this.router.events.pipe(
