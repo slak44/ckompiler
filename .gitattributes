@@ -1,0 +1,3 @@
+src/jvmBenchmark/resources/manyHelloWorld.c linguist-generated=true
+src/jvmBenchmark/resources/veryLargeCFG.c linguist-generated=true
+src/jvmBenchmark/resources/randomGenerated.c linguist-generated=true
