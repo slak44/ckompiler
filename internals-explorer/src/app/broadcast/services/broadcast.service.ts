@@ -53,7 +53,6 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
     super();
 
     // FIXME: this breaks if websocket disconnects then reconnects after token was refreshed
-    // FIXME: unauthenticated users just get stuck
     this.authService.isAuthenticated$.pipe(
       first(isAuthenticated => isAuthenticated),
       switchMap(() => this.authService.getAccessTokenSilently({ cacheMode: 'cache-only' })),
