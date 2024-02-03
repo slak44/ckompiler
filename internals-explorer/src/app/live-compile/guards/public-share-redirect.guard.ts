@@ -13,6 +13,7 @@ export const STATE_ID_PARAM = 'stateId';
 
 export function publicShareRedirectGuard(route: ActivatedRouteSnapshot): Observable<UrlTree> {
   const snackbarService = inject(SnackbarService);
+  const router = inject(Router);
 
   return inject(ViewStateService).fetchAndRestoreState(route.params[STATE_ID_PARAM] as string, true).pipe(
     map(viewState => {
@@ -30,6 +31,6 @@ export function publicShareRedirectGuard(route: ActivatedRouteSnapshot): Observa
 
       return of(`/${GRAPH_VIEW_ROUTE}`);
     }),
-    map(activeRoute => inject(Router).createUrlTree([activeRoute])),
+    map(activeRoute => router.createUrlTree([activeRoute])),
   );
 }
