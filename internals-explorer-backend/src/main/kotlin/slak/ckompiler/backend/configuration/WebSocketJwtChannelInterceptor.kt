@@ -58,7 +58,7 @@ class WebSocketJwtChannelInterceptor(jwtDecoder: JwtDecoder) : ChannelIntercepto
 
     when (accessor.command) {
       StompCommand.CONNECT -> {
-        val token = accessor.getPasscode()
+        val token = accessor.passcode
         if (token != null) {
           context.authentication = jwtAuthProvider.authenticate(BearerTokenAuthenticationToken(token))
         } else {
