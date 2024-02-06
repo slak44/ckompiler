@@ -94,8 +94,12 @@ export class Setting<T> {
         if (!value) {
           return null;
         }
-        const data = JSON.parse(value) as ZoomTransformDto;
-        return new ZoomTransform(data.k, data.x, data.y);
+        const data = JSON.parse(value) as Partial<ZoomTransformDto>;
+        if (data && typeof data.k === 'number' && typeof data.x === 'number' && typeof data.y === 'number') {
+          return new ZoomTransform(data.k, data.x, data.y);
+        } else {
+          return null;
+        }
       },
       value => {
         if (!value) {
