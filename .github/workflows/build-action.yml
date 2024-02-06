@@ -24,6 +24,7 @@ jobs:
           name: ckompiler-js-dist
           path: |
             build/dist/js/productionLibrary/
+            !build/dist/js/productionLibrary/node_modules
             !build/dist/js/productionLibrary/test
   Build-Internals-Explorer-Angular:
     runs-on: ubuntu-latest
