@@ -46,6 +46,9 @@ jobs:
         with:
           name: ckompiler-js-dist
           path: build/dist/js/productionLibrary/
+      - name: Install ckompiler.js node_modules
+        run: npm install
+        working-directory: build/dist/js/productionLibrary/
       - run: npm install
         working-directory: internals-explorer
       - name: Run eslint
