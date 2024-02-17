@@ -27,6 +27,14 @@ val lw = mips32InstructionClass("lw", listOf(VariableUse.DEF, VariableUse.USE)) 
   instr(RegisterOperand, MemoryOperand)
 }
 
+val l_s = mips32InstructionClass("l.s", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, MemoryOperand)
+}
+
+val l_d = mips32InstructionClass("l.d", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, MemoryOperand)
+}
+
 val lb = mips32InstructionClass("lb", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RegisterOperand, MemoryOperand)
 }
@@ -35,11 +43,27 @@ val sw = mips32InstructionClass("sw", listOf(VariableUse.USE, VariableUse.DEF)) 
   instr(RegisterOperand, MemoryOperand)
 }
 
+val s_s = mips32InstructionClass("s.s", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, MemoryOperand)
+}
+
+val s_d = mips32InstructionClass("s.d", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, MemoryOperand)
+}
+
 val sb = mips32InstructionClass("sb", listOf(VariableUse.USE, VariableUse.DEF)) {
   instr(RegisterOperand, MemoryOperand)
 }
 
 val move = mips32InstructionClass("move", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val mov_s = mips32InstructionClass("mov.s", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val mov_d = mips32InstructionClass("mov.d", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand)
 }
 
@@ -205,4 +229,44 @@ val sltiu = mips32InstructionClass("sltiu", listOf(VariableUse.DEF, VariableUse.
 
 val sltu = mips32InstructionClass("sltu", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val add_s = mips32InstructionClass("add.s", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val sub_s = mips32InstructionClass("sub.s", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val mul_s = mips32InstructionClass("mul.s", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val div_s = mips32InstructionClass("div.s", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val neg_s = mips32InstructionClass("neg.s", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val add_d = mips32InstructionClass("add.d", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val sub_d = mips32InstructionClass("sub.d", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val mul_d = mips32InstructionClass("mul.d", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val div_d = mips32InstructionClass("div.d", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val neg_d = mips32InstructionClass("neg.d", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
 }

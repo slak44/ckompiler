@@ -4,10 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import slak.ckompiler.IdCounter
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
-import slak.ckompiler.parser.PointerType
-import slak.ckompiler.parser.SignedIntType
-import slak.ckompiler.parser.SignedIntegralType
-import slak.ckompiler.parser.UnsignedIntType
+import slak.ckompiler.parser.*
 import slak.ckompiler.throwICE
 
 class MIPS32Generator private constructor(
@@ -266,11 +263,51 @@ class MIPS32Generator private constructor(
       // FIXME: this does nothing
       listOf(matchTypedCopy(i.result, i.operand))
     }
-    is FltBinary -> TODO()
+    is FltBinary -> when (i.op) {
+      FloatingBinaryOps.ADD -> matchFloatBinary(i, add_s, add_d)
+      FloatingBinaryOps.MUL -> matchFloatBinary(i, mul_s, mul_d)
+      FloatingBinaryOps.SUB -> matchFloatBinary(i, sub_s, sub_d)
+      FloatingBinaryOps.DIV -> matchFloatBinary(i, div_s, div_d)
+    }
     is FltCmp -> TODO()
-    is FltNeg -> listOf(neg.match(i.result, i.operand))
+    is FltNeg -> matchFloatUnary(i, neg_s, neg_d)
     is IndirectCall -> createCall(i.result, i.callable, i.args)
     is NamedCall -> createCall(i.result, i.name, i.args)
+  }
+
+  private fun matchFloatBinary(
+      i: BinaryInstruction,
+      operationFloat: List<MIPS32InstructionTemplate>,
+      operationDouble: List<MIPS32InstructionTemplate>
+  ): List<MachineInstruction> {
+    val ftype = i.result.type.unqualify()
+    val operation = when (ftype) {
+      FloatType -> operationFloat
+      DoubleType, LongDoubleType -> operationDouble
+      else -> TODO("unknown float type")
+    }
+
+    val (lhs, lhsOps) = convertIfImm(i.lhs)
+    val (rhs, rhsOps) = convertIfImm(i.rhs)
+
+    return lhsOps + rhsOps + operation.match(i.result, lhs, rhs)
+  }
+
+  private fun matchFloatUnary(
+      i: FltNeg,
+      operationFloat: List<MIPS32InstructionTemplate>,
+      operationDouble: List<MIPS32InstructionTemplate>,
+  ): List<MachineInstruction> {
+    val ftype = i.result.type.unqualify()
+    val operation = when (ftype) {
+      FloatType -> operationFloat
+      DoubleType, LongDoubleType -> operationDouble
+      else -> TODO("unknown float type")
+    }
+
+    val (operand, operandOps) = convertIfImm(i.operand)
+
+    return operandOps + operation.match(i.result, operand)
   }
 
   private fun matchAdd(i: BinaryInstruction): List<MachineInstruction> {
