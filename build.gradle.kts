@@ -297,7 +297,7 @@ kotlin {
     val jvmBenchmark by getting {
       kotlin.srcDir("src/jvmBenchmark/kotlin")
       resources.srcDir("src/jvmBenchmark/resources")
-      dependsOn(jvmTest)
+//      dependsOn(jvmTest)
 
       dependencies {
         implementation("org.jetbrains.kotlinx:kotlinx-benchmark-runtime-jvm:0.4.4")

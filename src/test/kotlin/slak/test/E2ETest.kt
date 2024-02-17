@@ -14,7 +14,7 @@ internal class CompileAndRunBuilder {
   var programArgList = listOf<String>()
   var cliArgList = listOf<String>()
   var stdin: String? = null
-  var targets = listOf(ISAType.X64, ISAType.MIPS32).dropLast(1)
+  var targets = listOf(ISAType.X64, ISAType.MIPS32)
 }
 
 internal data class RunResult(val exitCode: Int, val stdout: String, val stderr: String)

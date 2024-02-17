@@ -662,6 +662,11 @@ class E2ETests {
   }
 
   @Test
+  fun `Internals Explorer Sample Code Works`() {
+    compileAndRun(resource("e2e/internalsExplorerSample.c")).expect(exitCode = 62, stdout = "Hello World!")
+  }
+
+  @Test
   @Disabled("TODO")
   fun `Crashes due to the TODO in SSA reconstruction`() {
     compileAndRun(resource("e2e/test58.c")).expect(stdout = "1 2")
