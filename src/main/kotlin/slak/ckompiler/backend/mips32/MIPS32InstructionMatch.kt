@@ -21,7 +21,15 @@ private fun compatibleWith(operand: MIPS32OperandTemplate, ref: IRValue): Boolea
     is IntConstant -> operand is Immediate
     is DerefStackValue, is MemoryLocation -> operand is MemoryOperand
     is Variable, is VirtualRegister, is StackValue, is StackVariable -> operand is RegisterOperand
-    is PhysicalRegister -> operand is RegisterOperand
+    is PhysicalRegister -> {
+      check(ref.reg is MIPS32Register) { "Physical register must be a MIPS register" }
+
+      if (ref.reg.isFPUControl) {
+        operand is FPUControlRegisterOperand
+      } else {
+        operand is RegisterOperand
+      }
+    }
     is ParameterReference -> logger.throwICE("Parameter references were removed")
   }
 }
@@ -34,7 +42,7 @@ fun List<MIPS32InstructionTemplate>.tryMatchAsm(vararg operands: MIPS32Value): M
   val instr = firstOrNull {
     it.operandType.size == operands.size && operands.zip(it.operandType).all { (value, targetOperand) ->
       when (targetOperand) {
-        RegisterOperand -> value is MIPS32RegisterValue
+        RegisterOperand, FPUControlRegisterOperand -> value is MIPS32RegisterValue
         MemoryOperand -> value is MIPS32MemoryValue
         Immediate -> value is MIPS32ImmediateValue
         Label -> false

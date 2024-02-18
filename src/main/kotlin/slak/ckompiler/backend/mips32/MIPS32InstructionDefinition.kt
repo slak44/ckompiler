@@ -1,13 +1,11 @@
 package slak.ckompiler.backend.mips32
 
-import slak.ckompiler.analysis.CFG
-import slak.ckompiler.analysis.LoadMemory
-import slak.ckompiler.analysis.StackVariable
-import slak.ckompiler.analysis.insertSpillCode
+import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.ICBuilder
 import slak.ckompiler.backend.VariableUse
 import slak.ckompiler.backend.dummyInstructionClass
 import slak.ckompiler.backend.instructionClass
+import slak.ckompiler.format
 
 private fun mips32InstructionClass(
     name: String,
@@ -65,6 +63,10 @@ val mov_s = mips32InstructionClass("mov.s", listOf(VariableUse.DEF, VariableUse.
 
 val mov_d = mips32InstructionClass("mov.d", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand)
+}
+
+val cfc1 = mips32InstructionClass("cfc1", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, FPUControlRegisterOperand)
 }
 
 /**
@@ -268,5 +270,31 @@ val div_d = mips32InstructionClass("div.d", listOf(VariableUse.DEF, VariableUse.
 }
 
 val neg_d = mips32InstructionClass("neg.d", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+private fun mips32CompareInstrClass(
+    nameTemplate: String,
+    nameFmtVariants: List<String>,
+    defaultUse: List<VariableUse>? = null,
+    block: ICBuilder<MIPS32OperandTemplate, MIPS32InstructionTemplate>.() -> Unit,
+): Map<String, List<MIPS32InstructionTemplate>> = buildMap {
+  for (fmt in nameFmtVariants) {
+    val name = nameTemplate.format(fmt)
+    this[fmt] = instructionClass(name, ::MIPS32InstructionTemplate, defaultUse, block)
+  }
+}
+
+private val floatCompareVariants = listOf(
+    "f", "un", "eq", "ueq", "olt", "ult", "ole", "ule",
+    "sf", "ngle", "seq", "ngl", "lt", "nge", "le", "ngt"
+)
+
+// FIXME: see CMP.condn.fmt for MIPS Release 6
+val c_s = mips32CompareInstrClass("c.%s.s", floatCompareVariants, listOf(VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val c_d = mips32CompareInstrClass("c.%s.d", floatCompareVariants, listOf(VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand)
 }

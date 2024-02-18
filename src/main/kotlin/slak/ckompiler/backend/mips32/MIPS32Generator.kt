@@ -22,6 +22,7 @@ class MIPS32Generator private constructor(
 
   private val sp = target.ptrRegisterByName("\$sp")
   private val zero = target.ptrRegisterByName("\$zero")
+  private val fpuControl = PhysicalRegister(target.registerByName("\$fcsr"), UnsignedIntType)
 
   init {
     graph.copyStructureFrom(cfg, this::selectBlockInstrs)
@@ -269,23 +270,63 @@ class MIPS32Generator private constructor(
       FloatingBinaryOps.SUB -> matchFloatBinary(i, sub_s, sub_d)
       FloatingBinaryOps.DIV -> matchFloatBinary(i, div_s, div_d)
     }
-    is FltCmp -> TODO()
+    is FltCmp -> matchFloatCmp(i, c_s, c_d)
     is FltNeg -> matchFloatUnary(i, neg_s, neg_d)
     is IndirectCall -> createCall(i.result, i.callable, i.args)
     is NamedCall -> createCall(i.result, i.name, i.args)
   }
 
-  private fun matchFloatBinary(
-      i: BinaryInstruction,
+  private fun getFloatOperation(
+      resultType: TypeName,
       operationFloat: List<MIPS32InstructionTemplate>,
       operationDouble: List<MIPS32InstructionTemplate>
-  ): List<MachineInstruction> {
-    val ftype = i.result.type.unqualify()
-    val operation = when (ftype) {
+  ): List<MIPS32InstructionTemplate> {
+    val ftype = resultType.unqualify()
+
+    return when (ftype) {
       FloatType -> operationFloat
       DoubleType, LongDoubleType -> operationDouble
       else -> TODO("unknown float type")
     }
+  }
+
+  private fun matchFloatCmp(
+      i: FltCmp,
+      operationFloat: Map<String, List<MIPS32InstructionTemplate>>,
+      operationDouble: Map<String, List<MIPS32InstructionTemplate>>,
+  ): List<MachineInstruction> {
+    // For greater than, flip operands and use the less than comparison
+    val (lhs, rhs) = when (i.cmp) {
+      Comparisons.GREATER_THAN, Comparisons.GREATER_EQUAL -> i.rhs to i.lhs
+      else -> i.lhs to i.rhs
+    }
+
+    val compareVariant = when (i.cmp) {
+      Comparisons.EQUAL -> "eq"
+      Comparisons.NOT_EQUAL -> "neq"
+      Comparisons.LESS_THAN, Comparisons.GREATER_THAN -> "olt"
+      Comparisons.LESS_EQUAL, Comparisons.GREATER_EQUAL -> "ole"
+    }
+
+    val (finalLhs, lhsOps) = convertIfImm(lhs)
+    val (finalRhs, rhsOps) = convertIfImm(rhs)
+
+    val operation = getFloatOperation(finalLhs.type, operationFloat.getValue(compareVariant), operationDouble.getValue(compareVariant))
+
+    val statusRegisterTarget = VirtualRegister(graph.registerIds(), UnsignedIntType)
+    val loadStatus = cfc1.match(statusRegisterTarget, fpuControl)
+
+    val extractBit0 = andi.match(statusRegisterTarget, statusRegisterTarget, IntConstant(1L, UnsignedIntType))
+
+    return lhsOps + rhsOps + operation.match(finalLhs, finalRhs) + loadStatus + extractBit0
+  }
+
+  private fun matchFloatBinary(
+      i: BinaryInstruction,
+      operationFloat: List<MIPS32InstructionTemplate>,
+      operationDouble: List<MIPS32InstructionTemplate>,
+  ): List<MachineInstruction> {
+    val operation = getFloatOperation(i.result.type, operationFloat, operationDouble)
 
     val (lhs, lhsOps) = convertIfImm(i.lhs)
     val (rhs, rhsOps) = convertIfImm(i.rhs)
@@ -298,12 +339,7 @@ class MIPS32Generator private constructor(
       operationFloat: List<MIPS32InstructionTemplate>,
       operationDouble: List<MIPS32InstructionTemplate>,
   ): List<MachineInstruction> {
-    val ftype = i.result.type.unqualify()
-    val operation = when (ftype) {
-      FloatType -> operationFloat
-      DoubleType, LongDoubleType -> operationDouble
-      else -> TODO("unknown float type")
-    }
+    val operation = getFloatOperation(i.result.type, operationFloat, operationDouble)
 
     val (operand, operandOps) = convertIfImm(i.operand)
 

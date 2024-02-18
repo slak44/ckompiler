@@ -14,7 +14,7 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
   override val registerClasses: List<MachineRegisterClass> = MIPS32RegisterClass.entries
   override val registers = getMIPS32Registers()
   override val forbidden = listOf(
-      "\$zero", "\$at", "\$k1", "\$k0", "\$gp", "\$sp", "\$fp", "\$ra"
+      "\$zero", "\$at", "\$k1", "\$k0", "\$gp", "\$sp", "\$fp", "\$ra", "\$fcsr"
   ).mapTo(mutableSetOf(), ::registerByName)
 
   val calleeSaved = listOf("\$s0", "\$s1", "\$s2", "\$s3", "\$s4", "\$s5", "\$s6", "\$s7")

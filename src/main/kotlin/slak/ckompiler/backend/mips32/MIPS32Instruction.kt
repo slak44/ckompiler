@@ -11,6 +11,8 @@ data object Immediate : MIPS32OperandTemplate
 
 data object RegisterOperand : MIPS32OperandTemplate
 
+data object FPUControlRegisterOperand : MIPS32OperandTemplate
+
 data object MemoryOperand : MIPS32OperandTemplate
 
 data object Label : MIPS32OperandTemplate

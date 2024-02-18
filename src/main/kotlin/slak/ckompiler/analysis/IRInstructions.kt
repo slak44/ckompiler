@@ -1,3 +1,5 @@
+@file:Suppress("NON_EXPORTABLE_TYPE")
+
 package slak.ckompiler.analysis
 
 import kotlinx.serialization.Serializable

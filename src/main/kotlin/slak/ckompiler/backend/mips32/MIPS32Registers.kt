@@ -16,6 +16,7 @@ class MIPS32Register(
     override val sizeBytes: Int,
     override val valueClass: MIPS32RegisterClass,
     override val aliases: List<RegisterAlias>,
+    val isFPUControl: Boolean = false,
 ) : MachineRegister {
   override val id = ids()
 
@@ -28,9 +29,9 @@ class MIPS32Register(
   }
 }
 
-private fun RegisterBuilder<MIPS32Register>.register(name: String, regNumber: Int) {
+private fun RegisterBuilder<MIPS32Register>.register(name: String, regNumber: Int, sizeBytes: Int = 4) {
   val regName = "\$$name"
-  regs += MIPS32Register(regName, regNumber, 4, valueClass as MIPS32RegisterClass, listOf(regName to 1))
+  regs += MIPS32Register(regName, regNumber, sizeBytes, valueClass as MIPS32RegisterClass, listOf(regName to 1))
 }
 
 fun getMIPS32Registers(): List<MIPS32Register> = registers {
@@ -69,8 +70,15 @@ fun getMIPS32Registers(): List<MIPS32Register> = registers {
   }
 
   ofClass(MIPS32RegisterClass.FLOAT) {
+    // TODO: figure out aliases for doubles
+    //   a double in MIPS takes up two float registers
+    //   so f0-f1, f2-f3, f4-f5 etc can hold either two separate floats, or one double
+    //   maybe we need to insert both floats with double alias, and double with float alias? how does register allocation deal with this?
     for (i in 0..31) {
       register("f$i", i)
     }
+
+    // See CFC1 instruction
+    regs += MIPS32Register("\$fcsr", -1, 0, MIPS32RegisterClass.FLOAT, emptyList(), isFPUControl = true)
   }
 }
