@@ -70,16 +70,20 @@ fun getMIPS32Registers(): List<MIPS32Register> = registers {
   }
 
   ofClass(MIPS32RegisterClass.FLOAT) {
-    // TODO: figure out aliases for doubles
-    //   a double in MIPS takes up two float registers
-    //   so f0-f1, f2-f3, f4-f5 etc can hold either two separate floats, or one double
-    //   we insert the same alias for two registers, I don't think regalloc deals with this?
     for (i in 0..31) {
+      if (i.mod(2) == 1) {
+        // TODO:
+        //   a double in MIPS takes up two float registers
+        //   so f0-f1, f2-f3, f4-f5 etc can hold either two separate floats, or one double
+        //   we insert the same alias for two registers, and regalloc doesn't deal with this
+        //   so for now, disable odd-numbered float registers
+        continue
+      }
       val doubleAlias = listOf("\$f${i.floorDiv(2) * 2}" to 8)
       regs += MIPS32Register("\$f$i", i, 4, MIPS32RegisterClass.FLOAT, doubleAlias)
     }
 
     // See CFC1 instruction
-    regs += MIPS32Register("\$fcsr", -1, 0, MIPS32RegisterClass.FLOAT, emptyList(), isFPUControl = true)
+    regs += MIPS32Register("\$25", -1, 0, MIPS32RegisterClass.FLOAT, listOf("\$fcsr" to 0), isFPUControl = true)
   }
 }

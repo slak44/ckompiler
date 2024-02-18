@@ -1,5 +1,6 @@
 package slak.ckompiler.backend
 
+import slak.ckompiler.analysis.FltConstant
 import slak.ckompiler.analysis.StrConstant
 import slak.ckompiler.backend.mips32.MIPS32Instruction
 import slak.ckompiler.backend.mips32.SPIMGenerator
@@ -24,7 +25,22 @@ abstract class AsmEmitter<T : AsmInstruction>(
    */
   protected val stringRefs = mutableMapOf<StrConstant, String>()
 
+  /**
+   * Maps a float to a label with the value.
+   * @see stringRefs
+   */
+  protected val floatRefs = mutableMapOf<FltConstant, String>()
+
   abstract fun emitAsm(): String
+
+  fun createFloatConstantText(const: FltConstant): String {
+    val labelName = const.value.toString()
+        .replace('.', '_')
+        .replace('+', 'p')
+        .replace('-', 'm')
+
+    return "f_${labelName}_${floatRefs.size}"
+  }
 
   fun createStringConstantText(const: StrConstant): String {
     val stringPeek = const.value.filter(Char::isLetterOrDigit).take(5)

@@ -1,6 +1,7 @@
 package slak.ckompiler.backend.mips32
 
 import slak.ckompiler.AtomicId
+import slak.ckompiler.MachineTargetData
 import slak.ckompiler.analysis.*
 import slak.ckompiler.backend.*
 
@@ -117,13 +118,16 @@ class SPIMGenerator(
 
   private fun operandToString(operand: MIPS32Value): String = when (operand) {
     is MIPS32ImmediateValue -> when (val const = operand.value) {
-      is FltConstant -> TODO()
       is IntConstant -> const.toString()
       is JumpTargetConstant -> const.target.label
       is NamedConstant -> const.name
       is StrConstant -> {
         if (const !in stringRefs) createStringConstant(const)
         stringRefs.getValue(const)
+      }
+      is FltConstant -> {
+        if (const !in floatRefs) createFloatConstant(const)
+        floatRefs.getValue(const)
       }
     }
     is MIPS32MemoryValue -> "${operand.displacement}(${operand.base.register.regName})"
@@ -134,5 +138,15 @@ class SPIMGenerator(
     val bytes = createStringConstantText(const)
     data += "# ${const.value}"
     data += "${stringRefs[const]}: .byte $bytes, 0"
+  }
+
+  private fun createFloatConstant(const: FltConstant) {
+    floatRefs[const] = createFloatConstantText(const)
+    val kind = when (MachineTargetData.mips32.sizeOf(const.type)) {
+      4 -> ".float"
+      8 -> ".double"
+      else -> TODO("handle larger floats")
+    }
+    data += "${floatRefs[const]}: $kind ${const.value}"
   }
 }

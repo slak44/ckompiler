@@ -15,12 +15,6 @@ class NasmEmitter(
   private val prelude = mutableListOf<String>()
   private val text = mutableListOf<String>()
 
-  /**
-   * Maps a float to a label with the value.
-   * @see stringRefs
-   */
-  private val floatRefs = mutableMapOf<FltConstant, String>()
-
   override fun emitAsm(): String {
     for (external in externals) prelude += "extern $external"
     for (function in functions) generateFunction(function)
@@ -122,11 +116,7 @@ class NasmEmitter(
   }
 
   private fun createFloatConstant(const: FltConstant) {
-    val labelName = const.value.toString()
-        .replace('.', '_')
-        .replace('+', 'p')
-        .replace('-', 'm')
-    floatRefs[const] = "f_${labelName}_${floatRefs.size}"
+    floatRefs[const] = createFloatConstantText(const)
     val kind = when (MachineTargetData.x64.sizeOf(const.type)) {
       4 -> "dd"
       8 -> "dq"
