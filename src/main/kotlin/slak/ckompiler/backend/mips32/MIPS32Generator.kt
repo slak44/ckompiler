@@ -313,10 +313,9 @@ class MIPS32Generator private constructor(
 
     val operation = getFloatOperation(finalLhs.type, operationFloat.getValue(compareVariant), operationDouble.getValue(compareVariant))
 
-    val statusRegisterTarget = VirtualRegister(graph.registerIds(), UnsignedIntType)
-    val loadStatus = cfc1.match(statusRegisterTarget, fpuControl)
+    val loadStatus = cfc1.match(i.result, fpuControl)
 
-    val extractBit0 = andi.match(statusRegisterTarget, statusRegisterTarget, IntConstant(1L, UnsignedIntType))
+    val extractBit0 = andi.match(i.result, i.result, IntConstant(1L, UnsignedIntType))
 
     return lhsOps + rhsOps + operation.match(finalLhs, finalRhs) + loadStatus + extractBit0
   }
