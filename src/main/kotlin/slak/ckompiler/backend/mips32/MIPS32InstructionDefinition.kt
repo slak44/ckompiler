@@ -109,6 +109,14 @@ val bgez = mips32InstructionClass("bgez", listOf(VariableUse.USE, VariableUse.US
   instr(RegisterOperand, Label)
 }
 
+val bc1f = mips32InstructionClass("bc1f", listOf(VariableUse.USE)) {
+  instr(Label)
+}
+
+val bc1t = mips32InstructionClass("bc1t", listOf(VariableUse.USE)) {
+  instr(Label)
+}
+
 val jal = mips32InstructionClass("jal", listOf(VariableUse.USE)) {
   instr(Label)
 }

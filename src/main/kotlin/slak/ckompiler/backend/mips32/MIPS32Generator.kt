@@ -146,7 +146,10 @@ class MIPS32Generator private constructor(
       is IntCmp -> matchIntCompareAndBranch(l, JumpTargetConstant(condJump.target)) + listOf(
           b.match(JumpTargetConstant(condJump.other))
       )
-      is FltCmp -> TODO("mips float compare")
+      is FltCmp -> matchFloatCmp(l, c_s, c_d) + listOf(
+          bc1t.match(JumpTargetConstant(condJump.target)),
+          b.match(JumpTargetConstant(condJump.other))
+      )
       else -> TODO("no idea what happens here")
     }
     selected += actualJump.onEach { it.irLabelIndex = idxOffset + condJump.cond.size - 1 }
@@ -270,7 +273,7 @@ class MIPS32Generator private constructor(
       FloatingBinaryOps.SUB -> matchFloatBinary(i, sub_s, sub_d)
       FloatingBinaryOps.DIV -> matchFloatBinary(i, div_s, div_d)
     }
-    is FltCmp -> matchFloatCmp(i, c_s, c_d)
+    is FltCmp -> matchFloatCmpAndStore(i, c_s, c_d)
     is FltNeg -> matchFloatUnary(i, neg_s, neg_d)
     is IndirectCall -> createCall(i.result, i.callable, i.args)
     is NamedCall -> createCall(i.result, i.name, i.args)
@@ -313,11 +316,21 @@ class MIPS32Generator private constructor(
 
     val operation = getFloatOperation(finalLhs.type, operationFloat.getValue(compareVariant), operationDouble.getValue(compareVariant))
 
+    return lhsOps + rhsOps + operation.match(finalLhs, finalRhs)
+  }
+
+  private fun matchFloatCmpAndStore(
+      i: FltCmp,
+      operationFloat: Map<String, List<MIPS32InstructionTemplate>>,
+      operationDouble: Map<String, List<MIPS32InstructionTemplate>>,
+  ): List<MachineInstruction> {
+    val compare = matchFloatCmp(i, operationFloat, operationDouble)
+
     val loadStatus = cfc1.match(i.result, fpuControl)
 
     val extractBit0 = andi.match(i.result, i.result, IntConstant(1L, UnsignedIntType))
 
-    return lhsOps + rhsOps + operation.match(finalLhs, finalRhs) + loadStatus + extractBit0
+    return compare + loadStatus + extractBit0
   }
 
   private fun matchFloatBinary(
