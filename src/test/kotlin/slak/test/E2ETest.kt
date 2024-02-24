@@ -3,10 +3,13 @@ package slak.test
 import slak.ckompiler.ExitCodes
 import slak.ckompiler.backend.ISAType
 import java.io.File
+import java.io.StringWriter
+import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
+
 
 internal class CompileAndRunBuilder {
   var text: String? = null
@@ -117,8 +120,21 @@ private fun <T : Any> T.compileAndRunMIPS32(builder: CompileAndRunBuilder): RunR
       it.write(builder.stdin!!)
     }
   }
-  val stdout = process.inputStream.bufferedReader().readText()
-  val stderr = process.errorStream.bufferedReader().readText()
+
+  var stdout = ""
+  var stderr = ""
+
+  val thread = Thread {
+    process.inputStream.bufferedReader().use {
+      stdout = it.readText()
+    }
+    process.errorStream.bufferedReader().use {
+      stderr = it.readText()
+    }
+  }
+
+  thread.start()
+
   val didExit = process.waitFor(1, TimeUnit.SECONDS)
 
   if (!didExit) {
@@ -136,6 +152,8 @@ private fun <T : Any> T.compileAndRunMIPS32(builder: CompileAndRunBuilder): RunR
   ) {
     fail("$stdout\nstderr: $stderr\nexit code: $exitCode")
   }
+
+  thread.join()
 
   return RunResult(exitCode = exitCode, stdout = stdout, stderr = stderr)
 }
