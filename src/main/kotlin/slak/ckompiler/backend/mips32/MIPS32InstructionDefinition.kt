@@ -253,6 +253,30 @@ val sltu = mips32InstructionClass("sltu", listOf(VariableUse.DEF, VariableUse.US
   instr(RegisterOperand, RegisterOperand, RegisterOperand)
 }
 
+val sll = mips32InstructionClass("sll", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, Immediate)
+}
+
+val sllv = mips32InstructionClass("sllv", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val sra = mips32InstructionClass("sra", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, Immediate)
+}
+
+val srav = mips32InstructionClass("srav", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
+val srl = mips32InstructionClass("srl", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, Immediate)
+}
+
+val srlv = mips32InstructionClass("srlv", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand, RegisterOperand)
+}
+
 val add_s = mips32InstructionClass("add.s", listOf(VariableUse.DEF, VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand, RegisterOperand)
 }
