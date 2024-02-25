@@ -37,9 +37,8 @@ int __builtin_printf_no_va(const char* format, void** args) {
         const char* str = args[current_arg++];
         __builtin_print_string(str);
       } else if (c == 'f') {
-      current_arg++;
-//        float* f = args[current_arg++];
-//        __builtin_print_float(*f);
+        void* f = args[current_arg++];
+        __builtin_print_float((float) (int) f);
       } else {
         exit(1);
       }
