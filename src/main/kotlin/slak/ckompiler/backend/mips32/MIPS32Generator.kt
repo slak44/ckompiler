@@ -328,9 +328,12 @@ class MIPS32Generator private constructor(
 
     val loadStatus = cfc1.match(i.result, fpuControl)
 
-    val extractBit0 = andi.match(i.result, i.result, IntConstant(1L, UnsignedIntType))
+    // We want bit with mask 0x00800000 (bit 23), but the mask is too big to fit as an immediate value for andi
+    // So shift right by 23 and use mask 0x1
+    val shift = srl.match(i.result, i.result, IntConstant(23L, UnsignedIntType))
+    val extractFCCBit0 = andi.match(i.result, i.result, IntConstant(1L, UnsignedIntType))
 
-    return compare + loadStatus + extractBit0
+    return compare + loadStatus + shift + extractFCCBit0
   }
 
   private fun matchFloatBinary(
