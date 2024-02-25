@@ -13,6 +13,10 @@ private fun mips32InstructionClass(
     block: ICBuilder<MIPS32OperandTemplate, MIPS32InstructionTemplate>.() -> Unit,
 ) = instructionClass(name, ::MIPS32InstructionTemplate, defaultUse, block)
 
+val nop = mips32InstructionClass("nop", emptyList()) {
+  instr()
+}
+
 val la = mips32InstructionClass("la", listOf(VariableUse.DEF, VariableUse.USE)) {
   instr(RegisterOperand, Label)
 }
@@ -289,7 +293,31 @@ val neg_d = mips32InstructionClass("neg.d", listOf(VariableUse.DEF, VariableUse.
   instr(RegisterOperand, RegisterOperand)
 }
 
-private fun mips32CompareInstrClass(
+val cvt_d_s = mips32InstructionClass("cvt.d.s", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val cvt_d_w = mips32InstructionClass("cvt.d.w", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val cvt_s_d = mips32InstructionClass("cvt.s.d", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val cvt_s_w = mips32InstructionClass("cvt.s.w", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val cvt_w_d = mips32InstructionClass("cvt.w.d", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val cvt_w_s = mips32InstructionClass("cvt.w.s", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+private fun mips32FmtInstrClass(
     nameTemplate: String,
     nameFmtVariants: List<String>,
     defaultUse: List<VariableUse>? = null,
@@ -307,10 +335,10 @@ private val floatCompareVariants = listOf(
 )
 
 // FIXME: see CMP.condn.fmt for MIPS Release 6
-val c_s = mips32CompareInstrClass("c.%s.s", floatCompareVariants, listOf(VariableUse.USE, VariableUse.USE)) {
+val c_s = mips32FmtInstrClass("c.%s.s", floatCompareVariants, listOf(VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand)
 }
 
-val c_d = mips32CompareInstrClass("c.%s.d", floatCompareVariants, listOf(VariableUse.USE, VariableUse.USE)) {
+val c_d = mips32FmtInstrClass("c.%s.d", floatCompareVariants, listOf(VariableUse.USE, VariableUse.USE)) {
   instr(RegisterOperand, RegisterOperand)
 }
