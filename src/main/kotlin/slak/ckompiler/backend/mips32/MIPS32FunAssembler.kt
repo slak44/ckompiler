@@ -127,6 +127,20 @@ class MIPS32FunAssembler(val cfg: CFG, val target: MIPS32Target, val stackSlotId
       return addi.matchAsm(ops[0], base, MIPS32ImmediateValue(asConstant))
     }
 
+    if (mi.template in move || mi.template in mov_s || mi.template in mov_d) {
+      check(ops.size == 2) { "Moves have two operands only, found ${ops.size}: $ops" }
+
+      val dest = ops[0]
+      val src = ops[1]
+
+      // In MIPS, "move $a0, $a0" actually clears $a0, which is undesired
+      // Don't generate such a move
+      // FIXME: coalescing
+      if (dest is MIPS32RegisterValue && src is MIPS32RegisterValue && dest.register == src.register) {
+        return nop.matchAsm()
+      }
+    }
+
     return MIPS32Instruction(mi.template, ops)
   }
 
