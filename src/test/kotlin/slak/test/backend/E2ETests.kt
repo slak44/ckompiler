@@ -76,9 +76,14 @@ class E2ETests {
     compileAndRun("int main() { return $code; }").justExitCode(1)
   }
 
+  @Test
+  fun `Int Cast To Float`() {
+    compileAndRun(resource("e2e/floatFromInt.c")).justExitCode(1)
+  }
+
   @ParameterizedTest
   @ValueSource(strings = ["1", "123", "-1"])
-  fun `Int Cast To Float`(int: String) {
+  fun `Printf Int Cast To Float`(int: String) {
     compileAndRun("""
       extern int printf(const char*, ...);
       int main() {
