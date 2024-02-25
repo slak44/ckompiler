@@ -17,7 +17,7 @@ class MIPS32Target(override val options: TargetOptions = TargetOptions.defaults)
       "\$zero", "\$at", "\$k1", "\$k0", "\$gp", "\$sp", "\$fp", "\$ra", "\$fcsr"
   ).mapTo(mutableSetOf(), ::registerByName)
 
-  val calleeSaved = listOf("\$s0", "\$s1", "\$s2", "\$s3", "\$s4", "\$s5", "\$s6", "\$s7")
+  val calleeSaved = (listOf("\$s0", "\$s1", "\$s2", "\$s3", "\$s4", "\$s5", "\$s6", "\$s7") + (20..30 step 2).map { "\$f$it" })
       .mapTo(mutableSetOf(), ::registerByName)
 
   val callerSaved = registers - forbidden - calleeSaved
