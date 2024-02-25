@@ -84,6 +84,6 @@ fun getMIPS32Registers(): List<MIPS32Register> = registers {
     }
 
     // See CFC1 instruction
-    regs += MIPS32Register("\$0", -1, 0, MIPS32RegisterClass.FLOAT, listOf("\$fcsr" to 0), isFPUControl = true)
+    regs += MIPS32Register("\$31", -1, 0, MIPS32RegisterClass.FLOAT, listOf("\$fcsr" to 0), isFPUControl = true)
   }
 }
