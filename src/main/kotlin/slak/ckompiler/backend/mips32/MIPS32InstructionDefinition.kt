@@ -69,6 +69,14 @@ val cfc1 = mips32InstructionClass("cfc1", listOf(VariableUse.DEF, VariableUse.US
   instr(RegisterOperand, FPUControlRegisterOperand)
 }
 
+val mfc1 = mips32InstructionClass("mfc1", listOf(VariableUse.DEF, VariableUse.USE)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
+val mtc1 = mips32InstructionClass("mtc1", listOf(VariableUse.USE, VariableUse.DEF)) {
+  instr(RegisterOperand, RegisterOperand)
+}
+
 /**
  * [StackVariable]s are pointers to somewhere in the stack. They have displacements of the form -4($fp).
  * When used directly to load a value (so as [LoadMemory.loadFrom]), it's fine to leave them as is.

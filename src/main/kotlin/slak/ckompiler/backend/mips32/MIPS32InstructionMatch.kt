@@ -134,7 +134,14 @@ fun matchTypedCopy(dest: IRValue, src: IRValue): MachineInstruction {
   val destClass = MIPS32Target.registerClassOf(destType)
 
   check(srcClass is MIPS32RegisterClass && destClass is MIPS32RegisterClass) { "Register class for move must not be Memory" }
-  check(srcClass == destClass) { "Register class for move source must match move destination" }
+
+  if (srcClass != destClass) {
+    return when {
+      srcClass == MIPS32RegisterClass.INTEGER && destClass == MIPS32RegisterClass.FLOAT -> mtc1.match(src, dest)
+      srcClass == MIPS32RegisterClass.FLOAT && destClass == MIPS32RegisterClass.INTEGER -> mfc1.match(dest, src)
+      else -> logger.throwICE("Unreachable; all combinations checked")
+    }
+  }
 
   return when (srcClass) {
     MIPS32RegisterClass.INTEGER -> move.match(dest, src)
