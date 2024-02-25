@@ -57,7 +57,7 @@ fun List<MIPS32InstructionTemplate>.matchAsm(vararg operands: MIPS32Value): MIPS
   return checkNotNull(instr) { "Failed to create instruction from the given operands: ${operands.toList()} in $this" }
 }
 
-private fun isMemoryForCopy(value: IRValue): Boolean = value is MemoryLocation || value is DerefStackValue
+fun isMemoryForCopy(value: IRValue): Boolean = value is MemoryLocation || value is DerefStackValue
 
 fun matchTypedCopy(dest: IRValue, src: IRValue): MachineInstruction {
   val srcType = src.type

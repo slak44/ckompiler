@@ -263,10 +263,7 @@ class MIPS32Generator private constructor(
     is IntCmp -> matchCmp(i)
     is IntInvert -> listOf(nor.match(i.result, i.operand, i.operand))
     is IntNeg -> listOf(subu.match(i.result, zero, i.operand))
-    is StructuralCast -> {
-      // FIXME: this does nothing
-      listOf(matchTypedCopy(i.result, i.operand))
-    }
+    is StructuralCast -> createStructuralCast(i)
     is FltBinary -> when (i.op) {
       FloatingBinaryOps.ADD -> matchFloatBinary(i, add_s, add_d)
       FloatingBinaryOps.MUL -> matchFloatBinary(i, mul_s, mul_d)
@@ -277,6 +274,82 @@ class MIPS32Generator private constructor(
     is FltNeg -> matchFloatUnary(i, neg_s, neg_d)
     is IndirectCall -> createCall(i.result, i.callable, i.args)
     is NamedCall -> createCall(i.result, i.name, i.args)
+  }
+
+  private fun createFloatCastFromInt(cast: StructuralCast, floatConversion: List<MIPS32InstructionTemplate>): List<MachineInstruction> {
+    val operandCopy = VirtualRegister(graph.registerIds(), cast.result.type)
+
+    return listOf(
+        matchTypedCopy(operandCopy, cast.operand),
+        floatConversion.match(cast.result, operandCopy)
+    )
+  }
+
+  private fun createFloatCastToInt(cast: StructuralCast, floatConversion: List<MIPS32InstructionTemplate>): List<MachineInstruction> {
+    val resultTemp = VirtualRegister(graph.registerIds(), cast.operand.type)
+
+    return listOf(
+        floatConversion.match(resultTemp, cast.operand),
+        matchTypedCopy(cast.result, resultTemp),
+    )
+  }
+
+  private fun createStructuralCast(cast: StructuralCast): List<MachineInstruction> {
+    val src = cast.operand.type.normalize()
+    val dest = cast.result.type.normalize()
+
+    return when {
+      src == dest -> emptyList()
+      src is PointerType && dest is PointerType -> {
+        // We really don't care about pointer-to-pointer casts
+        listOf(matchTypedCopy(cast.result, cast.operand))
+      }
+      src is PointerType && dest is IntegralType -> {
+        // Pointers sit in GPRs, no operation needed
+        listOf(matchTypedCopy(cast.result, cast.operand))
+      }
+      src is IntegralType -> when (dest) {
+        // Pointers sit in GPRs, no operation needed
+        is PointerType -> listOf(matchTypedCopy(cast.result, cast.operand))
+        FloatType -> createFloatCastFromInt(cast, cvt_s_w)
+        DoubleType -> createFloatCastFromInt(cast, cvt_d_w)
+        is IntegralType -> listOf(matchIntegralCast(src, dest, cast))
+        else -> TODO("unimplemented structural cast type from integral to $dest")
+      }
+      src is FloatType -> when (dest) {
+        is IntegralType -> createFloatCastToInt(cast, cvt_w_s)
+        DoubleType -> listOf(cvt_d_s.match(cast.result, cast.operand))
+        else -> TODO("unimplemented structural cast type from float")
+      }
+      src is DoubleType -> when (dest) {
+        is IntegralType -> createFloatCastToInt(cast, cvt_w_d)
+        FloatType -> listOf(cvt_s_d.match(cast.result, cast.operand))
+        else -> TODO("unimplemented structural cast type from double")
+      }
+      else -> TODO("unimplemented structural cast type $src to $dest")
+    }
+  }
+
+  private fun matchIntegralCast(src: IntegralType, dest: IntegralType, cast: StructuralCast): MachineInstruction {
+    val destSize = target.machineTargetData.sizeOf(dest)
+    val srcSize = target.machineTargetData.sizeOf(src)
+    val srcIsMemory = isMemoryForCopy(cast.operand)
+    return when {
+      destSize == srcSize -> matchTypedCopy(cast.result, cast.operand)
+      destSize > srcSize -> when {
+        srcIsMemory -> TODO("implement sign-extend move from half-word, or some other widening load from memory ($src to $dest)")
+        destSize > 4 || srcSize > 4 -> TODO("implement widening beyond word (4 bytes) ($src to $dest)")
+        else -> matchTypedCopy(cast.result, cast.operand)
+      }
+      destSize < srcSize -> {
+        if (dest is SignedIntegralType) {
+          matchTypedCopy(cast.result, cast.operand)
+        } else {
+          TODO("narrowing integral cast from $src to $dest")
+        }
+      }
+      else -> logger.throwICE("Cast between same type cannot make it to codegen") { "$src to $dest" }
+    }
   }
 
   private fun getFloatOperation(
