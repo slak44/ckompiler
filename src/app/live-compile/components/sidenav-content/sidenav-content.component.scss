@@ -1,0 +1,10 @@
+:host {
+  min-width: 350px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  button {
+    margin: 16px;
+  }
+}

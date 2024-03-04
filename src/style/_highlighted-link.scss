@@ -1,0 +1,12 @@
+@use 'colors';
+
+a.highlighted-link {
+  display: block;
+  width: fit-content;
+
+  padding: 4px 8px;
+
+  color: colors.$accent-text;
+  background-color: colors.$accent-lighter;
+  border-radius: 8px;
+}

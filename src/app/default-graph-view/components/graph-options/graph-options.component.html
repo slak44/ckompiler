@@ -1,0 +1,18 @@
+<mat-checkbox [formControl]="uiHiddenControl">
+  Hide UI
+</mat-checkbox>
+
+<mat-checkbox [formControl]="spillOnlyControl" *ngIf="isUIVisible$ | async">
+  Don't allocate; spill only
+</mat-checkbox>
+
+<cki-select-function [hidden]="(isUIVisible$ | async) === false" [instance]="instance"></cki-select-function>
+
+<mat-form-field *ngIf="isUIVisible$ | async" color="accent">
+  <mat-label>Block content</mat-label>
+  <mat-select [formControl]="printingTypeControl">
+    <mat-option *ngFor="let print of codePrintingMethods" [value]="print">
+      {{ getCodePrintingMethodName(print) }}
+    </mat-option>
+  </mat-select>
+</mat-form-field>

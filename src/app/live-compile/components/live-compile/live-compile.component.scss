@@ -1,0 +1,84 @@
+@use 'colors' as *;
+@use '@angular/material/core/theming/palette' as *;
+@use 'sass:color';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  background-color: $loading-backdrop;
+}
+
+.isa-type-selector {
+  margin-left: auto;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.title-container {
+  display: flex;
+  flex-direction: column;
+  margin-left: 16px;
+  margin-right: auto;
+}
+
+cki-active-broadcast-banner {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mat-toolbar {
+  flex-shrink: 0;
+}
+
+.mat-sidenav-container {
+  flex-grow: 1;
+  background-color: $graph-background;
+}
+
+.mat-mdc-tab-group {
+  height: 100%;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  color: $light-secondary-text;
+
+  .mat-icon {
+    margin-right: 8px;
+  }
+}
+
+.mat-mdc-chip-set {
+  margin-left: 8px;
+
+  .mat-mdc-chip {
+    &.error-chip {
+      --mdc-chip-elevated-container-color: #{color.adjust($error-red, $whiteness: 20%)};
+      --mdc-chip-label-text-color: #{$dark-primary-text};
+    }
+
+    &.warning-chip {
+      --mdc-chip-elevated-container-color: #{color.adjust($warning-amber, $whiteness: 20%)};
+      --mdc-chip-label-text-color: #{$dark-primary-text};
+    }
+  }
+}
+
+cki-graph-view {
+  height: 100%;
+}

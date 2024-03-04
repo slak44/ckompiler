@@ -1,0 +1,16 @@
+:host {
+  display: block;
+  user-select: none;
+
+  cki-graph-options {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+  }
+
+  cki-graph-legend {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+  }
+}

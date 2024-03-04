@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Back-end &mdash; ckompiler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="List of Implementation Defined Behaviours" href="list-of-behaviours.html" />
+    <link rel="prev" title="Middle-end (Analysis and IR)" href="middleend.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ckompiler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">CKompiler</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="targets.html">Build Targets</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="targets.html#kotlin-multiplatform-project">Kotlin Multiplatform Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="targets.html#internals-explorer">Internals Explorer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="build-instructions.html">Build Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#cli">CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#tests">Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#js-library">JS Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#internals-explorer-angular-app">Internals Explorer Angular App</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#documentation-this-site">Documentation (this site!)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#dokka-kotlin-documentation">Dokka Kotlin documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">The CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Implementation Details</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="implementation-overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="frontend.html">Front-end</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="frontend.html#lexer">Lexer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="frontend.html#parser">Parser</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#interfaces-and-delegation">Interfaces and Delegation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#the-itokenhandler-interface">The <code class="code docutils literal notranslate"><span class="pre">ITokenHandler</span></code> Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#nested-declarator-parsing">Nested Declarator Parsing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="frontend.html#errors">Errors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#diagnostics">Diagnostics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#compiler-errors">Compiler Errors</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="middleend.html">Middle-end (Analysis and IR)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="middleend.html#control-flow">Control Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="middleend.html#json-serialization">JSON serialization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="middleend.html#graphical-representation-for-cfgs">Graphical representation for CFGs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="middleend.html#ssa-form">SSA Form</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Back-end</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#target-specific-information">Target-Specific Information</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-machineinstruction-class">The <code class="code docutils literal notranslate"><span class="pre">MachineInstruction</span></code> class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-instruction-graph">The Instruction Graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-code-generation-interfaces">The Code Generation Interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#code-generation-process">Code Generation Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mi-debug-mode"><code class="code docutils literal notranslate"><span class="pre">--mi-debug</span></code> mode</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Compiler Behaviour</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html">List of Implementation Defined Behaviours</a></li>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html#list-of-undefined-behaviours">List of Undefined Behaviours</a></li>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html#list-of-unspecified-behaviours">List of Unspecified Behaviours</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ckompiler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Back-end</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/backend.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="back-end">
+<h1>Back-end<a class="headerlink" href="#back-end" title="Link to this heading"></a></h1>
+<section id="target-specific-information">
+<h2>Target-Specific Information<a class="headerlink" href="#target-specific-information" title="Link to this heading"></a></h2>
+<p>Certain constants depend on the target ISA and/or the machine (the size of an <code class="code docutils literal notranslate"><span class="pre">int</span></code>, for example).
+<code class="code docutils literal notranslate"><span class="pre">MachineTargetData</span></code> instances contain all this information.</p>
+<p><code class="code docutils literal notranslate"><span class="pre">MachineTargetData</span></code> is also responsible for generating various macros used in stdlib headers (such as
+<code class="code docutils literal notranslate"><span class="pre">__PTRDIFF_T_TYPE</span></code> for <code class="code docutils literal notranslate"><span class="pre">stddef.h</span></code>).</p>
+<p>This class is technically part of the backend, but certain features handled in the front-end (eg <code class="code docutils literal notranslate"><span class="pre">sizeof</span></code>) also depend
+on this target-specific data.</p>
+<p>For now, only x64 Linux is supported, but the infrastructure for x86 and other platforms exists.</p>
+</section>
+<section id="the-machineinstruction-class">
+<h2>The <code class="code docutils literal notranslate"><span class="pre">MachineInstruction</span></code> class<a class="headerlink" href="#the-machineinstruction-class" title="Link to this heading"></a></h2>
+<p>This class represents an instruction along with its operands (<code class="code docutils literal notranslate"><span class="pre">IRValue</span></code>), so it is still target-independent.
+All the target-dependent aspects of an instruction are contained within the <code class="code docutils literal notranslate"><span class="pre">InstructionTemplate</span></code> stored by the MI (see
+below for more).</p>
+</section>
+<section id="the-instruction-graph">
+<h2>The Instruction Graph<a class="headerlink" href="#the-instruction-graph" title="Link to this heading"></a></h2>
+<p>A <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt">CFG</a> is sufficient to represent the control flow, but in order to more
+cleanly separate responsibilities, and to avoid turning the CFG class into a god
+object, a new graph representation is introduced, <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/backend/InstructionGraph.kt">InstructionGraph</a>.</p>
+<p>This class is the CFG’s analogue in the backend (and is actually created by copying the structure of the existing CFG).
+Similarly, <code class="code docutils literal notranslate"><span class="pre">InstrBlock</span></code> is the analogue for <code class="code docutils literal notranslate"><span class="pre">BasicBlock</span></code>.</p>
+<p><code class="code docutils literal notranslate"><span class="pre">InstrBlock</span></code> implements the <code class="code docutils literal notranslate"><span class="pre">MutableList&lt;MachineInstruction&gt;</span></code> interface, for easily interacting with the instructions in
+a block.</p>
+</section>
+<section id="the-code-generation-interfaces">
+<h2>The Code Generation Interfaces<a class="headerlink" href="#the-code-generation-interfaces" title="Link to this heading"></a></h2>
+<p>These interfaces describe the code generation process in a target-independent
+manner. The code can be found in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/backend/MachineTarget.kt">MachineTarget.kt</a>.</p>
+<ol class="arabic simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">MachineTarget</span></code>: This interface describes a particular compilation target.
+It contains the relevant <code class="code docutils literal notranslate"><span class="pre">MachineTargetData</span></code> instance, and data about the register file of the target ISA.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">TargetOptions</span></code>: Represents the set of CLI options passed to a target.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">MachineRegisterClass</span></code>: Describes a type of register in the ISA. For example,
+x64 distinguishes between general purpose integer registers (<code class="code docutils literal notranslate"><span class="pre">rax</span></code>, <code class="code docutils literal notranslate"><span class="pre">rbp</span></code>,
+etc) and SSE/AVX registers (<code class="code docutils literal notranslate"><span class="pre">xmm4</span></code>, <code class="code docutils literal notranslate"><span class="pre">ymm1</span></code>, etc).</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">MachineRegister</span></code>: A description of a particular register in the ISA. Stores
+size, class, aliases.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">TargetFunGenerator</span></code>: Implementors of this interface are code generators for
+a single function graph, for a particular <code class="code docutils literal notranslate"><span class="pre">MachineTarget</span></code>. An instance of this
+class holds all the state required for all the code generation stages before
+emission.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">AsmEmitter</span></code>: Takes the result of all the function generators in a
+translation unit and emits the actual assembly string. Currently, this means
+it emits NASM.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">PeepholeOptimizer</span></code>: Takes a list of <code class="code docutils literal notranslate"><span class="pre">AsmInstruction</span></code>, and optimizes them in isolation. Used by <code class="code docutils literal notranslate"><span class="pre">AsmEmitter</span></code>.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">InstructionTemplate</span></code>: Represents a particular instruction from an ISA. For
+example: <code class="code docutils literal notranslate"><span class="pre">mov</span> <span class="pre">r/m64,</span> <span class="pre">r64</span></code> or <code class="code docutils literal notranslate"><span class="pre">add</span> <span class="pre">r32,</span> <span class="pre">imm32</span></code>.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">AsmInstruction</span></code>: Final generated instruction, ready for emission.</p></li>
+</ol>
+</section>
+<section id="code-generation-process">
+<h2>Code Generation Process<a class="headerlink" href="#code-generation-process" title="Link to this heading"></a></h2>
+<p>First, <code class="code docutils literal notranslate"><span class="pre">TargetFunGenerator</span></code> is created for each function in the
+translation unit. They are passed to an <code class="code docutils literal notranslate"><span class="pre">AsmEmitter</span></code>, which returns the
+assembled code. The emitter is the one who triggers the actual generation
+process for each function’s generator.</p>
+<p>Generation starts with instruction selection. Instruction selection creates
+<code class="code docutils literal notranslate"><span class="pre">MachineInstruction</span></code> lists for each block, which are stored in the corresponding
+<code class="code docutils literal notranslate"><span class="pre">InstrBlock</span></code>. The block has overridden methods for adding to the list: they
+also incrementally update the last uses map to account for the operands of the
+instruction.</p>
+<p>The next step is register allocation. Note that the code is still in SSA form: φ
+functions have not been removed, and variables are only assigned once per
+version. The register allocator is based on <a class="reference external" href="https://publikationen.bibliothek.kit.edu/1000007166/6532">this paper</a>, and is
+target-independent (code in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/backend/RegisterAllocation.kt">RegisterAllocation.kt</a>).</p>
+<p>The allocator is a graph coloring register allocator (GCRA), but it allocates
+directly over SSA. Other GCRAs run an SSA destruction algorithm before
+allocation, but this actually introduces additional complexity: the coloring
+influences spilling, and coalescing influences both. A graph that is not
+k-colorable will have to be rebuilt after a spill. Both coloring and coalescing
+will have to run after spills.</p>
+<p>Allocation over SSA allows this process to be decoupled: SSA interference graphs
+are chordal (also from <a class="reference external" href="https://publikationen.bibliothek.kit.edu/1000007166/6532">here</a>), so k-colorability can be determined in
+polynomial time. That is, register pressure at all labels in the program can be
+known beforehand. That information is used to figure out spill locations before
+coloring (all labels where the register pressure is higher than the available
+registers). The resulting graph can be then colored (also in polynomial time),
+and it is guaranteed that coloring will not fail, because we forcefully reduced
+the chromatic number via spilling. Coalescing runs after coloring, but before
+implementing φs.</p>
+<p>The register allocator alters the blocks of the <code class="code docutils literal notranslate"><span class="pre">InstructionGraph</span></code>. Copies
+and/or spills are inserted, even new blocks might be inserted. The allocator also
+produces a list of spilled variables, as well its primary purpose, the actual
+allocation of registers to variables/temporaries.</p>
+<p>After this is done, the function generator creates the function prologue/epilogue, and the final <code class="code docutils literal notranslate"><span class="pre">AsmInstruction</span></code> list
+by replacing every <code class="code docutils literal notranslate"><span class="pre">IRValue</span></code> with actual registers and memory locations.</p>
+<p>Finally, the <code class="code docutils literal notranslate"><span class="pre">AsmEmitter</span></code> emits the actual assembly from the <code class="code docutils literal notranslate"><span class="pre">AsmInstruction</span></code> lists created by the generator.</p>
+</section>
+<section id="mi-debug-mode">
+<h2><code class="code docutils literal notranslate"><span class="pre">--mi-debug</span></code> mode<a class="headerlink" href="#mi-debug-mode" title="Link to this heading"></a></h2>
+<p>Like the <code class="code docutils literal notranslate"><span class="pre">--cfg-mode</span></code> option for the graphviz CFG, the backend has a debugging option.
+By default, it prints the code at various execution points (<code class="code docutils literal notranslate"><span class="pre">MachineInstruction</span></code>, <code class="code docutils literal notranslate"><span class="pre">InstrBlock</span></code> and/or <code class="code docutils literal notranslate"><span class="pre">AsmInstruction</span></code>).
+It also prints the list of allocations made, and any allocation violations (eg same register used for multiple live
+values).</p>
+<p>The <code class="code docutils literal notranslate"><span class="pre">--mi-html</span></code> prints this information in pretty HTML instead: <a class="reference external" href="_static/example-mi-debug.html">example page</a>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="middleend.html" class="btn btn-neutral float-left" title="Middle-end (Analysis and IR)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="list-of-behaviours.html" class="btn btn-neutral float-right" title="List of Implementation Defined Behaviours" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Slak44.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

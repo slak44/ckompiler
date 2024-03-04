@@ -1,0 +1,11 @@
+@use 'highlighted-link';
+
+:host {
+  display: block;
+}
+
+.banner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

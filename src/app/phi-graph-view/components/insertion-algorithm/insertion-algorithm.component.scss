@@ -1,0 +1,8 @@
+@use 'colors';
+@use 'sass:math';
+@use 'src/app/algorithm-stepper/styles/algorithm';
+
+:host {
+  position: relative;
+  display: block;
+}

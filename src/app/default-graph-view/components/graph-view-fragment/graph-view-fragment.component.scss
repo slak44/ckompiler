@@ -1,0 +1,6 @@
+@use 'graph-fragment';
+
+:host {
+  display: block;
+  @include graph-fragment.text;
+}
