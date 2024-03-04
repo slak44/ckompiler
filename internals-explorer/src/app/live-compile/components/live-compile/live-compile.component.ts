@@ -41,6 +41,7 @@ import {
 import { SidenavContentComponent } from '../sidenav-content/sidenav-content.component';
 import { SourceEditorComponent } from '../source-editor/source-editor.component';
 import { DiagnosticListComponent } from '../diagnostic-list/diagnostic-list.component';
+import { InitialUserStateService } from '../../../settings/services/initial-user-state.service';
 
 @Component({
   selector: 'cki-live-compile',
@@ -105,6 +106,7 @@ export class LiveCompileComponent extends SubscriptionDestroy {
   );
 
   public readonly user$ = this.authService.user$;
+  public readonly userState$ = this.initialUserStateService.initialUserState$;
 
   public readonly stateLock$: Observable<boolean> = this.viewStateService.stateLock$;
 
@@ -117,6 +119,7 @@ export class LiveCompileComponent extends SubscriptionDestroy {
     private readonly viewStateService: ViewStateService,
     private readonly router: Router,
     private readonly activatedRoute: ActivatedRoute,
+    private readonly initialUserStateService: InitialUserStateService,
   ) {
     super();
 

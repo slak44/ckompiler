@@ -3,6 +3,7 @@ import { BroadcastId, BroadcastService } from './broadcast.service';
 import { ViewStateService } from '../../settings/services/view-state.service';
 import {
   animationFrameScheduler,
+  combineLatest,
   EMPTY,
   filter,
   finalize,
@@ -10,8 +11,10 @@ import {
   merge,
   Observable,
   of,
-  pairwise, pipe,
-  ReplaySubject, share,
+  pairwise,
+  pipe,
+  ReplaySubject,
+  share,
   startWith,
   switchMap,
   takeUntil,
@@ -24,6 +27,7 @@ import { InitialUserStateService } from '../../settings/services/initial-user-st
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { BroadcastMessageType, ViewStateMessage } from '../models/broadcast-message.model';
 import { SnackbarService } from '../../material-utils/services/snackbar.service';
+import { GraphMouseTrackerService } from './graph-mouse-tracker.service';
 
 @Injectable({
   providedIn: 'root',
@@ -37,6 +41,10 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
     filter(subscribeId => !subscribeId),
   );
 
+  private readonly broadcasterNameSubject: ReplaySubject<string> = new ReplaySubject<string>(1);
+
+  public readonly broadcasterName$: Observable<string> = this.broadcasterNameSubject;
+
   private readonly subscribersSubject: ReplaySubject<string[]> = new ReplaySubject<string[]>(1);
 
   public readonly subscribers$: Observable<string[]> = this.subscribersSubject;
@@ -47,12 +55,34 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
     private readonly initialUserStateService: InitialUserStateService,
     private readonly snackBar: MatSnackBar,
     private readonly snackbarService: SnackbarService,
+    private readonly graphMouseTrackerService: GraphMouseTrackerService,
   ) {
     super();
 
     this.startBroadcasting(this.initialUserStateService.initialUserState$.pipe(
       switchMap(state => state.activeBroadcast?.id ? of(state.activeBroadcast?.id) : EMPTY),
     ));
+  }
+
+  private buildDeltaViewState(
+    oldViewState: ViewStateNonMetadataDelta | undefined,
+    currentViewState: ViewStateNonMetadataDelta
+  ): ViewStateNonMetadataDelta | null {
+    if (!currentViewState) {
+      throw Error('Unreachable code, viewStateData$ should never emit null');
+    } else if (!oldViewState) {
+      // No previous state - this only ever happens on the first emission, due to a startWith with an empty array
+      return currentViewState;
+    } else if (oldViewState === currentViewState) {
+      // View state unchanged (same object reference) => only send changed mouse position, no view state
+      return null;
+    } else if (oldViewState.sourceCode === currentViewState.sourceCode) {
+      // View state changed, but the source code didn't
+      return { ...currentViewState, sourceCode: null };
+    } else {
+      // Source code changed, resend full object
+      return currentViewState;
+    }
   }
 
   public startBroadcasting(broadcastId$: Observable<BroadcastId | null> = of(null)): void {
@@ -63,26 +93,21 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
     );
 
     const publishPipe = pipe(
-      switchMap(() => this.viewStateService.viewStateData$.pipe(
-        startWith(null),
-        pairwise(),
-        map(([oldViewState, currentViewState]): ViewStateNonMetadataDelta => {
-          if (!currentViewState) {
-            throw Error('Unreachable code, viewStateData$ should never emit null');
-          }
-          if (!oldViewState) {
-            return currentViewState;
-          }
-          if (oldViewState.sourceCode === currentViewState.sourceCode) {
-            return { ...currentViewState, sourceCode: null };
-          } else {
-            return currentViewState;
-          }
-        }),
+      switchMap(() => combineLatest([
+        this.viewStateService.viewStateData$,
+        this.graphMouseTrackerService.mousePosition$,
+      ]).pipe(
+        // Keep throttle before map - otherwise, mouse moves that never get sent would set null state every time
         throttleTime(0, animationFrameScheduler),
+        startWith([]),
+        pairwise(),
+        map(([[oldViewState,], [currentViewState, pos]]) => {
+          const viewState = this.buildDeltaViewState(oldViewState, currentViewState);
+          return { state: viewState, pos };
+        }),
         takeUntil(this.publishExpired$),
       )),
-      tap(viewState => this.broadcastService.publish(viewState)),
+      tap(viewStateMessage => this.broadcastService.publish(viewStateMessage)),
     );
 
     const subscriberDataPipe = pipe(
@@ -131,8 +156,12 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
           case BroadcastMessageType.SUBSCRIBER_CHANGE:
             this.subscribersSubject.next(message.subscribers);
             break;
+          case BroadcastMessageType.BROADCAST_METADATA:
+            this.broadcasterNameSubject.next(message.broadcasterName);
+            break;
           case BroadcastMessageType.VIEW_STATE:
-            // Handled below as stream
+            this.graphMouseTrackerService.setBroadcasterMousePosition(message.pos);
+            // State itself is handled below as stream
             break;
           default:
             console.error(`Unknown message type - ${JSON.stringify(message)}`);
@@ -141,6 +170,7 @@ export class BroadcastViewStateService extends SubscriptionDestroy {
       }),
       filter((message): message is ViewStateMessage => message.type === BroadcastMessageType.VIEW_STATE),
       map(message => message.viewState),
+      filter((viewState): viewState is ViewStateNonMetadataDelta => viewState !== null),
       this.viewStateService.restoreStateStream(),
       finalize(() => this.viewStateService.setAutosaveEnabledState(true)),
       takeUntil(merge(this.destroy$, this.subscribeExpired$)),

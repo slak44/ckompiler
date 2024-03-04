@@ -47,6 +47,11 @@ data class ViewStateNonMetadataDeltaDto(
     val variableRenameViewState: SteppableGraphViewStateDto,
 )
 
+data class ViewStateMessageDto(
+    val state: ViewStateNonMetadataDeltaDto?,
+    val pos: MousePosition
+)
+
 data class ViewStateDto(
     val id: String?,
     val createdAt: Instant?,

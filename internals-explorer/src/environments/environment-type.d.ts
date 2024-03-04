@@ -1,5 +1,5 @@
 export interface EnvironmentType {
-  production: boolean;
+  websocketDebug: boolean;
   broadcastUrl: string;
   apiBaseUrl: string;
   rootUrl: string;

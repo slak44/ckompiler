@@ -2,7 +2,7 @@ package slak.ckompiler.backend.services.broadcast
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import slak.ckompiler.backend.dto.ViewStateNonMetadataDeltaDto
+import slak.ckompiler.backend.dto.ViewStateMessageDto
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -22,7 +22,7 @@ class BroadcastService {
    * This cannot be accessed concurrently because we only have a single presenter. If the presenter sends concurrent messages, that's his
    * fault.
    */
-  private val activeBroadcastState: MutableMap<String, ViewStateNonMetadataDeltaDto> = mutableMapOf()
+  private val activeBroadcastState: MutableMap<String, ViewStateMessageDto> = mutableMapOf()
 
   fun getBroadcastByPresenterId(presenterUserId: String): ActiveBroadcast? {
     return activeBroadcasts.values.find { it.presenterUserId == presenterUserId }
@@ -54,18 +54,36 @@ class BroadcastService {
     }
   }
 
-  fun updateCurrentState(broadcastId: BroadcastId, delta: ViewStateNonMetadataDeltaDto) {
-    val sourceCode = activeBroadcastState[broadcastId]?.sourceCode ?: delta.sourceCode
-    activeBroadcastState[broadcastId] = delta.copy(sourceCode = sourceCode)
+  fun updateCurrentState(broadcastId: BroadcastId, delta: ViewStateMessageDto) {
+    val oldState = activeBroadcastState[broadcastId]?.state
+    val newState = delta.state
+
+    if (oldState == null) {
+      activeBroadcastState[broadcastId] = delta
+      return
+    }
+
+    if (newState == null) {
+      activeBroadcastState[broadcastId] = ViewStateMessageDto(oldState, delta.pos)
+      return
+    }
+
+    val sourceCode = delta.state.sourceCode ?: oldState.sourceCode
+    activeBroadcastState[broadcastId] = delta.copy(state = newState.copy(sourceCode = sourceCode))
   }
 
-  fun getCurrentState(broadcastId: BroadcastId): ViewStateNonMetadataDeltaDto {
+  fun getCurrentState(broadcastId: BroadcastId): ViewStateMessageDto {
     return activeBroadcastState[broadcastId] ?: throw IllegalStateException("Broadcast state $broadcastId doesn't exist")
   }
 
   fun getActiveSubscribers(broadcastId: BroadcastId): List<String> {
     val broadcast = activeBroadcasts[broadcastId] ?: throw IllegalStateException("Broadcast state $broadcastId doesn't exist")
     return broadcast.subscribers - broadcast.presenterUserId
+  }
+
+  fun getPresenterId(broadcastId: BroadcastId): String {
+    val broadcast = activeBroadcasts[broadcastId] ?: throw IllegalStateException("Broadcast state $broadcastId doesn't exist")
+    return broadcast.presenterUserId
   }
 
   fun markSubscription(broadcastId: BroadcastId, subscriberId: String): Boolean {

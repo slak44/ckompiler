@@ -42,6 +42,16 @@ export type ViewStateNonMetadata = Omit<ViewState, ViewStateMetadataKeys>;
 export type ViewStateNonMetadataDelta =
   Omit<ViewState, ViewStateMetadataKeys | 'sourceCode'> & NullableValues<Pick<ViewState, 'sourceCode'>>;
 
+export interface MousePosition {
+  x: number;
+  y: number;
+}
+
+export interface ViewStateMessage {
+  state: ViewStateNonMetadataDelta | null;
+  pos: MousePosition;
+}
+
 export interface ViewStateListing {
   id: string | null;
   name: string;

@@ -16,7 +16,7 @@ import {
   Component,
   ElementRef,
   Input,
-  OnDestroy,
+  OnDestroy, Optional,
   ViewChild,
 } from '@angular/core';
 import * as d3Graphviz from 'd3-graphviz';
@@ -38,7 +38,7 @@ import {
 } from 'rxjs';
 import { SubscriptionDestroy } from '@cki-utils/subscription-destroy';
 import * as d3 from 'd3';
-import { BaseType } from 'd3';
+import { BaseType, D3ZoomEvent } from 'd3';
 import { debounceAfterFirst } from '@cki-utils/debounce-after-first';
 import { GraphvizDatum } from '../../models/graphviz-datum.model';
 import { ZoomTransform } from 'd3-zoom';
@@ -50,11 +50,32 @@ import { CompileService } from '@cki-graph-view/services/compile.service';
 import { currentTargetFunction, Setting } from '@cki-settings';
 import { CommonModule } from '@angular/common';
 import { ResizeObserverModule } from '@ng-web-apis/resize-observer';
+import { GraphMouseTrackerService } from '../../../broadcast/services/graph-mouse-tracker.service';
+import { RoutedTabDirective } from '../../../tab-routing/directives/routed-tab.directive';
 
 function setZoomOnElement(element: Element, transform: ZoomTransform): void {
   // Yeah, yeah, messing with library internals is bad, now shut up
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-explicit-any
   (element as any).__zoom = transform;
+}
+
+function addZoomListener(
+  graphviz: Graphviz<BaseType, GraphvizDatum, BaseType, unknown>,
+  listener: (zoomEvent: D3ZoomEvent<Element, GraphvizDatum>) => void,
+): void {
+  const zb = graphviz.zoomBehavior()!;
+
+  // Non-arrow function required because we need to forward "this" to the existing callback
+  // https://d3js.org/d3-zoom#zoom_on
+  const existingCallback = zb.on('zoom');
+  zb.on('zoom', function (...args) {
+    // Library types are wrong
+    const zoomEvent = args[0] as unknown as D3ZoomEvent<Element, GraphvizDatum>;
+
+    listener(zoomEvent);
+
+    existingCallback?.apply(this, args);
+  });
 }
 
 @Component({
@@ -98,10 +119,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
 
   private readonly currentZoomTransformSubject: Subject<ZoomTransform> = new Subject<ZoomTransform>();
 
-  private readonly graphTransformObserver: MutationObserver = new MutationObserver(
-    this.handleTransformChanged.bind(this),
-  );
-
   private graphviz?: Graphviz<BaseType, GraphvizDatum, BaseType, unknown>;
 
   private readonly resizeSubject: Subject<DOMRectReadOnly> = new Subject();
@@ -118,7 +135,11 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   private readonly groupToNodeId: Map<SVGGElement, number> = new Map();
   private readonly nodeIdToGroup: Map<number, SVGGElement> = new Map();
 
-  constructor(private readonly compileService: CompileService) {
+  constructor(
+    private readonly compileService: CompileService,
+    private readonly graphMouseTrackerService: GraphMouseTrackerService,
+    @Optional() private readonly routedTabDirective?: RoutedTabDirective,
+  ) {
     super();
   }
 
@@ -220,24 +241,20 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
     });
   }
 
-  private handleTransformChanged(mutations: MutationRecord[]): void {
-    const mutationTargets = new Set(mutations.map(mutation => mutation.target));
-    if (mutationTargets.size === 0) {
-      console.error('MutationObserver sent 0 mutations. Check the observe/disconnect logic.');
-      return;
-    }
-    if (mutationTargets.size !== 1) {
-      console.error('MutationObserver sent more than 1 mutation. Some old graph is probably still being observed.');
-    }
-
-    const svgRef = Array.from(mutationTargets.values())[0].parentNode as SVGElement;
-    if (this.transformSetting) {
-      const zoomTransform = d3.zoomTransform(svgRef);
-      this.currentZoomTransformSubject.next(zoomTransform);
-    }
-  }
-
   private setupZoomTransformEvents(graph: Element): void {
+    addZoomListener(this.graphviz!, (zoomEvent) => {
+      const maybeMouseMove: unknown = zoomEvent?.sourceEvent;
+      if (maybeMouseMove instanceof MouseEvent) {
+        this.graphMouseTrackerService.setCurrentUserMousePosition(maybeMouseMove);
+      } else if (maybeMouseMove instanceof TouchEvent) {
+        // TODO: in case we ever want to support this
+      }
+
+      if (this.transformSetting) {
+        this.currentZoomTransformSubject.next(zoomEvent.transform);
+      }
+    });
+
     if (!this.transformSetting) {
       return;
     }
@@ -266,11 +283,9 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
       setZoomOnElement(svgRef, zoomTransform);
     });
 
-    // The MutationObserver does not fire an initial value
+    // The zoom listener does not send an initial value
     const zoomTransform = d3.zoomTransform(svgRef);
     this.currentZoomTransformSubject.next(zoomTransform);
-
-    this.graphTransformObserver.observe(graph, { attributes: true, attributeFilter: ['transform'] });
   }
 
   private setupSelectedNodeIdEvents(cfg: CFG): void {
@@ -301,7 +316,11 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private alterGraph(printingType: CodePrintingMethods, cfg: CFG): void {
-    const graph = this.graphRef.nativeElement.querySelector('g.graph')!;
+    const graph = this.graphRef.nativeElement.querySelector('g.graph') as SVGGElement;
+    if (this.routedTabDirective) {
+      this.routedTabDirective.svgElementRef = graph;
+      this.graphMouseTrackerService.setCurrentSVGGElement(graph);
+    }
 
     const graphNodesSelection = d3.select(graph)
       .selectAll<SVGPolygonElement, GraphvizDatum>('g > polygon')
@@ -324,8 +343,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   }
 
   private revertAlterations(): void {
-    this.graphTransformObserver.disconnect();
-
     for (const hook of this.hooks.reverse()) {
       hook.revertAlteration?.();
     }
@@ -417,7 +434,6 @@ export class GraphViewComponent extends SubscriptionDestroy implements AfterView
   public override ngOnDestroy(): void {
     super.ngOnDestroy();
     (this.graphviz as unknown as { destroy(): void }).destroy();
-    this.graphTransformObserver.disconnect();
   }
 
   public onResize(events: ResizeObserverEntry[]): void {

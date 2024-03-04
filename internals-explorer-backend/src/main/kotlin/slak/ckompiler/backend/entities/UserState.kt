@@ -8,7 +8,9 @@ import org.springframework.stereotype.Repository
 @Entity
 data class UserState(
     @Id val id: String,
-    @OneToOne var autosaveViewState: ViewState,
+    @OneToOne(optional = true) var autosaveViewState: ViewState?,
+    @Column(columnDefinition = "text")
+    var userName: String? = null,
 )
 
 @Repository

@@ -16,7 +16,7 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.messaging.SessionDisconnectEvent
 import slak.ckompiler.backend.dto.BroadcastCloseMessage
 import slak.ckompiler.backend.dto.ViewStateMessage
-import slak.ckompiler.backend.dto.ViewStateNonMetadataDeltaDto
+import slak.ckompiler.backend.dto.ViewStateMessageDto
 import slak.ckompiler.backend.services.broadcast.BroadcastId
 import slak.ckompiler.backend.services.broadcast.BroadcastService
 import java.security.Principal
@@ -51,12 +51,12 @@ class BroadcastController(
   @PreAuthorize("@broadcastService.isPresenter(#broadcastId, #principal.name)")
   fun broadcastState(
       @DestinationVariable broadcastId: String,
-      @Payload viewState: ViewStateNonMetadataDeltaDto,
+      @Payload viewStateMessage: ViewStateMessageDto,
       principal: Principal,
   ): ViewStateMessage {
-    broadcastService.updateCurrentState(broadcastId, viewState)
+    broadcastService.updateCurrentState(broadcastId, viewStateMessage)
 
-    return ViewStateMessage(viewState)
+    return ViewStateMessage(viewStateMessage)
   }
 
   @EventListener

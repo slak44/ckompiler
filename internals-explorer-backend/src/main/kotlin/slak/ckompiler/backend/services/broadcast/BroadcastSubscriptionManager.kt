@@ -12,12 +12,15 @@ import org.springframework.stereotype.Service
 import org.springframework.web.socket.messaging.AbstractSubProtocolEvent
 import org.springframework.web.socket.messaging.SessionSubscribeEvent
 import org.springframework.web.socket.messaging.SessionUnsubscribeEvent
+import slak.ckompiler.backend.dto.BroadcastMetadataMessage
 import slak.ckompiler.backend.dto.SubscriberChangeMessage
 import slak.ckompiler.backend.dto.ViewStateMessage
+import slak.ckompiler.backend.services.UserStateService
 
 @Service
 class BroadcastSubscriptionManager(
     val broadcastService: BroadcastService,
+    val userStateService: UserStateService,
     val simpMessagingTemplate: SimpMessagingTemplate,
     @Qualifier("clientOutboundChannel") val clientOutboundChannel: MessageChannel,
 ) {
@@ -43,6 +46,11 @@ class BroadcastSubscriptionManager(
     logger.info("Sending full current state to new subscriber (session ID: $sessionId)")
     val viewState = ViewStateMessage(broadcastService.getCurrentState(broadcastId))
     simpMessagingTemplate.convertAndSendToUser(userId, target, viewState)
+
+    // Send metadata about the presenter (just chosen name for now)
+    val presenterName = userStateService.findNameById(broadcastService.getPresenterId(broadcastId))
+    val metadataMessage = BroadcastMetadataMessage(presenterName)
+    simpMessagingTemplate.convertAndSendToUser(userId, target, metadataMessage)
 
     // FIXME: we probably should send usernames, not just ids, they're unreadable
     // Alert the other subscribers that a new subscriber joined this topic

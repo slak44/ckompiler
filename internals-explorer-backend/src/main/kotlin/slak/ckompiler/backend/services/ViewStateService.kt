@@ -1,5 +1,6 @@
 package slak.ckompiler.backend.services
 
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.stereotype.Service
 import slak.ckompiler.backend.dto.ViewStateDto
 import slak.ckompiler.backend.dto.ViewStateListingDto
@@ -13,9 +14,9 @@ class ViewStateService(val repository: ViewStateRepository, val userStateService
     return repository.save(ViewState(viewStateDto))
   }
 
-  fun saveAutosave(viewStateDto: ViewStateDto): ViewState {
+  fun saveAutosave(viewStateDto: ViewStateDto, token: JwtAuthenticationToken): ViewState {
     val viewState = repository.save(ViewState(viewStateDto))
-    userStateService.markAutosaveViewState(viewState)
+    userStateService.markAutosaveViewState(viewState, token)
     return viewState
   }
 

@@ -6,9 +6,10 @@ import { MatTab } from '@angular/material/tabs';
   standalone: true,
 })
 export class RoutedTabDirective {
-  // eslint-disable-next-line @angular-eslint/no-input-rename
   @Input('ckiRoutedTab')
   public routeName!: string;
+
+  public svgElementRef?: SVGGElement;
 
   constructor(
     public matTab: MatTab,

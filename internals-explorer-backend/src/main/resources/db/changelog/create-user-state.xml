@@ -25,4 +25,9 @@
     <changeSet author="slak (generated)" id="1683376882669-4">
         <dropColumn columnName="active_view_state_id" tableName="userstate"/>
     </changeSet>
+    <changeSet author="slak (generated)" id="1709578474711-1">
+        <addColumn tableName="userstate">
+            <column name="user_name" type="text"/>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

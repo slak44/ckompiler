@@ -2,6 +2,7 @@ package slak.ckompiler.backend.presentation
 
 import org.springframework.security.access.prepost.PostAuthorize
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.bind.annotation.*
 import slak.ckompiler.backend.dto.ViewStateDto
 import slak.ckompiler.backend.dto.ViewStateListingDto
@@ -24,7 +25,7 @@ class ViewStateController(
   @PreAuthorize("#viewState.owner == null")
   fun saveAutosave(@RequestBody viewState: ViewStateDto, principal: Principal): ViewStateDto {
     viewState.owner = principal.name
-    return ViewStateDto(viewStateService.saveAutosave(viewState))
+    return ViewStateDto(viewStateService.saveAutosave(viewState, principal as JwtAuthenticationToken))
   }
 
   @GetMapping("/list")

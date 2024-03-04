@@ -9,9 +9,15 @@
 
   <div class="title-container">
     <span>CKompiler Internals Explorer</span>
-    <span *ngIf="user$ | async as user" class="mat-caption">
-      Logged in: {{ user.email || user.sub }}
-    </span>
+    <ng-container *ngIf="{ user: user$ | async, userState: userState$ | async } as data">
+      <span *ngIf="data.user && data.userState?.userName" class="mat-caption">
+        Logged in: {{ data.userState?.userName }} ({{ data.user.email || data.user.sub }})
+      </span>
+
+      <span *ngIf="data.user && !data.userState?.userName" class="mat-caption">
+        Logged in: {{ data.user.email || data.user.sub }}
+      </span>
+    </ng-container>
   </div>
 
   <cki-active-broadcast-banner></cki-active-broadcast-banner>

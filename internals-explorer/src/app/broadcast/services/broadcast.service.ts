@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { RxStomp, RxStompConfig } from '@stomp/rx-stomp';
 import { BehaviorSubject, EMPTY, first, map, merge, Observable, skip, switchMap, takeUntil, tap } from 'rxjs';
-import { ViewStateNonMetadataDelta } from '../../settings/models/view-state.model';
+import { ViewStateMessage } from '../../settings/models/view-state.model';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '@auth0/auth0-angular';
 import { HttpClient } from '@angular/common/http';
@@ -39,11 +39,11 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
 
   public readonly broadcastPublishId$: Observable<BroadcastId | undefined> = this.broadcastStateSubject.pipe(
     skip(1),
-    map(state => state.publishId)
+    map(state => state.publishId),
   );
 
   public readonly broadcastSubscribeId$: Observable<BroadcastId | undefined> = this.broadcastStateSubject.pipe(
-    map(state => state.subscribeId)
+    map(state => state.subscribeId),
   );
 
   constructor(
@@ -59,6 +59,7 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
       first(),
       tap((token) => this.rxStomp.configure(this.generateWebsocketConfig(token))),
       switchMap(() => this.broadcastStateSubject),
+      takeUntil(this.destroy$),
     ).subscribe((state) => {
       if (state.subscribeId) {
         this.rxStomp.activate();
@@ -70,7 +71,7 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
     });
 
     this.rxStomp.stompErrors$.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
     ).subscribe(error => {
       this.broadcastStateSubject.next({});
       console.error('[STOMP ERROR]', error.headers, error.body);
@@ -95,7 +96,7 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
     return this.httpClient.post<void>(`${API}/broadcast/${broadcastId}/close`, {});
   }
 
-  public publish(viewState: ViewStateNonMetadataDelta): void {
+  public publish(viewStateMessage: ViewStateMessage): void {
     const publishId = this.broadcastStateSubject.value.publishId;
     if (!publishId) {
       console.error('Cannot publish without a publishId');
@@ -105,7 +106,7 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
 
     this.rxStomp.publish({
       destination: `/publish/broadcast/${publishId}`,
-      body: JSON.stringify(viewState),
+      body: JSON.stringify(viewStateMessage),
     });
   }
 
@@ -154,7 +155,7 @@ export class BroadcastService extends SubscriptionDestroy implements OnDestroy {
       },
     };
 
-    if (!environment.production) {
+    if (environment.websocketDebug) {
       config.debug = (msg: string) => console.log(`[STOMP] ${new Date().toISOString()}: ${msg}`);
     }
 

@@ -5,6 +5,7 @@ import { BROADCAST_ROUTE } from '@cki-utils/routes';
 import { BroadcastViewStateService } from '../../services/broadcast-view-state.service';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../../environments/environment';
+import { BroadcasterMouseWrapperComponent } from '../broadcaster-mouse-wrapper/broadcaster-mouse-wrapper.component';
 
 @Component({
   selector: 'cki-active-broadcast-banner',
@@ -13,8 +14,9 @@ import { environment } from '../../../../environments/environment';
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
-    CommonModule
-  ]
+    CommonModule,
+    BroadcasterMouseWrapperComponent,
+  ],
 })
 export class ActiveBroadcastBannerComponent {
   public readonly publishUrl$: Observable<string | undefined> = this.broadcastService.broadcastPublishId$.pipe(

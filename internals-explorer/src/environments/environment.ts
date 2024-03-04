@@ -5,7 +5,7 @@ import { EnvironmentType } from './environment-type';
 // The list of file replacements can be found in `angular.json`.
 
 export const environment: EnvironmentType = {
-  production: false,
+  websocketDebug: false,
   broadcastUrl: 'ws://localhost:8080/api/broadcast/ws',
   apiBaseUrl: 'http://localhost:8080/api',
   rootUrl: 'http://localhost:4200',
