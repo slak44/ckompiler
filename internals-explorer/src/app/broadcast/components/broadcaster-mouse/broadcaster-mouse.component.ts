@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 
 @Component({
   selector: 'cki-broadcaster-mouse',
@@ -25,4 +25,10 @@ export class BroadcasterMouseComponent {
   @Input()
   @HostBinding('style.--broadcaster-name')
   public broadcasterName: string = '';
+
+  @HostBinding('style.--cursor-url')
+  public readonly cursorUrl: string = `url(${this.location.prepareExternalUrl('/assets/cursor.svg')})`;
+
+  constructor(private readonly location: Location) {
+  }
 }

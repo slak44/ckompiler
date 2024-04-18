@@ -21,7 +21,8 @@
       "updateMode": "prefetch",
       "resources": {
         "files": [
-          "/assets/samples/**"
+          "/assets/samples/**",
+          "/assets/cursor.svg"
         ]
       }
     },
