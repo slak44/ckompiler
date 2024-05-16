@@ -30,7 +30,10 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
+    env_file: .env
     volumes:
       - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     networks:
       - application
