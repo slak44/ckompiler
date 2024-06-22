@@ -21,6 +21,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { environment } from '../../../../environments/environment';
 import { BROADCAST_ROUTE, PUBLIC_SHARE_ROUTE } from '@cki-utils/routes';
 import { Router } from '@angular/router';
+import { SnackbarService } from '../../../material-utils/services/snackbar.service';
 
 @Component({
   selector: 'cki-viewstate-list',
@@ -58,6 +59,7 @@ export class ViewstateListComponent extends SubscriptionDestroy implements OnIni
     private readonly broadcastViewStateService: BroadcastViewStateService,
     private readonly broadcastService: BroadcastService,
     private readonly router: Router,
+    private readonly snackbarService: SnackbarService,
   ) {
     super();
   }
@@ -79,6 +81,18 @@ export class ViewstateListComponent extends SubscriptionDestroy implements OnIni
   }
 
   public restoreState(stateId: string): void {
+    this.viewStateService.fetchAndRestoreState(stateId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (viewState) => {
+        this.router.navigate([viewState.activeRoute]).catch(console.error);
+      },
+      error: error => {
+        console.error(error);
+        this.snackbarService.showLongSnackWithDismiss('Failed to load view state.');
+      }
+    });
+  }
+
+  public restorePublicState(stateId: string): void {
     this.router.navigate([PUBLIC_SHARE_ROUTE, stateId]).catch(console.error);
   }
 
