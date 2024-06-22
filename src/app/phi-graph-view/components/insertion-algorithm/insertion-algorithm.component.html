@@ -1,0 +1,47 @@
+<cki-algorithm-container [activeStep$]="activeStep$">
+  <cki-algorithm-step [stepIndex]="phiInsertionSteps.PREPARE" [lines]="2">
+    <cki-var>F</cki-var> ← {{ '{}' }}
+    <br/>
+    <cki-var>W</cki-var> ← Defs(<cki-var>{{ variableName$ | async }}</cki-var>)
+  </cki-algorithm-step>
+  <cki-algorithm-step [stepIndex]="phiInsertionSteps.WHILE_LOOP">
+    <strong>while</strong>&nbsp;<cki-var>W</cki-var> ≠ {{ '{}' }}
+  </cki-algorithm-step>
+  <div class="indent">
+    <cki-algorithm-step [stepIndex]="phiInsertionSteps.PICK_X_FROM_W">
+      remove a basic block&nbsp;<cki-var>X</cki-var> from <cki-var>W</cki-var>
+    </cki-algorithm-step>
+    <cki-algorithm-step [stepIndex]="phiInsertionSteps.ITERATE_DF">
+      <strong>for</strong>&nbsp;<cki-var>Y</cki-var>: basic block ∈ DF(<cki-var>X</cki-var>)
+    </cki-algorithm-step>
+    <div class="indent">
+      <cki-algorithm-step [stepIndex]="phiInsertionSteps.CHECK_PROCESSED" [lines]="2" [offsetLines]="1">
+        <strong>if</strong>&nbsp;<cki-var>Y</cki-var> ∉ <cki-var>F</cki-var>
+        <br/>
+        <strong>then</strong>
+      </cki-algorithm-step>
+
+      <div class="indent">
+        <cki-algorithm-step [stepIndex]="phiInsertionSteps.INSERT_PHI" [lines]="2">
+          add <cki-var>{{ variableName$ | async }}</cki-var> ← φ(...) at entry of <cki-var>Y</cki-var>
+          <br/>
+          <cki-var>F</cki-var> ← <cki-var>F</cki-var> ∪ {{ '{' }}<cki-var>Y</cki-var>{{ '}' }}
+        </cki-algorithm-step>
+
+        <cki-algorithm-step [stepIndex]="phiInsertionSteps.CHECK_DEFS" [lines]="2" [offsetLines]="1">
+          <strong>if</strong>&nbsp;<cki-var>Y</cki-var> ∉ Defs(<cki-var>{{ variableName$ | async }}</cki-var>)
+          <br/>
+          <strong>then</strong>
+        </cki-algorithm-step>
+
+        <div class="indent">
+          <cki-algorithm-step [stepIndex]="phiInsertionSteps.ADD_TO_W">
+            <cki-var>W</cki-var> ← <cki-var>W</cki-var> ∪ {{ '{' }}<cki-var>Y</cki-var>{{ '}' }}
+          </cki-algorithm-step>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <cki-algorithm-step [stepIndex]="phiInsertionSteps.DONE"></cki-algorithm-step>
+</cki-algorithm-container>

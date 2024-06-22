@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Front-end &mdash; ckompiler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Middle-end (Analysis and IR)" href="middleend.html" />
+    <link rel="prev" title="Overview" href="implementation-overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ckompiler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">CKompiler</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="targets.html">Build Targets</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="targets.html#kotlin-multiplatform-project">Kotlin Multiplatform Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="targets.html#internals-explorer">Internals Explorer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="build-instructions.html">Build Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#cli">CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#tests">Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#js-library">JS Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#internals-explorer-angular-app">Internals Explorer Angular App</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#documentation-this-site">Documentation (this site!)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#dokka-kotlin-documentation">Dokka Kotlin documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">The CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Implementation Details</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="implementation-overview.html">Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Front-end</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#lexer">Lexer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parser">Parser</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#interfaces-and-delegation">Interfaces and Delegation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-itokenhandler-interface">The <code class="code docutils literal notranslate"><span class="pre">ITokenHandler</span></code> Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nested-declarator-parsing">Nested Declarator Parsing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#errors">Errors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#diagnostics">Diagnostics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compiler-errors">Compiler Errors</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="middleend.html">Middle-end (Analysis and IR)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="middleend.html#control-flow">Control Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="middleend.html#json-serialization">JSON serialization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="middleend.html#graphical-representation-for-cfgs">Graphical representation for CFGs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="middleend.html#ssa-form">SSA Form</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="backend.html">Back-end</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#target-specific-information">Target-Specific Information</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#the-machineinstruction-class">The <code class="code docutils literal notranslate"><span class="pre">MachineInstruction</span></code> class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#the-instruction-graph">The Instruction Graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#the-code-generation-interfaces">The Code Generation Interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#code-generation-process">Code Generation Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#mi-debug-mode"><code class="code docutils literal notranslate"><span class="pre">--mi-debug</span></code> mode</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Compiler Behaviour</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html">List of Implementation Defined Behaviours</a></li>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html#list-of-undefined-behaviours">List of Undefined Behaviours</a></li>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html#list-of-unspecified-behaviours">List of Unspecified Behaviours</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ckompiler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Front-end</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/frontend.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="front-end">
+<h1>Front-end<a class="headerlink" href="#front-end" title="Link to this heading"></a></h1>
+<section id="lexer">
+<h2>Lexer<a class="headerlink" href="#lexer" title="Link to this heading"></a></h2>
+<p>The <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/lexer/LexicalElements.kt">lexer</a> operates on the source code string, and produces a list of <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/lexer/TokenModel.kt">LexicalTokens</a> and
+its subclasses.
+It is integrated in the <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/lexer/Preprocessor.kt">Preprocessor</a>.
+Together, they deal with translation phases 1-6.</p>
+</section>
+<section id="parser">
+<h2>Parser<a class="headerlink" href="#parser" title="Link to this heading"></a></h2>
+<p>The <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/parser/">parser</a> operates on the token list, and produces an <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/parser/SyntaxTreeModel.kt">abstract syntax tree</a> of <code class="code docutils literal notranslate"><span class="pre">ASTNode</span></code> instances.
+It also performs type checks, resolves scope, identifier names and other such semantic requirements.</p>
+<p>It is mostly a hand-written recursive descent parser, with a <a class="reference external" href="https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method">precedence climbing</a> parser integrated for expressions,
+which can be found in the <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/parser/ExpressionParser.kt">ExpressionParser</a> class.</p>
+<p>Much of the parser is built out of loosely coupled classes that each handle parts of parsing the grammar
+(eg <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/parser/ParenMatcher.kt">ParenMatcher</a> handles everything about matching parenthesis, <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/parser/StatementParser.kt">StatementParser</a> parses function block
+statements, etc).
+Each of these has an associated interface (<code class="code docutils literal notranslate"><span class="pre">IExpressionParser</span></code> for the <code class="code docutils literal notranslate"><span class="pre">ExpressionParser</span></code> class), that is used for
+delegation.</p>
+<section id="interfaces-and-delegation">
+<h3>Interfaces and Delegation<a class="headerlink" href="#interfaces-and-delegation" title="Link to this heading"></a></h3>
+<p>Many components in the compiler are decoupled: they exist as concrete classes
+that implement an associated interface. Users of the components are given an
+instance of the concrete classes, and they use it to immediately delegate the
+associated interfaces.</p>
+<p>For example, when the <code class="code docutils literal notranslate"><span class="pre">DeclarationParser</span></code> needs to parse an initializer
+expression, it implements the <code class="code docutils literal notranslate"><span class="pre">IExpressionParser</span></code> interface, and delegates that
+job to a concrete <code class="code docutils literal notranslate"><span class="pre">ExpressionParser</span></code> instance received through the constructor
+(or, in some cases, via <code class="code docutils literal notranslate"><span class="pre">lateinit</span></code> properties, to resolve cyclic dependencies).</p>
+<p>As a code example, the largest of the components, <code class="code docutils literal notranslate"><span class="pre">StatementParser</span></code>, is declared like this:</p>
+<div class="highlight-kotlin notranslate"><div class="highlight"><pre><span></span><span class="kd">class</span><span class="w"> </span><span class="nc">StatementParser</span><span class="p">(</span>
+<span class="w">    </span><span class="n">declarationParser</span><span class="p">:</span><span class="w"> </span><span class="n">DeclarationParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">controlKeywordParser</span><span class="p">:</span><span class="w"> </span><span class="n">ControlKeywordParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">constExprParser</span><span class="p">:</span><span class="w"> </span><span class="n">ConstantExprParser</span>
+<span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">IStatementParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">ITokenHandler</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">declarationParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IScopeHandler</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">declarationParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IParenMatcher</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">declarationParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IExpressionParser</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">controlKeywordParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IConstantExprParser</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">constExprParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IDeclarationParser</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">declarationParser</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IControlKeywordParser</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">controlKeywordParser</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>As the code shows, <code class="code docutils literal notranslate"><span class="pre">StatementParser</span></code> doesn’t receive 7 separate components, even
+though it delegates the implementation of 7 different interfaces.
+Since the <code class="code docutils literal notranslate"><span class="pre">DeclarationParser</span></code> implements some of those interfaces itself,
+<code class="code docutils literal notranslate"><span class="pre">StatementParser</span></code> only needs an instance of that for all of them.</p>
+<p>This approach has several advantages:</p>
+<ol class="arabic simple">
+<li><p>Components are forced to be written against the exposed interfaces, allowing implementation details to be hidden in
+the concrete classes.</p></li>
+<li><p>The individual interfaces are simple compared to a monolith approach, where every component would have access to
+every other component.</p></li>
+<li><p>The dependencies between components are made explicit; for example, a <code class="code docutils literal notranslate"><span class="pre">ScopeHandler</span></code> has no business using a
+<code class="code docutils literal notranslate"><span class="pre">ControlKeywordParser</span></code>. Requiring manual delegation helps prevent accidental coupling.</p></li>
+<li><p>The delegate syntax is clean: there is usually no need to write
+<code class="code docutils literal notranslate"><span class="pre">component.doThing()</span></code>, rather <code class="code docutils literal notranslate"><span class="pre">doThing()</span></code> can be called directly. This is
+most obvious in parser components using <code class="code docutils literal notranslate"><span class="pre">ITokenHandler</span></code>, since they have
+lots (hundreds) of calls to functions like <code class="code docutils literal notranslate"><span class="pre">current</span></code>, <code class="code docutils literal notranslate"><span class="pre">eat</span></code>, <code class="code docutils literal notranslate"><span class="pre">isEaten</span></code> or
+<code class="code docutils literal notranslate"><span class="pre">tokenContext</span></code>. Without delegation, they’d end up polluting the source with
+<code class="code docutils literal notranslate"><span class="pre">tokenHandler.current()</span></code> everywhere, which is not great for readability.</p></li>
+</ol>
+</section>
+<section id="the-itokenhandler-interface">
+<h3>The <code class="code docutils literal notranslate"><span class="pre">ITokenHandler</span></code> Interface<a class="headerlink" href="#the-itokenhandler-interface" title="Link to this heading"></a></h3>
+<p>This interface allows a user to interact with a list of <code class="code docutils literal notranslate"><span class="pre">LexicalToken</span></code>. It
+provides functions to process a token, move past it to the next one, search for
+the first token to meet a condition, or easily get debug data.</p>
+<p>The terminology used in this interface’s methods relates to “eating” tokens.
+Eating a token means it was processed, consumed, or dealt with in some way, and
+further calls to the <code class="code docutils literal notranslate"><span class="pre">current</span></code> function will return the next available token. As
+expected, <code class="code docutils literal notranslate"><span class="pre">isEaten</span></code> returns true if there are no more tokens left.</p>
+<p>It is used both in the parser, and in the preprocessor.</p>
+<p>By far the most interesting feature, however, is the <code class="code docutils literal notranslate"><span class="pre">tokenContext</span></code> function.
+One of the most common operations when parsing is having to create a
+“sub-parser” for certain nested data: the contents of a set of parenthesis in
+expressions, statement blocks for functions, argument lists for function calls
+or function prototypes, and many more.
+The <code class="code docutils literal notranslate"><span class="pre">tokenContext</span></code> function takes an end index, and a lambda. A sublist is
+created, including the tokens from the current one, to the one specified by the
+end index. This is just a view into the larger list of tokens, so no array
+copies are made. The lambda is then executed.
+This is how context nesting works in an expression:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Root context
+2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^      Outer paren&#39;s context (1st tier)
+2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5
+              ^^^^^     ^^^^^^^^^^^       Each inner paren has its own context,
+                                          but they&#39;re at the same &quot;tier&quot;, not
+                                          nested (2nd tier)
+2 + (6 - 3 * (2 + 2) - ((7 * 7) / 2)) * 5
+                         ^^^^^            Finally, the inner-most paren has yet
+                                          another context, nested 3 tiers deep
+</pre></div>
+</div>
+<p>Eating tokens in nested contexts advances the parent contexts through them. On
+the diagram, eating the <code class="code docutils literal notranslate"><span class="pre">7</span> <span class="pre">*</span> <span class="pre">7</span></code> tokens in the inner-most context will advance
+all the 3 levels above beyond these tokens (but no further!).</p>
+<p>The context’s magic lies in the fact that the behaviour of the <code class="code docutils literal notranslate"><span class="pre">ITokenHandler</span></code>’s
+functions is dynamic based on the token context. For example, if we’re parsing
+an expression such as <code class="code docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">(2</span> <span class="pre">*</span> <span class="pre">3</span> <span class="pre">-</span> <span class="pre">4)</span> <span class="pre">-</span> <span class="pre">7</span></code>, the parens will get their own
+context. Eating tokens (via <code class="code docutils literal notranslate"><span class="pre">eat</span></code> or <code class="code docutils literal notranslate"><span class="pre">eatUntil</span></code>) in this context will never eat
+tokens beyond the contents of the parens. In context, the <code class="code docutils literal notranslate"><span class="pre">isEaten</span></code> function
+will return true after <code class="code docutils literal notranslate"><span class="pre">4</span></code> was eaten, even if there are other tokens afterwards.</p>
+<p>Most functions of the interface react to the context. As a result, parsing can
+be reasoned about in discrete chunks: each context deals with its own contents,
+and does not care what is being parsed in the parent contexts. Let’s say an
+error is encountered inside a context: <code class="code docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">(2</span> <span class="pre">*</span> <span class="pre">3</span> <span class="pre">-</span> <span class="pre">)</span> <span class="pre">-</span> <span class="pre">7</span></code>. There is a missing
+primary expression inside the paren. The expression parser notices, and consumes
+all the tokens in the context. However, this does not affect the outer
+expression’s: the interface provides no way to eat tokens beyond the ones
+allocated to the context, accidentally or otherwise.</p>
+</section>
+<section id="nested-declarator-parsing">
+<h3>Nested Declarator Parsing<a class="headerlink" href="#nested-declarator-parsing" title="Link to this heading"></a></h3>
+<p>Parsing declarators gets very complicated, very fast when nested declarators come
+into play. A typical declaration with nested declarators looks like:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>int * (*f(int x))(double y)
+^^^                         declaration specifiers
+int * (*f(int x))(double y)
+      ^^^^^^^^^^^           nested declarator
+int * (*f(int x))(double y)
+                 ^^^^^^^^^^ declarator suffix for non-nested declarator
+int * (*f(int x))(double y)
+         ^^^^^^^            declarator suffix for nested declarator
+int * (*f(int x))(double y)
+    ^                       indirection that &quot;belongs&quot; to the declaration specifiers
+                            (from &quot;int&quot; to &quot;pointer to int&quot;)
+int * (*f(int x))(double y)
+       ^                    indirection that &quot;belongs&quot; to the declarator suffix
+                            (from &quot;function&quot; type to &quot;pointer to function&quot; type)
+int * (*f(int x))(double y)
+        ^                   designator for the resulting declaration
+                            (ie the name of the function)
+</pre></div>
+</div>
+<p>The example declaration declares a function called <code class="code docutils literal notranslate"><span class="pre">f</span></code>, that takes one int
+parameter called <code class="code docutils literal notranslate"><span class="pre">x</span></code>, and returns a pointer to a function that also takes one
+parameter, a double <code class="code docutils literal notranslate"><span class="pre">y</span></code>, and returns a pointer to an int.</p>
+<p>Indirection binds in reverse order of suffixes: the first indirection binds to
+the last suffix, and the last indirection binds to the first suffix. This
+reflects the declarator nesting.</p>
+<p>Dereferencing the int pointer returned by calling the returned function pointer,
+in one expression, looks like this:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>int result = *(f(1)(2.0));
+</pre></div>
+</div>
+<p>Yes, this is why typedefs exist.</p>
+</section>
+</section>
+<section id="errors">
+<h2>Errors<a class="headerlink" href="#errors" title="Link to this heading"></a></h2>
+<p>A compiler has to deal with two classes of “errors”; those that come from the
+code being compiled (“diagnostics”), and those that signal issues in the compiler itself.</p>
+<p>All the relevant code can be found in the <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/Diagnostics.kt">Diagnostics.kt</a> file.</p>
+<section id="diagnostics">
+<h3>Diagnostics<a class="headerlink" href="#diagnostics" title="Link to this heading"></a></h3>
+<p>Diagnostics are handled by the <code class="code docutils literal notranslate"><span class="pre">DebugHandler</span></code> class (and its corresponding interface, <code class="code docutils literal notranslate"><span class="pre">IDebugHandler</span></code>).</p>
+<p>Printed diagnostics look like this:</p>
+<div class="highlight">
+  <pre>
+  someFile.c:1:27: <span style="color: red">error:</span> Expression is not assignable [Parser|EXPRESSION_NOT_ASSIGNABLE]
+  int main() {int x; (x + 2) = 5;}
+                      <span style="color: green">~~~~~  ^</span>
+  </pre>
+</div><p>We generate <code class="code docutils literal notranslate"><span class="pre">Diagnostic</span></code> instances using a simple DSL, but the error messages,
+the source extracts, and the caret/tilde markers are created lazily, internally.
+They are only computed when (or if) the diagnostic gets printed. This is useful,
+because it makes creating a <code class="code docutils literal notranslate"><span class="pre">Diagnostic</span></code> instance relatively cheap. As a result,
+we can create diagnostics even if they might be discarded later, with little
+cost. One such place where diagnostics are sometimes discarded is
+<code class="code docutils literal notranslate"><span class="pre">ConstantExprParser#evaluateExpr</span></code>.</p>
+<p>An example of the <code class="code docutils literal notranslate"><span class="pre">IDebugHandler.diagnostic</span></code> DSL, used in the parser:</p>
+<div class="highlight-kotlin notranslate"><div class="highlight"><pre><span></span><span class="c1">// ...</span>
+<span class="n">diagnostic</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DiagnosticId</span><span class="p">.</span><span class="na">INVALID_ARGUMENT_UNARY</span>
+<span class="w">  </span><span class="n">formatArgs</span><span class="p">(</span><span class="n">expr</span><span class="p">.</span><span class="na">type</span><span class="p">,</span><span class="w"> </span><span class="n">op</span><span class="p">.</span><span class="na">op</span><span class="p">.</span><span class="na">s</span><span class="p">)</span>
+<span class="w">  </span><span class="n">errorOn</span><span class="p">(</span><span class="n">c</span><span class="p">..</span><span class="na">expr</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="c1">// ...</span>
+</pre></div>
+</div>
+<p>The range passed to <code class="code docutils literal notranslate"><span class="pre">errorOn</span></code> in the example above, is an implementor of the <code class="code docutils literal notranslate"><span class="pre">SourcedRange</span></code> interface.</p>
+<p>The <code class="code docutils literal notranslate"><span class="pre">rangeTo</span></code> operator is overloaded on <code class="code docutils literal notranslate"><span class="pre">SourcedRange</span></code> to easily combine multiple ranges into one, like in this example
+from the parser:</p>
+<div class="highlight-kotlin notranslate"><div class="highlight"><pre><span></span><span class="n">sizeOf</span><span class="p">..</span><span class="na">tokenAt</span><span class="p">(</span><span class="n">rParenIdx</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="code docutils literal notranslate"><span class="pre">sizeOf</span></code> token and the token returned by <code class="code docutils literal notranslate"><span class="pre">tokenAt(rParenIdx)</span></code> are not
+adjacent (think of <code class="code docutils literal notranslate"><span class="pre">sizeof(int)</span></code>), but this overload allows the parser to
+trivially create a compound <code class="code docutils literal notranslate"><span class="pre">SourcedRange</span></code> to cover the entire sizeof
+expression.</p>
+<p>Since <code class="code docutils literal notranslate"><span class="pre">LexicalToken</span></code> and <code class="code docutils literal notranslate"><span class="pre">ASTNode</span></code> are implementations of <code class="code docutils literal notranslate"><span class="pre">SourcedRange</span></code>,
+compound ranges can be created by mixing and matching tokens and AST pieces
+(<code class="code docutils literal notranslate"><span class="pre">tok..node</span></code> and <code class="code docutils literal notranslate"><span class="pre">node..tok</span></code> are both valid syntax).</p>
+<p>Another example, used in <code class="code docutils literal notranslate"><span class="pre">sequentialize</span></code>:</p>
+<div class="highlight-kotlin notranslate"><div class="highlight"><pre><span></span><span class="c1">// ...</span>
+<span class="n">diagnostic</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DiagnosticId</span><span class="p">.</span><span class="na">UNSEQUENCED_MODS</span>
+<span class="w">  </span><span class="n">formatArgs</span><span class="p">(</span><span class="n">variable</span><span class="p">.</span><span class="na">name</span><span class="p">)</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">mod</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">modList</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">mod</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">is</span><span class="w"> </span><span class="n">BinaryExpression</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">errorOn</span><span class="p">(</span><span class="n">mod</span><span class="p">.</span><span class="na">lhs</span><span class="p">)</span>
+<span class="w">    </span><span class="k">is</span><span class="w"> </span><span class="n">IncDecOperation</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">errorOn</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+<span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">logger</span><span class="p">.</span><span class="na">throwICE</span><span class="p">(</span><span class="s">&quot;Modification doesn&#39;t modify anything&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">mod</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="c1">// ...</span>
+</pre></div>
+</div>
+<p>This illustrates the utility provided by using a lambda + builder DSL. Arbitrary
+code can run in the construction of the diagnostic, so the same diagnostic can
+be tailored to different situations.</p>
+<p>Finally, an example from the preprocessor:</p>
+<div class="highlight-kotlin notranslate"><div class="highlight"><pre><span></span><span class="c1">// ...</span>
+<span class="n">diagnostic</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ignoreTrigraphs</span><span class="p">)</span><span class="w"> </span><span class="n">DiagnosticId</span><span class="p">.</span><span class="na">TRIGRAPH_IGNORED</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">DiagnosticId</span><span class="p">.</span><span class="na">TRIGRAPH_PROCESSED</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">ignoreTrigraphs</span><span class="p">)</span><span class="w"> </span><span class="n">formatArgs</span><span class="p">(</span><span class="n">replacement</span><span class="p">)</span>
+<span class="w">  </span><span class="n">columns</span><span class="p">(</span><span class="n">matchResult</span><span class="p">.</span><span class="na">start</span><span class="p">()</span><span class="w"> </span><span class="n">until</span><span class="w"> </span><span class="n">matchResult</span><span class="p">.</span><span class="na">end</span><span class="p">())</span>
+<span class="p">}</span>
+<span class="c1">// ...</span>
+</pre></div>
+</div>
+<p>Even the kind of diagnostic can be dynamically selected based on arbitrary
+logic, which makes it easy to support feature flags like <code class="code docutils literal notranslate"><span class="pre">-fno-trigraphs</span></code> in
+diagnostics.</p>
+</section>
+<section id="compiler-errors">
+<h3>Compiler Errors<a class="headerlink" href="#compiler-errors" title="Link to this heading"></a></h3>
+<p>For actual issues in the compiler, we use logging, the
+<code class="code docutils literal notranslate"><span class="pre">InternalCompilerError</span></code> class, the <code class="code docutils literal notranslate"><span class="pre">throwICE</span></code> extension methods on logger
+instances, and Kotlin’s stdlib functions from <code class="code docutils literal notranslate"><span class="pre">Preconditions.kt</span></code>.</p>
+<p>We use <a class="reference external" href="https://github.com/MicroUtils/kotlin-logging">a Kotlin wrapper</a> for slf4j’s API in common code.
+For the JVM, <a class="reference external" href="https://logging.apache.org/log4j/2.x/">Log4j 2</a> is the logging backend.</p>
+<p>Instances of ICE, <code class="code docutils literal notranslate"><span class="pre">IllegalArgumentException</span></code> or <code class="code docutils literal notranslate"><span class="pre">IllegalStateException</span></code> being thrown means
+invariants were violated, “impossible” situations occurred, or misuse of an API
+was encountered. As a result, these exceptions should not be caught anywhere: it
+is desirable for the application to crash if someone threw an ICE. Any one of
+these exceptions being thrown is an unfixed bug in the compiler.</p>
+<p>Since the compiler is still a work in progress, there are many features/code
+paths that are not yet implemented. They generally do not throw ICEs, rather
+they use <code class="code docutils literal notranslate"><span class="pre">NotImplementedError</span></code> created by the <code class="code docutils literal notranslate"><span class="pre">TODO</span></code> function.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="implementation-overview.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="middleend.html" class="btn btn-neutral float-right" title="Middle-end (Analysis and IR)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Slak44.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

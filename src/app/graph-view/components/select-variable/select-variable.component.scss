@@ -1,0 +1,21 @@
+:host {
+  display: flex;
+  flex-direction: column;
+}
+
+.mat-mdc-form-field {
+  margin-bottom: 8px;
+}
+
+.tooltip-container {
+  display: block;
+
+  .mat-mdc-raised-button {
+    width: 100%;
+
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+

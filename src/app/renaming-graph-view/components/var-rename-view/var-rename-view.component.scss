@@ -1,0 +1,61 @@
+@use 'colors';
+
+:host {
+  display: contents;
+}
+
+.start-overlay {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+}
+
+cki-select-function {
+  margin-bottom: 8px;
+}
+
+.progress-overlay {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+
+  color: colors.$graph-text;
+}
+
+.version-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  .version-arrow {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  .old-version {
+    text-decoration: rgba(colors.$error-red, 0.5) line-through 2px;
+  }
+}
+
+.large-overlay-text {
+  font-size: 24px;
+  line-height: 48px;
+}
+
+.algorithm {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+}
+
+.reset-button {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+
+  mat-icon {
+    margin-right: 8px;
+  }
+}

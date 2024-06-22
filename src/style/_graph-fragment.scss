@@ -1,0 +1,24 @@
+@use 'colors';
+
+$transition-duration: 150ms;
+
+@mixin text() {
+  line-height: initial;
+  font-size: 16px;
+  font-family: 'Fira Code', monospace;
+}
+
+@keyframes colorFade {
+  0% {
+    color: inherit;
+  }
+
+  100% {
+    color: colors.$accent-default;
+  }
+}
+
+.highlight-variable {
+  animation: colorFade $transition-duration ease-in-out forwards;
+}
+

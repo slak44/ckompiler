@@ -1,0 +1,22 @@
+@use 'graph-fragment';
+@use 'colors';
+
+:host {
+  display: block;
+  @include graph-fragment.text;
+
+  transition: graph-fragment.$transition-duration opacity linear;
+  opacity: 1;
+}
+
+:host(.hidden-fragment) {
+  opacity: 0;
+}
+
+.highlight-disabled {
+  color: colors.$disabled-graph-text;
+}
+
+.highlight-active {
+  color: colors.$variable-highlight;
+}

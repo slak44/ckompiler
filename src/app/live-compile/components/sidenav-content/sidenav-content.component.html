@@ -1,0 +1,18 @@
+<ng-container *ngIf="{ user: user$ | async } as data">
+  <button *ngIf="!data.user"
+          mat-raised-button
+          color="accent"
+          (click)="login()">
+    LOGIN
+  </button>
+  <button *ngIf="data.user"
+          tabindex="-1"
+          mat-stroked-button
+          (click)="logout()">
+    LOGOUT
+  </button>
+
+  <mat-divider></mat-divider>
+
+  <cki-viewstate-list *ngIf="data.user"></cki-viewstate-list>
+</ng-container>

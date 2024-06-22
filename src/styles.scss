@@ -1,0 +1,63 @@
+@use 'colors';
+@use 'fonts';
+@use '@angular/material' as mat;
+@use 'highlight.js/scss/base16/darcula' as *;
+
+@include mat.all-component-typographies();
+@include mat.core();
+
+@include mat.all-component-themes(colors.$internals-explorer-theme);
+
+[role="button"] {
+  cursor: pointer;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: colors.$graph-background;
+}
+
+svg {
+  font: unset;
+  line-height: unset;
+}
+
+.mat-mdc-tab-group {
+  &.fill-height {
+    .mat-mdc-tab-body-wrapper {
+      flex-grow: 1;
+    }
+  }
+}
+
+.mat-mdc-tooltip {
+  font-size: 16px;
+}
+
+.mat-mdc-form-field.standard-appearance {
+  .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+    background-color: transparent;
+  }
+}
+
+.hljs {
+  background-color: unset;
+}
+
+.green-badge > .mat-badge-content {
+  background-color: colors.$success-green;
+}

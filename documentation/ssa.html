@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSA Form &mdash; ckompiler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ckompiler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">CKompiler</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="targets.html">Build Targets</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="targets.html#kotlin-multiplatform-project">Kotlin Multiplatform Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="targets.html#internals-explorer">Internals Explorer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="build-instructions.html">Build Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#cli">CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#tests">Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#js-library">JS Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#internals-explorer-angular-app">Internals Explorer Angular App</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#documentation-this-site">Documentation (this site!)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-instructions.html#dokka-kotlin-documentation">Dokka Kotlin documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">The CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Implementation Details</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="implementation-overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="frontend.html">Front-end</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="frontend.html#lexer">Lexer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="frontend.html#parser">Parser</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#interfaces-and-delegation">Interfaces and Delegation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#the-itokenhandler-interface">The <code class="code docutils literal notranslate"><span class="pre">ITokenHandler</span></code> Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#nested-declarator-parsing">Nested Declarator Parsing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="frontend.html#errors">Errors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#diagnostics">Diagnostics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="frontend.html#compiler-errors">Compiler Errors</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="middleend.html">Middle-end (Analysis and IR)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="middleend.html#control-flow">Control Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="middleend.html#json-serialization">JSON serialization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="middleend.html#graphical-representation-for-cfgs">Graphical representation for CFGs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="middleend.html#ssa-form">SSA Form</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="backend.html">Back-end</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#target-specific-information">Target-Specific Information</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#the-machineinstruction-class">The <code class="code docutils literal notranslate"><span class="pre">MachineInstruction</span></code> class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#the-instruction-graph">The Instruction Graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#the-code-generation-interfaces">The Code Generation Interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#code-generation-process">Code Generation Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backend.html#mi-debug-mode"><code class="code docutils literal notranslate"><span class="pre">--mi-debug</span></code> mode</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Compiler Behaviour</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html">List of Implementation Defined Behaviours</a></li>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html#list-of-undefined-behaviours">List of Undefined Behaviours</a></li>
+<li class="toctree-l1"><a class="reference internal" href="list-of-behaviours.html#list-of-unspecified-behaviours">List of Unspecified Behaviours</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ckompiler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SSA Form</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ssa.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ssa-form">
+<h1>SSA Form<a class="headerlink" href="#ssa-form" title="Link to this heading"></a></h1>
+<p>The <code class="code docutils literal notranslate"><span class="pre">CFG</span></code> class is also responsible for converting the code in its nodes to a (pruned) <a class="reference external" href="https://en.wikipedia.org/wiki/Static_single_assignment_form">SSA form</a>.
+However, the process has a few prerequisites:</p>
+<ol class="arabic">
+<li><p>The CFG must be cleaned of certain artifacts created during AST graphing.
+In particular, empty blocks (blocks with no code, no condition and no return) are removed from the graph.</p>
+<p>Here is an example of a CFG that has not been cleaned:</p>
+<img alt="Empty Blocks" class="align-center" src="_images/empty-blocks.png" />
+<p>All the blocks labeled <code class="code docutils literal notranslate"><span class="pre">&lt;EMPTY&gt;</span></code> are redundant.</p>
+<p>The edges are collapsed such that the control flow the graph represents is unchanged.
+This is done in a loop until no more collapsing can be done; removing an empty block may also allow us to remove a
+previously un-removable block (this case is in the example above, with the two blocks that come after the return).</p>
+<p>See <code class="code docutils literal notranslate"><span class="pre">collapseEmptyBlocks</span></code> in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt">ControlFlowGraph.kt</a>, and <code class="code docutils literal notranslate"><span class="pre">BasicBlock.collapseEmptyPreds</span></code> in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/analysis/BasicBlock.kt">BasicBlock.kt</a>.</p>
+</li>
+<li><p>Dead code elimination is performed, by finding subgraphs disconnected from the start node.
+See <code class="code docutils literal notranslate"><span class="pre">filterReachable</span></code> in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt">ControlFlowGraph.kt</a>.</p>
+<p>Note that in this case, impossible edges aren’t considered for connectivity.
+For example, a basic block that contains a function return has an impossible
+edge to another basic block, which contains the code after the return.
+Strictly speaking, the second block is connected. For DCE purposes, however,
+such blocks are considered disconnected. Such a graph looks like this:</p>
+<img alt="Disconnected Fake Edge" class="align-center" src="_images/disconnected-fake-edge.png" />
+</li>
+<li><p>Unterminated <code class="code docutils literal notranslate"><span class="pre">BasicBlock</span></code> are identified. Warnings are reported for non-void functions (it means control flow reached
+the end of the function and didn’t find a return).
+The blocks are terminated with an <code class="code docutils literal notranslate"><span class="pre">ImpossibleJump</span></code>.</p></li>
+<li><p>We precompute a list of the CFG’s nodes in <a class="reference external" href="https://en.wikipedia.org/wiki/Tree_traversal#Post-order_(LRN)">post-order</a> (basically DFS, for the kinds of graphs encountered here).
+See <code class="code docutils literal notranslate"><span class="pre">postOrderNodes</span></code> in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt">ControlFlowGraph.kt</a>.</p></li>
+<li><p>An auxiliary data structure, <code class="code docutils literal notranslate"><span class="pre">DominatorList</span></code>, is created.
+This list stores each node’s <em>immediate dominator</em>.
+The list is then used to compute every node’s <em>dominance frontier</em>, which is stored as a member of <code class="code docutils literal notranslate"><span class="pre">BasicBlock</span></code>.</p></li>
+</ol>
+<p>Once all these steps are complete, SSA conversion can begin.
+It works in 2 phases: φ-function insertion, and variable renaming.</p>
+<p>The first phase is responsible for taking every single variable definition in
+the function, and creating <code class="code docutils literal notranslate"><span class="pre">PhiInstruction</span></code> instances for every control flow
+intersection (this is what the dominance frontier is used for).
+This is a relatively uncomplicated process if dominance is precomputed.
+See <code class="code docutils literal notranslate"><span class="pre">insertPhiFunctions</span></code> in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt">ControlFlowGraph.kt</a>.</p>
+<p>The second phase does the bulk of the work: renaming every use and definition of every variable.
+A lot of state is tracked to enable this process (see the <code class="code docutils literal notranslate"><span class="pre">ReachingDefinition</span></code> and <code class="code docutils literal notranslate"><span class="pre">VariableRenamer</span></code> classes in
+<a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/kotlin/slak/ckompiler/analysis/ControlFlowGraph.kt">ControlFlowGraph.kt</a>).
+The “renaming” is done by simply annotating variables with a “version” property.
+“Newer” versions’ definitions are strictly dominated by “older” versions’ definitions.</p>
+<p>Once this work is completed, the code is now in SSA form.</p>
+<p>If the <code class="code docutils literal notranslate"><span class="pre">ControlFlowVariableRenames</span></code> marker in <a class="reference external" href="https://github.com/slak44/ckompiler/tree/master/src/main/resources/log4j2.xml">log4j2.xml</a> is enabled (it is denied logging by default), the variable
+renamer will print a table outlining the steps done during renaming for the variable <code class="code docutils literal notranslate"><span class="pre">x</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[TRACE] in ControlFlow: BB| x mention   | x.reachingDef
+[TRACE] in ControlFlow: -------------------------------
+[TRACE] in ControlFlow: 1 |     x0 φuse | ⊥ updated into ⊥
+[TRACE] in ControlFlow: 1 | def x1      | ⊥ then x1
+[TRACE] in ControlFlow: 1 |     x1 use  | x1 updated into ⊥
+[TRACE] in ControlFlow: 3 | def x2      | x1 then x2
+[TRACE] in ControlFlow: 3 |     x2 use  | x2 updated into x1
+[TRACE] in ControlFlow: 9 |     x2 φuse | x2 updated into x1
+[TRACE] in ControlFlow: 4 |     x1 use  | x2 updated into ⊥
+[TRACE] in ControlFlow: 4 | def x3      | x1 then x3
+[TRACE] in ControlFlow: 4 |     x3 use  | x3 updated into x1
+[TRACE] in ControlFlow: 4 |     x3 use  | x3 updated into x1
+[TRACE] in ControlFlow: 2 |     x3 φuse | x3 updated into x1
+[TRACE] in ControlFlow: 9 |     x3 φuse | x3 updated into x1
+[TRACE] in ControlFlow: 9 | def x4      | x3 then x4
+[TRACE] in ControlFlow: 9 |     x4 use  | x4 updated into x3
+[TRACE] in ControlFlow: 9 | def x5      | x4 then x5
+[TRACE] in ControlFlow: 9 |     x5 use  | x5 updated into x4
+[TRACE] in ControlFlow: 9 |     x5 use  | x5 updated into x4
+[TRACE] in ControlFlow: 1 |     x5 φuse | x5 updated into x4
+[TRACE] in ControlFlow: 2 |     x5 φuse | x5 updated into x4
+[TRACE] in ControlFlow: 2 | def x6      | x5 then x6
+[TRACE] in ControlFlow: 2 |     x6 use  | x6 updated into x5
+</pre></div>
+</div>
+<p>(timestamps omitted for brevity)</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Slak44.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+ng-monaco-editor {
+  height: 100%;
+  opacity: 1;
+  transition: opacity ease-out 100ms;
+}
+
+.loading {
+  opacity: 0;
+}

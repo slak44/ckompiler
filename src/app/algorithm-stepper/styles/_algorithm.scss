@@ -1,0 +1,12 @@
+@use 'colors';
+
+// Keep in sync with INSERTION_TRANSITION_MS
+$transition-duration: 150ms;
+$line-height: 28px;
+
+.indent {
+  display: flex;
+  flex-direction: column;
+  padding-left: 2ch;
+  border-left: 1px solid rgba(colors.$graph-text, 0.5);
+}

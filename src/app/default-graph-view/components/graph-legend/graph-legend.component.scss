@@ -1,0 +1,88 @@
+@use '@angular/material/core/theming/palette' as *;
+@use 'colors';
+
+:host {
+  display: flex;
+  flex-direction: column;
+
+  color: $light-primary-text;
+}
+
+div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+$preview-width: 32px;
+$preview-height: 16px;
+$border-size: 3px;
+
+.start-block {
+  width: $preview-width;
+  height: $preview-height;
+  border: $border-size solid colors.$accent-default;
+}
+
+.exit-block {
+  width: $preview-width;
+  height: $preview-height;
+  border: $border-size solid colors.$primary-default;
+}
+
+.arrow-svg {
+  width: $preview-width;
+  height: $preview-height;
+
+  @mixin arrow-svg($color) {
+    path {
+      stroke: $color;
+    }
+
+    polygon {
+      stroke: $color;
+      fill: $color;
+    }
+  }
+
+  &.normal {
+    @include arrow-svg(colors.$graph-text);
+  }
+
+  &.false {
+    @include arrow-svg(colors.$false-branch);
+  }
+
+  &.true {
+    @include arrow-svg(colors.$true-branch);
+  }
+}
+
+.frontier-line {
+  width: $preview-width;
+  height: $preview-height;
+
+  stroke: colors.$frontier-line;
+}
+
+$preview-alpha: 2 * colors.$hover-alpha;
+
+@mixin highlight($color) {
+  width: $preview-width;
+  height: $preview-height;
+  color: colors.$graph-text;
+  background-color: rgba($color, $preview-alpha);
+}
+
+.highlight-current {
+  @include highlight(white);
+}
+
+.highlight-idom {
+  @include highlight(colors.$accent-default);
+}
+
+.highlight-frontier {
+  @include highlight(colors.$true-branch);
+}

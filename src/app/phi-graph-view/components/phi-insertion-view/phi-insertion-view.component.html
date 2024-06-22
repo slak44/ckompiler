@@ -1,0 +1,76 @@
+<div #anchorStartBlock class="anchor" tourAnchor="anchor-start-block"></div>
+
+<cki-graph-view [printingType$]="printingType$"
+                [instance]="instance"
+                [disableVariableVersions]="true"
+                [hooks]="hooks"
+                [ngSwitch]="phase$ | async"
+                [transformSetting]="phiInsertionTransform"
+                [selectedIdSetting]="phiInsertionSelectedId">
+  <div *ngSwitchCase="algorithmPhase.PREPARING" class="start-overlay">
+    <cki-select-function [instance]="instance"></cki-select-function>
+
+    <cki-select-variable [variables$]="instance.variables$"
+                         [variableIdSetting]="phiInsertionVariableId"
+                         (startClick)="start()"></cki-select-variable>
+  </div>
+
+  <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
+    <div class="progress-overlay">
+      <span>Blocks left to process:</span>
+      <div class="worklist large-overlay-text">
+        W = {{ '{' }}
+        {{ worklist$ | async }}
+        {{ '}' }}
+      </div>
+
+      <span>Blocks with φ inserted:</span>
+      <div class="phi-list large-overlay-text">
+        F = {{ '{' }}
+        {{ processed$ | async }}
+        {{ '}' }}
+      </div>
+
+      <ng-container *ngIf="{ blockX: blockX$ | async } as data">
+        <ng-container *ngIf="data.blockX !== undefined && data.blockX !== null">
+          <span>Block <cki-var>X</cki-var>:</span>
+          <div class="phi-list large-overlay-text">
+            <cki-var>X</cki-var> = {{ data.blockX }}
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <ng-container *ngIf="dominanceFrontierX$ | async as dfX">
+        <span>Dominance frontier of block <cki-var>X</cki-var>:</span>
+        <div class="phi-list large-overlay-text">
+          DF(<cki-var>X</cki-var>) = {{ '{' }}
+          {{ dfX }}
+          {{ '}' }}
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="{ blockY: blockY$ | async } as data">
+        <ng-container *ngIf="data.blockY !== undefined && data.blockY !== null">
+          <span>Block <cki-var>Y</cki-var>:</span>
+          <div class="phi-list large-overlay-text">
+            <cki-var>Y</cki-var> = {{ data.blockY }}
+          </div>
+        </ng-container>
+      </ng-container>
+    </div>
+
+    <div class="algorithm">
+      <cki-stepper-controls [stepCount$]="insertionStepCount$"></cki-stepper-controls>
+
+      <cki-insertion-algorithm></cki-insertion-algorithm>
+    </div>
+
+    <button mat-flat-button
+            type="button"
+            class="reset-button"
+            (click)="reset()">
+      <mat-icon>restart_alt</mat-icon>
+      <span>Reset</span>
+    </button>
+  </ng-container>
+</cki-graph-view>

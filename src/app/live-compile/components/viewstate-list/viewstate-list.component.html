@@ -1,0 +1,129 @@
+<ng-container *ngIf="{
+  viewStateListings: viewStates$ | async,
+  recentPublicLinks: recentPublicLinks$ | async,
+  broadcastPublishId: broadcastPublishId$ | async,
+  broadcastSubscribeId: broadcastSubscribeId$ | async
+} as data">
+  <div class="viewstate-item"
+       *ngIf="!data.broadcastSubscribeId"
+       [class.disabled]="data.broadcastPublishId"
+       [matRippleDisabled]="!!data.broadcastPublishId"
+       mat-ripple
+       role="button"
+       (click)="startBroadcast()">
+    <mat-icon>present_to_all</mat-icon>
+    <mat-spinner *ngIf="data.broadcastPublishId" [diameter]="16" color="accent"></mat-spinner>
+    {{ !data.broadcastPublishId ? 'Present current view state' : 'Presenting…' }}
+  </div>
+
+  <div class="viewstate-item"
+       mat-ripple
+       role="button"
+       *ngIf="data.broadcastPublishId"
+       (click)="closeBroadcast(data.broadcastPublishId)">
+    <mat-icon>cancel_presentation</mat-icon>
+    Stop presenting
+  </div>
+
+  <div class="viewstate-item"
+       *ngIf="data.broadcastSubscribeId"
+       mat-ripple
+       role="button"
+       (click)="stopWatching()">
+    <mat-icon>cancel_presentation</mat-icon>
+    Stop watching
+  </div>
+
+  <div class="viewstate-item"
+       mat-ripple
+       role="button"
+       *ngIf="data.broadcastPublishId || data.broadcastSubscribeId as activeBroadcastId"
+       (click)="copyBroadcastLink(activeBroadcastId)">
+    <mat-icon>content_copy</mat-icon>
+    Copy link to this presentation
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <div class="viewstate-item"
+       mat-ripple
+       role="button"
+       (click)="saveCurrentState()">
+    <mat-icon>add</mat-icon>
+    Save current view state
+  </div>
+
+  <h3 *ngIf="(data.viewStateListings?.length ?? 0) > 0">
+    Restore saved state:
+  </h3>
+
+  <div *ngFor="let viewState of data.viewStateListings; let i = index"
+       class="viewstate-item"
+       mat-ripple
+       role="button"
+       (click)="restoreState(viewState.id!)">
+    <span>{{ (i + 1) + '. ' + viewState.name }}</span>
+    <mat-icon role="button"
+              mat-ripple
+              [matTooltip]="viewState.publicShareEnabled
+              ? 'State shared. Click to configure'
+              : 'Share a public link of this saved state'"
+              (click)="$event.stopPropagation(); openShareDialog(viewState)">
+      <span [matBadge]="viewState.publicShareEnabled ? '✓' : null"
+            class="green-badge"
+            matBadgeSize="small">share</span>
+    </mat-icon>
+    <mat-icon role="button"
+              mat-ripple
+              matTooltip="Delete saved state"
+              (click)="$event.stopPropagation(); deleteState(viewState.id!)">
+      close
+    </mat-icon>
+  </div>
+
+  <h3 *ngIf="(data.recentPublicLinks?.length ?? 0) > 0">
+    Recently accessed public states:
+  </h3>
+
+  <div *ngFor="let viewState of data.recentPublicLinks; let i = index"
+       class="viewstate-item"
+       mat-ripple
+       role="button"
+       (click)="restorePublicState(viewState.id!)">
+    <span>{{ (i + 1) + '. ' + viewState.name }}</span>
+  </div>
+</ng-container>
+
+<ng-template #newStateConfirm>
+  <h2 mat-dialog-title>Choose a name for this view</h2>
+
+  <mat-dialog-content>
+    <mat-form-field color="accent">
+      <mat-label>Name</mat-label>
+      <input #input type="text" matInput />
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button type="button"
+            mat-raised-button
+            color="accent"
+            [disabled]="input.value === ''"
+            [mat-dialog-close]="input.value">
+      SAVE
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<ng-template #deleteConfirm>
+  <h2 mat-dialog-title>Are you sure you want to delete this saved state?</h2>
+
+  <mat-dialog-actions align="end">
+    <button type="button" mat-flat-button [mat-dialog-close]="false">
+      CANCEL
+    </button>
+    <button type="button" mat-raised-button color="warn" [mat-dialog-close]="true">
+      DELETE
+    </button>
+  </mat-dialog-actions>
+</ng-template>

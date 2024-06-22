@@ -1,0 +1,86 @@
+<cki-graph-view [instance]="instance"
+                [hooks]="hooks"
+                [printingType$]="printingType$"
+                [ngSwitch]="phase$ | async"
+                [transformSetting]="variableRenameTransform"
+                [selectedIdSetting]="variableRenameSelectedId">
+  <div *ngSwitchCase="algorithmPhase.PREPARING" class="start-overlay">
+    <cki-select-function [instance]="instance"></cki-select-function>
+
+    <cki-select-variable [variables$]="instance.variables$"
+                         [variableIdSetting]="variableRenameVariableId"
+                         (startClick)="start()"></cki-select-variable>
+  </div>
+
+  <ng-container *ngSwitchCase="algorithmPhase.RUNNING">
+    <div class="progress-overlay">
+      <ng-container *ngIf="hasNewDefinition$ | async">
+        <span>New version created:</span>
+        <div class="large-overlay-text">
+          {{ variableName$ | async }} v{{ latestVersion$ | async }}
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="{ reachingDefVersion: reachingDefVersion$ | async } as data">
+        <ng-container *ngIf="data.reachingDefVersion !== undefined && data.reachingDefVersion !== null">
+          <span>Reaching definition of <cki-var>{{ variableName$ | async }}</cki-var> to <cki-var>i</cki-var>:</span>
+          <div class="large-overlay-text version-container">
+            <ng-container *ngIf="hasNewDefinition$ | async else normalVersion">
+              <span class="old-version">{{ variableName$ | async }} v{{ data.reachingDefVersion - 1 }}</span>
+
+              <mat-icon class="version-arrow">east</mat-icon>
+
+              <span class="new-version">{{ variableName$ | async }} v{{ data.reachingDefVersion }}</span>
+            </ng-container>
+
+            <ng-template #normalVersion>
+              {{ variableName$ | async }} v{{ data.reachingDefVersion }}
+            </ng-template>
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <ng-container *ngIf="{ blockBB: blockBB$ | async } as data">
+        <ng-container *ngIf="data.blockBB !== undefined && data.blockBB !== null">
+          <span>Current block:</span>
+          <div class="large-overlay-text">
+            <cki-var>BB</cki-var> = {{ data.blockBB }}
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <ng-container *ngIf="bbSuccessorList$ | async as bbSuccessorList">
+        <ng-container *ngIf="bbSuccessorList !== undefined && bbSuccessorList.length > 0">
+          <span>Successors of <cki-var>BB</cki-var> that use
+            <cki-var>{{ variableName$ | async }}</cki-var> in a φ:</span>
+          <div class="large-overlay-text">
+            Successors(<cki-var>BB</cki-var>) = {{ '{ ' + bbSuccessorList.join(', ') + ' }' }}
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <ng-container *ngIf="{ succBB: succBB$ | async } as data">
+        <ng-container *ngIf="data.succBB !== undefined && data.succBB !== null">
+          <span>Current successor of <cki-var>BB</cki-var>:</span>
+          <div class="large-overlay-text">
+            BB{{ data.succBB }}
+          </div>
+        </ng-container>
+      </ng-container>
+    </div>
+
+    <div class="algorithm">
+      <cki-stepper-controls [stepCount$]="stepCount$"></cki-stepper-controls>
+
+      <cki-rename-algorithm></cki-rename-algorithm>
+    </div>
+
+    <button mat-flat-button
+            type="button"
+            class="reset-button"
+            (click)="reset()">
+      <mat-icon>restart_alt</mat-icon>
+      <span>Reset</span>
+    </button>
+  </ng-container>
+</cki-graph-view>

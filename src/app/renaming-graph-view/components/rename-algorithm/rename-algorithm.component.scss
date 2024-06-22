@@ -1,0 +1,12 @@
+@use "src/app/algorithm-stepper/styles/algorithm";
+
+:host {
+  display: block;
+  position: relative;
+}
+
+.text-row {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+}
