@@ -2,6 +2,10 @@ version: '3.5'
 
 networks:
   gateway:
+  # Internal only (no internet, unreachable from outside): the socket proxy and
+  # its two clients (docker-gen, acme-companion) talk here.
+  docker-api:
+    internal: true
 
 services:
   internals-explorer-backend:
@@ -21,39 +25,107 @@ services:
       - application
       - gateway
 
+  # nginx-proxy in "separate containers" mode: the internet-facing nginx has no
+  # Docker API access at all. docker-gen renders its config into ./volume/conf.d
+  # and signals it (found via the com.github.nginx-proxy.nginx-proxy.nginx label).
   gateway:
     container_name: ckompiler-gateway
     restart: unless-stopped
-    image: nginxproxy/nginx-proxy:1.11.6-alpine
+    image: nginx:1.31.3-alpine
+    labels:
+      - com.github.nginx-proxy.nginx-proxy.nginx
     ports:
       - "80:80"
       - "443:443"
-    environment:
-      ENABLE_IPV6: true
-      TRUST_DOWNSTREAM_PROXY: false
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./volume/certs:/etc/nginx/certs
-      - ./volume/vhost:/etc/nginx/vhost.d
-      - ./volume/html:/usr/share/nginx/html
+      # nginx-proxy's nginx.conf tweaks (worker limits, toplevel.conf.d include)
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # RFC7919 ffdhe4096, the group nginx-proxy uses by default
+      - ./nginx/dhparam.pem:/etc/nginx/dhparam/dhparam.pem:ro
+      - ./volume/conf.d:/etc/nginx/conf.d:ro
+      - ./volume/certs:/etc/nginx/certs:ro
       - ./nginx-vhost.d:/etc/nginx/vhost.d:ro
+      - ./volume/html:/usr/share/nginx/html:ro
     networks:
       - application
       - gateway
+
+  # The only container with the Docker socket. Allowlist per HTTP method, matched
+  # against the URL path (query string excluded). Everything else is denied:
+  # no create, exec, archive/export, logs, images, volumes.
+  docker-socket-proxy:
+    container_name: ckompiler-docker-socket-proxy
+    restart: unless-stopped
+    image: wollomatic/socket-proxy:1.13.2@sha256:ff95d6ff6c27853005ef85eb8f4ab5923dc3d2f1e055f98fb6aeeaceec3fe848
+    # nobody + the host's docker group (gid 107 on the server) to open the socket
+    user: "65534:107"
+    read_only: true
+    mem_limit: 64M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    command:
+      - -loglevel=INFO
+      - -listenip=0.0.0.0
+      - -allowfrom=ckompiler-docker-gen,ckompiler-acme-companion
+      # docker-gen + acme-companion reads: ping, version, info, events, list networks,
+      # list/inspect containers
+      - -allowGET=(/v1\.[0-9]+)?/(_ping|version|info|events|networks|containers/json|containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/json)
+      - -allowHEAD=(/v1\.[0-9]+)?/_ping
+      # reload signals: docker-gen -> nginx, acme-companion -> docker-gen and nginx
+      - -allowPOST=(/v1\.[0-9]+)?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/kill
+      - -watchdoginterval=60
+      - -stoponwatchdog
+      - -shutdowngracetime=5
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+
+  docker-gen:
+    depends_on:
+      - gateway
+      - docker-socket-proxy
+    container_name: ckompiler-docker-gen
+    restart: unless-stopped
+    image: nginxproxy/nginx-proxy:1.11.6-dockergen
+    environment:
+      DOCKER_HOST: tcp://ckompiler-docker-socket-proxy:2375
+      # nginx-proxy settings go here, not on the nginx container
+      ENABLE_IPV6: true
+      TRUST_DOWNSTREAM_PROXY: false
+    volumes:
+      # Must see the same files as nginx: the template checks them with `exists`
+      - ./volume/conf.d:/etc/nginx/conf.d
+      - ./nginx/dhparam.pem:/etc/nginx/dhparam/dhparam.pem:ro
+      - ./volume/certs:/etc/nginx/certs:ro
+      - ./nginx-vhost.d:/etc/nginx/vhost.d:ro
+      - ./volume/html:/usr/share/nginx/html:ro
+    networks:
+      - docker-api
 
   acme-companion:
     container_name: ckompiler-acme-companion
     restart: unless-stopped
     image: nginxproxy/acme-companion:2.8.2
+    depends_on:
+      - docker-socket-proxy
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./volume/certs:/etc/nginx/certs
       - ./volume/vhost:/etc/nginx/vhost.d
       - ./volume/html:/usr/share/nginx/html
       - ./volume/acme:/etc/acme.sh
     env_file: .env
     environment:
+      DOCKER_HOST: tcp://ckompiler-docker-socket-proxy:2375
       NGINX_PROXY_CONTAINER: ckompiler-gateway
+      # Reload = SIGHUP to docker-gen (re-render) and to nginx
+      NGINX_DOCKER_GEN_CONTAINER: ckompiler-docker-gen
+    networks:
+      # default: outbound to Let's Encrypt; docker-api: the socket proxy
+      - default
+      - docker-api
 
   prometheus:
     volumes:
