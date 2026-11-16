@@ -31,7 +31,7 @@ services:
 
   gateway:
     container_name: ckompiler-gateway
-    restart: unless-stopped
+    restart: always # signalled via the API, which makes unless-stopped skip it at boot
     image: nginx:1.31.3-alpine
     labels:
       - com.github.nginx-proxy.nginx-proxy.nginx
@@ -80,7 +80,7 @@ services:
       - gateway
       - docker-socket-proxy
     container_name: ckompiler-docker-gen
-    restart: unless-stopped
+    restart: always # signalled via the API, which makes unless-stopped skip it at boot
     image: nginxproxy/nginx-proxy:1.11.6-dockergen
     environment:
       DOCKER_HOST: tcp://ckompiler-docker-socket-proxy:2375
@@ -117,7 +117,7 @@ services:
 
   prometheus:
     volumes:
-      - ./monitoring/prometheus-production.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus-production.yml:/etc/prometheus/prometheus.yml:ro
 
   grafana:
     environment:
