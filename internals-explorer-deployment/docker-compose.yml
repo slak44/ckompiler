@@ -7,7 +7,7 @@ services:
   database:
     container_name: ckompiler-database
     restart: unless-stopped
-    image: postgres:16.3
+    image: postgres:16.16
     env_file: .env
     volumes:
       - ./volume/postgres:/data/postgres
@@ -18,8 +18,9 @@ services:
       - application
 
   prometheus:
-    image: prom/prometheus:v2.44.0
+    image: prom/prometheus:v3.16.0
     container_name: ckompiler-prometheus
+    restart: unless-stopped
     volumes:
       - ./volume/promdata:/prometheus
     expose:
@@ -28,7 +29,7 @@ services:
       - application
 
   grafana:
-    image: grafana/grafana:9.5.2
+    image: grafana/grafana:13.3.1
     container_name: ckompiler-grafana
     expose:
       - "3000"
