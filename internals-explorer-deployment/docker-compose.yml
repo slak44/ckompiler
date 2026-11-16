@@ -3,12 +3,22 @@ version: '3.5'
 networks:
   application:
 
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password
+
 services:
   database:
     container_name: ckompiler-database
     restart: unless-stopped
     image: postgres:16.16
-    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - ./volume/postgres:/data/postgres
       - ./volume/pgdata:/var/lib/postgresql/data
@@ -34,7 +44,11 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
-    env_file: .env
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+    secrets:
+      - grafana_admin_password
     volumes:
       - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards

@@ -2,3 +2,4 @@ volume/
 .env
 # Installed on the server by vault-backend's deployment/scripts/install-vhosts.sh
 nginx-vhost.d/git.vault.slak44.dev
+secrets/
