@@ -32,7 +32,7 @@ services:
   gateway:
     container_name: ckompiler-gateway
     restart: always # signalled via the API, which makes unless-stopped skip it at boot
-    image: nginx:1.31.3-alpine
+    image: nginx:1.31.9-alpine
     labels:
       - com.github.nginx-proxy.nginx-proxy.nginx
     ports:
