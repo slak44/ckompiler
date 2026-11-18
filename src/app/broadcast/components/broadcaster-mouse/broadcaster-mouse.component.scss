@@ -1,0 +1,33 @@
+@use 'colors';
+
+:host {
+  position: fixed;
+  z-index: 99999;
+
+  width: 32px;
+  height: 32px;
+  background-image: var(--cursor-url);
+  background-size: 32px 32px;
+  pointer-events: none;
+
+  display: none;
+
+  &.visible {
+    display: block;
+  }
+
+  &::after {
+    color: colors.$accent-text;
+    background-color: colors.$accent-lighter;
+
+    border-radius: 16px;
+    padding: 4px 8px;
+
+    content: var(--broadcaster-name);
+    font-weight: 500;
+
+    position: relative;
+    top: 28px;
+    left: 8px;
+  }
+}

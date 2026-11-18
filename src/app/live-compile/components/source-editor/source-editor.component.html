@@ -1,0 +1,4 @@
+<ng-monaco-editor [class.loading]="(monacoThemeLoaded$ | async) !== true"
+                  [options]="monacoOptions"
+                  [formControl]="sourceControl"
+                  (editorChange)="onEditorChange($event)"></ng-monaco-editor>

@@ -1,0 +1,15 @@
+<div *ngIf="publishUrl$ | async as publishUrl" class="mat-body banner">
+  Presenting at
+  <a href="{{ publishUrl }}" class="highlighted-link">{{ publishUrl }}</a>
+  to
+  {{ (subscribers$ | async)?.length ?? 0 }}
+  subscribers
+</div>
+
+<div *ngIf="subscribeUrl$ | async as subscribeUrl" class="mat-body banner">
+  Following
+  <a href="{{ subscribeUrl }}" class="highlighted-link">{{ subscribeUrl }}</a>
+  (total {{ (subscribers$ | async)?.length ?? 0 }} subscribers)
+</div>
+
+<cki-broadcaster-mouse-wrapper/>

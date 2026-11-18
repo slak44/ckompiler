@@ -1,0 +1,35 @@
+<h2 mat-dialog-title>
+  <span>Share saved state "{{ viewStateListing.name }}"</span>
+  <mat-icon role="button"
+            mat-ripple
+            mat-dialog-close="">
+    close
+  </mat-icon>
+</h2>
+
+<mat-dialog-content>
+  <mat-slide-toggle [disabled]="!!(loading$ | async)"
+                    [checked]="viewStateListing.publicShareEnabled"
+                    (change)="configurePublicShare($event)">
+    Enable public sharing
+  </mat-slide-toggle>
+
+  <ng-container *ngIf="viewStateListing.publicShareEnabled">
+    <p>You can share this link:</p>
+
+    <a href="{{ publicLink }}" class="highlighted-link">{{ publicLink }}</a>
+
+    <div class="copy-button-container">
+      <button mat-raised-button color="accent" (click)="copyToClipboard()">
+        COPY LINK
+      </button>
+
+      <span *ngIf="wasCopied" class="was-copied">Copied to clipboard!</span>
+    </div>
+  </ng-container>
+
+  <p>
+    Anyone will be able to view your saved state while this is checked. Only you can delete it, which will delete it
+    for everyone.
+  </p>
+</mat-dialog-content>

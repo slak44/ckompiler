@@ -1,0 +1,5 @@
+<cki-broadcaster-mouse *ngIf="broadcasterMouse$ | async as position"
+                       [isVisible]="!!(broadcastSubscribeId$ | async)"
+                       [broadcasterName]="(cssBroadcasterName$ | async) ?? ''"
+                       [left]="position.x + 'px'"
+                       [top]="position.y + 'px'"/>

@@ -1,0 +1,25 @@
+@use 'graph-fragment';
+@use 'colors';
+
+:host {
+  display: block;
+  @include graph-fragment.text;
+}
+
+.variable-definition {
+  color: colors.$variable-highlight;
+}
+
+@keyframes bgLineFade {
+  0% {
+    background-color: transparent;
+  }
+
+  100% {
+    background-color: rgba(colors.$accent-default, 0.1);
+  }
+}
+
+.highlighted-fragment {
+  animation: bgLineFade graph-fragment.$transition-duration ease-in-out forwards;
+}

@@ -1,0 +1,36 @@
+@use 'colors';
+@use '../../styles/algorithm';
+
+:host {
+  --offset-lines: 0;
+
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  min-height: algorithm.$line-height;
+
+  white-space: nowrap;
+
+  transition: background-color algorithm.$transition-duration ease-in-out;
+  background-color: transparent;
+
+  &::after {
+    position: absolute;
+    width: 100%;
+    bottom: calc(var(--offset-lines) * #{algorithm.$line-height});
+
+    display: block;
+    content: ' ';
+
+    transition: border-color algorithm.$transition-duration ease-in-out;
+    border-bottom: 1px solid transparent;
+  }
+
+  &.active {
+    background-color: rgba(colors.$accent-default, 0.1);
+
+    &::after {
+      border-color: rgba(colors.$accent-default, 0.4);
+    }
+  }
+}

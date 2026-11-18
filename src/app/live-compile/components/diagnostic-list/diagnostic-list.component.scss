@@ -1,0 +1,36 @@
+@use '@angular/material/core/theming/palette' as *;
+@use 'colors' as *;
+
+:host {
+  display: block;
+  padding: 16px;
+}
+
+.status-text {
+  display: flex;
+  align-items: center;
+
+  .mat-icon {
+    margin-right: 8px;
+  }
+}
+
+.with-errors {
+  color: $error-red;
+}
+
+.warnings-only {
+  color: $warning-amber;
+}
+
+.no-diagnostics {
+  color: $success-green;
+}
+
+pre {
+  color: $light-primary-text;
+}
+
+button {
+  margin-top: 16px;
+}

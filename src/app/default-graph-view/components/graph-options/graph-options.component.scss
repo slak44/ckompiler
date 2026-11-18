@@ -1,0 +1,12 @@
+@use '@angular/material/core/theming/palette' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  color: $light-primary-text;
+}
+
+cki-select-function {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}

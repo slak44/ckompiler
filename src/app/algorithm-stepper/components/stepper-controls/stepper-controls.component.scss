@@ -1,0 +1,9 @@
+:host {
+  display: flex;
+  align-items: center;
+  padding-top: 16px;
+
+  .mat-mdc-slider {
+    flex-grow: 1;
+  }
+}
