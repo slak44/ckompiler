@@ -1,7 +1,7 @@
-version: '3.5'
-
 networks:
   application:
+  monitoring:
+    internal: true
 
 secrets:
   postgres_password:
@@ -37,6 +37,7 @@ services:
       - "9090"
     networks:
       - application
+      - monitoring
 
   grafana:
     image: grafana/grafana:13.3.1
@@ -47,6 +48,12 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+    mem_limit: 384m
     secrets:
       - grafana_admin_password
     volumes:
@@ -54,4 +61,4 @@ services:
       - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
-      - application
+      - monitoring

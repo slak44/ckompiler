@@ -1,8 +1,8 @@
-version: '3.5'
-
 networks:
   gateway:
   docker-api:
+    internal: true
+  proxy-internal:
     internal: true
 
 services:
@@ -23,6 +23,8 @@ services:
     secrets:
       - source: postgres_password
         target: POSTGRES_PASSWORD
+    cap_drop:
+      - ALL
     expose:
       - "8080"
     networks:
@@ -35,6 +37,12 @@ services:
     image: nginx:1.31.9-alpine
     labels:
       - com.github.nginx-proxy.nginx-proxy.nginx
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
     ports:
       - "80:80"
       - "443:443"
@@ -48,6 +56,7 @@ services:
     networks:
       - application
       - gateway
+      - proxy-internal
 
   docker-socket-proxy:
     container_name: ckompiler-docker-socket-proxy
@@ -82,6 +91,8 @@ services:
     container_name: ckompiler-docker-gen
     restart: always # signalled via the API, which makes unless-stopped skip it at boot
     image: nginxproxy/nginx-proxy:1.11.6-dockergen
+    cap_drop:
+      - ALL
     environment:
       DOCKER_HOST: tcp://ckompiler-docker-socket-proxy:2375
       ENABLE_IPV6: true
@@ -125,4 +136,4 @@ services:
       VIRTUAL_HOST: grafana.ckompiler.slak44.dev
       LETSENCRYPT_HOST: grafana.ckompiler.slak44.dev
     networks:
-      - gateway
+      - proxy-internal

@@ -1,5 +1,3 @@
-version: '3.5'
-
 services:
   database:
     ports:
@@ -14,5 +12,7 @@ services:
       - "9090:9090"
 
   grafana:
+    networks:
+      - application
     ports:
       - "3000:3000"
